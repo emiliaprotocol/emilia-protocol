@@ -840,6 +840,81 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
     expect(body.schema_version).toBe('ep-guard-evidence-v1');
   });
 
+  it('exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence', async () => {
+    authedAs('user_1');
+    const context = {
+      ep_version: '1.0',
+      context_type: 'ep.signoff.v1',
+      action_hash: 'a1',
+      initiator: 'user_1',
+      approver: 'user_2',
+      nonce: 'sig_1',
+      issued_at: '2026-04-26T00:00:30Z',
+      expires_at: '2026-04-26T00:05:30Z',
+      decision: 'denied',
+    };
+    const contextHash = crypto.createHash('sha256').update(canonForTest(context), 'utf8').digest('hex');
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_1',
+        actor_type: 'principal',
+        after_state: {
+          organization_id: 'org_1',
+          action_type: 'benefit_bank_account_change',
+          decision: 'allow_with_signoff',
+          action_hash: 'a1',
+          signoff_required: true,
+          expires_at: '2026-04-26T00:10:00Z',
+        },
+        created_at: '2026-04-26T00:00:00Z',
+      },
+      {
+        event_type: 'guard.signoff.requested',
+        actor_id: 'user_1',
+        after_state: { signoff_id: 'sig_1', approver_id: 'user_2' },
+        created_at: '2026-04-26T00:00:20Z',
+      },
+      {
+        event_type: 'guard.signoff.rejected',
+        actor_id: 'user_2',
+        after_state: {
+          signoff_id: 'sig_1',
+          approver_id: 'user_2',
+          approved_action_hash: 'a1',
+          decided_at: '2026-04-26T00:01:00Z',
+          key_class: 'A',
+          context,
+          context_hash: contextHash,
+          webauthn: {
+            credential_id: 'cred_user_2',
+            authenticator_data: 'auth-data',
+            client_data_json: 'client-data',
+            signature: 'signature',
+          },
+        },
+        created_at: '2026-04-26T00:01:00Z',
+      },
+    ];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+
+    const res = await readEvidence(req(), { params: Promise.resolve({ receiptId: 'tr_denied' }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.signed).toBe(false);
+    expect(body.signoff.decision).toBe('denied');
+    expect(body.signoff.decision_evidence_signed).toBe(true);
+    expect(body.signoff.approver_id).toBe('user_2');
+    expect(body.signoff.decision_evidence).toMatchObject({
+      decision: 'denied',
+      signoff_id: 'sig_1',
+      credential_id: 'cred_user_2',
+      signoff: { '@type': 'ep.signoff', context: { decision: 'denied' } },
+    });
+  });
+
   it('does NOT sign a receipt with no canonical_action (honest fallback, backward compat)', async () => {
     authedAs('user_1');
     const events = [
@@ -1135,6 +1210,14 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
     authedAs('user_approver');
     setupSignoffEnv({ initiator: 'user_initiator', approver: 'user_approver', actionHash: 'a', requiredAssurance: 'A' });
     const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_assurance');
+  });
+
+  it('returns 403 when bearer-key rejection attempts a Class-A-required receipt', async () => {
+    authedAs('user_approver');
+    setupSignoffEnv({ initiator: 'user_initiator', approver: 'user_approver', actionHash: 'a', requiredAssurance: 'A' });
+    const res = await rejectSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
     expect(res.status).toBe(403);
     expect((await res.json()).type).toContain('insufficient_assurance');
   });

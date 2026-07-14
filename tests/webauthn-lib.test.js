@@ -176,6 +176,16 @@ describe('lib/webauthn-signoff — loadSignoffForSigning', () => {
     const r = await loadSignoffForSigning(sb, REQ.after_state.signoff_id);
     expect(r.alreadyDecided).toBe(true);
   });
+
+  it('treats a matching rejection as equally terminal', async () => {
+    const denied = { event_type: 'guard.signoff.rejected', after_state: { signoff_id: REQ.after_state.signoff_id } };
+    const sb = makeSupabase((c) => {
+      if (c.eq['event_type'] === 'guard.signoff.requested') return { data: [REQ], error: null };
+      return { data: [CREATED, denied], error: null };
+    });
+    const r = await loadSignoffForSigning(sb, REQ.after_state.signoff_id);
+    expect(r.alreadyDecided).toBe(true);
+  });
 });
 
 describe('lib/webauthn-signoff — loadApproverCredentials', () => {

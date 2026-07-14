@@ -7,9 +7,9 @@
 // — then records the decision with key_class 'A' and the assertion itself,
 // so the receipt verifies offline against the approver's enrolled key.
 //
-// Decisions: body.decision 'approved' (default) or 'rejected'. Per the EP
-// draft §5.3, a denial is signed the same way — refusals are equally
-// non-repudiable and equally terminal.
+// Decisions: the outcome is carried inside the persisted Authorization
+// Context and therefore inside the WebAuthn-signed challenge. body.decision is
+// only a consistency assertion; it can never relabel the signed outcome.
 
 import { NextResponse } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
@@ -55,7 +55,15 @@ export async function POST(request, { params }) {
     if (!body.assertion?.id || !body.assertion?.response) {
       return epProblem(400, 'missing_assertion', 'assertion (authentication response) is required');
     }
-    const decision = body.decision === 'rejected' ? 'rejected' : 'approved';
+    if (body.decision !== undefined
+      && body.decision !== 'approved'
+      && body.decision !== 'rejected'
+      && body.decision !== 'denied') {
+      return epProblem(400, 'invalid_decision', 'decision must be approved, rejected, or denied');
+    }
+    const submittedSignedDecision = body.decision === undefined
+      ? null
+      : (body.decision === 'approved' ? 'approved' : 'denied');
 
     const supabase = getGuardedClient();
 
@@ -115,6 +123,19 @@ export async function POST(request, { params }) {
     if (new Date(challengeRow.expires_at) < new Date()) {
       return epProblem(410, 'challenge_expired', 'Signing challenge expired — request webauthn-options again');
     }
+
+    // The decision is part of the canonical context whose hash the device
+    // signed. Never choose it from a post-signature request field: doing so
+    // would let a valid denial assertion be relabeled as approval (or vice
+    // versa) without invalidating the signature.
+    const signedDecision = challengeRow.context?.decision;
+    if (signedDecision !== 'approved' && signedDecision !== 'denied') {
+      return epProblem(409, 'decision_binding_required', 'Signing context does not bind an approved or denied decision');
+    }
+    if (submittedSignedDecision !== null && submittedSignedDecision !== signedDecision) {
+      return epProblem(409, 'decision_mismatch', 'Submitted decision does not match the device-signed decision');
+    }
+    const decision = signedDecision === 'denied' ? 'rejected' : 'approved';
 
     // The signed context must bind this exact action (BindingMatch).
     if (challengeRow.context?.action_hash !== loaded.actionHash) {
@@ -319,6 +340,7 @@ export async function POST(request, { params }) {
       approver_id: body.approver_id,
       key_class: 'A',
       context_hash: challengeRow.context_hash,
+      signed_decision: signedDecision,
       decided_at: decidedAt,
     });
   } catch (err) {

@@ -12,6 +12,46 @@
   },
   "claims": [
     {
+      "claim_id": "class-a-signed-decision-parity",
+      "statement": "A Class-A approval or denial is a device-signed terminal decision over the same canonical action context; the operator cannot relabel the outcome after signing or use bearer authentication to deny a Class-A request.",
+      "acceptance_roots": ["approver credential key pinned from enrollment", "single-use WebAuthn challenge store and decided-once audit constraint"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/webauthn.js", "symbol": "buildAuthorizationContext", "exported": true },
+        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js", "symbol": "POST", "exported": true },
+        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js", "symbol": "POST", "exported": true },
+        { "language": "javascript", "file": "lib/guard-signoff.js", "symbol": "handleSignoffDecision", "exported": true },
+        { "language": "javascript", "file": "lib/signoff/decision-evidence.js", "symbol": "buildPortableSignoffDecision", "exported": true },
+        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyWebAuthnSignoff", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "lib/signoff/decision-evidence.js", "export": "buildPortableSignoffDecision" },
+        { "language": "javascript", "file": "packages/verify/index.js", "export": "verifyWebAuthnSignoff" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "security/vectors.v1.json" },
+        "python": { "status": "gap", "reason": "Python verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths." },
+        "go": { "status": "gap", "reason": "Go verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_device_signed_denial", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_signed_denial_relabel", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_class_a_bearer_denial", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/signoff-decision-evidence.test.js", "title": "exports a device-signed denial that verifies offline under a pinned approver key", "runner": "vitest" },
+        { "file": "tests/v1-api.test.js", "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence", "runner": "vitest" },
+        { "file": "tests/webauthn-approve-route.test.js", "title": "refuses to relabel a device-signed denial as approval", "runner": "vitest" },
+        { "file": "tests/v1-api.test.js", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt", "runner": "vitest" },
+        { "file": "tests/webauthn-lib.test.js", "title": "treats a matching rejection as equally terminal", "runner": "vitest" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "TLA+ and Alloy model rejection terminality, but the exact decision-in-WebAuthn-challenge bytes, API alias mapping, and bearer-path assurance gate are executable properties rather than a composed formal proof." }
+      ],
+      "assumptions": ["the enrolled approver key belongs to the named approver", "the authenticator and relying-party origin are not compromised before the ceremony", "the challenge and audit stores preserve their enforced uniqueness constraints"],
+      "exclusions": ["the verifier does not infer why a human denied", "a compromised authentic device can still sign a harmful outcome", "legacy lower-assurance denial events are not represented as Class-A evidence"],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
       "claim_id": "class-a-downgrade-refused",
       "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",
       "acceptance_roots": ["approver credential key and key class pinned from enrollment"],

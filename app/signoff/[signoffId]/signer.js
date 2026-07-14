@@ -32,10 +32,14 @@ export default function SignoffSigner({ signoffId, initialApproverId, status }) 
       const optRes = await fetch(`/api/v1/signoffs/${signoffId}/webauthn-options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approver_id: approverId.trim() }),
+        body: JSON.stringify({ approver_id: approverId.trim(), decision }),
       });
       const optData = await optRes.json();
       if (!optRes.ok) throw new Error(optData.detail || optData.title || 'Could not start signing');
+      const expectedSignedDecision = decision === 'approved' ? 'approved' : 'denied';
+      if (optData.context?.decision !== expectedSignedDecision) {
+        throw new Error('Signing context does not match the decision you selected. Nothing was signed.');
+      }
 
       const { startAuthentication } = await import('@simplewebauthn/browser');
       const assertion = await startAuthentication({ optionsJSON: optData.options });

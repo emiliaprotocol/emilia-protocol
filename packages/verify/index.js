@@ -361,7 +361,7 @@ const FLAG_UV = 0x04;
  * What this proves with pure math, no network, no EP server:
  *   - the WebAuthn challenge the device signed equals
  *     SHA-256(JCS(context)) for the EXACT context in the signoff — which
- *     binds the action hash, nonce, approver, and validity window;
+ *     binds the action hash, decision, nonce, approver, and validity window;
  *   - the signature verifies against the approver's enrolled P-256 key;
  *   - the authenticator asserted user presence AND user verification
  *     (a human with the biometric/PIN was there);

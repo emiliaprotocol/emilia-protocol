@@ -330,12 +330,15 @@ contested authorization therefore contains the contest: an auditor
 reconstructing a 2-of-3 approval sees the refusals alongside the approvals,
 with names and times.
 
-We are precise about current scope: in the implementation, denial is an
-authenticated, logged decision by the accountable approver
-(`lib/signoff/deny.js`); it does not yet carry a device-signed assertion the
-way approval does. Extending denial to the same device-signed evidence
-standard as approval is a natural hardening, fully compatible with the model,
-and we note it as future work rather than claiming it.
+The Class-A production path now gives denial the same device-signed evidence
+standard as approval. The canonical WebAuthn context carries
+`decision: "approved"` or `decision: "denied"`; the server derives the stored
+terminal event from that signed value, and the evidence endpoint exports both
+outcomes in the same portable `EP-SIGNOFF-v1` shape. Relabeling a signed denial
+as approval invalidates challenge binding, and the bearer-key rejection path
+cannot satisfy a Class-A request. The older generic `lib/signoff/deny.js` flow
+remains a lower-assurance authenticated event path and is not represented as a
+Class-A device-signed denial.
 
 ### 3.5 One-time consumption of the composed decision
 

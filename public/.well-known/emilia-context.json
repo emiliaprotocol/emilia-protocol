@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-14T00:44:35.247Z",
+  "evidence_snapshot_at": "2026-07-14T03:54:33.639Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "f829dde569ce8348dc6f0c8b15e628aee6e6ac2e98ebb8e3ec9a0d212a5640ef",
+    "input_digest_sha256": "8e48635e1ca28dc4e5dbb96a06cb0e70f60314e3a99dc8594d62c4495ebd86bf",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "7c0409e7124ac459da0cce69626caf0cf97b76371f9245c1ea84e4f1912ba730",
+        "sha256": "6dbbcd1b6e27e3f3b774880d7c942ee15220d627d83a9848ebf564eb18c8ee58",
         "bytes": 1067
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "e0d7fe11acf6ab9ac5870e7f4e30dfaa597563d42e01986c08ae5a4fd7be61a4",
-        "bytes": 65044
+        "sha256": "b86cc7abacc21406e63aad968353eb8d5d4ac327d41eed41860c007e4b89e587",
+        "bytes": 69201
       },
       {
         "path": "security/security-case.json",
-        "sha256": "a3fcb3c439aa3c2cff1eb0017de6092da7aff1074379ed8f770212a2079d0224",
-        "bytes": 107332
+        "sha256": "258e667a84293818d96f676f9c4e69e40fa92d051ab2dacfa0bb6994b74990a7",
+        "bytes": 115146
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -118,8 +118,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5569,
-      "files": 281,
+      "total": 5583,
+      "files": 282,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -148,9 +148,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 16,
-      "evidence_files": 73,
-      "evidence_bundle_sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+      "claims": 17,
+      "evidence_files": 82,
+      "evidence_bundle_sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
     }
   },
   "external_implementation": {
@@ -201,6 +201,99 @@
     }
   },
   "security_claims": [
+    {
+      "claim_id": "class-a-signed-decision-parity",
+      "statement": "A Class-A approval or denial is a device-signed terminal decision over the same canonical action context; the operator cannot relabel the outcome after signing or use bearer authentication to deny a Class-A request.",
+      "acceptance_roots": [
+        "approver credential key pinned from enrollment",
+        "single-use WebAuthn challenge store and decided-once audit constraint"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/webauthn.js",
+          "symbol": "buildAuthorizationContext",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js",
+          "symbol": "POST",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js",
+          "symbol": "POST",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/guard-signoff.js",
+          "symbol": "handleSignoffDecision",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/signoff/decision-evidence.js",
+          "symbol": "buildPortableSignoffDecision",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyWebAuthnSignoff",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "Python verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "Go verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_device_signed_denial",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_signed_denial_relabel",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_class_a_bearer_denial",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "TLA+ and Alloy model rejection terminality, but the exact decision-in-WebAuthn-challenge bytes, API alias mapping, and bearer-path assurance gate are executable properties rather than a composed formal proof."
+        }
+      ],
+      "assumptions": [
+        "the enrolled approver key belongs to the named approver",
+        "the authenticator and relying-party origin are not compromised before the ceremony",
+        "the challenge and audit stores preserve their enforced uniqueness constraints"
+      ],
+      "exclusions": [
+        "the verifier does not infer why a human denied",
+        "a compromised authentic device can still sign a harmful outcome",
+        "legacy lower-assurance denial events are not represented as Class-A evidence"
+      ]
+    },
     {
       "claim_id": "class-a-downgrade-refused",
       "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",

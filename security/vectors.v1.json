@@ -3,6 +3,21 @@
   "suite": "Executable vectors for claims whose acceptance path is stateful or release-operational",
   "vectors": [
     {
+      "id": "accept_device_signed_denial",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/signoff-decision-evidence.test.js", "title": "exports a device-signed denial that verifies offline under a pinned approver key" }
+    },
+    {
+      "id": "reject_signed_denial_relabel",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/webauthn-approve-route.test.js", "title": "refuses to relabel a device-signed denial as approval" }
+    },
+    {
+      "id": "reject_class_a_bearer_denial",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/v1-api.test.js", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt" }
+    },
+    {
       "id": "accept_single_reservation_winner",
       "expect": { "valid": true },
       "execution": { "runner": "node-test", "file": "packages/gate/store-faults.test.js", "title": "fault: a 100-way reservation storm admits exactly one worker" }

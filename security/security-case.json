@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef",
-  "claim_count": 16,
-  "evidence_file_count": 73,
+  "evidence_bundle_sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412",
+  "claim_count": 17,
+  "evidence_file_count": 82,
   "execution": {
     "required": true,
     "status": "passed",
@@ -296,6 +296,39 @@
           "NEGATIVE: a bare operator-signed envelope is not a human ceremony"
         ],
         "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/signoff-decision-evidence.test.js",
+        "titles": [
+          "exports a device-signed denial that verifies offline under a pinned approver key"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/v1-api.test.js",
+        "titles": [
+          "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence",
+          "returns 403 when bearer-key rejection attempts a Class-A-required receipt"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/webauthn-approve-route.test.js",
+        "titles": [
+          "refuses to relabel a device-signed denial as approval"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/webauthn-lib.test.js",
+        "titles": [
+          "treats a matching rejection as equally terminal"
+        ],
+        "result": "passed"
       }
     ]
   },
@@ -312,19 +345,174 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef",
-      "file_count": 73
+      "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412",
+      "file_count": 82
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.8.1",
       "filename": "emilia-protocol-verify-3.8.1.tgz",
-      "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103",
+      "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa",
       "file_count": 28
     }
   },
   "claims": [
+    {
+      "claim_id": "class-a-signed-decision-parity",
+      "statement": "A Class-A approval or denial is a device-signed terminal decision over the same canonical action context; the operator cannot relabel the outcome after signing or use bearer authentication to deny a Class-A request.",
+      "acceptance_roots": [
+        "approver credential key pinned from enrollment",
+        "single-use WebAuthn challenge store and decided-once audit constraint"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/webauthn.js",
+          "symbol": "buildAuthorizationContext",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js",
+          "symbol": "POST",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js",
+          "symbol": "POST",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/guard-signoff.js",
+          "symbol": "handleSignoffDecision",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/signoff/decision-evidence.js",
+          "symbol": "buildPortableSignoffDecision",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyWebAuthnSignoff",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/signoff/decision-evidence.js",
+          "export": "buildPortableSignoffDecision"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "export": "verifyWebAuthnSignoff"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "Python verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "Go verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_device_signed_denial",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_signed_denial_relabel",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_class_a_bearer_denial",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/signoff-decision-evidence.test.js",
+          "title": "exports a device-signed denial that verifies offline under a pinned approver key",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/v1-api.test.js",
+          "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/webauthn-approve-route.test.js",
+          "title": "refuses to relabel a device-signed denial as approval",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/v1-api.test.js",
+          "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/webauthn-lib.test.js",
+          "title": "treats a matching rejection as equally terminal",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "TLA+ and Alloy model rejection terminality, but the exact decision-in-WebAuthn-challenge bytes, API alias mapping, and bearer-path assurance gate are executable properties rather than a composed formal proof."
+        }
+      ],
+      "assumptions": [
+        "the enrolled approver key belongs to the named approver",
+        "the authenticator and relying-party origin are not compromised before the ceremony",
+        "the challenge and audit stores preserve their enforced uniqueness constraints"
+      ],
+      "exclusions": [
+        "the verifier does not infer why a human denied",
+        "a compromised authentic device can still sign a harmful outcome",
+        "legacy lower-assurance denial events are not represented as Class-A evidence"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+        }
+      ]
+    },
     {
       "claim_id": "class-a-downgrade-refused",
       "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",
@@ -425,11 +613,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
+          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -547,11 +735,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
+          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -695,7 +883,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -837,11 +1025,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
+          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -946,11 +1134,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
+          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1055,11 +1243,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
+          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1191,7 +1379,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1298,7 +1486,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1422,7 +1610,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1596,7 +1784,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1730,7 +1918,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1842,11 +2030,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
+          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -1980,7 +2168,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -2232,7 +2420,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -2383,7 +2571,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     },
@@ -2667,7 +2855,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
         }
       ]
     }
@@ -2716,6 +2904,14 @@
     {
       "path": ".github/workflows/publish-verify-sdk.yml",
       "sha256": "2caaa58a4ac4d8c2222597dd7987079b6ace0c217be75a6c145a899324ae15ce"
+    },
+    {
+      "path": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js",
+      "sha256": "fbd4e61d44ae5654041f4536128d6fa790fb911b06dbfc961712c532ce16ef67"
+    },
+    {
+      "path": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js",
+      "sha256": "de0a55ffa8c56fb2fb54ab8319f5d14af86bd224ca237b079dcb9ab132037cf0"
     },
     {
       "path": "conformance/runners/strict-json.mjs",
@@ -2774,12 +2970,24 @@
       "sha256": "4910755ecd87ae1b11207a81734e4d3ec7e53ba5f771af69f2cb93c7d7c2ad5c"
     },
     {
+      "path": "lib/guard-signoff.js",
+      "sha256": "5db2f49da8e160b277bc3d64cffa98d8acbaee13dc0703a15be971fab9692e77"
+    },
+    {
       "path": "lib/ncpdp/privacy.js",
       "sha256": "df292a2464e9162fdda2bdc62e1d1fe7bec843af2dc3471e1c36780ffcce5333"
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
       "sha256": "5fbf1fba0ee5438aa4735da45dda7ee0f2c4cec39811afed68c9ce166479d327"
+    },
+    {
+      "path": "lib/signoff/decision-evidence.js",
+      "sha256": "9e42206c9e2f46c22b0ae27d72cd16793cd00817ed2bc200d6dac40c4bee0abb"
+    },
+    {
+      "path": "lib/webauthn.js",
+      "sha256": "6aa0116ff7629bc7451f03a1346afa13242ea4e8f79ed85e04b33ca5617855ff"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -2851,7 +3059,7 @@
     },
     {
       "path": "packages/verify/index.js",
-      "sha256": "e81cfb587411e05a5e6d14387929b6e71eaecc79d8d083a9b062a583d4b9f650"
+      "sha256": "069da51355232842918ba96fa254e23bb25360cbbee55d3196b115679c56a0c5"
     },
     {
       "path": "packages/verify/quorum.js",
@@ -2915,11 +3123,11 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "e0d7fe11acf6ab9ac5870e7f4e30dfaa597563d42e01986c08ae5a4fd7be61a4"
+      "sha256": "b86cc7abacc21406e63aad968353eb8d5d4ac327d41eed41860c007e4b89e587"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "c7fb351790af5b609e7054813e4c4d37fe793f5a4ffc55abdb184e14c2045a8a"
+      "sha256": "c927d55de9bfb40a9e2c330d6927e5d011f7fdd53d13d342469d4af99ff5bf33"
     },
     {
       "path": "tests/aec-execution-gate.test.js",
@@ -2964,6 +3172,22 @@
     {
       "path": "tests/role-non-substitution.test.js",
       "sha256": "6dbc42fe57390bc990b6f2c0554125cdff6f158de93ac722a4ebf1006d66e57b"
+    },
+    {
+      "path": "tests/signoff-decision-evidence.test.js",
+      "sha256": "eb24f08dfc28313c38b6840b5335d68469ebcffecf477702559bbfd4b533a008"
+    },
+    {
+      "path": "tests/v1-api.test.js",
+      "sha256": "a5afb933212b74860678daff024a658411e86dc6d0aa6ddcadf3091246a87ac2"
+    },
+    {
+      "path": "tests/webauthn-approve-route.test.js",
+      "sha256": "1cd8b468799d61258323232905298aaaf06cdb449a133b538ac71a060e595fd6"
+    },
+    {
+      "path": "tests/webauthn-lib.test.js",
+      "sha256": "d02003a4261f16b140ece36c7b68e2bd98d687c84e9d029b7f53e7a6f726a92d"
     }
   ]
 }
