@@ -233,9 +233,9 @@
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
-      "claim_id": "revocation-is-pinned-and-fresh",
-      "statement": "Revocation state is accepted only under a pinned revoker key, for the exact target, and within the relying party's freshness window.",
-      "acceptance_roots": ["revocation authority key and maximum staleness pinned by the relying party"],
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "statement": "A terminal revocation is accepted only under a pinned revoker key, for the exact well-formed target, with a valid effective instant at or before the evaluation time; once effective, it does not age out. Fresh evidence that a target is currently not revoked is a separate status input.",
+      "acceptance_roots": ["revocation authority key pinned by the relying party", "trusted evaluation time for future-effective revocations"],
       "enforcement_path": [
         { "language": "javascript", "file": "packages/verify/revocation.js", "symbol": "verifyRevocation", "exported": true }
       ],
@@ -245,23 +245,29 @@
         { "language": "go", "file": "packages/go-verify/revocation.go", "symbol": "VerifyRevocation" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v1.json" },
-        "python": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v1.json" },
-        "go": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v1.json" }
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v2.json" },
+        "python": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v2.json" },
+        "go": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v2.json" }
       },
       "vectors": [
-        { "suite": "conformance/vectors/revocation.exec.v1.json", "case_id": "accept_pinned_exact_binding", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
-        { "suite": "conformance/vectors/revocation.exec.v1.json", "case_id": "reject_stale_freshness", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "accept_pinned_exact_binding", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "accept_old_terminal_revocation", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "reject_future_effective_instant", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "reject_malformed_target_shape", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "reject_algorithm_label_mismatch", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
       ],
       "tests": [
         { "file": "packages/verify/revocation.test.js", "title": "accepts an authentic, pinned, exactly-bound revocation", "runner": "node-test" },
-        { "file": "packages/verify/revocation.test.js", "title": "rejects a stale statement under a freshness window", "runner": "node-test" }
+        { "file": "packages/verify/revocation.test.js", "title": "an old terminal revocation remains valid despite a legacy max-age option", "runner": "node-test" },
+        { "file": "packages/verify/revocation.test.js", "title": "rejects a revocation whose effective instant is still in the future", "runner": "node-test" },
+        { "file": "packages/verify/revocation.test.js", "title": "rejects malformed targets even when both sides normalize to emptiness", "runner": "node-test" },
+        { "file": "packages/verify/revocation.test.js", "title": "rejects a mismatched signature algorithm label", "runner": "node-test" }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Wall-clock freshness and revocation publication are outside the current symbolic models." }
       ],
-      "assumptions": ["the revoker key pin is current", "the verifier's trusted clock is within the relying party's tolerance"],
-      "exclusions": ["withheld revocation publications require external transparency or availability controls"],
+      "assumptions": ["the revoker key pin is current", "the verifier's trusted clock is within the relying party's tolerance when evaluating a future-effective revocation"],
+      "exclusions": ["withheld revocation publications require external transparency or availability controls", "current non-revocation requires a separately authenticated and freshness-bounded status source"],
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
@@ -622,14 +628,16 @@
     },
     {
       "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
-      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact digest-only action, satisfy freshness and the pinned revocation provider, and survive durable challenge and action consumption. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact closed action, satisfy freshness and the pinned revocation provider, and survive durable challenge and CAID-keyed action consumption. The executor recomputes the registered CAID over the same bytes as the legacy action digest, emits both identifiers in the clearance, and binds both into its signed effect statement. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
       "acceptance_roots": [
         "the executor provisions the authentic Model-to-Matter profile and issuer keys",
         "the executor pins a revocation provider that supplies an explicit current view",
-        "the challenge backend provides atomic registration and compare-and-set consumption"
+        "the challenge backend provides atomic registration and compare-and-set consumption",
+        "the action-clearance backend is shared, atomic, ownership-fenced, and non-expiring"
       ],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterProfile", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "modelToMatterCaid", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "verifyModelToMatterEvidence", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterExecutor", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "evaluateRegisteredModelToMatterPresentation", "exported": true },
@@ -637,6 +645,7 @@
       ],
       "implementations": [
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "createModelToMatterExecutor" },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "modelToMatterCaid" },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "evaluateRegisteredModelToMatterPresentation" }
       ],
       "language_coverage": {
@@ -650,12 +659,36 @@
       ],
       "tests": [
         { "file": "tests/model-to-matter.test.js", "title": "admits at most one clearance across distinct challenges for the same action", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "uses one registered CAID over the exact bytes every evidence leg binds", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "snapshots the action, profile, and graph before awaiting durable consumption", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "pins all trust configuration and runs one frozen action exactly once", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "pins all trust configuration and invokes the effect adapter only after one successful clearance", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "refuses every transaction-scoped trust field before challenge consumption", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "requires explicit durable custody in production mode", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "conformance/vectors/model-to-matter.v1.json",
+          "contains": [
+            "accept_registered_caid",
+            "refuse_caid_action_substitution",
+            "accept_complete_evidence",
+            "refuse_action_mutation_after_challenge",
+            "refuse_indeterminate_clearance_storage",
+            "admit_at_most_one_of_two_challenges",
+            "refuse_tampered_executor_effect"
+          ]
+        },
+        {
+          "file": "conformance/run-model-to-matter.mjs",
+          "contains": [
+            "evaluateRegisteredModelToMatterPresentation",
+            "verifyModelToMatterCaid",
+            "verifyModelToMatterEffect",
+            "EP-MODEL-TO-MATTER-v1"
+          ]
+        }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models." }
@@ -678,7 +711,7 @@
     },
     {
       "claim_id": "aec-role-substitution-refused",
-      "statement": "EP-AEC returns allow only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
+      "statement": "EP-AEC returns satisfied=true (and an equivalent legacy allow alias) only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
       "acceptance_roots": [
         "relying-party requirement and executor-computed expected action digest",
         "Class-A approver directory, RP ID, allowed WebAuthn origins, policy hash, log key, freshness time, and max age for ep-receipt",

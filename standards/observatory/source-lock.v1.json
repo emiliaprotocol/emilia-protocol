@@ -1,7 +1,7 @@
 {
   "@version": "EMILIA-STANDARDS-SOURCE-LOCK-v1",
-  "retrieved_at": "2026-07-12T17:00:00Z",
-  "source_count": 17,
+  "retrieved_at": "2026-07-14T20:14:59Z",
+  "source_count": 20,
   "sources": [
     {
       "id": "agentproto-charter-merge",
@@ -48,8 +48,8 @@
       "content_type": "text/html; charset=UTF-8",
       "etag": null,
       "last_modified": null,
-      "bytes": 258803,
-      "sha256": "d807e181731826073518fd00ac99975ff9709344e4d8fbb22520a3e8b599999d",
+      "bytes": 244929,
+      "sha256": "4e1a8e4313c8272358d18c70338cf3dc16dfffb30f6374f758febe7c3ecfc8f4",
       "quote": {
         "locator": "Verifiable Intent section",
         "text": "transforms user authorization into portable, verifiable evidence"
@@ -308,7 +308,61 @@
       },
       "quote_sha256": "c507e982338a7801af91426ec60cf87d4aa31a7cf36a6fed901ddd8bef49cbd1",
       "quote_verified": true
+    },
+    {
+      "id": "dmsc-gateway-gap-analysis",
+      "revision": "draft-dunbar-dmsc-gw-scenarios-gap-analysis-02",
+      "source_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a46fc10-11f23\"",
+      "last_modified": "Fri, 03 Jul 2026 00:02:24 GMT",
+      "bytes": 73507,
+      "sha256": "17ebf5da730d45266e51052ee806d7d824539348ca89d362a7784e3d50d7c499",
+      "quote": {
+        "locator": "Section 6.9",
+        "text": "communication-level trust determines whether an agent may participate in an exchange at all, while action-level authorization determines whether a specific instruction within that exchange may take effect in the physical world"
+      },
+      "quote_sha256": "003d4e02995719c0e83d5505cfd0b41b0de173af93d3f976b35f7a55596608b2",
+      "quote_verified": true
+    },
+    {
+      "id": "authzen-access-request-approval",
+      "revision": "draft-1:2026-07-09",
+      "source_url": "https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html",
+      "final_url": "https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "etag": "W/\"6a5022f8-5dade\"",
+      "last_modified": "Thu, 09 Jul 2026 22:38:48 GMT",
+      "bytes": 383710,
+      "sha256": "7efb2eaf953de179adb1f7a114e0e8656bc744707dc296608915ac55bd57a225",
+      "quote": {
+        "locator": "Section 4, Approval Result",
+        "text": "An Approval Result does not itself permit access; the PEP uses it to obtain an AuthZEN Authorization API allow decision through a new Access Evaluation, or enforces it according to a profile-defined completion mode where one applies."
+      },
+      "quote_sha256": "6b94dde2480c6021c3fd47b05b48dbc26a26832fe012a2ff4229f7439c6d1097",
+      "quote_verified": true
+    },
+    {
+      "id": "agtp-transport",
+      "revision": "draft-hood-independent-agtp-09",
+      "source_url": "https://www.ietf.org/archive/id/draft-hood-independent-agtp-09.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-hood-independent-agtp-09.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a4163a8-6c277\"",
+      "last_modified": "Sun, 28 Jun 2026 18:10:48 GMT",
+      "bytes": 442999,
+      "sha256": "1ed0ababb2bdfef29e4c96efc85146f6b9ff692c6c155963b37e14dbcba87029",
+      "quote": {
+        "locator": "Appendix E.7",
+        "text": "AGTP supplies identity, authority, and attribution at the wire level; MCP supplies tool semantics in the payload."
+      },
+      "quote_sha256": "63ffea9867d02af8704b95d9cefa80cdd652be707dfb2d080a85a17aa9d9a239",
+      "quote_verified": true
     }
   ],
-  "lock_sha256": "dedcb9e0e8f24844c337876f4d9f16d22f5fffdf66f168f2a8fce7f58780924e"
+  "lock_sha256": "dd2f76ba0839dc5fbaebfce6764bc7fc34a5b6c179dfc6f8db56d8f81b13b38e"
 }

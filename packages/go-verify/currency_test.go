@@ -113,6 +113,16 @@ func TestCurrencyStaleTooOld(t *testing.T) {
 	}
 }
 
+func TestCurrencyFutureHeadStale(t *testing.T) {
+	r := EvaluateCurrency(CurrencyArgs{
+		Receipt: curReceipt(), AuthenticAsOfCommit: true, Now: sp(curNow),
+		MaxStalenessSeconds: f64(300), FreshHead: headAt(-60, nil),
+	})
+	if r.CurrencyAtT.Status != "stale" || r.CurrencyAtT.Reason != CurrencyReasonFreshHeadInFuture {
+		t.Fatalf("got %+v", r.CurrencyAtT)
+	}
+}
+
 func TestCurrencyRevokedScalar(t *testing.T) {
 	r := EvaluateCurrency(CurrencyArgs{
 		Receipt: curReceipt(), AuthenticAsOfCommit: true, Now: sp(curNow),

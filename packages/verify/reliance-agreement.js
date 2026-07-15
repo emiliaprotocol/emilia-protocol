@@ -45,7 +45,7 @@ export const RELIANCE_EVENT_DOMAIN = 'EP-RELIANCE-EVENT-v1\0';
 export const AGREEMENT_MODES = Object.freeze(['liability_shift', 'indemnity']);
 /** The CLOSED set of party roles. */
 export const AGREEMENT_ROLES = Object.freeze(['issuer', 'relying_party', 'underwriter']);
-/** Assurance classes per draft-schrock-ep-assurance-classes (S < H < V < Q). */
+/** Profile-local closed vocabulary; not a shared protocol assurance taxonomy. */
 const ASSURANCE_CLASSES = Object.freeze(['S', 'H', 'V', 'Q']);
 
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/;

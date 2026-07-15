@@ -216,7 +216,7 @@ describe('isolated AEC composition refusals', () => {
       verifiers: { policy_decision: stub },
     });
     expect(presenterOnly.reasons).toEqual([
-      'presenter requirement is descriptive only; relying-party requirement is required for allow',
+      'presenter requirement is descriptive only; relying-party requirement is required for satisfaction',
     ]);
 
     const noExpectedAction = run(baseChain, {
@@ -224,7 +224,7 @@ describe('isolated AEC composition refusals', () => {
       verifiers: { policy_decision: stub },
     });
     expect(noExpectedAction.reasons).toEqual([
-      'relying-party expected action is required for allow',
+      'relying-party expected action is required for satisfaction',
     ]);
 
     const mismatchedPresenterClaim = run(

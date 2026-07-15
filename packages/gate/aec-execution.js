@@ -216,7 +216,7 @@ export function createAECExecutionGate({
       expectedAction: actionSnapshot,
       verificationTime,
     });
-    if (!result.allow) return deny('aec_refused', result, { reasons: result.reasons });
+    if (!result.satisfied) return deny('aec_refused', result, { reasons: result.reasons });
     if (!humanFloorSatisfied(result, humanFloor)) return deny('human_floor_unsatisfied', result);
 
     const key = consumptionKey(result);

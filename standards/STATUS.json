@@ -1,0 +1,319 @@
+{
+  "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
+  "updated": "2026-07-14",
+  "status_language": {
+    "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
+    "candidate": "Repository source under review. Not filed.",
+    "next_wave": "Assigned to a dated filing wave but still subject to its explicit technical, related-work, and claim-tracing gates.",
+    "retired_absorbed": "Standalone draft is not a filing candidate. Useful substance has an identified canonical owner.",
+    "partner_triggered_profile": "Application or commercial profile that returns to the filing lane only with a named external validating party.",
+    "held": "Temporary state only. No document may remain held without a dated decision or explicit external trigger."
+  },
+  "decision_vocabulary": {
+    "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
+    "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
+    "SATISFIED": "Verified and matched evidence fills every slot in the relying party's evidence requirement.",
+    "AUTHORIZED": "The relying party's local policy permits execution.",
+    "EXECUTED": "An executor asserts or attests that an effect occurred."
+  },
+  "portfolio_layers": [
+    {
+      "layer": 1,
+      "name": "identity_transport",
+      "question": "Who or what is present in the live channel?",
+      "emilia_position": "Consume and bind; do not redefine WIMSE, SPIFFE, or native agent identity."
+    },
+    {
+      "layer": 2,
+      "name": "delegation_capability_policy",
+      "question": "What authority, capability, or machine policy applies?",
+      "emilia_position": "Verify under native rules and treat policy ALLOW as distinct from human approval."
+    },
+    {
+      "layer": 3,
+      "name": "material_action_identity_mapping",
+      "question": "Do different native artifacts denote the same material action?",
+      "emilia_position": "CAID plus relying-party-pinned Action-Mapping Profiles. This is the first post-blackout land claim."
+    },
+    {
+      "layer": 4,
+      "name": "authorization_evidence",
+      "question": "What approval or authorization event occurred under a named profile?",
+      "emilia_position": "Receipts, human-authorization binding, and quorum as non-exclusive evidence profiles."
+    },
+    {
+      "layer": 5,
+      "name": "evidence_satisfaction",
+      "question": "Does the verified, matched bundle fill the relying party's required evidence slots?",
+      "emilia_position": "AEC returns SATISFIED or UNSATISFIED, never a universal authorization verdict."
+    },
+    {
+      "layer": 6,
+      "name": "execution_lifecycle",
+      "question": "Was evidence demanded, consumed, executed, observed, revoked, and preserved correctly?",
+      "emilia_position": "Challenge, enforcement, outcome, revocation, evidence record, and application profiles remain separate transitions."
+    }
+  ],
+  "active_datatracker": [
+    {
+      "draft": "draft-schrock-agent-action-manifest",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Service declaration of evidence and enforcement requirements",
+      "next_action": "Prepare -01 after the post-blackout core wave: remove the retired assurance-classes dependency and express requirements as verifier-visible proof predicates plus receipt-profile compatibility aliases"
+    },
+    {
+      "draft": "draft-schrock-authorization-evidence-challenge",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Action-bound request for missing evidence",
+      "next_action": "Conditional July 27 candidate: profile AuthZEN AARP requestable denial and PDP-verifiable approval state, adding only explicitly selected ceremony and consumption requirements"
+    },
+    {
+      "draft": "draft-schrock-emilia-eye",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Scope-bound advisory that can tighten but never authorize",
+      "next_action": "Hold current revision"
+    },
+    {
+      "draft": "draft-schrock-ep-action-evidence-graph",
+      "revision": "00",
+      "layer": "evidence_satisfaction",
+      "role": "Purpose-relative evidence graph and replay",
+      "next_action": "No new revision in this wave; evaluate later consolidation with AEC"
+    },
+    {
+      "draft": "draft-schrock-ep-architecture",
+      "revision": "00",
+      "layer": "architecture",
+      "role": "Portfolio architecture",
+      "next_action": "Replace with -01 in the July 19 post-blackout wave"
+    },
+    {
+      "draft": "draft-schrock-ep-authority-introduction",
+      "revision": "00",
+      "layer": "delegation_capability_policy",
+      "role": "Authority introduction and trust-root boundary",
+      "next_action": "Conditional July 27 -01: absorb scoped-authority entry, action/amount limits, separation-of-duties, snapshot, and revocation material from the retired authority-registry candidate"
+    },
+    {
+      "draft": "draft-schrock-ep-authorization-evidence-chain",
+      "revision": "02",
+      "layer": "evidence_satisfaction",
+      "role": "Heterogeneous evidence composition",
+      "next_action": "Replace with -03 using SATISFIED vocabulary and CAID mapping boundary"
+    },
+    {
+      "draft": "draft-schrock-ep-authorization-receipts",
+      "revision": "06",
+      "layer": "authorization_evidence",
+      "role": "One action-bound organizational approval evidence profile",
+      "next_action": "Replace with -07 narrowing novelty and replay claims"
+    },
+    {
+      "draft": "draft-schrock-ep-enforcement-point",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Executor-side fail-closed enforcement profile",
+      "next_action": "Hold current revision"
+    },
+    {
+      "draft": "draft-schrock-ep-evidence-record",
+      "revision": "01",
+      "layer": "execution_lifecycle",
+      "role": "Long-term crypto-agile evidence preservation",
+      "next_action": "Next substantive revision owns crypto agility, hybrid anti-stripping, and re-anchoring; the standalone PQC draft is retired"
+    },
+    {
+      "draft": "draft-schrock-ep-presentation-binding",
+      "revision": "00",
+      "layer": "authorization_evidence",
+      "role": "Binding the signed action to what the approver was shown",
+      "next_action": "Hold current revision"
+    },
+    {
+      "draft": "draft-schrock-ep-quorum",
+      "revision": "02",
+      "layer": "authorization_evidence",
+      "role": "Distinct-human multi-handshake composition",
+      "next_action": "Hold current revision; quorum owns ordered multi-party ceremony semantics"
+    },
+    {
+      "draft": "draft-schrock-human-authorization-binding",
+      "revision": "00",
+      "layer": "authorization_evidence",
+      "role": "Binding a human-authorization artifact into adjacent host formats",
+      "next_action": "Hold current revision and add bindings only after source-locked review"
+    },
+    {
+      "draft": "draft-mih-sato-agent-accountability-composition",
+      "revision": "00",
+      "layer": "architecture",
+      "role": "Coauthored composition perspective",
+      "next_action": "Coordinate terminology; do not imply sole authorship"
+    }
+  ],
+  "july_19_2026_core_wave": {
+    "submission_window_opens_after": "2026-07-18T23:59:00+02:00",
+    "filing_date": "2026-07-19",
+    "source": "https://datatracker.ietf.org/submit",
+    "items": [
+    {
+      "priority": 1,
+      "draft": "draft-schrock-canonical-action-identifier-00",
+      "source": "standards/staged/draft-schrock-canonical-action-identifier-00.xml",
+      "claim": "Typed material action identity plus profile-bounded cross-format matching",
+      "state": "render_clean_code_verified_ready_for_human_filing"
+    },
+    {
+      "priority": 2,
+      "draft": "draft-schrock-ep-architecture-01",
+      "source": "standards/staged/draft-schrock-ep-architecture-01.xml",
+      "claim": "Cross-domain evidence architecture and non-collapsing decision vocabulary",
+      "state": "render_clean_code_verified_ready_for_human_filing"
+    },
+    {
+      "priority": 3,
+      "draft": "draft-schrock-ep-authorization-evidence-chain-03",
+      "source": "standards/staged/draft-schrock-ep-authorization-evidence-chain-03.xml",
+      "claim": "Relying-party evidence satisfaction over natively verified, action-matched components",
+      "state": "render_clean_code_verified_ready_for_human_filing"
+    },
+    {
+      "priority": 4,
+      "draft": "draft-schrock-ep-authorization-receipts-07",
+      "source": "standards/staged/draft-schrock-ep-authorization-receipts-07.xml",
+      "claim": "One explicit action-bound approval evidence profile with scoped replay and offline guarantees",
+      "state": "render_clean_code_verified_ready_for_human_filing"
+    },
+    {
+      "priority": 5,
+      "draft": "draft-schrock-model-to-matter-00",
+      "source": "standards/staged/draft-schrock-model-to-matter-00.xml",
+      "lane": "name_establishing_experimental_profile",
+      "claim": "Executor-side authorization-evidence clearance for model-directed physical execution",
+      "state": "render_clean_code_verified_ready_for_human_filing",
+      "limitations": "Reference implementation and synthetic vectors only; no wet-lab deployment, screening capability, scientific-safety determination, physical-truth claim, or external endorsement"
+    },
+    {
+      "priority": 6,
+      "draft": "draft-schrock-ep-outcome-binding-00",
+      "source": "standards/draft-schrock-ep-outcome-binding-00.xml",
+      "claim": "Predicted-versus-observed effect comparison",
+      "state": "conditional_on_independent_verification"
+    }
+    ]
+  },
+  "july_27_2026_lifecycle_wave": {
+    "filing_date": "2026-07-27",
+    "design_freeze": "2026-07-20",
+    "hostile_review_deadline": "2026-07-24",
+    "must_file": [
+      {
+        "priority": 1,
+        "draft": "draft-schrock-ep-revocation-statement-00",
+        "source": "standards/draft-schrock-ep-revocation-statement-00.xml",
+        "claim": "Permanent, exact-target revocation evidence with current non-revocation delegated to separately authenticated, policy-fresh status evidence",
+        "state": "implementation_render_and_cross_language_gates_clear_pending_independent_hostile_review",
+        "required_gates": [
+          "An old authentic revocation remains effective regardless of a legacy max-age option",
+          "A future-dated revocation and a future-dated status head fail closed",
+          "JavaScript, Python, and Go agree on executable vectors",
+          "The draft composes with draft-ietf-oauth-status-list rather than claiming status mechanisms are missing",
+          "xml2rfc, claim tracing, full tests, and one independent hostile review pass"
+        ]
+      }
+    ],
+    "conditional": [
+      {
+        "priority": 2,
+        "draft": "draft-schrock-ep-authority-introduction-01",
+        "source": "standards/staged/draft-schrock-ep-authority-introduction-01.xml",
+        "claim": "One authority-introduction document spanning trust-root introduction and scoped human authority, without a competing registry draft",
+        "state": "consolidated_source_staged_requires_document_to_proof_join_vectors_and_hostile_review"
+      },
+      {
+        "priority": 3,
+        "draft": "draft-schrock-authorization-evidence-challenge-01",
+        "claim": "AARP-compatible challenge profile for missing ceremony and consumption evidence",
+        "state": "requires_source_locked_aarp_binding_review"
+      }
+    ]
+  },
+  "retired_absorbed": [
+    {
+      "draft": "draft-schrock-ep-assurance-classes-00",
+      "canonical_owner": "Proof predicates in relying-party profiles and native receipt verifier outputs",
+      "reason": "S/H/V/Q created a second assurance language beside deployed receipt and authority vocabularies. The standalone taxonomy is retired before filing."
+    },
+    {
+      "draft": "draft-schrock-ep-authority-registry-00",
+      "canonical_owner": "draft-schrock-ep-authority-introduction-01",
+      "reason": "The active Authority Introduction draft already owns trust-root introduction; scoped authority is folded into its next revision."
+    },
+    {
+      "draft": "draft-schrock-ep-agent-trust-stack-00",
+      "canonical_owner": "draft-schrock-ep-architecture-01",
+      "reason": "Its composition map is fully absorbed by Architecture-01."
+    },
+    {
+      "draft": "draft-schrock-ep-pqc-00",
+      "canonical_owner": "draft-schrock-ep-evidence-record next substantive revision",
+      "reason": "Crypto agility, re-anchoring, and hybrid anti-stripping belong with long-term evidence preservation rather than a standalone algorithm catalog."
+    }
+  ],
+  "partner_triggered_profiles": [
+    {
+      "draft": "draft-schrock-ep-human-oversight-profile-00",
+      "path": "standards/profiles/draft-schrock-ep-human-oversight-profile-00.xml",
+      "trigger": "A regulator, government program, or management-system standards partner validates the control-to-evidence mapping."
+    },
+    {
+      "draft": "draft-schrock-ep-reliance-agreement-00",
+      "path": "standards/profiles/draft-schrock-ep-reliance-agreement-00.xml",
+      "trigger": "A bank, insurer, underwriter, or counterparty requires interoperable reliance terms and participates in legal review."
+    }
+  ],
+  "held": [],
+  "consolidation_rules": [
+    "Architecture-01 absorbs the staged Agent Trust Stack map.",
+    "AEC owns component verification, action binding, and evidence satisfaction; it does not define effect or ceremony records.",
+    "Outcome Binding owns predicted-versus-observed effect semantics.",
+    "Quorum owns ordered multi-handshake and distinct-human policy semantics.",
+    "Receipts owns the base receipt and explicit approval profile, not every approval mechanism.",
+    "Challenge will profile AuthZEN AARP's requestable denial and PDP-verifiable approval state instead of redefining its workflow.",
+    "Revocation owns terminal negative evidence; current non-revocation is a separately authenticated, policy-fresh status input and may profile Token Status List.",
+    "Assurance requirements are verifier-visible proof predicates; no standalone universal S/H/V/Q taxonomy is being filed.",
+    "Authority Introduction owns both trust-root introduction and the next scoped-authority consolidation; no separate Authority Registry draft is filed.",
+    "Evidence Record owns crypto agility and hybrid anti-stripping; no standalone PQC algorithm catalog is filed."
+  ],
+  "matching_claim": {
+    "name": "CAID Action-Mapping Profile",
+    "safe_novelty_language": "The authors are not aware of an existing specification that combines a typed material-action registry with a relying-party-pinned, loss-aware cross-format projection and the closed verdicts EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT, and INDETERMINATE.",
+    "not_claimed": [
+      "General semantic equivalence",
+      "Authorization",
+      "Native artifact verification",
+      "Correctness of a relying party's selected mapping profile",
+      "Exclusive ownership of action digests or portable approval evidence"
+    ]
+  },
+  "research_corpus": {
+    "discovery_index": {
+      "declared": 294,
+      "recovered": 291,
+      "unrecovered": 3,
+      "use": "Discovery and hypothesis generation only; not a source-locked basis for public claims."
+    },
+    "source_locked_observatory": {
+      "sources": 20,
+      "use": "Revision-pinned public comparisons and related-work claims."
+    }
+  },
+  "acknowledgment_basis": {
+    "Eric Rescorla": "Prompted separation of baseline verifier hygiene from the concrete cross-domain validation requirement.",
+    "Linda Dunbar": "Her individual Agent Gateway gap-analysis draft provided the cross-operator and cross-administrative-domain use case; this does not imply DMSC BoF consensus.",
+    "Chris Hood": "Agent transport and composition work sharpened the boundary between carrying context and independently verifying evidence."
+  }
+}

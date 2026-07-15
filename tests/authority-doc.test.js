@@ -113,7 +113,7 @@ describe('introduction as evidence — graded, replayable acceptance', () => {
     expect(high.verdict).toBe('missing_evidence');
   });
 
-  it('history + a pinned endorsement widen acceptance mechanically — no reconfiguration', () => {
+  it('new evidence can satisfy an unchanged relying-party policy', () => {
     const docs = buildChain();
     docs[1] = { ...docs[1], endorsements: [endorseAuthorityDoc(docs[1], 'Meridian Audit LLP', endorser.privateKey)] };
     const obs = { ...obsYoung, log_inclusion: { verified: true, first_logged_at: '2026-06-01T00:00:00Z' } };

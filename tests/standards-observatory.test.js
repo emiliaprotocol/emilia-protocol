@@ -22,7 +22,7 @@ describe('standards observatory evidence contract', () => {
     expect(snapshot).toEqual(publicSnapshot);
     const { snapshot_sha256: expected, ...core } = snapshot;
     expect(digest(JSON.stringify(core))).toBe(expected);
-    expect(snapshot.metrics.primary_sources_verified).toBe(17);
+    expect(snapshot.metrics.primary_sources_verified).toBe(catalog.sources.length);
     expect(snapshot.dimensions).toHaveLength(7);
   });
 
@@ -95,10 +95,10 @@ describe('standards observatory evidence contract', () => {
     expect('reports' in recon).toBe(false);
   });
 
-  it('PUBLICATION BOUNDARY: public artifacts expose only the 17-source matrix, never raw recon', () => {
+  it('PUBLICATION BOUNDARY: public artifacts expose only the curated matrix, never raw recon', () => {
     // The served JSON and the snapshot carry exactly the curated sources and aggregate recon.
     for (const artifact of [snapshot, publicSnapshot]) {
-      expect(artifact.sources).toHaveLength(17);
+      expect(artifact.sources).toHaveLength(catalog.sources.length);
       expect('reports' in artifact.recon).toBe(false);
       expect(Object.keys(artifact.recon).sort()).toEqual(
         ['claim_boundary', 'corpus_sha256', 'metrics', 'review_model'],

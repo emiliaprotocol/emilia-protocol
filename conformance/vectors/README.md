@@ -1,5 +1,11 @@
 # EP-RECEIPT-v1 conformance vectors
 
+`model-to-matter.v1.json` is the deterministic executor-side clearance and
+effect-statement suite for the Model-to-Matter profile. Regenerate it with
+`node conformance/vectors/generate-model-to-matter.mjs` and execute it with
+`npm run m2m:conformance`. It deliberately claims neither biological screening,
+scientific safety, nor physical truth.
+
 `receipts.v1.json` is the canonical, adversarial test-vector battery for the
 EMILIA Protocol authorization-receipt format. Every EP-conformant verifier MUST
 return each vector's `expect.valid`.
@@ -53,7 +59,7 @@ agree on. The first four regenerate byte-identically with
 `node generate-optin-profiles.mjs` (fixed Ed25519 seeds for the witness
 cosignatures); the timestamp-proof suite is minted separately (see below):
 
-- `currency.v1.json` — **EP-CURRENCY-v1**: valid iff
+- `currency.v2.json` — **EP-CURRENCY-v1**: valid iff
   `evaluateCurrency(currency.args).currency_at_T.status === currency.expect_status`.
   Pins the two-valued authentic-as-of-commit vs currency-at-T result; `unknown`
   is the honest offline default (offline verification can NEVER prove currency).

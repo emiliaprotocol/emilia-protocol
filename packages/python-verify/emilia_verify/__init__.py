@@ -690,17 +690,22 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
 REVOCATION_VERSION = "EP-REVOCATION-v1"
 TIME_ATTESTATION_VERSION = "EP-TIME-ATTESTATION-v1"
 _TARGET_TYPES = ("receipt", "commit", "delegation")
+import re as _re
+_SHA256_HEX = _re.compile(r"^[0-9a-f]{64}$")
 
 
 def _hex_of(h: Any) -> str:
-    return str(h if h is not None else "").replace("sha256:", "").lower()
+    if not isinstance(h, str):
+        return ""
+    value = h[7:] if h.startswith("sha256:") else h
+    value = value.lower()
+    return value if _SHA256_HEX.fullmatch(value) else ""
 
 
 # Canonical EP timestamp profile: RFC 3339 with an explicit UTC offset ("Z" or
 # ±hh:mm). No-timezone ("2026-07-01T12:00:00") and date-only ("2026-07-01") forms
 # are REJECTED — they are ambiguous (UTC vs local) and must never satisfy a
 # validity window. Single profile, parsed and rejected identically by JS/Py/Go.
-import re as _re
 _RFC3339_OFFSET = _re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
 
 
@@ -739,11 +744,13 @@ def _revocation_signed_payload(stmt: dict) -> bytes:
 
 def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) -> dict:
     """Mirror of packages/verify/revocation.js verifyRevocation. Fail-closed."""
-    opts = opts or {}
-    revoker_keys = opts.get("revokerKeys") or {}
+    opts = opts if isinstance(opts, dict) else {}
+    revoker_keys = opts.get("revokerKeys")
+    revoker_keys = revoker_keys if isinstance(revoker_keys, dict) else {}
     checks = {"version": True, "target_bound": True, "revoker_key_pinned": True,
               "revoked_at_present": True, "revoker_signature_valid": True,
-              "signature_binds_statement": True, "freshness": True}
+              "effective_at_or_before_T": True,
+              "signature_binds_statement": True}
     errors = []
 
     def fail(k, m):
@@ -761,30 +768,59 @@ def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) 
     if not isinstance(target, dict):
         fail("target_bound", "no target handed to the verifier (fail-closed)")
     else:
-        if target.get("target_type") and target.get("target_type") not in _TARGET_TYPES:
-            fail("target_bound", f"unknown target_type {target.get('target_type')}")
-        if statement.get("target_type") != target.get("target_type"):
+        held_hash = _hex_of(target.get("action_hash"))
+        statement_hash = _hex_of(statement.get("action_hash"))
+        if (target.get("target_type") not in _TARGET_TYPES
+                or not isinstance(target.get("target_id"), str)
+                or not target.get("target_id") or not held_hash):
+            fail("target_bound", "handed target is incomplete or malformed")
+        if (statement.get("target_type") not in _TARGET_TYPES
+                or not isinstance(statement.get("target_id"), str)
+                or not statement.get("target_id") or not statement_hash):
+            fail("target_bound", "revocation statement target is incomplete or malformed")
+        elif statement.get("target_type") != target.get("target_type"):
             fail("target_bound", "target_type mismatch")
-        if statement.get("target_id") != target.get("target_id"):
+        elif statement.get("target_id") != target.get("target_id"):
             fail("target_bound", "target_id mismatch")
-        elif _hex_of(statement.get("action_hash")) != _hex_of(target.get("action_hash")):
+        elif statement_hash != held_hash:
             fail("target_bound", "action_hash mismatch (revoke-A-presented-for-B)")
 
-    proof = statement.get("proof") or None
+    raw_proof = statement.get("proof")
+    proof = raw_proof if isinstance(raw_proof, dict) else {}
     revoker_id = statement.get("revoker_id")
-    pinned = (revoker_keys.get(revoker_id) or {}).get("public_key")
-    presented = (proof or {}).get("public_key")
+    pin_entry = revoker_keys.get(revoker_id)
+    pin_entry = pin_entry if isinstance(pin_entry, dict) else {}
+    pinned = pin_entry.get("public_key")
+    presented = proof.get("public_key")
     if not pinned:
         fail("revoker_key_pinned", f"no pinned key for revoker {revoker_id}")
     elif presented and pinned != presented:
         fail("revoker_key_pinned", "presented revoker key != pinned key")
+    if proof.get("algorithm") != "Ed25519":
+        fail("revoker_signature_valid", "revocation proof algorithm must be Ed25519")
+    if statement.get("reason") is not None and not isinstance(statement.get("reason"), str):
+        fail("signature_binds_statement", "reason must be a string or null")
 
     revoked_ms = _instant_ms(statement.get("revoked_at"))
     if revoked_ms is None:
         fail("revoked_at_present", "revoked_at absent or malformed")
 
+    now = opts.get("now")
+    if now is None:
+        import time as _t
+        now_ms = _t.time() * 1000
+    elif isinstance(now, (int, float)) and not isinstance(now, bool):
+        import math as _math
+        now_ms = float(now) if _math.isfinite(float(now)) else None
+    elif isinstance(now, str):
+        now_ms = _instant_ms(now)
+    else:
+        now_ms = None
+    if revoked_ms is None or now_ms is None or revoked_ms > now_ms:
+        fail("effective_at_or_before_T", "revoked_at must be at or before decision time")
+
     recomputed = _revocation_signed_payload(statement)
-    sig = (proof or {}).get("signature_b64u")
+    sig = proof.get("signature_b64u")
     sig_binds_pinned = bool(pinned) and _ed25519_verify(recomputed, pinned, sig)
     if not sig_binds_pinned:
         verify_key = pinned or presented
@@ -795,15 +831,8 @@ def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) 
             fail("signature_binds_statement", "revoker signature does not bind the presented statement bytes")
             fail("revoker_signature_valid", "revoker signature does not verify under the pinned key")
 
-    max_age = opts.get("maxAgeSeconds")
-    if isinstance(max_age, (int, float)) and revoked_ms is not None:
-        now = opts.get("now")
-        now_ms = (_instant_ms(now) if isinstance(now, str) else (now if isinstance(now, (int, float)) else None))
-        if now_ms is None:
-            import time as _t
-            now_ms = _t.time() * 1000
-        if (now_ms - revoked_ms) / 1000 > max_age:
-            fail("freshness", "revoked_at older than the freshness window")
+    # maxAgeSeconds is intentionally ignored. A terminal negative fact never
+    # ages out; freshness belongs to separately authenticated status evidence.
 
     return {"valid": all(checks.values()), "checks": checks, "errors": errors}
 
@@ -1774,7 +1803,7 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
     TRUST BOUNDARY: the chain document's ``requirement`` is PRESENTER-supplied — a
     claim of what the bundle satisfies, never the relying party's bar. Pass
     ``requirement=`` to pin the RELYING PARTY's own requirement. Without it,
-    the presenter expression is descriptive only and ``allow`` remains false.
+    the presenter expression is descriptive only and ``satisfied`` remains false.
 
     ``policies_by_type`` follows ``requirement`` to preserve the original
     positional API; callers should pass both by keyword.
@@ -1790,7 +1819,7 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
 
     def fail(why):
         reasons.append(why)
-        return {"allow": False, "action_digest": None, "expected_action_bound": False,
+        return {"satisfied": False, "allow": False, "action_digest": None, "expected_action_bound": False,
                 "components": [], "reasons": reasons,
                 "requirement_source": requirement_source}
 
@@ -1886,21 +1915,23 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
         components.append(row)
 
     evaluated = _eval_requirement(req, satisfied)
-    allow = (requirement_source == "relying_party" and expected_digest is not None
-             and evaluated["valid"] and evaluated["value"])
+    satisfied_result = (requirement_source == "relying_party" and expected_digest is not None
+                        and evaluated["valid"] and evaluated["value"])
     if not evaluated["valid"]:
         reasons.append("requirement expression is malformed or exceeds parser limits")
     elif not evaluated["value"]:
         reasons.append(f'requirement not satisfied: "{req}"')
     if requirement_source != "relying_party":
-        reasons.append("presenter requirement is descriptive only; relying-party requirement is required for allow")
+        reasons.append("presenter requirement is descriptive only; relying-party requirement is required for satisfaction")
     if expected_digest is None:
-        reasons.append("relying-party expected action is required for allow")
+        reasons.append("relying-party expected action is required for satisfaction")
     presenter_req = aec.get("requirement")
     if pinned and isinstance(presenter_req, str) and presenter_req.strip() and presenter_req != pinned:
         reasons.append(
             f'presenter requirement ignored in favor of relying-party requirement (presenter claimed: "{presenter_req}")')
-    return {"allow": allow, "action_digest": chain_digest,
+    return {"satisfied": satisfied_result,
+            "allow": satisfied_result,  # Compatibility alias; AEC is not the policy decision.
+            "action_digest": chain_digest,
             "expected_action_bound": expected_digest == chain_digest,
             "components": components, "reasons": reasons,
             "requirement_source": requirement_source}
@@ -1995,6 +2026,7 @@ CURRENCY_REASON = {
     "now_invalid": "now_invalid",
     # status: 'stale'
     "fresh_head_stale": "fresh_head_stale",
+    "fresh_head_in_future": "fresh_head_in_future",
     "fresh_head_required_but_absent": "fresh_head_required_but_absent",
     "revoked_by_fresh_head": "revoked_by_fresh_head",
     "max_staleness_invalid": "max_staleness_invalid",
@@ -2127,12 +2159,16 @@ def evaluate_currency(args: Optional[dict] = None) -> dict:
             or max_staleness_seconds < 0):
         return result("stale", CURRENCY_REASON["max_staleness_invalid"])
 
+    # A future-dated head cannot certify current status.
+    age_seconds = (now_ms - head_ms) / 1000
+    if age_seconds < 0:
+        return result("stale", CURRENCY_REASON["fresh_head_in_future"])
+
     # Revocation shown by the head dominates.
     if _head_revokes_receipt(fresh_head, receipt):
         return result("stale", CURRENCY_REASON["revoked_by_fresh_head"])
 
-    # Age gate. A future-dated head has negative age and is not stale on age alone.
-    age_seconds = (now_ms - head_ms) / 1000
+    # Age gate.
     if age_seconds > max_staleness_seconds:
         return result("stale", CURRENCY_REASON["fresh_head_stale"])
 

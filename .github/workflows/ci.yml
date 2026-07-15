@@ -116,11 +116,13 @@ jobs:
         run: npm run security-case:emit
       - name: Run deterministic cross-language hostile corpus
         run: npm run conformance:hostility
+      - name: Run Model-to-Matter executor profile vectors
+        run: npm run m2m:conformance
       - name: Exercise external implementation intake protocol
         run: npm run conformance:clean-room:contract
       - name: Resolve exact cross-language conformance manifest
         run: npm run conformance:manifest
-      - name: Resolve exact frozen clean-room conformance manifest
+      - name: Verify exact frozen clean-room evidence baseline
         run: npm run conformance:manifest:clean-room
       - name: Attest exact security case on protected-branch runs
         if: github.event_name != 'pull_request'

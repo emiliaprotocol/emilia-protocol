@@ -16,7 +16,7 @@
   "runner": {
     "protocol": "EP-CONFORMANCE-FILE-RUNNER-v1",
     "artifact_argument_index": 0,
-    "artifact_sha256": "4b14ba147aa3b9695efc73da34133927f8774f9dda14846a24e7c4a4da9e80d1",
+    "artifact_sha256": "c73c33ef84e9a740144f76474be1c5b576aad193ee2927cc79c078b0929604ef",
     "fixed_arguments": [
       "conformance/runners/run-js.mjs"
     ]
@@ -30,7 +30,7 @@
       "EMILIA specifications",
       "EMILIA reference source"
     ],
-    "specification_bundle_sha256": "2559c33d8f601f497379b54cbfdf1f2f17040ee5f6c286e01fa63b2153398201",
+    "specification_bundle_sha256": "0deba7fb430e5b86046a503e4ea57cb8d1d080f457ceae949192c9894c820ca0",
     "reference_source_access": "reference_port",
     "emilia_affiliation": "maintainer",
     "statement": "This manifest exercises the intake harness only and makes no clean-room or independence claim."

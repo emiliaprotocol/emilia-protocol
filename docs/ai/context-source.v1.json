@@ -2,28 +2,32 @@
   "@version": "EMILIA-LLM-CONTEXT-SOURCE-v1",
   "identity": {
     "name": "EMILIA Protocol",
-    "category": "authorization evidence and enforcement for consequential machine actions",
-    "summary": "EMILIA is an open protocol and enforcement toolkit for requiring, verifying, and preserving evidence that an enrolled accountable approver authorized one exact consequential action before execution.",
+    "category": "cross-domain evidence, material-action matching, and enforcement for consequential machine actions",
+    "summary": "EMILIA is an open evidence architecture and enforcement toolkit for consequential agent actions: native artifacts verify under native rules, CAID matches material actions, AEC evaluates relying-party evidence requirements, and executors retain the authorization decision.",
     "repository": "https://github.com/emiliaprotocol/emilia-protocol",
     "website": "https://www.emiliaprotocol.ai",
     "license": "Apache-2.0"
   },
   "canonical_definitions": [
     {
-      "term": "authorization receipt",
-      "definition": "A portable signed artifact binding an enrolled approver, an exact canonical action, a policy reference, a validity interval, and replay-resistant state. Class A additionally requires a device-bound WebAuthn ceremony with user verification."
+      "term": "native verification",
+      "definition": "VERIFIED means one artifact passed the cryptographic and structural verifier defined by its own specification under trust anchors selected by the relying party. Verification does not establish that the artifact fills an authorization role."
     },
     {
-      "term": "verified versus accepted",
-      "definition": "VERIFIED means the artifact passed its cryptographic and structural checks. ACCEPTED or RELY means a relying party also accepted the issuer, authority, assurance, policy, freshness, and consumption state under its own pinned profile. Verification never silently implies acceptance."
+      "term": "material-action match",
+      "definition": "MATCH means independently verified artifacts denote the same material action, either by direct CAID equality or under exact relying-party-pinned Action-Mapping Profiles. Matching is content correlation, never authority."
+    },
+    {
+      "term": "evidence satisfaction versus authorization",
+      "definition": "SATISFIED means verified and matched evidence fills every slot in the relying party's evidence requirement. AUTHORIZED is the separate local policy decision to permit execution. AEC computes satisfaction; the executor authorizes."
     },
     {
       "term": "machine policy decision versus human authorization",
-      "definition": "A machine policy result such as ALLOW, approval_state:granted, or a signed access-control decision is not evidence that an accountable human approved the action. A relying party requiring human authorization must receive and verify the human-authorization artifact separately."
+      "definition": "A machine policy result such as ALLOW, approval_state:granted, or a signed access-control decision is not by itself evidence that an accountable human approved the action. A relying party requiring a human ceremony must name and verify that artifact separately."
     },
     {
-      "term": "digest join",
-      "definition": "Digest equality is a correlation and composition key, never authority. Two artifacts can name the same action without either artifact granting the other artifact's claim."
+      "term": "authorization receipt",
+      "definition": "One portable evidence profile binding an enrolled approver key, an exact canonical action, policy and audience context, a validity interval, and a terminal consumption record. Its guarantees depend on the pinned directory, key class, ceremony, and verification profile."
     },
     {
       "term": "complete mediation",
@@ -32,40 +36,40 @@
   ],
   "layer_map": [
     {
-      "layer": "identity and possession",
-      "question": "Which workload, agent, device, or user is presenting?",
-      "ep_role": "Composes with this layer; does not replace it.",
+      "layer": "identity and transport",
+      "question": "Who or what is present in the live channel?",
+      "ep_role": "Consumes and binds native identity; does not redefine it.",
       "adjacent_examples": "WIMSE, SPIFFE, OAuth, workload attestation"
     },
     {
-      "layer": "delegation and machine scope",
-      "question": "What authority was delegated to the agent or session?",
-      "ep_role": "Can reference the delegation as provenance; does not treat delegated possession as human approval.",
-      "adjacent_examples": "DRP, OAuth token exchange, AgentROA"
+      "layer": "delegation, capability, and policy",
+      "question": "What authority, capability, or machine policy applies?",
+      "ep_role": "Verifies native artifacts and keeps policy ALLOW distinct from human approval.",
+      "adjacent_examples": "DRP, OAuth, AuthZEN, AGTP, AgentROA"
     },
     {
-      "layer": "machine policy decision",
-      "question": "Does policy permit this class of request under current machine state?",
-      "ep_role": "Consumes or records the result, while keeping it distinct from a human ceremony.",
-      "adjacent_examples": "ORPRG PermitReceipt, ACTA decision receipt, AgentROA policy envelope"
+      "layer": "material action identity and mapping",
+      "question": "Do different native artifacts denote the same material action?",
+      "ep_role": "CAID plus relying-party-pinned, loss-aware Action-Mapping Profiles.",
+      "adjacent_examples": "protocol-native action digests, AP2 checkout objects, action records"
     },
     {
-      "layer": "human authorization",
-      "question": "Which accountable approver authorized this exact action, under what authority and ceremony?",
-      "ep_role": "This is the core EP receipt and quorum layer.",
-      "adjacent_examples": "EP-RECEIPT-v1, EP-QUORUM-v1"
+      "layer": "authorization and confirmation evidence",
+      "question": "What approval or authorization event occurred under a named profile?",
+      "ep_role": "Provides EP receipt and quorum profiles without claiming exclusivity over portable intent evidence.",
+      "adjacent_examples": "EP Receipts, EP Quorum, Mastercard Verifiable Intent, AuthZEN approval results"
     },
     {
-      "layer": "evidence composition and reliance",
-      "question": "Do all required artifacts bind the same action and satisfy the relying party's own rule?",
-      "ep_role": "EP-AEC composes typed evidence; the reliance kernel returns a closed rely or do_not_rely verdict.",
-      "adjacent_examples": "EP-AEC, EP-RELIANCE-PROFILE-v1"
+      "layer": "evidence satisfaction",
+      "question": "Does the verified, matched bundle fill the relying party's own evidence requirement?",
+      "ep_role": "AEC returns SATISFIED or UNSATISFIED; it does not make a universal authorization decision.",
+      "adjacent_examples": "EP-AEC, relying-party evidence profiles"
     },
     {
-      "layer": "execution and transparency",
-      "question": "Was the action actually gated, executed, recorded, and optionally logged by an independent service?",
-      "ep_role": "Gate enforces at the boundary; execution evidence and SCITT-style transparency remain separate claims.",
-      "adjacent_examples": "system-of-record adapter, effect attestation, SCITT"
+      "layer": "execution lifecycle",
+      "question": "Was evidence demanded, consumed, executed, observed, revoked, and preserved correctly?",
+      "ep_role": "Separates challenge, local authorization, enforcement, outcome, revocation, and preservation.",
+      "adjacent_examples": "Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft, system-of-record gate, SCITT, evidence records"
     }
   ],
   "non_claims": [
@@ -78,7 +82,12 @@
     "Strict clean-room construction acceptance remains false until independent construction attestation is verified under a separately pinned attestor key.",
     "The Internet-Drafts are individual submissions unless the live IETF Datatracker says otherwise. They are not RFCs and do not imply IETF endorsement.",
     "Self-authored compliance mappings are mappings, not certifications or third-party assurance opinions.",
-    "The open protocol is intentionally reproducible; company defensibility is not a cryptographic claim."
+    "The open protocol is intentionally reproducible; company defensibility is not a cryptographic claim.",
+    "CAID and its Action-Mapping Profile do not verify native artifacts, infer general semantic equivalence, or establish authorization.",
+    "EQUIVALENT_UNDER_PROFILE is valid only under the exact mapping profiles and type-definition sources pinned by the relying party; missing or lossy mappings are INDETERMINATE.",
+    "AEC SATISFIED is evidence sufficiency under one relying-party requirement, not a universal ALLOW or legal authorization decision.",
+    "An offline receipt cannot prove global non-replay across independent executors; one-time enforcement requires a shared atomic consumption domain.",
+    "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims."
   ],
   "source_precedence": [
     {
@@ -106,11 +115,11 @@
     {
       "scope": "standards status and current revision text",
       "sources": [
-        "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-        "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
-        "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/"
+        "standards/STATUS.json",
+        "standards/PORTFOLIO.md",
+        "https://datatracker.ietf.org/"
       ],
-      "rule": "Use the live IETF Datatracker. Local draft filenames and archived revisions are historical evidence, not current status."
+      "rule": "Use STATUS.json for the repository's last verified portfolio inventory and the live IETF Datatracker for current revision and status. Use the source-locked Observatory for related-work claims."
     },
     {
       "scope": "project explanation",
@@ -131,39 +140,12 @@
     "Decks, outreach drafts, comparison pages, and compliance crosswalks are secondary narrative, not proof.",
     "Generated output from an earlier commit remains historical unless its input digest matches the current manifest."
   ],
-  "standards": [
-    {
-      "name": "Authorization Receipts for High-Risk Agent Actions",
-      "identifier": "draft-schrock-ep-authorization-receipts",
-      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-      "role": "base named-approver, exact-action authorization artifact"
-    },
-    {
-      "name": "Multi-Party Authorization Quorum",
-      "identifier": "draft-schrock-ep-quorum",
-      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
-      "role": "distinct-human m-of-n authorization"
-    },
-    {
-      "name": "Human Authorization Binding",
-      "identifier": "draft-schrock-human-authorization-binding",
-      "url": "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/",
-      "role": "binding the EP human-authorization artifact into adjacent host formats"
-    },
-    {
-      "name": "Authorization Evidence Chain",
-      "identifier": "draft-schrock-ep-authorization-evidence-chain",
-      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
-      "role": "typed same-action composition of heterogeneous evidence"
-    },
-    {
-      "name": "Authorization Evidence Challenge",
-      "identifier": "draft-schrock-authorization-evidence-challenge",
-      "url": "https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/",
-      "role": "relying-party demand for missing action-bound evidence"
-    }
-  ],
+  "standards": [],
   "code_entry_points": [
+    {
+      "path": "caid",
+      "purpose": "typed material-action identity, pinned cross-format mapping, registry, and tri-language shared vectors"
+    },
     {
       "path": "packages/verify/index.js",
       "purpose": "receipt, signoff, trust-receipt, and core verification exports"
@@ -191,12 +173,28 @@
     {
       "path": "lib/frontier/model-to-matter.js",
       "purpose": "executor-side Model-to-Matter clearance profile"
+    },
+    {
+      "path": "conformance/vectors/model-to-matter.v1.json",
+      "purpose": "15 deterministic Model-to-Matter CAID, acceptance, refusal, replay, storage-failure, and effect-statement cases"
+    },
+    {
+      "path": "standards/staged/draft-schrock-model-to-matter-00.xml",
+      "purpose": "July 19 Experimental Model-to-Matter filing candidate with explicit non-goals and implementation status"
     }
   ],
   "commands": [
     {
+      "command": "npm run caid:conformance",
+      "purpose": "run CAID core and Action-Mapping vectors in JavaScript, Python, and Go and compare mapping outputs"
+    },
+    {
       "command": "npm run conformance",
       "purpose": "run the current cross-language conformance bundle"
+    },
+    {
+      "command": "npm run m2m:conformance",
+      "purpose": "run the deterministic Model-to-Matter executor profile vectors"
     },
     {
       "command": "npm run check:security-case",
@@ -220,6 +218,9 @@
     }
   ],
   "answering_rules": [
+    "Start with standards/STATUS.json and standards/PORTFOLIO.md before characterizing the draft portfolio; local archive names are not current architecture.",
+    "Keep VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED separate in every explanation.",
+    "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",
     "State the exact artifact and property being discussed; the word receipt alone is not a protocol comparison.",
@@ -228,5 +229,6 @@
     "For every security claim, include assumptions and exclusions or link to the machine-verifiable security case.",
     "For every IETF claim, distinguish individual submission, working-group adoption, RFC status, and implementation evidence.",
     "When sources conflict, report the conflict and follow the domain-specific source-precedence rule rather than averaging the prose."
-  ]
+  ],
+  "standards_inventory_source": "standards/STATUS.json"
 }

@@ -1,14 +1,14 @@
 # EMILIA Protocol
 
-> EMILIA is an open protocol and enforcement toolkit for requiring, verifying, and preserving evidence that an enrolled accountable approver authorized one exact consequential action before execution.
+> EMILIA is an open evidence architecture and enforcement toolkit for consequential agent actions: native artifacts verify under native rules, CAID matches material actions, AEC evaluates relying-party evidence requirements, and executors retain the authorization decision.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-14T06:40:43.541Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-15T01:16:40.813Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 
-EMILIA is implemented security infrastructure, not architecture-only: 5,583 automated tests across 282 files; 18 executable security claims over 86 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces.
+EMILIA is implemented security infrastructure, not architecture-only: 5,596 automated tests across 284 files; 18 executable security claims over 88 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces.
 
-Interoperability evidence: 18 conformance suites and 225 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
+Interoperability evidence: 18 conformance suites and 232 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
 ## Canonical Context
 
@@ -20,17 +20,25 @@ Interoperability evidence: 18 conformance suites and 225 current vectors across 
 
 ## Specifications
 
-- [Authorization Receipts for High-Risk Agent Actions](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): base named-approver, exact-action authorization artifact; check the live Datatracker page for revision and status.
-- [Multi-Party Authorization Quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/): distinct-human m-of-n authorization; check the live Datatracker page for revision and status.
-- [Human Authorization Binding](https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/): binding the EP human-authorization artifact into adjacent host formats; check the live Datatracker page for revision and status.
-- [Authorization Evidence Chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/): typed same-action composition of heterogeneous evidence; check the live Datatracker page for revision and status.
-- [Authorization Evidence Challenge](https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/): relying-party demand for missing action-bound evidence; check the live Datatracker page for revision and status.
+- [draft-schrock-agent-action-manifest](https://datatracker.ietf.org/doc/draft-schrock-agent-action-manifest/): Service declaration of evidence and enforcement requirements; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-authorization-evidence-challenge](https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/): Action-bound request for missing evidence; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-emilia-eye](https://datatracker.ietf.org/doc/draft-schrock-emilia-eye/): Scope-bound advisory that can tighten but never authorize; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-ep-action-evidence-graph](https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/): Purpose-relative evidence graph and replay; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-ep-architecture](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/): Portfolio architecture; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-ep-authority-introduction](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/): Authority introduction and trust-root boundary; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-ep-authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/): Heterogeneous evidence composition; snapshot revision -02, check Datatracker for current status.
+- [draft-schrock-ep-authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): One action-bound organizational approval evidence profile; snapshot revision -06, check Datatracker for current status.
+- [draft-schrock-ep-enforcement-point](https://datatracker.ietf.org/doc/draft-schrock-ep-enforcement-point/): Executor-side fail-closed enforcement profile; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-ep-evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/): Long-term crypto-agile evidence preservation; snapshot revision -01, check Datatracker for current status.
+- [draft-schrock-ep-presentation-binding](https://datatracker.ietf.org/doc/draft-schrock-ep-presentation-binding/): Binding the signed action to what the approver was shown; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-ep-quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/): Distinct-human multi-handshake composition; snapshot revision -02, check Datatracker for current status.
+- [draft-schrock-human-authorization-binding](https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/): Binding a human-authorization artifact into adjacent host formats; snapshot revision -00, check Datatracker for current status.
+- [draft-mih-sato-agent-accountability-composition](https://datatracker.ietf.org/doc/draft-mih-sato-agent-accountability-composition/): Coauthored composition perspective; snapshot revision -00, check Datatracker for current status.
 
 ## Evidence
 
 - [Conformance manifest](https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/conformance-manifest.json): Current suite/vector counts and same-team implementation relationship.
 - [Machine-verifiable security case](https://github.com/emiliaprotocol/emilia-protocol/blob/main/security/security-case.json): Executed claims with exact evidence, assumptions, exclusions, and artifact hashes.
-- [Engineering evidence map](https://www.emiliaprotocol.ai/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.
 - [Engineering evidence map](https://www.emiliaprotocol.ai/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.
 - [External implementation pin](https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json): Time-pinned Rust source, vector scope, hostility corpus, and construction-attestation status.
 

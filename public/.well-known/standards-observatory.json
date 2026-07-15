@@ -1,7 +1,7 @@
 {
   "@version": "EMILIA-STANDARDS-OBSERVATORY-v1",
   "title": "EMILIA Standards Observatory",
-  "as_of": "2026-07-12T17:00:00Z",
+  "as_of": "2026-07-14T20:14:59Z",
   "scope": "Revision-aware standards cartography. Curated claims are source-locked; broad recon entries are discovery leads only.",
   "methodology": {
     "declared_agent_reads": 294,
@@ -11,7 +11,7 @@
     "correction_policy": "Source authors may challenge any classification. Corrections preserve the prior snapshot and state the reason for the change."
   },
   "metrics": {
-    "primary_sources_verified": 17,
+    "primary_sources_verified": 20,
     "guarantee_dimensions": 7,
     "movement_events": 5,
     "open_frontiers": 3,
@@ -23,8 +23,8 @@
     "workflow_files_scanned": 327
   },
   "integrity": {
-    "catalog_sha256": "8a8a1624758c33c818257959ed3c98474b6c0b6d2e985ba8ff9defee8e27a746",
-    "source_lock_sha256": "dedcb9e0e8f24844c337876f4d9f16d22f5fffdf66f168f2a8fce7f58780924e",
+    "catalog_sha256": "5af1d7710e94f4ce58991babdf801e342b3bae4ec43e91cbab8a7f96601f6d27",
+    "source_lock_sha256": "dd2f76ba0839dc5fbaebfce6764bc7fc34a5b6c179dfc6f8db56d8f81b13b38e",
     "recon_corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed"
   },
   "dimensions": [
@@ -195,16 +195,16 @@
     {
       "id": "fido-verifiable-intent",
       "family": "fido-ap2",
-      "short_name": "FIDO Verifiable Intent",
+      "short_name": "Mastercard Verifiable Intent contribution",
       "title": "Building the Trust Layer for Agentic Payments with AP2 and Verifiable Intent",
       "venue": "FIDO Alliance",
       "layer": "human-authorization",
       "source_kind": "industry_primary",
       "revision": "web-snapshot:2026-07-12",
-      "revision_date": "2026-04-28",
+      "revision_date": "2026-05-26",
       "lifecycle": "active_program",
       "operative_status": "current_primary",
-      "operative_basis": "Current FIDO Alliance description of the AP2 and Verifiable Intent contribution.",
+      "operative_basis": "FIDO Alliance's 26 May 2026 description of Google's AP2 and Mastercard's Verifiable Intent, co-developed with Google, as contributions whose standardization within the Alliance is prospective.",
       "source_url": "https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/",
       "canonical_url": "https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/",
       "status_url": "https://fidoalliance.org/fido-alliance-to-develop-standards-for-trusted-ai-agent-interactions/",
@@ -246,8 +246,8 @@
         }
       },
       "evidence_lock": {
-        "content_sha256": "d807e181731826073518fd00ac99975ff9709344e4d8fbb22520a3e8b599999d",
-        "content_bytes": 258803,
+        "content_sha256": "4e1a8e4313c8272358d18c70338cf3dc16dfffb30f6374f758febe7c3ecfc8f4",
+        "content_bytes": 244929,
         "quote_sha256": "5f44d2f40d0e1b58ddb0ab41c0d5be5d7de9d87e3429f7b547aef836d334343c",
         "quote_verified": true
       }
@@ -1091,6 +1091,186 @@
         "quote_sha256": "c507e982338a7801af91426ec60cf87d4aa31a7cf36a6fed901ddd8bef49cbd1",
         "quote_verified": true
       }
+    },
+    {
+      "id": "dmsc-gateway-gap-analysis",
+      "family": "dmsc-agent-gateway",
+      "short_name": "DMSC Gateway Gap Analysis",
+      "title": "Deployment Scenarios and Gap Analysis for AI Agent Gateway",
+      "venue": "IETF individual / DMSC",
+      "layer": "gateway-enforcement",
+      "source_kind": "ietf_draft",
+      "revision": "draft-dunbar-dmsc-gw-scenarios-gap-analysis-02",
+      "revision_date": "2026-07-02",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest posted Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
+      "relation": "host_socket",
+      "defines": "A managed Agent Gateway model with action-level authorization for physical-world effects, separately from session-level trust.",
+      "limits": "The gap-analysis draft identifies the conditions a gateway should evaluate but does not define a portable approval artifact, canonical action-mapping format, or one-time evidence-consumption mechanism.",
+      "quote": {
+        "locator": "Section 6.9",
+        "text": "communication-level trust determines whether an agent may participate in an exchange at all, while action-level authorization determines whether a specific instruction within that exchange may take effect in the physical world"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "Human approval state is one action-level condition, but no human ceremony or portable human-binding artifact is defined."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "The gateway applies local policy and current context, but the draft does not define a portable relying-party evidence profile."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "The draft requires evaluating a specific instruction individually but does not define canonical material-action encoding or matching."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "The bounded draft review found no distinct-human M-of-N mechanism."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "The bounded draft review found no portable initiator-exclusion predicate."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "The action-level model does not define consumption of approval evidence."
+        },
+        "offline_verification": {
+          "value": "no",
+          "rationale": "The described gateway evaluates current context; no unrelated-party offline artifact verifier is defined."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "17ebf5da730d45266e51052ee806d7d824539348ca89d362a7784e3d50d7c499",
+        "content_bytes": 73507,
+        "quote_sha256": "003d4e02995719c0e83d5505cfd0b41b0de173af93d3f976b35f7a55596608b2",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "authzen-access-request-approval",
+      "family": "authzen",
+      "short_name": "AuthZEN AARP",
+      "title": "AuthZEN Access Request and Approval Profile - Draft 1",
+      "venue": "OpenID AuthZEN",
+      "layer": "approval-workflow",
+      "source_kind": "openid_draft",
+      "revision": "draft-1:2026-07-09",
+      "revision_date": "2026-07-09",
+      "lifecycle": "active_workgroup_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Published Draft 1 on the OpenID AuthZEN specification site at snapshot time.",
+      "source_url": "https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html",
+      "canonical_url": "https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html",
+      "status_url": "https://openid.net/wg/authzen/",
+      "relation": "adjacent_profile",
+      "defines": "A requestable-denial workflow, asynchronous approval task, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, exact-match baseline, and PDP re-evaluation at enforcement time.",
+      "limits": "The evaluator may be human or automated; approval state may be resolved from trusted server-side state or carried as integrity-protected proof, and the base profile leaves the PDP authoritative rather than defining an approver-held device ceremony or one-time execution token.",
+      "quote": {
+        "locator": "Section 4, Approval Result",
+        "text": "An Approval Result does not itself permit access; the PEP uses it to obtain an AuthZEN Authorization API allow decision through a new Access Evaluation, or enforces it according to a profile-defined completion mode where one applies."
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "A human may evaluate a request, but automated evaluators are also valid and the portable state need not contain a per-human device signature."
+        },
+        "rp_pinned_acceptance": {
+          "value": "yes",
+          "rationale": "The PDP remains authoritative and verifies the Access Request Service issuer, audience, scope, expiry, and current policy at enforcement time."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "The base exact-match scope binds Subject, Resource, Action, and relevant Context, while broader matching remains profile or deployment defined."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "The draft does not define a distinct-human M-of-N approval artifact or verification algorithm."
+        },
+        "initiator_exclusion": {
+          "value": "partial",
+          "rationale": "The service must evaluate self-approval and separation-of-duties policy, but the portable state does not expose a standard verifier-visible initiator-exclusion proof."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "Approvals expire and binding tokens can detect replay, but approval results may cover repeated or broad-scope evaluations and are not once-consumable."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Integrity-protected by-value approval state can be portable and verifiable by the PDP, but lookup state is also permitted, the base decision requires PDP re-evaluation, and the draft does not define unrelated-party offline acceptance."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "7efb2eaf953de179adb1f7a114e0e8656bc744707dc296608915ac55bd57a225",
+        "content_bytes": 383710,
+        "quote_sha256": "6b94dde2480c6021c3fd47b05b48dbc26a26832fe012a2ff4229f7439c6d1097",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "agtp-transport",
+      "family": "agtp",
+      "short_name": "AGTP",
+      "title": "Agent Transfer Protocol (AGTP)",
+      "venue": "IETF individual",
+      "layer": "agent-transport-authority",
+      "source_kind": "ietf_draft",
+      "revision": "draft-hood-independent-agtp-09",
+      "revision_date": "2026-06-28",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest posted Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-hood-independent-agtp-09.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-hood-independent-agtp/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-hood-independent-agtp/",
+      "relation": "transport_neighbor",
+      "defines": "An application-layer agent transport carrying identity, authority scope, attribution, delegation context, and application payloads at the wire layer.",
+      "limits": "The transport defines agent and principal authority context but not a portable per-action human ceremony, distinct-human quorum, canonical cross-format material-action mapping, or one-time evidence-consumption record.",
+      "quote": {
+        "locator": "Appendix E.7",
+        "text": "AGTP supplies identity, authority, and attribution at the wire level; MCP supplies tool semantics in the payload."
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "AGTP exposes the principal or owner behind an agent, but does not define a per-action approver-held human signature."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Higher trust levels verify agent identity and Authority-Scope through configured registrar or certificate roots; Level 1 declarations remain self-asserted."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "AGTP carries operation parameters and task identity, but its authority scope is broader than a canonical material-action commitment."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "The bounded review of revision 09 found no distinct-human M-of-N approval artifact."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "The bounded review of revision 09 found no portable per-action initiator-exclusion predicate."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "Idempotency and protocol state do not define one-time consumption of a portable approval artifact."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Agent identity and authority documents can carry verifiable material, while the base transport and enforcement flow is live and does not define an unrelated-party offline action-evidence verdict."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "1ed0ababb2bdfef29e4c96efc85146f6b9ff692c6c155963b37e14dbcba87029",
+        "content_bytes": 442999,
+        "quote_sha256": "63ffea9867d02af8704b95d9cefa80cdd652be707dfb2d080a85a17aa9d9a239",
+        "quote_verified": true
+      }
     }
   ],
   "operative_conflicts": [
@@ -1240,7 +1420,7 @@
   ],
   "recon": {
     "review_model": "correlated_agent_assisted_discovery",
-    "claim_boundary": "Aggregate counts only. The per-artifact recon index is held privately and never published; entries are discovery leads, not publication-grade claims, and do not drive the guarantee matrix. Individual efforts are named publicly only after promotion into the source-locked 17-source matrix.",
+    "claim_boundary": "Aggregate counts only. The per-artifact recon index is held privately and never published; entries are discovery leads, not publication-grade claims, and do not drive the guarantee matrix. Individual efforts are named publicly only after promotion into the source-locked 20-source matrix.",
     "metrics": {
       "declared_agent_reads": 294,
       "recovered_structured_reports": 291,
@@ -1250,5 +1430,5 @@
     },
     "corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed"
   },
-  "snapshot_sha256": "23efb7e98b88176a069fb83cdd5425b7dc12745dd6c288e0b7e63130b9b54d17"
+  "snapshot_sha256": "57e513998be693a30060be0dc9d8d2388caa86d04bfc954e004ba31a4f462c72"
 }

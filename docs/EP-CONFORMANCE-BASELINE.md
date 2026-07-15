@@ -20,7 +20,7 @@ baseline turns the shared claim into a shared, checkable artifact.
 ## What EP already has (and offers as the seed)
 
 EP maintains a public, executable conformance suite spanning **18 suites and
-225 vectors**. JavaScript, Python, and Go reference verifiers maintained by the
+232 vectors**. JavaScript, Python, and Go reference verifiers maintained by the
 same project must agree on every result; this is cross-language consistency
 evidence, not three independent implementations. Separately, CI rebuilds an
 externally authored Rust verifier from an immutable public commit and tree. It

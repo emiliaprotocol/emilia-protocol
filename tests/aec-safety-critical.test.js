@@ -61,7 +61,7 @@ function validSingleMemberQuorum() {
 }
 
 describe('EP-AEC safety-critical acceptance contract', () => {
-  it('requires a relying-party-pinned requirement before returning allow', () => {
+  it('requires a relying-party-pinned requirement before returning satisfied', () => {
     const r = verifyAuthorizationChain(
       chain({ type: 'policy_decision', evidence: {} }),
       { verifiers: { policy_decision: policyVerifier }, ...executionBinding },
@@ -224,6 +224,7 @@ describe('EP-AEC safety-critical acceptance contract', () => {
       getOwnPropertyDescriptor() { throw new Error('chain descriptor trap'); },
     });
     const refusal = (requirementSource) => ({
+      satisfied: false,
       allow: false,
       action_digest: null,
       expected_action_bound: false,

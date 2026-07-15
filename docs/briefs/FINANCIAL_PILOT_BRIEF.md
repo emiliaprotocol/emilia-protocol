@@ -1,7 +1,7 @@
 # Financial Institutions Pilot Brief: Emilia Protocol
 
 ## What's new (June 2026)
-- **18 suites / 225 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
+- **18 suites / 232 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
 - **Payment-redirect / BEC defense, demonstrably:** the payee account is *inside* the signed action, so swapping it after approval breaks verification. Run `npx -y @emilia-protocol/crash-test --scenario procurement` to watch it reject a post-approval account swap, offline.
 - **Composition (EP-AEC):** EP composes policy-permit and human-authorization receipts into one offline ALLOW/DENY — require both a policy check and a named human on the same action.
 

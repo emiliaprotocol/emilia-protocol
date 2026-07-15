@@ -1,0 +1,504 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                              14 July 2026
+Expires: 15 January 2027
+
+
+ The EMILIA Protocol: An Evidence Architecture for Consequential Agent
+                                Actions
+                    draft-schrock-ep-architecture-01
+
+Abstract
+
+   Consequential agent actions can cross operator and administrative
+   boundaries.  The party that later decides whether to rely on an
+   action record may not have participated in the interaction and may
+   not trust either operator.  This document describes an evidence
+   architecture for that case.  It separates transport identity,
+   delegation and policy, material action matching, authorization
+   evidence, evidence satisfaction, enforcement, outcome evidence, and
+   long-term preservation.
+
+   The architecture does not define a universal authorization policy and
+   does not claim that a valid signature establishes authority.  It
+   defines where independently verified artifacts join, which decisions
+   remain local to the relying party, and the terms VERIFIED, MATCH,
+   SATISFIED, AUTHORIZED, and EXECUTED so that an implementation cannot
+   silently collapse one into another.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 15 January 2027.
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 1]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  Decision Vocabulary . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Layered Composition . . . . . . . . . . . . . . . . . . . . .   4
+     3.1.  Transport, Workload, and Agent Identity . . . . . . . . .   4
+     3.2.  Delegation, Capability, and Policy  . . . . . . . . . . .   4
+     3.3.  Material Action Identity and Mapping  . . . . . . . . . .   4
+     3.4.  Authorization and Confirmation Evidence . . . . . . . . .   5
+     3.5.  Evidence Composition and Satisfaction . . . . . . . . . .   5
+     3.6.  Challenge, Enforcement, Outcome, and Preservation . . . .   5
+     3.7.  Application Profiles  . . . . . . . . . . . . . . . . . .   5
+   4.  Cross-Domain Verification Flow  . . . . . . . . . . . . . . .   5
+   5.  EMILIA Component Boundaries . . . . . . . . . . . . . . . . .   6
+   6.  Relationship to Adjacent Work . . . . . . . . . . . . . . . .   6
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
+   8.  Changes from -00  . . . . . . . . . . . . . . . . . . . . . .   8
+   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .   8
+   11. Informative References  . . . . . . . . . . . . . . . . . . .   8
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .   9
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
+
+1.  Introduction
+
+   An agent in one administrative domain can request a gateway in
+   another domain to perform an action whose consequences are borne by a
+   third party.  Months later, an auditor, counterparty, insurer, or
+   regulator may need to determine which identity, delegation, policy,
+   approval, and enforcement facts held for that exact action.  An
+   operator-controlled log can be useful operationally, but it is not by
+   itself portable evidence against a dishonest or unavailable operator.
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 2]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   This architecture addresses that cross-domain and delayed-review
+   case.  It is not required for every agent interaction.  A deployment
+   in one trusted administrative domain, with no need to export or
+   preserve independently verifiable evidence, can use ordinary
+   authentication, authorization, and logging.
+
+   The architecture also separates an interoperability requirement from
+   ordinary implementation hygiene.  For example, refusing a key
+   supplied by an untrusted artifact from establishing its own authority
+   is a baseline verifier property, not a new architectural layer.  The
+   architectural question is which independently verified facts a remote
+   relying party needs, how those facts are bound to the same material
+   action, and which party decides whether the resulting evidence is
+   sufficient.
+
+1.1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Native verifier:  The verifier defined by an artifact's own
+      specification, operating under trust anchors selected by the
+      relying party.
+
+   Relying party:  The party that states an evidence requirement and
+      decides whether to act on the verified facts.
+
+   Consequential action:  An action for which a deployment requires
+      evidence that can survive beyond the live interaction or operator
+      boundary.
+
+2.  Decision Vocabulary
+
+   Conforming descriptions and APIs MUST keep the following states
+   distinct:
+
+   VERIFIED:  An artifact passed its native cryptographic and structural
+      verification under relying-party-selected trust anchors.  It does
+      not follow that the artifact filled an authorization role.
+
+   MATCH:  Two independently verified artifacts refer to the same
+      material action, either by direct identifier equality or by an
+      explicit, pinned mapping profile.  MATCH is content correlation,
+      not authorization.
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 3]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   SATISFIED:  The verified and matched evidence fills every slot in a
+      relying-party-pinned evidence requirement.  The evidence
+      composition layer can compute this state.
+
+   AUTHORIZED:  The relying party's local policy permits execution.
+      This is a business and policy decision; no presented artifact
+      establishes its own authority.
+
+   EXECUTED:  An executor asserts or attests that an effect occurred.
+      This is distinct from what was requested or authorized.
+
+   An implementation MUST NOT promote VERIFIED to MATCH, MATCH to
+   SATISFIED, SATISFIED to AUTHORIZED, or AUTHORIZED to EXECUTED without
+   performing the separate check that transition requires.
+
+3.  Layered Composition
+
+3.1.  Transport, Workload, and Agent Identity
+
+   This layer establishes who or what is present in a live channel and
+   how a workload credential is managed.  WIMSE and related workload-
+   identity work are examples.  The evidence architecture consumes those
+   results but does not redefine them.
+
+3.2.  Delegation, Capability, and Policy
+
+   This layer establishes what a principal delegated, what a capability
+   permits, and what a policy decision point allowed.  OAuth profiles,
+   delegation receipts, AuthZEN, and agent transport work occupy parts
+   of this layer.  A machine policy decision is not represented as human
+   approval unless a separately defined and verified approval artifact
+   establishes that fact.
+
+3.3.  Material Action Identity and Mapping
+
+   This layer answers whether independently represented artifacts
+   concern the same material action.  The candidate Canonical Action
+   IDentifier specification defines a typed action object and an Action-
+   Mapping Profile.  A mapping result is one of
+   EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT, or INDETERMINATE.  The
+   mapping profile is selected and pinned by the relying party and
+   cannot establish authorization.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 4]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+3.4.  Authorization and Confirmation Evidence
+
+   This layer carries evidence that a specified approval ceremony or
+   authorization event occurred.  EMILIA authorization receipts, multi-
+   party quorum records, presentation bindings, FIDO Verifiable Intent,
+   and other confirmation artifacts can occupy this layer under their
+   own guarantees.  No single artifact is assumed to fill every relying-
+   party requirement.
+
+3.5.  Evidence Composition and Satisfaction
+
+   The Authorization Evidence Chain verifies each component using the
+   component's native verifier and role-scoped trust anchors, checks
+   that all required components MATCH the same action, and evaluates a
+   relying-party-pinned requirement.  Its result is SATISFIED or
+   UNSATISFIED, not a universal authorization decision.
+
+3.6.  Challenge, Enforcement, Outcome, and Preservation
+
+   An evidence challenge can state what is missing before an executor
+   acts.  The enforcement point applies local policy and refuses when
+   required evidence is absent.  Outcome evidence states what occurred
+   after the effect boundary.  Revocation and evidence records address
+   lifecycle and long-term verification.  Each is a separate transition
+   and none is inferred from receipt validity.
+
+3.7.  Application Profiles
+
+   Application profiles select action types, evidence requirements,
+   trust anchors, freshness, consumption, and outcome rules for one
+   deployment context.  Agent Gateways, payments, healthcare, grid
+   coordination, and model-directed laboratory execution can use the
+   architecture without changing the core artifact formats.  A profile
+   does not make a domain claim true; it states the checks a deployment
+   will perform.
+
+4.  Cross-Domain Verification Flow
+
+   1.  The relying party identifies the proposed material action and
+       pins its trust roots, mapping profiles, and evidence requirement.
+
+   2.  Each identity, delegation, policy, and approval artifact is
+       verified by its native verifier.  Presenter-supplied keys or
+       labels do not create authority.
+
+   3.  Verified artifacts are matched to the action.  Missing or lossy
+       mappings yield INDETERMINATE and fail the requirement.
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 5]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   4.  The evidence requirement is evaluated.  A missing role,
+       mismatched action, stale fact, invalid signature, or unpinned
+       trust anchor yields UNSATISFIED with a reproducible reason.
+
+   5.  The local policy enforcement point decides whether the SATISFIED
+       evidence is sufficient to authorize execution.
+
+   6.  Consumption and outcome evidence are recorded separately so
+       replay and request-versus-effect divergence remain detectable.
+
+5.  EMILIA Component Boundaries
+
+   *  draft-schrock-ep-authorization-receipts defines an action-bound
+      authorization evidence artifact and verification profiles.
+
+   *  draft-schrock-ep-quorum composes distinct approval ceremonies for
+      multi-party requirements.
+
+   *  draft-schrock-human-authorization-binding defines how human-
+      authorization evidence binds into adjacent artifact families
+      without replacing them.
+
+   *  draft-schrock-canonical-action-identifier defines material action
+      identity and profile-bounded matching.
+
+   *  draft-schrock-ep-authorization-evidence-chain defines evidence
+      composition and requirement satisfaction.
+
+   *  The action manifest, challenge, enforcement, outcome, revocation,
+      and evidence-record documents address distinct lifecycle
+      transitions.  Their presence does not change the trust semantics
+      of the core evidence artifacts.
+
+6.  Relationship to Adjacent Work
+
+   The architecture is designed to compose with, rather than absorb,
+   adjacent work:
+
+   *  Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft
+      ([DMSC-GW]) provides a concrete cross-domain enforcement point:
+      one gateway can enforce local policy while evidence remains
+      verifiable outside either operator.  This is a use case from an
+      individual draft, not a claim of DMSC BoF consensus.
+
+   *  WIMSE Condition-Bounded Credentials ([WIMSE-CBC]) establish
+      workload identity and channel possession; portable authorization
+      evidence can be bound to the same action without treating a
+      workload credential as human approval.
+
+
+
+Schrock                  Expires 15 January 2027                [Page 6]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   *  AuthZEN's Access Request and Approval Profile ([AUTHZEN-AARP])
+      defines requestable denial, asynchronous approval tasks, an
+      approval object whose optional state carries opaque proof or
+      verifier state, JWS interoperability when that state is carried by
+      value, an exact-match baseline, and PDP re-evaluation at
+      enforcement time.  An EMILIA profile is complementary when a
+      deployment requires a verifier-visible approver-held device
+      ceremony, distinct-human quorum, portable initiator exclusion,
+      cross-format material-action matching, or one-time executor
+      consumption.  None of those additional properties is implied
+      merely by carrying an AuthZEN approval result.
+
+   *  Mastercard's Verifiable Intent, co-developed with Google and
+      contributed to the FIDO Alliance ([FIDO-VI]), describes portable
+      evidence of user intent.  The cited page describes a contribution
+      and prospective standardization, not a final FIDO specification.
+      EMILIA does not claim that portable human evidence is absent; it
+      defines additional action matching, quorum, consumption, and
+      composition profiles where deployments require them.
+
+   *  AGTP ([AGTP]) carries agent identity, authority, attribution, and
+      application payloads at the wire layer.  This architecture defines
+      evidence that can be carried or referenced by that transport and
+      checked after the live channel is gone.
+
+7.  Security Considerations
+
+   The primary architectural failure is category collapse.  A valid
+   signature can authenticate an untrusted assertion; it does not make
+   the assertion authoritative.  A policy ALLOW does not prove a named
+   human approved.  A matching action identifier does not prove either
+   artifact is valid.  A satisfied evidence requirement does not prove
+   an action is lawful, safe, wise, or correctly executed.
+
+   Trust anchors, role assignments, evidence requirements, mapping
+   profiles, freshness limits, and consumption stores are relying-party
+   inputs.  They MUST NOT be silently imported from the artifact being
+   judged.  Implementations MUST fail closed when a required input is
+   absent or unavailable.
+
+   Human evidence remains vulnerable to coercion, fatigue, mis-
+   rendering, compromised devices, and collusion.  Device-bound user
+   verification, exact-action presentation, initiator exclusion, and
+   distinct-human quorum reduce specified threats but do not establish
+   comprehension or correctness.
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 7]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+8.  Changes from -00
+
+   This revision replaces the "human-authorization apex" framing with an
+   ecosystem-first composition model; adds a concrete cross-domain
+   applicability test; separates ordinary verifier hygiene from the
+   portable-evidence requirement; defines the MATCH, VERIFIED,
+   SATISFIED, AUTHORIZED, and EXECUTED vocabulary; introduces material
+   action mapping; and narrows all claims to relying-party-pinned trust
+   inputs and named verification profiles.
+
+9.  IANA Considerations
+
+   This document has no IANA actions.
+
+10.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+11.  Informative References
+
+   [AGTP]     Hood, C., "Agent Transfer Protocol (AGTP)", Work in
+              Progress, Internet-Draft, draft-hood-independent-agtp-09,
+              28 June 2026, <https://datatracker.ietf.org/doc/draft-
+              hood-independent-agtp/>.
+
+   [AUTHZEN-AARP]
+              McGuinness, K., "AuthZEN Access Request and Approval
+              Profile - Draft 1", 9 July 2026,
+              <https://openid.github.io/authzen/authzen-access-request-
+              approval-profile-1_0.html>.
+
+   [DMSC-GW]  Dunbar, L., "Deployment Scenarios and Gap Analysis for AI
+              Agent Gateway", Work in Progress, Internet-Draft, draft-
+              dunbar-dmsc-gw-scenarios-gap-analysis-02, 2 July 2026,
+              <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
+              scenarios-gap-analysis/>.
+
+   [FIDO-VI]  FIDO Alliance, "Building the Trust Layer for Agentic
+              Payments with AP2 and Verifiable Intent", 26 May 2026,
+              <https://fidoalliance.org/building-the-trust-layer-for-
+              agentic-payments-with-ap2-and-verifiable-intent/>.
+
+
+
+Schrock                  Expires 15 January 2027                [Page 8]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   [WIMSE-CBC]
+              Nguyen-Huu, T., "Condition-Bounded Credentials for
+              Workload and Agent Identity", Work in Progress, Internet-
+              Draft, draft-winmagic-wimse-condition-bounded-credentials-
+              01, July 2026, <https://datatracker.ietf.org/doc/draft-
+              winmagic-wimse-condition-bounded-credentials/>.
+
+Appendix A.  Acknowledgments
+
+   Eric Rescorla's review prompted a sharper separation between baseline
+   verifier security properties and the specific need for third-party,
+   cross-domain validation.  Linda Dunbar's Agent Gateway scenarios
+   supplied the concrete multi-operator use case.  Chris Hood's agent
+   transport and composition work helped clarify the boundary between
+   carrying authority context and independently verifying evidence after
+   the interaction.  These acknowledgments do not imply endorsement of
+   this document.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 9]

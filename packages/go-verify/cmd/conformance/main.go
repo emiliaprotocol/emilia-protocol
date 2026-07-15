@@ -413,7 +413,10 @@ func main() {
 		case v.Quorum != nil:
 			valid = emiliaverify.VerifyQuorum(v.Quorum, "emiliaprotocol.ai").Valid
 		case v.Revocation != nil:
-			opts := map[string]any{"revokerKeys": v.RevokerKeys, "now": v.Now}
+			opts := map[string]any{"revokerKeys": v.RevokerKeys}
+			if v.Now != "" {
+				opts["now"] = v.Now
+			}
 			if v.MaxAgeSeconds != nil {
 				opts["maxAgeSeconds"] = *v.MaxAgeSeconds
 			}
@@ -500,7 +503,7 @@ func main() {
 			valid = emiliaverify.VerifyAuthorizationChainWithOptions(v.AECChain, verifiers, v.KeysByType, emiliaverify.AECOptions{
 				Requirement: v.Requirement, ExpectedActionDigest: v.ExpectedActionDigest,
 				VerificationTime: v.VerificationTime, PoliciesByType: v.PoliciesByType,
-			}).Allow
+			}).Satisfied
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

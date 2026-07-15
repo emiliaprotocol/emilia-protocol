@@ -30,6 +30,10 @@ const PATHS = {
   claimSource: 'security/claims.v1.json',
   securityCase: 'security/security-case.json',
   observatory: 'lib/standards-observatory.snapshot.json',
+  standardsStatus: 'standards/STATUS.json',
+  caidCore: 'caid/conformance/vectors.json',
+  caidMapping: 'caid/conformance/mapping-vectors.json',
+  modelToMatter: 'conformance/vectors/model-to-matter.v1.json',
 };
 const INPUTS = Object.values(PATHS);
 const GENERATED_PATHS = new Set([
@@ -78,6 +82,10 @@ const external = readJson(PATHS.external);
 const claimSource = readJson(PATHS.claimSource);
 const securityCase = readJson(PATHS.securityCase);
 const observatory = readJson(PATHS.observatory);
+const standardsStatus = readJson(PATHS.standardsStatus);
+const caidCore = readJson(PATHS.caidCore);
+const caidMapping = readJson(PATHS.caidMapping);
+const modelToMatter = readJson(PATHS.modelToMatter);
 
 assert(source['@version'] === 'EMILIA-LLM-CONTEXT-SOURCE-v1', 'unsupported LLM context source');
 assert(conformance['@version'] === 'EP-CONFORMANCE-MANIFEST-v1', 'unsupported conformance manifest');
@@ -85,6 +93,11 @@ assert(external['@version'] === 'EP-EXTERNAL-IMPLEMENTATION-PIN-v1', 'unsupporte
 assert(claimSource['@version'] === 'EP-SECURITY-CASE-SOURCE-v2', 'unsupported security claim source');
 assert(securityCase['@version'] === 'EP-SECURITY-CASE-RESOLVED-v2', 'unsupported resolved security case');
 assert(observatory['@version'] === 'EMILIA-STANDARDS-OBSERVATORY-v1', 'unsupported standards observatory snapshot');
+assert(standardsStatus['@version'] === 'EMILIA-STANDARDS-PORTFOLIO-v1', 'unsupported standards portfolio status');
+assert(Array.isArray(standardsStatus.active_datatracker) && standardsStatus.active_datatracker.length > 0, 'standards status has no active drafts');
+assert(caidCore.vectors?.length > 0, 'CAID core vectors are missing');
+assert(caidMapping.vectors?.length > 0, 'CAID mapping vectors are missing');
+assert(modelToMatter.suite === 'EP-MODEL-TO-MATTER-v1' && modelToMatter.vectors?.length > 0, 'Model-to-Matter vectors are missing');
 assert(securityCase.execution?.status === 'passed', 'resolved security case does not report a passed execution');
 assert(securityCase.claim_count === claimSource.claims?.length, 'security-case claim count differs from source');
 assert(conformance.implementations?.every((item) => item.relationship === 'one_team_port'), 'reference ports are not uniformly labeled one_team_port');
@@ -170,6 +183,21 @@ const context = {
       evidence_files: securityCase.evidence_file_count,
       evidence_bundle_sha256: securityCase.evidence_bundle_sha256,
     },
+    caid: {
+      core_vectors: caidCore.vectors.length,
+      mapping_vectors: caidMapping.vectors.length,
+      same_team_ports: ['javascript', 'python', 'go'],
+      mapping_verdicts: ['EQUIVALENT_UNDER_PROFILE', 'NOT_EQUIVALENT', 'INDETERMINATE'],
+      command: 'npm run caid:conformance',
+    },
+    model_to_matter: {
+      profile: modelToMatter.suite,
+      deterministic_vectors: modelToMatter.vectors.length,
+      implementation_languages: ['javascript'],
+      command: 'npm run m2m:conformance',
+      filing_candidate: 'draft-schrock-model-to-matter-00',
+      non_claims: ['biological screening', 'scientific safety', 'physical truth', 'wet-lab deployment', 'external endorsement'],
+    },
   },
   external_implementation: {
     implementation: external.implementation,
@@ -189,10 +217,27 @@ const context = {
   non_claims: source.non_claims,
   source_precedence: source.source_precedence,
   excluded_as_current_authority: source.excluded_as_current_authority,
-  standards: source.standards.map((standard) => ({
-    ...standard,
+  standards: standardsStatus.active_datatracker.map((standard) => ({
+    identifier: standard.draft,
+    revision_at_snapshot: standard.revision,
+    role: standard.role,
+    next_action: standard.next_action,
+    url: `https://datatracker.ietf.org/doc/${standard.draft}/`,
     status_rule: 'Check the live IETF Datatracker URL; do not infer status or revision from a local filename.',
   })),
+  standards_portfolio: {
+    updated: standardsStatus.updated,
+    decision_vocabulary: standardsStatus.decision_vocabulary,
+    layers: standardsStatus.portfolio_layers,
+    july_19_2026_core_wave: standardsStatus.july_19_2026_core_wave,
+    july_27_2026_lifecycle_wave: standardsStatus.july_27_2026_lifecycle_wave,
+    retired_absorbed: standardsStatus.retired_absorbed,
+    partner_triggered_profiles: standardsStatus.partner_triggered_profiles,
+    held: standardsStatus.held,
+    matching_claim: standardsStatus.matching_claim,
+    research_corpus: standardsStatus.research_corpus,
+    source: 'standards/STATUS.json',
+  },
   standards_observatory: {
     as_of: observatory.as_of,
     snapshot_sha256: observatory.snapshot_sha256,
@@ -230,7 +275,7 @@ function renderFull(web = false) {
   lines.push('');
   lines.push('## Read This First');
   lines.push('');
-  lines.push('EMILIA is not a generic signed-log format. Its core contribution is a typed human-authorization artifact and enforcement path for one exact consequential action. Identity, delegated machine scope, machine policy, human authorization, execution evidence, transparency, and relying-party acceptance are separate layers. Shared use of Ed25519, JCS, or an action digest does not collapse those claims into one protocol.');
+  lines.push('EMILIA is an evidence architecture for consequential agent actions that cross administrative boundaries or require delayed third-party review. Native artifacts verify under native rules; CAID performs material-action matching; AEC evaluates whether the matched bundle satisfies a relying-party evidence requirement; the executor makes the separate authorization decision. Identity, delegated machine scope, machine policy, human approval, execution evidence, transparency, and reliance remain separate layers.');
   lines.push('');
   lines.push(`EMILIA is not architecture-only. The current repository executes ${securityCase.claim_count} machine-verifiable security claims over ${securityCase.evidence_file_count} hashed evidence files, verifies ${proofStats.tamarin.verifiedObligations} obligations in one composed Tamarin Dolev-Yao model, and preserves ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants that produce concrete attack traces.`);
   lines.push('');
@@ -245,6 +290,8 @@ function renderFull(web = false) {
   lines.push(`- Formal inventory: ${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions. Formal scope and exclusions remain claim-specific.`);
   lines.push(`- Composed symbolic model: ${proofStats.tamarin.verifiedObligations} Tamarin obligations verified across challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants are falsified with attack traces.`);
   lines.push(`- Red-team catalog: ${proofStats.redTeamCases} cases.`);
+  lines.push(`- CAID: ${caidCore.vectors.length} core identifier vectors plus ${caidMapping.vectors.length} mapping vectors in three same-team ports, with closed EQUIVALENT_UNDER_PROFILE / NOT_EQUIVALENT / INDETERMINATE results.`);
+  lines.push(`- Model-to-Matter: ${modelToMatter.vectors.length} deterministic JavaScript executor-profile vectors covering clearance, refusal, replay, storage failure, and effect tampering. No biological screening, scientific-safety, physical-truth, deployment, or endorsement claim is made.`);
   lines.push('');
   lines.push('## Canonical Definitions');
   lines.push('');
@@ -295,7 +342,35 @@ function renderFull(web = false) {
   lines.push('');
   lines.push('These URLs resolve to the current Datatracker revision. The documents are individual Internet-Drafts unless the live page states a stronger status.');
   lines.push('');
-  for (const standard of source.standards) lines.push(`- [${standard.identifier}](${standard.url}): ${standard.role}.`);
+  for (const standard of standardsStatus.active_datatracker) {
+    lines.push(`- [${standard.draft}](https://datatracker.ietf.org/doc/${standard.draft}/): ${standard.role}; snapshot revision -${standard.revision}.`);
+  }
+  lines.push('');
+  lines.push('## July 19 Post-Blackout Filing Wave');
+  lines.push('');
+  lines.push(`The IETF submission tool reopens after ${standardsStatus.july_19_2026_core_wave.submission_window_opens_after}; the planned filing date is ${standardsStatus.july_19_2026_core_wave.filing_date}.`);
+  lines.push('');
+  for (const item of standardsStatus.july_19_2026_core_wave.items) {
+    lines.push(`- **${item.state}:** \`${item.draft}\` - ${item.claim}.`);
+  }
+  lines.push('');
+  lines.push('## July 27 Lifecycle Wave');
+  lines.push('');
+  for (const item of standardsStatus.july_27_2026_lifecycle_wave.must_file) {
+    lines.push(`- **Must file:** \`${item.draft}\` - ${item.claim}.`);
+  }
+  for (const item of standardsStatus.july_27_2026_lifecycle_wave.conditional) {
+    lines.push(`- **Conditional:** \`${item.draft}\` - ${item.claim}.`);
+  }
+  lines.push('');
+  lines.push('## Retired And Partner-Triggered Work');
+  lines.push('');
+  for (const item of standardsStatus.retired_absorbed) {
+    lines.push(`- **Retired/absorbed:** \`${item.draft}\` -> ${item.canonical_owner}.`);
+  }
+  for (const item of standardsStatus.partner_triggered_profiles) {
+    lines.push(`- **Partner-triggered:** \`${item.draft}\` - ${item.trigger}`);
+  }
   lines.push('');
   lines.push('## Code Entry Points');
   lines.push('');
@@ -342,13 +417,12 @@ function renderIndex() {
     '',
     '## Specifications',
     '',
-    ...source.standards.map((standard) => `- [${standard.name}](${standard.url}): ${standard.role}; check the live Datatracker page for revision and status.`),
+    ...standardsStatus.active_datatracker.map((standard) => `- [${standard.draft}](https://datatracker.ietf.org/doc/${standard.draft}/): ${standard.role}; snapshot revision -${standard.revision}, check Datatracker for current status.`),
     '',
     '## Evidence',
     '',
     `- [Conformance manifest](${REPO_URL}/blob/main/conformance/conformance-manifest.json): Current suite/vector counts and same-team implementation relationship.`,
     `- [Machine-verifiable security case](${REPO_URL}/blob/main/security/security-case.json): Executed claims with exact evidence, assumptions, exclusions, and artifact hashes.`,
-    `- [Engineering evidence map](${BASE_URL}/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.`,
     `- [Engineering evidence map](${BASE_URL}/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.`,
     `- [External implementation pin](${REPO_URL}/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json): Time-pinned Rust source, vector scope, hostility corpus, and construction-attestation status.`,
     '',

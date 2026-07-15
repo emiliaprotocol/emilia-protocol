@@ -1,0 +1,264 @@
+{
+  "suite": "EP-CURRENCY-v1",
+  "profile": "Two-valued currency status. valid iff evaluateCurrency(currency.args).currency_at_T.status === currency.expect_status.",
+  "vectors_version": "2.0.0",
+  "count": 13,
+  "vectors": [
+    {
+      "id": "unknown_offline_no_head",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z"
+        },
+        "expect_status": "unknown"
+      }
+    },
+    {
+      "id": "unknown_null_head",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "freshHead": null
+        },
+        "expect_status": "unknown"
+      }
+    },
+    {
+      "id": "fresh_recent_within_window",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "observed_at": "2026-07-05T11:59:00.000Z"
+          }
+        },
+        "expect_status": "fresh"
+      }
+    },
+    {
+      "id": "fresh_different_target_not_revoked",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "observed_at": "2026-07-05T11:59:55.000Z",
+            "revoked_target_hashes": [
+              "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            ]
+          }
+        },
+        "expect_status": "fresh"
+      }
+    },
+    {
+      "id": "stale_head_too_old",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "observed_at": "2026-07-05T11:50:00.000Z"
+          }
+        },
+        "expect_status": "stale"
+      }
+    },
+    {
+      "id": "stale_future_dated_head",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "observed_at": "2026-07-05T12:01:00.000Z"
+          }
+        },
+        "expect_status": "stale"
+      }
+    },
+    {
+      "id": "stale_scalar_revoked",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "observed_at": "2026-07-05T11:59:55.000Z",
+            "revoked": true
+          }
+        },
+        "expect_status": "stale"
+      }
+    },
+    {
+      "id": "stale_status_list_revokes_this",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "observed_at": "2026-07-05T11:59:55.000Z",
+            "revoked_target_hashes": [
+              "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ]
+          }
+        },
+        "expect_status": "stale"
+      }
+    },
+    {
+      "id": "stale_required_but_absent",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "freshHeadRequired": true
+        },
+        "expect_status": "stale"
+      }
+    },
+    {
+      "id": "stale_no_policy_bound",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "freshHead": {
+            "observed_at": "2026-07-05T11:59:59.000Z"
+          }
+        },
+        "expect_status": "stale"
+      }
+    },
+    {
+      "id": "stale_negative_bound",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": -1,
+          "freshHead": {
+            "observed_at": "2026-07-05T11:59:59.000Z"
+          }
+        },
+        "expect_status": "stale"
+      }
+    },
+    {
+      "id": "unknown_bad_now",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "not-a-time",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "observed_at": "2026-07-05T11:59:59.000Z"
+          }
+        },
+        "expect_status": "unknown"
+      }
+    },
+    {
+      "id": "unknown_malformed_head",
+      "expect": {
+        "valid": true
+      },
+      "currency": {
+        "args": {
+          "receipt": {
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "authentic_as_of_commit": true,
+          "now": "2026-07-05T12:00:00.000Z",
+          "maxStalenessSeconds": 300,
+          "freshHead": {
+            "revoked": false
+          }
+        },
+        "expect_status": "unknown"
+      }
+    }
+  ]
+}

@@ -1,0 +1,1032 @@
+{
+  "suite": "EP-MODEL-TO-MATTER-v1",
+  "vectors_version": "2026-07-19",
+  "note": "Deterministic public test material only. These vectors test executor-side authorization-evidence clearance; they do not screen biological content or establish scientific safety or physical truth.",
+  "as_of": "2026-07-19T12:00:00Z",
+  "challenge_expires_at": "2026-07-19T12:05:00Z",
+  "action": {
+    "action_type": "science.bio.experiment.execute.1",
+    "model": {
+      "provider": "example-frontier-model-provider",
+      "model_id": "defensive-science-model-1",
+      "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+      "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+      "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd"
+    },
+    "experiment": {
+      "protocol_digest": "sha256:2758cf7ea0145d927e17227c9a870deabcff695bcac492b8f134aa66b1dc6b18",
+      "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+      "expected_effects_digest": "sha256:100a6d17d969f84d475e7746bd112f197c9b324fb2fb028b637880e90853a926"
+    },
+    "principal": {
+      "organization_id": "org:example-research-institute",
+      "principal_id": "researcher:alice"
+    },
+    "executor": {
+      "executor_id": "cloud-lab:example",
+      "facility_id": "facility:demo-01"
+    },
+    "purpose": {
+      "code": "defensive-research",
+      "jurisdiction": "US"
+    },
+    "destination_digest": "sha256:4b833903a599c0ec577a504da8f316fe8bc770ddfa62fd134f866509018a2597",
+    "requested_at": "2026-07-19T11:58:00Z",
+    "max_executions": 1,
+    "@version": "EP-MODEL-TO-MATTER-ACTION-v1"
+  },
+  "caid": {
+    "caid": "caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
+    "digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36"
+  },
+  "profile": {
+    "@version": "EP-MODEL-TO-MATTER-PROFILE-v1",
+    "profile_id": "ep:m2m:conformance:v1",
+    "policy_id": "ep:m2m:conformance:v1",
+    "reliance_purpose": "frontier_science_execution",
+    "requirement": "model_attestation AND safety_case_attestation AND institutional_authority AND biosafety_review AND domain_screening AND human_authorization",
+    "allowed_action_types": [
+      "science.bio.experiment.execute.1"
+    ],
+    "required_human_assurance": "class_a",
+    "freshness_sec": {
+      "model_attestation": 86400,
+      "safety_case_attestation": 604800,
+      "institutional_authority": 3600,
+      "biosafety_review": 86400,
+      "domain_screening": 300,
+      "human_authorization": 300
+    },
+    "revocation_required": [
+      "model_attestation",
+      "safety_case_attestation",
+      "institutional_authority",
+      "biosafety_review",
+      "domain_screening",
+      "human_authorization"
+    ],
+    "accepted_issuers": {
+      "model_attestation": [
+        {
+          "issuer_id": "issuer:model_attestation",
+          "public_key": "MCowBQYDK2VwAyEAGuWr36KRLKqyjoMSsWOEFKABECUnUXpBrDN9V_IC7MY"
+        }
+      ],
+      "safety_case_attestation": [
+        {
+          "issuer_id": "issuer:safety_case_attestation",
+          "public_key": "MCowBQYDK2VwAyEA4AGndyqYBY6K_1pfLq9kh_mj2sE3-bzGpbuIREgnFvE"
+        }
+      ],
+      "institutional_authority": [
+        {
+          "issuer_id": "issuer:institutional_authority",
+          "public_key": "MCowBQYDK2VwAyEAZAxDTJEkOC7n0ix4T-dFaxX0MGwMG_WMIC5KB3EYH_M"
+        }
+      ],
+      "biosafety_review": [
+        {
+          "issuer_id": "issuer:biosafety_review",
+          "public_key": "MCowBQYDK2VwAyEALfujYpN6E0ntsyF1V_UV9RITgg31D7KW-hhaNHWEkXw"
+        }
+      ],
+      "domain_screening": [
+        {
+          "issuer_id": "issuer:domain_screening",
+          "public_key": "MCowBQYDK2VwAyEAA4ImTgvuN-bTEBchMlNyxu6FBaBfEJ40-tSDqznDYsI"
+        }
+      ],
+      "human_authorization": [
+        {
+          "issuer_id": "issuer:human_authorization",
+          "public_key": "MCowBQYDK2VwAyEA_3eAPxjkNKnCdEvUU6cNhfIjgZDtQprp0QViGVPg1dk"
+        }
+      ]
+    },
+    "require_action_agreement": true
+  },
+  "evidence_sets": {
+    "valid": [
+      {
+        "evidence_type": "model_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:model_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "provider": "example-frontier-model-provider",
+          "model_id": "defensive-science-model-1",
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c28ac4cea9411205",
+          "public_key": "MCowBQYDK2VwAyEAGuWr36KRLKqyjoMSsWOEFKABECUnUXpBrDN9V_IC7MY",
+          "evidence_digest": "sha256:5cb4abfc280ca7b91e8aa226d59f90557b028c09e2842ca453c575c1a6af5891",
+          "signature_b64u": "jKFcePDKYI6xqBEwWDw1dkusVipdmqSpt_SDBVH3VDFZvu-zce7LJtvuKjA3hGJDDq5JIkGLC_vyZg6Xicq3Ag"
+        }
+      },
+      {
+        "evidence_type": "safety_case_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:safety_case_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd",
+          "safety_case_digest": "sha256:1d7a47f57cadb8124174e5a5752321318600391cceca6f75b3592c973e9f3ca5",
+          "assessment": "acceptable"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:28be81ec2824f104",
+          "public_key": "MCowBQYDK2VwAyEA4AGndyqYBY6K_1pfLq9kh_mj2sE3-bzGpbuIREgnFvE",
+          "evidence_digest": "sha256:bfd7ecfacf24af5e1ed37279cfa3c155a1e2d687018f31e8b3bddd27c67f59d8",
+          "signature_b64u": "TaCGRa8-z_SLHbWRnNcZGHKEzlAOICXoadEifbbgf_jSBDnaJuu9c_YfFe7zj-Fsy8bC4_gbbEmgplwtjJLOBg"
+        }
+      },
+      {
+        "evidence_type": "institutional_authority",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:institutional_authority",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "organization_id": "org:example-research-institute",
+          "principal_id": "researcher:alice",
+          "action_type": "science.bio.experiment.execute.1",
+          "purpose_code": "defensive-research",
+          "decision": "allow"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c9dc84805b4ba0a1",
+          "public_key": "MCowBQYDK2VwAyEAZAxDTJEkOC7n0ix4T-dFaxX0MGwMG_WMIC5KB3EYH_M",
+          "evidence_digest": "sha256:334b68e11abc134dbc716302287a1e67eb8423d9f1a021ea0d58e41e4b7dac37",
+          "signature_b64u": "Hc0OdrWBU_TLAtL7ZiyNcHyaHst4Pe-ZGSRtiNkClogx0pQe00Pb4lxTDJk0CzJug9bSbN7I9RlaCiFff_cgDQ"
+        }
+      },
+      {
+        "evidence_type": "biosafety_review",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:biosafety_review",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "protocol_digest": "sha256:2758cf7ea0145d927e17227c9a870deabcff695bcac492b8f134aa66b1dc6b18",
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "facility_id": "facility:demo-01",
+          "decision": "approve"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:22d51f2b2fc1f0cc",
+          "public_key": "MCowBQYDK2VwAyEALfujYpN6E0ntsyF1V_UV9RITgg31D7KW-hhaNHWEkXw",
+          "evidence_digest": "sha256:236bab7e4d106eb1f2ed820b02c901a367e88b20de39d0908ea3cec492c2f81f",
+          "signature_b64u": "V6Ws3yrUueAw8mrPbG6LdNt6_yhpGPmAE3sIC2CXDdUUB2DaT7ZTfK7AICOddcLbSQbPa6CtYFtUDxDzVrSkAg"
+        }
+      },
+      {
+        "evidence_type": "domain_screening",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:domain_screening",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "destination_digest": "sha256:4b833903a599c0ec577a504da8f316fe8bc770ddfa62fd134f866509018a2597",
+          "screening_profile_digest": "sha256:fc9d3fe0e9512178817289321d587828b17ff6a76cc974cd0d00ffe2fe82a252",
+          "decision": "pass"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:f4096c956c4b1984",
+          "public_key": "MCowBQYDK2VwAyEAA4ImTgvuN-bTEBchMlNyxu6FBaBfEJ40-tSDqznDYsI",
+          "evidence_digest": "sha256:0ad011c86d6fabf4af7c4e58edf4f74b057b0c43c8e2f4ee23e5c52dec017444",
+          "signature_b64u": "JbFkxo1DKbF1cKKtnt86Ah1mw5xvdJfvRi6LhnT61XJvnLVAFuODolvA-2-F5sHEa1r-BYJDa0iMJ29cbUBUDw"
+        }
+      },
+      {
+        "evidence_type": "human_authorization",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:human_authorization",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "approver_id": "person:responsible-investigator",
+          "decision": "approve",
+          "assurance_class": "class_a"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:1448c3678ff5c230",
+          "public_key": "MCowBQYDK2VwAyEA_3eAPxjkNKnCdEvUU6cNhfIjgZDtQprp0QViGVPg1dk",
+          "evidence_digest": "sha256:efd482392dc22a62296024a38f9f50aef2502276b829c33fc1ff44807a181f92",
+          "signature_b64u": "YMdSRP6MxreZkpo5NkGMzUBV-w4IeX9ISMI09T6G7qpp7qkgB9eyN1IG69PMIkdYbXF4IXHUP1jCBwcyGnEjDQ"
+        }
+      }
+    ],
+    "missing_domain_screening": [
+      {
+        "evidence_type": "model_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:model_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "provider": "example-frontier-model-provider",
+          "model_id": "defensive-science-model-1",
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c28ac4cea9411205",
+          "public_key": "MCowBQYDK2VwAyEAGuWr36KRLKqyjoMSsWOEFKABECUnUXpBrDN9V_IC7MY",
+          "evidence_digest": "sha256:5cb4abfc280ca7b91e8aa226d59f90557b028c09e2842ca453c575c1a6af5891",
+          "signature_b64u": "jKFcePDKYI6xqBEwWDw1dkusVipdmqSpt_SDBVH3VDFZvu-zce7LJtvuKjA3hGJDDq5JIkGLC_vyZg6Xicq3Ag"
+        }
+      },
+      {
+        "evidence_type": "safety_case_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:safety_case_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd",
+          "safety_case_digest": "sha256:1d7a47f57cadb8124174e5a5752321318600391cceca6f75b3592c973e9f3ca5",
+          "assessment": "acceptable"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:28be81ec2824f104",
+          "public_key": "MCowBQYDK2VwAyEA4AGndyqYBY6K_1pfLq9kh_mj2sE3-bzGpbuIREgnFvE",
+          "evidence_digest": "sha256:bfd7ecfacf24af5e1ed37279cfa3c155a1e2d687018f31e8b3bddd27c67f59d8",
+          "signature_b64u": "TaCGRa8-z_SLHbWRnNcZGHKEzlAOICXoadEifbbgf_jSBDnaJuu9c_YfFe7zj-Fsy8bC4_gbbEmgplwtjJLOBg"
+        }
+      },
+      {
+        "evidence_type": "institutional_authority",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:institutional_authority",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "organization_id": "org:example-research-institute",
+          "principal_id": "researcher:alice",
+          "action_type": "science.bio.experiment.execute.1",
+          "purpose_code": "defensive-research",
+          "decision": "allow"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c9dc84805b4ba0a1",
+          "public_key": "MCowBQYDK2VwAyEAZAxDTJEkOC7n0ix4T-dFaxX0MGwMG_WMIC5KB3EYH_M",
+          "evidence_digest": "sha256:334b68e11abc134dbc716302287a1e67eb8423d9f1a021ea0d58e41e4b7dac37",
+          "signature_b64u": "Hc0OdrWBU_TLAtL7ZiyNcHyaHst4Pe-ZGSRtiNkClogx0pQe00Pb4lxTDJk0CzJug9bSbN7I9RlaCiFff_cgDQ"
+        }
+      },
+      {
+        "evidence_type": "biosafety_review",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:biosafety_review",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "protocol_digest": "sha256:2758cf7ea0145d927e17227c9a870deabcff695bcac492b8f134aa66b1dc6b18",
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "facility_id": "facility:demo-01",
+          "decision": "approve"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:22d51f2b2fc1f0cc",
+          "public_key": "MCowBQYDK2VwAyEALfujYpN6E0ntsyF1V_UV9RITgg31D7KW-hhaNHWEkXw",
+          "evidence_digest": "sha256:236bab7e4d106eb1f2ed820b02c901a367e88b20de39d0908ea3cec492c2f81f",
+          "signature_b64u": "V6Ws3yrUueAw8mrPbG6LdNt6_yhpGPmAE3sIC2CXDdUUB2DaT7ZTfK7AICOddcLbSQbPa6CtYFtUDxDzVrSkAg"
+        }
+      },
+      {
+        "evidence_type": "human_authorization",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:human_authorization",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "approver_id": "person:responsible-investigator",
+          "decision": "approve",
+          "assurance_class": "class_a"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:1448c3678ff5c230",
+          "public_key": "MCowBQYDK2VwAyEA_3eAPxjkNKnCdEvUU6cNhfIjgZDtQprp0QViGVPg1dk",
+          "evidence_digest": "sha256:efd482392dc22a62296024a38f9f50aef2502276b829c33fc1ff44807a181f92",
+          "signature_b64u": "YMdSRP6MxreZkpo5NkGMzUBV-w4IeX9ISMI09T6G7qpp7qkgB9eyN1IG69PMIkdYbXF4IXHUP1jCBwcyGnEjDQ"
+        }
+      }
+    ],
+    "unpinned_domain_screening": [
+      {
+        "evidence_type": "model_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:model_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "provider": "example-frontier-model-provider",
+          "model_id": "defensive-science-model-1",
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c28ac4cea9411205",
+          "public_key": "MCowBQYDK2VwAyEAGuWr36KRLKqyjoMSsWOEFKABECUnUXpBrDN9V_IC7MY",
+          "evidence_digest": "sha256:5cb4abfc280ca7b91e8aa226d59f90557b028c09e2842ca453c575c1a6af5891",
+          "signature_b64u": "jKFcePDKYI6xqBEwWDw1dkusVipdmqSpt_SDBVH3VDFZvu-zce7LJtvuKjA3hGJDDq5JIkGLC_vyZg6Xicq3Ag"
+        }
+      },
+      {
+        "evidence_type": "safety_case_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:safety_case_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd",
+          "safety_case_digest": "sha256:1d7a47f57cadb8124174e5a5752321318600391cceca6f75b3592c973e9f3ca5",
+          "assessment": "acceptable"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:28be81ec2824f104",
+          "public_key": "MCowBQYDK2VwAyEA4AGndyqYBY6K_1pfLq9kh_mj2sE3-bzGpbuIREgnFvE",
+          "evidence_digest": "sha256:bfd7ecfacf24af5e1ed37279cfa3c155a1e2d687018f31e8b3bddd27c67f59d8",
+          "signature_b64u": "TaCGRa8-z_SLHbWRnNcZGHKEzlAOICXoadEifbbgf_jSBDnaJuu9c_YfFe7zj-Fsy8bC4_gbbEmgplwtjJLOBg"
+        }
+      },
+      {
+        "evidence_type": "institutional_authority",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:institutional_authority",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "organization_id": "org:example-research-institute",
+          "principal_id": "researcher:alice",
+          "action_type": "science.bio.experiment.execute.1",
+          "purpose_code": "defensive-research",
+          "decision": "allow"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c9dc84805b4ba0a1",
+          "public_key": "MCowBQYDK2VwAyEAZAxDTJEkOC7n0ix4T-dFaxX0MGwMG_WMIC5KB3EYH_M",
+          "evidence_digest": "sha256:334b68e11abc134dbc716302287a1e67eb8423d9f1a021ea0d58e41e4b7dac37",
+          "signature_b64u": "Hc0OdrWBU_TLAtL7ZiyNcHyaHst4Pe-ZGSRtiNkClogx0pQe00Pb4lxTDJk0CzJug9bSbN7I9RlaCiFff_cgDQ"
+        }
+      },
+      {
+        "evidence_type": "biosafety_review",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:biosafety_review",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "protocol_digest": "sha256:2758cf7ea0145d927e17227c9a870deabcff695bcac492b8f134aa66b1dc6b18",
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "facility_id": "facility:demo-01",
+          "decision": "approve"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:22d51f2b2fc1f0cc",
+          "public_key": "MCowBQYDK2VwAyEALfujYpN6E0ntsyF1V_UV9RITgg31D7KW-hhaNHWEkXw",
+          "evidence_digest": "sha256:236bab7e4d106eb1f2ed820b02c901a367e88b20de39d0908ea3cec492c2f81f",
+          "signature_b64u": "V6Ws3yrUueAw8mrPbG6LdNt6_yhpGPmAE3sIC2CXDdUUB2DaT7ZTfK7AICOddcLbSQbPa6CtYFtUDxDzVrSkAg"
+        }
+      },
+      {
+        "evidence_type": "domain_screening",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:domain_screening",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "destination_digest": "sha256:4b833903a599c0ec577a504da8f316fe8bc770ddfa62fd134f866509018a2597",
+          "screening_profile_digest": "sha256:fc9d3fe0e9512178817289321d587828b17ff6a76cc974cd0d00ffe2fe82a252",
+          "decision": "pass"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:e99506fc788f9c86",
+          "public_key": "MCowBQYDK2VwAyEAqdJ4J952XM0NcOMglGOIR0wGLMtuwxayMewPi6iRD4I",
+          "evidence_digest": "sha256:0ad011c86d6fabf4af7c4e58edf4f74b057b0c43c8e2f4ee23e5c52dec017444",
+          "signature_b64u": "rnFqMdxnPLeWZcNKq5jCh7q3aEt2Rv1zZWtgLpO2vBrHYitmogaqX46PNbr3tSdQknZTppcgt3oSPcefi244Bg"
+        }
+      },
+      {
+        "evidence_type": "human_authorization",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:human_authorization",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "approver_id": "person:responsible-investigator",
+          "decision": "approve",
+          "assurance_class": "class_a"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:1448c3678ff5c230",
+          "public_key": "MCowBQYDK2VwAyEA_3eAPxjkNKnCdEvUU6cNhfIjgZDtQprp0QViGVPg1dk",
+          "evidence_digest": "sha256:efd482392dc22a62296024a38f9f50aef2502276b829c33fc1ff44807a181f92",
+          "signature_b64u": "YMdSRP6MxreZkpo5NkGMzUBV-w4IeX9ISMI09T6G7qpp7qkgB9eyN1IG69PMIkdYbXF4IXHUP1jCBwcyGnEjDQ"
+        }
+      }
+    ],
+    "expired_domain_screening": [
+      {
+        "evidence_type": "model_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:model_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "provider": "example-frontier-model-provider",
+          "model_id": "defensive-science-model-1",
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c28ac4cea9411205",
+          "public_key": "MCowBQYDK2VwAyEAGuWr36KRLKqyjoMSsWOEFKABECUnUXpBrDN9V_IC7MY",
+          "evidence_digest": "sha256:5cb4abfc280ca7b91e8aa226d59f90557b028c09e2842ca453c575c1a6af5891",
+          "signature_b64u": "jKFcePDKYI6xqBEwWDw1dkusVipdmqSpt_SDBVH3VDFZvu-zce7LJtvuKjA3hGJDDq5JIkGLC_vyZg6Xicq3Ag"
+        }
+      },
+      {
+        "evidence_type": "safety_case_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:safety_case_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd",
+          "safety_case_digest": "sha256:1d7a47f57cadb8124174e5a5752321318600391cceca6f75b3592c973e9f3ca5",
+          "assessment": "acceptable"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:28be81ec2824f104",
+          "public_key": "MCowBQYDK2VwAyEA4AGndyqYBY6K_1pfLq9kh_mj2sE3-bzGpbuIREgnFvE",
+          "evidence_digest": "sha256:bfd7ecfacf24af5e1ed37279cfa3c155a1e2d687018f31e8b3bddd27c67f59d8",
+          "signature_b64u": "TaCGRa8-z_SLHbWRnNcZGHKEzlAOICXoadEifbbgf_jSBDnaJuu9c_YfFe7zj-Fsy8bC4_gbbEmgplwtjJLOBg"
+        }
+      },
+      {
+        "evidence_type": "institutional_authority",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:institutional_authority",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "organization_id": "org:example-research-institute",
+          "principal_id": "researcher:alice",
+          "action_type": "science.bio.experiment.execute.1",
+          "purpose_code": "defensive-research",
+          "decision": "allow"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c9dc84805b4ba0a1",
+          "public_key": "MCowBQYDK2VwAyEAZAxDTJEkOC7n0ix4T-dFaxX0MGwMG_WMIC5KB3EYH_M",
+          "evidence_digest": "sha256:334b68e11abc134dbc716302287a1e67eb8423d9f1a021ea0d58e41e4b7dac37",
+          "signature_b64u": "Hc0OdrWBU_TLAtL7ZiyNcHyaHst4Pe-ZGSRtiNkClogx0pQe00Pb4lxTDJk0CzJug9bSbN7I9RlaCiFff_cgDQ"
+        }
+      },
+      {
+        "evidence_type": "biosafety_review",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:biosafety_review",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "protocol_digest": "sha256:2758cf7ea0145d927e17227c9a870deabcff695bcac492b8f134aa66b1dc6b18",
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "facility_id": "facility:demo-01",
+          "decision": "approve"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:22d51f2b2fc1f0cc",
+          "public_key": "MCowBQYDK2VwAyEALfujYpN6E0ntsyF1V_UV9RITgg31D7KW-hhaNHWEkXw",
+          "evidence_digest": "sha256:236bab7e4d106eb1f2ed820b02c901a367e88b20de39d0908ea3cec492c2f81f",
+          "signature_b64u": "V6Ws3yrUueAw8mrPbG6LdNt6_yhpGPmAE3sIC2CXDdUUB2DaT7ZTfK7AICOddcLbSQbPa6CtYFtUDxDzVrSkAg"
+        }
+      },
+      {
+        "evidence_type": "domain_screening",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:domain_screening",
+        "issued_at": "2026-07-19T11:40:00Z",
+        "expires_at": "2026-07-19T11:50:00Z",
+        "claims": {
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "destination_digest": "sha256:4b833903a599c0ec577a504da8f316fe8bc770ddfa62fd134f866509018a2597",
+          "screening_profile_digest": "sha256:fc9d3fe0e9512178817289321d587828b17ff6a76cc974cd0d00ffe2fe82a252",
+          "decision": "pass"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:f4096c956c4b1984",
+          "public_key": "MCowBQYDK2VwAyEAA4ImTgvuN-bTEBchMlNyxu6FBaBfEJ40-tSDqznDYsI",
+          "evidence_digest": "sha256:cea367720bed9ee5082aef947a389b1cf7056ba802c0b565b7f5d2a31dd3345c",
+          "signature_b64u": "mlJBFIcGNaQne7oOdbVSGpz4EdvVNSHin48i0f2T96w5TjF4WslfENUWiW1cG0BsX1_ujvPgms1su1Xs5OEvDw"
+        }
+      },
+      {
+        "evidence_type": "human_authorization",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:human_authorization",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "approver_id": "person:responsible-investigator",
+          "decision": "approve",
+          "assurance_class": "class_a"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:1448c3678ff5c230",
+          "public_key": "MCowBQYDK2VwAyEA_3eAPxjkNKnCdEvUU6cNhfIjgZDtQprp0QViGVPg1dk",
+          "evidence_digest": "sha256:efd482392dc22a62296024a38f9f50aef2502276b829c33fc1ff44807a181f92",
+          "signature_b64u": "YMdSRP6MxreZkpo5NkGMzUBV-w4IeX9ISMI09T6G7qpp7qkgB9eyN1IG69PMIkdYbXF4IXHUP1jCBwcyGnEjDQ"
+        }
+      }
+    ],
+    "denied_biosafety": [
+      {
+        "evidence_type": "model_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:model_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "provider": "example-frontier-model-provider",
+          "model_id": "defensive-science-model-1",
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c28ac4cea9411205",
+          "public_key": "MCowBQYDK2VwAyEAGuWr36KRLKqyjoMSsWOEFKABECUnUXpBrDN9V_IC7MY",
+          "evidence_digest": "sha256:5cb4abfc280ca7b91e8aa226d59f90557b028c09e2842ca453c575c1a6af5891",
+          "signature_b64u": "jKFcePDKYI6xqBEwWDw1dkusVipdmqSpt_SDBVH3VDFZvu-zce7LJtvuKjA3hGJDDq5JIkGLC_vyZg6Xicq3Ag"
+        }
+      },
+      {
+        "evidence_type": "safety_case_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:safety_case_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd",
+          "safety_case_digest": "sha256:1d7a47f57cadb8124174e5a5752321318600391cceca6f75b3592c973e9f3ca5",
+          "assessment": "acceptable"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:28be81ec2824f104",
+          "public_key": "MCowBQYDK2VwAyEA4AGndyqYBY6K_1pfLq9kh_mj2sE3-bzGpbuIREgnFvE",
+          "evidence_digest": "sha256:bfd7ecfacf24af5e1ed37279cfa3c155a1e2d687018f31e8b3bddd27c67f59d8",
+          "signature_b64u": "TaCGRa8-z_SLHbWRnNcZGHKEzlAOICXoadEifbbgf_jSBDnaJuu9c_YfFe7zj-Fsy8bC4_gbbEmgplwtjJLOBg"
+        }
+      },
+      {
+        "evidence_type": "institutional_authority",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:institutional_authority",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "organization_id": "org:example-research-institute",
+          "principal_id": "researcher:alice",
+          "action_type": "science.bio.experiment.execute.1",
+          "purpose_code": "defensive-research",
+          "decision": "allow"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c9dc84805b4ba0a1",
+          "public_key": "MCowBQYDK2VwAyEAZAxDTJEkOC7n0ix4T-dFaxX0MGwMG_WMIC5KB3EYH_M",
+          "evidence_digest": "sha256:334b68e11abc134dbc716302287a1e67eb8423d9f1a021ea0d58e41e4b7dac37",
+          "signature_b64u": "Hc0OdrWBU_TLAtL7ZiyNcHyaHst4Pe-ZGSRtiNkClogx0pQe00Pb4lxTDJk0CzJug9bSbN7I9RlaCiFff_cgDQ"
+        }
+      },
+      {
+        "evidence_type": "biosafety_review",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:biosafety_review",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "protocol_digest": "sha256:2758cf7ea0145d927e17227c9a870deabcff695bcac492b8f134aa66b1dc6b18",
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "facility_id": "facility:demo-01",
+          "decision": "deny"
+        },
+        "outcome": "deny",
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:22d51f2b2fc1f0cc",
+          "public_key": "MCowBQYDK2VwAyEALfujYpN6E0ntsyF1V_UV9RITgg31D7KW-hhaNHWEkXw",
+          "evidence_digest": "sha256:56510b355fc273474df91694943dbb046949555bfe48f2e5fce32bb321d572a2",
+          "signature_b64u": "Y-i4Af7w83KN7SBu4EFzFx_mnD8mALEpqD7H14-922sf20L93PvTThDYYmAcIM4EF9ZEeUGGjsacNfwQR6SBAw"
+        }
+      },
+      {
+        "evidence_type": "domain_screening",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:domain_screening",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "destination_digest": "sha256:4b833903a599c0ec577a504da8f316fe8bc770ddfa62fd134f866509018a2597",
+          "screening_profile_digest": "sha256:fc9d3fe0e9512178817289321d587828b17ff6a76cc974cd0d00ffe2fe82a252",
+          "decision": "pass"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:f4096c956c4b1984",
+          "public_key": "MCowBQYDK2VwAyEAA4ImTgvuN-bTEBchMlNyxu6FBaBfEJ40-tSDqznDYsI",
+          "evidence_digest": "sha256:0ad011c86d6fabf4af7c4e58edf4f74b057b0c43c8e2f4ee23e5c52dec017444",
+          "signature_b64u": "JbFkxo1DKbF1cKKtnt86Ah1mw5xvdJfvRi6LhnT61XJvnLVAFuODolvA-2-F5sHEa1r-BYJDa0iMJ29cbUBUDw"
+        }
+      },
+      {
+        "evidence_type": "human_authorization",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:human_authorization",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "approver_id": "person:responsible-investigator",
+          "decision": "approve",
+          "assurance_class": "class_a"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:1448c3678ff5c230",
+          "public_key": "MCowBQYDK2VwAyEA_3eAPxjkNKnCdEvUU6cNhfIjgZDtQprp0QViGVPg1dk",
+          "evidence_digest": "sha256:efd482392dc22a62296024a38f9f50aef2502276b829c33fc1ff44807a181f92",
+          "signature_b64u": "YMdSRP6MxreZkpo5NkGMzUBV-w4IeX9ISMI09T6G7qpp7qkgB9eyN1IG69PMIkdYbXF4IXHUP1jCBwcyGnEjDQ"
+        }
+      }
+    ],
+    "weak_human": [
+      {
+        "evidence_type": "model_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:model_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "provider": "example-frontier-model-provider",
+          "model_id": "defensive-science-model-1",
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c28ac4cea9411205",
+          "public_key": "MCowBQYDK2VwAyEAGuWr36KRLKqyjoMSsWOEFKABECUnUXpBrDN9V_IC7MY",
+          "evidence_digest": "sha256:5cb4abfc280ca7b91e8aa226d59f90557b028c09e2842ca453c575c1a6af5891",
+          "signature_b64u": "jKFcePDKYI6xqBEwWDw1dkusVipdmqSpt_SDBVH3VDFZvu-zce7LJtvuKjA3hGJDDq5JIkGLC_vyZg6Xicq3Ag"
+        }
+      },
+      {
+        "evidence_type": "safety_case_attestation",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:safety_case_attestation",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "manifest_digest": "sha256:af862f7b1abfc56b313380b8680192247d54e5d8109d76babe1338f416c2e413",
+          "harness_digest": "sha256:966b0980ed9b494d17a5c02d1eb8ce5b7bbfbd86a486f9bd2ffb0afe3a5403ef",
+          "safeguards_digest": "sha256:f5abcdedd0afab52894d87910f3b8ab22ce201fdea5cb70a99205c61f24463fd",
+          "safety_case_digest": "sha256:1d7a47f57cadb8124174e5a5752321318600391cceca6f75b3592c973e9f3ca5",
+          "assessment": "acceptable"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:28be81ec2824f104",
+          "public_key": "MCowBQYDK2VwAyEA4AGndyqYBY6K_1pfLq9kh_mj2sE3-bzGpbuIREgnFvE",
+          "evidence_digest": "sha256:bfd7ecfacf24af5e1ed37279cfa3c155a1e2d687018f31e8b3bddd27c67f59d8",
+          "signature_b64u": "TaCGRa8-z_SLHbWRnNcZGHKEzlAOICXoadEifbbgf_jSBDnaJuu9c_YfFe7zj-Fsy8bC4_gbbEmgplwtjJLOBg"
+        }
+      },
+      {
+        "evidence_type": "institutional_authority",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:institutional_authority",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "organization_id": "org:example-research-institute",
+          "principal_id": "researcher:alice",
+          "action_type": "science.bio.experiment.execute.1",
+          "purpose_code": "defensive-research",
+          "decision": "allow"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:c9dc84805b4ba0a1",
+          "public_key": "MCowBQYDK2VwAyEAZAxDTJEkOC7n0ix4T-dFaxX0MGwMG_WMIC5KB3EYH_M",
+          "evidence_digest": "sha256:334b68e11abc134dbc716302287a1e67eb8423d9f1a021ea0d58e41e4b7dac37",
+          "signature_b64u": "Hc0OdrWBU_TLAtL7ZiyNcHyaHst4Pe-ZGSRtiNkClogx0pQe00Pb4lxTDJk0CzJug9bSbN7I9RlaCiFff_cgDQ"
+        }
+      },
+      {
+        "evidence_type": "biosafety_review",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:biosafety_review",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "protocol_digest": "sha256:2758cf7ea0145d927e17227c9a870deabcff695bcac492b8f134aa66b1dc6b18",
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "facility_id": "facility:demo-01",
+          "decision": "approve"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:22d51f2b2fc1f0cc",
+          "public_key": "MCowBQYDK2VwAyEALfujYpN6E0ntsyF1V_UV9RITgg31D7KW-hhaNHWEkXw",
+          "evidence_digest": "sha256:236bab7e4d106eb1f2ed820b02c901a367e88b20de39d0908ea3cec492c2f81f",
+          "signature_b64u": "V6Ws3yrUueAw8mrPbG6LdNt6_yhpGPmAE3sIC2CXDdUUB2DaT7ZTfK7AICOddcLbSQbPa6CtYFtUDxDzVrSkAg"
+        }
+      },
+      {
+        "evidence_type": "domain_screening",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:domain_screening",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "materials_commitment": "sha256:23d582fed7d04f598e7f46c34b0321640ef06b73b07dc45496cf40c5242c4bba",
+          "destination_digest": "sha256:4b833903a599c0ec577a504da8f316fe8bc770ddfa62fd134f866509018a2597",
+          "screening_profile_digest": "sha256:fc9d3fe0e9512178817289321d587828b17ff6a76cc974cd0d00ffe2fe82a252",
+          "decision": "pass"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:f4096c956c4b1984",
+          "public_key": "MCowBQYDK2VwAyEAA4ImTgvuN-bTEBchMlNyxu6FBaBfEJ40-tSDqznDYsI",
+          "evidence_digest": "sha256:0ad011c86d6fabf4af7c4e58edf4f74b057b0c43c8e2f4ee23e5c52dec017444",
+          "signature_b64u": "JbFkxo1DKbF1cKKtnt86Ah1mw5xvdJfvRi6LhnT61XJvnLVAFuODolvA-2-F5sHEa1r-BYJDa0iMJ29cbUBUDw"
+        }
+      },
+      {
+        "evidence_type": "human_authorization",
+        "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+        "issuer_id": "issuer:human_authorization",
+        "issued_at": "2026-07-19T11:59:00Z",
+        "expires_at": "2026-07-19T12:10:00Z",
+        "claims": {
+          "approver_id": "person:responsible-investigator",
+          "decision": "approve",
+          "assurance_class": "software"
+        },
+        "@version": "EP-MODEL-TO-MATTER-EVIDENCE-v1",
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:m2m:key:sha256:1448c3678ff5c230",
+          "public_key": "MCowBQYDK2VwAyEA_3eAPxjkNKnCdEvUU6cNhfIjgZDtQprp0QViGVPg1dk",
+          "evidence_digest": "sha256:a667bfbd286d862c9a9bae3784b2287c51fe3740b0891eeb0980245b654fb6b1",
+          "signature_b64u": "bwC7IINosrsGvRZ-KVyjXOa0JhivCJBiegq9Da2tKnphjheyelC-xPfyBPsCDpkutPcZ1n8bW4iECP-o7ay5Bg"
+        }
+      }
+    ]
+  },
+  "effect_fixture": {
+    "effect": {
+      "@version": "EP-MODEL-TO-MATTER-EFFECT-v1",
+      "action_digest": "sha256:01dcd0062b6e984145f503ba9c9f5839ec600ad39c1c82e8acce63a32d3e1f36",
+      "action_caid": "caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY",
+      "clearance_replay_digest": "sha256:8421965cc6343898284a6aa0407ed59f78fff53b1bcce44770dfcf9a73ce1424",
+      "executor_id": "cloud-lab:example",
+      "executed_at": "2026-07-19T12:01:00Z",
+      "status": "completed",
+      "observed_effect_digest": "sha256:e910a1cbeefc1aaa9be695d80c6aaf0b706f64eef0dfc92771e02779e36aca39",
+      "signature": {
+        "algorithm": "Ed25519",
+        "key_id": "ep:m2m:key:sha256:86dc9f964b3b30a7",
+        "public_key": "MCowBQYDK2VwAyEAIb5wP2pXEh516JgaItYOUNMN-zJecG2qcW27NEBrOF0",
+        "effect_digest": "sha256:66b4ba74bac124598ce08e550c5c43ddf8020439eed41d54ca27e6718842ae11",
+        "signature_b64u": "-T72um5McIgzqM4ItCeJ6OaUzkkVfGRqukgzQna5rTdIf6XkHsZJsa3VN0mf3XTStaEAIhfPd3vWzcx2GynRDw"
+      }
+    },
+    "expected_clearance_replay_digest": "sha256:8421965cc6343898284a6aa0407ed59f78fff53b1bcce44770dfcf9a73ce1424",
+    "executor_pin": {
+      "executor_id": "cloud-lab:example",
+      "public_key": "MCowBQYDK2VwAyEAIb5wP2pXEh516JgaItYOUNMN-zJecG2qcW27NEBrOF0"
+    }
+  },
+  "vectors": [
+    {
+      "id": "accept_registered_caid",
+      "kind": "caid",
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "id": "refuse_caid_action_substitution",
+      "kind": "caid",
+      "action_overrides": {
+        "destination_digest": "sha256:c593a8cb60d93cbf368a59360b66420a0e8d035f1b2dcc5de98201c765cf675a"
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "accept_complete_evidence",
+      "kind": "presentation",
+      "evidence_set": "valid",
+      "expect": {
+        "verdict": "clear_to_execute"
+      }
+    },
+    {
+      "id": "refuse_missing_domain_screening",
+      "kind": "presentation",
+      "evidence_set": "missing_domain_screening",
+      "expect": {
+        "verdict": "do_not_execute_missing_evidence"
+      }
+    },
+    {
+      "id": "refuse_unpinned_domain_screening",
+      "kind": "presentation",
+      "evidence_set": "unpinned_domain_screening",
+      "expect": {
+        "verdict": "do_not_execute_unverifiable"
+      }
+    },
+    {
+      "id": "refuse_expired_domain_screening",
+      "kind": "presentation",
+      "evidence_set": "expired_domain_screening",
+      "expect": {
+        "verdict": "do_not_execute_unverifiable"
+      }
+    },
+    {
+      "id": "refuse_revoked_human_authorization",
+      "kind": "presentation",
+      "evidence_set": "valid",
+      "revoked_evidence_digests": [
+        "sha256:efd482392dc22a62296024a38f9f50aef2502276b829c33fc1ff44807a181f92"
+      ],
+      "expect": {
+        "verdict": "do_not_execute_stale_evidence"
+      }
+    },
+    {
+      "id": "refuse_denied_biosafety_review",
+      "kind": "presentation",
+      "evidence_set": "denied_biosafety",
+      "expect": {
+        "verdict": "do_not_execute_unverifiable"
+      }
+    },
+    {
+      "id": "refuse_weak_human_authorization",
+      "kind": "presentation",
+      "evidence_set": "weak_human",
+      "expect": {
+        "verdict": "do_not_execute_unverifiable"
+      }
+    },
+    {
+      "id": "refuse_action_mutation_after_challenge",
+      "kind": "presentation",
+      "evidence_set": "valid",
+      "action_overrides": {
+        "destination_digest": "sha256:fa873cefb57a628fc240074e42e0a040c78849e03f3b61d9d4d970c2c1b4e28b"
+      },
+      "expect": {
+        "verdict": "do_not_execute_action_mismatch"
+      }
+    },
+    {
+      "id": "refuse_indeterminate_clearance_storage",
+      "kind": "presentation",
+      "evidence_set": "valid",
+      "clearance_store": "throw",
+      "expect": {
+        "verdict": "do_not_execute_refused",
+        "reconciliation_required": true
+      }
+    },
+    {
+      "id": "refuse_same_challenge_replay",
+      "kind": "same_challenge_replay",
+      "evidence_set": "valid",
+      "expect": {
+        "verdicts": [
+          "clear_to_execute",
+          "do_not_execute_refused"
+        ]
+      }
+    },
+    {
+      "id": "admit_at_most_one_of_two_challenges",
+      "kind": "two_challenge_race",
+      "evidence_set": "valid",
+      "expect": {
+        "verdicts": [
+          "clear_to_execute",
+          "do_not_execute_refused"
+        ]
+      }
+    },
+    {
+      "id": "accept_pinned_executor_effect",
+      "kind": "effect",
+      "expect": {
+        "accepted": true
+      }
+    },
+    {
+      "id": "refuse_tampered_executor_effect",
+      "kind": "effect",
+      "tamper": {
+        "status": "failed"
+      },
+      "expect": {
+        "accepted": false
+      }
+    }
+  ]
+}

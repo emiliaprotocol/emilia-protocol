@@ -13,6 +13,7 @@ import {
   createRegisteredModelToMatterChallenge,
   evaluateRegisteredModelToMatterPresentation,
   modelToMatterActionDigest,
+  modelToMatterCaid,
   signModelToMatterEffect,
   signModelToMatterEvidence,
   verifyModelToMatterEffect,
@@ -63,7 +64,7 @@ function rawSigned(body, privateKey, domain, digestField) {
 }
 
 const ACTION_INPUT = {
-  action_type: 'science.bio.experiment.execute',
+  action_type: 'science.bio.experiment.execute.1',
   model: {
     provider: 'example-frontier-lab',
     model_id: 'frontier-bio-model-2026-07',
@@ -206,6 +207,7 @@ function validClearance(a) {
     '@version': M2M_CLEARANCE_VERSION,
     verdict: 'clear_to_execute',
     action_digest: modelToMatterActionDigest(a),
+    action_caid: modelToMatterCaid(a).caid,
     replay_digest: digest('clearance-replay'),
   };
 }
@@ -214,6 +216,7 @@ function effectBody(a, overrides = {}) {
   return {
     '@version': M2M_EFFECT_VERSION,
     action_digest: modelToMatterActionDigest(a),
+    action_caid: modelToMatterCaid(a).caid,
     clearance_replay_digest: digest('clearance-replay'),
     executor_id: a.executor.executor_id,
     executed_at: '2026-07-11T16:01:00Z',
@@ -538,8 +541,20 @@ describe('Model-to-Matter defensive branch contract', () => {
     expect(() => signModelToMatterEffect(null, executorKey)).toThrow(/object/i);
     expect(() => signModelToMatterEffect({
       ...base,
+      clearance: { ...clearance, '@version': 'EP-MODEL-TO-MATTER-CLEARANCE-v0' },
+    }, executorKey)).toThrow(/clear_to_execute/i);
+    expect(() => signModelToMatterEffect({
+      ...base,
+      clearance: { ...clearance, verdict: 'do_not_execute_refused' },
+    }, executorKey)).toThrow(/clear_to_execute/i);
+    expect(() => signModelToMatterEffect({
+      ...base,
       clearance: { ...clearance, action_digest: digest('different-action') },
     }, executorKey)).toThrow(/different action/i);
+    expect(() => signModelToMatterEffect({
+      ...base,
+      clearance: { ...clearance, action_caid: modelToMatterCaid(action({ destination_digest: digest('other') })).caid },
+    }, executorKey)).toThrow(/different CAID/i);
     expect(() => signModelToMatterEffect({ ...base, executor_id: 'cloud-lab:other' }, executorKey))
       .toThrow(/executor_id/i);
     expect(() => signModelToMatterEffect({ ...base, executed_at: null }, executorKey))
@@ -564,7 +579,11 @@ describe('Model-to-Matter defensive branch contract', () => {
       observed_effect_digest: digest('observed-effect'),
     }, executorKey);
 
-    expect(verifyModelToMatterEffect(null, effectOptions(a)).reason).toBe('unsupported_version');
+    expect(verifyModelToMatterEffect(null, effectOptions(a))).toMatchObject({
+      verified: false,
+      accepted: false,
+      reason: 'unsupported_version',
+    });
     expect(verifyModelToMatterEffect({ ...effect, signature: undefined }, effectOptions(a)).reason)
       .toBe('signature_missing_or_malformed');
     expect(verifyModelToMatterEffect(effect, effectOptions(a, { expectedAction: null })).reason)
@@ -579,6 +598,26 @@ describe('Model-to-Matter defensive branch contract', () => {
     expect(verifyModelToMatterEffect(effect, effectOptions(otherAction)).reason)
       .toBe('action_binding_mismatch');
 
+    const wrongCaid = rawSigned(effectBody(a, {
+      action_caid: modelToMatterCaid(otherAction).caid,
+    }), executorKey, `${M2M_EFFECT_VERSION}\0`, 'effect_digest');
+    expect(verifyModelToMatterEffect(wrongCaid, effectOptions(a)).reason)
+      .toBe('caid_binding_mismatch');
+
+    const invalidCaidType = rawSigned(effectBody(a, { action_caid: null }), executorKey,
+      `${M2M_EFFECT_VERSION}\0`, 'effect_digest');
+    expect(verifyModelToMatterEffect(invalidCaidType, effectOptions(a)).reason)
+      .toBe('effect_body_invalid');
+
+    const wrongVersion = rawSigned(effectBody(a, {
+      '@version': 'EP-MODEL-TO-MATTER-EFFECT-v0',
+    }), executorKey, `${M2M_EFFECT_VERSION}\0`, 'effect_digest');
+    expect(verifyModelToMatterEffect(wrongVersion, effectOptions(a))).toMatchObject({
+      verified: false,
+      accepted: false,
+      reason: 'unsupported_version',
+    });
+
     const wrongExecutor = rawSigned(effectBody(a, { executor_id: 'cloud-lab:other' }), executorKey,
       `${M2M_EFFECT_VERSION}\0`, 'effect_digest');
     expect(verifyModelToMatterEffect(wrongExecutor, effectOptions(a)).reason).toBe('executor_mismatch');
@@ -590,5 +629,15 @@ describe('Model-to-Matter defensive branch contract', () => {
     const malformedBody = rawSigned(effectBody(a, { status: 'unknown' }), executorKey,
       `${M2M_EFFECT_VERSION}\0`, 'effect_digest');
     expect(verifyModelToMatterEffect(malformedBody, effectOptions(a)).reason).toBe('effect_body_invalid');
+
+    const exactTime = rawSigned(effectBody(a, { executed_at: a.requested_at }), executorKey,
+      `${M2M_EFFECT_VERSION}\0`, 'effect_digest');
+    expect(verifyModelToMatterEffect(exactTime, effectOptions(a)).accepted).toBe(true);
+
+    const otherExecutorKey = crypto.generateKeyPairSync('ed25519').privateKey;
+    const sameExecutorWrongKey = rawSigned(effectBody(a), otherExecutorKey,
+      `${M2M_EFFECT_VERSION}\0`, 'effect_digest');
+    expect(verifyModelToMatterEffect(sameExecutorWrongKey, effectOptions(a)).reason)
+      .toBe('executor_key_not_pinned');
   });
 });

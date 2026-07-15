@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d",
+  "evidence_bundle_sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45",
   "claim_count": 18,
-  "evidence_file_count": 86,
+  "evidence_file_count": 88,
   "execution": {
     "required": true,
     "status": "passed",
@@ -79,10 +79,13 @@
       },
       {
         "runner": "cross-language",
-        "suite": "conformance/vectors/revocation.exec.v1.json",
+        "suite": "conformance/vectors/revocation.exec.v2.json",
         "cases": [
+          "accept_old_terminal_revocation",
           "accept_pinned_exact_binding",
-          "reject_stale_freshness"
+          "reject_algorithm_label_mismatch",
+          "reject_future_effective_instant",
+          "reject_malformed_target_shape"
         ],
         "languages": [
           "javascript",
@@ -184,7 +187,10 @@
         "file": "packages/verify/revocation.test.js",
         "titles": [
           "accepts an authentic, pinned, exactly-bound revocation",
-          "rejects a stale statement under a freshness window"
+          "an old terminal revocation remains valid despite a legacy max-age option",
+          "rejects a mismatched signature algorithm label",
+          "rejects a revocation whose effective instant is still in the future",
+          "rejects malformed targets even when both sides normalize to emptiness"
         ],
         "result": "passed"
       },
@@ -259,11 +265,12 @@
         "titles": [
           "admits at most one clearance across distinct challenges for the same action",
           "fails before challenge consumption when explicit revocation state is absent",
-          "pins all trust configuration and runs one frozen action exactly once",
+          "pins all trust configuration and invokes the effect adapter only after one successful clearance",
           "refuses every transaction-scoped trust field before challenge consumption",
           "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps",
           "requires explicit durable custody in production mode",
-          "snapshots the action, profile, and graph before awaiting durable consumption"
+          "snapshots the action, profile, and graph before awaiting durable consumption",
+          "uses one registered CAID over the exact bytes every evidence leg binds"
         ],
         "result": "passed"
       },
@@ -376,21 +383,21 @@
       "package": "@emilia-protocol/gate",
       "version": "0.9.4",
       "filename": "emilia-protocol-gate-0.9.4.tgz",
-      "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac",
+      "sha256": "787b5d83e1283a7fb07e888bb7e8821c3c50353d9d35de0b42500b5876d4dbbd",
       "file_count": 62
     },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d",
-      "file_count": 86
+      "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45",
+      "file_count": 88
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.8.1",
       "filename": "emilia-protocol-verify-3.8.1.tgz",
-      "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864",
+      "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39",
       "file_count": 29
     }
   },
@@ -542,11 +549,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -805,11 +812,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -913,11 +920,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -1035,11 +1042,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -1183,7 +1190,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -1325,19 +1332,20 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
     {
-      "claim_id": "revocation-is-pinned-and-fresh",
-      "statement": "Revocation state is accepted only under a pinned revoker key, for the exact target, and within the relying party's freshness window.",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "statement": "A terminal revocation is accepted only under a pinned revoker key, for the exact well-formed target, with a valid effective instant at or before the evaluation time; once effective, it does not age out. Fresh evidence that a target is currently not revoked is a separate status input.",
       "acceptance_roots": [
-        "revocation authority key and maximum staleness pinned by the relying party"
+        "revocation authority key pinned by the relying party",
+        "trusted evaluation time for future-effective revocations"
       ],
       "enforcement_path": [
         {
@@ -1367,20 +1375,20 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "conformance/vectors/revocation.exec.v1.json"
+          "evidence": "conformance/vectors/revocation.exec.v2.json"
         },
         "python": {
           "status": "covered",
-          "evidence": "conformance/vectors/revocation.exec.v1.json"
+          "evidence": "conformance/vectors/revocation.exec.v2.json"
         },
         "go": {
           "status": "covered",
-          "evidence": "conformance/vectors/revocation.exec.v1.json"
+          "evidence": "conformance/vectors/revocation.exec.v2.json"
         }
       },
       "vectors": [
         {
-          "suite": "conformance/vectors/revocation.exec.v1.json",
+          "suite": "conformance/vectors/revocation.exec.v2.json",
           "case_id": "accept_pinned_exact_binding",
           "polarity": "positive",
           "expect": {
@@ -1391,8 +1399,41 @@
           }
         },
         {
-          "suite": "conformance/vectors/revocation.exec.v1.json",
-          "case_id": "reject_stale_freshness",
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "accept_old_terminal_revocation",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "reject_future_effective_instant",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "reject_malformed_target_shape",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "reject_algorithm_label_mismatch",
           "polarity": "negative",
           "expect": {
             "valid": false
@@ -1410,7 +1451,22 @@
         },
         {
           "file": "packages/verify/revocation.test.js",
-          "title": "rejects a stale statement under a freshness window",
+          "title": "an old terminal revocation remains valid despite a legacy max-age option",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/revocation.test.js",
+          "title": "rejects a revocation whose effective instant is still in the future",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/revocation.test.js",
+          "title": "rejects malformed targets even when both sides normalize to emptiness",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/revocation.test.js",
+          "title": "rejects a mismatched signature algorithm label",
           "runner": "node-test"
         }
       ],
@@ -1422,10 +1478,11 @@
       ],
       "assumptions": [
         "the revoker key pin is current",
-        "the verifier's trusted clock is within the relying party's tolerance"
+        "the verifier's trusted clock is within the relying party's tolerance when evaluating a future-effective revocation"
       ],
       "exclusions": [
-        "withheld revocation publications require external transparency or availability controls"
+        "withheld revocation publications require external transparency or availability controls",
+        "current non-revocation requires a separately authenticated and freshness-bounded status source"
       ],
       "release_artifacts": [
         "verify-sdk",
@@ -1434,11 +1491,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -1543,11 +1600,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -1675,11 +1732,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
+          "sha256": "787b5d83e1283a7fb07e888bb7e8821c3c50353d9d35de0b42500b5876d4dbbd"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -1782,11 +1839,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
+          "sha256": "787b5d83e1283a7fb07e888bb7e8821c3c50353d9d35de0b42500b5876d4dbbd"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -1906,11 +1963,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
+          "sha256": "787b5d83e1283a7fb07e888bb7e8821c3c50353d9d35de0b42500b5876d4dbbd"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -2080,11 +2137,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
+          "sha256": "787b5d83e1283a7fb07e888bb7e8821c3c50353d9d35de0b42500b5876d4dbbd"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -2218,7 +2275,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -2330,11 +2387,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+          "sha256": "bebf91e0e30dfa33157460fe0dbb8e40215b02a07ced5e1ddd23ca52383f1a39"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -2468,7 +2525,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
@@ -2720,23 +2777,30 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
     {
       "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
-      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact digest-only action, satisfy freshness and the pinned revocation provider, and survive durable challenge and action consumption. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact closed action, satisfy freshness and the pinned revocation provider, and survive durable challenge and CAID-keyed action consumption. The executor recomputes the registered CAID over the same bytes as the legacy action digest, emits both identifiers in the clearance, and binds both into its signed effect statement. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
       "acceptance_roots": [
         "the executor provisions the authentic Model-to-Matter profile and issuer keys",
         "the executor pins a revocation provider that supplies an explicit current view",
-        "the challenge backend provides atomic registration and compare-and-set consumption"
+        "the challenge backend provides atomic registration and compare-and-set consumption",
+        "the action-clearance backend is shared, atomic, ownership-fenced, and non-expiring"
       ],
       "enforcement_path": [
         {
           "language": "javascript",
           "file": "lib/frontier/model-to-matter.js",
           "symbol": "createModelToMatterProfile",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "modelToMatterCaid",
           "exported": true
         },
         {
@@ -2769,6 +2833,11 @@
           "language": "javascript",
           "file": "lib/frontier/model-to-matter.js",
           "export": "createModelToMatterExecutor"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "export": "modelToMatterCaid"
         },
         {
           "language": "javascript",
@@ -2816,6 +2885,11 @@
         },
         {
           "file": "tests/model-to-matter.test.js",
+          "title": "uses one registered CAID over the exact bytes every evidence leg binds",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
           "title": "snapshots the action, profile, and graph before awaiting durable consumption",
           "runner": "vitest"
         },
@@ -2831,7 +2905,7 @@
         },
         {
           "file": "tests/model-to-matter.test.js",
-          "title": "pins all trust configuration and runs one frozen action exactly once",
+          "title": "pins all trust configuration and invokes the effect adapter only after one successful clearance",
           "runner": "vitest"
         },
         {
@@ -2843,6 +2917,29 @@
           "file": "tests/model-to-matter.test.js",
           "title": "requires explicit durable custody in production mode",
           "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "conformance/vectors/model-to-matter.v1.json",
+          "contains": [
+            "accept_registered_caid",
+            "refuse_caid_action_substitution",
+            "accept_complete_evidence",
+            "refuse_action_mutation_after_challenge",
+            "refuse_indeterminate_clearance_storage",
+            "admit_at_most_one_of_two_challenges",
+            "refuse_tampered_executor_effect"
+          ]
+        },
+        {
+          "file": "conformance/run-model-to-matter.mjs",
+          "contains": [
+            "evaluateRegisteredModelToMatterPresentation",
+            "verifyModelToMatterCaid",
+            "verifyModelToMatterEffect",
+            "EP-MODEL-TO-MATTER-v1"
+          ]
         }
       ],
       "formal": [
@@ -2871,13 +2968,13 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     },
     {
       "claim_id": "aec-role-substitution-refused",
-      "statement": "EP-AEC returns allow only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
+      "statement": "EP-AEC returns satisfied=true (and an equivalent legacy allow alias) only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
       "acceptance_roots": [
         "relying-party requirement and executor-computed expected action digest",
         "Class-A approver directory, RP ID, allowed WebAuthn origins, policy hash, log key, freshness time, and max age for ep-receipt",
@@ -3155,7 +3252,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+          "sha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
         }
       ]
     }
@@ -3214,6 +3311,10 @@
       "sha256": "de0a55ffa8c56fb2fb54ab8319f5d14af86bd224ca237b079dcb9ab132037cf0"
     },
     {
+      "path": "conformance/run-model-to-matter.mjs",
+      "sha256": "457548930a77ffa0915ae4e3a4ee8de1dd3bb71445c5716e9aaeefa6cb7ae5ea"
+    },
+    {
       "path": "conformance/runners/strict-json.mjs",
       "sha256": "5b2e52e7fc84e81fe5e37228b2ba5e078c8ee1a3754b00d453f07781035ab040"
     },
@@ -3224,6 +3325,10 @@
     {
       "path": "conformance/vectors/authority.v1.json",
       "sha256": "6d5b49bb698e08346e93484a85c82502a84ad1c49d8d68ab7491fa9c4530a983"
+    },
+    {
+      "path": "conformance/vectors/model-to-matter.v1.json",
+      "sha256": "92a19544dff130da7b91507f7b86f521cb40230e58fc208c06d5c65b56e093ad"
     },
     {
       "path": "conformance/vectors/quorum.v1.json",
@@ -3238,8 +3343,8 @@
       "sha256": "a91183e2acde1707080b279fab029fc72157bc6d6a15ba744bca185dcfbc4ed0"
     },
     {
-      "path": "conformance/vectors/revocation.exec.v1.json",
-      "sha256": "9e45d2188309302bb74eeb7eeae5d5f90a1ce99cfa7c0a8648182fe21cd3ba4b"
+      "path": "conformance/vectors/revocation.exec.v2.json",
+      "sha256": "c0e6c0a36f5eea378da770c2fbd6f8257b2938aa856c7f93991e582a12bc6c8a"
     },
     {
       "path": "conformance/vectors/timestamp-proof.v1.json",
@@ -3271,7 +3376,7 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "4910755ecd87ae1b11207a81734e4d3ec7e53ba5f771af69f2cb93c7d7c2ad5c"
+      "sha256": "abbc9c55f5cdf96dfc22ffb10010d34f6c27fa8b43f50127f22ecab118fdeb82"
     },
     {
       "path": "lib/guard-signoff.js",
@@ -3295,7 +3400,7 @@
     },
     {
       "path": "packages/gate/aec-execution.js",
-      "sha256": "2726c422d457cca136668acfb4d7e3b2dc8387c1ea2c2ca0f85f995dafc2928f"
+      "sha256": "d96c61b71ebd4809a2feb16af27749d85dc6df5af537b7e0ecaa26d202fd7a14"
     },
     {
       "path": "packages/gate/challenge-store.js",
@@ -3331,7 +3436,7 @@
     },
     {
       "path": "packages/go-verify/evidence_chain.go",
-      "sha256": "2c1416ad111780b6004e5fd91d084ea0f58ab4456022f26623d61b8304f2028d"
+      "sha256": "b6138b3e0e5d7db319f3fcd4bb6fe2c3f8aed542dc573366a3cbd10c7ba68011"
     },
     {
       "path": "packages/go-verify/resolution.go",
@@ -3339,7 +3444,7 @@
     },
     {
       "path": "packages/go-verify/revocation.go",
-      "sha256": "c8380d5c60948a392a79240c54528b9dce789f6b04bc63f9e3ecc6dbb875f9d8"
+      "sha256": "f32a94820160f8f59fb173bdc0406e57052429ff19e230dfd4fe84fbdfbe2a28"
     },
     {
       "path": "packages/go-verify/signoff.go",
@@ -3355,7 +3460,7 @@
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
-      "sha256": "fa987f89679d83b03c0da67ee479bba13d3be5d4b88b50ea41377ad5333b4157"
+      "sha256": "638d095629ecb4d9d9fe0756d62f1e296c9c7e44e038eb4a9d7055370941acdc"
     },
     {
       "path": "packages/verify/authority-proof.js",
@@ -3363,7 +3468,7 @@
     },
     {
       "path": "packages/verify/evidence-chain.js",
-      "sha256": "938f34392dc5af6f73805b94c24520f5a29dffc8fcd3c73e6c451496e69878d0"
+      "sha256": "b55b0061e3dd36046710810a9d9ff4d65de219d3765e2f30745b4fdff1d8cb14"
     },
     {
       "path": "packages/verify/index.js",
@@ -3391,11 +3496,11 @@
     },
     {
       "path": "packages/verify/revocation.js",
-      "sha256": "e53ec7458c085b1a57cdb827b2aec81acd2c1eb00db57e8e0515c470496a3340"
+      "sha256": "7cc22019f4ae8431cd125d9c5a4cb34595643e0271ef76b0aa2afdf99a2fa606"
     },
     {
       "path": "packages/verify/revocation.test.js",
-      "sha256": "2a8a2f1b63239359067e8fad46abf2dbec4b6b5a057554939807e6fee835df9e"
+      "sha256": "e08d30754acf5e701b08dc925565452051a87bc9b3cca8e2bb244a0622d33767"
     },
     {
       "path": "packages/verify/timestamp-proof.js",
@@ -3439,7 +3544,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "346fdc16f4f2ba94d17e787144d1fbade1c6930f0b3a03e48fc71a217a6b8094"
+      "sha256": "63d662b9b6f3acfedb58215fa31109823b485fe323d1182e9e5dc5201611b84d"
     },
     {
       "path": "security/vectors.v1.json",
@@ -3451,7 +3556,7 @@
     },
     {
       "path": "tests/aec-safety-critical.test.js",
-      "sha256": "9afedb2175cc12c85a83456cf44446d86bb77f3e722b6fa9af2781bd0385f6a1"
+      "sha256": "7f29883357aa8b8b1df4765a3fcf7b2634c1601088104f9717176e0b16def534"
     },
     {
       "path": "tests/authority-registry.test.js",
@@ -3463,7 +3568,7 @@
     },
     {
       "path": "tests/model-to-matter.test.js",
-      "sha256": "781bd8f5850475612a975dbd34084da4061f71d291e83ae714084f7a07426936"
+      "sha256": "7d2928f42971bd9533b8af2738124b56e98d1c58ecf56e37d82257c02575eed2"
     },
     {
       "path": "tests/ncpdp-privacy.test.js",

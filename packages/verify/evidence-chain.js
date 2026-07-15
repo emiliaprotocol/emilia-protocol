@@ -16,7 +16,7 @@
  * NONE defines how a relying party verifies that, for ONE action, the several
  * heterogeneous receipts (a) all bind the SAME canonical action and (b) each
  * verify under its own rules — producing a single, offline, fail-closed
- * ALLOW/DENY. In practice people are hand-rolling ad-hoc "composite proofs"
+ * SATISFIED/UNSATISFIED. In practice people are hand-rolling ad-hoc "composite proofs"
  * (see the 2026 arXiv literature). That composition layer is the gap.
  *
  * EP-AEC is that thin layer. It is deliberately NOT another receipt type: it
@@ -311,10 +311,10 @@ function builtinVerifiers() {
 }
 
 /**
- * Evaluate a tiny boolean requirement expression over the SET of component
- * type/label tokens that verified. Grammar (safe, no eval):
- *   expr   := term (('AND'|'OR') term)*       // left-assoc, AND binds like OR here; use parens
- *   term   := '(' expr ')' | IDENT
+ * Evaluate a tiny boolean requirement expression over the SET of verified
+ * component types. Grammar (safe, no eval):
+ *   expr = term *(("AND"/"OR"/"&&"/"||") term)
+ *   term = "(" expr ")" / IDENT
  * IDENT matches a verified component `type`. Labels are display-only.
  */
 function tokenizeRequirement(expr) {
@@ -377,12 +377,12 @@ function evalRequirement(expr, satisfied) {
 
 /**
  * Verify an Authorization Evidence Chain. FAIL-CLOSED: anything missing,
- * malformed, unverifiable, or binding a different action yields allow=false.
+ * malformed, unverifiable, or binding a different action yields satisfied=false.
  *
  * TRUST BOUNDARY — whose requirement is it? The chain document's `requirement`
  * is PRESENTER-supplied: it is the presenter's claim of what the bundle
  * satisfies, and a presenter must never choose its own sufficiency bar. A
- * relying party MUST pin its own bar via `opts.requirement` before `allow` can
+ * relying party MUST pin its own bar via `opts.requirement` before `satisfied` can
  * ever be true. The presenter expression remains self-describing metadata; the
  * result records which source was evaluated
  * (`requirement_source: 'relying_party' | 'presenter'`). Same discipline as
@@ -399,7 +399,7 @@ function evalRequirement(expr, satisfied) {
  * @param {object} opts { verifiers?: {[type]:fn}, keysByType?: object, policiesByType?: object,
  *                        requirement?: string, expectedAction?: object, expectedActionDigest?: string,
  *                        verificationTime?: string }
- * @returns {{allow:boolean, action_digest:string|null, components:Array, reasons:string[], requirement_source:string}}
+ * @returns {{satisfied:boolean, allow:boolean, action_digest:string|null, components:Array, reasons:string[], requirement_source:string}}
  */
 function verifyAuthorizationChainInternal(aec, opts = {}) {
   opts = opts && typeof opts === 'object' ? opts : {};
@@ -408,7 +408,7 @@ function verifyAuthorizationChainInternal(aec, opts = {}) {
   const requirementSource = pinned ? 'relying_party' : 'presenter';
   const fail = (why) => {
     reasons.push(why);
-    return { allow: false, action_digest: null, expected_action_bound: false, components: [], reasons, requirement_source: requirementSource };
+    return { satisfied: false, allow: false, action_digest: null, expected_action_bound: false, components: [], reasons, requirement_source: requirementSource };
   };
 
   if (!isRecord(aec)) return fail('chain is not an object');
@@ -488,16 +488,19 @@ function verifyAuthorizationChainInternal(aec, opts = {}) {
   });
 
   const evaluated = evalRequirement(requirement, satisfied);
-  const allow = requirementSource === 'relying_party' && expectedDigest !== null && evaluated.valid && evaluated.value;
+  const satisfiedResult = requirementSource === 'relying_party' && expectedDigest !== null && evaluated.valid && evaluated.value;
   if (!evaluated.valid) reasons.push('requirement expression is malformed or exceeds parser limits');
   else if (!evaluated.value) reasons.push(`requirement not satisfied: "${requirement}" over {${[...satisfied].join(', ') || '∅'}}`);
-  if (requirementSource !== 'relying_party') reasons.push('presenter requirement is descriptive only; relying-party requirement is required for allow');
-  if (expectedDigest === null) reasons.push('relying-party expected action is required for allow');
+  if (requirementSource !== 'relying_party') reasons.push('presenter requirement is descriptive only; relying-party requirement is required for satisfaction');
+  if (expectedDigest === null) reasons.push('relying-party expected action is required for satisfaction');
   if (pinned && typeof aec.requirement === 'string' && aec.requirement.trim() && aec.requirement !== pinned) {
     reasons.push(`presenter requirement ignored in favor of relying-party requirement (presenter claimed: "${aec.requirement}")`);
   }
   return {
-    allow,
+    satisfied: satisfiedResult,
+    // Compatibility alias. AEC establishes evidence satisfaction; the
+    // enforcement point makes the separate local authorization decision.
+    allow: satisfiedResult,
     action_digest: chainDigest,
     expected_action_bound: expectedDigest === chainDigest,
     components,
@@ -521,6 +524,7 @@ export function verifyAuthorizationChain(aec, opts = {}) {
     return verifyAuthorizationChainInternal(aec, opts);
   } catch {
     return {
+      satisfied: false,
       allow: false,
       action_digest: null,
       expected_action_bound: false,

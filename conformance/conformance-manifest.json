@@ -4,7 +4,7 @@
   "vector_bundle": {
     "version": "EP-LIVE-CONFORMANCE-CATALOG-v1",
     "path": "conformance/suites.mjs",
-    "sha256": "b18451d2cd36e6469b6a656ac79b67bcb0b2f601b55fd42e06027f8207180394"
+    "sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
   },
   "suites": [
     {
@@ -28,13 +28,13 @@
       "vectors": 13
     },
     {
-      "path": "conformance/vectors/revocation.exec.v1.json",
-      "sha256": "9e45d2188309302bb74eeb7eeae5d5f90a1ce99cfa7c0a8648182fe21cd3ba4b",
-      "vectors": 6
+      "path": "conformance/vectors/revocation.exec.v2.json",
+      "sha256": "c0e6c0a36f5eea378da770c2fbd6f8257b2938aa856c7f93991e582a12bc6c8a",
+      "vectors": 12
     },
     {
-      "path": "conformance/vectors/time-attestation.v1.json",
-      "sha256": "15f3c7cd3219fd2c2a5ed1dca90fb79c2c0e750e3f8a5046e59d7a2d481cd4af",
+      "path": "conformance/vectors/time-attestation.v2.json",
+      "sha256": "9c5c8e4b912522f565295b9948586b8416cbf4c691f99f168913a0f18ea4bde5",
       "vectors": 6
     },
     {
@@ -73,9 +73,9 @@
       "vectors": 28
     },
     {
-      "path": "conformance/vectors/currency.v1.json",
-      "sha256": "a6f7d81767cfaf7920b11ab25127b6e8872017eb0b1c69c06a09b3a1e7cf033d",
-      "vectors": 12
+      "path": "conformance/vectors/currency.v2.json",
+      "sha256": "739ef1a2a5665e21e5c9db7b57eef05396c1c5dc0b2e649e9f35307ec52ca668",
+      "vectors": 13
     },
     {
       "path": "conformance/vectors/initiator-attestation.v1.json",
@@ -100,7 +100,7 @@
   ],
   "totals": {
     "suites": 18,
-    "vectors": 225,
+    "vectors": 232,
     "implementations": 3
   },
   "implementations": [
@@ -110,16 +110,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run-js.mjs",
-        "sha256": "4b14ba147aa3b9695efc73da34133927f8774f9dda14846a24e7c4a4da9e80d1"
+        "sha256": "c73c33ef84e9a740144f76474be1c5b576aad193ee2927cc79c078b0929604ef"
       },
       "source": {
         "files": 52,
-        "bytes": 797798,
-        "tree_sha256": "2634c2d819e0a6d0f4bf4ddb0b1bc5f95208c2ad13dc6a963093dd598a91e121"
+        "bytes": 804026,
+        "tree_sha256": "bc8209e16c5328eaab1c90fc599dcc0cbbf7f283b57d3d8835ab776df2b23116"
       },
       "suites": 18,
-      "vectors": 225,
-      "normalized_results_sha256": "48088d652f6a5fe4459d0769ac890e87019fc226615a52f61aeee5909f8159d1",
+      "vectors": 232,
+      "normalized_results_sha256": "2201848495a9095a9f5786bc4cd1d6a88c2734cd91b031c9849066f46283f51f",
       "status": "pass"
     },
     {
@@ -128,16 +128,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run_py.py",
-        "sha256": "5026f6cf6d0bd6fc367fd38ae1fe8833f47ee02c2476fb135cae05e8104fe3e4"
+        "sha256": "f714ece2a07e5c97ecd85fdb149fde501b19ba7575aac460638c35bcc64a120b"
       },
       "source": {
         "files": 1,
-        "bytes": 156723,
-        "tree_sha256": "df84c63f42eb8384f2bbf2aec7f03e22cb646aa8569377ccaa49acefc6128b48"
+        "bytes": 158417,
+        "tree_sha256": "64502cd3ad8b35cc3f5ec0fca7e3c7f57ee8802a92983367c8749fc8b55c4252"
       },
       "suites": 18,
-      "vectors": 225,
-      "normalized_results_sha256": "48088d652f6a5fe4459d0769ac890e87019fc226615a52f61aeee5909f8159d1",
+      "vectors": 232,
+      "normalized_results_sha256": "2201848495a9095a9f5786bc4cd1d6a88c2734cd91b031c9849066f46283f51f",
       "status": "pass"
     },
     {
@@ -146,18 +146,18 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "6334db0e309b8d99cf340f8d603fa8cf615056f4ab65c2678f7f85f18c606979"
+        "sha256": "5e7a7fa2f3fabe35214a3ff0843c0122ed76416956a89b4e23928764003bfcba"
       },
       "source": {
         "files": 31,
-        "bytes": 266635,
-        "tree_sha256": "72f96230b289074d137540937fcab3b3446bdad8a85adc7b59f169d1df6a745f"
+        "bytes": 268733,
+        "tree_sha256": "2e17b81082510abf9b77b1c6d07474e51799dfbb0344cffc6f06dedc6b1f7c60"
       },
       "suites": 18,
-      "vectors": 225,
-      "normalized_results_sha256": "48088d652f6a5fe4459d0769ac890e87019fc226615a52f61aeee5909f8159d1",
+      "vectors": 232,
+      "normalized_results_sha256": "2201848495a9095a9f5786bc4cd1d6a88c2734cd91b031c9849066f46283f51f",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "93cd906c9f6b16f0e7b0e8280fd8adf2fef667e5956c62f568e57c0c1e3e943e"
+  "manifest_sha256": "ac59aefcbd33485bc6a32337329dd766bf258c9ddbacd17f59b50f17fa8dc66e"
 }

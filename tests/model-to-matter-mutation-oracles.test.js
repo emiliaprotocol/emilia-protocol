@@ -2,11 +2,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { __modelToMatterSecurityInternals } from '../lib/frontier/model-to-matter.js';
+import { artifactDigest } from '../lib/evidence/evidence-graph.js';
 
 const digest = (hex) => `sha256:${hex.repeat(64)}`;
 const action = {
   '@version': 'EP-MODEL-TO-MATTER-ACTION-v1',
-  action_type: 'science.bio.experiment.execute',
+  action_type: 'science.bio.experiment.execute.1',
   model: {
     provider: 'model-provider',
     model_id: 'model-1',
@@ -71,7 +72,7 @@ const claims = {
 describe('Model-to-Matter mutation oracles', () => {
   const {
     isObject, validDigest, strictInstantMs, deepFreeze,
-    claimsMatchAction, clearanceResult,
+    claimsMatchAction, graphIsSafeToEvaluate, clearanceResult,
   } = __modelToMatterSecurityInternals;
 
   it('keeps object, digest, timestamp, and freeze boundaries exact', () => {
@@ -81,6 +82,7 @@ describe('Model-to-Matter mutation oracles', () => {
     for (const value of [null, '', `sha256:${'A'.repeat(64)}`, `sha256:${'a'.repeat(63)}`, 'a'.repeat(64)]) {
       expect(validDigest(value)).toBe(false);
     }
+    expect(validDigest({ toString: () => digest('a') })).toBe(false);
 
     expect(strictInstantMs('2024-02-29T23:59:59Z')).toBe(Date.parse('2024-02-29T23:59:59Z'));
     expect(strictInstantMs('2026-01-01T00:00:00+23:59')).toBe(Date.parse('2026-01-01T00:00:00+23:59'));
@@ -95,8 +97,45 @@ describe('Model-to-Matter mutation oracles', () => {
     expect(Object.isFrozen(nested)).toBe(true);
     expect(Object.isFrozen(nested.one)).toBe(true);
     expect(Object.isFrozen(nested.one.two)).toBe(true);
+    const partiallyFrozen = Object.freeze({ child: { value: 1 } });
+    deepFreeze(partiallyFrozen);
+    expect(Object.isFrozen(partiallyFrozen.child)).toBe(true);
     expect(deepFreeze(null)).toBeNull();
     expect(deepFreeze('x')).toBe('x');
+  });
+
+  it('rejects every unsafe evidence-graph dimension independently', () => {
+    const artifact = { value: 'signed-evidence-placeholder' };
+    const node = {
+      id: artifactDigest(artifact),
+      type: 'domain_screening',
+      artifact,
+    };
+    const safe = {
+      '@version': 'EP-AEG-v1',
+      action_digest: digest('a'),
+      nodes: [node],
+      edges: [],
+    };
+    expect(graphIsSafeToEvaluate(safe)).toBe(true);
+
+    const unsafe = [
+      null,
+      { ...safe, '@version': 'EP-AEG-v0' },
+      { ...safe, extra: true },
+      { ...safe, action_digest: 'bad' },
+      { ...safe, nodes: {} },
+      { ...safe, edges: {} },
+      { ...safe, edges: [{ from: 'a', to: 'b' }] },
+      { ...safe, nodes: [null] },
+      { ...safe, nodes: [{ ...node, extra: true }] },
+      { ...safe, nodes: [{ ...node, id: digest('b') }] },
+      { ...safe, nodes: [{ ...node, type: 'unknown' }] },
+      { ...safe, nodes: [node, { ...node, id: artifactDigest({ value: 'other' }), artifact: { value: 'other' } }] },
+      { ...safe, nodes: [{ ...node, artifact: null }] },
+      { ...safe, nodes: [{ ...node, artifact: { value: 'tampered' } }] },
+    ];
+    for (const candidate of unsafe) expect(graphIsSafeToEvaluate(candidate)).toBe(false);
   });
 
   it('requires every load-bearing claim-to-action join independently', () => {
@@ -165,6 +204,7 @@ describe('Model-to-Matter mutation oracles', () => {
         clear_to_execute: base === 'admissible',
         base_verdict: base,
         action_digest: null,
+        action_caid: null,
         replay_digest: null,
         reasons: [],
         next_challenge: null,
@@ -174,6 +214,7 @@ describe('Model-to-Matter mutation oracles', () => {
     }
     expect(clearanceResult('refused', {
       action_digest: digest('a'),
+      action_caid: 'caid:1:science.bio.experiment.execute.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       replay_digest: digest('b'),
       reasons: ['reason'],
       next_challenge: { id: 'next' },
@@ -181,6 +222,7 @@ describe('Model-to-Matter mutation oracles', () => {
       result: { graph: { nodes: 6 } },
     })).toMatchObject({
       action_digest: digest('a'),
+      action_caid: 'caid:1:science.bio.experiment.execute.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       replay_digest: digest('b'),
       reasons: ['reason'],
       next_challenge: { id: 'next' },

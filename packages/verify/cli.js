@@ -153,6 +153,8 @@ if (args[0] === 'reliance-gap') {
 // authorization I hold?" — FAIL-CLOSED, no EP server. Honest boundary: it cannot
 // prove the ABSENCE of a revocation you were never handed (see EP-REVOCATION-SPEC §7).
 //   verify revocation <statement.json> --target <target.json> --revoker-keys <keys.json> [--max-age <sec>]
+// --max-age is accepted for compatibility and ignored: terminal revocations do
+// not age out. Currency is established by separate authenticated status input.
 if (args[0] === 'revocation') {
   const sub = args.slice(1);
   let statementPath = null; let targetPath = null; let keysPath = null; let maxAge = null;

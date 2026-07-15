@@ -17,7 +17,8 @@ laboratory systems. Existing controls answer important but separate questions:
 The physical executor still needs one answer before it acts:
 
 > Do all required authorities agree about this exact model, harness, protocol,
-> material commitment, destination, facility, purpose, and one-time execution?
+> material commitment, destination, facility, purpose, and one permitted
+> clearance attempt?
 
 Model-to-Matter is the narrow clearance boundary that composes those facts. It
 does not replace any issuer. The executor supplies the acceptance policy and
@@ -55,6 +56,13 @@ flowchart LR
 Unknown fields fail closed. Raw sequences, FASTA, protocol text, prompts,
 completions, and reasoning traces are forbidden. The server computes the action
 digest; the presenter cannot choose it.
+
+The registered action type is `science.bio.experiment.execute.1`. The executor
+also computes its `jcs-sha256` Canonical Action Identifier (CAID) over the exact
+same closed object and refuses if CAID and `action_digest` do not encode the
+same SHA-256 result. The durable one-clearance key, clearance record, and signed
+effect statement carry that CAID. CAID is the portable name of the action; it
+does not authorize the action or assert that the experiment is safe.
 
 ### Relying-party profile
 
@@ -101,14 +109,15 @@ passes only a frozen pre-await action snapshot to that adapter.
 
 A successful evaluation returns `clear_to_execute`. Every other result is a
 closed `do_not_execute_*` verdict. After execution, the pinned executor may sign
-an `EP-MODEL-TO-MATTER-EFFECT-v1` statement binding the action, clearance replay
-digest, time, status, and observed-effect digest.
+an `EP-MODEL-TO-MATTER-EFFECT-v1` statement binding the action digest, CAID,
+clearance replay digest, time, status, and observed-effect digest.
 
 ## Properties exercised in code
 
-The public test contract and demo cover:
+The public test contract, deterministic vector suite, and demo cover:
 
 - raw-content and unknown-field rejection;
+- registered CAID computation and action-substitution refusal;
 - action mutation and cross-action replay;
 - unpinned-key and issuer-identity substitution;
 - profile weakening and assurance-enum confusion;
@@ -127,12 +136,17 @@ Run:
 
 ```bash
 node examples/model-to-matter/demo.mjs
-npx vitest run tests/model-to-matter.test.js
+npm run m2m:conformance
+npx vitest run tests/model-to-matter.test.js tests/model-to-matter-security-branches.test.js tests/model-to-matter-mutation-oracles.test.js
+npm run test:mutation:model-to-matter
 ```
 
-An informational Internet-Draft source is staged at
+An Experimental Internet-Draft source is staged at
 `standards/staged/draft-schrock-model-to-matter-00.xml`. It specifies the
-executor-side lifecycle and explicit non-goals; it is not yet filed.
+executor-side lifecycle and explicit non-goals. It is a July 19 Experimental
+filing candidate, scheduled last after the four-document core line. Filing the
+profile establishes the open Model-to-Matter name; it does not establish
+deployment, adoption, partnership, or endorsement.
 
 ## Integration shape
 

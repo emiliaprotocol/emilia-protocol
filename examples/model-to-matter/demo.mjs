@@ -34,7 +34,7 @@ const issuerKeys = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, ke
 const executorKey = keyPair();
 
 const action = createModelToMatterAction({
-  action_type: 'science.bio.experiment.execute',
+  action_type: 'science.bio.experiment.execute.1',
   model: {
     provider: 'example-frontier-lab',
     model_id: 'frontier-bio-model-2026-07',

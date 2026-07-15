@@ -1,0 +1,2450 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>The Canonical Action Identifier (CAID)</title>
+<meta content="Iman Schrock" name="author">
+<meta content="
+       Authorization, delegation, execution, and audit artifacts often
+      identify an action using format-local content and digests. Those
+      digests are not directly comparable when the formats select or
+      encode material action fields differently. This document defines
+      the Canonical Action IDentifier (CAID): a typed action object, a
+      canonicalization and digest suite, a compact identifier string,
+      and immutable action-type definitions with required material
+      fields. It also defines an Action-Mapping Profile for projecting
+      independently verified native artifacts into a common action type,
+      with the closed results EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT,
+      and INDETERMINATE. CAID carries no trust semantics. It does not
+      establish identity, authority, authorization, execution, safety,
+      or legal reliance.
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="AI agents" name="keyword">
+<meta content="action" name="keyword">
+<meta content="canonicalization" name="keyword">
+<meta content="digest" name="keyword">
+<meta content="identifier" name="keyword">
+<meta content="draft-schrock-canonical-action-identifier-00" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
+    pycountry 26.2.16
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.8.1
+-->
+<link href="draft-schrock-canonical-action-identifier-00.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/*
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">CAID</td>
+<td class="right">July 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Schrock</td>
+<td class="center">Expires 15 January 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-schrock-canonical-action-identifier-00</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-07-14" class="published">14 July 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-01-15">15 January 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">I. Schrock</div>
+<div class="org">EMILIA Protocol, Inc.</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">The Canonical Action Identifier (CAID)</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">Authorization, delegation, execution, and audit artifacts often
+      identify an action using format-local content and digests. Those
+      digests are not directly comparable when the formats select or
+      encode material action fields differently. This document defines
+      the Canonical Action IDentifier (CAID): a typed action object, a
+      canonicalization and digest suite, a compact identifier string,
+      and immutable action-type definitions with required material
+      fields. It also defines an Action-Mapping Profile for projecting
+      independently verified native artifacts into a common action type,
+      with the closed results EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT,
+      and INDETERMINATE. CAID carries no trust semantics. It does not
+      establish identity, authority, authorization, execution, safety,
+      or legal reliance.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 15 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-the-action-object" class="internal xref">The Action Object</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-suites-and-the-identifier" class="internal xref">Suites and the Identifier</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-suites" class="internal xref">Suites</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-the-digest" class="internal xref">The Digest</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3">
+                <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="auto internal xref">3.3</a>.  <a href="#name-identifier-syntax" class="internal xref">Identifier Syntax</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.4">
+                <p id="section-toc.1-1.3.2.4.1"><a href="#section-3.4" class="auto internal xref">3.4</a>.  <a href="#name-parsing" class="internal xref">Parsing</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.5">
+                <p id="section-toc.1-1.3.2.5.1"><a href="#section-3.5" class="auto internal xref">3.5</a>.  <a href="#name-equality" class="internal xref">Equality</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-action-types-and-the-regist" class="internal xref">Action Types and the Registry</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1">
+                <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="auto internal xref">4.1</a>.  <a href="#name-type-names-and-versioning" class="internal xref">Type Names and Versioning</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2">
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-the-type-definition-schema" class="internal xref">The Type Definition Schema</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3">
+                <p id="section-toc.1-1.4.2.3.1"><a href="#section-4.3" class="auto internal xref">4.3</a>.  <a href="#name-field-types" class="internal xref">Field Types</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.4">
+                <p id="section-toc.1-1.4.2.4.1"><a href="#section-4.4" class="auto internal xref">4.4</a>.  <a href="#name-definition-sources-and-unkn" class="internal xref">Definition Sources and Unknown Types</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-computation" class="internal xref">Computation</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-verification" class="internal xref">Verification</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-action-mapping-profile" class="internal xref">Action-Mapping Profile</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-native-verification-boundar" class="internal xref">Native Verification Boundary</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-mapping-profile-object" class="internal xref">Mapping Profile Object</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3">
+                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-mapping-and-comparison-algo" class="internal xref">Mapping and Comparison Algorithm</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.4">
+                <p id="section-toc.1-1.7.2.4.1"><a href="#section-7.4" class="auto internal xref">7.4</a>.  <a href="#name-completeness-assumption" class="internal xref">Completeness Assumption</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-what-a-caid-is-not" class="internal xref">What a CAID Is Not</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#appendix-B" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="intro">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">Many formats for permits, receipts, mandates, delegation, and
+      outcome evidence reference "the action" by digest. Each format
+      selects an action representation and canonicalization appropriate
+      to its own protocol. The resulting identifiers are useful inside
+      that format but are not necessarily comparable across formats.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">This creates two interoperability risks. The first is the
+      material-fields failure: a digest over an underspecified object
+      can omit the facts a relying party considers material. A
+      digest computed over {"action": "wire"} commits to no amount, no
+      currency, and no beneficiary; the artifact carrying it looks
+      cryptographically bound to an action while committing to nothing
+      that makes the action consequential. The second is the join
+      failure: absent an agreed common definition, two artifacts about
+      the same action, issued by different systems in different
+      formats, can carry digests that cannot be compared without an
+      explicit, reviewable mapping.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">This document defines the Canonical Action IDentifier (CAID)
+      to close both gaps. A CAID names typed content: an action object
+      that declares its own type, carries every material field that
+      type requires, is canonicalized under a registered suite, and is
+      digested. The identifier is a compact string embedding the
+      version, the action type, the suite, and the digest. When formats
+      cannot emit the same action object, an Action-Mapping Profile
+      (<a href="#mapping" class="auto internal xref">Section 7</a>) defines a relying-party-pinned,
+      loss-aware projection into the common type and abstains when the
+      comparison cannot be made.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<p id="section-1-4">As informative examples of the artifact classes that can
+      carry a CAID: authorization receipts
+      <span>[<a href="#I-D.schrock-ep-authorization-receipts" class="cite xref">I-D.schrock-ep-authorization-receipts</a>]</span>, permit
+      receipts <span>[<a href="#I-D.lee-orprg-permit-receipts" class="cite xref">I-D.lee-orprg-permit-receipts</a>]</span>, and
+      execution outcome attestations
+      <span>[<a href="#I-D.morrow-sogomonian-exec-outcome-attest" class="cite xref">I-D.morrow-sogomonian-exec-outcome-attest</a>]</span> each
+      reference an action by digest and could carry a CAID in place of
+      or alongside their existing action reference. These citations
+      are examples only; this document neither depends on nor modifies
+      any of them, and carrying a CAID changes nothing about how any
+      such artifact is verified.<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-5">A CAID deliberately carries no trust semantics. It does not
+      assert that an action was authorized, executed, safe, or wise.
+      <a href="#not" class="auto internal xref">Section 8</a> states the boundary normatively.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<div id="terms">
+<section id="section-1.1">
+        <h3 id="name-terminology">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+        </h3>
+<p id="section-1.1-1">The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>
+          <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they appear in
+        all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-1.1-2">
+          <dt id="section-1.1-2.1">Action object:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.2">The typed data object, defined in
+          <a href="#object" class="auto internal xref">Section 2</a>, over which a CAID's digest is
+          computed.<a href="#section-1.1-2.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.3">Action type:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.4">A versioned type name whose definition
+          (<a href="#types" class="auto internal xref">Section 4</a>) declares the material fields an
+          action object of that type is required to carry.<a href="#section-1.1-2.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.5">Material field:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.6">A field that a type definition declares REQUIRED because
+          its absence would leave the digest uncommitted to something
+          that makes the action consequential.<a href="#section-1.1-2.6" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.7">Suite:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.8">A registered pairing of a canonicalization scheme and a
+          digest algorithm (<a href="#suites" class="auto internal xref">Section 3.1</a>).<a href="#section-1.1-2.8" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.9">Definition source:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.10">A collection of type definitions in the schema of
+          <a href="#schema" class="auto internal xref">Section 4.2</a> that an implementation is configured
+          with: the public registry, a local definitions file, or
+          both.<a href="#section-1.1-2.10" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.11">Issuer:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.12">The party that constructs an action object and computes
+          its CAID.<a href="#section-1.1-2.12" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.13">Verifier:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.14">The party that checks a presented CAID against a
+          presented action object by recomputation
+          (<a href="#verification" class="auto internal xref">Section 6</a>).<a href="#section-1.1-2.14" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.15">Mapping profile:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.16">A hash-identified projection, pinned by the relying
+          party, from one exact source format and version into one CAID
+          action type (<a href="#mapping" class="auto internal xref">Section 7</a>).<a href="#section-1.1-2.16" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.17">Native verifier:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.18">The verifier defined by a source artifact's own
+          specification. Native verification precedes mapping and is
+          outside the CAID trust boundary.<a href="#section-1.1-2.18" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="object">
+<section id="section-2">
+      <h2 id="name-the-action-object">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-the-action-object" class="section-name selfRef">The Action Object</a>
+      </h2>
+<p id="section-2-1">An action object is a JSON object (or, under a CBOR suite, a
+      CBOR map) that identifies material action content. The
+      same object is referenced, by CAID, from pre-execution artifacts
+      (permits, challenges, receipts) and post-execution artifacts
+      (outcome attestations, audit records, reliance events).<a href="#section-2-1" class="pilcrow">¶</a></p>
+<p id="section-2-2">An action object:<a href="#section-2-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2-3.1">MUST contain an action_type member whose value is a
+        registered or locally defined versioned type name
+        (<a href="#types" class="auto internal xref">Section 4</a>). The type is inside the digested
+        content, so the type asserted by an identifier cannot be
+        swapped without changing the digest.<a href="#section-2-3.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-2-3.2">MUST contain every REQUIRED material field of that type,
+        encoded per the field types the type definition declares
+        (<a href="#fieldtypes" class="auto internal xref">Section 4.3</a>).<a href="#section-2-3.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-2-3.3">MAY contain additional members beyond those the type
+        definition declares. Extra members are covered by the
+        digest.<a href="#section-2-3.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-2-3.4">MUST NOT encode money or quantity values as JSON numbers
+        where the type definition declares the field amount-string.
+        Floating-point and precision malleability across languages
+        makes numeric encodings of money unsafe for
+        canonicalization.<a href="#section-2-3.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-2-3.5">Numbers follow a value-based rule: a JSON number is
+        accepted if and only if its IEEE 754 double-precision value is
+        an integer with magnitude at most 2^53-1, and it is serialized
+        as that integer in plain decimal form. The literal form is
+        irrelevant: the literals 1e3 and 2.0 denote the integers 1000
+        and 2, exactly as an ECMAScript JSON parser sees them.
+        Fractional, NaN, infinite, and out-of-range values are refused
+        as unsupported_number by every conforming implementation, at
+        any depth. Fractional quantities are carried as strings.
+        Rationale: ECMAScript number serialization is the leading
+        source of cross-language canonicalization divergence, and a
+        rule over the parsed value is the only one that every language
+        can implement identically; a rule over the literal form cannot
+        be enforced by implementations, such as ECMAScript, whose JSON
+        parsers do not preserve it.<a href="#section-2-3.5" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="identifier">
+<section id="section-3">
+      <h2 id="name-suites-and-the-identifier">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-suites-and-the-identifier" class="section-name selfRef">Suites and the Identifier</a>
+      </h2>
+<div id="suites">
+<section id="section-3.1">
+        <h3 id="name-suites">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-suites" class="section-name selfRef">Suites</a>
+        </h3>
+<p id="section-3.1-1">A suite names a canonicalization scheme and a digest
+        algorithm. This document defines two suites; the suite
+        registry (<a href="#iana" class="auto internal xref">Section 10</a>) carries one entry per
+        suite.<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-3.1-2">
+          <dt id="section-3.1-2.1">jcs-sha256:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-2.2">The JSON Canonicalization Scheme
+          <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span> followed by SHA-256
+          <span>[<a href="#RFC6234" class="cite xref">RFC6234</a>]</span>. Support for this suite is
+          REQUIRED for conforming implementations.<a href="#section-3.1-2.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.1-2.3">cbor-sha256:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.1-2.4">CBOR core deterministic encoding
+          (<span><a href="https://rfc-editor.org/rfc/rfc8949#section-4.2" class="relref">Section 4.2</a> of [<a href="#RFC8949" class="cite xref">RFC8949</a>]</span>)
+          followed by SHA-256 <span>[<a href="#RFC6234" class="cite xref">RFC6234</a>]</span>. This suite is
+          defined in this version; implementations MAY support
+          it.<a href="#section-3.1-2.4" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="digest">
+<section id="section-3.2">
+        <h3 id="name-the-digest">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-the-digest" class="section-name selfRef">The Digest</a>
+        </h3>
+<p id="section-3.2-1">The digest is computed directly over the canonical bytes of
+        the action object:<a href="#section-3.2-1" class="pilcrow">¶</a></p>
+<div class="sourcecode" id="section-3.2-2">
+<pre>
+digest = SHA-256(canonical_bytes(action_object))
+</pre><a href="#section-3.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3.2-3">There is deliberately NO domain separation prefix. The
+        object is self-typed via its action_type member, and a design
+        goal of CAID is that existing artifact formats can adopt the
+        identical digest they may already compute over canonical
+        bytes. Conforming verifiers MUST check that the in-object
+        action_type equals the action type carried in the CAID string
+        (<a href="#verification" class="auto internal xref">Section 6</a>); that check, not a byte
+        prefix, is where cross-context reinterpretation dies.
+        <a href="#security" class="auto internal xref">Section 9</a> states this trade explicitly.<a href="#section-3.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="syntax">
+<section id="section-3.3">
+        <h3 id="name-identifier-syntax">
+<a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-identifier-syntax" class="section-name selfRef">Identifier Syntax</a>
+        </h3>
+<p id="section-3.3-1">The identifier is a compact string:<a href="#section-3.3-1" class="pilcrow">¶</a></p>
+<div class="sourcecode" id="section-3.3-2">
+<pre>
+caid:1:&lt;action_type&gt;:&lt;suite&gt;:&lt;digest-b64url&gt;
+</pre><a href="#section-3.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3-3">For example:<a href="#section-3.3-3" class="pilcrow">¶</a></p>
+<div class="sourcecode" id="section-3.3-4">
+<pre>
+caid:1:payment.release.1:jcs-sha256:qL8R4QIcQ_ZsRqOAbeRfcZhilN_MksRt
+DaErMPJk0vM
+</pre><a href="#section-3.3-4" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3-5">(The example digest is shown wrapped for column width; the
+        identifier itself contains no whitespace.)<a href="#section-3.3-5" class="pilcrow">¶</a></p>
+<p id="section-3.3-6">The grammar, in the ABNF of <span>[<a href="#RFC5234" class="cite xref">RFC5234</a>]</span>:<a href="#section-3.3-6" class="pilcrow">¶</a></p>
+<div class="lang-abnf sourcecode" id="section-3.3-7">
+<pre>
+caid          = "caid:" caid-version ":" action-type ":"
+                suite ":" digest
+
+caid-version  = "1"
+
+action-type   = 1*( name-segment "." ) type-version
+name-segment  = lower-char *( lower-char / DIGIT / "-" )
+type-version  = pos-int
+pos-int       = %x31-39 *DIGIT   ; positive integer, no leading zero
+
+suite         = lower-char *( lower-char / DIGIT / "-" )
+
+digest        = 1*b64url-char
+b64url-char   = %x41-5A / %x61-7A / DIGIT / "-" / "_"
+                                 ; A-Z / a-z / 0-9 / "-" / "_"
+
+lower-char    = %x61-7A          ; a-z
+</pre><a href="#section-3.3-7" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3-8">DIGIT is the core rule of <span>[<a href="#RFC5234" class="cite xref">RFC5234</a>]</span>.<a href="#section-3.3-8" class="pilcrow">¶</a></p>
+<p id="section-3.3-9">caid-version is the version of this identifier syntax and
+        is "1" for this document. action-type is one or more lowercase
+        dotted name segments followed by a final segment that is the
+        integer version of the type (for example, payment.release.1).
+        suite is a name from the suite registry, lowercase. digest is
+        the digest encoded in base64url
+        (<span><a href="https://rfc-editor.org/rfc/rfc4648#section-5" class="relref">Section 5</a> of [<a href="#RFC4648" class="cite xref">RFC4648</a>]</span>),
+        unpadded and case-sensitive; for the two suites defined here
+        the digest is exactly 43 characters, encoding 32 octets.<a href="#section-3.3-9" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="parsing">
+<section id="section-3.4">
+        <h3 id="name-parsing">
+<a href="#section-3.4" class="section-number selfRef">3.4. </a><a href="#name-parsing" class="section-name selfRef">Parsing</a>
+        </h3>
+<p id="section-3.4-1">Parsers are strict. A conforming parser:<a href="#section-3.4-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.4-2.1">MUST refuse base64url padding characters ("=") in the
+          digest.<a href="#section-3.4-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.4-2.2">MUST refuse uppercase characters in the action-type or
+          suite fields. The digest field is case-sensitive and both
+          cases are significant there.<a href="#section-3.4-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.4-2.3">MUST refuse empty segments anywhere in the string,
+          including empty dotted segments within the action type.<a href="#section-3.4-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.4-2.4">MUST refuse any content after the digest, including
+          trailing separators, whitespace, or additional fields.<a href="#section-3.4-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.4-2.5">MUST refuse a digest that does not decode to exactly the
+          digest length of the named suite, or whose final character
+          encodes nonzero unused bits.<a href="#section-3.4-2.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.4-2.6">MUST treat an unknown caid-version as a refusal, never
+          as a value to be guessed at or parsed leniently.<a href="#section-3.4-2.6" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-3.4-2.7">MUST treat an unknown suite as a refusal, never as a
+          suite to be guessed.<a href="#section-3.4-2.7" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+<div id="equality">
+<section id="section-3.5">
+        <h3 id="name-equality">
+<a href="#section-3.5" class="section-number selfRef">3.5. </a><a href="#name-equality" class="section-name selfRef">Equality</a>
+        </h3>
+<p id="section-3.5-1">Two CAIDs are equal if and only if their strings are
+        byte-equal. Cross-suite equivalence is out of scope: no
+        procedure in this document relates a jcs-sha256 CAID to a
+        cbor-sha256 CAID for the same object. An artifact MAY carry
+        multiple CAIDs for one action, one per suite its issuer
+        computed.<a href="#section-3.5-1" class="pilcrow">¶</a></p>
+<p id="section-3.5-2">Direct CAID equality is content equality, not inferred
+        semantic equality. The strings "1.50" and "1.5" are different
+        content and yield different digests. Per-field normalization
+        guidance lives in the type definition's digest_notes
+        (<a href="#schema" class="auto internal xref">Section 4.2</a>), and normalization is the issuer's
+        job: the issuer normalizes before computing the CAID, and no
+        party renormalizes afterward.<a href="#section-3.5-2" class="pilcrow">¶</a></p>
+<p id="section-3.5-3">When two native formats cannot produce byte-equal action
+        objects, the Action-Mapping Profile in <a href="#mapping" class="auto internal xref">Section 7</a>
+        provides a narrower result: equivalence of the material
+        projection under exact profiles pinned by a relying party. It
+        does not claim general semantic equivalence.<a href="#section-3.5-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="types">
+<section id="section-4">
+      <h2 id="name-action-types-and-the-regist">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-action-types-and-the-regist" class="section-name selfRef">Action Types and the Registry</a>
+      </h2>
+<div id="names">
+<section id="section-4.1">
+        <h3 id="name-type-names-and-versioning">
+<a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-type-names-and-versioning" class="section-name selfRef">Type Names and Versioning</a>
+        </h3>
+<p id="section-4.1-1">An action type name is one or more lowercase dotted name
+        segments with a final segment that is the integer version of
+        the type, per the action-type rule of
+        <a href="#syntax" class="auto internal xref">Section 3.3</a>. Registered types live in the CAID
+        action type registry (<a href="#iana" class="auto internal xref">Section 10</a>), one entry
+        per versioned type.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-2">Once a version is active, every declaration that affects
+        validation or material meaning is immutable. Adding or removing
+        a required or optional field, retyping a field, changing an enum
+        set or normalization rule, or changing a field's semantics MUST
+        be published as a new version of the type (payment.release.2),
+        never as an in-place edit. This immutability is required so a
+        later verifier can reproduce an earlier result.<a href="#section-4.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="schema">
+<section id="section-4.2">
+        <h3 id="name-the-type-definition-schema">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-the-type-definition-schema" class="section-name selfRef">The Type Definition Schema</a>
+        </h3>
+<p id="section-4.2-1">The entry schema below is normative, and it is normative
+        for local definitions too: a private deployment carries its
+        own definitions in this same schema
+        (<a href="#local" class="auto internal xref">Section 4.4</a>).<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.2-2">
+<pre>
+{
+  "action_type": "payment.release.1",
+  "status": "active",
+  "risk_class": "irreversible-financial",
+  "summary": "Release of a payment instruction to settlement.",
+  "required_fields": [
+    {"name": "amount", "type": "amount-string",
+     "notes": "decimal string, no exponent, no leading '+',
+               no thousands separators"},
+    {"name": "currency", "type": "enum",
+     "values_ref": "ISO 4217 alpha-3"},
+    {"name": "beneficiary_account", "type": "digest",
+     "notes": "sha256:&lt;lowercase hex&gt; of the normalized account
+               identifier; normalization stated by the issuing
+               system of record"},
+    {"name": "payment_instruction_id", "type": "string"}
+  ],
+  "optional_fields": [
+    {"name": "memo", "type": "string"}
+  ],
+  "digest_notes": "amounts never renormalized after signing; the
+                   system of record's form is canonical",
+  "references": []
+}
+</pre><a href="#section-4.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2-3">action_type is the versioned type name. status is the
+        lifecycle state of the entry. risk_class is a descriptive
+        label for the consequence class of the action; it carries no
+        verification semantics. required_fields declares the material
+        fields, each with a name, a field type from
+        <a href="#fieldtypes" class="auto internal xref">Section 4.3</a>, and optional notes or a
+        values_ref naming an external value set. optional_fields
+        declares fields the type recognizes but does not require.
+        digest_notes carries per-type normalization guidance for
+        issuers. references carries citations for the type's
+        semantics.<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="fieldtypes">
+<section id="section-4.3">
+        <h3 id="name-field-types">
+<a href="#section-4.3" class="section-number selfRef">4.3. </a><a href="#name-field-types" class="section-name selfRef">Field Types</a>
+        </h3>
+<p id="section-4.3-1">The set of field types in version 1 is closed:<a href="#section-4.3-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-4.3-2">
+          <dt id="section-4.3-2.1">string:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.2">A JSON string.<a href="#section-4.3-2.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.3">amount-string:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.4">A decimal amount carried as a string: an optional
+          leading "-", one or more digits, and an optional "." with
+          one or more digits. No exponent, no leading "+", no
+          thousands separators.<a href="#section-4.3-2.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.5">digest:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.6">The literal prefix "sha256:" followed by 64 lowercase
+          hexadecimal characters. Used where a raw identifier must
+          not appear in the object (<a href="#security" class="auto internal xref">Section 9</a>).<a href="#section-4.3-2.6" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.7">enum:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.8">A string constrained to a value set named by the field's
+          values_ref.<a href="#section-4.3-2.8" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.9">timestamp:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.10">An RFC 3339 <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span> timestamp in UTC
+          with the "Z" designator.<a href="#section-4.3-2.10" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.11">integer:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.12">A JSON integer. For counts only, never for money.<a href="#section-4.3-2.12" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.13">boolean:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.14">A JSON boolean.<a href="#section-4.3-2.14" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.15">object:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.16">A JSON object, itself subject to the number restriction
+          of <a href="#object" class="auto internal xref">Section 2</a>.<a href="#section-4.3-2.16" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.3-2.17">array:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.3-2.18">A JSON array, itself subject to the number restriction
+          of <a href="#object" class="auto internal xref">Section 2</a>.<a href="#section-4.3-2.18" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="local">
+<section id="section-4.4">
+        <h3 id="name-definition-sources-and-unkn">
+<a href="#section-4.4" class="section-number selfRef">4.4. </a><a href="#name-definition-sources-and-unkn" class="section-name selfRef">Definition Sources and Unknown Types</a>
+        </h3>
+<p id="section-4.4-1">There is no reserved private-use name syntax. The
+        distinction between registered and local types is presence: a
+        type is either present in a definition source the
+        implementation is configured with (the public registry, or a
+        local definitions file in the same schema) or it is unknown.
+        A deployment inside a single vendor's boundary can therefore
+        use CAID with purely local definitions. Cross-domain use
+        requires the parties to pin the same exact definition or
+        registry snapshot. A local definition that collides by name
+        with a different registered definition MUST NOT be treated as
+        interoperable.<a href="#section-4.4-1" class="pilcrow">¶</a></p>
+<p id="section-4.4-2">An unknown type is a refusal for a conforming issuer
+        (<a href="#computation" class="auto internal xref">Section 5</a>). For a verifier, accepting an
+        identifier whose type is unknown is a policy decision: a
+        verifier MAY offer an accept-unregistered option, and that
+        option MUST default to off.<a href="#section-4.4-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="computation">
+<section id="section-5">
+      <h2 id="name-computation">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-computation" class="section-name selfRef">Computation</a>
+      </h2>
+<p id="section-5-1">A conforming issuer computes a CAID from an action object, a
+      suite, and its configured definition sources, in the following
+      order. Each check that fails contributes a refusal reason from
+      the closed set below; the reason strings are normative.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-5-2">
+        <li id="section-5-2.1">The action_type member is present and its value matches
+        the action-type grammar of <a href="#syntax" class="auto internal xref">Section 3.3</a>, else
+        invalid_action_type.<a href="#section-5-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.2">The type is resolvable in the configured definition
+        sources, else unknown_action_type.<a href="#section-5-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.3">Every REQUIRED field of the type definition is present,
+        else missing_material_field:&lt;name&gt; for each absent
+        field.<a href="#section-5-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.4">Every present field that the type definition declares is
+        valid for its declared field type, else
+        mistyped_field:&lt;name&gt; for each violation. An
+        amount-string violation MAY be refined to
+        invalid_amount:&lt;name&gt;.<a href="#section-5-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.5">The requested suite is known, else unknown_suite.<a href="#section-5-2.5" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.6">Every number in the object, at any depth, satisfies the
+        value-based rule of <a href="#object" class="auto internal xref">Section 2</a> (an integer with
+        magnitude at most 2^53-1 after IEEE 754 double-precision
+        parsing), else unsupported_number.<a href="#section-5-2.6" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.7">Canonicalize under the suite, digest, and emit the CAID
+        string and the digest.<a href="#section-5-2.7" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-5-3">On success the issuer emits the identifier and the digest. On
+      any failure the issuer emits the accumulated refusal reasons and
+      NO identifier. Computation is fail-closed: malformed or junk
+      input, of any shape, yields refusal reasons, never an exception
+      or a partial identifier.<a href="#section-5-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="verification">
+<section id="section-6">
+      <h2 id="name-verification">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-verification" class="section-name selfRef">Verification</a>
+      </h2>
+<p id="section-6-1">A conforming verifier checks a presented CAID string against
+      a presented action object, using its own configured definition
+      sources, in the following order:<a href="#section-6-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-6-2">
+        <li id="section-6-2.1">Strict-parse the CAID string per
+        <a href="#parsing" class="auto internal xref">Section 3.4</a>, else malformed_caid.<a href="#section-6-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.2">The in-object action_type equals the action type carried
+        in the CAID string, else action_type_mismatch. This check is
+        mandatory; see <a href="#digest" class="auto internal xref">Section 3.2</a> and
+        <a href="#security" class="auto internal xref">Section 9</a>.<a href="#section-6-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.3">Recompute the digest over the presented object under the
+        suite named in the CAID; the recomputed digest is equal to the
+        presented digest, else digest_mismatch.<a href="#section-6-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.4">Run the same material validation as computation
+        (<a href="#computation" class="auto internal xref">Section 5</a>, steps 1 through 6). An
+        identifier whose object fails that validation is
+        invalid_object, not merely mismatched: a digest that matches
+        an invalid object still binds nothing material.<a href="#section-6-2.4" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-6-3">The result is a validity bit and the list of reasons.
+      Verification is deterministic and offline: the same inputs
+      produce the same reasons in the same order, and any third party
+      with the object, the identifier, and the definitions can replay
+      the check without contacting anyone.<a href="#section-6-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mapping">
+<section id="section-7">
+      <h2 id="name-action-mapping-profile">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-action-mapping-profile" class="section-name selfRef">Action-Mapping Profile</a>
+      </h2>
+<p id="section-7-1">Two native formats can represent the same material action with
+      different member names, nesting, or format-local metadata. Direct
+      digest comparison cannot establish whether those representations
+      denote the same material action. This section defines a narrow,
+      explicit projection into a common CAID action type. The projection
+      is identified by its digest and pinned by the relying party.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<p id="section-7-2">A mapping result is content correlation only. It does not
+      establish identity, authority, authorization, provenance,
+      execution, or legal reliance.<a href="#section-7-2" class="pilcrow">¶</a></p>
+<div id="mapping-boundary">
+<section id="section-7.1">
+        <h3 id="name-native-verification-boundar">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-native-verification-boundar" class="section-name selfRef">Native Verification Boundary</a>
+        </h3>
+<p id="section-7.1-1">Before mapping, each source artifact MUST be verified under
+        its native specification and the relying party's native trust
+        anchors. The source object supplied to the mapper MUST be the
+        payload whose integrity that native verification established,
+        or a projection for which the native adapter has established
+        that every mapped source field is covered by the native
+        integrity mechanism. A mapper MUST NOT read an unsigned sibling
+        member and treat it as part of a signed payload.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+<p id="section-7.1-2">The source media type, schema identifier, and version supplied
+        to the mapper MUST come from relying-party configuration or the
+        native verifier. They MUST NOT be accepted solely from a label
+        inside the presenter-controlled artifact. CAID mapping does not
+        replace native verification.<a href="#section-7.1-2" class="pilcrow">¶</a></p>
+<p id="section-7.1-3">The mapping interface MUST receive an affirmative native
+        verification result through a relying-party-controlled adapter or
+        equivalent trusted call path. That result is an API precondition,
+        not a member a presenter can place in the artifact. A missing or
+        negative native-verification result yields INDETERMINATE.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mapping-object">
+<section id="section-7.2">
+        <h3 id="name-mapping-profile-object">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-mapping-profile-object" class="section-name selfRef">Mapping Profile Object</a>
+        </h3>
+<p id="section-7.2-1">A version 1 profile is a JSON object with the following
+        shape:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-7.2-2">
+<pre>
+{
+  "@version": "CAID-MAPPING-PROFILE-v1",
+  "profile_id": "urn:example:map:checkout-to-order:1",
+  "source_format": {
+    "media_type": "application/example-checkout+json",
+    "schema": "urn:example:checkout:1",
+    "version": "1"
+  },
+  "target_action_type": "order.place.1",
+  "loss_policy": "no-material-field-loss",
+  "material_source_paths": [
+    "/checkout/order_id",
+    "/checkout/merchant_id",
+    "/checkout/total_amount",
+    "/checkout/currency",
+    "/checkout/line_items",
+    "/checkout/customer_id",
+    "/checkout/fulfillment"
+  ],
+  "rules": [
+    {"source_path": "/checkout/order_id",
+     "target_field": "order_id", "transform": "copy"},
+    {"source_path": "/checkout/merchant_id",
+     "target_field": "merchant_ref", "transform": "sha256-utf8"},
+    {"source_path": "/checkout/total_amount",
+     "target_field": "total_amount", "transform": "copy"},
+    {"source_path": "/checkout/currency",
+     "target_field": "currency", "transform": "copy"},
+    {"source_path": "/checkout/line_items",
+     "target_field": "items_digest", "transform": "sha256-jcs"},
+    {"source_path": "/checkout/customer_id",
+     "target_field": "customer_ref", "transform": "sha256-utf8"},
+    {"source_path": "/checkout/fulfillment",
+     "target_field": "fulfillment_ref", "transform": "sha256-jcs"}
+  ]
+}
+</pre><a href="#section-7.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-7.2-3">The profile digest is the lowercase hexadecimal SHA-256
+        digest of the profile's JCS serialization, prefixed with
+        "sha256:". The relying party MUST pin that exact digest. A
+        profile identifier by itself is not a trust anchor.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+<p id="section-7.2-4">Version 1 is a closed object model. A mapper MUST reject an
+        unknown member in the top-level profile, source_format object, or
+        rule object. This prevents a misspelled or future policy member from
+        being covered by the profile digest while being silently ignored by
+        the mapping algorithm.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+<p id="section-7.2-5">source_format binds the exact media type, schema identifier,
+        and version accepted by the profile. target_action_type names a
+        type from a definition source pinned by the relying party.
+        loss_policy MUST be "no-material-field-loss" in version 1.
+        source_path values are JSON Pointers <span>[<a href="#RFC6901" class="cite xref">RFC6901</a>]</span>.
+        Every material_source_paths entry MUST have exactly one rule,
+        and every REQUIRED field of the target action type MUST be the
+        target of exactly one rule. Duplicate target fields, malformed
+        pointers, missing fields, and unknown transforms are mapping
+        failures.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
+<p id="section-7.2-6">The version 1 transform set is closed:<a href="#section-7.2-6" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-7.2-7">
+          <dt id="section-7.2-7.1">copy:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.2-7.2">Copy the source value after confirming that it has a
+          conforming JCS representation.<a href="#section-7.2-7.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-7.2-7.3">sha256-utf8:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.2-7.4">For a source string, emit "sha256:" followed by the
+          lowercase hexadecimal SHA-256 digest of its UTF-8 bytes.<a href="#section-7.2-7.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-7.2-7.5">sha256-jcs:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.2-7.6">Emit "sha256:" followed by the lowercase hexadecimal
+          SHA-256 digest of the source value's JCS representation.<a href="#section-7.2-7.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-7.2-8">A mapper MUST refuse an unregistered transform. Version 1
+        performs no unit conversion, currency conversion, date
+        inference, case folding, or lossy normalization.<a href="#section-7.2-8" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mapping-algorithm">
+<section id="section-7.3">
+        <h3 id="name-mapping-and-comparison-algo">
+<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-mapping-and-comparison-algo" class="section-name selfRef">Mapping and Comparison Algorithm</a>
+        </h3>
+<p id="section-7.3-1">For each source, a conforming mapper:<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-7.3-2">
+          <li id="section-7.3-2.1">Requires an affirmative native-verification result from the
+          trusted adapter.<a href="#section-7.3-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.3-2.2">Validates the complete profile shape and closed transform
+          set.<a href="#section-7.3-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.3-2.3">Recomputes the profile digest and compares it to the
+          relying-party pin.<a href="#section-7.3-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.3-2.4">Compares the verifier-derived source descriptor to the
+          profile's source_format object.<a href="#section-7.3-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.3-2.5">Confirms one-to-one coverage of material source paths and
+          all REQUIRED target fields.<a href="#section-7.3-2.5" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.3-2.6">Computes a source digest over the complete source object
+          for reproducibility.<a href="#section-7.3-2.6" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.3-2.7">Extracts and transforms every rule. A missing path or
+          mistyped value is a mapping failure.<a href="#section-7.3-2.7" class="pilcrow">¶</a>
+</li>
+          <li id="section-7.3-2.8">Computes a CAID for the projected action under
+          <a href="#computation" class="auto internal xref">Section 5</a>.<a href="#section-7.3-2.8" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-7.3-3">Comparison of two mapping results returns exactly one of:<a href="#section-7.3-3" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-7.3-4">
+          <dt id="section-7.3-4.1">EQUIVALENT_UNDER_PROFILE:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.3-4.2">Both mappings succeeded, both target the same action
+          type, and the resulting CAID strings are byte-equal.<a href="#section-7.3-4.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-7.3-4.3">NOT_EQUIVALENT:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.3-4.4">Both mappings succeeded and target the same action type,
+          but the resulting CAIDs differ.<a href="#section-7.3-4.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-7.3-4.5">INDETERMINATE:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.3-4.6">Either native verification did not succeed, either mapping
+          failed, either profile was not pinned, a
+          source descriptor differed, a target action type differed, or
+          any required fact was absent or ambiguous.<a href="#section-7.3-4.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-7.3-5">A consumer MUST NOT convert INDETERMINATE into equivalence.
+        It also MUST NOT treat EQUIVALENT_UNDER_PROFILE as authorization.
+        Authorization remains a separate relying-party decision over
+        separately verified evidence.<a href="#section-7.3-5" class="pilcrow">¶</a></p>
+<p id="section-7.3-6">For reproducibility, each successful per-source mapping result
+        MUST carry the complete source-object digest, mapping-profile digest,
+        projected action object, resulting CAID, and suite. A comparison
+        result MUST retain both per-source mapping results. A consumer that
+        persists or transmits only the final verdict or CAID loses the
+        information needed to reproduce which profiles and source objects
+        produced that result.<a href="#section-7.3-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mapping-assumption">
+<section id="section-7.4">
+        <h3 id="name-completeness-assumption">
+<a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-completeness-assumption" class="section-name selfRef">Completeness Assumption</a>
+        </h3>
+<p id="section-7.4-1">The algorithm proves that a pinned profile maps every field
+        the target action type declares material. It cannot prove that
+        the profile author correctly identified every material concept
+        in the native source schema. The relying party's selection and
+        review of mapping profiles is therefore an explicit policy
+        assumption. Profiles SHOULD be versioned, publicly reviewable,
+        and accompanied by positive, negative, and indeterminate
+        conformance vectors.<a href="#section-7.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="not">
+<section id="section-8">
+      <h2 id="name-what-a-caid-is-not">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-what-a-caid-is-not" class="section-name selfRef">What a CAID Is Not</a>
+      </h2>
+<p id="section-8-1">Under the selected suite's security assumptions, recomputing a CAID
+      establishes that an identifier commits to the supplied canonical typed
+      content. Comparing CAIDs emitted directly from the same action type, or
+      emitted through pinned Action-Mapping Profiles, provides the scoped
+      matching result defined here. It does not prove that the action was authorized,
+      executed, safe, or wise. It confers no trust, names no humans,
+      and replaces no verifier: every artifact that carries a CAID
+      still verifies inside its own trust boundary under its own
+      specification, exactly as it did before carrying one.<a href="#section-8-1" class="pilcrow">¶</a></p>
+<p id="section-8-2">In particular:<a href="#section-8-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-8-3.1">A CAID is not authorization. Possession of an identifier,
+        or of the object it digests, authorizes nothing.<a href="#section-8-3.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-8-3.2">A CAID is not identity. It names content, not any human,
+        agent, workload, or organization.<a href="#section-8-3.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-8-3.3">A CAID is not proof of execution or of outcome. An
+        artifact asserting execution proves that under its own
+        specification, or not at all.<a href="#section-8-3.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-8-3.4">Composition joins on the identifier and never ingests
+        another verifier's evidence. When two artifacts about one
+        action are composed, the join key is the CAID; each leg's
+        evidence is verified by that leg's own verifier under that
+        leg's own trust anchors, and no verifier imports another's
+        conclusions into its own trust boundary.<a href="#section-8-3.4" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="security">
+<section id="section-9">
+      <h2 id="name-security-considerations">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-9-1">Digest strength. The binding between an identifier and its
+      content rests on the second-preimage resistance of SHA-256. If
+      SHA-256 weakens, the migration path is suite agility: a new
+      suite is registered and issuers move to it, emitting new
+      identifiers. There is no in-place algorithm change within a
+      suite, ever.<a href="#section-9-1" class="pilcrow">¶</a></p>
+<p id="section-9-2">No domain separation. The digest input carries no domain
+      separation prefix, deliberately, so that existing formats can
+      adopt a digest they may already compute over canonical bytes
+      (<a href="#digest" class="auto internal xref">Section 3.2</a>). The compensating control is
+      mandatory: verifiers MUST enforce the check that the in-object
+      action_type equals the type carried in the CAID string.
+      Skipping that check re-opens cross-context reinterpretation, in
+      which bytes canonicalized for one context are presented under a
+      type label from another. The check is step 2 of
+      <a href="#verification" class="auto internal xref">Section 6</a> and is not optional.<a href="#section-9-2" class="pilcrow">¶</a></p>
+<p id="section-9-3">Personally identifiable information. Action objects, CAIDs, and
+      their correlations should be assumed to travel and to appear in logs.
+      A plain SHA-256 digest of a low-entropy identifier is pseudonymous, not
+      anonymous: an observer can test likely account, patient, or order
+      identifiers by dictionary attack. The digest field type keeps raw
+      values out of the action object but does not by itself provide
+      confidentiality or unlinkability. Type authors handling personal data
+      SHOULD prefer high-entropy opaque references or a deployment-specific
+      privacy-preserving commitment scheme, document its normalization and
+      correlation scope, and avoid placing unnecessary personal data in the
+      action object. A deployment-specific scheme can require an explicit
+      mapping profile for cross-domain joins.<a href="#section-9-3" class="pilcrow">¶</a></p>
+<p id="section-9-4">Canonicalization malleability. Cross-language number
+      serialization is the historical source of canonicalization
+      divergence, which is why numbers are restricted to the
+      value-based integer rule and money is carried as amount-string
+      (<a href="#object" class="auto internal xref">Section 2</a>). JCS and CBOR core deterministic
+      encoding are the only permitted canonical forms; no other
+      serialization, however stable it appears, is a conforming
+      digest input.<a href="#section-9-4" class="pilcrow">¶</a></p>
+<p id="section-9-5">A CAID is not a capability. Possession of an identifier
+      proves nothing and grants nothing. Identifiers SHOULD be treated
+      as public values: they may appear in logs, URLs, and audit
+      records without weakening anything. Protocols MUST NOT treat
+      knowledge of a CAID as evidence of anything beyond knowledge of
+      the object's content.<a href="#section-9-5" class="pilcrow">¶</a></p>
+<p id="section-9-6">Profile-bounded equivalence. Direct CAID verification does not
+      infer semantic equality. The Action-Mapping Profile makes only a
+      narrower statement about material projections under exact pinned
+      profiles. A malicious or incomplete profile can omit a concept
+      that the relying party should have considered material. Profile
+      selection is therefore a relying-party policy decision; unpinned,
+      lossy, or ambiguous mappings MUST yield INDETERMINATE.<a href="#section-9-6" class="pilcrow">¶</a></p>
+<p id="section-9-7">Native integrity coverage. A valid native signature does not
+      make unsigned members beside the signed payload trustworthy. A
+      native adapter MUST establish that every mapped field is covered
+      by the native integrity mechanism. The source descriptor is
+      verifier-derived, not presenter-asserted
+      (<a href="#mapping-boundary" class="auto internal xref">Section 7.1</a>).<a href="#section-9-7" class="pilcrow">¶</a></p>
+<p id="section-9-8">Definition stability. A versioned action-type definition is
+      immutable once active. Cross-domain verifiers MUST pin an exact
+      definition source or registry snapshot. A local and a registered
+      definition that share a name but differ in validation semantics
+      MUST NOT be treated as the same type.<a href="#section-9-8" class="pilcrow">¶</a></p>
+<p id="section-9-9">Duplicate object member names. A raw JSON parser feeding CAID
+      computation or mapping MUST reject duplicate member names before
+      constructing the data model. Accepting duplicate names can make
+      the native verifier and mapper select different values.<a href="#section-9-9" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana">
+<section id="section-10">
+      <h2 id="name-iana-considerations">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-10-1">This document requests no immediate IANA actions.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-10-2">Two registries are described: the CAID action type registry
+      (<a href="#types" class="auto internal xref">Section 4</a>), whose entries follow the normative
+      schema of <a href="#schema" class="auto internal xref">Section 4.2</a>, and the CAID suite registry
+      (<a href="#suites" class="auto internal xref">Section 3.1</a>), which for this version contains
+      jcs-sha256 and cbor-sha256. Both are published as
+      machine-readable JSON under a public-domain dedication and are
+      maintained by the author's organization pending adoption. Active
+      entries are immutable in every field that affects validation or
+      material meaning. The stated intent is to transition maintenance
+      to IANA or another neutral standards body if this specification
+      is adopted. A future revision would then specify registration
+      policies for both registries.<a href="#section-10-2" class="pilcrow">¶</a></p>
+<p id="section-10-3">A URN namespace registration for CAID identifiers may be
+      useful in the future; it is out of scope for this revision.<a href="#section-10-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-11">
+      <h2 id="name-references">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<section id="section-11.1">
+        <h3 id="name-normative-references">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC3339">[RFC3339]</dt>
+        <dd>
+<span class="refAuthor">Klyne, G.</span> and <span class="refAuthor">C. Newman</span>, <span class="refTitle">"Date and Time on the Internet: Timestamps"</span>, <span class="seriesInfo">RFC 3339</span>, <span class="seriesInfo">DOI 10.17487/RFC3339</span>, <time datetime="2002-07" class="refDate">July 2002</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3339">https://www.rfc-editor.org/info/rfc3339</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC4648">[RFC4648]</dt>
+        <dd>
+<span class="refAuthor">Josefsson, S.</span>, <span class="refTitle">"The Base16, Base32, and Base64 Data Encodings"</span>, <span class="seriesInfo">RFC 4648</span>, <span class="seriesInfo">DOI 10.17487/RFC4648</span>, <time datetime="2006-10" class="refDate">October 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4648">https://www.rfc-editor.org/info/rfc4648</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5234">[RFC5234]</dt>
+        <dd>
+<span class="refAuthor">Crocker, D., Ed.</span> and <span class="refAuthor">P. Overell</span>, <span class="refTitle">"Augmented BNF for Syntax Specifications: ABNF"</span>, <span class="seriesInfo">STD 68</span>, <span class="seriesInfo">RFC 5234</span>, <span class="seriesInfo">DOI 10.17487/RFC5234</span>, <time datetime="2008-01" class="refDate">January 2008</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc5234">https://www.rfc-editor.org/info/rfc5234</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC6234">[RFC6234]</dt>
+        <dd>
+<span class="refAuthor">Eastlake 3rd, D.</span> and <span class="refAuthor">T. Hansen</span>, <span class="refTitle">"US Secure Hash Algorithms (SHA and SHA-based HMAC and HKDF)"</span>, <span class="seriesInfo">RFC 6234</span>, <span class="seriesInfo">DOI 10.17487/RFC6234</span>, <time datetime="2011-05" class="refDate">May 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6234">https://www.rfc-editor.org/info/rfc6234</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC6901">[RFC6901]</dt>
+        <dd>
+<span class="refAuthor">Bryan, P., Ed.</span>, <span class="refAuthor">Zyp, K.</span>, and <span class="refAuthor">M. Nottingham, Ed.</span>, <span class="refTitle">"JavaScript Object Notation (JSON) Pointer"</span>, <span class="seriesInfo">RFC 6901</span>, <span class="seriesInfo">DOI 10.17487/RFC6901</span>, <time datetime="2013-04" class="refDate">April 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6901">https://www.rfc-editor.org/info/rfc6901</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8785">[RFC8785]</dt>
+        <dd>
+<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8949">[RFC8949]</dt>
+      <dd>
+<span class="refAuthor">Bormann, C.</span> and <span class="refAuthor">P. Hoffman</span>, <span class="refTitle">"Concise Binary Object Representation (CBOR)"</span>, <span class="seriesInfo">STD 94</span>, <span class="seriesInfo">RFC 8949</span>, <span class="seriesInfo">DOI 10.17487/RFC8949</span>, <time datetime="2020-12" class="refDate">December 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8949">https://www.rfc-editor.org/info/rfc8949</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-11.2">
+        <h3 id="name-informative-references">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="I-D.lee-orprg-permit-receipts">[I-D.lee-orprg-permit-receipts]</dt>
+        <dd>
+<span class="refAuthor">Lee, Y. B.</span>, <span class="refTitle">"Permit Receipts for Permit-Before-Commit Authorization of AI-Agent and Workload External Effects"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-lee-orprg-permit-receipts-00</span>, <time datetime="2026-06-04" class="refDate">4 June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-lee-orprg-permit-receipts-00">https://datatracker.ietf.org/doc/html/draft-lee-orprg-permit-receipts-00</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.morrow-sogomonian-exec-outcome-attest">[I-D.morrow-sogomonian-exec-outcome-attest]</dt>
+        <dd>
+<span class="refAuthor">Morrow</span> and <span class="refAuthor">A. Sogomonian</span>, <span class="refTitle">"Execution Outcome Attestation for AI Agents and Automated Systems"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-morrow-sogomonian-exec-outcome-attest-00</span>, <time datetime="2026-04-04" class="refDate">4 April 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-morrow-sogomonian-exec-outcome-attest-00">https://datatracker.ietf.org/doc/html/draft-morrow-sogomonian-exec-outcome-attest-00</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.schrock-ep-authorization-receipts">[I-D.schrock-ep-authorization-receipts]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-04</span>, <time datetime="2026-06-30" class="refDate">30 June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-schrock-ep-authorization-receipts-04">https://datatracker.ietf.org/doc/html/draft-schrock-ep-authorization-receipts-04</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</section>
+<div id="acknowledgments">
+<section id="appendix-A">
+      <h2 id="name-acknowledgments">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="appendix-A-1">The separation between cryptographic validity and authority in
+      this document was sharpened by review from Eric Rescorla. Linda
+      Dunbar's cross-administrative-domain Agent Gateway scenarios
+      motivated the requirement for a reproducible action join across
+      operator boundaries. Chris Hood's work on agent transport and
+      composition helped expose the need to keep action identity
+      independent from any one authorization artifact. These
+      acknowledgments do not imply endorsement of this document.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-B">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Iman Schrock</span></div>
+<div dir="auto" class="left"><span class="org">EMILIA Protocol, Inc.</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:team@emiliaprotocol.ai" class="email">team@emiliaprotocol.ai</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

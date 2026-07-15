@@ -4,7 +4,7 @@
 **Status:** Experimental — governed by an Extension PIP; additive over the core
 protocol; not a production claim. Reference verifier:
 `packages/verify/time-attestation.js` (with Python + Go parity); conformance
-vectors: `conformance/vectors/time-attestation.v1.json` (JS/Python/Go agree).
+vectors: `conformance/vectors/time-attestation.v2.json` (JS/Python/Go agree).
 
 ## The gap this closes
 

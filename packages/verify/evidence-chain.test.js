@@ -39,6 +39,8 @@ for (const v of suite.vectors) {
       expectedActionDigest: `sha256:${D}`,
     });
     assert.equal(r.allow, v.expect_allow, `reasons: ${r.reasons.join('; ')}`);
+    assert.equal(r.satisfied, v.expect_allow, `reasons: ${r.reasons.join('; ')}`);
+    assert.equal(r.allow, r.satisfied, 'legacy allow alias must equal satisfied');
     if (v.expect_requirement_source) assert.equal(r.requirement_source, v.expect_requirement_source);
   });
 }

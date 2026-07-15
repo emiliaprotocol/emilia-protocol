@@ -64,14 +64,14 @@ const out = vectors.map((v) => {
   // EP-TIMESTAMP-PROOF-v1 (RFC 3161): valid iff the pinned TSA's TimeStampToken
   // verifies over the expected digest (fail-closed on any refusal).
   if (v.timestamp_proof !== undefined) return { id: v.id, valid: verifyTimestampProof(v.timestamp_proof, v.expected_digest, v.pinned_tsa_keys).verified };
-  // EP-AEC-ROLE-v1: valid iff verifyAuthorizationChain ALLOWs, with the built-in
+  // EP-AEC-ROLE-v1: valid iff the evidence requirement is SATISFIED, with the built-in
   // ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for
   // each stub_type. Exercises real signatures, role scoping, and signed binding.
   if (v.aec_chain) {
     const stub = (ev) => ({ valid: ev?.valid !== false, action_digest: ev?.action_digest });
     const verifiers = {};
     for (const t of (v.stub_types || [])) verifiers[t] = stub;
-    return { id: v.id, valid: verifyAuthorizationChain(v.aec_chain, { keysByType: v.keys_by_type, policiesByType: v.policies_by_type, verifiers, requirement: v.requirement, expectedActionDigest: v.expected_action_digest, verificationTime: v.verification_time }).allow };
+    return { id: v.id, valid: verifyAuthorizationChain(v.aec_chain, { keysByType: v.keys_by_type, policiesByType: v.policies_by_type, verifiers, requirement: v.requirement, expectedActionDigest: v.expected_action_digest, verificationTime: v.verification_time }).satisfied };
   }
   return { id: v.id, valid: false };
 });

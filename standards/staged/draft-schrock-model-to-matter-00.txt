@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              12 July 2026
-Expires: 13 January 2027
+Intended status: Experimental                               14 July 2026
+Expires: 15 January 2027
 
 
   Model-to-Matter: Authorization Evidence for Model-Directed Physical
@@ -21,13 +21,13 @@ Abstract
    authority, a domain review, an external screening service, and an
    accountable human.  Those artifacts are commonly evaluated separately
    and may not bind the same action.  This document defines Model-to-
-   Matter, an informational executor-side applicability profile for
+   Matter, an experimental executor-side applicability profile for
    composing those artifacts over one canonical, digest-only action.  It
    specifies an executor-owned acceptance profile, normalized signed
    evidence adapters, a registered challenge, closed clearance and
-   refusal verdicts, atomic one-time consumption, and an optional
-   executor-signed effect statement.  The profile does not perform
-   domain screening, determine scientific safety, authorize an
+   refusal verdicts, atomic single-use clearance consumption, and an
+   optional executor-signed effect statement.  The profile does not
+   perform domain screening, determine scientific safety, authorize an
    institution, or establish physical truth.  It standardizes the point
    at which an executor refuses to act unless the authorities it
    independently trusts agree about the same action.
@@ -47,13 +47,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 13 January 2027.
+   This Internet-Draft will expire on 15 January 2027.
 
 
 
 
 
-Schrock                  Expires 13 January 2027                [Page 1]
+Schrock                  Expires 15 January 2027                [Page 1]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -79,19 +79,19 @@ Table of Contents
    2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   3
    3.  Architecture  . . . . . . . . . . . . . . . . . . . . . . . .   4
    4.  Model-to-Matter Action Object . . . . . . . . . . . . . . . .   4
-   5.  Relying-Party Profile . . . . . . . . . . . . . . . . . . . .   5
+   5.  Relying-Party Profile . . . . . . . . . . . . . . . . . . . .   6
    6.  Normalized Evidence Artifacts . . . . . . . . . . . . . . . .   6
    7.  Registered Challenge  . . . . . . . . . . . . . . . . . . . .   7
    8.  Clearance Evaluation  . . . . . . . . . . . . . . . . . . . .   8
    9.  HTTP Integration  . . . . . . . . . . . . . . . . . . . . . .   9
    10. Executor Effect Statement . . . . . . . . . . . . . . . . . .   9
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  10
    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  11
    13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
    14. Implementation Status . . . . . . . . . . . . . . . . . . . .  11
    15. Normative References  . . . . . . . . . . . . . . . . . . . .  11
    16. Informative References  . . . . . . . . . . . . . . . . . . .  12
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  12
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  13
 
 1.  Introduction
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                  Expires 13 January 2027                [Page 2]
+Schrock                  Expires 15 January 2027                [Page 2]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -117,7 +117,7 @@ Internet-Draft               Model-to-Matter                   July 2026
    None of those facts alone answers the executor's question: do all
    authorities required by this executor agree about this exact model,
    harness, protocol commitment, material commitment, purpose, facility,
-   destination, and one permitted execution?  A presenter can otherwise
+   destination, and one permitted clearance?  A presenter can otherwise
    splice valid artifacts for different actions or choose a weaker
    sufficiency rule.
 
@@ -165,7 +165,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 13 January 2027                [Page 3]
+Schrock                  Expires 15 January 2027                [Page 3]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -221,10 +221,20 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 13 January 2027                [Page 4]
+Schrock                  Expires 15 January 2027                [Page 4]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
+
+   The initial action_type is science.bio.experiment.execute.1,
+   registered by the CAID package.  The executor MUST also compute the
+   jcs-sha256 Canonical Action Identifier (CAID)
+   [I-D.schrock-canonical-action-identifier] over the same closed Action
+   Object.  The CAID's base64url digest component and the hexadecimal
+   action_digest MUST decode to the same SHA-256 octets.  A mismatch is
+   a refusal.  CAID supplies portable content identity only; it does not
+   establish identity, authority, authorization, execution, safety, or
+   legal reliance.
 
    The initial profile requires these members:
 
@@ -233,7 +243,7 @@ Internet-Draft               Model-to-Matter                   July 2026
     +====================+============================================+
     | @version           | The version identifier above.              |
     +--------------------+--------------------------------------------+
-    | action_type        | A profile-allowed action family.           |
+    | action_type        | science.bio.experiment.execute.1.          |
     +--------------------+--------------------------------------------+
     | model              | Provider and model identifiers plus        |
     |                    | manifest, harness, and safeguards digests. |
@@ -265,6 +275,13 @@ Internet-Draft               Model-to-Matter                   July 2026
    material is not a hiding commitment and MUST NOT be represented as
    one.
 
+
+
+Schrock                  Expires 15 January 2027                [Page 5]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
    The executor MUST compute the Action Object from the operation it
    will perform.  It MUST NOT accept a presenter-supplied digest as a
    substitute for independently constructing and hashing the action.
@@ -273,14 +290,6 @@ Internet-Draft               Model-to-Matter                   July 2026
 
    The initial profile version identifier is EP-MODEL-TO-MATTER-PROFILE-
    v1.  A profile binds:
-
-
-
-
-Schrock                  Expires 13 January 2027                [Page 5]
-
-Internet-Draft               Model-to-Matter                   July 2026
-
 
    *  a stable profile_id and equal policy_id;
 
@@ -320,23 +329,17 @@ Internet-Draft               Model-to-Matter                   July 2026
    action_digest, issuer_id, issued_at, expires_at, a closed claims
    object, an optional outcome, and a signature envelope.
 
-   The initial profile requires exactly one accepted artifact of every
-   following type:
 
 
 
 
-
-
-
-
-
-
-
-Schrock                  Expires 13 January 2027                [Page 6]
+Schrock                  Expires 15 January 2027                [Page 6]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
+
+   The initial profile requires exactly one accepted artifact of every
+   following type:
 
    +=========================+=========================================+
    | Evidence type           | Minimum same-action claims              |
@@ -386,10 +389,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-
-
-
-Schrock                  Expires 13 January 2027                [Page 7]
+Schrock                  Expires 15 January 2027                [Page 7]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -417,7 +417,9 @@ Internet-Draft               Model-to-Matter                   July 2026
 
    2.   Validate the closed object shapes and resource bounds.
 
-   3.   Recompute the action digest and profile digest.
+   3.   Recompute the action digest, CAID, and profile digest, and
+        require the CAID and action digest to encode the same SHA-256
+        result.
 
    4.   Require the challenge bindings and current time to match.
 
@@ -435,7 +437,7 @@ Internet-Draft               Model-to-Matter                   July 2026
         profile and reject duplicate or unknown nodes.
 
    9.   If and only if all checks pass, atomically consume "model-to-
-        matter:" || action_digest in a durable shared store.
+        matter:" || action_caid in a durable shared store.
 
    10.  Return clear_to_execute only when the action consumption is the
         first successful consumption.  Every other outcome is a refusal.
@@ -443,9 +445,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-
-
-Schrock                  Expires 13 January 2027                [Page 8]
+Schrock                  Expires 15 January 2027                [Page 8]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -457,6 +457,10 @@ Internet-Draft               Model-to-Matter                   July 2026
    do_not_execute_action_mismatch, do_not_execute_refused, and
    do_not_execute_malformed.  Unknown verdicts MUST be treated as
    refusal.
+
+   An action-bound clearance carries both action_digest and action_caid.
+   The executor computes both fields; a presenter MUST NOT supply either
+   value as a substitute for the Action Object.
 
    Consumption of the action digest MUST be non-expiring for as long as
    the action can be presented.  An unavailable response after
@@ -479,9 +483,9 @@ Internet-Draft               Model-to-Matter                   July 2026
 10.  Executor Effect Statement
 
    After an execution attempt, the executor MAY sign an EP-MODEL-TO-
-   MATTER-EFFECT-v1 statement containing the action digest, clearance
-   replay digest, executor identity, execution time, status, and
-   observed-effect digest.  The statement MUST bind a prior
+   MATTER-EFFECT-v1 statement containing the action digest, action CAID,
+   clearance replay digest, executor identity, execution time, status,
+   and observed-effect digest.  The statement MUST bind a prior
    clear_to_execute clearance for the same action and MUST verify under
    a relying-party-pinned executor key.
 
@@ -490,21 +494,24 @@ Internet-Draft               Model-to-Matter                   July 2026
    does not establish sensor integrity, causal attribution, or physical
    truth.
 
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 9]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
 11.  Security Considerations
 
    *Executor bypass.* Model-to-Matter is effective only when every path
    to the protected effect traverses the enforcing executor.  Alternate
    instruments, privileged maintenance paths, or direct backend access
    remain part of the trusted computing base.
-
-
-
-
-
-Schrock                  Expires 13 January 2027                [Page 9]
-
-Internet-Draft               Model-to-Matter                   July 2026
-
 
    *Presenter-selected policy.* Verifier code, issuer keys, profiles,
    revocation rules, and requirements MUST be pinned before a
@@ -513,8 +520,10 @@ Internet-Draft               Model-to-Matter                   July 2026
 
    *Cross-action splicing.* Every evidence artifact, challenge,
    clearance, consumption key, and effect statement MUST bind the
-   executor-computed action digest.  A valid artifact for a different
-   action is unsatisfied.
+   executor-computed action digest.  Clearances and effect statements
+   MUST also bind the recomputed CAID, and both identifiers MUST name
+   the same canonical bytes.  A valid artifact for a different action is
+   unsatisfied.
 
    *Issuer laundering.* A signature proves control of a key, not
    authority for an evidence role.  Acceptance MUST bind both issuer
@@ -545,22 +554,17 @@ Internet-Draft               Model-to-Matter                   July 2026
    Independent technical, organizational, and operational controls
    remain necessary.
 
-   *Resource exhaustion.* Implementations MUST bound object depth, node
-   count, string bytes, evidence count, identifier length, and parser
-   work before signature or graph evaluation.
 
 
 
-
-
-
-
-
-
-Schrock                  Expires 13 January 2027               [Page 10]
+Schrock                  Expires 15 January 2027               [Page 10]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
+
+   *Resource exhaustion.* Implementations MUST bound object depth, node
+   count, string bytes, evidence count, identifier length, and parser
+   work before signature or graph evaluation.
 
 12.  Privacy Considerations
 
@@ -588,8 +592,11 @@ Internet-Draft               Model-to-Matter                   July 2026
    checking demonstration, and adversarial tests are publicly available.
    The implementation covers the Action Object, profile, six signed
    evidence adapters, registered challenge, evidence graph, single-use
-   clearance, and effect statement.  It has no Python or Go port, no
-   wet-lab deployment, no external scientific validation, and no claimed
+   clearance, and effect statement.  A deterministic public suite
+   exercises 15 CAID, acceptance, refusal, replay, storage-failure, and
+   effect cases; 41 focused tests and a mutation-score floor exercise
+   the reference implementation.  It has no Python or Go port, no wet-
+   lab deployment, no external scientific validation, and no claimed
    partnership or endorsement.  The demonstration does not process raw
    biological content or perform screening.
 
@@ -602,6 +609,22 @@ Internet-Draft               Model-to-Matter                   July 2026
               <https://datatracker.ietf.org/doc/draft-schrock-
               authorization-evidence-challenge/>.
 
+
+
+
+
+Schrock                  Expires 15 January 2027               [Page 11]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   [I-D.schrock-canonical-action-identifier]
+              Schrock, I., "The Canonical Action Identifier (CAID)",
+              Work in Progress, Internet-Draft, draft-schrock-canonical-
+              action-identifier-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-canonical-
+              action-identifier/>.
+
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
               DOI 10.17487/RFC2119, March 1997,
@@ -610,13 +633,6 @@ Internet-Draft               Model-to-Matter                   July 2026
    [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/info/rfc3339>.
-
-
-
-Schrock                  Expires 13 January 2027               [Page 11]
-
-Internet-Draft               Model-to-Matter                   July 2026
-
 
    [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
               DOI 10.17487/RFC7493, March 2015,
@@ -645,11 +661,24 @@ Internet-Draft               Model-to-Matter                   July 2026
               July 2026, <https://datatracker.ietf.org/doc/draft-
               schrock-ep-action-evidence-graph/>.
 
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027               [Page 12]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
    [I-D.schrock-ep-authorization-evidence-chain]
               Schrock, I., "Authorization Evidence Chains: Composing
               Heterogeneous Agent-Authorization Receipts", Work in
               Progress, Internet-Draft, draft-schrock-ep-authorization-
-              evidence-chain-02, July 2026,
+              evidence-chain-03, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-evidence-chain/>.
 
@@ -669,4 +698,31 @@ Author's Address
 
 
 
-Schrock                  Expires 13 January 2027               [Page 12]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027               [Page 13]

@@ -112,7 +112,7 @@ def _run(v):
     # verifies over the expected digest (fail-closed on any refusal).
     if "timestamp_proof" in v:
         return verify_timestamp_proof(v["timestamp_proof"], v.get("expected_digest"), v.get("pinned_tsa_keys"))["verified"]
-    # EP-AEC-ROLE-v1: valid iff verify_authorization_chain ALLOWs, with the built-in
+    # EP-AEC-ROLE-v1: valid iff the evidence requirement is SATISFIED, with the built-in
     # ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for each
     # stub_type. Exercises real signatures, role scoping, and signed action binding.
     if "aec_chain" in v:
@@ -124,7 +124,7 @@ def _run(v):
                                           policies_by_type=v.get("policies_by_type"),
                                           requirement=v.get("requirement"),
                                           expected_action_digest=v.get("expected_action_digest"),
-                                          verification_time=v.get("verification_time"))["allow"]
+                                          verification_time=v.get("verification_time"))["satisfied"]
     return False
 
 def run(v):

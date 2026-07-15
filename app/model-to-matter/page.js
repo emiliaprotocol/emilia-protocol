@@ -25,7 +25,7 @@ const SEQUENCE = [
   {
     tag: 'CLEAR ONCE',
     accent: 'green',
-    line: 'All six pinned authorities agree on this exact action. The executor consumes the single-use clearance and runs the step, one time.',
+    line: 'All six pinned authorities agree on this exact action. The executor grants at most one clearance before invoking its effect adapter.',
     verdict: 'clear_to_execute',
   },
   {
@@ -37,16 +37,16 @@ const SEQUENCE = [
   {
     tag: 'REFUSE - REPLAY',
     accent: 'red',
-    line: 'The same cleared action is presented again, or through a second independently issued challenge. The action digest is already consumed. Only one execution ever wins.',
-    verdict: 'do_not_execute_already_consumed',
+    line: 'The same cleared action is presented again, or through a second independently issued challenge. The action digest is already consumed. At most one clearance can win.',
+    verdict: 'do_not_execute_refused',
   },
 ];
 
 const PROVES = [
   'A named, accountable human authorized this exact action, under a device-bound ceremony.',
   'Every evidence leg the executor pinned was present, fresh, and bound to the same action digest.',
-  'The clearance was consumed exactly once. Two challenges cannot each clear the same action.',
-  'The whole record is verifiable offline, later, by a replicating lab, an auditor, or a regulator, without trusting the executor’s own logs.',
+  'At most one clearance was granted. Two challenges cannot each clear the same action.',
+  'The signed evidence and executor statement remain verifiable offline under relying-party-pinned keys; current revocation and consumption still require their authenticated state sources.',
 ];
 
 const DOES_NOT_PROVE = [
@@ -72,7 +72,7 @@ const ATTACKS = [
   ['Action mutation', 'A field changes after clearance. The server-computed action digest changes, so the clearance stops matching. Refuse.'],
   ['Issuer substitution', 'An evidence artifact is signed by a key the executor never pinned, or an issuer identity is swapped. Refuse.'],
   ['Revocation / expiry', 'An evidence leg is revoked or expired, or revocation state is simply absent. Absence fails closed. Refuse.'],
-  ['Concurrent replay', 'The same action is presented twice at once, or across two independently issued challenges. Exactly one wins; the rest refuse.'],
+  ['Concurrent replay', 'The same action is presented twice at once, or across two independently issued challenges. At most one clearance wins; the rest refuse.'],
 ];
 
 export default function ModelToMatterPage() {
@@ -91,7 +91,7 @@ export default function ModelToMatterPage() {
             Frontier models now propose experiments and drive automated labs. Before a
             proposed step becomes matter, the executor should require one thing: proof
             that every authority it trusts agreed on this exact model, protocol, material,
-            facility, and human approver, and that the step runs exactly once. Model-to-Matter
+            facility, and human approver, and that no second clearance is granted. Model-to-Matter
             is that gate. It composes with screening and safety review; it does not replace them.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
@@ -100,8 +100,9 @@ export default function ModelToMatterPage() {
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 18, maxWidth: 760, lineHeight: 1.7 }}>
             Status: reference profile, pinned executor, and adversarial demonstration, July 2026.
-            Informational Internet-Draft -00 source staged for review, not yet filed. This profile
-            has not been deployed in a wet lab and claims no commercial or research partnership.
+            Experimental Internet-Draft -00 candidate scheduled for July 19, filed last after the
+            core line. This profile has not been deployed in a wet lab and claims no commercial or
+            research partnership.
           </p>
         </section>
 
@@ -128,7 +129,7 @@ export default function ModelToMatterPage() {
             </div>
             <div style={{ ...styles.body, fontSize: 17, marginTop: 12, marginBottom: 0, color: color.t1 }}>
               Do all required authorities agree about this exact model, harness, protocol,
-              material commitment, destination, facility, purpose, and one-time execution?
+              material commitment, destination, facility, purpose, and one permitted clearance?
             </div>
           </div>
         </section>
@@ -171,9 +172,9 @@ export default function ModelToMatterPage() {
             Model-to-Matter is safety-process enforcement, not scientific safety expertise.
           </h2>
           <p style={{ ...styles.body, maxWidth: 780 }}>
-            It proves that an executor applied its pinned clearance process to one exact action,
-            once. It does not prove the process was scientifically correct, or that no physical
-            path bypassed the gate.
+            It proves that an executor applied its pinned clearance process to one exact action
+            and admitted at most one clearance. It does not prove the process was scientifically
+            correct, that execution succeeded, or that no physical path bypassed the gate.
           </p>
           <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
             <div style={{ ...styles.card, padding: 26, borderTop: `3px solid ${color.green}` }}>
@@ -268,7 +269,7 @@ export default function ModelToMatterPage() {
           <div style={{ marginTop: 24, ...grid.auto(240) }}>
             <a href={`${REPO}/blob/main/standards/staged/draft-schrock-model-to-matter-00.txt`} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
               <div style={{ ...styles.h3, fontSize: 17 }}>Internet-Draft -00</div>
-              <div style={{ ...styles.cardBody, marginTop: 6 }}>The informational executor profile, staged for review and not yet filed.</div>
+              <div style={{ ...styles.cardBody, marginTop: 6 }}>The Experimental executor profile, scheduled as the final July 19 filing.</div>
             </a>
             <a href={`${REPO}/blob/main/docs/verticals/MODEL-TO-MATTER.md`} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
               <div style={{ ...styles.h3, fontSize: 17 }}>Public spec</div>
@@ -281,6 +282,10 @@ export default function ModelToMatterPage() {
             <a href={`${REPO}/blob/main/tests/model-to-matter.test.js`} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
               <div style={{ ...styles.h3, fontSize: 17 }}>Adversarial tests</div>
               <div style={{ ...styles.cardBody, marginTop: 6 }}>The refuse cases, exercised in CI on every change.</div>
+            </a>
+            <a href={`${REPO}/blob/main/conformance/vectors/model-to-matter.v1.json`} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
+              <div style={{ ...styles.h3, fontSize: 17 }}>Public vectors</div>
+              <div style={{ ...styles.cardBody, marginTop: 6 }}>Deterministic clearance, replay, storage-failure, and effect-tampering cases.</div>
             </a>
             <a href={REPO} style={{ ...styles.card, padding: 22, textDecoration: 'none' }}>
               <div style={{ ...styles.h3, fontSize: 17 }}>Apache-2.0 code</div>

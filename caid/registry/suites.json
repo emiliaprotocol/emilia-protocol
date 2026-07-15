@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "registry": "caid-suites",
+    "registry_version": 1,
+    "updated": "2026-07-08",
+    "license": "CC0-1.0",
+    "trust_note": "A suite defines only how canonical bytes and a digest are produced. It carries no trust semantics: recomputing a digest proves content identity, never authorization, execution, or safety.",
+    "identifier_note": "The digest is encoded in the CAID string as base64url without padding per RFC 4648 section 5, case-sensitive. Unknown suites are a refusal for conforming parsers, never a guess."
+  },
+  "suites": [
+    {
+      "suite": "jcs-sha256",
+      "status": "active",
+      "conformance": "REQUIRED",
+      "input": "JSON action object",
+      "canonicalization": {
+        "name": "JSON Canonicalization Scheme (JCS)",
+        "reference": "RFC 8785"
+      },
+      "digest": {
+        "name": "SHA-256",
+        "reference": "RFC 6234"
+      },
+      "digest_encoding": {
+        "name": "base64url, unpadded",
+        "reference": "RFC 4648 section 5"
+      },
+      "notes": "Every conforming implementation MUST support jcs-sha256. The action object MUST NOT contain non-integer JSON numbers anywhere (DESIGN.md section 1); this removes the ECMAScript number-serialization divergence class before JCS is applied."
+    },
+    {
+      "suite": "cbor-sha256",
+      "status": "active",
+      "conformance": "OPTIONAL",
+      "input": "CBOR action map",
+      "canonicalization": {
+        "name": "CBOR Core Deterministic Encoding Requirements",
+        "reference": "RFC 8949 section 4.2"
+      },
+      "digest": {
+        "name": "SHA-256",
+        "reference": "RFC 6234"
+      },
+      "digest_encoding": {
+        "name": "base64url, unpadded",
+        "reference": "RFC 4648 section 5"
+      },
+      "notes": "Defined in v1; implementations MAY support it. The reference implementations in this package ship jcs-sha256 only. Cross-suite equivalence is out of scope: a jcs-sha256 CAID and a cbor-sha256 CAID over the same logical content are different identifiers, and an artifact MAY carry one CAID per suite it computed."
+    }
+  ]
+}

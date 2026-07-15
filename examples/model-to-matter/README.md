@@ -30,11 +30,15 @@ Run the adversarial contract:
 
 ```bash
 npx vitest run tests/model-to-matter.test.js
+npm run m2m:conformance
 npm run test:mutation:model-to-matter
 ```
 
-The informational Internet-Draft source is staged at
-`standards/staged/draft-schrock-model-to-matter-00.xml`; it is not yet filed.
+The Experimental Internet-Draft source is staged at
+`standards/staged/draft-schrock-model-to-matter-00.xml`. It is a July 19
+Experimental filing candidate, scheduled after the four-document protocol
+line. An executor partner remains necessary for any deployment or adoption
+claim, not for publication of the open profile.
 
 ## Honest boundary
 
