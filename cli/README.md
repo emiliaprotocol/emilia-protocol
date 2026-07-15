@@ -1,6 +1,6 @@
 # @emilia-protocol/cli
 
-Command-line interface for EMILIA Protocol — query trust profiles, evaluate policies, submit receipts, and run pre-action enforcement from your terminal.
+Command-line interface for EMILIA Protocol. Verify portable authorization evidence fully offline, or call the hosted trust-profile and dispute APIs.
 
 ## Install
 
@@ -25,8 +25,16 @@ export EP_API_KEY=ep_live_your_key_here         # for write operations
 ## Commands
 
 ```bash
-# Public operations (no API key needed)
-ep register my-agent --name "My Shopping Agent" --type agent
+# Verify locally. The receipt never leaves your machine.
+ep verify receipt.json
+ep verify receipt.json --key MCowBQYDK2VwAyEA...
+
+# The verifier also recognizes bundles, commitment proofs, WebAuthn signoffs,
+# multi-party quorum documents, provenance chains, and Section 6.2 receipts.
+ep verify packet.json --verification verification.json
+
+# Hosted read operations (no API key needed)
+ep verify-remote ep_rcpt_abc123
 ep profile merchant-xyz
 ep evaluate merchant-xyz --policy strict
 ep preflight mcp-server-abc --policy mcp_server_safe_v1
@@ -35,41 +43,25 @@ ep dispute ep_disp_abc123
 ep policies
 ep health
 
-# Authenticated write operations (EP_API_KEY required)
+# Hosted write operations (EP_API_KEY required)
+ep register my-agent --name "My Shopping Agent" --type agent
 ep submit merchant-xyz --ref order_123 --behavior completed
+ep dispute file ep_rcpt_abc123 --reason "Action was not authorized"
+ep appeal ep_disp_abc123 --reason "New evidence attached"
 ```
 
-## Example output
+`ep verify` delegates to the version-pinned `@emilia-protocol/verify` package. It does not call an EMILIA service, fetch keys, or silently substitute hosted verification.
+
+## Offline example
 
 ```
-$ ep profile merchant-xyz
-
-  ElectroMart Pro
-  Confidence: emerging
-  Score: 87.3/100
-  Evidence: 12.4 (quality-gated: 12.4)
-  Established: Yes
-  Receipts: 47
-
-  Behavioral:
-    Completion: 94.3%
-    Dispute:    0.7%
-
-$ ep evaluate merchant-xyz --policy strict
-
-  Policy: strict
-  Pass: ✓ YES
-  Score: 87.3/100
-  Confidence: emerging
-
-$ ep preflight mcp-server-abc --policy mcp_server_safe_v1
-
-  ✓ ALLOW — mcp-server-abc
-  Policy: mcp_server_safe_v1
-    ✓ publisher_verified
-    ✓ provenance_verified
-    ✓ permission_class_acceptable
+$ ep verify receipt.json
+VERIFIED - receipt - receipt.json
+  version
+  signature
 ```
+
+The verifier prints every applicable check and exits nonzero for malformed, tampered, unpinned, or otherwise unverifiable evidence.
 
 ## License
 

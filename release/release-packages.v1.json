@@ -1,6 +1,7 @@
 {
   "@version": "EP-RELEASE-PACKAGE-REGISTRY-v1",
   "packages": [
+    { "package": "@emilia-protocol/cli", "ecosystem": "npm", "path": "cli", "workflow": "publish-cli.yml", "tag_prefix": "cli-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/verify", "ecosystem": "npm", "path": "packages/verify", "workflow": "publish-verify-sdk.yml", "tag_prefix": "verify-v", "mode": "npm_direct" },
     { "package": "@emilia-protocol/gate", "ecosystem": "npm", "path": "packages/gate", "workflow": "publish-gate.yml", "tag_prefix": "gate-v", "mode": "npm_reusable" },
     { "package": "@emilia-protocol/issue", "ecosystem": "npm", "path": "packages/issue", "workflow": "publish-issue.yml", "tag_prefix": "issue-v", "mode": "npm_reusable" },

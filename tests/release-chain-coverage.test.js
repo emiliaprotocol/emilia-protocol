@@ -9,7 +9,7 @@ import {
 
 describe('release-chain coverage', () => {
   it('every declared npm and PyPI package uses the complete verifiable release chain', () => {
-    expect(auditReleaseChain()).toEqual({ packages: 10, npm: 7, pypi: 3 });
+    expect(auditReleaseChain()).toEqual({ packages: 11, npm: 8, pypi: 3 });
   });
 
   it('refuses a reusable publisher with its post-registry byte comparison removed', () => {
