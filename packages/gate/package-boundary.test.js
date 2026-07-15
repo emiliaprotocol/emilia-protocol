@@ -38,3 +38,9 @@ test('no file shipped in the package imports outside the package root', () => {
   }
   assert.deepEqual(offenders, [], `package-root escapes found:\n${offenders.join('\n')}`);
 });
+
+test('the package-local strict JSON gate matches the shared carrier gate byte-for-byte', () => {
+  const local = fs.readFileSync(path.join(pkgRoot, 'strict-json.js'), 'utf8');
+  const shared = fs.readFileSync(path.join(pkgRoot, '../require-receipt/strict-json.js'), 'utf8');
+  assert.equal(local, shared);
+});

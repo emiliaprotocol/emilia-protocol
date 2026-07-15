@@ -16,6 +16,7 @@
 
 import crypto from 'node:crypto';
 import { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } from './index.js';
+import { strictJsonGate } from './strict-json.js';
 
 export const RESOLUTION_VERSION = 'EP-RESOLUTION-v1';
 export const RESOLUTION_CONTEXT_TYPE = 'ep.resolution.v1';
@@ -137,8 +138,12 @@ function bindingMomentShapeValid(bindingMoment) {
 function signedClientOrigin(signoff) {
   try {
     const encoded = signoff?.webauthn?.client_data_json;
-    if (typeof encoded !== 'string' || encoded.length === 0) return null;
-    const client = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (typeof encoded !== 'string' || encoded.length === 0 || !/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
+    const bytes = Buffer.from(encoded, 'base64url');
+    if (bytes.toString('base64url') !== encoded) return null;
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    if (!strictJsonGate(text).ok) return null;
+    const client = JSON.parse(text);
     return isRecord(client) && typeof client.origin === 'string' && client.origin.length > 0
       ? client.origin
       : null;
@@ -321,7 +326,10 @@ export function verifyResolutionReceipt(receipt, opts = {}) {
       && opts.allowedOrigins.includes(origin);
     if (!checks.origin) return refuse('webauthn_origin_not_allowed', checks, outcome);
 
-    const signoff = verifyWebAuthnSignoff(receipt.signoff, pin.public_key, { rpId: opts.rpId });
+    const signoff = verifyWebAuthnSignoff(receipt.signoff, pin.public_key, {
+      rpId: opts.rpId,
+      allowedOrigins: opts.allowedOrigins,
+    });
     checks.webauthn = signoff.valid === true;
     if (!checks.webauthn) return refuse('webauthn_verification_failed', checks, outcome);
 

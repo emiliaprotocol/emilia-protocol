@@ -14,18 +14,18 @@
     },
     {
       "path": "conformance/vectors/signoffs.v1.json",
-      "sha256": "836bb3c742b625ffdea3b82cdba4e0e3a1a87635522bfbc4de447e977a62ab05",
-      "vectors": 9
+      "sha256": "1bb0f771be5e66e4a9de9733ea6507e650dd685db7a5a1c6cc46046dcaa8114d",
+      "vectors": 13
     },
     {
       "path": "conformance/vectors/resolution.v1.json",
-      "sha256": "a91183e2acde1707080b279fab029fc72157bc6d6a15ba744bca185dcfbc4ed0",
-      "vectors": 32
+      "sha256": "3d89e9f624e8c7058876ae404c7ec1e76293b4ef178bb8901ec31e72e44b5c5c",
+      "vectors": 33
     },
     {
       "path": "conformance/vectors/quorum.v1.json",
-      "sha256": "5fb57ed6d732f2509614818ab58bb5bef74a05d98345ddeaf1c644bae291627a",
-      "vectors": 13
+      "sha256": "ad9a79488fd9b2fe338a18212ee61e4de9f2a89b72889a70d16694ddfbe3db76",
+      "vectors": 15
     },
     {
       "path": "conformance/vectors/revocation.exec.v2.json",
@@ -39,8 +39,8 @@
     },
     {
       "path": "conformance/vectors/trust-receipt.exec.v1.json",
-      "sha256": "0475a4f3ed8e477f5674b8a97d558700a4d820fa49055c5aae1aaa01b19a40b3",
-      "vectors": 11
+      "sha256": "aff19fb8475547cc1bdd57f20a64ac6e610f59b9e37d9e24326079ffa0ab4d19",
+      "vectors": 13
     },
     {
       "path": "conformance/vectors/trust-receipt.timestamp-forms.v2.json",
@@ -49,8 +49,8 @@
     },
     {
       "path": "conformance/vectors/provenance.exec.v1.json",
-      "sha256": "22543e23de07c4ca7f1c53c8c3a6dc3ea6a711164f8f7c5b4d8480d68232ac75",
-      "vectors": 7
+      "sha256": "5bbd268183f12950e7466f999bf3aa16412d10d50286a25146ae708e67933c53",
+      "vectors": 14
     },
     {
       "path": "conformance/vectors/evidence-record.v1.json",
@@ -69,8 +69,8 @@
     },
     {
       "path": "conformance/vectors/aec-role.v1.json",
-      "sha256": "aa68f54f794373f95b7b1cb728ffd04c18ec7bd284129bd553d12cc5517dfb59",
-      "vectors": 28
+      "sha256": "b0f286cab68c22b608ece3af46174fbd66e27b893b4762d12fa320ea596353f2",
+      "vectors": 30
     },
     {
       "path": "conformance/vectors/currency.v2.json",
@@ -100,7 +100,7 @@
   ],
   "totals": {
     "suites": 18,
-    "vectors": 232,
+    "vectors": 250,
     "implementations": 3
   },
   "implementations": [
@@ -110,16 +110,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run-js.mjs",
-        "sha256": "c73c33ef84e9a740144f76474be1c5b576aad193ee2927cc79c078b0929604ef"
+        "sha256": "5b7e9ec0735ddde680459b23b992f02495f5da4148907296c8706bdaaccbdf91"
       },
       "source": {
-        "files": 52,
-        "bytes": 804773,
-        "tree_sha256": "5f658b485af9b930939710b516c614259f63f9eb6cf51f0778cad551aae9d2e8"
+        "files": 53,
+        "bytes": 830706,
+        "tree_sha256": "69a57f7b5272a8b129a2a389108ad62060c3893b2f0741b310922855a0de7f08"
       },
       "suites": 18,
-      "vectors": 232,
-      "normalized_results_sha256": "2201848495a9095a9f5786bc4cd1d6a88c2734cd91b031c9849066f46283f51f",
+      "vectors": 250,
+      "normalized_results_sha256": "fd19716f1f2adb79f3866105c8214cb71ab370c2454e47e48e77861f7a3338bd",
       "status": "pass"
     },
     {
@@ -128,16 +128,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run_py.py",
-        "sha256": "f714ece2a07e5c97ecd85fdb149fde501b19ba7575aac460638c35bcc64a120b"
+        "sha256": "7e4a6e2819b40ee939e38bbf1ac5868f168e1823809c58a60864a7797c11074b"
       },
       "source": {
         "files": 1,
-        "bytes": 158620,
-        "tree_sha256": "79361bf4475e32058d04ff6c7c3914df8b8e4a08416fb50847284d86c3f3c93f"
+        "bytes": 162172,
+        "tree_sha256": "c882c2cf878f9f4daabc33080be919c36f9266c661f272dd89d8f6f148b26c2a"
       },
       "suites": 18,
-      "vectors": 232,
-      "normalized_results_sha256": "2201848495a9095a9f5786bc4cd1d6a88c2734cd91b031c9849066f46283f51f",
+      "vectors": 250,
+      "normalized_results_sha256": "fd19716f1f2adb79f3866105c8214cb71ab370c2454e47e48e77861f7a3338bd",
       "status": "pass"
     },
     {
@@ -146,18 +146,18 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "5e7a7fa2f3fabe35214a3ff0843c0122ed76416956a89b4e23928764003bfcba"
+        "sha256": "8c90db667135b5fc52e155296b1b998a4556a119dd8662447ddcb8f0d4cb5481"
       },
       "source": {
-        "files": 31,
-        "bytes": 268736,
-        "tree_sha256": "59512a15cb893ecb25a64547e146ad8cf6088c3efd3a26c5ca8c40d6480e9200"
+        "files": 32,
+        "bytes": 275540,
+        "tree_sha256": "25831d189fd095bf0db4c40b483f8198161d540ad25809069f6cded062924844"
       },
       "suites": 18,
-      "vectors": 232,
-      "normalized_results_sha256": "2201848495a9095a9f5786bc4cd1d6a88c2734cd91b031c9849066f46283f51f",
+      "vectors": 250,
+      "normalized_results_sha256": "fd19716f1f2adb79f3866105c8214cb71ab370c2454e47e48e77861f7a3338bd",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "99bc0f825e3eb1ac83b5b1dd3fb271547ed2aa818db2eb8bf8217a389acdc050"
+  "manifest_sha256": "707f95f8b0d8c58be6ae256144cbb6c8f1889832936bdcd98fec8ae2e826d410"
 }

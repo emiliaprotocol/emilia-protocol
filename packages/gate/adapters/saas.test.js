@@ -14,7 +14,7 @@ const A = 'allow_with_signoff';
 const Q = { quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } };
 function setup(manifest, action) {
   const harness = createEg1Harness({ action });
-  return { harness, gate: createGate({ manifest, trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys }) };
+  return { harness, gate: createGate({ manifest, trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins }) };
 }
 
 test('op inventories', () => {
@@ -66,7 +66,7 @@ test('linear: bulk delete binds the query hash', async () => {
   const action = { action_type: 'linear.issue.bulk_delete', team: 'ENG', query_hash: undefined };
   // mint with the same query the call uses so the hash matches.
   const harness = createEg1Harness({ action: { action_type: 'linear.issue.bulk_delete', team: 'ENG' } });
-  const gate = createGate({ manifest: createLinearManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys });
+  const gate = createGate({ manifest: createLinearManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins });
   const client = { bulkDeleteIssues: async () => ({ deleted: 9 }) };
   // The receipt must carry the query_hash; mint with extra fields matching observed.
   const { hashCanonical } = await import('./_kit.js');

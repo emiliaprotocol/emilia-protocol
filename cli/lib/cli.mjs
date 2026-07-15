@@ -55,7 +55,11 @@ Examples:
 }
 
 export function resolveVerifierCli() {
-  return join(dirname(fileURLToPath(import.meta.resolve('@emilia-protocol/verify'))), 'cli.js');
+  try {
+    return join(dirname(fileURLToPath(import.meta.resolve('@emilia-protocol/verify'))), 'cli.js');
+  } catch {
+    return fileURLToPath(new URL('../../packages/verify/cli.js', import.meta.url));
+  }
 }
 
 export function runOfflineVerifier(args, { stdout, stderr } = {}) {

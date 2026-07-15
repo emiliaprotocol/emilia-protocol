@@ -112,6 +112,14 @@ function mint(header, payload, kp = emitterKp) {
   return `${signingInput}.${sig}`;
 }
 
+function mintRaw(headerText, payloadText, kp = emitterKp) {
+  const headerSeg = b64u(Buffer.from(headerText, 'utf8'));
+  const payloadSeg = b64u(Buffer.from(payloadText, 'utf8'));
+  const signingInput = `${headerSeg}.${payloadSeg}`;
+  const sig = crypto.sign(null, Buffer.from(signingInput, 'ascii'), kp.privateKey).toString('base64url');
+  return `${signingInput}.${sig}`;
+}
+
 // ── version + assembly ──────────────────────────────────────────────────────────
 
 describe('EP-EYE-SET-v1 — version + assembly', () => {
@@ -440,6 +448,22 @@ describe('EP-EYE-SET-v1 — malformed input fails closed (never throws)', () => 
     const r2 = verifyEyeSet(`${goodHeader}.@@@.sig`, { pinnedKeys: pinnedKeys() });
     expect(r2.valid).toBe(false);
     expect(r2.checks.claims_present).toBe(false);
+  });
+
+  it('rejects validly signed duplicate JSON members and out-of-profile JOSE headers', () => {
+    const valid = parts(buildEyeSet(elevatedAdvisory(), { signer: signer(), audience: AUDIENCE }));
+    const duplicateHeader = mintRaw(
+      `{"alg":"EdDSA","alg":"EdDSA","typ":"${EYE_SET_TYP}","kid":"${EMITTER_KID}"}`,
+      canonicalize(valid.payload),
+    );
+    const duplicatePayload = mintRaw(
+      canonicalize(valid.header),
+      `{"iss":"${EMITTER_ISS}","iss":"${EMITTER_ISS}"}`,
+    );
+    const embeddedKey = mint({ ...valid.header, jwk: { kty: 'OKP' } }, valid.payload);
+    for (const bad of [duplicateHeader, duplicatePayload, embeddedKey]) {
+      expect(verifyEyeSet(bad, { pinnedKeys: pinnedKeys(), audience: AUDIENCE }).valid).toBe(false);
+    }
   });
 
   it('rejects a missing pinnedKeys map (no key resolvable → unpinned)', () => {

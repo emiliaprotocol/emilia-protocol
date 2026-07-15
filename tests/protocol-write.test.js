@@ -614,6 +614,27 @@ describe('abuse detection', () => {
     });
 
     expect(result.dispute_id).toBe('d_1');
+    expect(mockCheckAbuse).toHaveBeenCalledWith(
+      expect.anything(),
+      'dispute',
+      expect.any(Object),
+      { failClosed: true },
+    );
+  });
+
+  it('fails closed when the abuse-control dependency is unavailable', async () => {
+    mockCheckAbuse.mockRejectedValue(new Error('counter store offline'));
+
+    await expect(protocolWrite({
+      type: COMMAND_TYPES.FILE_DISPUTE,
+      input: { receipt_id: 'r_1', reason: 'inaccurate' },
+      actor: { id: 'filer_1' },
+    })).rejects.toMatchObject({
+      code: 'ABUSE_CHECK_UNAVAILABLE',
+      status: 503,
+    });
+
+    expect(mockCanonicalFileDispute).not.toHaveBeenCalled();
   });
 });
 

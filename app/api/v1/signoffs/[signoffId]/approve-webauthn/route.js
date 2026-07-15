@@ -26,14 +26,20 @@ import { loadSignoffForSigning } from '@/lib/webauthn-signoff';
 import { canAccept } from '@/lib/signoff/quorum-session.js';
 import { decisionToMember, decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import { strictJsonGate } from '@/lib/strict-json.js';
 
 const MAX_WEBAUTHN_APPROVE_BYTES = 256 * 1024;
 
 function submittedChallenge(assertion) {
   try {
     const raw = assertion?.response?.clientDataJSON;
-    if (typeof raw !== 'string') return null;
-    const clientData = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    if (typeof raw !== 'string' || raw.length === 0 || raw.length > 32 * 1024
+        || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
+    const bytes = Buffer.from(raw, 'base64url');
+    if (bytes.toString('base64url') !== raw || bytes.length > 16 * 1024) return null;
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    if (!strictJsonGate(text).ok) return null;
+    const clientData = JSON.parse(text);
     return typeof clientData.challenge === 'string' ? clientData.challenge : null;
   } catch {
     return null;
@@ -258,7 +264,10 @@ export async function POST(request, { params }) {
             signature: body.assertion.response.signature,
           },
         });
-        const verdict = canAccept(quorumPolicy, loaded.actionHash, existingMembers, incoming, { rpId: rpID });
+        const verdict = canAccept(quorumPolicy, loaded.actionHash, existingMembers, incoming, {
+          rpId: rpID,
+          allowedOrigins: [origin],
+        });
         if (!verdict.ok) {
           return epProblem(409, 'quorum_signer_rejected', `Signer cannot be admitted to the quorum: ${verdict.reason}`);
         }

@@ -51,9 +51,10 @@ export function profileRegistryEntryDigest(entry) {
  * Ed25519 KeyObject held by the REGISTRAR (never in this repo).
  * @returns {object} the signed EP-RELIANCE-PROFILE-REGISTRY-v1 entry
  */
-export function signRelianceProfileEntry({ profile_id, profile, registry_epoch, issued_at }, privateKey) {
+export function signRelianceProfileEntry({ registry_id, profile_id, profile, registry_epoch, issued_at }, privateKey) {
   const v = validateRelianceProfile(profile);
   if (!v.ok) throw new Error(`invalid inner profile: ${v.issues.join('; ')}`);
+  if (typeof registry_id !== 'string' || !registry_id) throw new Error('registry_id is required');
   if (typeof profile_id !== 'string' || !profile_id) throw new Error('profile_id is required');
   // Store an immutable copy so the signed entry cannot be mutated through the
   // caller's reference to `profile` after signing (the signature/hash would then
@@ -61,6 +62,7 @@ export function signRelianceProfileEntry({ profile_id, profile, registry_epoch, 
   const frozenProfile = structuredClone(profile);
   const body = {
     '@type': PROFILE_REGISTRY_VERSION,
+    registry_id,
     profile_id,
     registry_epoch: Number.isSafeInteger(registry_epoch) ? registry_epoch : 1,
     profile: frozenProfile,
@@ -77,7 +79,7 @@ export function signRelianceProfileEntry({ profile_id, profile, registry_epoch, 
  * Verify a registry entry against pinned registrar keys.
  * @param {object} entry
  * @param {object} opts
- * @param {Array<{issuer_id?:string,public_key:string}>} opts.pinnedRegistryKeys
+ * @param {Array<{registry_id:string,key_id?:string,public_key:string}>} opts.pinnedRegistryKeys
  * @param {string} [opts.expectProfileId]
  * @param {number} [opts.expectMinEpoch]
  * @returns {{verified:boolean, accepted:boolean, profile:(object|null), checks:object, reason?:string, entry_digest?:string}}
@@ -90,6 +92,7 @@ export function verifyRelianceProfileEntry(entry, opts = {}) {
   checks.version = true;
 
   const sig = entry.signature;
+  if (typeof entry.registry_id !== 'string' || !entry.registry_id) return fail('registry_id_missing_or_malformed');
   if (!sig || sig.algorithm !== 'Ed25519' || typeof sig.public_key !== 'string' || typeof sig.signature_b64u !== 'string') return fail('signature_missing_or_malformed');
   if (typeof sig.entry_digest !== 'string' || !SHA256_RE.test(sig.entry_digest)) return fail('entry_digest_malformed');
 
@@ -125,15 +128,29 @@ export function verifyRelianceProfileEntry(entry, opts = {}) {
   checks.signature = true;
 
   const derivedKeyId = keyIdFor(sig.public_key);
+  if (sig.key_id !== undefined && sig.key_id !== derivedKeyId) {
+    return { verified: false, accepted: false, profile: null, checks, reason: 'key_id_mismatch', entry_digest: digest };
+  }
   const pinned = Array.isArray(opts.pinnedRegistryKeys) ? opts.pinnedRegistryKeys : [];
-  const pin = pinned.find((k) => k?.public_key === sig.public_key);
+  const keyMatched = pinned.filter((k) => k?.public_key === sig.public_key
+    && (k.key_id === undefined || k.key_id === derivedKeyId));
+  const pin = keyMatched.find((k) => typeof k.registry_id === 'string' && k.registry_id === entry.registry_id);
   if (!pin) {
     // VERIFIED (signature holds) but NOT ACCEPTED (registrar key not pinned).
-    return { verified: true, accepted: false, profile: entry.profile, checks, reason: 'registry_key_not_pinned', entry_digest: digest, key_id: derivedKeyId };
+    return {
+      verified: true,
+      accepted: false,
+      profile: entry.profile,
+      checks,
+      reason: keyMatched.length ? 'pin_missing_or_mismatched_registry_id' : 'registry_key_not_pinned',
+      entry_digest: digest,
+      key_id: derivedKeyId,
+      registry_id: entry.registry_id,
+    };
   }
   checks.pinned_registry_key = true;
 
-  return { verified: true, accepted: true, profile: entry.profile, checks, key_id: derivedKeyId, profile_id: entry.profile_id, registry_epoch: entry.registry_epoch, entry_digest: digest };
+  return { verified: true, accepted: true, profile: entry.profile, checks, key_id: derivedKeyId, registry_id: entry.registry_id, profile_id: entry.profile_id, registry_epoch: entry.registry_epoch, entry_digest: digest };
 }
 
 export { RELIANCE_PROFILE_VERSION };

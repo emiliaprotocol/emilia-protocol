@@ -30,6 +30,8 @@
  */
 
 import crypto from 'crypto';
+const { strictJsonGate } = await import('@emilia-protocol/verify/strict-json')
+  .catch(() => import('../packages/verify/strict-json.js'));
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -70,6 +72,20 @@ const BATCH_MAX = 100;
 
 /** Auto-submit endpoint path. */
 const AUTO_SUBMIT_PATH = '/api/receipts/auto-submit';
+const SUBMIT_TIMEOUT_MS = 15_000;
+const MAX_RESPONSE_BYTES = 1024 * 1024;
+
+function secureApiUrl(value) {
+  const parsed = new URL(value);
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  const loopback = host === 'localhost' || host === '::1' || /^127(?:\.\d{1,3}){3}$/.test(host);
+  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && loopback)) {
+    throw new Error('epApiUrl must use HTTPS (HTTP is allowed only for loopback development)');
+  }
+  if (parsed.username || parsed.password) throw new Error('epApiUrl must not contain credentials');
+  parsed.hash = '';
+  return parsed.toString().replace(/\/+$/, '');
+}
 
 // ---------------------------------------------------------------------------
 // AutoReceiptMiddleware
@@ -95,7 +111,7 @@ export class AutoReceiptMiddleware {
    *   Typically the MCP server operator's entity slug.
    */
   constructor(config = {}) {
-    this.epApiUrl = (config.epApiUrl || 'https://api.emiliaprotocol.com').replace(/\/$/, '');
+    this.epApiUrl = secureApiUrl(config.epApiUrl || 'https://api.emiliaprotocol.com');
     this.epApiKey = config.epApiKey || '';
     this.optIn = config.optIn === true;
     this.entityId = config.entityId || '';
@@ -318,6 +334,8 @@ export class AutoReceiptMiddleware {
     const url = `${this.epApiUrl}${AUTO_SUBMIT_PATH}`;
     const res = await fetch(url, {
       method: 'POST',
+      redirect: 'error',
+      signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
       headers: {
         'Content-Type': 'application/json',
         // Key is included for rate-limiting attribution, not authentication.
@@ -326,12 +344,21 @@ export class AutoReceiptMiddleware {
       body: JSON.stringify({ receipts }),
     });
 
+    const body = await res.text();
+    if (Buffer.byteLength(body, 'utf8') > MAX_RESPONSE_BYTES) {
+      throw new Error(`Auto-submit response exceeds ${MAX_RESPONSE_BYTES} bytes`);
+    }
     if (!res.ok) {
-      const body = await res.text();
       throw new Error(`Auto-submit returned ${res.status}: ${body.slice(0, 200)}`);
     }
-
-    return res.json();
+    try {
+      if (!body) return {};
+      if (!strictJsonGate(body).ok) throw new Error('strict JSON required');
+      const parsed = JSON.parse(body);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('JSON object required');
+      return parsed;
+    }
+    catch { throw new Error('Auto-submit returned invalid JSON'); }
   }
 
   /**

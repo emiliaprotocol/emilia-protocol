@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/crash-test",
-  "version": "0.3.1",
-  "description": "The EMILIA crash test: one command shows a high-risk action blocked, dual-approved by two named humans on their own devices, issued as an authorization receipt, then verified OFFLINE with EMILIA gone \u2014 and a forged copy rejected. Produces an audit-grade Workpaper Package. Runs the real EP-QUORUM-v1 predicate. Scenarios: default finance, --scenario clinical (high-alert medication double-check), --scenario procurement (hospital capital purchase).",
+  "version": "0.4.0",
+  "description": "Offline authorization-evidence demonstration: verify an exact-action quorum under relying-party-pinned policy, approver keys, WebAuthn scope, and operator key, then refuse tampering and self-anchored trust.",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
@@ -17,8 +17,11 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "scripts": {
+    "test": "node --test crash-test.test.js"
+  },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.8.1"
+    "@emilia-protocol/verify": "^3.10.0"
   },
   "keywords": [
     "emilia-protocol",
@@ -32,7 +35,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/emiliaprotocol/emilia-protocol.git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "packages/crash-test"
   },
   "homepage": "https://www.emiliaprotocol.ai/quorum"

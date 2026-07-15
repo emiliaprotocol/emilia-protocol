@@ -7,17 +7,17 @@
  *
  *   1. TARGET BINDING — a receipt is bound to the exact resource, not just the
  *      action type, so a valid receipt for resource A cannot act on resource B.
- *   2. CONSUME-AFTER-SUCCESS (+ replay safety) — a receipt is RESERVED for the
- *      duration of the side effect, COMMITTED (one-time-consumed) only if the
- *      action succeeds, and RELEASED if it fails — so a transient failure never
- *      burns a valid approval, and a reserved/consumed receipt can never drive a
- *      second action (concurrent or after restart, given a shared store).
+ *   2. CONSUME-BEFORE-RETRY (+ replay safety) — a receipt is RESERVED before the
+ *      side effect and permanently COMMITTED after any execution attempt. Once
+ *      execution begins, an exception cannot distinguish "nothing happened"
+ *      from "the effect happened but its response was lost", so automatic retry
+ *      would risk duplicating an irreversible action.
  *   3. SANITIZED REJECTIONS — a refusal returns only a `{ reason }` code, never
  *      the verified receipt's signer/subject/library detail.
  *
- * Prefer `gate.run(receipt, { target }, fn)` — it orchestrates verify → run →
- * commit/release so a caller cannot get the ordering wrong. Use the lower-level
- * `check` / `commit` / `release` only when you must gate and act in separate steps.
+ * Prefer `gate.run(receipt, { target }, fn)` — it orchestrates verify → reserve →
+ * attempt → commit so a caller cannot get the ordering wrong. Use the lower-level
+ * `check` / `commit` / `release` only when you can prove the effect has not begun.
  */
 import {
   verifyEmiliaReceipt,
@@ -27,11 +27,29 @@ import {
   receiptAssuranceTier,
 } from './index.js';
 
-/** Default in-memory consumed-store. Process-local — pass a shared/durable store
- *  ({ has, add }) for multi-instance or restart-durable one-time consumption. */
+/** Default process-local atomic store. Fleets must pass an ownership-fenced
+ * shared store implementing the same reserve/commit/release contract. */
 function inMemoryStore() {
-  const consumed = new Set();
-  return { has: (id) => consumed.has(id), add: (id) => consumed.add(id) };
+  const states = new Map();
+  return {
+    durable: false,
+    ownershipFenced: true,
+    async reserve(id) {
+      if (states.has(id)) return false;
+      states.set(id, 'reserved');
+      return true;
+    },
+    async commit(id) {
+      if (states.get(id) !== 'reserved') throw new Error('consumption reservation not owned');
+      states.set(id, 'committed');
+      return true;
+    },
+    async release(id) {
+      if (states.get(id) !== 'reserved') throw new Error('consumption reservation not owned');
+      states.delete(id);
+      return true;
+    },
+  };
 }
 
 function normalizeTarget(target) {
@@ -63,10 +81,13 @@ export { receiptAssuranceTier };
  * @param {string} [opts.manifestUrl]
  * @param {string} [opts.assuranceClass]
  * @param {object} [opts.quorum]
- * @param {{has:(id:string)=>boolean, add:(id:string)=>void}} [opts.store]
- *   consumed-receipt store; defaults to in-memory (process-local). A durable
- *   store makes one-time consumption survive restarts and span instances. The
- *   in-flight reservation that blocks *concurrent* replay is always process-local.
+ * @param {object} [opts.quorumPolicy] relying-party-pinned organizational quorum rule
+ * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
+ *   commit:(id:string)=>Promise<boolean>|boolean,
+ *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]
+ *   Atomic ownership-fenced consumption store; defaults to process-local memory.
+ *   Fleet stores MUST make reserve() an atomic insert-if-absent and MUST leave an
+ *   uncertain reservation closed until operator reconciliation.
  */
 export function makeReceiptGate(opts = {}) {
   const {
@@ -79,15 +100,21 @@ export function makeReceiptGate(opts = {}) {
     manifestUrl,
     assuranceClass,
     quorum,
+    quorumPolicy,
     approverKeys,
     approver_keys,
     verifyAssurance,
+    rpId,
+    allowedOrigins,
     store = inMemoryStore(),
   } = opts;
 
   if (!action) throw new Error('makeReceiptGate: `action` is required');
-
-  const inflight = new Set(); // reservations held during an in-progress action
+  for (const method of ['reserve', 'commit', 'release']) {
+    if (typeof store?.[method] !== 'function') {
+      throw new Error(`makeReceiptGate: store must implement atomic ${method}(); legacy {has, add} stores are not fleet-safe`);
+    }
+  }
 
   const boundActionFor = (target) => {
     const base = typeof action === 'function' ? action(target) : action;
@@ -109,11 +136,12 @@ export function makeReceiptGate(opts = {}) {
 
   /**
    * Verify + reserve a receipt WITHOUT consuming it. On ok, the caller MUST
-   * later call commit(receiptId) on success or release(receiptId) on failure.
+   * later call commit(receiptId) after an execution attempt, or release(receiptId)
+   * only when it can prove the external effect never began.
    * @returns {{ok:true, receiptId, outcome, signer, subject, boundAction}
    *          | {ok:false, status, body}}
    */
-  function check(receipt, { target } = {}) {
+  async function check(receipt, { target } = {}) {
     const boundAction = boundActionFor(target);
 
     if (!receipt) {
@@ -127,44 +155,65 @@ export function makeReceiptGate(opts = {}) {
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
 
-    const assurance = evaluateReceiptAssurance(receipt, requiredTier, { approverKeys, approver_keys, verifyAssurance });
+    const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
+      approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy,
+    });
     if (!assurance.ok || (TIER_RANK[assurance.have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
       return refuse(boundAction, assurance.reason || 'assurance_too_low');
     }
 
-    if (store.has(v.receipt_id) || inflight.has(v.receipt_id)) return refuse(boundAction, 'replay_refused');
-
-    inflight.add(v.receipt_id); // reserve for the duration of the action
+    let reserved;
+    try {
+      reserved = await store.reserve(v.receipt_id);
+    } catch {
+      return refuse(boundAction, 'consumption_store_unavailable');
+    }
+    if (reserved !== true) return refuse(boundAction, 'replay_refused');
     return { ok: true, receiptId: v.receipt_id, outcome: v.outcome, signer: v.signer, subject: v.subject, boundAction };
   }
 
-  /** Finalize one-time consumption after the action SUCCEEDS. */
-  function commit(receiptId) {
-    inflight.delete(receiptId);
-    store.add(receiptId);
+  /** Finalize one-time consumption after an execution attempt begins. */
+  async function commit(receiptId) {
+    const committed = await store.commit(receiptId);
+    if (committed !== true) throw new Error('consumption commit failed closed');
   }
 
-  /** Release the reservation after the action FAILS — the approval stays retryable. */
-  function release(receiptId) {
-    inflight.delete(receiptId);
+  /** Release only when the caller can prove the external effect never began. */
+  async function release(receiptId) {
+    const released = await store.release(receiptId);
+    if (released !== true) throw new Error('consumption release failed closed');
   }
 
   /**
-   * The safe path: verify+reserve, run the side effect, then commit on success
-   * or release on failure. `fn` MUST throw on failure (so the approval is not
-   * consumed). Receives the check result: fn({ receiptId, outcome, signer, ... }).
+   * The safe path: verify+reserve, run the side effect, then commit regardless
+   * of its return value. An exception after invocation is an indeterminate
+   * outcome and MUST consume the approval to prevent duplicate execution.
+   * Receives the check result: fn({ receiptId, outcome, signer, ... }).
    * @returns {Promise<{ok:true, receiptId, outcome, signer, result}|{ok:false, status, body}>}
    */
   async function run(receipt, ctx, fn) {
     if (typeof ctx === 'function') { fn = ctx; ctx = {}; }
-    const c = check(receipt, ctx || {});
+    if (typeof fn !== 'function') throw new Error('makeReceiptGate.run: fn is required');
+    const c = await check(receipt, ctx || {});
     if (!c.ok) return c;
+    let attempted = false;
+    let committed = false;
     try {
+      attempted = true;
       const result = await fn(c);
-      commit(c.receiptId);
+      await commit(c.receiptId);
+      committed = true;
       return { ok: true, receiptId: c.receiptId, outcome: c.outcome, signer: c.signer, result };
     } catch (err) {
-      release(c.receiptId); // failure -> not consumed -> retryable
+      if (attempted && !committed) {
+        try {
+          await commit(c.receiptId); // effect may have occurred before the exception
+        } catch (commitError) {
+          if (err && typeof err === 'object') {
+            err.consumption_error = String(commitError?.message ?? commitError);
+          }
+        }
+      }
       throw err;
     }
   }

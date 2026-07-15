@@ -26,10 +26,13 @@ import {
   isSupported,
 } from '@/lib/verify-web';
 import { EXAMPLE_RECEIPT, EXAMPLE_SIGNOFF } from './examples';
+import { strictJsonGate } from '@/lib/strict-json.js';
 
-// Look for an embedded public key under any of the conventional field names —
-// a self-contained evidence packet carries its own key, which is what makes
-// "drag it on and see" possible.
+const MAX_VERIFY_INPUT_BYTES = 8 * 1024 * 1024;
+
+// Look for an embedded public key under conventional field names. This enables
+// a self-contained integrity check only; a key carried by an artifact cannot
+// establish its own issuer or approver identity.
 function findKey(doc, names) {
   for (const n of names) {
     if (typeof doc?.[n] === 'string') return doc[n];
@@ -41,7 +44,7 @@ function findKey(doc, names) {
 
 const RECEIPT_LABELS = {
   version: 'Recognized receipt format (EP-RECEIPT-v1)',
-  signature: 'Signed by the issuer (Ed25519) — payload is intact',
+  signature: 'Signature matches the presented key (Ed25519) — payload is intact',
   anchor: 'Included in the published Merkle anchor',
 };
 const SIGNOFF_LABELS = {
@@ -50,7 +53,7 @@ const SIGNOFF_LABELS = {
   user_present: 'A human was physically present at the device',
   user_verified: 'Verified with biometric / PIN (Face ID · Touch ID · passkey)',
   rp_id_hash: 'Scoped to the expected relying party',
-  signature: "Signed by the approver's enrolled device key (ECDSA P-256)",
+  signature: 'Signature matches the presented device key (ECDSA P-256)',
 };
 
 // Turn a verifier result into ordered display rows + a one-line meaning.
@@ -66,7 +69,7 @@ function present(kind, result) {
       title: 'Authorization Receipt',
       labels: RECEIPT_LABELS,
       rows,
-      meaning: 'This receipt was signed by its issuer and has not been altered. Anyone can re-verify it offline, years from now.',
+      meaning: 'The bytes are intact under the presented key. This self-contained check does not establish who controls that key, issuer authority, or relying-party acceptance.',
     };
   }
   if (kind === 'signoff') {
@@ -83,7 +86,7 @@ function present(kind, result) {
       title: 'Class A Device Signoff',
       labels: SIGNOFF_LABELS,
       rows,
-      meaning: 'A named human approved this exact action on their own device. Neither a compromised agent nor the operator could have produced this signature.',
+      meaning: 'A user-present, user-verified authenticator ceremony signed this exact context under the presented key. This integrity-only page does not independently pin the RP ID, origin, identity, authority, perception, or relying-party acceptance.',
     };
   }
   if (kind === 'proof') {
@@ -114,8 +117,10 @@ async function verifyAny(doc) {
   if (doc?.context && doc?.webauthn) {
     const key = findKey(doc, ['approver_public_key', 'public_key', 'publicKey']);
     if (!key) return { kind: 'signoff', needKey: true };
-    const rpId = doc.rp_id || doc.context?.rp_id || undefined;
-    return { kind: 'signoff', result: await verifyWebAuthnSignoff(doc, key, rpId ? { rpId } : {}) };
+    // This public page has no out-of-band relying-party trust profile. Do not
+    // copy an RP ID or origin from the artifact and present it as an independent
+    // pin; run the low-level integrity check and label that boundary plainly.
+    return { kind: 'signoff', result: await verifyWebAuthnSignoff(doc, key) };
   }
   return { kind: null };
 }
@@ -134,7 +139,16 @@ export default function VerifyPage() {
     setState(null);
     try {
       let doc;
-      try { doc = JSON.parse(raw); } catch { setState({ error: 'That is not valid JSON. Paste a receipt or signoff document.' }); setBusy(false); return; }
+      try {
+        if (new TextEncoder().encode(raw).length > MAX_VERIFY_INPUT_BYTES) throw new Error('input is too large');
+        const strict = strictJsonGate(raw);
+        if (!strict.ok) throw new Error(strict.reason);
+        doc = JSON.parse(raw);
+      } catch (error) {
+        setState({ error: `That is not strict JSON: ${error.message}. Paste one unambiguous receipt or signoff document.` });
+        setBusy(false);
+        return;
+      }
       const out = await verifyAny(doc);
       if (out.kind === null) { setState({ error: 'Unrecognized document. Expected an EP receipt, device signoff, bundle, or commitment proof.' }); }
       else if (out.needKey) { setState({ error: `This ${out.kind} has no embedded public key. Verify it with the full evidence packet (which includes the key), or via the CLI: npx @emilia-protocol/verify`, kind: out.kind }); }
@@ -172,12 +186,12 @@ export default function VerifyPage() {
           Verify it yourself
         </div>
         <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(34px, 5vw, 52px)', letterSpacing: -1.5, lineHeight: 1.02, margin: '0 0 20px' }}>
-          Verify an authorization receipt in your own browser.
+          Check a receipt&rsquo;s cryptographic integrity in your own browser.
         </h1>
         <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.7, maxWidth: 640, margin: '0 0 36px' }}>
-          Paste a receipt or a device signoff below. It is checked <strong style={{ color: color.t1 }}>entirely on this page</strong> with
+          Paste a receipt or device signoff below. Its signature and binding are checked <strong style={{ color: color.t1 }}>entirely on this page</strong> with
           {' '}pure public-key math — nothing is uploaded, no account, no EMILIA server is trusted. The exact code running here is the
-          {' '}open-source <code style={{ fontFamily: font.mono, fontSize: 14 }}>@emilia-protocol/verify</code> package.
+          {' '}open-source <code style={{ fontFamily: font.mono, fontSize: 14 }}>@emilia-protocol/verify</code> package. Embedded keys support an integrity check; acceptance requires trust anchors supplied independently by the relying party.
         </p>
 
         {!supported && (
@@ -262,7 +276,7 @@ function Result({ state }) {
           <span style={{ fontSize: 26, lineHeight: 1 }}>{ok ? '✅' : '⛔️'}</span>
           <div>
             <div style={{ fontWeight: 700, fontSize: 19, color: ok ? '#15803D' : color.red, letterSpacing: -0.3 }}>
-              {ok ? 'VERIFIED' : 'NOT VERIFIED'}
+              {ok ? 'CRYPTOGRAPHICALLY VERIFIED' : 'NOT VERIFIED'}
             </div>
             <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: color.t3, marginTop: 3 }}>{view.title}</div>
           </div>

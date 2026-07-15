@@ -25,7 +25,7 @@ export const contract = {
     'approver_credentials', 'protocol_events', 'security_events', 'tenants', 'tenant_members',
     'tenant_api_keys', 'tenant_environments', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'zk_proofs',
-    'authorities', 'commits',
+    'authorities', 'commits', 'revoked_commit_keys', 'consumed_gate_refs',
   ],
 
   // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
@@ -47,6 +47,8 @@ export const contract = {
     // signature-verification dependency here so the drift check catches it.
     commits: ['commit_id', 'kid', 'signature', 'public_key', 'nonce',
       'entity_id', 'action_type', 'decision', 'expires_at', 'created_at'],
+    revoked_commit_keys: ['kid', 'revoked_at', 'reason', 'revoked_by'],
+    consumed_gate_refs: ['gate_ref', 'consumed_at', 'consumed_by_entity', 'consumed_for_action'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
@@ -55,11 +57,15 @@ export const contract = {
     'anchor_batches', 'disputes', 'handshakes', 'signoff_challenges', 'signoff_attestations',
     'tenants', 'tenant_api_keys', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities', 'commits',
+    'revoked_commit_keys', 'consumed_gate_refs',
   ],
 
   // No anon/authenticated/PUBLIC may have a SELECT (or ALL) policy on these.
   // (mig 113: api_keys + waitlist were anon-readable.) authorities = permission root.
-  noAnonRead: ['api_keys', 'waitlist', 'tenant_api_keys', 'authorities', 'commits'],
+  noAnonRead: [
+    'api_keys', 'waitlist', 'tenant_api_keys', 'authorities', 'commits',
+    'revoked_commit_keys', 'consumed_gate_refs',
+  ],
 
   // Column-level least-privilege on secret material. RLS gates ROWS; a column
   // GRANT is a SEPARATE gate. (2026-07 sweep: anon+authenticated held column
@@ -89,6 +95,7 @@ export const contract = {
     'api_keys', 'entities', 'receipts', 'score_history', 'needs', 'anchor_batches',
     'signoff_challenges', 'signoff_attestations', 'handshakes', 'tenants', 'tenant_api_keys',
     'operator_applications', 'policy_rollouts', 'authorities',
+    'revoked_commit_keys', 'consumed_gate_refs',
   ],
 
   // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
@@ -99,6 +106,7 @@ export const contract = {
     'present_handshake_writes', 'verify_handshake_writes', 'resolve_authenticated_actor',
     'bulk_update_receipt_anchors', 'create_test_fixtures',
     'admin_begin_key_rotation', 'admin_complete_key_rotation',
+    'consume_gate_ref_atomic', 'revoke_commit_key_atomic',
     'gov_schema_contract_introspect',
   ],
 

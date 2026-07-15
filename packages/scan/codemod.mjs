@@ -19,6 +19,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { scanActions } from './index.js';
 
+let strictJsonGate;
+try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
+catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
+const MAX_INPUT_BYTES = 8 * 1024 * 1024;
+
+function lstatIfPresent(target) {
+  try { return fs.lstatSync(target); }
+  catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 const SAMPLE = [
   { name: 'getAccountBalance', description: 'Return the current balance for an account' },
   { name: 'sendWire', description: 'Send an outgoing wire transfer to a beneficiary' },
@@ -29,7 +42,12 @@ const SAMPLE = [
 ];
 
 function ingest(file) {
-  const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const raw = fs.readFileSync(file);
+  if (raw.length > MAX_INPUT_BYTES) throw new Error(`Input exceeds ${MAX_INPUT_BYTES} bytes.`);
+  const text = raw.toString('utf8');
+  const gate = strictJsonGate(text);
+  if (!gate.ok) throw new Error(`Input refused: ${gate.reason}.`);
+  const j = JSON.parse(text);
   if (j && j.openapi && j.paths) {
     const actions = [];
     for (const [p, ops] of Object.entries(j.paths)) {
@@ -211,12 +229,38 @@ if (!apply) {
 }
 
 // --apply: create NEW files only, never clobber without --force.
-const existing = files.filter((f) => fs.existsSync(f.rel));
+const existing = files.filter((f) => lstatIfPresent(f.rel));
 if (existing.length && !force) {
   console.error(`${Y}Refusing to overwrite existing files (pass --force to replace):${R}`);
   for (const f of existing) console.error(`  ${f.rel}`);
   process.exit(1);
 }
-fs.mkdirSync(outDir, { recursive: true });
-for (const f of files) { fs.writeFileSync(f.rel, f.body); console.log(`  wrote ${f.rel}`); }
+// Refuse symlink traversal even under --force. A generated security scaffold
+// must never follow a presenter-created link and overwrite a file elsewhere.
+const outAbsolute = path.resolve(outDir);
+const relativeOut = path.relative(process.cwd(), outAbsolute);
+if (relativeOut.startsWith('..') || path.isAbsolute(relativeOut)) {
+  console.error(`${Y}Refusing output directory outside the current working directory: ${outDir}${R}`);
+  process.exit(1);
+}
+let cursor = process.cwd();
+for (const segment of relativeOut.split(path.sep).filter(Boolean)) {
+  cursor = path.join(cursor, segment);
+  const current = lstatIfPresent(cursor);
+  if (current?.isSymbolicLink()) {
+    console.error(`${Y}Refusing symlinked output path: ${cursor}${R}`);
+    process.exit(1);
+  }
+}
+for (const f of files) {
+  if (lstatIfPresent(f.rel)?.isSymbolicLink()) {
+    console.error(`${Y}Refusing symlinked output file: ${f.rel}${R}`);
+    process.exit(1);
+  }
+}
+fs.mkdirSync(outAbsolute, { recursive: true });
+for (const f of files) {
+  fs.writeFileSync(path.resolve(f.rel), f.body, { flag: force ? 'w' : 'wx' });
+  console.log(`  wrote ${f.rel}`);
+}
 console.log(`\n${B}Done.${R} Now do steps 2 and 3 in ${path.join(outDir, 'INTEGRATION.md')} — nothing is enforced until you do.\n`);

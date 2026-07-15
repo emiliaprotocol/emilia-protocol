@@ -140,9 +140,13 @@ describe('AEC verifier mutation oracles', () => {
 
   it('tokenizes the closed grammar with exact token and length bounds', () => {
     expect(tokenizeRequirement('a AND (b || c)')).toEqual(['a', 'AND', '(', 'b', '||', 'c', ')']);
+    expect(tokenizeRequirement('a\t&&\r\n(b OR c)')).toEqual(['a', '&&', '(', 'b', 'OR', 'c', ')']);
     expect(tokenizeRequirement('urn:ep.action-v1')).toEqual(['urn:ep.action-v1']);
     expect(tokenizeRequirement('')).toBeNull();
     expect(tokenizeRequirement('a!')).toBeNull();
+    for (const expression of ['&', '|', 'a & b', 'a | b', 'a &&& b', 'a ||| b']) {
+      expect(tokenizeRequirement(expression)).toBeNull();
+    }
     expect(tokenizeRequirement('a'.repeat(4097))).toBeNull();
     expect(tokenizeRequirement(Array(128).fill('a').join(' OR '))).toHaveLength(255);
     expect(tokenizeRequirement(Array(129).fill('a').join(' OR '))).toBeNull();
@@ -153,8 +157,16 @@ describe('AEC verifier mutation oracles', () => {
     expect(evalRequirement('a AND c', satisfied)).toEqual({ valid: true, value: true });
     expect(evalRequirement('a AND b OR c', satisfied)).toEqual({ valid: true, value: true });
     expect(evalRequirement('a AND (b OR c)', satisfied)).toEqual({ valid: true, value: true });
+    expect(evalRequirement('a && c', satisfied)).toEqual({ valid: true, value: true });
+    expect(evalRequirement('b || c', satisfied)).toEqual({ valid: true, value: true });
+    expect(evalRequirement('(a)', satisfied)).toEqual({ valid: true, value: true });
+    expect(evalRequirement('a AND b', satisfied)).toEqual({ valid: true, value: false });
+    expect(evalRequirement('a OR b', new Set(['b']))).toEqual({ valid: true, value: true });
     expect(evalRequirement('b OR c', new Set())).toEqual({ valid: true, value: false });
-    for (const expression of ['a b', '(a', 'a)', 'AND a', 'a OR', '()', 'AND', 'OR', '&&', '||', ')']) {
+    for (const expression of [
+      'a b', '(a', 'a)', 'AND a', 'a OR', '()', 'AND', 'OR', '&&', '||', ')',
+      'a AND )', 'a OR )', 'a && )', 'a || )', 'a AND AND b', 'a OR OR b',
+    ]) {
       expect(evalRequirement(expression, satisfied)).toEqual({ valid: false, value: false });
     }
     expect(evalRequirement(`${'('.repeat(34)}a${')'.repeat(34)}`, satisfied)).toEqual({ valid: false, value: false });

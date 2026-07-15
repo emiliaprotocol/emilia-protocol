@@ -12,7 +12,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { evaluateReliance, RELIANCE_VERDICTS, validateRelianceProfile } from '../packages/verify/reliance.js';
+import {
+  evaluateReliance,
+  RELIANCE_PROFILE_VERSION,
+  RELIANCE_VERDICTS,
+  validateRelianceProfile,
+} from '../packages/verify/reliance.js';
 import { authorityProofDigest, signAuthorityProof } from '../lib/authority/proof.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -121,6 +126,21 @@ function buildQuorum(actionHash) {
   };
 }
 
+function pinQuorum(input, opts) {
+  const quorum = buildQuorum(input.receipt.action_hash);
+  input.relying_party_profile.quorum_policy = structuredClone(quorum.policy);
+  quorum.members.forEach((member, index) => {
+    opts.approverKeys[`ep:key:quorum#${index + 1}`] = {
+      approver_id: member.signoff.context.approver,
+      public_key: member.approver_public_key,
+      key_class: 'A',
+      valid_from: '2026-01-01T00:00:00Z',
+      valid_to: '2027-01-01T00:00:00Z',
+    };
+  });
+  return quorum;
+}
+
 function buildRevocationStatement(target, signer) {
   const fields = {
     '@version': 'EP-REVOCATION-v1', action_hash: target.action_hash,
@@ -222,9 +242,10 @@ function assemble(brk) {
     policyHash: signedPolicy,
   });
   const opts = {
-    approverKeys: KEYS,
+    approverKeys: structuredClone(KEYS),
     logPublicKey: logKey.pub,
     rpId: 'www.emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
     isConsumed: () => false,
   };
   const action = { action_type: 'wire.release', amount: Number(signedAmount), currency: 'USD', organization_id: 'acme', policy_hash: signedPolicy, action_hash: receipt.action_hash };
@@ -854,7 +875,7 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
 
   it('accepts a real two-device quorum and binds authority to a counted member', () => {
     const { input, opts } = assemble('none');
-    input.quorum = buildQuorum(input.receipt.action_hash);
+    input.quorum = pinQuorum(input, opts);
     input.relying_party_profile.required_assurance = 'quorum';
     input.authority_proof = signAuthorityProof({
       ...baseAuthorityProofArgs(input.receipt), subject: 'ep:approver:quorum-one',
@@ -870,7 +891,7 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     const receipt = buildReceipt({ classAForCfo: false });
     input.receipt = receipt;
     input.action.action_hash = receipt.action_hash;
-    input.quorum = buildQuorum(receipt.action_hash);
+    input.quorum = pinQuorum(input, opts);
     input.relying_party_profile.required_assurance = 'signed';
     input.authority_proof = signAuthorityProof({
       ...baseAuthorityProofArgs(receipt), subject: 'ep:approver:quorum-two',
@@ -883,10 +904,107 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
 
   it('refuses a valid quorum whose document is not bound to the receipt action', () => {
     const { input, opts } = assemble('none');
-    input.quorum = buildQuorum(input.receipt.action_hash);
+    input.quorum = pinQuorum(input, opts);
     input.quorum.action_hash = 'sha256:' + '9'.repeat(64);
     input.relying_party_profile.required_assurance = 'quorum';
     expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_quorum_unsatisfied');
+  });
+
+  it('refuses a self-contained quorum whose policy and keys were supplied by the presenter', () => {
+    const { input, opts } = assemble('none');
+    input.quorum = buildQuorum(input.receipt.action_hash);
+    input.relying_party_profile.required_assurance = 'quorum';
+    input.relying_party_profile.required_authority = false;
+    input.relying_party_profile.required_evidence = ['receipt'];
+    input.relying_party_profile.quorum_policy = structuredClone(input.quorum.policy);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_quorum_unsatisfied');
+    expect(r.rely).toBe(false);
+  });
+
+  it('refuses Class-A reliance when RP or origin scope is not pinned out of band', () => {
+    const { input, opts } = assemble('none');
+    delete opts.allowedOrigins;
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_no_class_a');
+    expect(r.reasons.at(-1)).toMatch(/RP ID and non-empty origin allowlist/);
+  });
+
+  it('requires every RP and origin pin shape whenever a human ceremony is relied on', () => {
+    const malformedOptions = [
+      (opts) => { delete opts.rpId; },
+      (opts) => { opts.rpId = ''; },
+      (opts) => { opts.rpId = 7; },
+      (opts) => { delete opts.allowedOrigins; },
+      (opts) => { opts.allowedOrigins = []; },
+      (opts) => { opts.allowedOrigins = [null]; },
+      (opts) => { opts.allowedOrigins = ['']; },
+      (opts) => { opts.allowedOrigins = [7]; },
+    ];
+    for (const mutateOptions of malformedOptions) {
+      const { input, opts } = assemble('none');
+      mutateOptions(opts);
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_no_class_a');
+      expect(r.rely).toBe(false);
+      expect(r.reasons.at(-1)).toMatch(/RP ID and non-empty origin allowlist/);
+    }
+
+    const quorumCase = assemble('none');
+    quorumCase.input.relying_party_profile.required_assurance = 'quorum';
+    delete quorumCase.opts.rpId;
+    expect(evaluateReliance(quorumCase.input, quorumCase.opts).verdict)
+      .toBe('do_not_rely_quorum_unsatisfied');
+
+    const evidenceCase = assemble('none');
+    evidenceCase.input.relying_party_profile.required_assurance = 'signed';
+    evidenceCase.input.relying_party_profile.required_evidence = ['receipt', 'class_a_or_quorum'];
+    delete evidenceCase.opts.rpId;
+    expect(evaluateReliance(evidenceCase.input, evidenceCase.opts).verdict)
+      .toBe('do_not_rely_no_class_a');
+  });
+
+  it('does not require WebAuthn scope pins when the pinned profile relies only on signatures', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.required_assurance = 'signed';
+    input.relying_party_profile.required_authority = false;
+    input.relying_party_profile.required_evidence = ['receipt'];
+    delete opts.rpId;
+    delete opts.allowedOrigins;
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+  });
+
+  it('refuses a missing or malformed relying-party action hash before composition', () => {
+    for (const actionHash of [undefined, null, '', 'sha256:bad', 'g'.repeat(64)]) {
+      const { input, opts } = assemble('none');
+      if (actionHash === undefined) delete input.action.action_hash;
+      else input.action.action_hash = actionHash;
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_unsigned');
+      expect(r.reasons.at(-1)).toMatch(/action_hash mismatch/);
+    }
+  });
+
+  it('requires every quorum member key to match the pinned human, class, and SPKI', () => {
+    const attacks = [
+      ({ input }) => { input.quorum.members = []; },
+      ({ input, opts }) => {
+        const member = input.quorum.members[0];
+        opts.approverKeys['ep:key:quorum#1'].approver_id = `${member.signoff.context.approver}:other`;
+      },
+      ({ opts }) => { opts.approverKeys['ep:key:quorum#1'].key_class = 'B'; },
+      ({ opts }) => { opts.approverKeys['ep:key:quorum#1'].public_key = 'not-an-spki'; },
+      ({ input }) => { delete input.quorum.action_hash; },
+    ];
+    for (const attack of attacks) {
+      const sample = assemble('none');
+      sample.input.quorum = pinQuorum(sample.input, sample.opts);
+      sample.input.relying_party_profile.required_assurance = 'quorum';
+      attack(sample);
+      const r = evaluateReliance(sample.input, sample.opts);
+      expect(r.verdict).toBe('do_not_rely_quorum_unsatisfied');
+      expect(r.rely).toBe(false);
+    }
   });
 
   it('does not accept a presenter-supplied revocation timestamp as authenticated freshness', () => {
@@ -1082,6 +1200,39 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     }
   });
 
+  it('normalizes hostile options and action shapes without throwing', () => {
+    for (const hostileOpts of [null, false, 0, 'options']) {
+      const { input } = assemble('none');
+      const result = evaluateReliance(input, hostileOpts);
+      expect(result).toMatchObject({ verdict: 'do_not_rely_no_class_a', rely: false });
+      expect(result.reasons.at(-1)).toMatch(/RP ID and non-empty origin allowlist/);
+    }
+
+    for (const hostileAction of [null, false, 0, 'action', []]) {
+      const { input, opts } = assemble('none');
+      input.action = hostileAction;
+      const result = evaluateReliance(input, opts);
+      expect(result).toMatchObject({ verdict: 'do_not_rely_unsigned', rely: false });
+      expect(result.reasons.at(-1)).toMatch(/action_hash mismatch/);
+    }
+  });
+
+  it('returns the closed invalid-profile result shape without retaining attacker fields', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.required_authority = 'yes';
+    const result = evaluateReliance(input, opts);
+    expect(result).toEqual({
+      verdict: 'do_not_rely_no_profile',
+      rely: false,
+      reasons: ['invalid pinned EP-RELIANCE-PROFILE-v1: required_authority must be a boolean'],
+      checks: {
+        receipt: false, issuer: null, assurance: null, authority: null,
+        policy: null, revocation: null, consumption: null,
+      },
+      profile: { id: RELIANCE_PROFILE_VERSION, pinned: false },
+    });
+  });
+
   it('refuses a receipt without a transparency checkpoint before reliance can downgrade issuer trust', () => {
     const { input, opts } = assemble('none');
     delete input.receipt.log_proof;
@@ -1106,8 +1257,8 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
 
   it('refuses a correctly action-bound quorum whose threshold is unsatisfied', () => {
     const { input, opts } = assemble('none');
-    input.quorum = buildQuorum(input.receipt.action_hash);
-    input.quorum.policy.required = 3;
+    input.quorum = pinQuorum(input, opts);
+    input.quorum.members.pop();
     input.relying_party_profile.required_assurance = 'quorum';
     const result = evaluateReliance(input, opts);
     expect(result).toMatchObject({
@@ -1143,6 +1294,8 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     input.authority_proof.signature.signature_b64u = 'AA';
     const result = evaluateReliance(input, opts);
     expect(result).toMatchObject({ verdict: 'do_not_rely_authority_missing', rely: false });
+    expect(result.checks.authority?.accepted).toBe(false);
+    expect(result.checks.authority?.reason).toEqual(expect.any(String));
     expect(result.reasons.at(-1)).toMatch(/^authority proof did not verify:/);
   });
 

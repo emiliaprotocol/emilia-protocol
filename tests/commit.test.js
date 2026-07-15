@@ -68,7 +68,12 @@ import {
 // Helper: build a mock Supabase client that returns specified data
 // ============================================================================
 
-function buildMockDb(commitRecord = null, { insertError = null, updateError = null, revokedKid = false } = {}) {
+function buildMockDb(commitRecord = null, {
+  insertError = null,
+  updateError = null,
+  revokedKid = false,
+  revokedKidError = null,
+} = {}) {
   const readChain = makeChain({ data: commitRecord, error: null });
   const writeInsertChain = makeChain({ data: null, error: insertError });
 
@@ -88,7 +93,10 @@ function buildMockDb(commitRecord = null, { insertError = null, updateError = nu
     // so it doesn't shadow the signature/status assertions; revocation behavior
     // is exercised in its own test below.
     if (table === 'revoked_commit_keys') {
-      return makeChain({ data: revokedKid ? { kid: 'ep-signing-key-1' } : null, error: null });
+      return makeChain({
+        data: revokedKid ? { kid: 'ep-signing-key-1' } : null,
+        error: revokedKidError,
+      });
     }
     return {
       select: (...args) => {
@@ -530,6 +538,49 @@ describe('verifyCommit', () => {
     const result = await verifyCommit(commit.commit_id);
     expect(result.valid).toBe(false);
     expect(result.reasons).toContain('kid_revoked');
+  });
+
+  it('fails closed when signing-key revocation state cannot be read', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
+    mockGetServiceClient.mockReturnValue(buildMockDb());
+    const commit = await issueCommit({ entity_id: 'entity-123', action_type: 'install' });
+
+    mockGetServiceClient.mockReturnValue(buildMockDb(commit, {
+      revokedKidError: { code: 'PGRST000', message: 'revocation store unavailable' },
+    }));
+
+    await expect(verifyCommit(commit.commit_id)).rejects.toMatchObject({
+      code: 'COMMIT_KEY_REVOCATION_CHECK_FAILED',
+      status: 503,
+    });
+  });
+
+  it('fails closed when durable nonce replay state cannot be read', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
+    mockGetServiceClient.mockReturnValue(buildMockDb());
+    const commit = await issueCommit({ entity_id: 'entity-123', action_type: 'install' });
+
+    let commitRead = 0;
+    mockGetServiceClient.mockReturnValue({
+      from(table) {
+        if (table === 'revoked_commit_keys') {
+          return makeChain({ data: null, error: null });
+        }
+        commitRead += 1;
+        return commitRead === 1
+          ? makeChain({ data: commit, error: null })
+          : makeChain({ data: null, error: { code: 'PGRST000', message: 'replay store unavailable' } });
+      },
+    });
+
+    await expect(verifyCommit(commit.commit_id)).rejects.toMatchObject({
+      code: 'COMMIT_REPLAY_CHECK_FAILED',
+      status: 503,
+    });
   });
 
   it('expired commit returns { valid: false, status: "expired" }', async () => {

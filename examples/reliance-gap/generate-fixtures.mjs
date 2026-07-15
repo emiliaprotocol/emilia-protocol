@@ -151,6 +151,7 @@ const packet = {
     },
     log_public_key: logKey.pub,
     rp_id: RP_ID,
+    allowed_origins: [`https://${RP_ID}`],
   },
 };
 

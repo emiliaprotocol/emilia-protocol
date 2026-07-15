@@ -12,7 +12,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -169,8 +168,8 @@ func aecWebAuthnOrigin(webauthn map[string]any) string {
 	if err != nil || base64.RawURLEncoding.EncodeToString(decoded) != encoded {
 		return ""
 	}
-	var clientData map[string]any
-	if json.Unmarshal(decoded, &clientData) != nil {
+	clientData, err := decodeStrictJSONObject(decoded)
+	if err != nil {
 		return ""
 	}
 	return getStr(clientData, "origin")
@@ -282,7 +281,11 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 					return ComponentResult{Valid: false, ActionDigest: ""}
 				}
 			}
-			r := VerifyQuorum(m, rpID)
+			originList := make([]string, 0, len(allowedOrigins))
+			for origin := range allowedOrigins {
+				originList = append(originList, origin)
+			}
+			r := VerifyQuorum(m, rpID, originList)
 			if !r.Valid {
 				return ComponentResult{Valid: false, ActionDigest: ""}
 			}
@@ -329,7 +332,16 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 				}
 			}
 
-			r := VerifyTrustReceipt(m, map[string]any{"approverKeys": approverKeys, "logPublicKey": logPublicKey})
+			originList := make([]string, 0, len(allowedOrigins))
+			for origin := range allowedOrigins {
+				originList = append(originList, origin)
+			}
+			r := VerifyTrustReceipt(m, map[string]any{
+				"approverKeys":   approverKeys,
+				"logPublicKey":   logPublicKey,
+				"rpId":           rpID,
+				"allowedOrigins": originList,
+			})
 			if !r.Valid {
 				return ComponentResult{Valid: false}
 			}

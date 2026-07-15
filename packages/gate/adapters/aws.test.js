@@ -18,7 +18,7 @@ function fakeAws() {
 }
 function setup(action) {
   const harness = createEg1Harness({ action });
-  return { harness, gate: createGate({ manifest: createAwsManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys }), aws: fakeAws() };
+  return { harness, gate: createGate({ manifest: createAwsManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins }), aws: fakeAws() };
 }
 
 test('exposes the high-blast-radius AWS ops', () => {

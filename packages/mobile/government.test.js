@@ -117,3 +117,37 @@ test('government controller refuses untrusted fields and unauthorized callers be
   assert.equal(verifyResult.verdict, 'refuse_unauthorized');
   assert.equal(verified, false);
 });
+
+test('government controller refuses a system-of-record approver substitution', async () => {
+  let issued = false;
+  const profile = { profile_id: 'gov.mobile.v1', profile_hash: `sha256:${'a'.repeat(64)}` };
+  const controller = createGovernmentMobileController({
+    service: {
+      async issue() { issued = true; },
+      async verifyAndConsume() { throw new Error('not used'); },
+    },
+    profiles: new Map([[profile.profile_id, profile]]),
+    async authorize(input) { return input.approver_id === 'ep:approver:authorized'; },
+    async resolveRequest() {
+      return {
+        action: { action_type: 'benefit.payment_destination_change', case_id: 'case-9482' },
+        presentation: { title: 'Payment destination change', material_fields: { case_id: 'case-9482' } },
+        initiator_id: 'ep:agent:benefits-assistant',
+        approver_id: 'ep:approver:substituted',
+        issued_at: '2026-07-14T19:00:00.000Z',
+        expires_at: '2026-07-14T19:05:00.000Z',
+      };
+    },
+  });
+  const result = await controller.issue({
+    profile_id: profile.profile_id,
+    action_reference: 'case-9482',
+    decision: 'approved',
+    platform: 'ios',
+    app_id: 'gov.example.ios.approvals',
+    device_key_id: 'ep:key:mobile-ios-1',
+    approver_id: 'ep:approver:authorized',
+  }, { subject: 'agency-user-42' });
+  assert.equal(result.verdict, 'refuse_unauthorized');
+  assert.equal(issued, false);
+});

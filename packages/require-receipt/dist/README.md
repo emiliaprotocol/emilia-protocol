@@ -36,8 +36,10 @@ const r = await gate.run(receipt, { target: 'customers' }, async () => doDelete(
 if (!r.ok) return reply(r.status, r.body);   // 428 Receipt-Required challenge
 ```
 
-The gate verifies + reserves the receipt, runs your function, then consumes the receipt
-on success or releases it on failure (a transient error never burns a valid approval).
+The gate verifies and atomically reserves the receipt before invoking your function.
+After invocation it consumes the receipt even if the function throws, because the
+external effect may have happened before its response was lost. Release is available
+only for flows that can prove execution never began.
 
 ## Two things to get right in production
 
@@ -48,8 +50,11 @@ on success or releases it on failure (a transient error never burns a valid appr
    pass a shared store:
 
    ```js
-   makeReceiptGate({ /* … */, store: { has: (id) => kv.has(id), add: (id) => kv.add(id) } });
+   makeReceiptGate({ /* … */, store: { reserve, commit, release } });
    ```
+
+   `reserve` must be an ownership-fenced atomic insert-if-absent. An uncertain
+   reservation remains closed until operator reconciliation.
 
 ## Conformance
 

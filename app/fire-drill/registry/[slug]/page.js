@@ -3,7 +3,7 @@
 // REGISTRY result for a named MCP server. This is a registry-level signal
 // (server name + description advertise a high-risk capability), NOT a tool-level
 // scan and NOT a vulnerability claim. Links to the real repo (backlink) and
-// routes the maintainer to the fix (earn EG-1).
+// routes the maintainer to a schema and runtime review.
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -62,18 +62,18 @@ export default function RegistryScanPage({ params }) {
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 16 }}>
               This server&rsquo;s public MCP-registry listing advertises a <b>{fam}</b> capability. If it performs that action
               on behalf of an AI agent, it should require an <b>accountable human authorization receipt</b> before executing —
-              otherwise an agent can trigger an irreversible action with no signed proof a person approved it.
+              The listing alone does not reveal whether that action is exposed, gated, or executed in a deployment.
             </p>
           </div>
         </section>
 
         <section style={styles.section}>
           <div style={styles.container}>
-            <h2 style={{ ...styles.h2, maxWidth: 760 }}>Is this your project? Earn <span style={{ color: color.gold }}>EG-1 Enforced</span>.</h2>
+            <h2 style={{ ...styles.h2, maxWidth: 760 }}>Is this your project? Publish the tool schema and test the runtime.</h2>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 14 }}>
               Wrap the high-risk tools with <code style={{ fontFamily: font.mono }}>@emilia-protocol/gate</code> so they require a
-              human/quorum receipt, then run <code style={{ fontFamily: font.mono }}>npx @emilia-protocol/fire-drill</code> against
-              your manifest for a tool-level score. We update this listing on request.
+              receipt evidence, then run <code style={{ fontFamily: font.mono }}>npx @emilia-protocol/fire-drill</code> against
+              your manifest for static declaration coverage and the separate EG-1 suite against the deployed handler.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
               <a href="/gate#eg1" style={cta.primary}>How to earn EG-1</a>

@@ -80,6 +80,9 @@ export function createGovernmentMobileController({
           || typeof resolved.expires_at !== 'string') {
         return { ok: false, verdict: 'refuse_malformed', challenge: null };
       }
+      if (resolved.approver_id !== request.approver_id) {
+        return { ok: false, verdict: 'refuse_unauthorized', challenge: null };
+      }
       return service.issue({
         action: resolved.action,
         policy: resolved.policy || null,

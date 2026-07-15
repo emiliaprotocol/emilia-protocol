@@ -592,12 +592,18 @@ export async function verifyMobileCeremony({
     const nowMillis = parseInstant(now);
     const issued = parseInstant(challenge.issued_at);
     const expires = parseInstant(challenge.expires_at);
+    const contextIssued = parseInstant(challenge.authorization_context.issued_at);
+    const contextExpires = parseInstant(challenge.authorization_context.expires_at);
     checks.freshness = nowMillis !== null && issued !== null && expires !== null
       && issued <= nowMillis && nowMillis <= expires
-      && expires - issued <= profile.requirements.max_challenge_age_ms;
+      && expires - issued <= profile.requirements.max_challenge_age_ms
+      && contextIssued === issued && contextExpires === expires;
     if (!checks.freshness) return refused('refuse_challenge_expired', 'challenge is not fresh under the pinned profile', checks);
 
     const context = challenge.authorization_context;
+    if (normalizeHash(context.mobile_binding?.profile_hash) !== normalizeHash(profile.profile_hash)) {
+      return refused('refuse_profile_mismatch', 'signed context does not name the pinned profile', checks);
+    }
     checks.action = isRecord(challenge.action)
       && normalizeHash(actionHash(challenge.action)) === normalizeHash(challenge.action_hash)
       && normalizeHash(context.action_hash) === normalizeHash(challenge.action_hash);
@@ -611,6 +617,7 @@ export async function verifyMobileCeremony({
     checks.signed_context = equalCanonical(response.signoff.context, context)
       && response.challenge_id === challenge.challenge_id
       && response.nonce === challenge.nonce
+      && context.nonce === challenge.nonce
       && response.decision === context.decision;
     if (!checks.signed_context) return refused('refuse_action_mismatch', 'response substituted signed context, nonce, or decision', checks);
 
@@ -636,13 +643,30 @@ export async function verifyMobileCeremony({
       && response.attestation_key_id === binding.attestation_key_id);
     if (!checks.device_key) return refused('refuse_device_key', 'no active pinned enrollment matches the signed mobile binding', checks);
 
+    const expectedWebAuthnChallenge = hashCanonicalBytes(context).toString('base64url');
+    const requestCredentialIds = challenge.webauthn?.credential_ids;
+    const requestMetadataValid = challenge.webauthn?.rp_id === profile.rp_id
+      && challenge.webauthn?.challenge === expectedWebAuthnChallenge
+      && Array.isArray(requestCredentialIds)
+      && requestCredentialIds.length === 1
+      && requestCredentialIds[0] === enrollment.credential_id
+      && challenge.webauthn?.user_verification === 'required'
+      && Number.isSafeInteger(challenge.webauthn?.timeout_ms)
+      && challenge.webauthn.timeout_ms === expires - issued;
+    if (!requestMetadataValid) {
+      return refused('refuse_webauthn', 'WebAuthn request metadata diverges from the signed context or pinned profile', checks);
+    }
+
     const clientData = parseClientData(response.signoff);
     checks.origin = Boolean(clientData
       && profile.allowed_origins.includes(clientData.origin)
       && clientData.crossOrigin !== true);
     if (!checks.origin) return refused('refuse_origin', 'WebAuthn origin is not pinned by the reliance profile', checks);
 
-    const webauthn = verifyWebAuthnSignoff(response.signoff, enrollment.public_key_spki, { rpId: profile.rp_id });
+    const webauthn = verifyWebAuthnSignoff(response.signoff, enrollment.public_key_spki, {
+      rpId: profile.rp_id,
+      allowedOrigins: profile.allowed_origins,
+    });
     checks.webauthn = webauthn.valid === true;
     if (!checks.webauthn) return refused('refuse_webauthn', 'Class-A assertion failed offline verification', checks, { webauthn });
 
@@ -650,7 +674,8 @@ export async function verifyMobileCeremony({
     const expectedRequestHash = hashCanonicalBytes(expectedBinding).toString('base64url');
     if (challenge.attestation?.request_hash !== expectedRequestHash
         || !equalCanonical(challenge.attestation?.binding, expectedBinding)
-        || challenge.attestation?.format !== PLATFORM_ATTESTATION_FORMAT[binding.platform]) {
+        || challenge.attestation?.format !== PLATFORM_ATTESTATION_FORMAT[binding.platform]
+        || challenge.attestation?.required !== profile.requirements.attestation_required) {
       return refused('refuse_attestation', 'attestation request binding is malformed', checks);
     }
 

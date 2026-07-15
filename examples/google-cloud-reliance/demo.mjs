@@ -40,6 +40,9 @@ function makeSubject({ action = EXACT_ACTION, idPrefix = 'gcp_rc1' } = {}) {
     manifest: createGcpManifest(),
     trustedKeys: [harness.publicKey],
     approverKeys: harness.approverKeys,
+    rpId: harness.rpId,
+    allowedOrigins: harness.allowedOrigins,
+    quorumPolicy: harness.quorumPolicy,
   });
   const calls = [];
   const client = {

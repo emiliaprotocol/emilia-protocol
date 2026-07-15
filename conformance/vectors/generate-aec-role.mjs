@@ -42,6 +42,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 // This lets AEC exercise profile admission without minting a second crypto corpus.
 const quorumSuite = JSON.parse(readFileSync(resolve(here, 'quorum.v1.json'), 'utf8'));
 const thresholdQuorum = clone(quorumSuite.vectors.find((v) => v.id === 'accept_threshold_2of3').quorum);
+const crossOriginQuorum = clone(quorumSuite.vectors.find((v) => v.id === 'reject_cross_origin_ceremony').quorum);
 const quorumAction = { amount: 40_000_000, currency: 'USD', target: 'program/aegis-1' };
 const quorumProfile = (quorum = thresholdQuorum) => ({
   policy: clone(quorum.policy),
@@ -64,6 +65,7 @@ const quorumProfile = (quorum = thresholdQuorum) => ({
 
 const trustSuite = JSON.parse(readFileSync(resolve(here, 'trust-receipt.exec.v1.json'), 'utf8'));
 const trustVector = trustSuite.vectors.find((v) => v.id === 'accept_valid_receipt');
+const crossOriginTrustVector = trustSuite.vectors.find((v) => v.id === 'reject_cross_origin_ceremony');
 const trustReceipt = clone(trustVector.trust_receipt);
 const trustAction = clone(trustReceipt.action);
 const trustApproverKeys = clone(trustVector.verification.approver_keys);
@@ -80,6 +82,17 @@ const trustProfile = {
   max_age_sec: 3600,
   registry_checked_at: '2026-06-13T11:30:00.000Z',
   max_registry_age_sec: 300,
+};
+const crossOriginTrustApproverKeys = clone(crossOriginTrustVector.verification.approver_keys);
+for (const entry of Object.values(crossOriginTrustApproverKeys)) {
+  entry.status = 'active';
+  entry.revoked_at = null;
+}
+const crossOriginTrustProfile = {
+  ...trustProfile,
+  approver_keys: crossOriginTrustApproverKeys,
+  log_public_key: crossOriginTrustVector.verification.log_public_key,
+  expected_policy_hash: crossOriginTrustVector.trust_receipt.contexts[0].policy_hash,
 };
 
 // A genuine EP-RECEIPT-v1 whose SIGNED payload binds `boundDigest`, signed by
@@ -260,6 +273,14 @@ const vectors = [
     aec_chain: { '@version': 'EP-AEC-v1', action: quorumAction, requirement: 'ep-quorum', components: [{ type: 'ep-quorum', evidence: thresholdQuorum }] },
   },
   {
+    id: 'reject_cross_origin_quorum_ceremony',
+    description: 'A signed cross-origin quorum ceremony is refused even when the visible origin string is allowlisted.',
+    expect: { valid: false },
+    stub_types: [],
+    policies_by_type: { 'ep-quorum': quorumProfile(crossOriginQuorum) },
+    aec_chain: { '@version': 'EP-AEC-v1', action: quorumAction, requirement: 'ep-quorum', components: [{ type: 'ep-quorum', evidence: crossOriginQuorum }] },
+  },
+  {
     id: 'reject_stale_quorum',
     description: 'A cryptographically valid historical quorum is refused after its signed authorization window and the RP max-age limit.',
     expect: { valid: false },
@@ -293,6 +314,15 @@ const vectors = [
     policies_by_type: { 'ep-receipt': { ...trustProfile, allowed_origins: ['https://wrong.example'] } },
     verification_time: '2026-06-13T11:31:00.000Z',
     aec_chain: chain('ep-receipt', [{ type: 'ep-receipt', evidence: trustReceipt }], trustAction),
+  },
+  {
+    id: 'reject_cross_origin_receipt_ceremony',
+    description: 'A signed cross-origin Class-A receipt ceremony is refused even when the visible origin string is allowlisted.',
+    expect: { valid: false },
+    stub_types: [],
+    policies_by_type: { 'ep-receipt': crossOriginTrustProfile },
+    verification_time: '2026-06-13T11:31:00.000Z',
+    aec_chain: chain('ep-receipt', [{ type: 'ep-receipt', evidence: crossOriginTrustVector.trust_receipt }], crossOriginTrustVector.trust_receipt.action),
   },
   {
     id: 'reject_bare_operator_receipt_as_human',

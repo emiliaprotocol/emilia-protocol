@@ -63,6 +63,7 @@ function makeReceipt(resolution, overrides = {}) {
     type: 'webauthn.get',
     challenge: computeResolutionChallenge(context),
     origin: overrides.origin ?? 'https://www.emiliaprotocol.ai',
+    ...(overrides.crossOrigin === undefined ? {} : { crossOrigin: overrides.crossOrigin }),
   }), 'utf8');
   const authData = Buffer.concat([
     crypto.createHash('sha256').update(RP_ID, 'utf8').digest(),
@@ -197,6 +198,8 @@ test('missing RP ID or origin pin, stale or impossible ceremony time, malformed 
   assert.equal(verifyResolutionReceipt(receipt, { ...opts, allowedOrigins: undefined }).reason, 'webauthn_origin_not_allowed');
   const wrongOrigin = makeReceipt({ outcome: 'approved', selected_option: 0 }, { origin: 'https://attacker.example' });
   assert.equal(verifyResolutionReceipt(wrongOrigin, opts).reason, 'webauthn_origin_not_allowed');
+  const crossed = makeReceipt({ outcome: 'approved', selected_option: 0 }, { crossOrigin: true });
+  assert.equal(verifyResolutionReceipt(crossed, opts).reason, 'webauthn_verification_failed');
   assert.equal(verifyResolutionReceipt(receipt, { ...opts, evaluationTime: '2026-07-14T06:00:00.000Z' }).reason, 'resolution_outside_validity_window');
   const impossibleDate = makeReceipt({ outcome: 'approved', selected_option: 0 }, {
     context: { issued_at: '2026-02-30T05:25:00.000Z', expires_at: '2026-03-03T05:35:00.000Z' },

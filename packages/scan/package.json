@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.1.1",
-  "description": "Scan an AI app's actions (MCP tools / OpenAPI), classify which need a human-authorization receipt at which assurance tier, and emit a proposed EMILIA action-control manifest. It proposes and reports; it enforces nothing and edits no code on its own.",
+  "version": "0.2.0",
+  "description": "Fail-closed static classifier for MCP/OpenAPI action surfaces. MCP hints are advisory; output is a proposal, never an enforcement claim.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
@@ -19,6 +19,14 @@
   ],
   "scripts": {
     "test": "node --test test.js"
+  },
+  "dependencies": {
+    "@emilia-protocol/verify": "^3.10.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/scan"
   },
   "keywords": [
     "emilia",

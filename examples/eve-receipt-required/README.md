@@ -89,9 +89,11 @@ That's it. The mutation runs only on a valid, action-bound, non-replayed receipt
 - **Set `EMILIA_TRUSTED_KEYS`** (issuer SPKI, comma-separated). Without it the kit falls back to
   `allowInlineKey` so the demo runs — but an inline key proves integrity, not *who* authorized. Never
   ship that for real money.
-- **Use a durable consumed-store** for one-time consumption across Eve's durable restarts / multiple
-  instances: `makeReceiptGate({ ..., store: { has: (id) => kv.has(id), add: (id) => kv.add(id) } })`.
-  The default is in-memory (process-local).
+- **Use a durable atomic store** for one-time consumption across Eve's durable restarts / multiple
+  instances: `makeReceiptGate({ ..., store: { reserve, commit, release } })`. `reserve(id)` must be
+  an ownership-fenced atomic insert-if-absent. Once the mutation is invoked, commit the reservation
+  even when its response is lost; release only when you can prove execution never began. The default
+  store is in-memory and process-local.
 
 ## How it fits the rest of the stack
 

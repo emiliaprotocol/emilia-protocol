@@ -500,3 +500,42 @@ describe('checkRegistrationLimits', () => {
     expect(result.reason).toContain('50');
   });
 });
+
+describe('fraud and registration storage failures', () => {
+  const dbError = { code: '08006', message: 'connection failure' };
+
+  it('does not reinterpret a failed closed-loop query as no loop', async () => {
+    const supabase = makeSupabase({
+      receipts: () => buildChain({ data: null, error: dbError }),
+    });
+    await expect(detectClosedLoop(supabase, 'entity-a', 'entity-b')).rejects.toThrow(/closed-loop check unavailable/);
+  });
+
+  it('does not reinterpret a failed velocity count as zero activity', async () => {
+    const supabase = makeSupabase({
+      receipts: () => buildChain({ count: null, error: dbError }),
+    });
+    await expect(detectVelocitySpike(supabase, 'submitter-a')).rejects.toThrow(/velocity check unavailable/);
+  });
+
+  it('does not reinterpret a failed graph query as an empty graph', async () => {
+    const supabase = makeSupabase({
+      receipts: () => buildChain({ data: null, error: dbError }),
+    });
+    await expect(analyzeReceiptGraph(supabase, 'entity-a')).rejects.toThrow(/receipt-graph check unavailable/);
+  });
+
+  it('fails registration closed when a limit query is unavailable', async () => {
+    const supabase = makeSupabase({
+      entities: () => buildChain({ count: null, error: dbError }),
+    });
+    await expect(checkRegistrationLimits(supabase, 'owner-a')).rejects.toThrow(/registration daily-count unavailable/);
+  });
+
+  it('fails the aggregate fraud decision when any detector is indeterminate', async () => {
+    const supabase = makeSupabase({
+      receipts: () => buildChain({ data: null, error: dbError }),
+    });
+    await expect(runReceiptFraudChecks(supabase, 'entity-a', 'submitter-a')).rejects.toThrow(/closed-loop check unavailable/);
+  });
+});

@@ -42,6 +42,7 @@
  * from the wall clock implicitly, so verification is deterministic.
  */
 import crypto from 'node:crypto';
+import { strictJsonGate } from './strict-json.js';
 
 export const BREAKGLASS_VERSION = 'EP-GATE-BREAKGLASS-v1';
 export const BREAKGLASS_EVIDENCE_KIND = 'breakglass';
@@ -185,9 +186,12 @@ export function verifyBreakGlass(grantJson, { issuerKeys, now = Date.now, action
 
   let doc = grantJson;
   if (typeof doc === 'string') {
-    try { doc = JSON.parse(doc); } catch { return refuse('grant_unparseable'); }
+    try {
+      if (Buffer.byteLength(doc, 'utf8') > 1024 * 1024 || !strictJsonGate(doc).ok) return refuse('grant_unparseable');
+      doc = JSON.parse(doc);
+    } catch { return refuse('grant_unparseable'); }
   }
-  if (!doc || typeof doc !== 'object') return refuse('grant_malformed');
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return refuse('grant_malformed');
   if (doc['@version'] !== BREAKGLASS_VERSION) return refuse('unsupported_version');
 
   const p = doc.payload;

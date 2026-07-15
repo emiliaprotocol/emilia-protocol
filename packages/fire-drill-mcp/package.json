@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/fire-drill-mcp",
-  "version": "0.1.0",
-  "description": "The Agent Action Firewall Test, as an MCP server. Point your agent at any MCP manifest, OpenAPI spec, or tool list and fire_drill_scan flags every dangerous action — money movement, data destruction, production deploy, permission change, bulk export, regulated override — that can run without an accountable human receipt. Returns an Agent Action Firewall score, the failing operations, the fix, and EG-1 pass/fail. A server that audits the other servers. Static, zero-infrastructure, fails legibly.",
+  "version": "0.2.0",
+  "description": "MCP wrapper for static required-receipt declaration scanning. Runtime verification, consumption, and EG-1 enforcement remain explicitly unassessed.",
   "type": "module",
   "license": "Apache-2.0",
   "bin": {
@@ -13,7 +13,8 @@
     "README.md"
   ],
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test index.test.js"
   },
   "keywords": [
     "mcp",
@@ -27,7 +28,8 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@emilia-protocol/fire-drill": "^0.4.0"
+    "@emilia-protocol/fire-drill": "^0.5.0",
+    "@emilia-protocol/verify": "^3.10.0"
   },
   "engines": {
     "node": ">=18"

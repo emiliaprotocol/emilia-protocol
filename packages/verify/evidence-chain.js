@@ -32,6 +32,7 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize, verifyTrustReceipt, verifyQuorum } from './index.js';
+import { strictJsonGate } from './strict-json.js';
 
 export const AEC_VERSION = 'EP-AEC-v1';
 
@@ -125,7 +126,9 @@ function webauthnOrigin(webauthn) {
     if (typeof encoded !== 'string' || !/^[A-Za-z0-9_-]+$/.test(encoded)) return null;
     const bytes = Buffer.from(encoded, 'base64url');
     if (bytes.toString('base64url') !== encoded) return null;
-    const clientData = JSON.parse(bytes.toString('utf8'));
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    if (!strictJsonGate(text).ok) return null;
+    const clientData = JSON.parse(text);
     return typeof clientData?.origin === 'string' ? clientData.origin : null;
   } catch {
     return null;
@@ -246,7 +249,10 @@ function builtinVerifiers() {
         }
       }
 
-      const r = verifyQuorum(evidence, { rpId: profile.rp_id }) || {};
+      const r = verifyQuorum(evidence, {
+        rpId: profile.rp_id,
+        allowedOrigins: [...allowedOrigins],
+      }) || {};
       return { valid: !!r.valid, action_digest: r.valid ? (evidence?.action_hash ?? null) : null, detail: r.checks };
     },
     // A Section 6.2 human-authorization Trust Receipt. A bare operator-signed
@@ -303,6 +309,9 @@ function builtinVerifiers() {
         r = verifyTrustReceipt(evidence, {
           approverKeys: profile.approver_keys,
           logPublicKey: profile.log_public_key,
+          rpId: profile.rp_id,
+          allowedOrigins: [...allowedOrigins],
+          expectedPolicyHash: profile.expected_policy_hash,
         }) || {};
       } catch { r = { valid: false }; }
       return { valid: r.valid === true, action_digest: r.valid ? evidence.action_hash : null, detail: r.checks };

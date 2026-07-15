@@ -70,6 +70,7 @@ function kernelInputFor(pkt, prof) {
     approverKeys: pkt.context.approver_keys,
     logPublicKey: pkt.context.log_public_key,
     rpId: pkt.context.rp_id,
+    allowedOrigins: pkt.context.allowed_origins,
   }];
 }
 

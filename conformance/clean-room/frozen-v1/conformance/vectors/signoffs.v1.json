@@ -1,0 +1,271 @@
+{
+  "suite": "EP-SIGNOFF-v1",
+  "profile": "Class A — device-bound WebAuthn keys (ECDSA P-256)",
+  "vectors_version": "1.0.0",
+  "description": "Adversarial conformance vectors for the EMILIA Protocol Class-A human device signoff: a WebAuthn assertion whose challenge is the SHA-256 of the JCS-canonicalized authorization context. An EP-SIGNOFF-v1 conformant verifier MUST return expect.valid for every vector.",
+  "scope_note": "These exercise the OFFLINE assertion verifier (cryptographic, action-binding, audience, lifecycle/UV). Replay / one-time consumption and enrollment-active are SERVER-STATE checks (the nonce is the global consumption key) and are out of scope for offline assertion vectors. failure_class follows the verifier taxonomy discussed on secdispatch (S. Bu, 2026-06).",
+  "count": 9,
+  "vectors": [
+    {
+      "id": "accept_valid",
+      "description": "A genuine Class-A device assertion over the exact action",
+      "failure_class": "accept",
+      "expect": {
+        "valid": true
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7onGEL0wrYF37XxDfS0EP7vvBeDwOiyWjno9SCnBCvAoo79M_NSFXeP6DfRiX8gO8go9bDPqQGgu0w2740Vwjg",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_6c2078dc54fa3797405e7eb42e344f44",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiaDNncDJfTDBiU0F3a1FqRXFrYmt5XzlLNFhGR21kOUF0YXd6YUVoQUdnZyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEYCIQDXbpK1dOzKqSqZJpOLI-_4yNmqixAO0vy_ZMjKaY7ypAIhAIp6VqQ77dj1X0vZ-UORMZ3FP0MutqIQwXbL-P7Jo9px"
+        }
+      }
+    },
+    {
+      "id": "reject_structural_ceremony_type",
+      "description": "clientData.type is webauthn.create (a registration), not webauthn.get (an assertion)",
+      "failure_class": "structural",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsSqZUIfjNRvHQgeEe5ErQnZ847QIexhe9POG1kEW_mRLssPfL5_TMc8zu3vm67lTCNssCBnYKDyzNHPCtT43Sw",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_a64028386fec3015a71eec973f29f952",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiZnBXM0hUN0hMQWRTZjVFNEFKeHItU3o2RjRReTV1Y0ZIeDI1TWR2Vk1zbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEYCIQDg1zG26OloJ5lPBwflue1OoLIjRMn8LuLbpiG3fIctqwIhALTRcZtCLsWh1L7MkeuzYTPJzo83aR4xRjRwcpYuuWKi"
+        }
+      }
+    },
+    {
+      "id": "reject_crypto_wrong_key",
+      "description": "Signature verifies, but against the wrong approver public key",
+      "failure_class": "cryptographic",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoWDQlo4k3a_yL208vcchHtjBKwQPY1TMP1d6pgsOgDV6Pvil0rQHT_TGc9F8toyRN3Kb9n_pXjvUA2M0hW6LJQ",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_0cba37eb312ec2fd234d5c3b462b5e48",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoialhTVVJCbFg2YzFWVmo3TWxLa1ZQWERKNFFtcHJRSFBXb0hJTVpkQjFybyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEUCIQDRJi6O50v29d_t5CCOuVTZbPmFyhDFw0NtGFFcIHZGBAIgAMy9mDSjH8FNDtepuhvvxqI_CAnVkcfRvRewrLPFCRU"
+        }
+      }
+    },
+    {
+      "id": "reject_crypto_malformed_sig",
+      "description": "Signature value is not a valid ECDSA signature",
+      "failure_class": "cryptographic",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmftnbVSG61Cu76qRd0WVsQQ-PLcwJhdpE14Nixr5hm91iFl9sd-1S703EdmBZTEo_r1jR5FAz8nkAzQDPX2k9Q",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_24c6d56ba06dc99605786f2da13be569",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicGVZVERyQkxCamg0NVVCVmVlZEY4c00tOTBuMlcwQmRBcHNHUzQ3clA3cyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "bm90LWEtdmFsaWQtZWNkc2Etc2lnbmF0dXJl"
+        }
+      }
+    },
+    {
+      "id": "reject_action_binding_hash",
+      "description": "The action_hash in the delivered context differs from what was signed — challenge no longer binds",
+      "failure_class": "action-binding",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbYN24XNNg0pb_fsDteCvVePOwYV6rVjC_uxffYWty6W6M4IErYlXn2J9lTrK8irj0o05cNjmdj9T5cZ2r_pLiw",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_836cb3d11fa468c2952e5da018350d80",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib3RIWHlYSVhGaDQ4eHNFbk5tQjhGRHNqNjc3TThZbmFudl9leXNEcHRCTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEQCIGv4xJy3Y4g_a-q-S6d6eMjKhPqOiBI-lzfPgTMijus2AiBr9MwSz7MpY0NnDD5iRSbjRONnaL0Gpo-e82C_qjVD1Q"
+        }
+      }
+    },
+    {
+      "id": "reject_action_binding_nonce",
+      "description": "The nonce (consumption key) was altered after signing — challenge no longer binds",
+      "failure_class": "action-binding",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjcHs2uCHdiV_vthmXdZNVfHRb9UeN3eokSO3JdYZshsBDcoxlckyvSGLk0SdRiG7qPZtHiDYfNwgVvcdyL5nOQ",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidTJQdHRDcFdnRGxLeWp0ZlhmaEJvbnBlM1RER2xmeWNtWW1EcnRyRVFVZyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEUCIQCBWAzR0hbVaHXeTwY_0W5EYmG6vENxbS2IlN1J7bXbkwIgd6u3CLCRY9_zA5ZbMdgyo4ZwK6VLtE50UNZrdVH7mJs"
+        }
+      }
+    },
+    {
+      "id": "reject_audience_wrong_rp",
+      "description": "The assertion was scoped to a different relying party than expected",
+      "failure_class": "operation/audience",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiFqy35G49a-DRGkihCTP6fYe7Tp03sqrkm0ty4hLhkV9UsYKt2up6lKr2fap59C14oHYST4yZwvVcNY_CyXmSA",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_d7885a1f2978389bdea1f27e6f000fbf",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "nBgN4M1pnueIl8R8_bPn7h11kG4xt3RqR0fepTaQmDcFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTV0UUVpM2dqTzJhUy16TXFMa0xmUTFkcGRyenNKNHhfRTlVUGNINElyUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEUCIQDnoL83jFA555QDX85qxJ38anFxYxEZEvFJ7LDCA1V0wgIgOYJAqK413cx5s9jOwMNffcSky1nPPiJXd2IBFLvyp68"
+        }
+      }
+    },
+    {
+      "id": "reject_lifecycle_uv_absent",
+      "description": "User-verification flag unset — no biometric/PIN; insufficient assurance for Class A",
+      "failure_class": "lifecycle/UV",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEx4YHXWKgprOiluqtFhJ-HvOCYSR--JA_U0LQ-e5QFjNRaALfbMV9sPuT9tAFpDdhJSlIE-OqogL2mVw0d2GBdg",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_d273eff5ff5479e1bcbf6d8899272d3f",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUBAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOUNpd01SNWtydXl1cGc0bC0zY0ZCa2xSV1R1cGljcVlfb0s0SnVaN0N0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEUCIFQNeLoMyGFsf4X0ZRHjHPltaMU6mgFOMs1dcAErV_7gAiEAi9mrER4f8NIb4sNsXp_ZHsxpIHOpnNOTlR-2-Tqms88"
+        }
+      }
+    },
+    {
+      "id": "reject_lifecycle_up_absent",
+      "description": "User-presence flag unset — no human was present at the authenticator",
+      "failure_class": "lifecycle/UV",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEP7vGx3Pvp0Lne2PNirBU1DgCe5Ty5eBmVcJ1LuTMmUsYVAAE9AbtOAG7fEaxoy0cLI-1YdSXl30anYpBrZODKA",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_69ecce5436f27236f40be865862f29f6",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUEAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQ1kzeWFuSmdUVHFXa3hxbmUwNjlSekNKRk9BTnVRWE5vdHNXbG0wZTR1YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEYCIQDB0gN_CJCT0atufdtrGrP8P1O-BxrZJ1uqji8xtTOzeAIhAK41uJntZ9JxZ5C1h_b_tIJ6qamgtDK5dUPxAFdFP2th"
+        }
+      }
+    }
+  ]
+}

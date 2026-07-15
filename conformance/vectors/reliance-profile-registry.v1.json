@@ -10,6 +10,9 @@
     { "id": "reject_profile_hash_mismatch", "break": "tamper_profile_hash", "expect": { "valid": false, "verified": false, "accepted": false } },
     { "id": "reject_signature_invalid", "break": "tamper_signature", "expect": { "valid": false, "verified": false, "accepted": false } },
     { "id": "reject_profile_id_mismatch", "break": "expect_wrong_id", "expect": { "valid": false, "verified": false, "accepted": false } },
-    { "id": "reject_stale_registry_epoch", "break": "expect_higher_epoch", "expect": { "valid": false, "verified": false, "accepted": false } }
+    { "id": "reject_stale_registry_epoch", "break": "expect_higher_epoch", "expect": { "valid": false, "verified": false, "accepted": false } },
+    { "id": "reject_registry_identity_substitution", "break": "wrong_registry_id", "expect": { "valid": false, "verified": true, "accepted": false, "reason": "pin_missing_or_mismatched_registry_id" } },
+    { "id": "reject_identityless_registry_pin", "break": "pin_omits_registry_id", "expect": { "valid": false, "verified": true, "accepted": false, "reason": "pin_missing_or_mismatched_registry_id" } },
+    { "id": "reject_malleated_registry_key_id", "break": "tamper_key_id", "expect": { "valid": false, "verified": false, "accepted": false, "reason": "key_id_mismatch" } }
   ]
 }

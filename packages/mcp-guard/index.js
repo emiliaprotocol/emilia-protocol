@@ -42,6 +42,8 @@ const {
   verifyEmiliaReceipt,
   receiptChallenge,
   evaluateReceiptAssurance,
+  makeReceiptGate,
+  parseReceiptCarrier,
 } = await import('@emilia-protocol/require-receipt').catch(() => import('../require-receipt/index.js'));
 
 // ---------------------------------------------------------------------------
@@ -51,16 +53,36 @@ const {
 // applied to an EP-RECEIPT-v1 payload here; Core canonicalization is untouched.
 // ---------------------------------------------------------------------------
 
-function canonicalize(v) {
-  if (v === null || v === undefined) return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
-  if (typeof v === 'object') {
-    return `{${Object.keys(v)
-      .sort()
-      .map((k) => JSON.stringify(k) + ':' + canonicalize(v[k]))
-      .join(',')}}`;
+function canonicalize(v, seen = new Set()) {
+  if (v === null || typeof v === 'string' || typeof v === 'boolean') return JSON.stringify(v);
+  if (typeof v === 'number') {
+    if (!Number.isSafeInteger(v)) throw new TypeError('value_outside_ep_canonical_profile');
+    return JSON.stringify(v);
   }
-  return JSON.stringify(v);
+  if (Array.isArray(v)) {
+    if (seen.has(v)) throw new TypeError('cyclic_value');
+    seen.add(v);
+    try {
+      return `[${v.map((entry) => canonicalize(entry, seen)).join(',')}]`;
+    } finally {
+      seen.delete(v);
+    }
+  }
+  if (typeof v === 'object') {
+    const proto = Object.getPrototypeOf(v);
+    if (proto !== Object.prototype && proto !== null) throw new TypeError('non_json_object');
+    if (seen.has(v)) throw new TypeError('cyclic_value');
+    seen.add(v);
+    try {
+      return `{${Object.keys(v)
+        .sort()
+        .map((k) => JSON.stringify(k) + ':' + canonicalize(v[k], seen))
+        .join(',')}}`;
+    } finally {
+      seen.delete(v);
+    }
+  }
+  throw new TypeError('value_outside_ep_canonical_profile');
 }
 
 function sha256Hex(s) {
@@ -70,6 +92,20 @@ function sha256Hex(s) {
 /** "sha256:<hex>" over canonical JSON — the project-wide hash format. */
 export function hashObject(obj) {
   return `sha256:${sha256Hex(canonicalize(obj))}`;
+}
+
+/**
+ * Bind an MCP tool call to the exact material argument object. A receipt for
+ * `payment.release` with one amount or destination cannot authorize another.
+ * Control carriers under `__ep` / `emilia_receipt` are deliberately excluded;
+ * they transport the proof and are not tool inputs.
+ */
+export function bindToolAction(name, args = {}, baseAction = name) {
+  if (typeof name !== 'string' || !name || typeof baseAction !== 'string' || !baseAction) {
+    throw new TypeError('action_binding_invalid');
+  }
+  const digest = hashObject({ tool: name, args: stripEpFields(args) });
+  return `${baseAction}:${digest}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +118,28 @@ export const GUARD_DECISIONS = Object.freeze({
   DENY: 'deny',
 });
 
+function inMemoryConsumptionStore() {
+  const states = new Map();
+  return {
+    ownershipFenced: true,
+    async reserve(id) {
+      if (states.has(id)) return false;
+      states.set(id, 'reserved');
+      return true;
+    },
+    async commit(id) {
+      if (states.get(id) !== 'reserved') throw new Error('reservation_not_owned');
+      states.set(id, 'committed');
+      return true;
+    },
+    async release(id) {
+      if (states.get(id) !== 'reserved') throw new Error('reservation_not_owned');
+      states.delete(id);
+      return true;
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Irreversibility classification
 // ---------------------------------------------------------------------------
@@ -93,12 +151,13 @@ export const GUARD_DECISIONS = Object.freeze({
  *   1. Per-call escalation:      args.__ep?.irreversible === true
  *      (agent/tool-call metadata may only make a call stricter, never downgrade
  *      trusted server annotations or policy)
- *   2. Tool annotation:          annotations[name].irreversible (or the MCP
- *      `readOnlyHint`/`destructiveHint` tool annotations, if provided)
+ *   2. Trusted tool annotation:  annotations[name].irreversible
+ *      (MCP destructiveHint can escalate; readOnlyHint is advisory by default)
  *   3. Policy function:          policy(name, args) → boolean
- *   4. Default:                  treated as reversible (fail-open ONLY for the
- *      *classification*; the demand hook itself always fails closed once a call
- *      IS classified irreversible). Set `defaultIrreversible: true` to invert.
+ *   4. Default:                  treated as irreversible. New or misspelled
+ *      tools cannot silently bypass the guard; explicitly mark trusted read-only
+ *      tools with `irreversible: false` or set `defaultIrreversible: false` only
+ *      when a complete external classifier is guaranteed.
  *
  * @param {string} name  tool name
  * @param {object} args  tool arguments
@@ -106,7 +165,7 @@ export const GUARD_DECISIONS = Object.freeze({
  * @returns {{ irreversible: boolean, reason: string }}
  */
 export function classifyToolCall(name, args = {}, opts = {}) {
-  const { annotations = {}, policy, defaultIrreversible = false } = opts;
+  const { annotations = {}, policy, defaultIrreversible = true, trustReadOnlyHints = false } = opts;
 
   const override = args && args.__ep ? args.__ep.irreversible : undefined;
   if (override === true) return { irreversible: true, reason: 'per_call_override' };
@@ -115,9 +174,12 @@ export function classifyToolCall(name, args = {}, opts = {}) {
   if (ann) {
     if (ann.irreversible === true) return { irreversible: true, reason: 'annotation' };
     if (ann.irreversible === false) return { irreversible: false, reason: 'annotation' };
-    // Honor standard MCP tool annotations when present.
+    // Destructive hints can only escalate. Read-only hints are advisory and do
+    // not downgrade the default unless the host explicitly opts in.
     if (ann.destructiveHint === true) return { irreversible: true, reason: 'destructiveHint' };
-    if (ann.readOnlyHint === true) return { irreversible: false, reason: 'readOnlyHint' };
+    if (ann.readOnlyHint === true && trustReadOnlyHints === true) {
+      return { irreversible: false, reason: 'trusted_readOnlyHint' };
+    }
   }
 
   if (typeof policy === 'function') {
@@ -153,22 +215,20 @@ function extractReceipt(args = {}, meta = {}) {
   const ep = args.__ep || {};
   if (ep.receipt && typeof ep.receipt === 'object') return ep.receipt;
   if (typeof ep.receipt_b64 === 'string') {
-    try {
-      return JSON.parse(Buffer.from(ep.receipt_b64, 'base64').toString('utf8'));
-    } catch {
-      /* fallthrough */
-    }
+    const parsed = parseBase64Receipt(ep.receipt_b64);
+    if (parsed) return parsed;
   }
   if (args.emilia_receipt && typeof args.emilia_receipt === 'object') return args.emilia_receipt;
   const hdr = meta && (meta['x-emilia-receipt'] || meta['X-EMILIA-Receipt']);
   if (typeof hdr === 'string') {
-    try {
-      return JSON.parse(Buffer.from(hdr, 'base64').toString('utf8'));
-    } catch {
-      /* fallthrough */
-    }
+    const parsed = parseBase64Receipt(hdr);
+    if (parsed) return parsed;
   }
   return null;
+}
+
+function parseBase64Receipt(value) {
+  return parseReceiptCarrier(value);
 }
 
 /**
@@ -196,19 +256,23 @@ export function refusal(action, reason, extra = {}) {
 }
 
 /**
- * Enforce "no irreversible tool call without a valid receipt".
+ * Verify "no irreversible tool call without a valid receipt".
  *
  * Verifies the presented receipt OFFLINE via require-receipt (pinned issuer
  * keys, freshness, action binding, allowed outcomes). Returns either
  * `{ ok: true, verified }` or `{ ok: false, refusal }` — the refusal is the
  * legacy MCP object. FAILS CLOSED: anything missing/invalid → refusal.
+ * This low-level function does not consume the receipt; middleware that can
+ * execute an effect MUST use `withMcpGuard`, which composes verification with
+ * atomic reserve/commit semantics.
  *
  * @param {object} p
  * @param {string} p.action            canonical action bound into the receipt
  * @param {object} p.args              tool arguments (carrier for the receipt)
  * @param {object} [p.meta]            MCP _meta (header-style carrier)
- * @param {object} p.verifyOpts        require-receipt options { trustedKeys, maxAgeSec, allowedOutcomes, ... }
- *                                     plus optional { assuranceClass }
+ * @param {object} p.verifyOpts        require-receipt options including pinned
+ *   issuer keys and, for Class-A/quorum, rpId, allowedOrigins, quorumPolicy,
+ *   and the relying party's approver keys.
  * @returns {{ok:true, verified:object} | {ok:false, refusal:object}}
  */
 export function demandReceipt({ action, args = {}, meta = {}, verifyOpts = {} }) {
@@ -320,14 +384,20 @@ export class ProvenanceLedger {
  * @typedef {Object} McpGuardOptions
  * @property {(name:string, args:object)=>boolean} [policy]
  *   Returns true if a tool is irreversible. Used when no annotation/override.
- * @property {Object.<string, {irreversible?:boolean, action?:string|((args)=>string),
+ * @property {Object.<string, {irreversible?:boolean, action?:string|((args,extra)=>string),
  *   readOnlyHint?:boolean, destructiveHint?:boolean}>} [annotations]
  *   Per-tool flags. `action` is the canonical action bound into the receipt.
- * @property {boolean} [defaultIrreversible=false]
+ * @property {boolean} [defaultIrreversible=true]
  *   How to classify a tool with no annotation/policy answer.
- * @property {(name:string, args:object)=>string} [action]
- *   Global fallback to derive the canonical action when an annotation has none.
+ * @property {boolean} [trustReadOnlyHints=false]
+ *   Opt-in downgrade for MCP readOnlyHint. False by default because hints are
+ *   presenter-authored metadata, not enforcement policy.
+ * @property {(name:string, args:object, extra:object)=>string} [action]
+ *   Global fallback to choose the action family when an annotation has none.
+ *   The guard always appends an exact digest of the material tool arguments.
  * @property {object} [verifyOpts]
+ *   Offline verifier policy. Class-A requires pinned rpId + allowedOrigins;
+ *   quorum requires a relying-party-pinned quorumPolicy and approver keys.
  *   Passed to require-receipt: { trustedKeys, maxAgeSec, allowedOutcomes, allowInlineKey }.
  * @property {(ctx:object)=>Promise<{approved:boolean, reason?:string, by?:string}>} [requestConsent]
  *   ADAPTER. Obtain end-user/operator consent for an irreversible action.
@@ -343,8 +413,12 @@ export class ProvenanceLedger {
  *   If true, an irreversible call that arrives WITH a receipt is verified by the
  *   demand hook and runs without re-gating (the agent already did the loop).
  *   If it arrives WITHOUT a receipt, it is routed through consent→signoff→issue.
+ * @property {{reserve:Function, commit:Function, release:Function}} [store]
+ *   Ownership-fenced one-time consumption store. The process-local default is
+ *   for demos only; fleets provide one shared durable store.
  * @property {(name:string)=>object|undefined} [getAnnotations]
- *   Optional resolver if annotations live elsewhere (e.g. the MCP tool registry).
+ *   Optional resolver for untrusted MCP metadata. Only destructiveHint may
+ *   escalate by default; it cannot override local action/policy annotations.
  */
 
 /**
@@ -363,26 +437,48 @@ export function withMcpGuard(handler, options = {}) {
     policy,
     annotations = {},
     getAnnotations,
-    defaultIrreversible = false,
+    defaultIrreversible = true,
+    trustReadOnlyHints = false,
     action: globalAction,
     verifyOpts = {},
     requestConsent,
     requestClassASignoff,
     issueReceipt,
     enforceDemand = true,
+    store = inMemoryConsumptionStore(),
   } = options;
   const ledger = options.ledger instanceof ProvenanceLedger ? options.ledger : new ProvenanceLedger();
 
   const resolveAnnotations = (name) => {
-    const fromResolver = typeof getAnnotations === 'function' ? getAnnotations(name) : undefined;
-    return { ...(annotations[name] || {}), ...(fromResolver || {}) };
+    let fromResolver;
+    try { fromResolver = typeof getAnnotations === 'function' ? getAnnotations(name) : undefined; }
+    catch { fromResolver = { destructiveHint: true }; }
+    const externalHints = fromResolver && typeof fromResolver === 'object' ? {
+      ...(fromResolver.destructiveHint === true ? { destructiveHint: true } : {}),
+      ...(fromResolver.readOnlyHint === true ? { readOnlyHint: true } : {}),
+    } : {};
+    return { ...externalHints, ...(annotations[name] || {}) };
   };
 
-  const resolveAction = (name, args, ann) => {
+  const resolveAction = (name, args, extra, ann) => {
     let a = ann && ann.action;
-    if (typeof a === 'function') a = a(args);
-    if (!a && typeof globalAction === 'function') a = globalAction(name, args);
-    return a || name; // fall back to the tool name as the action label
+    if (typeof a === 'function') a = a(args, extra);
+    if (!a && typeof globalAction === 'function') a = globalAction(name, args, extra);
+    return bindToolAction(name, args, a || name);
+  };
+
+  const gates = new Map();
+  const gateFor = (action, requiredTier) => {
+    const key = `${requiredTier}\u0000${action}`;
+    if (!gates.has(key)) {
+      gates.set(key, makeReceiptGate({
+        ...verifyOpts,
+        action,
+        assuranceClass: requiredTier,
+        store,
+      }));
+    }
+    return gates.get(key);
   };
 
   const guarded = async function guardedDispatch(name, args = {}, extra = {}) {
@@ -391,12 +487,21 @@ export function withMcpGuard(handler, options = {}) {
       annotations: { [name]: ann },
       policy,
       defaultIrreversible,
+      trustReadOnlyHints,
     });
 
     // Reversible / read-only → pass straight through. Zero added trust surface.
     if (!irreversible) return handler(name, args, extra);
 
-    const action = resolveAction(name, args, ann);
+    let action;
+    try {
+      action = resolveAction(name, args, extra, ann);
+    } catch {
+      return refusal(String(name || 'mcp.tool'), 'Tool call cannot be bound to the EP canonical JSON profile.', {
+        stage: 'bind',
+        rejected: { ok: false, reason: 'action_binding_invalid' },
+      });
+    }
     const requiredTier = ann.assuranceClass || ann.assurance_class || verifyOpts.assuranceClass || verifyOpts.assurance_class || 'class_a';
     const meta = (extra && (extra._meta || extra.meta)) || {};
     const actionDigest = hashObject({ tool: name, action, args: stripEpFields(args) });
@@ -405,20 +510,30 @@ export function withMcpGuard(handler, options = {}) {
     if (enforceDemand) {
       const carriesReceipt = !!extractReceipt(args, meta);
       if (carriesReceipt) {
-        const d = demandReceipt({ action, args, meta, verifyOpts: { ...verifyOpts, assuranceClass: requiredTier } });
-        if (!d.ok) return d.refusal; // FAIL CLOSED — refusal object, do not run.
-        // Verified. Record provenance referencing the (already v1) receipt, run.
         const doc = extractReceipt(args, meta);
-        ledger.append({
-          tool: name,
-          action,
-          actionDigest,
-          receiptRef: { receipt_id: d.verified.receipt_id, receipt_hash: receiptHashOf(doc) },
-          verified: d.verified,
-          agentClaim: ann.agent_claim || (args.__ep && args.__ep.agent_claim) || null,
-          liability: ann.liability || (args.__ep && args.__ep.liability) || null,
+        const run = await gateFor(action, requiredTier).run(doc, {}, async (verified) => {
+          ledger.append({
+            tool: name,
+            action,
+            actionDigest,
+            receiptRef: { receipt_id: verified.receiptId, receipt_hash: receiptHashOf(doc) },
+            verified: {
+              outcome: verified.outcome,
+              subject: verified.subject,
+              signer: verified.signer,
+            },
+            agentClaim: ann.agent_claim || (args.__ep && args.__ep.agent_claim) || null,
+            liability: ann.liability || (args.__ep && args.__ep.liability) || null,
+          });
+          return handler(name, stripEpFields(args), extra);
         });
-        return handler(name, stripEpFields(args), extra);
+        if (!run.ok) {
+          const reason = run.body?.rejected?.reason || 'receipt_required';
+          return refusal(action, `Receipt rejected: ${reason}.`, {
+            rejected: { ok: false, reason },
+          });
+        }
+        return run.result;
       }
     }
 
@@ -438,7 +553,7 @@ export function withMcpGuard(handler, options = {}) {
       approved: false,
       reason: 'no_consent_adapter',
     });
-    if (!consent.approved) {
+    if (consent.approved !== true) {
       return refusal(action, `Consent not granted: ${consent.reason || 'denied'}.`, {
         stage: 'consent',
       });
@@ -449,7 +564,7 @@ export function withMcpGuard(handler, options = {}) {
       approved: false,
       reason: 'no_signoff_adapter',
     });
-    if (!signoff.approved) {
+    if (signoff.approved !== true) {
       return refusal(action, `Class-A signoff not obtained: ${signoff.reason || 'denied'}.`, {
         stage: 'signoff',
       });
@@ -490,21 +605,36 @@ export function withMcpGuard(handler, options = {}) {
       });
     }
 
-    // 5) Append provenance referencing the issued v1 receipt, then run.
-    ledger.append({
-      tool: name,
-      action,
-      actionDigest,
-      receiptRef: {
-        receipt_id: issued.receipt_id || selfCheck.receipt_id,
-        receipt_hash: receiptHashOf(doc),
-      },
-      verified: selfCheck,
-      agentClaim: ctx.agent_claim,
-      liability: ctx.liability,
+    // 5) Atomically reserve the issued receipt, append provenance, invoke the
+    // effect, and commit after any invocation attempt. The newly issued receipt
+    // cannot later be replayed through Path A.
+    const run = await gateFor(action, requiredTier).run(doc, {}, async (verified) => {
+      ledger.append({
+        tool: name,
+        action,
+        actionDigest,
+        receiptRef: {
+          receipt_id: issued.receipt_id || verified.receiptId,
+          receipt_hash: receiptHashOf(doc),
+        },
+        verified: {
+          outcome: verified.outcome,
+          subject: verified.subject,
+          signer: verified.signer,
+        },
+        agentClaim: ctx.agent_claim,
+        liability: ctx.liability,
+      });
+      return handler(name, ctx.args, extra);
     });
-
-    return handler(name, ctx.args, extra);
+    if (!run.ok) {
+      const reason = run.body?.rejected?.reason || 'receipt_required';
+      return refusal(action, `Issued receipt could not be consumed: ${reason}.`, {
+        stage: 'consume',
+        rejected: { ok: false, reason },
+      });
+    }
+    return run.result;
   };
 
   // Expose the ledger so the host can persist / re-verify it.
@@ -542,15 +672,22 @@ export function withMcpReceiptGuard(handler, options = {}) {
     policy,
     annotations = {},
     getAnnotations,
-    defaultIrreversible = false,
+    defaultIrreversible = true,
+    trustReadOnlyHints = false,
     executingSystem = 'mcp-server',
     receiptParams,
     returnEnvelope = false,
   } = options;
 
   const resolveAnnotations = (name) => {
-    const fromResolver = typeof getAnnotations === 'function' ? getAnnotations(name) : undefined;
-    return { ...(annotations[name] || {}), ...(fromResolver || {}) };
+    let fromResolver;
+    try { fromResolver = typeof getAnnotations === 'function' ? getAnnotations(name) : undefined; }
+    catch { fromResolver = { destructiveHint: true }; }
+    const externalHints = fromResolver && typeof fromResolver === 'object' ? {
+      ...(fromResolver.destructiveHint === true ? { destructiveHint: true } : {}),
+      ...(fromResolver.readOnlyHint === true ? { readOnlyHint: true } : {}),
+    } : {};
+    return { ...externalHints, ...(annotations[name] || {}) };
   };
 
   const guarded = async function guardedReceiptDispatch(name, args = {}, extra = {}) {
@@ -559,6 +696,7 @@ export function withMcpReceiptGuard(handler, options = {}) {
       annotations: { [name]: ann },
       policy,
       defaultIrreversible,
+      trustReadOnlyHints,
     });
 
     if (!irreversible) return handler(name, args, extra);
@@ -640,6 +778,7 @@ export default {
   demandReceipt,
   refusal,
   classifyToolCall,
+  bindToolAction,
   ProvenanceLedger,
   hashObject,
   GUARD_DECISIONS,

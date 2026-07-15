@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/mcp-guard",
-  "version": "0.2.0",
-  "description": "EP-MCP middleware (reference implementation). Wraps an MCP tool-call handler: irreversible tool calls route through consent → Class-A signoff → an emitted EP-RECEIPT-v1 + an appended provenance entry; everything else passes through. Includes the demand hook — no irreversible tool call without a valid receipt — reusing @emilia-protocol/require-receipt and returning a legacy MCP refusal object. Framework-agnostic, fails closed. Experimental.",
+  "version": "0.4.0",
+  "description": "Fail-closed MCP receipt middleware with exact-action binding, one-time consumption, strict receipt parsing, and escalation-only treatment of untrusted tool metadata.",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -32,12 +32,15 @@
   "engines": {
     "node": ">=18"
   },
+  "scripts": {
+    "test": "cd ../.. && npx vitest run tests/mcp-guard-boundary.test.js"
+  },
   "peerDependencies": {
-    "@emilia-protocol/require-receipt": "^0.4.0"
+    "@emilia-protocol/require-receipt": "^0.6.0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/emiliaprotocol/emilia-protocol.git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "packages/mcp-guard"
   },
   "homepage": "https://www.emiliaprotocol.ai/agent-guard",

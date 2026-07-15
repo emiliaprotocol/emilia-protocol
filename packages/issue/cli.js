@@ -26,6 +26,9 @@ import {
   issueFromKeyBundle,
   formatLogKeyId,
 } from './index.js';
+import { strictJsonGate } from './strict-json.js';
+
+const MAX_CLI_JSON_BYTES = 8 * 1024 * 1024;
 
 function usage() {
   console.log(`ep-issue — issue EP authorization receipts locally, verify anywhere.
@@ -71,7 +74,11 @@ function parseArgs(argv) {
 }
 
 function readJson(p) {
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
+  const raw = fs.readFileSync(p, 'utf8');
+  if (Buffer.byteLength(raw, 'utf8') > MAX_CLI_JSON_BYTES) throw new Error(`JSON input exceeds ${MAX_CLI_JSON_BYTES} bytes`);
+  const strict = strictJsonGate(raw);
+  if (!strict.ok) throw new Error(`strict JSON required: ${strict.reason}`);
+  return JSON.parse(raw);
 }
 
 function writeJson(p, value) {

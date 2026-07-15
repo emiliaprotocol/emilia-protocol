@@ -68,6 +68,8 @@ describe('/api/v1/guarded replay + freshness', () => {
     // so a genuine Class-A proof verifies.
     process.env.EP_TRUSTED_ISSUER_KEYS = `${trustedKeyB64u},${harness.publicKey}`;
     process.env.EP_PINNED_APPROVER_KEYS = JSON.stringify(harness.approverKeys);
+    process.env.EP_WEBAUTHN_RP_ID = harness.rpId;
+    process.env.EP_WEBAUTHN_ALLOWED_ORIGINS = harness.allowedOrigins.join(',');
     // Force dev posture so the consumption store uses the in-memory backend.
     delete process.env.NODE_ENV;
     const consumption = await import('../lib/http/guarded-consumption.js');
@@ -78,6 +80,8 @@ describe('/api/v1/guarded replay + freshness', () => {
   afterEach(() => {
     delete process.env.EP_TRUSTED_ISSUER_KEYS;
     delete process.env.EP_PINNED_APPROVER_KEYS;
+    delete process.env.EP_WEBAUTHN_RP_ID;
+    delete process.env.EP_WEBAUTHN_ALLOWED_ORIGINS;
   });
 
   it('REFUSES a verified receipt with no receipt_id (cannot enforce one-time consumption)', async () => {

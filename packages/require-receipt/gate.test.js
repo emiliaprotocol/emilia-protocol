@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Hardened-gate conformance for makeReceiptGate: target binding, consume-after-
-// success, replay safety (post-commit AND in-flight), and sanitized rejections.
+// Hardened-gate conformance for makeReceiptGate: target binding, indeterminate-
+// outcome consumption, replay safety (post-commit AND in-flight), and sanitized
+// rejections.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,6 +15,10 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
       : JSON.stringify(v));
 const sha256Hex = (v) => crypto.createHash('sha256').update(v, 'utf8').digest('hex');
 const sha256Bytes = (v) => crypto.createHash('sha256').update(v).digest();
+const ASSURANCE_SCOPE = {
+  rpId: 'www.emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
+};
 
 // Mint a valid EP-RECEIPT-v1 bound to exactly `actionType`.
 function mint(actionType, { outcome = 'allow_with_signoff', quorum = null } = {}) {
@@ -104,15 +109,21 @@ test('cross-target -> a receipt for customers cannot delete orders', async () =>
   assert.equal(ran, false);
 });
 
-test('consume-after-FAILURE -> failed action leaves the receipt retryable', async () => {
+test('indeterminate effect -> receipt is burned and cannot duplicate the action', async () => {
   const g = gate();
   const rc = mint('db.records.delete:customers');
-  await assert.rejects(g.run(rc, { target: 'customers' }, async () => { throw new Error('notion down'); }));
-  // The transient failure must NOT have burned the approval — retry succeeds.
-  let ran = false;
-  const r = await g.run(rc, { target: 'customers' }, async () => { ran = true; return 'ok'; });
-  assert.equal(r.ok, true);
-  assert.equal(ran, true);
+  let effects = 0;
+  await assert.rejects(g.run(rc, { target: 'customers' }, async () => {
+    effects += 1; // the external effect happened
+    throw new Error('response lost after effect');
+  }));
+  const retry = await g.run(rc, { target: 'customers' }, async () => {
+    effects += 1;
+    return 'duplicated';
+  });
+  assert.equal(retry.ok, false);
+  assert.equal(retry.body.rejected.reason, 'replay_refused');
+  assert.equal(effects, 1, 'an ambiguous response must never make an approval retryable');
 });
 
 test('in-flight replay -> the same receipt cannot drive two concurrent actions', async () => {
@@ -127,6 +138,73 @@ test('in-flight replay -> the same receipt cannot drive two concurrent actions',
   release('done');
   const first = await gate1;
   assert.equal(first.ok, true);
+});
+
+test('two gate instances sharing an atomic store admit exactly one effect', async () => {
+  const states = new Map();
+  const store = {
+    async reserve(id) {
+      if (states.has(id)) return false;
+      states.set(id, 'reserved');
+      return true;
+    },
+    async commit(id) {
+      if (states.get(id) !== 'reserved') throw new Error('not owner');
+      states.set(id, 'committed');
+      return true;
+    },
+    async release(id) {
+      if (states.get(id) !== 'reserved') throw new Error('not owner');
+      states.delete(id);
+      return true;
+    },
+  };
+  const a = makeReceiptGate({ action: 'db.records.delete', allowInlineKey: true, store });
+  const b = makeReceiptGate({ action: 'db.records.delete', allowInlineKey: true, store });
+  const receipt = mint('db.records.delete:customers');
+  let effects = 0;
+  const results = await Promise.all([
+    a.run(receipt, { target: 'customers' }, async () => { effects += 1; return 'a'; }),
+    b.run(receipt, { target: 'customers' }, async () => { effects += 1; return 'b'; }),
+  ]);
+  assert.equal(results.filter((result) => result.ok).length, 1);
+  assert.equal(effects, 1, 'atomic reservation must prevent cross-instance duplicate effects');
+});
+
+test('legacy check-then-add stores are rejected as not fleet-safe', () => {
+  assert.throws(
+    () => makeReceiptGate({ action: 'db.records.delete', store: { has() { return false; }, add() {} } }),
+    /legacy \{has, add\} stores are not fleet-safe/,
+  );
+});
+
+test('reservation backend failure is a typed refusal and never invokes the effect', async () => {
+  const store = {
+    async reserve() { throw new Error('database unavailable'); },
+    async commit() { return true; },
+    async release() { return true; },
+  };
+  const g = makeReceiptGate({ action: 'db.records.delete', allowInlineKey: true, store });
+  let ran = false;
+  const r = await g.run(mint('db.records.delete'), {}, async () => { ran = true; });
+  assert.equal(r.ok, false);
+  assert.equal(r.body.rejected.reason, 'consumption_store_unavailable');
+  assert.equal(ran, false);
+});
+
+test('custom assurance requires explicit success and exceptions fail closed', () => {
+  const doc = mint('payment.release');
+  const implicit = evaluateReceiptAssurance(doc, 'class_a', {
+    verifyAssurance: () => ({ tier: 'quorum' }),
+  });
+  assert.equal(implicit.ok, false, 'a missing ok:true must not elevate assurance');
+  assert.equal(implicit.reason, 'custom_assurance_verifier');
+
+  const throwing = evaluateReceiptAssurance(doc, 'class_a', {
+    verifyAssurance: () => { throw new Error('HSM unavailable'); },
+  });
+  assert.equal(throwing.ok, false);
+  assert.equal(throwing.reason, 'assurance_verification_failed');
 });
 
 test('target binding via action function', async () => {
@@ -155,7 +233,7 @@ test('assuranceClass=quorum refuses self-asserted high assurance without proof',
     throw new Error('should not run');
   });
   assert.equal(r.ok, false);
-  assert.equal(r.body.rejected.reason, 'assurance_proof_required');
+  assert.equal(r.body.rejected.reason, 'quorum_policy_required');
 });
 
 test('assuranceClass=quorum refuses a verified single human signoff', async () => {
@@ -195,14 +273,14 @@ test('receiptAssuranceTier does not count duplicate quorum signers', () => {
 // and Class-A (WebAuthn) signoffs both sign the EP-ASSURANCE-CONTEXT-v1 digest.
 function assuranceKit() {
   const keys = {};
-  function addKeyB(keyId) {
+  function addKeyB(keyId, approverId = keyId) {
     const kp = crypto.generateKeyPairSync('ed25519');
-    keys[keyId] = { public_key: kp.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'B' };
+    keys[keyId] = { approver_id: approverId, public_key: kp.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'B' };
     return { keyId, privateKey: kp.privateKey };
   }
-  function addKeyA(keyId) {
+  function addKeyA(keyId, approverId = keyId) {
     const kp = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
-    keys[keyId] = { public_key: kp.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'A' };
+    keys[keyId] = { approver_id: approverId, public_key: kp.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'A' };
     return { keyId, privateKey: kp.privateKey };
   }
   function contextDigest(payload) {
@@ -222,10 +300,16 @@ function assuranceKit() {
       signature: crypto.sign(null, digest, signer.privateKey).toString('base64url'),
     };
   }
-  function signA(signer, digest, approver) {
+  function signA(signer, digest, approver, {
+    rpId = 'www.emiliaprotocol.ai',
+    origin = 'https://www.emiliaprotocol.ai',
+    duplicateChallenge = false,
+  } = {}) {
     const challenge = Buffer.from(digest).toString('base64url');
-    const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
-    const rpIdHash = crypto.createHash('sha256').update('www.emiliaprotocol.ai').digest();
+    const clientDataJSON = Buffer.from(duplicateChallenge
+      ? `{"type":"webauthn.get","challenge":"attacker","challenge":"${challenge}","origin":"${origin}"}`
+      : JSON.stringify({ type: 'webauthn.get', challenge, origin }), 'utf8');
+    const rpIdHash = crypto.createHash('sha256').update(rpId).digest();
     const authData = Buffer.concat([rpIdHash, Buffer.from([0x05]), Buffer.from([0, 0, 0, 0])]); // UP + UV
     const signedData = Buffer.concat([authData, sha256Bytes(clientDataJSON)]);
     return {
@@ -240,12 +324,16 @@ function assuranceKit() {
     };
   }
   // Build a receipt doc carrying an EP-ASSURANCE-PROOF-v1 with the given signoffs.
-  function receipt(threshold, makeSignoffs) {
+  function receipt(threshold, makeSignoffs, claimApprover) {
     const payload = {
       receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
       subject: 'agent:autonomous',
       created_at: new Date().toISOString(),
-      claim: { action_type: 'deploy.production', outcome: 'allow_with_signoff', approver: 'ep:approver:agent' },
+      claim: {
+        action_type: 'deploy.production',
+        outcome: 'allow_with_signoff',
+        ...(claimApprover ? { approver: claimApprover } : {}),
+      },
     };
     const { contextHash, digest } = contextDigest(payload);
     payload.assurance_proof = {
@@ -259,6 +347,13 @@ function assuranceKit() {
   return { keys, addKeyB, addKeyA, signB, signA, receipt };
 }
 
+function policyFor(...approvers) {
+  return {
+    mode: 'threshold', required: 2, distinct_humans: true, window_sec: 900,
+    approvers: approvers.map((approver, index) => ({ role: `role_${index + 1}`, approver })),
+  };
+}
+
 test('quorum: one key signing twice under two approver names does NOT satisfy threshold 2', () => {
   const kit = assuranceKit();
   const solo = kit.addKeyB('ep:key:controller#1');
@@ -266,7 +361,7 @@ test('quorum: one key signing twice under two approver names does NOT satisfy th
     kit.signB(solo, digest, 'ep:approver:alice'),
     kit.signB(solo, digest, 'ep:approver:bob'), // SAME key, different label — the attack
   ]);
-  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys, quorumPolicy: policyFor(solo.keyId, 'ep:key:other'), ...ASSURANCE_SCOPE });
   assert.equal(r.ok, false, 'a single key must not clear a two-person rule');
   assert.equal(r.have, 'software', 'one valid Class-B key -> software, never quorum');
 });
@@ -278,7 +373,7 @@ test('quorum: one key signing twice under the IDENTICAL approver name does NOT s
     kit.signB(solo, digest, 'ep:approver:same'),
     kit.signB(solo, digest, 'ep:approver:same'),
   ]);
-  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys, quorumPolicy: policyFor(solo.keyId, 'ep:key:other'), ...ASSURANCE_SCOPE });
   assert.equal(r.ok, false);
   assert.equal(r.have, 'software');
 });
@@ -290,7 +385,7 @@ test('quorum: one Class-A key signing twice does NOT satisfy threshold 2', () =>
     kit.signA(solo, digest, 'ep:approver:alice'),
     kit.signA(solo, digest, 'ep:approver:bob'),
   ]);
-  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys, quorumPolicy: policyFor(solo.keyId, 'ep:key:other'), ...ASSURANCE_SCOPE });
   assert.equal(r.ok, false, 'a single Class-A key must not clear a two-person rule');
   assert.equal(r.have, 'class_a', 'still Class-A on one valid key');
 });
@@ -298,12 +393,119 @@ test('quorum: one Class-A key signing twice does NOT satisfy threshold 2', () =>
 test('quorum: TWO DISTINCT keys still satisfy threshold 2 (legitimate two-person rule)', () => {
   const kit = assuranceKit();
   const a = kit.addKeyA('ep:key:cfo#1');
-  const b = kit.addKeyB('ep:key:controller#1');
+  const b = kit.addKeyA('ep:key:controller#1');
   const doc = kit.receipt(2, (digest) => [
     kit.signA(a, digest, 'ep:approver:cfo'),
-    kit.signB(b, digest, 'ep:approver:controller'),
+    kit.signA(b, digest, 'ep:approver:controller'),
   ]);
-  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys, quorumPolicy: policyFor(a.keyId, b.keyId), ...ASSURANCE_SCOPE });
   assert.equal(r.ok, true, r.reason);
   assert.equal(r.have, 'quorum');
+});
+
+test('quorum: one SPKI registered under two key IDs cannot fill two seats', () => {
+  const kit = assuranceKit();
+  const signer = kit.addKeyA('ep:key:shared#1', 'ep:approver:alice');
+  kit.keys['ep:key:shared#2'] = {
+    ...kit.keys['ep:key:shared#1'],
+    approver_id: 'ep:approver:bob',
+  };
+  const alias = { ...signer, keyId: 'ep:key:shared#2' };
+  const doc = kit.receipt(2, (digest) => [
+    kit.signA(signer, digest),
+    kit.signA(alias, digest),
+  ]);
+  const r = evaluateReceiptAssurance(doc, 'quorum', {
+    approverKeys: kit.keys,
+    quorumPolicy: policyFor('ep:approver:alice', 'ep:approver:bob'),
+    ...ASSURANCE_SCOPE,
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.have, 'class_a');
+});
+
+test('Class-A attribution comes from the pinned directory, not the receipt claim', () => {
+  const kit = assuranceKit();
+  const signer = kit.addKeyA('ep:key:alice#1', 'ep:approver:alice');
+  const doc = kit.receipt(1, (digest) => [kit.signA(signer, digest)], 'ep:approver:mallory');
+  const r = evaluateReceiptAssurance(doc, 'class_a', {
+    approverKeys: kit.keys,
+    ...ASSURANCE_SCOPE,
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'assurance_claimed_approver_mismatch');
+  assert.deepEqual(r.approvers, ['ep:approver:alice']);
+});
+
+test('quorum: presenter threshold cannot weaken the relying-party policy', () => {
+  const kit = assuranceKit();
+  const a = kit.addKeyA('ep:key:cfo#1');
+  const doc = kit.receipt(1, (digest) => [kit.signA(a, digest)]);
+  const r = evaluateReceiptAssurance(doc, 'quorum', {
+    approverKeys: kit.keys,
+    quorumPolicy: policyFor(a.keyId, 'ep:key:controller#1'),
+    ...ASSURANCE_SCOPE,
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.have, 'class_a');
+  assert.equal(r.reason, 'assurance_too_low');
+});
+
+test('Class-A proof refuses signed clientDataJSON with duplicate members', () => {
+  const kit = assuranceKit();
+  const signer = kit.addKeyA('ep:key:cfo#duplicate');
+  const doc = kit.receipt(1, (digest) => [kit.signA(signer, digest, undefined, {
+    duplicateChallenge: true,
+  })]);
+  const r = evaluateReceiptAssurance(doc, 'class_a', {
+    approverKeys: kit.keys,
+    ...ASSURANCE_SCOPE,
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.have, 'software');
+});
+
+test('assurance class comes from the pinned key entry, never the signoff label', () => {
+  const kit = assuranceKit();
+  const softwareP256 = kit.addKeyA('ep:key:software-p256#1');
+  kit.keys[softwareP256.keyId].key_class = 'B';
+  const doc = kit.receipt(1, (digest) => [kit.signA(softwareP256, digest)]);
+  const r = evaluateReceiptAssurance(doc, 'class_a', {
+    approverKeys: kit.keys,
+    rpId: 'www.emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  });
+  assert.equal(r.ok, false, 'a presenter must not relabel a pinned Class-B key as Class-A');
+  assert.equal(r.have, 'software');
+});
+
+test('Class-A proof is not credited for an unpinned WebAuthn RP or origin', () => {
+  const kit = assuranceKit();
+  const signer = kit.addKeyA('ep:key:cfo#wrong-rp');
+  const doc = kit.receipt(1, (digest) => [kit.signA(signer, digest, undefined, {
+    rpId: 'attacker.example',
+    origin: 'https://attacker.example',
+  })]);
+  const r = evaluateReceiptAssurance(doc, 'class_a', {
+    approverKeys: kit.keys,
+    rpId: 'www.emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.have, 'software');
+});
+
+test('quorum requires distinct Class-A humans, not two software keys', () => {
+  const kit = assuranceKit();
+  const a = kit.addKeyB('ep:key:automation-a');
+  const b = kit.addKeyB('ep:key:automation-b');
+  const doc = kit.receipt(2, (digest) => [kit.signB(a, digest), kit.signB(b, digest)]);
+  const r = evaluateReceiptAssurance(doc, 'quorum', {
+    approverKeys: kit.keys,
+    quorumPolicy: policyFor(a.keyId, b.keyId),
+    rpId: 'www.emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  });
+  assert.equal(r.ok, false, 'two machine signatures are not a human quorum');
+  assert.equal(r.have, 'software');
 });

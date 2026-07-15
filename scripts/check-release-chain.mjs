@@ -8,6 +8,50 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REGISTRY = 'release/release-packages.v1.json';
 const WORKFLOW_DIR = '.github/workflows';
 const REPOSITORY_URL = 'https://github.com/emiliaprotocol/emilia-protocol.git';
+const SKIP_DIRS = new Set(['.git', '.next', '.venv', 'node_modules', 'release-artifacts']);
+
+function walkFiles(root, directory = root, files = []) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) continue;
+    const absolute = path.join(directory, entry.name);
+    const relative = path.relative(root, absolute).split(path.sep).join('/');
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name) || relative.startsWith('conformance/clean-room/frozen-v1/')) continue;
+      walkFiles(root, absolute, files);
+    } else if (entry.isFile() && (entry.name === 'package.json' || entry.name === 'pyproject.toml')) {
+      files.push(absolute);
+    }
+  }
+  return files;
+}
+
+function pythonProjectName(text, source) {
+  const marker = text.search(/^\[project\]\s*$/m);
+  if (marker < 0) throw new Error(`${source} has no [project] table`);
+  const remainder = text.slice(marker).replace(/^\[project\]\s*\n?/m, '');
+  const nextTable = remainder.search(/^\[/m);
+  const section = nextTable >= 0 ? remainder.slice(0, nextTable) : remainder;
+  const name = section.match(/^name\s*=\s*["']([^"']+)["']\s*$/m)?.[1];
+  if (!name) throw new Error(`${source} has no parseable [project].name`);
+  return name;
+}
+
+export function discoverReleaseSurfaces(root = ROOT) {
+  const surfaces = [];
+  for (const absolute of walkFiles(root)) {
+    const relativeFile = path.relative(root, absolute).split(path.sep).join('/');
+    const packagePath = path.posix.dirname(relativeFile) === '.' ? '.' : path.posix.dirname(relativeFile);
+    if (absolute.endsWith('package.json')) {
+      const metadata = JSON.parse(fs.readFileSync(absolute, 'utf8'));
+      if (metadata.private === true || typeof metadata.name !== 'string') continue;
+      surfaces.push({ ecosystem: 'npm', package: metadata.name, path: packagePath });
+    } else {
+      const text = fs.readFileSync(absolute, 'utf8');
+      surfaces.push({ ecosystem: 'pypi', package: pythonProjectName(text, relativeFile), path: packagePath });
+    }
+  }
+  return surfaces.sort((a, b) => `${a.ecosystem}:${a.package}`.localeCompare(`${b.ecosystem}:${b.package}`));
+}
 
 function requireText(text, needles, label) {
   const missing = needles.filter((needle) => !text.includes(needle));
@@ -60,6 +104,25 @@ export function validateReusableNpmWorkflowText(text) {
     'group: registry-publish-${{ inputs.package_name }}',
   ], 'reusable npm workflow');
   forbidCredentialInjection(text, 'reusable npm workflow');
+  return true;
+}
+
+export function validateReusablePypiWorkflowText(text) {
+  requireText(text, [
+    'npm run security-case:emit',
+    'npm run conformance:manifest',
+    'verify-reproducible-wheel.mjs',
+    'python -m pytest',
+    'actions/attest@',
+    'subject-path: ${{ steps.build.outputs.wheel }}',
+    'subject-path: ${{ steps.build.outputs.sdist }}',
+    'gh-action-pypi-publish@',
+    'cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"',
+    'cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"',
+    'scripts/require-release-approval.mjs',
+    'group: registry-publish-pypi-${{ inputs.package_name }}',
+  ], 'reusable PyPI workflow');
+  forbidCredentialInjection(text, 'reusable PyPI workflow');
   return true;
 }
 
@@ -117,6 +180,34 @@ function exactInput(text, key, value) {
   return new RegExp(`^\\s*${key}:\\s*['\"]?${escaped}['\"]?\\s*$`, 'm').test(text);
 }
 
+export function validateNpmLockData(metadata, lock, label) {
+  const root = lock?.packages?.[''];
+  if (!root || lock.lockfileVersion !== 3) throw new Error(`${label} is not an npm lockfile v3`);
+  if (lock.name !== metadata.name || lock.version !== metadata.version
+      || root.name !== metadata.name || root.version !== metadata.version) {
+    throw new Error(`${label} package identity/version differs from package.json`);
+  }
+  for (const field of ['dependencies', 'optionalDependencies', 'devDependencies']) {
+    const declared = metadata[field] ?? {};
+    const locked = root[field] ?? {};
+    if (JSON.stringify(declared) !== JSON.stringify(locked)) {
+      throw new Error(`${label} ${field} differs from package.json`);
+    }
+  }
+  for (const [dependency, range] of Object.entries({
+    ...(metadata.dependencies ?? {}),
+    ...(metadata.optionalDependencies ?? {}),
+  })) {
+    if (!dependency.startsWith('@emilia-protocol/')) continue;
+    const pinnedFloor = typeof range === 'string' ? range.replace(/^[~^]/, '') : null;
+    const resolved = lock.packages[`node_modules/${dependency}`]?.version;
+    if (!pinnedFloor || resolved !== pinnedFloor) {
+      throw new Error(`${label} does not lock ${dependency} to its declared security floor ${range}`);
+    }
+  }
+  return true;
+}
+
 export function auditReleaseChain(root = ROOT) {
   if (fs.existsSync(path.join(root, 'scripts/publish-verify.sh'))) {
     throw new Error('direct local npm publication script is forbidden');
@@ -142,7 +233,7 @@ export function auditReleaseChain(root = ROOT) {
     if (!entry || typeof entry.package !== 'string' || typeof entry.path !== 'string'
       || typeof entry.workflow !== 'string' || typeof entry.tag_prefix !== 'string'
       || !/^[a-z0-9-]+-v$/.test(entry.tag_prefix)
-      || !['npm_direct', 'npm_reusable', 'pypi_direct'].includes(entry.mode)) {
+      || !['npm_direct', 'npm_reusable', 'pypi_direct', 'pypi_reusable'].includes(entry.mode)) {
       throw new Error('release registry contains a malformed entry');
     }
     if (seenPackages.has(`${entry.ecosystem}:${entry.package}`)) throw new Error(`duplicate release package: ${entry.package}`);
@@ -165,10 +256,17 @@ export function auditReleaseChain(root = ROOT) {
       }
     } else if (entry.mode === 'npm_direct') {
       validateNpmDirect(workflow, entry.workflow);
-    } else {
+    } else if (entry.mode === 'pypi_direct') {
       validatePypiDirect(workflow, entry.workflow);
+    } else {
+      requireText(workflow, ['uses: ./.github/workflows/_publish-pypi-package.yml'], entry.workflow);
+      validateManualPublisher(workflow, entry.workflow, { direct: false });
+      if (!exactInput(workflow, 'package_dir', entry.path) || !exactInput(workflow, 'package_name', entry.package)
+        || !exactInput(workflow, 'tag_prefix', entry.tag_prefix)) {
+        throw new Error(`${entry.workflow} does not bind the declared package path, name, and tag prefix`);
+      }
     }
-    if (!workflow.includes(`--tag-prefix ${entry.tag_prefix}`) && entry.mode !== 'npm_reusable') {
+    if (!workflow.includes(`--tag-prefix ${entry.tag_prefix}`) && !entry.mode.endsWith('_reusable')) {
       throw new Error(`${entry.workflow} does not bind release tag prefix ${entry.tag_prefix}`);
     }
 
@@ -177,12 +275,32 @@ export function auditReleaseChain(root = ROOT) {
       if (metadata.name !== entry.package || metadata.repository?.url !== REPOSITORY_URL) {
         throw new Error(`${entry.package} package metadata is not bound to the EMILIA GitHub repository`);
       }
+      if (typeof metadata.scripts?.test !== 'string' || !metadata.scripts.test.trim()) {
+        throw new Error(`${entry.package} has no executable package test command`);
+      }
+      const lockPath = path.join(packagePath, 'package-lock.json');
+      if (fs.existsSync(lockPath)) {
+        validateNpmLockData(metadata, JSON.parse(fs.readFileSync(lockPath, 'utf8')), path.relative(root, lockPath));
+      }
     } else {
       const pyproject = fs.readFileSync(path.join(packagePath, 'pyproject.toml'), 'utf8');
       if (!/requires\s*=\s*\["hatchling==1\.27\.0"\]/.test(pyproject)) {
         throw new Error(`${entry.package} does not pin its Python build backend`);
       }
     }
+  }
+
+  validateReusablePypiWorkflowText(fs.readFileSync(
+    path.join(root, WORKFLOW_DIR, '_publish-pypi-package.yml'),
+    'utf8',
+  ));
+
+  const discoveredSurfaces = discoverReleaseSurfaces(root);
+  const declaredSurfaces = registry.packages
+    .map(({ ecosystem, package: packageName, path: packagePath }) => ({ ecosystem, package: packageName, path: packagePath }))
+    .sort((a, b) => `${a.ecosystem}:${a.package}`.localeCompare(`${b.ecosystem}:${b.package}`));
+  if (JSON.stringify(discoveredSurfaces) !== JSON.stringify(declaredSurfaces)) {
+    throw new Error(`release surface omission/drift: declared=${JSON.stringify(declaredSurfaces)} discovered=${JSON.stringify(discoveredSurfaces)}`);
   }
 
   const discovered = fs.readdirSync(path.join(root, WORKFLOW_DIR))

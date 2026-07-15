@@ -37,10 +37,12 @@ the following independent checks passes — any failure fails CLOSED:
      be present and valid; a stripped/partial anchor is rejected
      (`anchor_required`).
 
-The receipt does NOT prove the approver is wise or that the action is good. It
-proves that a *named, pinned key* produced a signature over the *exact* canonical
-action this agent requested — accountable, non-repudiable, request-bound,
-single-use. Nothing more, and that is enough to gate money.
+The receipt does NOT prove the approver is wise or that the action is good. The
+headline evidence document proves that a *pinned operator key* attested that its
+log recorded the exact action, named approver, and approval state. It is not the
+human's device signature; a relying party that requires that stronger property
+must also verify the separately carried Class-A signoff evidence. The guard is
+request-bound and single-use, but its assurance remains operator-custodied.
 
 RESIDUAL / THREAT MODEL — be precise about what each defense covers:
   - With `EP_TRUSTED_SIGNER_KEYS` (or `trusted_signer_keys=`) configured, a
@@ -52,15 +54,6 @@ RESIDUAL / THREAT MODEL — be precise about what each defense covers:
     `trusted_signer_keys=`) resists wire-tampering and receipt substitution, but
     a server that controls BOTH `/.well-known` and `/evidence` is OUT OF SCOPE
     for it — only the explicitly configured pinned set defends against that.
-
-KNOWN-ISSUES (tracked, not a bypass):
-  - emilia_verify.canonicalize() is NOT yet RFC 8785 / JCS-strict (it sorts
-    object keys by Unicode code point rather than UTF-16 code unit and does not
-    normalize number formatting). It currently fails CLOSED — Python may REJECT
-    some valid JS-signed receipts, never the reverse — so it is a
-    false-negative risk, not a forgery vector. A JCS migration is deferred
-    because it would break byte-compatibility with already-issued receipts and
-    the JS verifier; it is tracked for a future RFC 8785 pass.
 
 The real flow:
 
@@ -117,11 +110,13 @@ import hashlib
 import json
 import logging
 import os
+import threading
 import time
 import urllib.error
 import urllib.request
 import uuid
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any, Optional, Protocol
 
 # Silent by default (library convention); your app configures handlers/level.
@@ -168,7 +163,8 @@ class EmiliaAPIError(Exception):
     """
 
 
-# Receipt statuses that mean "a named human approved — safe to verify+proceed".
+# Receipt statuses that mean the operator reports approval and the evidence path
+# may proceed to independent verification. The status itself is never proof.
 # Read from app/api/v1/trust-receipts/[receiptId]/route.js: the GET endpoint
 # replays the audit log and reports 'approved_pending_consume' once a signoff is
 # approved, and 'consumed' once the action has ALREADY been spent.
@@ -219,12 +215,14 @@ class InMemoryReplayStore:
 
     def __init__(self) -> None:
         self._seen: set[str] = set()
+        self._lock = threading.Lock()
 
     def seen(self, receipt_id: str) -> bool:
-        if receipt_id in self._seen:
-            return True
-        self._seen.add(receipt_id)
-        return False
+        with self._lock:
+            if receipt_id in self._seen:
+                return True
+            self._seen.add(receipt_id)
+            return False
 
 
 # A module-level default so the sync and async guards share one ledger when the
@@ -672,9 +670,8 @@ class EmiliaGuard:
 #     payload.claim.context.{amount,destination,currency}
 #
 # receipt_id + amount + destination are the unambiguous bindings and MUST match.
-# action_type↔claim.action is a non-1:1 mapping across shapes, so we bind it
-# loosely (only when both sides clearly express the same token) and never let a
-# mapping gap WEAKEN the hard bindings.
+# action_type↔claim.action differs in the legacy fixture, so the adapter uses one
+# explicit equivalence table. Missing or unknown action names fail closed.
 
 
 def _signed_payload(document: Any) -> dict:
@@ -727,12 +724,36 @@ def _signed_approver(payload: dict) -> Any:
     return None
 
 
+def _signed_action_type(payload: dict) -> Any:
+    claim = payload.get("claim") if isinstance(payload.get("claim"), dict) else {}
+    return claim.get("action_type") if claim.get("action_type") is not None else claim.get("action")
+
+
+# Explicit adapter mapping between the Grok tool name and the protocol-native
+# action name used by the older public fixture. Unknown names are never treated
+# as equivalent merely because the other material fields happen to match.
+_ACTION_TYPE_EQUIVALENTS = {
+    "large_payment_release": frozenset({"large_payment_release", "payment.release"}),
+    "payment.release": frozenset({"large_payment_release", "payment.release"}),
+}
+
+
+def _action_types_equal(signed: Any, requested: Any) -> bool:
+    if not isinstance(signed, str) or not signed or not isinstance(requested, str) or not requested:
+        return False
+    return signed in _ACTION_TYPE_EQUIVALENTS.get(requested, frozenset({requested}))
+
+
 def _amounts_equal(signed: Any, requested: Any) -> bool:
-    """Numeric-tolerant equality for amounts (50000 == 50000.0)."""
+    """Exact decimal equality without binary-float rounding or NaN tricks."""
+    if isinstance(signed, bool) or isinstance(requested, bool):
+        return False
     try:
-        return float(signed) == float(requested)
-    except (TypeError, ValueError):
-        return signed == requested
+        left = Decimal(str(signed))
+        right = Decimal(str(requested))
+        return left.is_finite() and right.is_finite() and left == right
+    except (InvalidOperation, TypeError, ValueError):
+        return False
 
 
 def _bind_claim(payload: dict, expected: dict) -> Optional[str]:
@@ -740,8 +761,9 @@ def _bind_claim(payload: dict, expected: dict) -> Optional[str]:
     human-readable mismatch detail. Fails CLOSED: any provided expected field
     that does not match the signed value is a mismatch.
 
-    Hard bindings (always enforced when provided): receipt_id, amount, currency,
-    destination, approver. action_type is bound loosely (see module note).
+    Hard bindings (always enforced when provided): receipt_id, action type,
+    amount, currency, destination, and approver. A missing signed field is a
+    mismatch, never a wildcard.
     """
     # PRIMARY binding — receipt_id. A different receipt has a different id; this
     # alone defeats substitution / replay-of-another-receipt.
@@ -752,6 +774,13 @@ def _bind_claim(payload: dict, expected: dict) -> Optional[str]:
                 f"receipt_id mismatch: signed={_signed_receipt_id(payload)!r} "
                 f"requested={exp_rid!r}"
             )
+
+    exp_action = expected.get("action_type")
+    if exp_action is not None and not _action_types_equal(_signed_action_type(payload), exp_action):
+        return (
+            f"action_type mismatch: signed={_signed_action_type(payload)!r} "
+            f"requested={exp_action!r}"
+        )
 
     exp_amount = expected.get("amount")
     if exp_amount is not None:
@@ -764,20 +793,19 @@ def _bind_claim(payload: dict, expected: dict) -> Optional[str]:
     exp_currency = expected.get("currency")
     if exp_currency is not None:
         sc = _signed_currency(payload)
-        # Only enforce when the signed payload actually carries a currency.
-        if sc is not None and str(sc).upper() != str(exp_currency).upper():
+        if sc is None or str(sc).upper() != str(exp_currency).upper():
             return f"currency mismatch: signed={sc!r} requested={exp_currency!r}"
 
     exp_dest = expected.get("target_resource_id")
     if exp_dest is not None:
         sd = _signed_destination(payload)
-        if sd is not None and sd != exp_dest:
+        if sd is None or sd != exp_dest:
             return f"destination mismatch: signed={sd!r} requested={exp_dest!r}"
 
     exp_approver = expected.get("approver_id")
     if exp_approver is not None:
         sa = _signed_approver(payload)
-        if sa is not None and sa != exp_approver:
+        if sa is None or sa != exp_approver:
             return f"approver mismatch: signed={sa!r} requested={exp_approver!r}"
 
     return None
@@ -1273,8 +1301,9 @@ class AsyncEmiliaGuard:
 
 # ── xAI / OpenAI-compatible tool schema. Register this with Grok. ────────────
 # Grok calls this tool *instead of* executing the irreversible action directly;
-# your dispatcher (below) runs EmiliaGuard and only returns proceed=true on a
-# real human approval whose signature verified offline.
+# your dispatcher (below) runs EmiliaGuard and returns proceed=true only after
+# the pinned operator attestation, exact request binding, and replay checks pass.
+# This adapter does not independently verify the human-held Class-A signature.
 EMILIA_TOOL_SCHEMA = {
     "type": "function",
     "function": {
@@ -1282,9 +1311,11 @@ EMILIA_TOOL_SCHEMA = {
         "description": (
             "REQUIRED before any irreversible high-stakes action (releasing a "
             "large payment, changing a payee bank account, deleting records). "
-            "Returns proceed=true only after a named human cryptographically "
-            "approves on their own device AND the signature verifies; otherwise "
-            "blocked. Never execute the action unless this returns proceed=true."
+            "Returns proceed=true only after a pinned operator attestation says "
+            "the named approval completed and the exact request, freshness, and "
+            "single-use checks pass; otherwise blocked. Deployments requiring "
+            "human-held-key proof must additionally verify the Class-A decision "
+            "evidence. Never execute unless this returns proceed=true."
         ),
         "parameters": {
             "type": "object",

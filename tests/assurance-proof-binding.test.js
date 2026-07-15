@@ -25,12 +25,20 @@ const CLASS_A_ACTION = { action_type: 'payment.release' };
 
 function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 
+function assuranceOpts(h) {
+  return {
+    approverKeys: h.approverKeys,
+    rpId: h.rpId,
+    allowedOrigins: h.allowedOrigins,
+  };
+}
+
 describe('assurance-proof binding (non-transferable)', () => {
   it('a freshly-minted proof-backed receipt earns class_a against the pinned keys', () => {
     const h = createEg1Harness({ action: CLASS_A_ACTION, idPrefix: 'bind_ok' });
     const doc = h.mint({ outcome: 'allow_with_signoff' }); // real Class-A device signoff
 
-    const r = evaluateReceiptAssurance(doc, 'class_a', { approverKeys: h.approverKeys });
+    const r = evaluateReceiptAssurance(doc, 'class_a', assuranceOpts(h));
     expect(r.ok).toBe(true);
     expect(r.have).toBe('class_a');
   });
@@ -44,7 +52,7 @@ describe('assurance-proof binding (non-transferable)', () => {
     const forged = deepClone(victim);
     forged.payload.assurance_proof = deepClone(donor.payload.assurance_proof);
 
-    const r = evaluateReceiptAssurance(forged, 'class_a', { approverKeys: h.approverKeys });
+    const r = evaluateReceiptAssurance(forged, 'class_a', assuranceOpts(h));
     // The recomputed proofContext uses the victim's receipt_id, so the donor's
     // signatures no longer verify — fail closed, drop to software.
     expect(r.ok).toBe(false);
@@ -56,14 +64,14 @@ describe('assurance-proof binding (non-transferable)', () => {
     const doc = h.mint({ outcome: 'allow_with_signoff' });
 
     // Sanity: it earns class_a before the edit.
-    expect(evaluateReceiptAssurance(doc, 'class_a', { approverKeys: h.approverKeys }).have).toBe('class_a');
+    expect(evaluateReceiptAssurance(doc, 'class_a', assuranceOpts(h)).have).toBe('class_a');
 
     // Edit any claim field after the proof was produced. proofContext hashes the
     // WHOLE claim, so claim_hash changes and the approver digest no longer matches.
     const edited = deepClone(doc);
     edited.payload.claim.amount_usd = 1_000_000;
 
-    const r = evaluateReceiptAssurance(edited, 'class_a', { approverKeys: h.approverKeys });
+    const r = evaluateReceiptAssurance(edited, 'class_a', assuranceOpts(h));
     expect(r.ok).toBe(false);
     expect(r.have).toBe('software');
   });

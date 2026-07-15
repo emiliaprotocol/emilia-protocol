@@ -6,13 +6,12 @@
  * One command. Two acts. The whole protocol becomes obvious.
  *
  *   Act 1 (today):  an AI agent proposes an irreversible, high-risk action.
- *     Self-approval is rejected. Two distinct, accountable humans approve the
- *     exact action on their own devices. A quorum holds. A receipt is issued.
+ *     Self-approval is rejected. Two separately enrolled demo keys sign the
+ *     exact action under a pinned quorum policy. A receipt is issued.
  *
  *   Act 2 (later, EMILIA gone):  the network is down, the EMILIA service is
- *     deleted, the database is gone. Only the receipt file remains. It still
- *     verifies — offline, against no one's server — and a forged copy is
- *     rejected. The relying party gets an audit-grade workpaper.
+ *     deleted, the database is gone. The receipt and relying-party-owned trust
+ *     profile still verify offline, while a forged copy is rejected.
  *
  * Act 2 is the product. Act 1 is the setup.
  *
@@ -24,19 +23,24 @@
  *                          two-person authorization (DoD 3000.09 human-control)
  *
  * This runs the REAL EP-QUORUM-v1 predicate (@emilia-protocol/verify). The
- * approver signatures are real ES256 device-class (Class A) WebAuthn assertions,
- * minted here headlessly so the test runs anywhere with no hardware; in
- * production they come from each approver's own device. NOTHING here touches the
- * network — that is the point of Act 2.
+ * approver signatures use the real ES256 WebAuthn verification shape, but are
+ * minted headlessly with synthetic identities and software keys. This demo does
+ * not claim hardware backing, attestation, real-world identity, or execution.
  */
 import crypto from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 // The frozen, cross-language-verified offline predicate. No EP infrastructure.
 // Resolve the published package; fall back to the in-repo path for local dev.
 let verifyQuorum;
-try { ({ verifyQuorum } = await import('@emilia-protocol/verify')); }
-catch { ({ verifyQuorum } = await import('../verify/index.js')); }
+let strictJsonGate;
+try {
+  ({ verifyQuorum } = await import('@emilia-protocol/verify'));
+  ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json'));
+} catch {
+  ({ verifyQuorum } = await import('../verify/index.js'));
+  ({ strictJsonGate } = await import('../verify/strict-json.js'));
+}
 
 const C = { dim: '\x1b[2m', red: '\x1b[31m', grn: '\x1b[32m', ylw: '\x1b[33m', cyn: '\x1b[36m', bold: '\x1b[1m', rst: '\x1b[0m' };
 const c = (k, s) => `${C[k]}${s}${C.rst}`;
@@ -50,9 +54,22 @@ const canon = (v) => v === null || v === undefined ? JSON.stringify(v)
       : JSON.stringify(v);
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 const actionHashOf = (action) => sha256hex(canon(action));
+const trustProfileHashOf = (profile) => `sha256:${sha256hex(canon(profile))}`;
+const RP_ID = 'emiliaprotocol.ai';
+const ALLOWED_ORIGINS = ['https://www.emiliaprotocol.ai'];
+const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 
-// ── Mint a real Class-A (ES256/WebAuthn) device approval, bound to the action ─
-function approveOnDevice({ role, approver, issuedAt, actionHash, policyId, initiator, expiresAt }) {
+function readStrictJson(path, label) {
+  const raw = readFileSync(path);
+  if (raw.length > MAX_INPUT_BYTES) throw new Error(`${label} exceeds ${MAX_INPUT_BYTES} bytes`);
+  const text = raw.toString('utf8');
+  const gate = strictJsonGate(text);
+  if (!gate.ok) throw new Error(`${label}: ${gate.reason}`);
+  return JSON.parse(text);
+}
+
+// ── Mint a synthetic ES256/WebAuthn-shaped approval, bound to the action ─────
+function signSyntheticWebAuthn({ role, approver, issuedAt, actionHash, policyId, initiator, expiresAt }) {
   const signer = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const context = {
     ep_version: '1.0', context_type: 'ep.signoff.v1',
@@ -117,9 +134,9 @@ const SCENARIOS = {
     boundNote: 'a test of the *propriety* of their decision, of the real-world *identity* behind each enrolled approver (an enrollment-layer control), or a substitute for the auditor\'s own risk assessment',
     standards: `## For the auditor — how this maps to your standards
 
-Under **GAGAS (Government Auditing Standards / the GAO "Yellow Book")**, audit evidence must be **sufficient and appropriate** — where *appropriateness* turns on **relevance and reliability**, and evidence the auditor can **independently test**, that does **not depend on the auditee's own systems or representations**, is the most reliable kind. An EP authorization receipt is exactly that: verified here offline, with open-source code, without trusting the county, EMILIA, or any internal log.
+Under **GAGAS (Government Auditing Standards / the GAO "Yellow Book")**, audit evidence must be **sufficient and appropriate**. This demonstration shows one potentially useful property: an auditor can reproduce the cryptographic checks offline under trust inputs the auditor controls, rather than accepting keys embedded by the presenter.
 
-Concretely, this supports a **test of the authorization control** over a high-risk disbursement — both that the control *existed* for this exact action and that the *required approvers operated it* (separation of duties, order, threshold). For federal-funds programs it speaks to internal control over compliance for **allowability/approval** under **2 CFR 200 (Uniform Guidance)**; in a financial audit it supports the transaction's **authorization / occurrence** assertion.`,
+Concretely, it can support a **test of an authorization-control artifact** over a high-risk disbursement: whether the keys enrolled for the required approver identifiers signed the exact action under the pinned separation-of-duties, order, and threshold rules. The auditor must separately evaluate enrollment, key custody, control operation, and the sufficiency of this evidence for the engagement.`,
   },
 
   'release-authorization': {
@@ -159,12 +176,12 @@ Concretely, this supports a **test of the authorization control** over a high-ri
     extraRow: (a) => ['ROE profile', a.parameters.roe_profile],
     policyDesc: 'ordered two-person authorization: Mission Commander, then Weapons Safety Officer',
     forgeNarrative: 'A forged copy of this receipt, with the designated track re-pointed to a different target *after* authorization, was submitted to the same offline verification:',
-    boundNote: 'a judgment about whether the engagement was lawful or appropriate under the rules of engagement (that remains the commander\'s responsibility) — only that the required humans authorized *this exact action against this exact designated track*, unaltered, before release',
+    boundNote: 'a judgment about whether the engagement was lawful or appropriate under the rules of engagement, evidence of human perception or intent, or proof that execution followed authorization — only that the enrolled keys produced the required exact-action signatures and the pinned operator signed the commit record',
     standards: `## For the review board — how this maps to human-control policy
 
-**DoD Directive 3000.09** requires that autonomous and semi-autonomous weapon systems allow commanders and operators to exercise **appropriate levels of human judgment over the use of force**. An EP authorization receipt is verifiable evidence that the required human judgment was exercised for **this exact action**: a named, ordered two-person authorization, bound to the specific designated track, that a reviewer can confirm **offline** — in a contested or disconnected environment — without trusting the platform, the operator, or any log.
+**DoD Directive 3000.09** requires that autonomous and semi-autonomous weapon systems allow commanders and operators to exercise **appropriate levels of human judgment over the use of force**. This demonstration does not prove that judgment. It shows how a reviewer could check, offline and under independently pinned trust inputs, whether two enrolled keys signed an exact designated-track action in the required order.
 
-This supports a **test of the human-authorization control** over an autonomous effector release: both that the control *existed* for this exact engagement and that the *required humans operated it* (identity, order, separation of duties, and binding to the designated track). It is the kind of artifact "meaningful human control" (as discussed at the **UN CCW GGE on LAWS**) requires. It is **necessary, not sufficient**: it does not judge the lawfulness or ROE-appropriateness of the engagement — only that the required humans authorized it, unaltered, before it executed.`,
+This can support a **test of a cryptographic authorization artifact**. It is **necessary, not sufficient** for a real control assessment: identity enrollment, device custody, trusted time, revocation, human understanding, ROE compliance, platform enforcement, and execution/effect evidence remain separate requirements.`,
   },
 
   clinical: {
@@ -182,7 +199,8 @@ This supports a **test of the human-authorization control** over an autonomous e
         concentration: '25,000 units / 250 mL',
         rate: '1,200 units/hr',
         high_alert_class: 'anticoagulant',
-        // No PHI in the receipt — only one-way hashes of the identifiers.
+        // Synthetic demo identifiers only. Hashing real identifiers does not by
+        // itself establish HIPAA de-identification.
         patient_ref: 'sha256:' + sha256hex('MRN:HB-220714|enc:E-99231'),
         encounter_ref: 'sha256:' + sha256hex('enc:E-99231'),
       },
@@ -198,22 +216,22 @@ This supports a **test of the human-authorization control** over an autonomous e
     selfApprovalAt: '2026-03-09T02:15:00.000Z', committedAt: '2026-03-09T02:18:11.000Z',
     proposalLines: (a) => [
       `  ${c('cyn', 'agent')} proposes: administer ${c('bold', 'heparin IV infusion')} at ${c('bold', '1,200 units/hr')}`,
-      `         ${c('dim', 'class: ')}${c('ylw', 'HIGH-ALERT anticoagulant')}${c('dim', '  ·  patient: <hashed ref, no PHI>  ·  policy: high-alert-independent-double-check@v3')}`,
+      `         ${c('dim', 'class: ')}${c('ylw', 'HIGH-ALERT anticoagulant')}${c('dim', '  ·  patient: <synthetic hashed ref>  ·  policy: high-alert-independent-double-check@v3')}`,
     ],
     blockedLine: () => `  ${c('red', '⛔ BLOCKED')} — HIGH_ALERT_DOUBLE_CHECK_REQUIRED  ${c('dim', '(ISMP high-alert med → independent double-check by a second qualified clinician before administration)')}`,
     forge: (r) => { r.action.parameters.rate = '12,000 units/hr'; return 'Forged copy (infusion rate altered to 12,000 units/hr — a 10× error — after the double-check)'; },
     actionSummary: (a) => `${a.action_type} — ${a.parameters.medication} ${a.parameters.route} @ ${a.parameters.rate}`,
-    extraRow: (a) => ['High-alert class', a.parameters.high_alert_class + ' (patient ref is a hash — no PHI in this receipt)'],
+    extraRow: (a) => ['High-alert class', a.parameters.high_alert_class + ' (synthetic patient reference for this demo)'],
     policyDesc: 'independent double-check: administering nurse, then a second qualified clinician',
     forgeNarrative: 'A forged copy of this receipt, with the infusion rate altered from 1,200 units/hr to 12,000 units/hr *after* the double-check, was submitted to the same offline verification:',
     boundNote: 'a test of the *clinical appropriateness* of the order (that remains the prescriber\'s and pharmacist\'s judgment), or of the real-world *identity* behind each enrolled clinician (an enrollment-layer control)',
     standards: `## For the safety officer / surveyor — how this maps to your standards
 
-The two-person ceremony here is the **independent double-check** that **ISMP** recommends and that **Joint Commission Medication Management (MM) standards and National Patient Safety Goals** expect for **high-alert medications** (anticoagulants, insulin, opioids, chemotherapy). EP turns that double-check from an attestation in a log the hospital controls into **tamper-evident, offline-verifiable evidence**: that two distinct, qualified clinicians authorized *this exact order* — this drug, this concentration, this rate — before administration.
+The two-person ceremony models an **independent double-check** for a high-alert medication. EP makes the exact signed order and policy checks reproducible offline under hospital-pinned keys. It does not establish that the key holders were qualified clinicians, that either person perceived the displayed fields, or that administration followed the authorization.
 
-**HIPAA posture (by design):** the receipt carries **only one-way hashes** of the patient and encounter identifiers — no name, no MRN, no clinical content. The authorization evidence can therefore be verified and shared with auditors, surveyors, or a court **without a PHI disclosure**.
+**HIPAA boundary:** this demonstration contains only synthetic identifiers. Hashing a real MRN or encounter identifier does **not** automatically de-identify it or make disclosure permissible. A production profile needs data-minimization, linkage-risk, access-control, retention, and disclosure analysis by the covered entity.
 
-**Break-glass, not blocked:** EP is fail-closed, but an emergency override is itself a high-risk action that emits its own receipt — *who* overrode, *when*, under *what* stated justification — so the time-critical path is never hard-blocked, and the override is the most auditable event in the chart rather than the least.`,
+**Break-glass is not demonstrated here:** a production deployment needs a separately authorized emergency-override path with its own evidence, monitoring, and retrospective review.`,
   },
 
   procurement: {
@@ -254,12 +272,12 @@ The two-person ceremony here is the **independent double-check** that **ISMP** r
     extraRow: (a) => ['Vendor status', a.parameters.vendor_status + ' · ' + a.parameters.sourcing],
     policyDesc: 'ordered dual control: Department Director, then CFO',
     forgeNarrative: 'A forged copy of this receipt, with the vendor\'s bank account swapped *after* approval (the textbook payment-redirect fraud), was submitted to the same offline verification:',
-    boundNote: 'a test of whether the purchase was the best *value* or clinically justified — only that the required officers authorized *this exact purchase order*, to this payee account, before release',
+    boundNote: 'a test of whether the purchase was the best *value* or clinically justified, proof of the key holders\' real-world roles, or evidence that payment followed authorization — only the exact-action signatures and operator commit described above',
     standards: `## For internal audit / the controller — how this maps to your standards
 
-This is **segregation of duties** over capital spend made into evidence: an agent may *initiate* a purchase order, but release requires two distinct, accountable officers (here Department Director, then CFO), and the receipt proves they authorized *this exact PO — this amount, this vendor, this payee account*, in order, before release. That is direct support for **internal control over financial reporting (ICFR)** and the **authorization / occurrence** assertions, and — for tax-exempt health systems — for the governance and controls represented on **IRS Form 990**.
+This models **segregation of duties** over capital spend: an agent may initiate a purchase order, while the pinned policy requires signatures from keys enrolled for Department Director and CFO identifiers. The receipt makes the exact PO fields, order, and signature checks reproducible; control ownership and real-world identity remain outside the receipt.
 
-It is also a specific control against **payment-redirect / business-email-compromise (BEC) fraud**, the single most common way capital dollars are stolen: because the payee account is inside the signed action, swapping it after approval breaks verification (as the tamper test below shows), rather than sailing through because a downstream system trusted an edited record.`,
+It also demonstrates a useful property for **payment-redirect / business-email-compromise (BEC) controls**: because the payee account digest is inside the signed action, swapping it after approval breaks verification. Preventing payment fraud still requires trusted beneficiary enrollment, change controls, and enforcement at the payment rail.`,
   },
 };
 
@@ -273,7 +291,7 @@ async function main(S) {
     approvers: S.approvers.map(({ role, approver }) => ({ role, approver })),
     distinct_humans: true, window_sec: S.windowSec,
   };
-  const mint = (over) => approveOnDevice({
+  const mint = (over) => signSyntheticWebAuthn({
     actionHash: ACTION_HASH, policyId: POLICY_ID, initiator: A.initiator, expiresAt: S.expiresAt, ...over,
   });
 
@@ -296,36 +314,57 @@ async function main(S) {
     '@type': 'ep.quorum', action_hash: ACTION_HASH, policy: POLICY,
     members: [mint({ role: 'requester', approver: A.initiator, issuedAt: S.selfApprovalAt })],
   };
-  const selfRes = verifyQuorum(selfTry);
+  const selfRes = verifyQuorum(selfTry, { rpId: RP_ID, allowedOrigins: ALLOWED_ORIGINS });
   console.log(`  ${c('red', '✗')} requester self-approval ${c('red', 'REJECTED')} ${c('dim', `— not an eligible approver (roles_admitted=${selfRes.checks.roles_admitted}, threshold_met=${selfRes.checks.threshold_met}); separation of duties holds`)}`);
   await sleep(120);
 
   // The real two-person ceremony, in order.
   const members = S.approvers.map((ap) => mint({ role: ap.role, approver: ap.approver, issuedAt: ap.issuedAt }));
-  for (const ap of S.approvers) console.log(`  ${c('grn', '✓')} ${ap.label} ${c('dim', '(' + ap.short + ')')} approved on secure device`);
+  for (const ap of S.approvers) console.log(`  ${c('grn', '✓')} ${ap.label} ${c('dim', '(' + ap.short + ')')} signed with a separate demo WebAuthn key`);
   await sleep(120);
 
   const quorum = { '@type': 'ep.quorum', action_hash: ACTION_HASH, policy: POLICY, members };
-  const live = verifyQuorum(quorum);
+  const live = verifyQuorum(quorum, { rpId: RP_ID, allowedOrigins: ALLOWED_ORIGINS });
   if (!live.valid) { console.error(c('red', '  internal error: live quorum did not verify'), live.checks); process.exit(2); }
-  console.log(`  ${c('grn', '✓ COMMITTED')} — quorum satisfied (${Object.values(live.checks).filter(Boolean).length}/7 predicates)`);
+  console.log(`  ${c('grn', '✓ COMMITTED')} — every quorum predicate satisfied`);
 
-  // Issue the authorization receipt: the action + the quorum + the operator's
-  // signed commit record. This is the file the relying party keeps.
+  // Issue the authorization receipt. The relying party separately pins the
+  // policy, enrolled approver keys, WebAuthn scope, and operator key.
   const issuer = crypto.generateKeyPairSync('ed25519');
-  const body = { '@version': 'EP-RECEIPT-v1', receipt_id: S.receiptId, action: A, action_hash: ACTION_HASH, quorum, consumption: { state: 'COMMITTED', committed_at: S.committedAt } };
+  const trustProfile = {
+    '@type': 'ep.crash-test.trust-profile.v1',
+    profile_id: `ep:trust-profile:${S.key}:v1`,
+    rp_id: RP_ID,
+    allowed_origins: ALLOWED_ORIGINS,
+    quorum_policy: POLICY,
+    approvers: members.map((member) => ({
+      role: member.role,
+      approver: member.signoff.context.approver,
+      public_key: member.approver_public_key,
+    })),
+    operator_public_key: issuer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+  };
+  const body = {
+    '@version': 'EP-RECEIPT-v1',
+    receipt_id: S.receiptId,
+    action: A,
+    action_hash: ACTION_HASH,
+    trust_profile_hash: trustProfileHashOf(trustProfile),
+    quorum,
+    consumption: { state: 'COMMITTED', committed_at: S.committedAt },
+  };
   const operator_signature = crypto.sign(null, Buffer.from(canon(body), 'utf8'), issuer.privateKey).toString('base64url');
-  const receipt = { ...body, operator_signature, operator_public_key: issuer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
+  const receipt = { ...body, operator_signature };
   console.log(`  ${c('grn', '✓')} authorization receipt issued ${c('dim', '→ authorization-receipt.json')}`);
   console.log('');
 
   // ===== ACT 2 — RELIANCE ====================================================
   line(); console.log(c('bold', '  ACT 2 — RELIANCE') + c('dim', `   (${S.act2Where})`)); line();
   console.log(`  ${c('dim', 'network: ')}${c('red', 'DISCONNECTED')}    ${c('dim', 'EMILIA service: ')}${c('red', 'DELETED')}    ${c('dim', 'EMILIA database: ')}${c('red', 'GONE')}`);
-  console.log(`  ${c('dim', 'the relying party has one file: authorization-receipt.json')}`);
+  console.log(`  ${c('dim', 'the relying party has the receipt plus its previously pinned trust profile')}`);
   await sleep(150);
 
-  const genuine = verifyReceiptOffline(receipt);
+  const genuine = verifyReceiptOffline(receipt, trustProfile);
   printDetermination('Genuine receipt as filed', genuine);
   await sleep(120);
 
@@ -333,45 +372,138 @@ async function main(S) {
   // longer hashes to what the humans signed — and the predicate catches it.
   const forged = JSON.parse(JSON.stringify(receipt));
   const forgeLabel = S.forge(forged);
-  const forgedRes = verifyReceiptOffline(forged);
+  const forgedRes = verifyReceiptOffline(forged, trustProfile);
   printDetermination(forgeLabel, forgedRes);
   console.log('');
 
   // ── Write the Workpaper Package ────────────────────────────────────────────
   mkdirSync(outDir, { recursive: true });
   writeFileSync(resolve(outDir, 'authorization-receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
+  writeFileSync(resolve(outDir, 'relying-party-trust-profile.json'), JSON.stringify(trustProfile, null, 2) + '\n');
   writeFileSync(resolve(outDir, 'verification-report.md'), workpaper(receipt, genuine, forgedRes, S));
   line();
   console.log(`  ${c('bold', 'Workpaper Package')} written to ${c('cyn', './emilia-workpaper/')}`);
   console.log(`    • authorization-receipt.json   ${c('dim', '— the evidence the relying party keeps')}`);
+  console.log(`    • relying-party-trust-profile.json ${c('dim', '— policy and keys pinned out of band')}`);
   console.log(`    • verification-report.md       ${c('dim', '— audit-grade determination, reproducible offline')}`);
   line();
   console.log(`  ${c('bold', 'The one sentence that matters:')}`);
-  console.log(`  ${c('grn', '“The required human approvals existed for this exact action before it executed —')}`);
-  console.log(`  ${c('grn', '   and I verified that myself, without trusting EMILIA, the operator, or any log.”')}`);
+  console.log(`  ${c('grn', '“The enrolled approver keys signed this exact action under my pinned policy —')}`);
+  console.log(`  ${c('grn', '   and I reproduced that result offline without trusting the presenter.”')}`);
   console.log('');
 }
 
-// Offline verification a relying party (or anyone) can reproduce with no service.
-function verifyReceiptOffline(receipt) {
+// Offline verification under relying-party-owned trust inputs. Keys and policy
+// inside the presented receipt are never accepted as their own authority.
+function verifyReceiptOffline(receipt, trustProfile) {
   const reasons = [];
-  // 1. Recompute the action hash from the action object as filed.
-  const recomputed = actionHashOf(receipt.action);
-  const hashMatches = recomputed === receipt.action_hash && receipt.action_hash === receipt.quorum?.action_hash;
+  const falseChecks = {
+    all_signatures_valid: false,
+    action_binding: false,
+    distinct_humans: false,
+    distinct_keys: false,
+    initiator_excluded: false,
+    roles_admitted: false,
+    threshold_met: false,
+    order_satisfied: false,
+    chain_linked: false,
+    within_window: false,
+  };
+  if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) {
+    return { verified: false, checks: falseChecks, hashMatches: false, trustProfileMatches: false, policyMatches: false, committed: false, chronology: false, opOk: false, reasons: ['receipt must be an object'] };
+  }
+  if (!trustProfile || typeof trustProfile !== 'object' || Array.isArray(trustProfile)) {
+    return { verified: false, checks: falseChecks, hashMatches: false, trustProfileMatches: false, policyMatches: false, committed: false, chronology: false, opOk: false, reasons: ['a relying-party trust profile is required'] };
+  }
+
+  const rpId = typeof trustProfile.rp_id === 'string' && trustProfile.rp_id ? trustProfile.rp_id : null;
+  const allowedOrigins = Array.isArray(trustProfile.allowed_origins)
+    && trustProfile.allowed_origins.length > 0
+    && trustProfile.allowed_origins.every((origin) => {
+      try {
+        const url = new URL(origin);
+        return url.protocol === 'https:' && url.origin === origin;
+      } catch { return false; }
+    }) ? trustProfile.allowed_origins : null;
+  if (trustProfile['@type'] !== 'ep.crash-test.trust-profile.v1' || !rpId || !allowedOrigins) {
+    reasons.push('relying-party trust profile is malformed or lacks HTTPS WebAuthn scope');
+  }
+
+  let trustProfileMatches = false;
+  try { trustProfileMatches = receipt.trust_profile_hash === trustProfileHashOf(trustProfile); }
+  catch { trustProfileMatches = false; }
+  if (!trustProfileMatches) reasons.push('receipt is not bound to the supplied relying-party trust profile');
+
+  let hashMatches = false;
+  try {
+    const recomputed = actionHashOf(receipt.action);
+    hashMatches = recomputed === receipt.action_hash && receipt.action_hash === receipt.quorum?.action_hash;
+  } catch { hashMatches = false; }
   if (!hashMatches) reasons.push('action_hash does not match the action as filed (the action was altered after approval)');
-  // 2. The quorum predicate — the real thing.
-  const q = verifyQuorum(receipt.quorum);
-  if (!q.valid) reasons.push('quorum predicate failed: ' + Object.entries(q.checks).filter(([, v]) => !v).map(([k]) => k).join(', '));
-  // 3. Operator commit signature over the receipt body.
+
+  const policyMatches = Boolean(receipt.quorum?.policy && trustProfile.quorum_policy
+    && canon(receipt.quorum.policy) === canon(trustProfile.quorum_policy));
+  if (!policyMatches) reasons.push('receipt quorum policy differs from the relying party pinned policy');
+
+  const pins = new Map();
+  let pinsValid = Array.isArray(trustProfile.approvers) && trustProfile.approvers.length > 0;
+  if (pinsValid) {
+    for (const pin of trustProfile.approvers) {
+      const id = `${pin?.role ?? ''}\0${pin?.approver ?? ''}`;
+      if (!pin?.role || !pin?.approver || !pin?.public_key || pins.has(id)) { pinsValid = false; break; }
+      try {
+        crypto.createPublicKey({ key: Buffer.from(pin.public_key, 'base64url'), format: 'der', type: 'spki' });
+      } catch { pinsValid = false; break; }
+      pins.set(id, pin.public_key);
+    }
+  }
+  if (!pinsValid) reasons.push('relying-party approver enrollment pins are missing or malformed');
+
+  let q = { valid: false, checks: falseChecks };
+  if (pinsValid && rpId && allowedOrigins && Array.isArray(receipt.quorum?.members)) {
+    const members = receipt.quorum.members.map((member) => ({
+      ...member,
+      approver_public_key: pins.get(`${member?.role ?? ''}\0${member?.signoff?.context?.approver ?? ''}`) ?? '',
+    }));
+    q = verifyQuorum({
+      ...receipt.quorum,
+      policy: trustProfile.quorum_policy,
+      members,
+    }, { rpId, allowedOrigins });
+  }
+  if (!q.valid) reasons.push('quorum predicate failed under relying-party policy and enrolled keys: '
+    + Object.entries(q.checks).filter(([, value]) => !value).map(([key]) => key).join(', '));
+
+  const committedAt = receipt.consumption?.committed_at;
+  const committedMs = typeof committedAt === 'string' ? Date.parse(committedAt) : NaN;
+  const committed = receipt.consumption?.state === 'COMMITTED'
+    && Number.isFinite(committedMs)
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(committedAt);
+  if (!committed) reasons.push('operator commit state or timestamp is invalid');
+  const receiptMembers = Array.isArray(receipt.quorum?.members) ? receipt.quorum.members : null;
+  const approvalTimes = receiptMembers
+    ? receiptMembers.map((member) => Date.parse(member?.signoff?.context?.issued_at)).filter(Number.isFinite)
+    : [];
+  const chronology = committed && receiptMembers && approvalTimes.length === receiptMembers.length
+    && approvalTimes.every((time) => time <= committedMs);
+  if (!chronology) reasons.push('signed approval timestamps do not precede the operator commit timestamp');
+
   let opOk = false;
   try {
-    const { operator_signature, operator_public_key, ...body } = receipt;
-    const key = crypto.createPublicKey({ key: Buffer.from(operator_public_key, 'base64url'), format: 'der', type: 'spki' });
-    opOk = crypto.verify(null, Buffer.from(canon(body), 'utf8'), key, Buffer.from(operator_signature, 'base64url'));
+    const { operator_signature, ...body } = receipt;
+    const key = crypto.createPublicKey({
+      key: Buffer.from(trustProfile.operator_public_key, 'base64url'),
+      format: 'der',
+      type: 'spki',
+    });
+    opOk = key.asymmetricKeyType === 'ed25519'
+      && crypto.verify(null, Buffer.from(canon(body), 'utf8'), key, Buffer.from(operator_signature, 'base64url'));
   } catch { opOk = false; }
-  if (!opOk) reasons.push('operator commit signature invalid');
-  const verified = hashMatches && q.valid && opOk;
-  return { verified, checks: q.checks, hashMatches, opOk, reasons };
+  if (!opOk) reasons.push('operator commit signature is invalid under the relying party pinned operator key');
+
+  const verified = reasons.length === 0 && trustProfileMatches && hashMatches && policyMatches
+    && pinsValid && q.valid && committed && chronology && opOk;
+  return { verified, checks: q.checks, hashMatches, trustProfileMatches, policyMatches, committed, chronology, opOk, reasons };
 }
 
 function printDetermination(label, r) {
@@ -394,7 +526,7 @@ function workpaper(receipt, genuine, forged, S) {
   const [exLabel, exVal] = S.extraRow(a);
   return `# Authorization Evidence — Workpaper
 
-**Prepared by independent offline verification. No EMILIA service, account, network, or log was consulted.**
+**Prepared by offline verification under the relying party's pinned trust profile. No EMILIA service, account, network, or operator-supplied key was consulted.**
 
 | | |
 |---|---|
@@ -402,6 +534,7 @@ function workpaper(receipt, genuine, forged, S) {
 | Action | ${S.actionSummary(a)} |
 | ${exLabel} | ${exVal} |
 | Policy | \`${a.policy_id}\` (${S.policyDesc}) |
+| Relying-party trust profile | \`${receipt.trust_profile_hash}\` |
 | Action hash (recomputed) | \`${actionHashOf(a)}\` |
 | Committed at | ${receipt.consumption.committed_at} |
 
@@ -409,13 +542,15 @@ function workpaper(receipt, genuine, forged, S) {
 
 > ${det(genuine)}
 
-The required human approvals existed for this exact action before it executed, and that fact was verified here with mathematics alone — independently of EMILIA, the operator, and any internal log. The receipt remains valid even if EMILIA ceases to exist.
+The keys enrolled by the relying party for the required approver identifiers signed this exact action under the relying party's pinned policy. The operator commit also verifies under the separately pinned operator key. This determination is reproducible offline even if EMILIA ceases to exist.
 
 ## What was checked (offline)
 
 | Check | Result |
 |---|---|
 | action_hash recomputed from the action as filed matches what the approvers signed | ${genuine.hashMatches ? '✓ pass' : '✗ FAIL'} |
+| receipt bound to the supplied relying-party trust profile | ${genuine.trustProfileMatches ? '✓ pass' : '✗ FAIL'} |
+| presented policy exactly matches the relying party pinned policy | ${genuine.policyMatches ? '✓ pass' : '✗ FAIL'} |
 ${checkRow('all approver device signatures valid', genuine.checks.all_signatures_valid)}
 ${checkRow('every approver signed this exact action (action binding)', genuine.checks.action_binding)}
 ${checkRow('approvers are distinct humans (separation of duties)', genuine.checks.distinct_humans)}
@@ -423,7 +558,9 @@ ${checkRow('each approver is an authorized role on the policy roster', genuine.c
 ${checkRow('required number of approvals met', genuine.checks.threshold_met)}
 ${checkRow('approvals occurred in required order', genuine.checks.order_satisfied)}
 ${checkRow('all approvals within the policy time window', genuine.checks.within_window)}
-| operator commit signature valid | ${genuine.opOk ? '✓ pass' : '✗ FAIL'} |
+| operator asserted COMMITTED state with a valid timestamp | ${genuine.committed ? '✓ pass' : '✗ FAIL'} |
+| signed approval timestamps are no later than the operator commit timestamp | ${genuine.chronology ? '✓ pass' : '✗ FAIL'} |
+| operator commit signature valid under the relying party pinned key | ${genuine.opOk ? '✓ pass' : '✗ FAIL'} |
 
 ## Tamper test (the absence made visible)
 
@@ -437,9 +574,9 @@ This is what an auditor, surveyor, lawyer, insurer, or board member sees when au
 
 ## What this receipt proves, and does not prove
 
-**Proves:** the named approvers, holding their own device keys, each signed *this exact action* under the stated policy, in order, before execution; and that no party — including EMILIA — could have forged or altered it without detection.
+**Proves under the supplied trust profile:** the keys enrolled for the listed approver identifiers each signed *this exact action* under the pinned policy and WebAuthn scope; the signed approval timestamps satisfy the pinned order/window rules; and the pinned operator key signed the resulting commit record. Altering those signed fields is detectable.
 
-**Does not prove:** that the approvers were not jointly colluding or coerced; that the displayed action matched the underlying intent (presentation integrity); the real-world identity behind each enrolled approver. Those are stated, not claimed solved.
+**Does not prove:** who correctly enrolled or protected the pinned keys; what a person perceived or intended; that approvers were not colluding or coerced; trusted time; revocation freshness unless separately supplied; action legality, safety, or wisdom; that execution occurred; or that execution matched or followed the authorization. The operator's \`COMMITTED\` value is a signed assertion, not effect evidence.
 
 **Bound (stated, not glossed):** the receipt is reliable evidence that the required humans *authorized* this exact action — it is **not** ${S.boundNote}.
 
@@ -448,26 +585,30 @@ ${S.standards}
 ## Reproduce this determination yourself
 
 \`\`\`
-npx -y @emilia-protocol/crash-test verify ./authorization-receipt.json
+npx -y @emilia-protocol/crash-test verify ./authorization-receipt.json \\
+  --trust ./relying-party-trust-profile.json
 \`\`\`
 
-Offline. No account. No API key. The embedded EP-QUORUM-v1 document also
-verifies directly via \`verifyQuorum()\` in \`@emilia-protocol/verify\`. Just math.
+Offline. No account. No API key. The receipt is judged under trust material the
+relying party supplies; the presented artifact cannot establish its own authority.
 
 ---
-*Generated by \`@emilia-protocol/crash-test\` (scenario: ${S.key}). Approver signatures in this demonstration are real ES256 device-class assertions minted locally so the test runs without hardware; in production they originate on each approver's own device.*
+*Generated by \`@emilia-protocol/crash-test\` (scenario: ${S.key}). The demonstration uses real ES256 WebAuthn-shaped signatures minted locally, not hardware-backed passkeys. A production deployment must enroll authenticators, validate attestation as policy requires, protect trust-profile distribution, and supply separate execution/effect evidence for execution claims.*
 `;
 }
 
 // `verify <file>` — the relying party's path: take only the receipt file, decide.
-async function verifyFile(path) {
-  const { readFileSync } = await import('node:fs');
+async function verifyFile(path, trustPath) {
   let receipt;
-  try { receipt = JSON.parse(readFileSync(resolve(process.cwd(), path), 'utf8')); }
-  catch (e) { console.error(c('red', `cannot read receipt: ${e.message}`)); process.exit(2); }
+  let trustProfile;
+  try {
+    if (!trustPath) throw new Error('missing --trust <relying-party-trust-profile.json>');
+    receipt = readStrictJson(resolve(process.cwd(), path), 'receipt');
+    trustProfile = readStrictJson(resolve(process.cwd(), trustPath), 'trust profile');
+  } catch (e) { console.error(c('red', `cannot verify receipt: ${e.message}`)); process.exit(2); }
   console.log('');
-  console.log(c('dim', '  offline verification — no network, no service, no account'));
-  const r = verifyReceiptOffline(receipt);
+  console.log(c('dim', '  offline verification — receipt judged under relying-party-pinned policy and keys'));
+  const r = verifyReceiptOffline(receipt, trustProfile);
   printDetermination(`${receipt.receipt_id ?? 'receipt'} — ${path}`, r);
   console.log('');
   process.exit(r.verified ? 0 : 1);
@@ -488,7 +629,9 @@ if (!SCENARIOS[scenarioKey]) {
 }
 const [cmd, arg] = argv;
 if (cmd === 'verify' && arg) {
-  verifyFile(arg).catch((e) => { console.error(e); process.exit(1); });
+  const trustIndex = argv.indexOf('--trust');
+  const trustPath = trustIndex >= 0 ? argv[trustIndex + 1] : null;
+  verifyFile(arg, trustPath).catch((e) => { console.error(e); process.exit(1); });
 } else {
   main(SCENARIOS[scenarioKey]).catch((e) => { console.error(e); process.exit(1); });
 }

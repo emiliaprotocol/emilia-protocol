@@ -262,6 +262,61 @@ def test_vector3c_different_destination_claim_mismatch():
     assert "destination mismatch" in (r.detail or "")
 
 
+def test_vector3d_missing_material_fields_and_action_substitution_fail_closed():
+    """Signed omission is not a wildcard: every expected material field and
+    the mapped action type must be present and equal."""
+    fixture, _fixture_pub = _load_fixture()
+    cases = []
+
+    missing_currency = copy.deepcopy(fixture["payload"])
+    del missing_currency["claim"]["context"]["currency"]
+    cases.append((missing_currency, "currency mismatch"))
+
+    missing_destination = copy.deepcopy(fixture["payload"])
+    del missing_destination["claim"]["context"]["destination"]
+    cases.append((missing_destination, "destination mismatch"))
+
+    missing_approver = copy.deepcopy(fixture["payload"])
+    del missing_approver["claim"]["approver"]
+    cases.append((missing_approver, "approver mismatch"))
+
+    wrong_action = copy.deepcopy(fixture["payload"])
+    wrong_action["claim"]["action"] = "database.delete"
+    cases.append((wrong_action, "action_type mismatch"))
+
+    for payload, expected_detail in cases:
+        private_key, public_key = _attacker_keypair()
+        signed = _sign_doc(payload, private_key)
+        result = _verify_evidence_offline(
+            _evidence(signed, public_key),
+            expected=GENUINE_EXPECTED,
+            trusted_signer_keys=load_trusted_signer_keys([public_key]),
+            replay_store=InMemoryReplayStore(),
+        )
+        assert result.verified is False, result
+        assert result.status == "claim_mismatch", result
+        assert expected_detail in (result.detail or ""), result
+
+
+def test_vector3e_amount_comparison_does_not_round_through_float():
+    """Adjacent integers above binary-float precision cannot compare equal."""
+    fixture, _fixture_pub = _load_fixture()
+    payload = copy.deepcopy(fixture["payload"])
+    payload["claim"]["context"]["amount"] = "9007199254740993"
+    private_key, public_key = _attacker_keypair()
+    signed = _sign_doc(payload, private_key)
+    expected = {**GENUINE_EXPECTED, "amount": "9007199254740992"}
+    result = _verify_evidence_offline(
+        _evidence(signed, public_key),
+        expected=expected,
+        trusted_signer_keys=load_trusted_signer_keys([public_key]),
+        replay_store=InMemoryReplayStore(),
+    )
+    assert result.verified is False, result
+    assert result.status == "claim_mismatch", result
+    assert "amount mismatch" in (result.detail or ""), result
+
+
 # ── Vector 5a: anchor stripped/partial when required ─────────────────────────
 def test_vector5a_anchor_stripped_anchor_required():
     """With require_anchor=True, a receipt whose Merkle anchor was stripped is
@@ -349,6 +404,17 @@ def test_vector5b_replay_second_presentation_blocked():
     )
     assert second.verified is False
     assert second.status == "replay", second
+
+
+def test_vector5b_in_memory_test_and_set_is_thread_safe():
+    """Concurrent presentations cannot all observe an unused receipt."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    store = InMemoryReplayStore()
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        results = list(pool.map(lambda _n: store.seen("rcpt_concurrent"), range(128)))
+    assert results.count(False) == 1, results
+    assert results.count(True) == 127, results
 
 
 def test_vector5b_consumed_status_blocked():
@@ -441,10 +507,13 @@ def _run_all():
         ("Vector 3: wrong amount -> claim_mismatch", test_vector3_different_amount_claim_mismatch),
         ("Vector 3b: wrong receipt_id -> claim_mismatch", test_vector3b_different_receipt_id_claim_mismatch),
         ("Vector 3c: wrong destination -> claim_mismatch", test_vector3c_different_destination_claim_mismatch),
+        ("Vector 3d: signed omission/action swap -> claim_mismatch", test_vector3d_missing_material_fields_and_action_substitution_fail_closed),
+        ("Vector 3e: amount precision collision -> claim_mismatch", test_vector3e_amount_comparison_does_not_round_through_float),
         ("Vector 5a: anchor stripped -> anchor_required", test_vector5a_anchor_stripped_anchor_required),
         ("Vector 5a: anchor optional still proceeds", test_vector5a_anchor_optional_still_proceeds),
         ("Vector 5a: tampered anchor -> blocked", test_vector5a_tampered_anchor_blocked),
         ("Vector 5b: replay -> blocked", test_vector5b_replay_second_presentation_blocked),
+        ("Vector 5b: concurrent test-and-set -> one winner", test_vector5b_in_memory_test_and_set_is_thread_safe),
         ("Vector 5b: consumed status partition", test_vector5b_consumed_status_blocked),
         ("Vector 6: hostile bodies fail closed", test_vector6_hostile_bodies_fail_closed_never_raise),
         ("Vector 6: verifier raise -> verifier_error", test_vector6_verifier_raise_is_verifier_error),
@@ -460,7 +529,7 @@ def _run_all():
     if failures:
         print(f"\n{failures} test(s) FAILED.")
         sys.exit(1)
-    print(f"\nALL {len(tests)} PASS — six red-team vectors blocked, control proceeds.")
+    print(f"\nALL {len(tests)} PASS — red-team vectors blocked, control proceeds.")
 
 
 if __name__ == "__main__":

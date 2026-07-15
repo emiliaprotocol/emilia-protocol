@@ -77,7 +77,9 @@ export function createPlayIntegrityAttestationVerifier({
       const labels = Array.isArray(device.deviceRecognitionVerdict) ? device.deviceRecognitionVerdict : [];
       const meetsDevice = labels.includes('MEETS_DEVICE_INTEGRITY');
       const meetsStrong = labels.includes('MEETS_STRONG_INTEGRITY');
-      const detected = payload.environmentDetails?.appAccessRiskVerdict?.appsDetected;
+      const accessRisk = payload.environmentDetails?.appAccessRiskVerdict;
+      const detected = accessRisk?.appsDetected;
+      const accessRiskPresent = isRecord(accessRisk) && Array.isArray(detected);
       const riskyEnvironment = Array.isArray(detected)
         && detected.some((label) => typeof label === 'string'
           && (label.endsWith('_CAPTURING') || label.endsWith('_CONTROLLING') || label.endsWith('_OVERLAYS')));
@@ -90,7 +92,7 @@ export function createPlayIntegrityAttestationVerifier({
         && (!requireLicensed || account.appLicensingVerdict === 'LICENSED')
         && meetsDevice
         && (!requireStrongIntegrity || meetsStrong)
-        && (!requireNoCaptureOrControl || !riskyEnvironment);
+        && (!requireNoCaptureOrControl || (accessRiskPresent && !riskyEnvironment));
       return {
         valid,
         request_hash: request.requestHash,

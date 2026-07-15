@@ -11,6 +11,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const store = { aml_history: [], audit_events: [] };
+const failures = { amlLookup: false, amlInsert: false };
 const inserted = []; // every inserted row, in order (back-compat assertions)
 const mockGetGuardedClient = vi.fn(() => ({ from: (t) => new Q(t) }));
 vi.mock('@/lib/supabase', () => ({
@@ -28,12 +29,18 @@ class Q {
   order() { return this; }
   limit(n) { this._limit = n; return this; }
   async insert(row) {
+    if (this.table === 'aml_history' && failures.amlInsert) {
+      return { error: { message: 'aml history unavailable' } };
+    }
     const r = { occurred_at: new Date().toISOString(), ...row };
     (store[this.table] ||= []).push(r);
     inserted.push(r);
     return { error: null };
   }
   then(resolve) {
+    if (this.table === 'aml_history' && failures.amlLookup) {
+      return resolve({ data: null, error: { message: 'aml history unavailable' } });
+    }
     let rows = (store[this.table] || []).filter((r) => this.filters.every((f) => f(r)));
     rows = rows.slice().reverse(); // newest-first (insert order ascending)
     if (this._limit) rows = rows.slice(0, this._limit);
@@ -86,6 +93,8 @@ beforeEach(() => {
   inserted.length = 0;
   store.aml_history = [];
   store.audit_events = [];
+  failures.amlLookup = false;
+  failures.amlInsert = false;
   mockGetGuardedClient.mockClear();
 });
 
@@ -186,12 +195,73 @@ describe('guard adapter + AML history (self-lookup)', () => {
     expect(store.aml_history.some((h) => h.counterparty === 'acme widgets' && Number(h.amount) === 2000)).toBe(true);
   });
 
-  it('caller-supplied recent_amounts still take precedence over history', async () => {
+  it('caller-supplied recent_amounts supplement authoritative history', async () => {
     // History is empty, but the caller reports a structuring window directly.
     const res = await precheck(baseBody({ counterparty_name: 'Reported Co', amount: 9500, recent_amounts: [9400, 9600] }));
     const json = await res.json();
     expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
     expect(json.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
+  });
+
+  it('does not let caller-supplied recent_amounts erase authoritative history', async () => {
+    const occurred_at = new Date().toISOString();
+    store.aml_history.push(
+      { tenant_id: 'ep_entity_acme', counterparty: 'smurf trading', amount: 9400, occurred_at },
+      { tenant_id: 'ep_entity_acme', counterparty: 'smurf trading', amount: 9600, occurred_at },
+    );
+
+    const res = await precheck(baseBody({
+      counterparty_name: 'Smurf Trading',
+      amount: 9500,
+      recent_amounts: [],
+    }));
+    const json = await res.json();
+
+    expect(json.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
+  });
+
+  it('does not let an explicit aml block mask the action counterparty', async () => {
+    const res = await precheck(baseBody({
+      counterparty_name: 'Blocked Person Alpha',
+      aml: { counterpartyName: 'Safe Person', amount: 2000, recentAmounts: [] },
+    }));
+    const json = await res.json();
+
+    expect(json.decision).toBe(GUARD_DECISIONS.DENY);
+    expect(json.aml_signals.some((s) => s.startsWith('sanctions_match'))).toBe(true);
+  });
+
+  it('fails closed in enforce mode when authoritative AML history cannot be read', async () => {
+    failures.amlLookup = true;
+
+    const res = await precheck(baseBody({ counterparty_name: 'Acme Widgets' }));
+    const json = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(`${json.code ?? ''} ${json.type ?? ''}`).toMatch(/aml_history_unavailable/);
+  });
+
+  it('fails closed in enforce mode when AML history cannot be recorded', async () => {
+    failures.amlInsert = true;
+
+    const res = await precheck(baseBody({ counterparty_name: 'Acme Widgets' }));
+    const json = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(`${json.code ?? ''} ${json.type ?? ''}`).toMatch(/aml_history_write_failed/);
+  });
+
+  it('permits observe-only diagnostics to degrade when AML history is unavailable', async () => {
+    failures.amlLookup = true;
+
+    const res = await precheck(baseBody({
+      counterparty_name: 'Acme Widgets',
+      enforcement_mode: 'observe',
+    }));
+    const json = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(json.decision).toBe(GUARD_DECISIONS.OBSERVE);
   });
 });
 

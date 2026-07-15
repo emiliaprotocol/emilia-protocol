@@ -36,7 +36,7 @@ async function mkMember(role, approver, i, { actionHash, wrongKey } = {}) {
 const PO = ['program_officer', 'ep:po'], AO = ['authorizing_official', 'ep:ao'], IG = ['inspector_general', 'ep:ig'];
 const POLICY = { mode: 'ordered', required: 3, approvers: [PO, AO, IG].map(([role, approver]) => ({ role, approver })), distinct_humans: true, window_sec: 900 };
 let ACTION;
-const OPTS = { rpId: HOST };
+const OPTS = { rpId: HOST, allowedOrigins: [`https://${HOST}`] };
 
 describe('lib/signoff/quorum-session.js — trail-of-signatories enforcement', () => {
   it('accepts a valid ordered trail and gates satisfied', async () => {

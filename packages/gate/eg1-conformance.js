@@ -44,6 +44,7 @@ const sha256Hex = (v) => crypto.createHash('sha256').update(v, 'utf8').digest('h
 const sha256Bytes = (v) => crypto.createHash('sha256').update(v).digest();
 
 const RP_ID = 'emiliaprotocol.ai';
+const RP_ORIGIN = `https://www.${RP_ID}`;
 
 /**
  * Mint a GENUINE WebAuthn ECDSA-P256 device signoff over an authorization
@@ -147,16 +148,31 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const approverA = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const approverA2 = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const approverB = crypto.generateKeyPairSync('ed25519');
   const approverKeys = {
     'ep:key:eg1:class-a': {
+      approver_id: 'ep:approver:eg1:cfo',
       public_key: approverA.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
       key_class: 'A',
     },
+    'ep:key:eg1:class-a-2': {
+      approver_id: 'ep:approver:eg1:security-officer',
+      public_key: approverA2.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      key_class: 'A',
+    },
     'ep:key:eg1:controller': {
+      approver_id: 'ep:approver:eg1:controller',
       public_key: approverB.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
       key_class: 'B',
     },
+  };
+  const quorumPolicy = {
+    mode: 'threshold', required: 2, distinct_humans: true, window_sec: 900,
+    approvers: [
+      { role: 'cfo', approver: approverKeys['ep:key:eg1:class-a'].approver_id },
+      { role: 'security_officer', approver: approverKeys['ep:key:eg1:class-a-2'].approver_id },
+    ],
   };
   let counter = 0;
   const nowMs = () => (typeof now === 'function' ? now() : now);
@@ -173,20 +189,24 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
     };
   }
 
-  function classASignoff(digest) {
+  function classASignoff(digest, {
+    keyId = 'ep:key:eg1:class-a',
+    keyPair = approverA,
+    approver = 'ep:approver:eg1:cfo',
+  } = {}) {
     const challenge = Buffer.from(digest).toString('base64url');
-    const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
-    const rpIdHash = crypto.createHash('sha256').update('www.emiliaprotocol.ai').digest();
+    const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: RP_ORIGIN }), 'utf8');
+    const rpIdHash = crypto.createHash('sha256').update(RP_ID).digest();
     const authData = Buffer.concat([rpIdHash, Buffer.from([0x05]), Buffer.from([0, 0, 0, 0])]); // UP + UV
     const signedData = Buffer.concat([authData, sha256Bytes(clientDataJSON)]);
     return {
-      approver: 'ep:approver:eg1:cfo',
-      approver_key_id: 'ep:key:eg1:class-a',
+      approver,
+      approver_key_id: keyId,
       key_class: 'A',
       webauthn: {
         authenticator_data: authData.toString('base64url'),
         client_data_json: clientDataJSON.toString('base64url'),
-        signature: crypto.sign('sha256', signedData, approverA.privateKey).toString('base64url'),
+        signature: crypto.sign('sha256', signedData, keyPair.privateKey).toString('base64url'),
       },
     };
   }
@@ -206,7 +226,13 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
     const digest = Buffer.from(contextHash.replace(/^sha256:/, ''), 'hex');
     const threshold = Number(quorum?.threshold ?? quorum?.m ?? 1);
     const signoffs = [classASignoff(digest)];
-    if (threshold >= 2) signoffs.push(softwareSignoff(digest));
+    if (threshold >= 2) {
+      signoffs.push(classASignoff(digest, {
+        keyId: 'ep:key:eg1:class-a-2',
+        keyPair: approverA2,
+        approver: 'ep:approver:eg1:security-officer',
+      }));
+    }
     return {
       '@version': 'EP-ASSURANCE-PROOF-v1',
       context_hash: contextHash,
@@ -227,9 +253,12 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
    *   ({signers,threshold}) with no per-signer signatures — used to prove the Gate
    *   REFUSES it (must NOT be credited quorum). For adversarial tests only.
    * @param {object} [o.tamper] fields assigned to the claim AFTER signing (breaks the signature)
-   */
+  */
   function mint({ outcome = 'allow_with_signoff', quorum = null, fakeQuorum = false, tamper = null, extra = {} } = {}) {
-    const claim = { ...action, outcome, approver: 'ep:approver:eg1', ...extra };
+    const approver = outcome === 'allow'
+      ? 'ep:approver:eg1:controller'
+      : 'ep:approver:eg1:cfo';
+    const claim = { ...action, outcome, approver, ...extra };
     const payload = {
       receipt_id: `${idPrefix}_${++counter}`,
       subject: 'agent:eg1-conformance',
@@ -252,9 +281,14 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
       if (quorum) {
         const threshold = Number.isInteger(quorum.threshold) ? quorum.threshold
           : (Array.isArray(quorum.signers) ? quorum.signers.length : 2);
-        payload.quorum = mintQuorumEvidence({ actionHash, threshold, issuedAtMs: nowMs() });
+        payload.quorum = mintQuorumEvidence({
+          actionHash,
+          threshold,
+          approvers: quorumPolicy.approvers.slice(0, threshold),
+          issuedAtMs: nowMs(),
+        });
       } else {
-        const s = mintDeviceSignoff({ actionHash, approver: 'ep:approver:eg1', issuedAtMs: nowMs() });
+        const s = mintDeviceSignoff({ actionHash, approver, issuedAtMs: nowMs() });
         payload.signoff = s.signoff;
         payload.approver_public_key = s.approver_public_key;
       }
@@ -265,7 +299,7 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
     return receipt;
   }
 
-  return { publicKey: pub, approverKeys, mint, action, actionHash, now: nowMs };
+  return { publicKey: pub, approverKeys, quorumPolicy, mint, action, actionHash, now: nowMs, rpId: RP_ID, allowedOrigins: [RP_ORIGIN] };
 }
 
 /**

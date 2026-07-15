@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { createGate, createTrustedActionFirewall, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier, mintDeviceSignoff, mintQuorumEvidence } from './index.js';
+import { createGate, createTrustedActionFirewall, createEg1Harness, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier, mintDeviceSignoff, mintQuorumEvidence } from './index.js';
 
 function canon(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
@@ -22,6 +22,31 @@ function mint(privateKey, payload) {
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value } };
 }
 const HASH_FOR = (action) => crypto.createHash('sha256').update(canon({ action_type: action }), 'utf8').digest('hex');
+const WEBAUTHN_SCOPE = {
+  rpId: 'emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
+};
+const TEST_QUORUM_POLICY = {
+  mode: 'threshold',
+  required: 2,
+  distinct_humans: true,
+  window_sec: 900,
+  approvers: [
+    { role: 'cfo', approver: 'ep:approver:cfo' },
+    { role: 'controller', approver: 'ep:approver:controller' },
+  ],
+};
+
+function pinnedQuorumInputs(q) {
+  return {
+    quorumPolicy: structuredClone(q.policy),
+    approverKeys: Object.fromEntries(q.members.map((member, index) => [`member_${index}`, {
+      approver_id: member.signoff.context.approver,
+      public_key: member.approver_public_key,
+      key_class: 'A',
+    }])),
+  };
+}
 let n = 0;
 // Mint a receipt. When outcome === 'allow_with_signoff', embed a GENUINE WebAuthn
 // device signoff so the receipt cryptographically earns class_a (post-audit: the
@@ -244,28 +269,28 @@ test('receiptAssuranceTier is cryptographically verified, not payload-inferred (
   const signoffDoc = { payload: { signoff: s.signoff, approver_public_key: s.approver_public_key } };
   assert.equal(receiptAssuranceTier(signoffDoc), 'software');
   // With the explicit self-contained opt-in, the same embedded signoff earns class_a.
-  assert.equal(receiptAssuranceTier(signoffDoc, { allowEmbeddedApproverKeys: true }), 'class_a');
+  assert.equal(receiptAssuranceTier(signoffDoc, { allowEmbeddedApproverKeys: true, ...WEBAUTHN_SCOPE }), 'class_a');
   // OR when the embedded approver key is one the relying party PINNED.
   assert.equal(
-    receiptAssuranceTier(signoffDoc, { approverKeys: { device: { public_key: s.approver_public_key } } }),
+    receiptAssuranceTier(signoffDoc, { approverKeys: { device: { approver_id: s.signoff.context.approver, public_key: s.approver_public_key } }, ...WEBAUTHN_SCOPE }),
     'class_a',
   );
 
   // A GENUINE self-contained quorum (real per-signer assertions). Same guard: by
-  // DEFAULT the embedded member keys do not elevate; opt-in earns quorum.
+  // DEFAULT the embedded member keys do not elevate. A blanket embedded-key
+  // opt-in is deliberately insufficient for organizational quorum.
   const q = mintQuorumEvidence({ actionHash: HASH_FOR('payment.release'), threshold: 2 });
   const quorumDoc = { payload: { quorum: q } };
   assert.equal(receiptAssuranceTier(quorumDoc), 'software');
-  assert.equal(receiptAssuranceTier(quorumDoc, { allowEmbeddedApproverKeys: true }), 'quorum');
-  // OR when every member's embedded approver key is pinned.
-  const pinnedMembers = Object.fromEntries(q.members.map((m, i) => [`m${i}`, { public_key: m.approver_public_key }]));
-  assert.equal(receiptAssuranceTier(quorumDoc, { approverKeys: pinnedMembers }), 'quorum');
+  assert.equal(receiptAssuranceTier(quorumDoc, { allowEmbeddedApproverKeys: true, ...WEBAUTHN_SCOPE }), 'software');
+  // Quorum requires both identity-bound pinned keys and the RP-pinned policy.
+  assert.equal(receiptAssuranceTier(quorumDoc, { ...pinnedQuorumInputs(q), ...WEBAUTHN_SCOPE }), 'quorum');
 
   // A quorum evidence doc with a broken (tampered) member signature is NOT credited
   // quorum even under the opt-in — the cryptographic check still fails closed.
   const tampered = mintQuorumEvidence({ actionHash: HASH_FOR('payment.release'), threshold: 2 });
   tampered.members[0].signoff.context.approver = 'ep:approver:someone_else'; // breaks challenge binding
-  assert.equal(receiptAssuranceTier({ payload: { quorum: tampered } }, { allowEmbeddedApproverKeys: true }), 'software');
+  assert.equal(receiptAssuranceTier({ payload: { quorum: tampered } }, { ...pinnedQuorumInputs(tampered), ...WEBAUTHN_SCOPE }), 'software');
 
   // The pinned-proof / caller-supplied-verifier path (main) still credits class_a
   // when an explicit verifier attests it — self-assertion alone never does.
@@ -369,7 +394,7 @@ const GRANT = { protocol: 'mcp', tool: 'grant_admin' };
 
 test('AUDIT: a fabricated quorum block (no per-signer signatures) is REFUSED', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub] });
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub], quorumPolicy: TEST_QUORUM_POLICY, ...WEBAUTHN_SCOPE });
   // A receipt that merely CLAIMS quorum — signers + threshold, but no members,
   // no WebAuthn assertions. Signed by a trusted issuer, so the Ed25519 check
   // passes; the fraud is that the quorum is self-asserted.
@@ -389,7 +414,7 @@ test('AUDIT: a fabricated quorum block (no per-signer signatures) is REFUSED', a
 
 test('AUDIT: a single-issuer software receipt does NOT satisfy class_a', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] }); // class_a required
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], ...WEBAUTHN_SCOPE }); // class_a required
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow' }); // software only
   const out = await g.check({ selector: PAY, receipt: r });
   assert.equal(out.allow, false);
@@ -399,7 +424,7 @@ test('AUDIT: a single-issuer software receipt does NOT satisfy class_a', async (
 
 test('AUDIT: outcome:allow_with_signoff string WITHOUT WebAuthn evidence does NOT satisfy class_a', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], ...WEBAUTHN_SCOPE });
   // Self-asserted outcome string, but NO signoff evidence attached.
   const r = mint(privateKey, {
     receipt_id: 'rcpt_selfassert', subject: 'agent:test', issuer: 'ep:org:test',
@@ -416,7 +441,7 @@ test('AUDIT: a single-issuer software receipt does NOT satisfy quorum', async ()
   const { pub, privateKey } = makeKey();
   // allowEmbeddedApproverKeys:true opts into the self-contained embedded-evidence
   // mode so a genuine embedded signoff still earns class_a (which is below quorum).
-  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub], allowEmbeddedApproverKeys: true });
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub], quorumPolicy: TEST_QUORUM_POLICY, allowEmbeddedApproverKeys: true, ...WEBAUTHN_SCOPE });
   const r = receipt(privateKey, { action: 'permission.admin.change', outcome: 'allow_with_signoff' }); // class_a at best
   const out = await g.check({ selector: GRANT, receipt: r });
   assert.equal(out.allow, false);
@@ -427,21 +452,52 @@ test('AUDIT: a single-issuer software receipt does NOT satisfy quorum', async ()
 
 test('AUDIT: a genuinely quorum-verified receipt PASSES a quorum gate', async () => {
   const { pub, privateKey } = makeKey();
-  // Self-contained embedded quorum evidence: opt in so the embedded approver keys
-  // are allowed to elevate the tier (see the trust-laundering guard below).
-  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub], allowEmbeddedApproverKeys: true });
   const r = receipt(privateKey, { action: 'permission.admin.change', quorum: true });
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub], ...pinnedQuorumInputs(r.payload.quorum), ...WEBAUTHN_SCOPE });
   const out = await g.check({ selector: GRANT, receipt: r });
   assert.equal(out.allow, true, out.reason);
   assert.equal(out.evidence.have_tier, 'quorum');
   assert.equal(out.evidence.assurance_tier_source, 'cryptographic_verification');
 });
 
+test('AUDIT: receipt-supplied 1-of-1 policy cannot weaken the pinned 2-of-2 rule', async () => {
+  const { pub, privateKey } = makeKey();
+  const q = mintQuorumEvidence({
+    actionHash: HASH_FOR('permission.admin.change'),
+    threshold: 1,
+    approvers: [{ role: 'cfo', approver: 'ep:approver:cfo' }],
+  });
+  const r = mint(privateKey, {
+    receipt_id: 'rcpt_weak_quorum', subject: 'agent:test', issuer: 'ep:org:test',
+    created_at: new Date().toISOString(),
+    claim: { action_type: 'permission.admin.change', outcome: 'allow' },
+    quorum: q,
+  });
+  const approverKeys = {
+    cfo: {
+      approver_id: q.members[0].signoff.context.approver,
+      public_key: q.members[0].approver_public_key,
+      key_class: 'A',
+    },
+  };
+  const g = createGate({
+    manifest: QUORUM_MANIFEST,
+    trustedKeys: [pub],
+    approverKeys,
+    quorumPolicy: TEST_QUORUM_POLICY,
+    ...WEBAUTHN_SCOPE,
+  });
+  const out = await g.check({ selector: GRANT, receipt: r });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'assurance_too_low');
+  assert.equal(out.evidence.have_tier, 'software');
+});
+
 test('AUDIT: a genuine WebAuthn device signoff PASSES a class_a gate', async () => {
   const { pub, privateKey } = makeKey();
   // Self-contained embedded signoff: opt in so the embedded approver key may
   // elevate the tier (default OFF now guards against trust-laundering).
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], allowEmbeddedApproverKeys: true });
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], allowEmbeddedApproverKeys: true, ...WEBAUTHN_SCOPE });
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
   const out = await g.check({ selector: PAY, receipt: r });
   assert.equal(out.allow, true, out.reason);
@@ -454,7 +510,7 @@ test('AUDIT: embedded approver key does NOT elevate the tier by DEFAULT (trust-l
   // and pins no approver keys. The signoff still VERIFIES cryptographically, but
   // an approver key carried inside the receipt is not proof the relying party
   // trusts that human — so it must NOT elevate above software. Fail closed.
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], ...WEBAUTHN_SCOPE });
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
   const out = await g.check({ selector: PAY, receipt: r });
   assert.equal(out.allow, false);
@@ -479,17 +535,34 @@ test('AUDIT: a PINNED embedded approver key elevates the tier without a blanket 
   const r = mint(privateKey, payload);
   const g = createGate({
     manifest: MANIFEST, trustedKeys: [pub],
-    approverKeys: { device: { public_key: s.approver_public_key, key_class: 'A' } },
+    approverKeys: { device: { approver_id: s.signoff.context.approver, public_key: s.approver_public_key, key_class: 'A' } },
+    ...WEBAUTHN_SCOPE,
   });
   const out = await g.check({ selector: PAY, receipt: r });
   assert.equal(out.allow, true, out.reason);
   assert.equal(out.evidence.have_tier, 'class_a');
 });
 
+test('AUDIT: Class-A execution refuses when WebAuthn RP and origin are not pinned', async () => {
+  const harness = createEg1Harness();
+  const g = createTrustedActionFirewall({
+    trustedKeys: [harness.publicKey],
+    approverKeys: harness.approverKeys,
+  });
+  const out = await g.check({
+    selector: { protocol: 'mcp', tool: 'release_payment' },
+    receipt: harness.mint(),
+    observedAction: harness.action,
+  });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'assurance_context_unpinned');
+});
+
 test('AUDIT: a quorum receipt whose one member signature is broken is NOT credited quorum', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub] });
   const q = mintQuorumEvidence({ actionHash: HASH_FOR('permission.admin.change'), threshold: 2 });
+  const pinned = pinnedQuorumInputs(q);
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub], ...pinned, ...WEBAUTHN_SCOPE });
   q.members[1].signoff.webauthn.signature = Buffer.from('forged').toString('base64url'); // break one signer
   const r = mint(privateKey, {
     receipt_id: 'rcpt_brokenquorum', subject: 'agent:test', issuer: 'ep:org:test',

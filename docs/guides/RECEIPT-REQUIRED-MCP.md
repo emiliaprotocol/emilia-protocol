@@ -69,15 +69,38 @@ mutation.
 
 ```js
 import {
-  RECEIPT_REQUIRED_STATUS,
   findActionRequirement,
-  receiptChallenge,
-  verifyEmiliaReceipt,
+  makeReceiptGate,
 } from '@emilia-protocol/require-receipt';
 
 const manifest = await fetch('https://mcp.example.com/.well-known/agent-actions.json')
   .then((r) => r.json());
-const consumed = new Set(); // use a durable consume store in production
+const gates = new Map();
+const approverKeys = JSON.parse(process.env.EMILIA_APPROVER_KEYS_JSON);
+const allowedOrigins = process.env.EMILIA_ALLOWED_ORIGINS.split(',');
+
+// Inject a fleet-wide ownership-fenced implementation. reserve() must be an
+// atomic insert-if-absent; an uncertain reservation remains closed.
+const store = productionReceiptStore; // { reserve, commit, release }
+
+function gateFor(req) {
+  if (!gates.has(req.action_type)) {
+    gates.set(req.action_type, makeReceiptGate({
+      action: req.action_type,
+      trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY].filter(Boolean),
+      approverKeys,
+      rpId: process.env.EMILIA_RP_ID,
+      allowedOrigins,
+      assuranceClass: req.assurance_class,
+      quorum: req.quorum,
+      quorumPolicy: req.quorum?.required ? PINNED_QUORUM_POLICIES[req.id] : undefined,
+      maxAgeSec: req.max_age_sec,
+      manifestUrl: '/.well-known/agent-actions.json',
+      store,
+    }));
+  }
+  return gates.get(req.action_type);
+}
 
 function stripEpControlArgs(args = {}) {
   const { __ep, emilia_receipt, ...clean } = args;
@@ -88,40 +111,21 @@ export async function guardedCallTool(name, args, extra = {}) {
   const req = findActionRequirement(manifest, { protocol: 'mcp', tool: name });
   if (!req?.receipt_required) return handleTool(name, args, extra);
 
-  const action = req.action_type;
   const receipt = args.__ep?.receipt || args.emilia_receipt || extra._meta?.emilia_receipt;
-  const challenge = {
-    statusCode: RECEIPT_REQUIRED_STATUS,
-    manifestUrl: '/.well-known/agent-actions.json',
-    assuranceClass: req.assurance_class,
-    maxAgeSec: req.max_age_sec,
-    quorum: req.quorum,
-  };
-
-  if (!receipt) {
-    return receiptChallenge(action, `MCP tool "${name}" requires a receipt.`, challenge);
-  }
-
-  const verified = verifyEmiliaReceipt(receipt, {
-    trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],
-    action,
-    maxAgeSec: req.max_age_sec,
-  });
-
-  if (!verified.ok) {
-    return { ...receiptChallenge(action, `Receipt rejected: ${verified.reason}.`, challenge), rejected: verified };
-  }
-  if (consumed.has(verified.receipt_id)) {
-    return { ...receiptChallenge(action, 'Receipt already consumed.', challenge), rejected: { reason: 'replay_refused' } };
-  }
-
-  consumed.add(verified.receipt_id); // consume before mutation
-  return handleTool(name, stripEpControlArgs(args), extra);
+  const clean = stripEpControlArgs(args);
+  const result = await gateFor(req).run(
+    receipt,
+    { target: clean.payment_id },
+    () => handleTool(name, clean, extra),
+  );
+  return result.ok ? result.result : result.body;
 }
 ```
 
-For production, replace the in-memory `Set` with a durable consume store or use
-the live SDK guard below.
+`productionReceiptStore` must implement atomic, ownership-fenced
+`{ reserve, commit, release }` operations. The gate verifies issuer trust,
+WebAuthn assurance under the relying party's approver directory and RP/origin
+scope, exact target binding, and one-time consumption before invoking the tool.
 
 ## 3. Prove it cold
 

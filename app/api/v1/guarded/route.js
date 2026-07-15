@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { receiptChallenge } from '@/packages/require-receipt/index.js';
+import { parseReceiptCarrier, receiptChallenge } from '@/packages/require-receipt/index.js';
 import {
   verifyReceiptForProduction,
   assertGovVerifierReady,
@@ -40,7 +40,7 @@ export async function POST(request) {
   if (body && body.emilia_receipt) doc = body.emilia_receipt;
   if (!doc) {
     const hdr = request.headers.get('x-emilia-receipt');
-    if (hdr) { try { doc = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8')); } catch { /* fallthrough */ } }
+    if (hdr) doc = parseReceiptCarrier(hdr, { maxBytes: MAX_GUARDED_BYTES });
   }
 
   if (!doc) {
@@ -50,7 +50,8 @@ export async function POST(request) {
     });
   }
 
-  const ready = assertGovVerifierReady();
+  const requiredTier = requiredAssuranceForAction(action);
+  const ready = assertGovVerifierReady(undefined, { action, requiredTier });
   if (!ready.ok) {
     return NextResponse.json({
       ...receiptChallenge(action, 'Receipt verifier is not configured with pinned issuer keys. To try the self-signed flow, use POST /api/demo/require-receipt.'),
@@ -93,7 +94,6 @@ export async function POST(request) {
   // when the proven tier is below the required tier (428 assurance_too_low), so
   // a software-tier receipt can never authorize a quorum action. Enforce BEFORE
   // consuming the receipt — don't burn a receipt we're going to refuse.
-  const requiredTier = requiredAssuranceForAction(action);
   if (requiredTier && requiredTier !== 'software') {
     const assurance = enforceReceiptAssuranceForProduction(doc, { action, requiredTier });
     if (!assurance.ok) {

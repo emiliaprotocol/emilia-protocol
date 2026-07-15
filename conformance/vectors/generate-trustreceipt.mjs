@@ -22,11 +22,11 @@ function newP256() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   return { privateKey, publicKeyB64u: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 }
-function classASigner({ approverKeyId, privateKey, signedAt }) {
+function classASigner({ approverKeyId, privateKey, signedAt, crossOrigin = false }) {
   return {
     approverKeyId, keyClass: 'A', signedAt,
     signWebAuthn: (digest) => {
-      const cd = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: Buffer.from(digest).toString('base64url'), origin: 'https://test.emilia', crossOrigin: false }), 'utf8');
+      const cd = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: Buffer.from(digest).toString('base64url'), origin: 'https://test.emilia', crossOrigin }), 'utf8');
       const ad = Buffer.concat([crypto.createHash('sha256').update('rp').digest(), Buffer.from([FLAG_UP | FLAG_UV]), Buffer.from([0, 0, 0, 1])]);
       const signed = Buffer.concat([ad, crypto.createHash('sha256').update(cd).digest()]);
       return { authenticator_data: ad.toString('base64url'), client_data_json: cd.toString('base64url'), signature: crypto.sign('sha256', signed, privateKey).toString('base64url') };
@@ -34,7 +34,7 @@ function classASigner({ approverKeyId, privateKey, signedAt }) {
   };
 }
 
-async function mint(actionParams, { legacy = false, downgradeClassA = false } = {}) {
+async function mint(actionParams, { legacy = false, downgradeClassA = false, crossOrigin = false } = {}) {
   const action = { action_type: 'payment.release', policy_id: 'pol:test', initiator: 'ep:agent:1', params: actionParams };
   const logKp = generateEd25519KeyPair();
   const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
@@ -55,13 +55,13 @@ async function mint(actionParams, { legacy = false, downgradeClassA = false } = 
     pinnedKeyClass = 'A'; // pinned Class-A; the signoff declares 'B' with a bare signature
   } else {
     const kp = newP256();
-    signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId: 'ep:key:dir#1', signedAt: ISSUED_AT, privateKey: kp.privateKey })]);
+    signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId: 'ep:key:dir#1', signedAt: ISSUED_AT, privateKey: kp.privateKey, crossOrigin })]);
     approverPublicKeyB64u = kp.publicKeyB64u;
     pinnedKeyClass = 'A';
   }
   const assemble = legacy ? assembleAuthorizationReceiptLegacyV1 : assembleAuthorizationReceipt;
   const receipt = assemble({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: COMMITTED_AT, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
-  const verification = { approver_keys: { 'ep:key:dir#1': { approver_id: 'ep:approver:dir', public_key: approverPublicKeyB64u, key_class: pinnedKeyClass, valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
+  const verification = { approver_keys: { 'ep:key:dir#1': { approver_id: 'ep:approver:dir', public_key: approverPublicKeyB64u, key_class: pinnedKeyClass, valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u, rp_id: 'rp', allowed_origins: ['https://test.emilia'] };
   return { receipt, verification, logPrivateKey: logKp.privateKey };
 }
 
@@ -71,6 +71,13 @@ const add = (id, expectValid, trust_receipt, verification, verify_opts) =>
 
 const valid = await mint({ amount: 82000, currency: 'USD' });
 add('accept_valid_receipt', true, valid.receipt, valid.verification);
+
+{
+  const m = await mint({ amount: 82000, currency: 'USD' }, { crossOrigin: true });
+  add('reject_cross_origin_ceremony', false, m.receipt, m.verification, {
+    rpId: 'rp', allowedOrigins: ['https://test.emilia'],
+  });
+}
 
 { // tamper an action parameter after signing → recomputed action_hash mismatch
   const m = await mint({ amount: 82000, currency: 'USD' });
@@ -147,6 +154,14 @@ add('accept_valid_receipt', true, valid.receipt, valid.verification);
   if (m.receipt.signoffs[0].webauthn) throw new Error('expected a bare (non-WebAuthn) Class-B signoff');
   if (m.verification.approver_keys['ep:key:dir#1'].key_class !== 'A') throw new Error('expected the pinned key to be Class-A');
   add('reject_pinned_class_a_bare_signature_downgrade', false, m.receipt, m.verification);
+}
+{ // Class-A escalation: the pinned directory intentionally carries no class,
+  // while the presenter declares A and supplies a WebAuthn-shaped assertion.
+  // Unclassified means Class B; a document can never classify its own key.
+  const m = await mint({ amount: 82000, currency: 'USD' });
+  delete m.verification.approver_keys['ep:key:dir#1'].key_class;
+  if (m.receipt.signoffs[0].key_class !== 'A') throw new Error('expected presenter-declared Class-A signoff');
+  add('reject_presenter_class_a_escalation_when_pin_unclassified', false, m.receipt, m.verification);
 }
 
 const suite = {

@@ -5,11 +5,13 @@ import crypto from 'node:crypto';
 
 import {
   MOBILE_CEREMONY_VERSION,
+  buildMobileAttestationBinding,
   createMobileAck,
   createMobileChallenge,
   createMobileCeremonyService,
   createMobileExecutionRecord,
   createMobileRelianceProfile,
+  hashCanonical,
   mobileProfileHash,
   verifyMobileAck,
   verifyMobileCeremony,
@@ -152,6 +154,14 @@ function fixture({
   return { profile, challenge, response, attestationVerifier, key, deviceKeyId };
 }
 
+function rebindAttestation(challenge) {
+  const binding = buildMobileAttestationBinding(challenge);
+  challenge.attestation.binding = binding;
+  challenge.attestation.request_hash = Buffer
+    .from(hashCanonical(binding).slice('sha256:'.length), 'hex')
+    .toString('base64url');
+}
+
 test('verifies iOS and Android ceremonies as the same Class-A evidence shape', async () => {
   for (const platform of ['ios', 'android']) {
     const item = fixture({ platform });
@@ -207,6 +217,53 @@ test('refuses action, presentation, origin, app, credential, profile, and UV sub
     assert.equal(result.valid, false, name);
     assert.equal(result.verdict, verdict, name);
   }
+});
+
+test('refuses freshness laundering through a fresh outer challenge around an expired signed context', async () => {
+  const item = fixture();
+  item.challenge.issued_at = '2026-07-14T20:00:00.000Z';
+  item.challenge.expires_at = '2026-07-14T20:05:00.000Z';
+  item.challenge.webauthn.timeout_ms = 300_000;
+  rebindAttestation(item.challenge);
+
+  const result = await verifyMobileCeremony({
+    ...item,
+    now: '2026-07-14T20:02:00.000Z',
+  });
+  assert.equal(result.valid, false);
+  assert.equal(result.verdict, 'refuse_challenge_expired');
+});
+
+test('refuses outer nonce and WebAuthn request metadata that diverge from the signed context', async () => {
+  const nonceSwap = fixture();
+  nonceSwap.challenge.nonce = 'sig_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  nonceSwap.response.nonce = nonceSwap.challenge.nonce;
+  rebindAttestation(nonceSwap.challenge);
+  const nonceResult = await verifyMobileCeremony({ ...nonceSwap, now: NOW });
+  assert.equal(nonceResult.valid, false);
+  assert.equal(nonceResult.verdict, 'refuse_action_mismatch');
+
+  const requestSwap = fixture();
+  requestSwap.challenge.webauthn.rp_id = 'attacker.example';
+  requestSwap.challenge.webauthn.challenge = Buffer.alloc(32, 9).toString('base64url');
+  requestSwap.challenge.webauthn.credential_ids = [Buffer.alloc(32, 8).toString('base64url')];
+  requestSwap.challenge.webauthn.user_verification = 'preferred';
+  rebindAttestation(requestSwap.challenge);
+  const requestResult = await verifyMobileCeremony({ ...requestSwap, now: NOW });
+  assert.equal(requestResult.valid, false);
+  assert.equal(requestResult.verdict, 'refuse_webauthn');
+});
+
+test('refuses a signed mobile binding for a different reliance profile', async () => {
+  const item = fixture();
+  item.profile.profile_id = 'gov.high-assurance.mobile.v2';
+  item.profile.profile_hash = mobileProfileHash(item.profile);
+  item.challenge.profile_hash = item.profile.profile_hash;
+  rebindAttestation(item.challenge);
+
+  const result = await verifyMobileCeremony({ ...item, now: NOW });
+  assert.equal(result.valid, false);
+  assert.equal(result.verdict, 'refuse_profile_mismatch');
 });
 
 test('attestation is independently verified and client status labels carry no weight', async () => {

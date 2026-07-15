@@ -201,7 +201,39 @@
             "public_key": "MCowBQYDK2VwAyEA93nfCa60jW6MPNZ5fLgeMIUZIzh8nK1IUuKNv3kEWGc"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEub5uziMj04f5KWhC7g5qN_8T8PDUwogOCeCaRdRb9NTF93jCPw5AiumEVj4EyY0RAlO-vjX1gVQxkvDLltA3Yg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEANR1PX31Ahhv12YU9YMorm3JYvTs2TSz7zg2UszP2VYM",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESybNBxM4iaXKSfanbRon-wy8TaBEFXXbtwJIGHYuO4IK7G2LpOC94Z5qWraSvtuzcuNbsWe_gAF8u545sIQynw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAmy5o9Kh350MXiCmZ1mx8yCrdkBUZeONn-2dE6txRsOo",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": true
@@ -424,7 +456,39 @@
             "public_key": "MCowBQYDK2VwAyEAjnMaPx5GwGS0S2Bp1KLqwvX_7_R8WS5h2uA5SFH311s"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEw0fs_MJg2R5OF4kK-m1JiYi-PzGLBSa2O4NX5TlFLmYazgUFufhdiCPP7kgU_SioOFPbLjjsoFC79VWaTuHWhQ",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAxaD2pgV6r6YlbfSYqbZaCuByYxCf7Q6rNKL51uvecqs",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElszJ7RKHkS9NZ07ySXcHVoTcvo3K1Y7ra0ptV9lG52cQIsHyoF6VuvkO79YjEUegGdv6cJxQkX4JJitd-uhGdg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAkaqlUJqJCtINl92Gg9Zl6qyxXUF7sZsDTnvnGr2hiWI",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": true
@@ -625,7 +689,39 @@
             "public_key": "MCowBQYDK2VwAyEAaVVHHY5qSSCt98VWlwmI-kgLNmNLyFXu0OAhvcSIgRc"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEy43HGaMwXQHQ5ptwxS6peh7zrGYwjgEroeutdAEmBXUoAN7yFZY80sGagqGCa393MSQg_5gYF998UdDN8bKIRQ",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAjWZ1sOUMxrx1bPEDG-LTBLVmnp0FWS_xW8VSLg2nSms",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE_CaMUpDhSjfydoG_j7aAQH_vsiUfQzibZtGHhQ9uSCXZQpuIllGp-lKrTlT0ACbgRw4arpSfx7WZnKURtVEUjg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAIsUkBIxNruffo2tMkwh0A_Bu1ATmqvOtnJHiKEvUjkQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": true
@@ -826,7 +922,39 @@
             "public_key": "MCowBQYDK2VwAyEAY0eGSvZwapVWwLLaAhWcTRMwNySZQodMcAg_N0wqNwI"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEq_xtuaenU_LZq2hijBtcvlleyjZk7Af-sl0XJAwfm8f6iujzetugTBR0UnHjZkPX6WOhNNQSy81tCZyl6Fhy3Q",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAfgeH9Oz-9ovVtSWMJ2iNwZCR8pstsQn3mw2W7k9UkC8",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwWyKHTmBvl8tjr3-sA0b3_vhfSSGhz0ghq4IeqyOTWsCRaWHg1U3LhHmxBlq6CK1V2ajh9HU8METgT-v26Ap0Q",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEA2UmscOpr7PdU272pfRV1RjQgmcCvxOO01xittbL4dSQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -1029,7 +1157,39 @@
             "public_key": "MCowBQYDK2VwAyEAh2RN1A-eH4Jn6du0sk9TyRBK4LF-zEc5ci5DpXg0BHI"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEohd6mTwjaccUlaKH5pLmXNDmiY1ViTS9LtsWDvlmNwuTc0ccXmGvy8bo7BatzKbru0XSyWHL4bwwSOVaxHQ-Ww",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAu0E_vKs9-pKKw8ARUCQyKv442WW_kNdDYeBXccizkkk",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER6kh6KSUSVE6wprjrpqtbeIIiBfAAR01CzTd-DC_kF_GwTODgcoo64Jgi80vGRE8Tkd7gKgfKhsejUXeNXXMgA",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEATvqD6Yoi39T_A2uoUX3NAT3tLFZ-kpTceeUhzByG_oY",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -1254,7 +1414,39 @@
             "public_key": "MCowBQYDK2VwAyEAO1m7oFdWPCCIN09ukuKV7CJuhCNNamq5mv7HjSHIYFk"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYF6Jf7npWCuqrmEY75JqfW0OlJhm5K2Ch7x66m6mbsX8W07xsjP1zUGwXpRV6Onkk64Xcd8CWTiSzfQuBfHJmA",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEARApaZbL0qsy9ptR-CIFZsf1edM3W3fFJkbD_IsEBCdQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuM2xK4kRYyE8uMDLNREaTcaWTvot1twpTQ34CHncAbS8hKHGxjVY9yZHFd5hrQkoKCt_iSPzZvwIEXqSZF8Eew",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEANYSfQHitKEgS53880Ek2i45WvsLcZT34IPz8Pa4aTsM",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -1447,7 +1639,39 @@
           }
         },
         "delegation_keys": {},
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8O0WHGa4Nd4Flnk5sJM_G10VrgvQTmcqzVJoZcCNx5uzCs9qZoPoQ8_ntzUf2qJYDeghIqYO7eObPk8khyZqSg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAKJqEdT3X3xKl-1_hlt62Sm98yhamOLAbGVDuaroOrnY",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESNGQfn0qCC69Mv29FsXfbqhvjUXUPET7oGMu9LNpLajZQFcw_elKygVheYejvXfMhH6Jq2ccKtRgrUkRDi7V1w",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEA71PZo0qAZYHw9qvtETvz91xwidHuprXrm97NIor4Hn4",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -1651,7 +1875,39 @@
             "public_key": "MCowBQYDK2VwAyEAHsy4QaQvkKeCKTCMb7C1VWIe7dd1XLaQsIuWRsELE64"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmz-HQ43-yteTw5NCqrZiDA24Td2anKm-g0EdhmAPLZ3FP7VoJGEKfFWy5Tq5gL4WR3kDsTDB9PdddBRIRr3zfg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEActdOActDgCrs5umRVdZhaRj2yjOSEA_Ol0o0st78PDg",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEawNlnEWp31UynjzFMpX_3_IWP8arC0wSBjZ9OJWOYdwIhYqHStxn28GrscsR3-SDvAKqmh0-mDCkgcsgE6--zw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAAPgW1x7px_mjOTZlziaDthcgK8lh0UDdbLmUXTkgVWs",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -1854,7 +2110,39 @@
             "public_key": "MCowBQYDK2VwAyEA0iq2k9A1WxFJmHQu4cF_v63rVvrIhLSZ8XJWyJ3dHAg"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER3WagYiyvktMWAGyMuUkgvwUGmS7F_6_D7tTF9Ds5V9zMM6NYEj5YiAM3DwHjaNUyEJagChKmrm6nMfE6Xd_Nw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAYpZ5AsTHRw_FPZYezcsZ1h3D2htSYTeO3vI9Fhx-un8",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbMnkJitliGTrjg3QELvATXlD_5Qb3TeqsQ09b3jEWX_6KfN46j7XDhRMnXv-JdXx4nV_naBQ6ZHlZuvNOgqsiw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEARJwAKyGuzttOsQ98uK5Hb8YZPGcF0rBV-Lnfx5T4yHs",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -2079,7 +2367,39 @@
             "public_key": "MCowBQYDK2VwAyEAO2JtKScWzAmyrVzysU4TnhQner-YHlHIqz60YVwsz10"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJuT8ODaTIrv--TMRTa3QOd7ddyYONfOBhFw4DExvBv6LcRmTL6OJ4vdBLDxQIqOzYVxzwFN-LfXf4WlSULUZZg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAKealwXcO_cloRLD3cfIAGxF0YVQXA_O_1mMBrw-J02o",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmKVMD4VFzHAv_6lzHkuutfGr8cTOUkhythCo4x4wPumJd0jxQyHQRDuGcVerbfRWihUjjWgd9T9QJd52FoaNyg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAroFjbgYVVyONuVQWm8aBnq3SyWWqMhJeaXX_Dl5y8dQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -2282,7 +2602,39 @@
             "public_key": "MCowBQYDK2VwAyEAl7jsWYjtsbnAHXeeI-Tcqe5MAtyRBqY-B60MFGDZk5Y"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiBynULCoq-dvloOa7YP2uNX3ZnlvLFEJ4PUhnUNpKdCNSvMlImvaIptkZrzIjnsDFlSgvgZhhf_Kfci8eBWUPg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAiANqPzsinXozgm0CpmZFBWU9yKoKVDQemZZUeI6ngOI",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFrCv_K_uOiMjGfig80a0zyjnC9nemfrB3E6b36x5iqaEKjdW9KnrL0QHmZ8X4Tv9cYIX5yqEEXO1zzmRvN8F4A",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAOvoiuI4c1pi3sSxwBKyS78PVEug4nlKbGSlktQxYKcE",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -2480,7 +2832,39 @@
             "public_key": "MCowBQYDK2VwAyEA_a2zJDBVo2Fw_ZbJYyliUZBqa5jLiHZpz4bWJwL9HSI"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:bot#1": {
+              "approver_id": "ep:approver:bot",
+              "public_key": "MCowBQYDK2VwAyEASMeMWYUk9EUNVOEaU71RugHG-zStJ6BmPILDEy14vMo",
+              "key_class": "B",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAN-OTmt_Jo16QJEsjUwtaobNtFmrZQknb76G76tHjei0",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEx_LLtfwmqUSW4qeycf9UGsO6r3QyX0Bv-fWU2XoRF_BL7KON9Zy_hYcIcRbHMeCbH5NzuNalPwA4MJ9Bqrw-hg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEASnSZoplc-vaiWI6E86563McUBaHOXKViKUHt4k0EuDc",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -2623,7 +3007,39 @@
             "public_key": "MCowBQYDK2VwAyEAKItZPKRlXQbDgh4SjhtJqhvlWdsZHxYXPdL31e2V3vQ"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmUP_g_H9SEbdjSHuPMNalIv8Y1938Rs_VOR-0d6A2yRBh-nXTF9J-wTJykChkeuBwXx-Fs9EbPGrYChwL2NT2g",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAT3_k8zuJyWM7YpjydTAygGWZhHyVKon-V0qgBUfaNbo",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYOKns9mR_KUDJWWslWh5T6YUh2YFun1LAZ8Qi_dXkyHiiyBWOKc2Y1vdTt8k0jIIN4amz4tjeiuxx_i3-stXgg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEA_0cfz0xO4AEl6RLGY5b9wlIaNhxkSIeKndxAesB_ygM",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
@@ -2826,7 +3242,39 @@
             "public_key": "MCowBQYDK2VwAyEAl7jsWYjtsbnAHXeeI-Tcqe5MAtyRBqY-B60MFGDZk5Y"
           }
         },
-        "now_ms": 1781352000000
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiBynULCoq-dvloOa7YP2uNX3ZnlvLFEJ4PUhnUNpKdCNSvMlImvaIptkZrzIjnsDFlSgvgZhhf_Kfci8eBWUPg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAiANqPzsinXozgm0CpmZFBWU9yKoKVDQemZZUeI6ngOI",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFrCv_K_uOiMjGfig80a0zyjnC9nemfrB3E6b36x5iqaEKjdW9KnrL0QHmZ8X4Tv9cYIX5yqEEXO1zzmRvN8F4A",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAOvoiuI4c1pi3sSxwBKyS78PVEug4nlKbGSlktQxYKcE",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
       },
       "expect": {
         "valid": false,
