@@ -166,11 +166,19 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           mkdir -p ../../registry-copy
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+          REGISTRY_READY=false
+          for attempt in $(seq 1 60); do
+            rm -f ../../registry-copy/pack.json
             if npm pack "@emilia-protocol/verify@$VERSION" --min-release-age=0 --json --pack-destination ../../registry-copy > ../../registry-copy/pack.json; then
+              REGISTRY_READY=true
               break
             fi
+            echo "Registry has not exposed @emilia-protocol/verify@$VERSION yet (attempt $attempt/60); retrying in 5 seconds."
             sleep 5
           done
+          if [ "$REGISTRY_READY" != "true" ]; then
+            echo "::error::npm did not expose @emilia-protocol/verify@$VERSION within 5 minutes of publication."
+            exit 2
+          fi
           REGISTRY_TARBALL=$(node -e "const r=require('../../registry-copy/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
           cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"
