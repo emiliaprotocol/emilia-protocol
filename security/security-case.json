@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2",
-  "claim_count": 18,
-  "evidence_file_count": 89,
+  "evidence_bundle_sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171",
+  "claim_count": 20,
+  "evidence_file_count": 98,
   "execution": {
     "required": true,
     "status": "passed",
@@ -158,6 +158,45 @@
         "titles": [
           "generated model: 5000 schedules preserve linearizable at-most-once effects",
           "stale replica promotion and rollback attempts fail closed"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/mobile/enrollment.test.js",
+        "titles": [
+          "enrolls only after both independently verified registration rows and atomic storage",
+          "refuses enrollment binding, WebAuthn, platform, replay, and storage failures",
+          "refuses enrollment when the agency caller is absent or not bound to the approver",
+          "two concurrent enrollment completions produce at most one active enrollment"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/mobile/government.test.js",
+        "titles": [
+          "government controller gets action and display bytes from the system of record",
+          "government controller refuses untrusted fields and unauthorized callers before protected work"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/mobile/http.test.js",
+        "titles": [
+          "mobile HTTP adapter rejects insecure, unauthenticated, duplicate, oversized, and unknown input"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/mobile/index.test.js",
+        "titles": [
+          "refuses action, presentation, origin, app, credential, profile, and UV substitution",
+          "service fails closed on store, audit, and counter failures",
+          "service registers exact bodies and only one concurrent presentation wins",
+          "verifies iOS and Android ceremonies as the same Class-A evidence shape"
         ],
         "result": "passed"
       },
@@ -386,11 +425,19 @@
       "sha256": "14fac54985549943317daa7db48cb5f2f5841e53f500fedea01bd8eec02e2b5a",
       "file_count": 62
     },
+    "mobile-sdk": {
+      "kind": "npm-tarball",
+      "package": "@emilia-protocol/mobile",
+      "version": "0.1.0",
+      "filename": "emilia-protocol-mobile-0.1.0.tgz",
+      "sha256": "694f8ebfd8e48cba1506cc7b4ec8abd93048d904fbbde251924f03deecd3b109",
+      "file_count": 10
+    },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2",
-      "file_count": 89
+      "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171",
+      "file_count": 98
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -553,7 +600,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -816,7 +863,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -924,7 +971,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1046,7 +1093,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1190,7 +1237,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1336,7 +1383,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1495,7 +1542,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1604,7 +1651,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1736,7 +1783,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1843,7 +1890,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -1967,7 +2014,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -2141,7 +2188,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -2275,7 +2322,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -2391,7 +2438,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -2525,7 +2572,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -2784,7 +2831,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -2975,7 +3022,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     },
@@ -3259,7 +3306,305 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+        }
+      ]
+    },
+    {
+      "claim_id": "mobile-ceremony-exact-binding-and-consumption",
+      "statement": "A native mobile approval or denial is accepted only when exact relying-party-created action, presentation, decision, profile, app, enrollment, origin, and validity bytes pass the pinned Class-A WebAuthn path, independently verified platform evidence is bound to the same request, and the exact registered challenge body is consumed atomically and recorded durably.",
+      "acceptance_roots": [
+        "relying-party-pinned mobile reliance profile, WebAuthn RP ID, origin allowlist, app allowlist, enrollment key, and platform-attestation policy",
+        "agency-authenticated caller and mandatory authorization policy bound to the action reference, approver, profile, app, and enrolled device",
+        "durable body-bound challenge store, authenticator counter store, and strict durable evidence log",
+        "government system of record computes the protected action and presentation"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "verifyMobileCeremony",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "createMobileCeremonyService",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/government.js",
+          "symbol": "createGovernmentMobileController",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/http.js",
+          "symbol": "createMobileHttpHandler",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "verifyMobileCeremony"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "createMobileCeremonyService"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/government.js",
+          "export": "createGovernmentMobileController"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/http.js",
+          "export": "createMobileHttpHandler"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_ios_and_android_class_a",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_substitution_matrix",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_replay_and_state_failure",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_http_boundary_attacks",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "verifies iOS and Android ceremonies as the same Class-A evidence shape",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "refuses action, presentation, origin, app, credential, profile, and UV substitution",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "service registers exact bodies and only one concurrent presentation wins",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "service fails closed on store, audit, and counter failures",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/government.test.js",
+          "title": "government controller gets action and display bytes from the system of record",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/government.test.js",
+          "title": "government controller refuses untrusted fields and unauthorized callers before protected work",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/http.test.js",
+          "title": "mobile HTTP adapter rejects insecure, unauthenticated, duplicate, oversized, and unknown input",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The mobile app-integrity row, native SDK validation, HTTP boundary, system-of-record controller, and exact stateful ceremony service are executable but are not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the enrollment directory correctly binds the approver, credential, app, and attestation key",
+        "the agency identity provider authenticates the caller and the configured authorization hook implements the relying party's intended personnel policy",
+        "the configured App Attest or Play Integrity verifier validates provider evidence and applies the relying party's pins",
+        "all protected execution paths require the consumed ceremony and clocks and durable stores meet their deployment assumptions"
+      ],
+      "exclusions": [
+        "the ceremony does not prove civil identity, comprehension, legality, wisdom, safety, execution, or physical outcome",
+        "App Attest and Play Integrity verification are online dependencies at ceremony time and are not silently claimed as offline-verifiable evidence",
+        "Swift and Kotlin canonical-byte agreement is same-team cross-platform consistency, not an independent implementation"
+      ],
+      "release_artifacts": [
+        "mobile-sdk",
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "mobile-sdk",
+          "sha256": "694f8ebfd8e48cba1506cc7b4ec8abd93048d904fbbde251924f03deecd3b109"
+        },
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "6fab806e67ce4a6cda992dd32169d3f8bb8b6c3e2768327c977c3260ad3f2458"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+        }
+      ]
+    },
+    {
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "statement": "A mobile enrollment becomes active only after the agency authorizes the authenticated caller for the named approver at issuance and completion, a WebAuthn registration adapter returns an ES256 P-256 credential under the exact RP, origin, challenge, and user-verification requirements, a platform adapter independently verifies integrity evidence over the exact enrollment binding, the challenge is consumed once, and the directory plus audit event commit atomically.",
+      "acceptance_roots": [
+        "authenticated approver enrollment request and relying-party-owned RP, origin, and app configuration",
+        "cryptographic WebAuthn registration and platform-enrollment verification adapters",
+        "durable body-bound challenge store and atomic enrollment-directory audit commit"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "symbol": "buildMobileEnrollmentBinding",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "symbol": "createMobileEnrollmentService",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "export": "buildMobileEnrollmentBinding"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "export": "createMobileEnrollmentService"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python enrollment service port is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go enrollment service port is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_atomic_mobile_enrollment",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_unverified_or_replayed_mobile_enrollment",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "enrolls only after both independently verified registration rows and atomic storage",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "refuses enrollment binding, WebAuthn, platform, replay, and storage failures",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "two concurrent enrollment completions produce at most one active enrollment",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "refuses enrollment when the agency caller is absent or not bound to the approver",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models."
+        }
+      ],
+      "assumptions": [
+        "the injected WebAuthn adapter performs full registration attestation verification and returns the authentic P-256 SPKI",
+        "the injected platform adapter verifies the provider chain or service response under relying-party pins",
+        "the authenticated enrollment requester is permitted to enroll the named approver and the directory operation is atomic"
+      ],
+      "exclusions": [
+        "the package does not infer civil identity from a passkey or platform attestation",
+        "enrollment authorization, personnel vetting, device management, and recovery policy remain relying-party responsibilities",
+        "the simulated adapters in unit tests are test doubles and not production token verifiers"
+      ],
+      "release_artifacts": [
+        "mobile-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "mobile-sdk",
+          "sha256": "694f8ebfd8e48cba1506cc7b4ec8abd93048d904fbbde251924f03deecd3b109"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
         }
       ]
     }
@@ -3410,6 +3755,10 @@
       "sha256": "6aa0116ff7629bc7451f03a1346afa13242ea4e8f79ed85e04b33ca5617855ff"
     },
     {
+      "path": "mobile/conformance/mobile-core.v1.json",
+      "sha256": "06727c183b54caa0d9f6bf1e31902a7106fb17f627725222997f5b6d2d468cc6"
+    },
+    {
       "path": "packages/gate/aec-execution.js",
       "sha256": "17eacc91ec155ee0e5400b3c95c0e6e81133e3bccea5e77532d8d1966607340f"
     },
@@ -3468,6 +3817,38 @@
     {
       "path": "packages/go-verify/trust_receipt.go",
       "sha256": "db485639f63d333b5045663a4559ec0edaca2b1563e1c9fa3a3eee3b9234c53e"
+    },
+    {
+      "path": "packages/mobile/enrollment.js",
+      "sha256": "1002ad4e7be5d46228e8833fa8964cf72ca8cb1bea48ded65e83db0998db9dab"
+    },
+    {
+      "path": "packages/mobile/enrollment.test.js",
+      "sha256": "669bee89031e90eb5e1573d522b727eefcaeaa47bb7f482fc5818985952ae03f"
+    },
+    {
+      "path": "packages/mobile/government.js",
+      "sha256": "ee3df544715c0da2ffe9ea65d29796c46449a4b90659c8cd9be92f61aab5ddb5"
+    },
+    {
+      "path": "packages/mobile/government.test.js",
+      "sha256": "f585ceaf8f75123c53324e36c50514d49521bf20ddb032374f1d607abd21a584"
+    },
+    {
+      "path": "packages/mobile/http.js",
+      "sha256": "e5b3a212d449829123557c438101b122166a2cb8bc651cd0f62bb5640f6df1fb"
+    },
+    {
+      "path": "packages/mobile/http.test.js",
+      "sha256": "65fa5ec9d9119e307b5f6045e25e29488fa79c963c12a63abae75f2b4ae8fda5"
+    },
+    {
+      "path": "packages/mobile/index.js",
+      "sha256": "6da8e7dfa8916783e9f7e11598cd2ad4fa6cafd7e794c8762aadff15e37f5312"
+    },
+    {
+      "path": "packages/mobile/index.test.js",
+      "sha256": "c0ea5f9c9e7c76c4d2e6cd070203bd5ee72a4817722ea559456519c9577741bb"
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
@@ -3555,7 +3936,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "6bfc499dd34d0d509dcc27df4c71520e400a155fbde911acada6fe17d15b9daa"
+      "sha256": "f5c9838d87a735b23e9b8edff9816f41e9397c30a8c47c04afd04c6f5f16a239"
     },
     {
       "path": "security/vectors.v1.json",

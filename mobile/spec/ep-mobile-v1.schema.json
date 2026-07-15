@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-mobile-v1.schema.json",
+  "title": "EMILIA Mobile v1 artifacts",
+  "oneOf": [
+    { "$ref": "#/$defs/profile" },
+    { "$ref": "#/$defs/challenge" },
+    { "$ref": "#/$defs/ceremony" },
+    { "$ref": "#/$defs/acknowledgement" }
+  ],
+  "$defs": {
+    "safeInteger": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "canonicalInstant": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9:_.@-]{3,256}$"
+    },
+    "base64url": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^(sha256:)?[0-9a-f]{64}$"
+    },
+    "jsonObject": {
+      "type": "object"
+    },
+    "mobileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "profile_hash",
+        "platform",
+        "app_id",
+        "device_key_id",
+        "credential_id",
+        "attestation_key_id"
+      ],
+      "properties": {
+        "profile": { "const": "EP-MOBILE-CHALLENGE-v1" },
+        "profile_hash": { "$ref": "#/$defs/hash" },
+        "platform": { "enum": ["ios", "android"] },
+        "app_id": { "$ref": "#/$defs/identifier" },
+        "device_key_id": { "$ref": "#/$defs/identifier" },
+        "credential_id": { "$ref": "#/$defs/base64url" },
+        "attestation_key_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "authorizationContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ep_version",
+        "context_type",
+        "action_hash",
+        "policy_id",
+        "policy_hash",
+        "initiator",
+        "approver",
+        "approver_index",
+        "required_approvals",
+        "nonce",
+        "issued_at",
+        "expires_at",
+        "decision",
+        "display_hash",
+        "mobile_binding"
+      ],
+      "properties": {
+        "ep_version": { "const": "1.0" },
+        "context_type": { "const": "ep.signoff.v1" },
+        "action_hash": { "$ref": "#/$defs/hash" },
+        "policy_id": { "type": ["string", "null"] },
+        "policy_hash": {
+          "oneOf": [
+            { "$ref": "#/$defs/hash" },
+            { "type": "null" }
+          ]
+        },
+        "initiator": { "$ref": "#/$defs/identifier" },
+        "approver": { "$ref": "#/$defs/identifier" },
+        "approver_index": { "const": 1 },
+        "required_approvals": { "const": 1 },
+        "nonce": { "$ref": "#/$defs/identifier" },
+        "issued_at": { "$ref": "#/$defs/canonicalInstant" },
+        "expires_at": { "$ref": "#/$defs/canonicalInstant" },
+        "decision": { "enum": ["approved", "denied"] },
+        "display_hash": { "$ref": "#/$defs/hash" },
+        "mobile_binding": { "$ref": "#/$defs/mobileBinding" }
+      }
+    },
+    "enrollment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device_key_id",
+        "credential_id",
+        "public_key_spki",
+        "approver_id",
+        "platform",
+        "app_id",
+        "attestation_key_id",
+        "status",
+        "valid_from",
+        "valid_to"
+      ],
+      "properties": {
+        "device_key_id": { "$ref": "#/$defs/identifier" },
+        "credential_id": { "$ref": "#/$defs/base64url" },
+        "public_key_spki": { "$ref": "#/$defs/base64url" },
+        "approver_id": { "$ref": "#/$defs/identifier" },
+        "platform": { "enum": ["ios", "android"] },
+        "app_id": { "$ref": "#/$defs/identifier" },
+        "attestation_key_id": { "$ref": "#/$defs/identifier" },
+        "status": { "enum": ["active", "revoked"] },
+        "valid_from": { "$ref": "#/$defs/canonicalInstant" },
+        "valid_to": { "$ref": "#/$defs/canonicalInstant" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "profile_id",
+        "rp_id",
+        "allowed_origins",
+        "accepted_apps",
+        "requirements",
+        "enrollments",
+        "profile_hash"
+      ],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-RELIANCE-PROFILE-v1" },
+        "profile_id": { "$ref": "#/$defs/identifier" },
+        "rp_id": { "type": "string", "minLength": 1, "maxLength": 253 },
+        "allowed_origins": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^https://" }
+        },
+        "accepted_apps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ios", "android"],
+          "properties": {
+            "ios": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/identifier" } },
+            "android": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/identifier" } }
+          }
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "attestation_required",
+            "hardware_backed_required",
+            "strong_integrity_required",
+            "max_challenge_age_ms",
+            "counter_policy"
+          ],
+          "properties": {
+            "attestation_required": { "type": "boolean" },
+            "hardware_backed_required": { "type": "boolean" },
+            "strong_integrity_required": { "type": "boolean" },
+            "max_challenge_age_ms": { "type": "integer", "minimum": 10000, "maximum": 900000 },
+            "counter_policy": { "enum": ["ignore", "monotonic_if_nonzero"] }
+          }
+        },
+        "enrollments": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/enrollment" }
+        },
+        "profile_hash": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "challenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "challenge_profile",
+        "challenge_id",
+        "nonce",
+        "action",
+        "action_hash",
+        "profile_hash",
+        "authorization_context",
+        "webauthn",
+        "presentation",
+        "issued_at",
+        "expires_at",
+        "attestation"
+      ],
+      "properties": {
+        "@version": { "const": "AE-CHALLENGE-v1" },
+        "challenge_profile": { "const": "EP-MOBILE-CHALLENGE-v1" },
+        "challenge_id": { "$ref": "#/$defs/identifier" },
+        "nonce": { "$ref": "#/$defs/identifier" },
+        "action": { "$ref": "#/$defs/jsonObject" },
+        "action_hash": { "$ref": "#/$defs/hash" },
+        "profile_hash": { "$ref": "#/$defs/hash" },
+        "authorization_context": { "$ref": "#/$defs/authorizationContext" },
+        "webauthn": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["rp_id", "challenge", "credential_ids", "user_verification", "timeout_ms"],
+          "properties": {
+            "rp_id": { "type": "string", "minLength": 1 },
+            "challenge": { "$ref": "#/$defs/base64url" },
+            "credential_ids": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/base64url" } },
+            "user_verification": { "const": "required" },
+            "timeout_ms": { "type": "integer", "minimum": 1, "maximum": 900000 }
+          }
+        },
+        "presentation": { "$ref": "#/$defs/jsonObject" },
+        "issued_at": { "$ref": "#/$defs/canonicalInstant" },
+        "expires_at": { "$ref": "#/$defs/canonicalInstant" },
+        "attestation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "format", "binding", "request_hash"],
+          "properties": {
+            "required": { "type": "boolean" },
+            "format": { "enum": ["apple-app-attest", "play-integrity-standard"] },
+            "binding": { "$ref": "#/$defs/jsonObject" },
+            "request_hash": { "$ref": "#/$defs/base64url" }
+          }
+        }
+      }
+    },
+    "ceremony": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "challenge_id",
+        "nonce",
+        "platform",
+        "app_id",
+        "device_key_id",
+        "credential_id",
+        "attestation_key_id",
+        "decision",
+        "display_hash",
+        "signoff",
+        "attestation"
+      ],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-CEREMONY-v1" },
+        "challenge_id": { "$ref": "#/$defs/identifier" },
+        "nonce": { "$ref": "#/$defs/identifier" },
+        "platform": { "enum": ["ios", "android"] },
+        "app_id": { "$ref": "#/$defs/identifier" },
+        "device_key_id": { "$ref": "#/$defs/identifier" },
+        "credential_id": { "$ref": "#/$defs/base64url" },
+        "attestation_key_id": { "$ref": "#/$defs/identifier" },
+        "decision": { "enum": ["approved", "denied"] },
+        "display_hash": { "$ref": "#/$defs/hash" },
+        "signoff": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["context", "webauthn"],
+          "properties": {
+            "context": { "$ref": "#/$defs/authorizationContext" },
+            "webauthn": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["authenticator_data", "client_data_json", "signature"],
+              "properties": {
+                "authenticator_data": { "$ref": "#/$defs/base64url" },
+                "client_data_json": { "$ref": "#/$defs/base64url" },
+                "signature": { "$ref": "#/$defs/base64url" }
+              }
+            }
+          }
+        },
+        "attestation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format", "token"],
+          "properties": {
+            "format": { "enum": ["apple-app-attest", "play-integrity-standard"] },
+            "token": { "$ref": "#/$defs/base64url" }
+          }
+        }
+      }
+    },
+    "acknowledgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "verdict",
+        "decision",
+        "context_hash",
+        "approver_id",
+        "device_key_id",
+        "receipt_id",
+        "recorded_at",
+        "signer_key_id",
+        "signature"
+      ],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-ACK-v1" },
+        "verdict": { "const": "verified" },
+        "decision": { "enum": ["approved", "denied"] },
+        "context_hash": { "$ref": "#/$defs/hash" },
+        "approver_id": { "$ref": "#/$defs/identifier" },
+        "device_key_id": { "$ref": "#/$defs/identifier" },
+        "receipt_id": { "type": ["string", "null"] },
+        "recorded_at": { "$ref": "#/$defs/canonicalInstant" },
+        "signer_key_id": { "$ref": "#/$defs/identifier" },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "value"],
+          "properties": {
+            "algorithm": { "const": "Ed25519" },
+            "value": { "$ref": "#/$defs/base64url" }
+          }
+        }
+      }
+    }
+  }
+}

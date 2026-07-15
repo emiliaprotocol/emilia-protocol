@@ -1,0 +1,51 @@
+{
+  "name": "@emilia-protocol/mobile",
+  "version": "0.1.0",
+  "description": "Native mobile ceremony contract and fail-closed server verifier for EMILIA Class-A authorization evidence.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "attestation.js",
+    "enrollment.js",
+    "government.js",
+    "http.js",
+    "strict-json.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@emilia-protocol/verify": "^3.8.1"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "mobile",
+    "webauthn",
+    "passkeys",
+    "app-attest",
+    "play-integrity",
+    "government"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/mobile"
+  },
+  "homepage": "https://emiliaprotocol.ai",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
+  "author": "EMILIA Protocol, Inc.",
+  "scripts": {
+    "test": "node --test *.test.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

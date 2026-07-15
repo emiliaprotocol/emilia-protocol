@@ -8,6 +8,7 @@
   "release_artifacts": {
     "verify-sdk": { "kind": "npm", "path": "packages/verify" },
     "gate-sdk": { "kind": "npm", "path": "packages/gate" },
+    "mobile-sdk": { "kind": "npm", "path": "packages/mobile" },
     "security-evidence": { "kind": "content-addressed-evidence-bundle" }
   },
   "claims": [
@@ -796,6 +797,109 @@
         "offline AEC verification does not prove current revocation status or atomic one-time consumption; an execution gate must enforce those stateful properties separately"
       ],
       "release_artifacts": ["security-evidence"]
+    },
+    {
+      "claim_id": "mobile-ceremony-exact-binding-and-consumption",
+      "statement": "A native mobile approval or denial is accepted only when exact relying-party-created action, presentation, decision, profile, app, enrollment, origin, and validity bytes pass the pinned Class-A WebAuthn path, independently verified platform evidence is bound to the same request, and the exact registered challenge body is consumed atomically and recorded durably.",
+      "acceptance_roots": [
+        "relying-party-pinned mobile reliance profile, WebAuthn RP ID, origin allowlist, app allowlist, enrollment key, and platform-attestation policy",
+        "agency-authenticated caller and mandatory authorization policy bound to the action reference, approver, profile, app, and enrolled device",
+        "durable body-bound challenge store, authenticator counter store, and strict durable evidence log",
+        "government system of record computes the protected action and presentation"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "verifyMobileCeremony", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "createMobileCeremonyService", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/government.js", "symbol": "createGovernmentMobileController", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/http.js", "symbol": "createMobileHttpHandler", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "verifyMobileCeremony" },
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "createMobileCeremonyService" },
+        { "language": "javascript", "file": "packages/mobile/government.js", "export": "createGovernmentMobileController" },
+        { "language": "javascript", "file": "packages/mobile/http.js", "export": "createMobileHttpHandler" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },
+        "python": { "status": "gap", "reason": "No Python mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports." },
+        "go": { "status": "gap", "reason": "No Go mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports." }
+      },
+      "vectors": [
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "accept_ios_and_android_class_a", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_mobile_substitution_matrix", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_mobile_replay_and_state_failure", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_mobile_http_boundary_attacks", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/mobile/index.test.js", "title": "verifies iOS and Android ceremonies as the same Class-A evidence shape", "runner": "node-test" },
+        { "file": "packages/mobile/index.test.js", "title": "refuses action, presentation, origin, app, credential, profile, and UV substitution", "runner": "node-test" },
+        { "file": "packages/mobile/index.test.js", "title": "service registers exact bodies and only one concurrent presentation wins", "runner": "node-test" },
+        { "file": "packages/mobile/index.test.js", "title": "service fails closed on store, audit, and counter failures", "runner": "node-test" },
+        { "file": "packages/mobile/government.test.js", "title": "government controller gets action and display bytes from the system of record", "runner": "node-test" },
+        { "file": "packages/mobile/government.test.js", "title": "government controller refuses untrusted fields and unauthorized callers before protected work", "runner": "node-test" },
+        { "file": "packages/mobile/http.test.js", "title": "mobile HTTP adapter rejects insecure, unauthenticated, duplicate, oversized, and unknown input", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The mobile app-integrity row, native SDK validation, HTTP boundary, system-of-record controller, and exact stateful ceremony service are executable but are not represented in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "the enrollment directory correctly binds the approver, credential, app, and attestation key",
+        "the agency identity provider authenticates the caller and the configured authorization hook implements the relying party's intended personnel policy",
+        "the configured App Attest or Play Integrity verifier validates provider evidence and applies the relying party's pins",
+        "all protected execution paths require the consumed ceremony and clocks and durable stores meet their deployment assumptions"
+      ],
+      "exclusions": [
+        "the ceremony does not prove civil identity, comprehension, legality, wisdom, safety, execution, or physical outcome",
+        "App Attest and Play Integrity verification are online dependencies at ceremony time and are not silently claimed as offline-verifiable evidence",
+        "Swift and Kotlin canonical-byte agreement is same-team cross-platform consistency, not an independent implementation"
+      ],
+      "release_artifacts": ["mobile-sdk", "verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "statement": "A mobile enrollment becomes active only after the agency authorizes the authenticated caller for the named approver at issuance and completion, a WebAuthn registration adapter returns an ES256 P-256 credential under the exact RP, origin, challenge, and user-verification requirements, a platform adapter independently verifies integrity evidence over the exact enrollment binding, the challenge is consumed once, and the directory plus audit event commit atomically.",
+      "acceptance_roots": [
+        "authenticated approver enrollment request and relying-party-owned RP, origin, and app configuration",
+        "cryptographic WebAuthn registration and platform-enrollment verification adapters",
+        "durable body-bound challenge store and atomic enrollment-directory audit commit"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "symbol": "buildMobileEnrollmentBinding", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "symbol": "createMobileEnrollmentService", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "export": "buildMobileEnrollmentBinding" },
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "export": "createMobileEnrollmentService" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },
+        "python": { "status": "gap", "reason": "No Python enrollment service port is claimed." },
+        "go": { "status": "gap", "reason": "No Go enrollment service port is claimed." }
+      },
+      "vectors": [
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "accept_atomic_mobile_enrollment", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_unverified_or_replayed_mobile_enrollment", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/mobile/enrollment.test.js", "title": "enrolls only after both independently verified registration rows and atomic storage", "runner": "node-test" },
+        { "file": "packages/mobile/enrollment.test.js", "title": "refuses enrollment binding, WebAuthn, platform, replay, and storage failures", "runner": "node-test" },
+        { "file": "packages/mobile/enrollment.test.js", "title": "two concurrent enrollment completions produce at most one active enrollment", "runner": "node-test" },
+        { "file": "packages/mobile/enrollment.test.js", "title": "refuses enrollment when the agency caller is absent or not bound to the approver", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models." }
+      ],
+      "assumptions": [
+        "the injected WebAuthn adapter performs full registration attestation verification and returns the authentic P-256 SPKI",
+        "the injected platform adapter verifies the provider chain or service response under relying-party pins",
+        "the authenticated enrollment requester is permitted to enroll the named approver and the directory operation is atomic"
+      ],
+      "exclusions": [
+        "the package does not infer civil identity from a passkey or platform attestation",
+        "enrollment authorization, personnel vetting, device management, and recovery policy remain relying-party responsibilities",
+        "the simulated adapters in unit tests are test doubles and not production token verifiers"
+      ],
+      "release_artifacts": ["mobile-sdk", "security-evidence"]
     }
   ]
 }
