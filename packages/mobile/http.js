@@ -4,6 +4,9 @@ import { strictJsonGate } from './strict-json.js';
 const JSON_HEADERS = Object.freeze({
   'cache-control': 'no-store',
   'content-type': 'application/json; charset=utf-8',
+  pragma: 'no-cache',
+  'referrer-policy': 'no-referrer',
+  'x-content-type-options': 'nosniff',
 });
 const ENROLLMENT_ISSUE_MEMBERS = new Set(['approver_id', 'platform', 'app_id']);
 const PRESENTATION_MEMBERS = new Set(['challenge', 'response']);
@@ -93,6 +96,7 @@ export function createMobileHttpHandler({
   resolveEnrollmentIdentity,
   enrollmentConfig,
   maxBodyBytes = 1_048_576,
+  routePrefix = '/v1/mobile',
 } = {}) {
   if (typeof controller?.issue !== 'function' || typeof controller?.verify !== 'function') {
     throw new TypeError('controller must be a government mobile controller');
@@ -104,12 +108,16 @@ export function createMobileHttpHandler({
   if (typeof resolveEnrollmentIdentity !== 'function') {
     throw new TypeError('resolveEnrollmentIdentity must read the agency identity directory');
   }
+  const enrollmentOrigins = enrollmentConfig?.origins;
   if (!record(enrollmentConfig) || typeof enrollmentConfig.rpId !== 'string'
-      || typeof enrollmentConfig.origin !== 'string' || !enrollmentConfig.origin.startsWith('https://')) {
-    throw new TypeError('enrollmentConfig must pin rpId and HTTPS origin');
+      || (!record(enrollmentOrigins) && typeof enrollmentConfig.origin !== 'string')) {
+    throw new TypeError('enrollmentConfig must pin rpId and platform origins');
   }
   if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes < 1024 || maxBodyBytes > 2_097_152) {
     throw new TypeError('maxBodyBytes must be an integer from 1024 to 2097152');
+  }
+  if (typeof routePrefix !== 'string' || !/^\/[A-Za-z0-9/_-]+$/.test(routePrefix)) {
+    throw new TypeError('routePrefix must be an absolute path prefix');
   }
 
   return async function handleMobileRequest(request) {
@@ -120,10 +128,10 @@ export function createMobileHttpHandler({
       return refused(400, 'refuse_malformed', 'request URL is malformed');
     }
     const routes = new Set([
-      '/v1/mobile/challenges',
-      '/v1/mobile/ceremonies',
-      '/v1/mobile/enrollments/challenges',
-      '/v1/mobile/enrollments',
+      `${routePrefix}/challenges`,
+      `${routePrefix}/ceremonies`,
+      `${routePrefix}/enrollments/challenges`,
+      `${routePrefix}/enrollments`,
     ]);
     if (!routes.has(url.pathname)) return refused(404, 'refuse_malformed', 'mobile endpoint not found');
     if (request.method !== 'POST') {
@@ -150,14 +158,14 @@ export function createMobileHttpHandler({
 
     try {
       let result;
-      if (url.pathname === '/v1/mobile/challenges') {
+      if (url.pathname === `${routePrefix}/challenges`) {
         result = await controller.issue(body, caller);
-      } else if (url.pathname === '/v1/mobile/ceremonies') {
+      } else if (url.pathname === `${routePrefix}/ceremonies`) {
         if (!exactMembers(body, PRESENTATION_MEMBERS)) {
           return refused(400, 'refuse_malformed', 'ceremony body has unknown members');
         }
         result = await controller.verify(body, caller);
-      } else if (url.pathname === '/v1/mobile/enrollments/challenges') {
+      } else if (url.pathname === `${routePrefix}/enrollments/challenges`) {
         if (!exactMembers(body, ENROLLMENT_ISSUE_MEMBERS)
             || typeof body.approver_id !== 'string'
             || !['ios', 'android'].includes(body.platform)
@@ -174,7 +182,9 @@ export function createMobileHttpHandler({
           platform: body.platform,
           appId: body.app_id,
           rpId: enrollmentConfig.rpId,
-          origin: enrollmentConfig.origin,
+          origin: record(enrollmentOrigins)
+            ? enrollmentOrigins[body.platform]
+            : enrollmentConfig.origin,
           userName: identity.userName,
           displayName: identity.displayName,
           caller,

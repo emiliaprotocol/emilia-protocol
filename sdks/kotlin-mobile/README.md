@@ -27,3 +27,9 @@ Run:
 ```sh
 ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew testDebugUnitTest
 ```
+
+The production reference app uses `ai.emiliaprotocol.approver`, Android 13 or
+newer, release-only screen-capture blocking, Keystore-protected session state,
+and a build gate that refuses an unsigned release or a missing Play cloud
+project. A downstream distributor must change the package, Play signing
+identity, asset links, server pins, and integrity policy as one trust bundle.

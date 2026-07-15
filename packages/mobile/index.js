@@ -75,6 +75,7 @@ export const MOBILE_VERDICTS = Object.freeze([
   'refuse_attestation',
   'refuse_counter_rollback',
   'refuse_replay',
+  'refuse_rate_limited',
   'refuse_store_unavailable',
   'refuse_audit_unavailable',
 ]);
@@ -86,6 +87,8 @@ const PLATFORM_ATTESTATION_FORMAT = Object.freeze({
 const HEX_256 = /^(?:sha256:)?[0-9a-f]{64}$/;
 const B64U = /^[A-Za-z0-9_-]+$/;
 const ID = /^[A-Za-z0-9:_.@-]{3,256}$/;
+const ATTESTATION_KEY_ID = /^[A-Za-z0-9:._+/=-]{3,512}$/;
+const ANDROID_APK_ORIGIN = /^android:apk-key-hash:[A-Za-z0-9_-]{43}$/;
 const CANONICAL_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const CONTEXT_MEMBERS = new Set([
   'ep_version', 'context_type', 'action_hash', 'policy_id', 'policy_hash',
@@ -166,6 +169,21 @@ function validId(value) {
   return typeof value === 'string' && ID.test(value);
 }
 
+function validAttestationKeyId(value) {
+  return typeof value === 'string' && ATTESTATION_KEY_ID.test(value);
+}
+
+function validOrigin(value) {
+  if (typeof value !== 'string' || value.length > 512) return false;
+  if (ANDROID_APK_ORIGIN.test(value)) return true;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' && parsed.username === '' && parsed.password === '';
+  } catch {
+    return false;
+  }
+}
+
 function validB64u(value, maxBytes = 64 * 1024) {
   if (typeof value !== 'string' || !value || value.length > Math.ceil(maxBytes * 4 / 3) + 4 || !B64U.test(value)) return false;
   try {
@@ -211,7 +229,7 @@ function normalizeEnrollment(enrollment) {
       || !validId(normalized.approver_id)
       || !['ios', 'android'].includes(normalized.platform)
       || !validId(normalized.app_id)
-      || !validId(normalized.attestation_key_id)
+      || !validAttestationKeyId(normalized.attestation_key_id)
       || !['active', 'revoked'].includes(normalized.status)
       || parseInstant(normalized.valid_from) === null
       || parseInstant(normalized.valid_to) === null
@@ -237,8 +255,8 @@ export function createMobileRelianceProfile({
     throw new TypeError('profileId and rpId are required');
   }
   if (!Array.isArray(allowedOrigins) || allowedOrigins.length === 0
-      || allowedOrigins.some((origin) => typeof origin !== 'string' || !origin.startsWith('https://'))) {
-    throw new TypeError('allowedOrigins must contain HTTPS origins');
+      || allowedOrigins.some((origin) => !validOrigin(origin))) {
+    throw new TypeError('allowedOrigins must contain HTTPS or pinned Android APK origins');
   }
   if (!isRecord(acceptedApps)
       || !Array.isArray(acceptedApps.ios)
@@ -774,6 +792,7 @@ export function createMobileCeremonyService({
   auditLog,
   attestationVerifier,
   counterStore = null,
+  commitDecision = null,
   clock = () => new Date().toISOString(),
   allowEphemeral = false,
 } = {}) {
@@ -784,6 +803,9 @@ export function createMobileCeremonyService({
   if (!allowEphemeral && challengeStore.durable !== true) throw new TypeError('durable challengeStore is required');
   if (!allowEphemeral && !(auditLog.durable === true && auditLog.strict === true)) {
     throw new TypeError('durable strict auditLog is required');
+  }
+  if (commitDecision !== null && typeof commitDecision !== 'function') {
+    throw new TypeError('commitDecision must be a function when provided');
   }
   if (typeof clock !== 'function') throw new TypeError('clock must be a function');
 
@@ -850,6 +872,44 @@ export function createMobileCeremonyService({
           result = refused('refuse_store_unavailable', 'authenticator counter store is unavailable', result.checks);
           return recordOrRefuse(challenge, result);
         }
+      }
+
+      if (commitDecision !== null) {
+        const auditEntry = decisionRecord(challenge, result);
+        let committed;
+        try {
+          committed = await commitDecision({ challenge, result, auditEntry });
+          if (committed === false) {
+            result = refused(
+              'refuse_replay',
+              'the protected action was already decided or is not bound to this challenge',
+              result.checks,
+            );
+            return recordOrRefuse(challenge, result);
+          }
+        } catch {
+          result = refused(
+            'refuse_store_unavailable',
+            'the protected action decision could not be committed',
+            result.checks,
+          );
+          return recordOrRefuse(challenge, result);
+        }
+
+        const atomicallyAudited = {
+          ...result,
+          audit_record: committed?.audit_record,
+        };
+        if (committed?.committed !== true || !auditRecordMatches(challenge, atomicallyAudited)) {
+          return {
+            valid: false,
+            verdict: 'refuse_audit_unavailable',
+            decision: null,
+            checks: result.checks,
+            reason: 'the protected action and portable evidence were not committed atomically',
+          };
+        }
+        return atomicallyAudited;
       }
 
       return recordOrRefuse(challenge, result);

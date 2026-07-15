@@ -405,6 +405,63 @@ test('service fails closed on store, audit, and counter failures', async () => {
   assert.equal((await counterRollback.verifyAndConsume(item)).verdict, 'refuse_counter_rollback');
 });
 
+test('service commits the protected action exactly once before reporting verified', async () => {
+  const item = fixture({ counter: 0 });
+  let committed = 0;
+  const committedEvidence = durableAuditLog();
+  const service = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    commitDecision: async ({ challenge, result, auditEntry }) => {
+      assert.equal(challenge.challenge_id, item.challenge.challenge_id);
+      assert.equal(result.decision, 'approved');
+      assert.equal(auditEntry.event_type, 'mobile.ceremony.decision');
+      committed += 1;
+      return {
+        committed: true,
+        audit_record: await committedEvidence.record(auditEntry),
+      };
+    },
+    clock: () => NOW,
+  });
+  const accepted = await service.verifyAndConsume(item);
+  assert.equal(accepted.valid, true);
+  assert.equal(committed, 1);
+  assert.equal(accepted.audit_record.event_type, 'mobile.ceremony.decision');
+
+  const splitWrite = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    async commitDecision() { return true; },
+    clock: () => NOW,
+  });
+  assert.equal((await splitWrite.verifyAndConsume(item)).verdict, 'refuse_audit_unavailable');
+
+  const conflict = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    async commitDecision() { return false; },
+    clock: () => NOW,
+  });
+  assert.equal((await conflict.verifyAndConsume(item)).verdict, 'refuse_replay');
+
+  const unavailable = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    async commitDecision() { throw new Error('database unavailable'); },
+    clock: () => NOW,
+  });
+  assert.equal((await unavailable.verifyAndConsume(item)).verdict, 'refuse_store_unavailable');
+});
+
 test('signed acknowledgement is independently verifiable and tamper evident', async () => {
   const item = fixture({ counter: 0 });
   const result = await verifyMobileCeremony({ ...item, now: NOW });

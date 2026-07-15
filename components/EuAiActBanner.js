@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 // EU AI Act status, kept honest and current. The Digital Omnibus provisional
@@ -16,10 +17,13 @@ const DISMISS_KEY = 'ep_euaiact_banner_dismissed_v2';
 
 export default function EuAiActBanner() {
   const [show, setShow] = useState(false);
+  const pathname = usePathname();
+  const suppressed = pathname?.startsWith('/mobile/');
 
   // Client-only — avoids SSR/hydration mismatch and lets us read the
   // per-browser dismissal flag without flashing for dismissed users.
   useEffect(() => {
+    if (suppressed) return undefined;
     let cancelled = false;
     Promise.resolve().then(() => {
       if (cancelled) return;
@@ -29,9 +33,9 @@ export default function EuAiActBanner() {
       setShow(true);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [suppressed]);
 
-  if (!show) return null;
+  if (suppressed || !show) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }

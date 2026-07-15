@@ -104,6 +104,22 @@ const ROUTE_POLICIES = {
   'POST /api/v1/signoffs/*/approve-webauthn':      { rateCategory: 'submit', useAuth: false }, // device-key decision
   'POST /api/v1/approvers/webauthn/register-options': { rateCategory: 'submit', useAuth: true }, // begin passkey enrollment
   'POST /api/v1/approvers/webauthn/register-verify':  { rateCategory: 'submit', useAuth: true }, // complete enrollment
+
+  // Native approval reference apps. Pairing creation and demo injection use
+  // organization API keys. Pairing exchange is capability-code authenticated;
+  // runtime routes authenticate an ep_mobile_ bearer token in-route and apply a
+  // second, session-scoped limit after token verification. The edge limit is
+  // deliberately IP-only so attacker-supplied bearer text cannot create free
+  // rate-limit identities before authentication.
+  'POST /api/v1/mobile/pairings':               { rateCategory: 'mobile_pairing', useAuth: true },
+  'POST /api/v1/mobile/pairings/exchange':      { rateCategory: 'mobile_pairing', useAuth: false },
+  'GET /api/v1/mobile/inbox':                   { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/challenges':             { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/ceremonies':             { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/enrollments/challenges': { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/enrollments':            { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'DELETE /api/v1/mobile/session':              { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/demo/actions':           { rateCategory: 'protocol_write', useAuth: true },
   // GovGuard + FinGuard demo adapters (MD §8) — thin façades over
   // /api/v1/trust-receipts pre-filled for specific workflows. Same auth +
   // rate posture as the underlying create endpoint. All implemented via

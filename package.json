@@ -44,7 +44,12 @@
     "caid:conformance": "node caid/conformance/run.mjs",
     "m2m:conformance": "node conformance/run-model-to-matter.mjs",
     "mobile:conformance": "node mobile/conformance/run.mjs",
+    "mobile:release-check": "node scripts/check-mobile-release.mjs",
+    "mobile:production-readiness": "node scripts/check-mobile-production.mjs",
+    "mobile:db-contract": "bash scripts/test-mobile-migration.sh",
     "mobile:regulator-demo": "node examples/regulatory-mobile-oversight/demo.mjs",
+    "mobile:live-demo": "node scripts/mobile-live-demo.mjs",
+    "mobile:ios-showcase": "bash scripts/mobile-ios-showcase.sh",
     "conformance:manifest": "node scripts/generate-conformance-manifest.mjs --emit conformance/conformance-manifest.json",
     "conformance:manifest:check": "node scripts/generate-conformance-manifest.mjs --check",
     "conformance:manifest:clean-room": "node scripts/check-frozen-clean-room.mjs",
@@ -74,12 +79,14 @@
     ]
   },
   "dependencies": {
+    "@emilia-protocol/verify": "file:packages/verify",
     "@node-saml/node-saml": "^5.1.0",
     "@remotion/player": "^4.0.481",
     "@sentry/nextjs": "10.59.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.1",
     "@supabase/supabase-js": "^2.108.2",
+    "cbor": "10.0.12",
     "cbor-x": "^1.6.4",
     "jose": "^6.2.3",
     "lucide-react": "^1.23.0",
@@ -87,6 +94,7 @@
     "mcp-handler": "^1.1.0",
     "motion": "^12.40.0",
     "next": "^15.5.19",
+    "node-app-attest": "1.0.1",
     "pdf-parse": "^2.4.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -116,6 +124,7 @@
     "husky": "^9.0.0",
     "lint-staged": "^17.0.8",
     "pg": "^8.22.0",
+    "qrcode": "1.5.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

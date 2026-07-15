@@ -77,7 +77,7 @@ class EmiliaAndroidPasskeyRegistrationProvider(
             request = CreatePublicKeyCredentialRequest(
                 requestJson = buildJsonObject {
                     put("challenge", challenge.base64Url())
-                    put("rp", buildJsonObject { put("id", rpId); put("name", "EMILIA Government Approval") })
+                    put("rp", buildJsonObject { put("id", rpId); put("name", "EMILIA Approver") })
                     put("user", buildJsonObject {
                         put("id", userId.base64Url())
                         put("name", userName)
@@ -106,12 +106,16 @@ class EmiliaPlayIntegrityProvider private constructor(
     override val format: String = "play-integrity-standard"
 
     override suspend fun assertion(requestHash: ByteArray): ByteArray = suspendCancellableCoroutine { continuation ->
+        require(requestHash.size == 32) { "Play Integrity request hash must be SHA-256" }
         tokenProvider.request(
             StandardIntegrityManager.StandardIntegrityTokenRequest.builder()
                 .setRequestHash(requestHash.base64Url())
                 .build()
-        ).addOnSuccessListener { token -> continuation.resume(token.token().toByteArray(Charsets.UTF_8)) }
-            .addOnFailureListener { error -> continuation.resumeWithException(error) }
+        ).addOnSuccessListener { token ->
+            if (continuation.isActive) continuation.resume(token.token().toByteArray(Charsets.UTF_8))
+        }.addOnFailureListener { error ->
+            if (continuation.isActive) continuation.resumeWithException(error)
+        }
     }
 
     companion object {
@@ -120,14 +124,18 @@ class EmiliaPlayIntegrityProvider private constructor(
             cloudProjectNumber: Long,
             attestationKeyId: String,
         ): EmiliaPlayIntegrityProvider = suspendCancellableCoroutine { continuation ->
+            require(cloudProjectNumber > 0) { "Play Integrity cloud project number must be configured" }
+            require(attestationKeyId.isNotBlank()) { "Play Integrity key identifier must be configured" }
             val manager = IntegrityManagerFactory.createStandard(context.applicationContext)
             manager.prepareIntegrityToken(
                 StandardIntegrityManager.PrepareIntegrityTokenRequest.builder()
                     .setCloudProjectNumber(cloudProjectNumber)
                     .build()
             ).addOnSuccessListener { provider ->
-                continuation.resume(EmiliaPlayIntegrityProvider(provider, attestationKeyId))
-            }.addOnFailureListener { error -> continuation.resumeWithException(error) }
+                if (continuation.isActive) continuation.resume(EmiliaPlayIntegrityProvider(provider, attestationKeyId))
+            }.addOnFailureListener { error ->
+                if (continuation.isActive) continuation.resumeWithException(error)
+            }
         }
     }
 }

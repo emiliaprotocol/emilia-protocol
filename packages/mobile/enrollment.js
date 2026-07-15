@@ -9,6 +9,8 @@ export const MOBILE_ENROLLMENT_CHALLENGE_VERSION = 'EP-MOBILE-ENROLLMENT-CHALLEN
 export const MOBILE_ENROLLMENT_VERSION = 'EP-MOBILE-ENROLLMENT-v1';
 
 const ID = /^[A-Za-z0-9:_.@-]{3,256}$/;
+const ATTESTATION_KEY_ID = /^[A-Za-z0-9:._+/=-]{3,512}$/;
+const ANDROID_APK_ORIGIN = /^android:apk-key-hash:[A-Za-z0-9_-]{43}$/;
 const B64U = /^[A-Za-z0-9_-]+$/;
 
 function record(value) {
@@ -35,6 +37,17 @@ function boundedBase64url(value, maxBytes) {
   try {
     const bytes = Buffer.from(value, 'base64url');
     return bytes.length > 0 && bytes.length <= maxBytes;
+  } catch {
+    return false;
+  }
+}
+
+function validEnrollmentOrigin(value) {
+  if (typeof value !== 'string' || value.length > 512) return false;
+  if (ANDROID_APK_ORIGIN.test(value)) return true;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' && parsed.username === '' && parsed.password === '';
   } catch {
     return false;
   }
@@ -114,7 +127,7 @@ export function createMobileEnrollmentService({
     async issue({ approverId, platform, appId, rpId, origin, userName, displayName, caller = null } = {}) {
       if (!ID.test(approverId || '') || !['ios', 'android'].includes(platform)
           || !ID.test(appId || '') || typeof rpId !== 'string' || !rpId
-          || typeof origin !== 'string' || !origin.startsWith('https://')
+          || !validEnrollmentOrigin(origin)
           || typeof userName !== 'string' || !userName
           || typeof displayName !== 'string' || !displayName) {
         return { ok: false, verdict: 'refuse_malformed', challenge: null };
@@ -199,7 +212,7 @@ export function createMobileEnrollmentService({
           || response.requested_valid_to !== challenge.enrollment_valid_to
           || !record(response.passkey_registration)
           || !record(response.platform_attestation)
-          || !ID.test(response.attestation_key_id || '')) {
+          || !ATTESTATION_KEY_ID.test(response.attestation_key_id || '')) {
         return failure('refuse_malformed', 'enrollment response does not match the challenge');
       }
       try {
@@ -241,6 +254,7 @@ export function createMobileEnrollmentService({
           format: response.platform_attestation.format,
           token: response.platform_attestation.token,
           expected_request_hash: challenge.platform_request_hash,
+          expected_binding: buildMobileEnrollmentBinding(challenge),
           expected_app_id: challenge.app_id,
           expected_attestation_key_id: response.attestation_key_id,
           platform: challenge.platform,
@@ -256,7 +270,13 @@ export function createMobileEnrollmentService({
       if (platform?.valid !== true || platform.request_hash !== challenge.platform_request_hash
           || platform.app_id !== challenge.app_id || platform.platform !== challenge.platform
           || platform.attestation_key_id !== response.attestation_key_id
-          || platform.hardware_backed !== true || platform.strong_integrity !== true) {
+          || platform.hardware_backed !== true || platform.strong_integrity !== true
+          || (challenge.platform === 'ios'
+            && (typeof platform.platform_public_key !== 'string'
+              || platform.platform_public_key.length < 64
+              || platform.platform_public_key.length > 8192
+              || !platform.platform_public_key.includes('BEGIN PUBLIC KEY')))
+          || (challenge.platform === 'android' && platform.platform_public_key != null)) {
         return failure('refuse_attestation', 'platform enrollment did not satisfy the pinned profile');
       }
 
@@ -281,6 +301,9 @@ export function createMobileEnrollmentService({
         valid_to: challenge.enrollment_valid_to,
         sign_count: passkey.sign_count,
         attestation_format: passkey.attestation_format || null,
+        platform_public_key: typeof platform.platform_public_key === 'string'
+          ? platform.platform_public_key
+          : null,
       };
       if (instant(enrollment.valid_from) === null || instant(enrollment.valid_to) === null
           || instant(enrollment.valid_to) <= instant(enrollment.valid_from)) {

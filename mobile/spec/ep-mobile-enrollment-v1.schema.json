@@ -11,6 +11,10 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9:_.@-]{3,256}$"
     },
+    "attestationKeyId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9:._+/=-]{3,512}$"
+    },
     "base64url": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]+$"
@@ -53,7 +57,10 @@
         "platform": { "enum": ["ios", "android"] },
         "app_id": { "$ref": "#/$defs/identifier" },
         "rp_id": { "type": "string", "minLength": 1, "maxLength": 253 },
-        "origin": { "type": "string", "pattern": "^https://" },
+        "origin": {
+          "type": "string",
+          "pattern": "^(https://|android:apk-key-hash:[A-Za-z0-9_-]{43}$)"
+        },
         "enrollment_valid_to": { "$ref": "#/$defs/instant" },
         "user": {
           "type": "object",
@@ -94,7 +101,7 @@
         "platform": { "enum": ["ios", "android"] },
         "app_id": { "$ref": "#/$defs/identifier" },
         "platform_request_hash": { "$ref": "#/$defs/base64url" },
-        "attestation_key_id": { "$ref": "#/$defs/identifier" },
+        "attestation_key_id": { "$ref": "#/$defs/attestationKeyId" },
         "requested_valid_to": { "$ref": "#/$defs/instant" },
         "passkey_registration": { "type": "object" },
         "platform_attestation": {

@@ -23,6 +23,14 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9:_.@-]{3,256}$"
     },
+    "attestationKeyId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9:._+/=-]{3,512}$"
+    },
+    "origin": {
+      "type": "string",
+      "pattern": "^(https://|android:apk-key-hash:[A-Za-z0-9_-]{43}$)"
+    },
     "base64url": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]+$"
@@ -53,7 +61,7 @@
         "app_id": { "$ref": "#/$defs/identifier" },
         "device_key_id": { "$ref": "#/$defs/identifier" },
         "credential_id": { "$ref": "#/$defs/base64url" },
-        "attestation_key_id": { "$ref": "#/$defs/identifier" }
+        "attestation_key_id": { "$ref": "#/$defs/attestationKeyId" }
       }
     },
     "authorizationContext": {
@@ -121,7 +129,7 @@
         "approver_id": { "$ref": "#/$defs/identifier" },
         "platform": { "enum": ["ios", "android"] },
         "app_id": { "$ref": "#/$defs/identifier" },
-        "attestation_key_id": { "$ref": "#/$defs/identifier" },
+        "attestation_key_id": { "$ref": "#/$defs/attestationKeyId" },
         "status": { "enum": ["active", "revoked"] },
         "valid_from": { "$ref": "#/$defs/canonicalInstant" },
         "valid_to": { "$ref": "#/$defs/canonicalInstant" }
@@ -148,7 +156,7 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^https://" }
+          "items": { "$ref": "#/$defs/origin" }
         },
         "accepted_apps": {
           "type": "object",
@@ -265,7 +273,7 @@
         "app_id": { "$ref": "#/$defs/identifier" },
         "device_key_id": { "$ref": "#/$defs/identifier" },
         "credential_id": { "$ref": "#/$defs/base64url" },
-        "attestation_key_id": { "$ref": "#/$defs/identifier" },
+        "attestation_key_id": { "$ref": "#/$defs/attestationKeyId" },
         "decision": { "enum": ["approved", "denied"] },
         "display_hash": { "$ref": "#/$defs/hash" },
         "signoff": {

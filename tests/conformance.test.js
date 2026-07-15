@@ -158,6 +158,15 @@ describe('EP Conformance Suite -- Protocol Invariants', () => {
         'signoff_attestations',
         'signoff_consumptions',
         'signoff_events',
+        'mobile_kv_state',
+        'mobile_pairings',
+        'mobile_sessions',
+        'mobile_enrollments',
+        'mobile_counters',
+        'mobile_audit_records',
+        'mobile_evidence_records',
+        'mobile_actions',
+        'mobile_action_challenges',
       ];
       for (const table of EXPECTED_TABLES) {
         expect(

@@ -151,3 +151,92 @@ test('government controller refuses a system-of-record approver substitution', a
   assert.equal(result.verdict, 'refuse_unauthorized');
   assert.equal(issued, false);
 });
+
+test('government controller records the action-to-challenge binding before returning it', async () => {
+  const profile = { profile_id: 'gov.mobile.v1', profile_hash: `sha256:${'a'.repeat(64)}` };
+  let binding;
+  const controller = createGovernmentMobileController({
+    service: {
+      async issue() {
+        return {
+          ok: true,
+          verdict: 'issued',
+          challenge: {
+            challenge_id: 'mob_0123456789abcdef',
+            action_hash: `sha256:${'b'.repeat(64)}`,
+            expires_at: '2026-07-14T19:05:00.000Z',
+          },
+        };
+      },
+      async verifyAndConsume() { throw new Error('not used'); },
+    },
+    profiles: new Map([[profile.profile_id, profile]]),
+    async authorize() { return true; },
+    async resolveRequest() {
+      return {
+        action: { action_type: 'benefit.payment_destination_change', case_id: 'case-9482' },
+        presentation: { title: 'Payment destination change', material_fields: { case_id: 'case-9482' } },
+        initiator_id: 'ep:agent:benefits-assistant',
+        approver_id: 'ep:approver:case-supervisor',
+        issued_at: '2026-07-14T19:00:00.000Z',
+        expires_at: '2026-07-14T19:05:00.000Z',
+      };
+    },
+    async registerChallenge(value) { binding = value; return true; },
+  });
+  const request = {
+    profile_id: profile.profile_id,
+    action_reference: 'case-9482',
+    decision: 'denied',
+    platform: 'ios',
+    app_id: 'gov.example.ios.approvals',
+    device_key_id: 'ep:key:mobile-ios-1',
+    approver_id: 'ep:approver:case-supervisor',
+  };
+  assert.equal((await controller.issue(request)).ok, true);
+  assert.deepEqual(binding, {
+    action_reference: 'case-9482',
+    approver_id: 'ep:approver:case-supervisor',
+    decision: 'denied',
+    challenge_id: 'mob_0123456789abcdef',
+    action_hash: `sha256:${'b'.repeat(64)}`,
+    expires_at: '2026-07-14T19:05:00.000Z',
+  });
+
+  const refused = createGovernmentMobileController({
+    service: controllerService(),
+    profiles: new Map([[profile.profile_id, profile]]),
+    async authorize() { return true; },
+    async resolveRequest() { return resolvedRequest(); },
+    async registerChallenge() { return false; },
+  });
+  assert.equal((await refused.issue(request)).verdict, 'refuse_replay');
+
+  function controllerService() {
+    return {
+      async issue() {
+        return {
+          ok: true,
+          verdict: 'issued',
+          challenge: {
+            challenge_id: 'mob_0123456789abcdef',
+            action_hash: `sha256:${'b'.repeat(64)}`,
+            expires_at: '2026-07-14T19:05:00.000Z',
+          },
+        };
+      },
+      async verifyAndConsume() { throw new Error('not used'); },
+    };
+  }
+
+  function resolvedRequest() {
+    return {
+      action: { action_type: 'benefit.payment_destination_change', case_id: 'case-9482' },
+      presentation: { title: 'Payment destination change', material_fields: { case_id: 'case-9482' } },
+      initiator_id: 'ep:agent:benefits-assistant',
+      approver_id: 'ep:approver:case-supervisor',
+      issued_at: '2026-07-14T19:00:00.000Z',
+      expires_at: '2026-07-14T19:05:00.000Z',
+    };
+  }
+});

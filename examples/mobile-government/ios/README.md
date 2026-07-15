@@ -4,7 +4,9 @@ This SwiftUI application exercises native enrollment, exact-action review,
 approval or denial, passkey user verification, App Attest, and server-side
 consumption.
 
-Generate the Xcode project with `xcodegen generate`, then replace the example
-bundle ID, associated domain, API URL, and App Attest environment with values
-owned by the deploying agency. The example identifiers do not name a customer
-or government endorsement.
+The checked-in reference identity is `ai.emiliaprotocol.approver`, owned by the
+EMILIA Apple Developer team, with App Attest and associated domains configured
+per build. Generate the project with `xcodegen generate`. A downstream agency
+that distributes its own binary must fork the identity, provisioning, domains,
+and server allowlist together; changing only the visible app name is not a trust
+configuration.

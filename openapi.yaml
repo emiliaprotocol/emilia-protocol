@@ -62,6 +62,8 @@ tags:
     description: Health, stats, audit, and operational endpoints
   - name: Signoff
     description: Accountable Signoff — named human ownership for high-risk actions requiring explicit attestation
+  - name: Mobile Approval
+    description: Native passkey approval, platform attestation, pairing, and exact-action ceremonies
   - name: GovGuard
     description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
@@ -4349,18 +4351,354 @@ paths:
           description: Already decided, replay, or action-hash mismatch
         '410':
           description: Challenge or signoff window expired
+
+  # ===========================================================================
+  # Native mobile approval
+  # ===========================================================================
+
+  /api/v1/mobile/pairings:
+    post:
+      tags: [Mobile Approval]
+      summary: Create a single-use native app pairing code
+      description: |
+        Creates a short-lived pairing capability for one named approver. The
+        organization API key determines the tenant; approver identity is never
+        accepted as an authority claim from the mobile app.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approver_id]
+              properties:
+                approver_id:
+                  type: string
+                  pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+      responses:
+        '201':
+          description: Single-use pairing code created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobilePairing'
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '429': { description: Pairing rate exceeded }
+        '503': { description: Durable pairing service unavailable }
+
+  /api/v1/mobile/pairings/exchange:
+    post:
+      tags: [Mobile Approval]
+      summary: Exchange a single-use pairing code for a mobile session
+      description: |
+        Consumes the pairing capability atomically and returns a time-bounded
+        mobile bearer token. The platform and app identity must match the apps
+        pinned when the pairing was created.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pairing_code, platform, app_id]
+              properties:
+                pairing_code:
+                  type: string
+                  pattern: '^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$'
+                platform:
+                  type: string
+                  enum: [ios, android]
+                app_id:
+                  type: string
+      responses:
+        '201':
+          description: Paired mobile session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileSession'
+        '401': { description: Pairing capability refused }
+        '429': { description: Pairing rate exceeded }
+        '503': { description: Durable pairing service unavailable }
+
+  /api/v1/mobile/inbox:
+    get:
+      tags: [Mobile Approval]
+      summary: List pending exact-action approvals for the paired approver
+      security:
+        - MobileSessionAuth: []
+      responses:
+        '200':
+          description: Pending approvals scoped to the paired tenant and approver
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [approver_id, actions]
+                properties:
+                  approver_id: { type: string }
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MobileInboxAction'
+        '401': { description: 'Invalid, expired, or revoked mobile session' }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Approval inbox unavailable }
+
+  /api/v1/mobile/enrollments/challenges:
+    post:
+      tags: [Mobile Approval]
+      summary: Begin passkey and platform-attestation enrollment
+      description: |
+        Returns one challenge binding the approver, app identity, RP ID,
+        passkey registration, and App Attest or Play Integrity request.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approver_id, platform, app_id]
+              properties:
+                approver_id: { type: string }
+                platform: { type: string, enum: [ios, android] }
+                app_id: { type: string }
+      responses:
+        '200':
+          description: Enrollment challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '401': { description: Invalid mobile session }
+        '409': { description: Challenge replay or state conflict }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable enrollment service unavailable }
+
+  /api/v1/mobile/enrollments:
+    post:
+      tags: [Mobile Approval]
+      summary: Complete passkey and platform-attestation enrollment
+      description: |
+        Verifies the passkey registration and platform attestation against the
+        same single-use enrollment challenge before admitting the device.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobilePresentation'
+      responses:
+        '200':
+          description: Device enrollment accepted or refused with a closed verdict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '401': { description: Invalid mobile session }
+        '409': { description: Challenge replay or state conflict }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable enrollment service unavailable }
+
+  /api/v1/mobile/challenges:
+    post:
+      tags: [Mobile Approval]
+      summary: Issue an exact-action approval challenge
+      description: |
+        Resolves the action from the tenant system of record and issues a
+        single-use challenge bound to the action digest, presentation, approver,
+        decision, enrolled device, app identity, policy, and expiry.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [profile_id, action_reference, approver_id, decision, platform, app_id, device_key_id]
+              properties:
+                profile_id: { type: string }
+                action_reference: { type: string }
+                approver_id: { type: string }
+                decision: { type: string, enum: [approved, denied] }
+                platform: { type: string, enum: [ios, android] }
+                app_id: { type: string }
+                device_key_id: { type: string }
+      responses:
+        '200':
+          description: Exact-action challenge issued or refused with a closed verdict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '401': { description: Invalid mobile session }
+        '403': { description: Session is not authorized for the named approver or device }
+        '409': { description: Challenge replay or action-state conflict }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable challenge service unavailable }
+
+  /api/v1/mobile/ceremonies:
+    post:
+      tags: [Mobile Approval]
+      summary: Verify and atomically consume a native approval ceremony
+      description: |
+        Verifies passkey user presence and verification, exact-action binding,
+        app and device enrollment, platform attestation, freshness, policy, and
+        replay state. The action decision and portable evidence record commit in
+        one database transaction; storage failure refuses the action.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobilePresentation'
+      responses:
+        '200':
+          description: Closed reliance verdict and portable evidence record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '400': { description: Malformed or mismatched ceremony }
+        '401': { description: Invalid mobile session }
+        '409': { description: 'Replayed, already decided, or conflicting ceremony' }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Verification or durable evidence store unavailable }
+
+  /api/v1/mobile/session:
+    delete:
+      tags: [Mobile Approval]
+      summary: Revoke the current paired mobile session
+      security:
+        - MobileSessionAuth: []
+      responses:
+        '200': { description: Mobile session revoked }
+        '401': { description: Invalid mobile session }
+        '409': { description: Session already inactive }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Session revocation unavailable }
+
+  /api/v1/mobile/demo/actions:
+    post:
+      tags: [Mobile Approval]
+      summary: Inject a synthetic approval into a demo tenant
+      description: |
+        Disabled unless MOBILE_DEMO_ENABLED=true. Creates only synthetic
+        treasury, grid, or healthcare examples for authenticated demo tenants;
+        it is not an action-ingestion interface for production deployments.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approver_id]
+              properties:
+                approver_id: { type: string }
+                scenario: { type: string, enum: [treasury, grid, healthcare], default: treasury }
+      responses:
+        '201': { description: Synthetic action created }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '404': { description: Mobile demo injection is disabled }
+        '429': { description: Demo action rate exceeded }
+        '503': { description: Demo action service unavailable }
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       description: EP API key (ep_live_...)
+    MobileSessionAuth:
+      type: http
+      scheme: bearer
+      description: Time-bounded paired native session token (ep_mobile_...)
     CronAuth:
       type: http
       scheme: bearer
       description: CRON_SECRET for internal/operator endpoints
 
   schemas:
+    MobilePairing:
+      type: object
+      required: [pairing_code, profile_id, expires_at, enabled_platforms]
+      properties:
+        pairing_code: { type: string }
+        profile_id: { type: string }
+        expires_at: { type: string, format: date-time }
+        enabled_platforms:
+          type: array
+          items: { type: string, enum: [ios, android] }
+
+    MobileSession:
+      type: object
+      required: [access_token, token_type, expires_at, approver_id, profile_id]
+      properties:
+        access_token: { type: string, readOnly: true }
+        token_type: { type: string, enum: [Bearer] }
+        expires_at: { type: string, format: date-time }
+        approver_id: { type: string }
+        profile_id: { type: string }
+
+    MobileInboxAction:
+      type: object
+      required: [action_reference, title, summary, risk, material_fields, expires_at, created_at]
+      properties:
+        action_reference: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        risk: { type: string }
+        material_fields:
+          type: object
+          additionalProperties: { type: string }
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    MobilePresentation:
+      type: object
+      additionalProperties: false
+      required: [challenge, response]
+      properties:
+        challenge:
+          type: object
+          description: Server-issued challenge returned without mutation
+        response:
+          type: object
+          description: Passkey and platform-attestation response bound to the challenge
+
+    MobileProtocolResult:
+      type: object
+      description: Closed mobile protocol result. Unknown or unavailable state refuses.
+      required: [ok, verdict]
+      properties:
+        ok: { type: boolean }
+        valid: { type: boolean }
+        verdict:
+          type: string
+          pattern: '^(issued|accepted|refuse_[a-z0-9_]+)$'
+        reason: { type: string }
+        challenge: { type: object, nullable: true }
+        decision: { type: string, nullable: true }
+        audit_record: { type: object, nullable: true }
+
     TrustProfileResponse:
       type: object
       properties:

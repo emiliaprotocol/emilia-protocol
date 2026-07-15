@@ -17,6 +17,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { fetchSchemaSnapshot } from './_schema-introspect.mjs';
 
@@ -38,9 +39,38 @@ if (!process.env.SCHEMA_GATE_DB_URL && !(process.env.NEXT_PUBLIC_SUPABASE_URL &&
 const PROJECT_LABEL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SCHEMA_GATE_DB_URL || '')
   .replace(/^[a-z]+:\/\//, '').replace(/^[^@]*@/, '').split(/[.:]/)[0] || 'prod';
 
-// ── Parse what the repo migrations declare ──────────────────────────────────
-const sql = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql'))
-  .map((f) => fs.readFileSync(path.join(MIG_DIR, f), 'utf8')).join('\n');
+// ── Parse what the deployed migration baseline declares ─────────────────────
+// A pull request may introduce schema that cannot exist in production before
+// merge. On PRs, CI pins this to the base commit. Main, scheduled, and manual
+// runs leave the variable unset and reconcile the current tree strictly.
+const reconcileRef = process.env.MIGRATION_RECONCILE_REF?.trim() || '';
+let migrationFiles;
+let sql;
+if (reconcileRef) {
+  if (!/^[0-9a-f]{40}$/i.test(reconcileRef)) {
+    console.error('FATAL: MIGRATION_RECONCILE_REF must be an exact 40-character commit SHA');
+    process.exit(2);
+  }
+  try {
+    migrationFiles = execFileSync(
+      'git',
+      ['ls-tree', '-r', '--name-only', reconcileRef, '--', 'supabase/migrations'],
+      { cwd: ROOT, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 },
+    ).split('\n').filter((file) => file.endsWith('.sql'));
+    if (migrationFiles.length === 0) throw new Error('no migration files found at pinned commit');
+    sql = migrationFiles.map((file) => execFileSync(
+      'git',
+      ['show', `${reconcileRef}:${file}`],
+      { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
+    )).join('\n');
+  } catch (error) {
+    console.error(`FATAL: could not read migrations at ${reconcileRef}: ${error.message}`);
+    process.exit(2);
+  }
+} else {
+  migrationFiles = fs.readdirSync(MIG_DIR).filter((file) => file.endsWith('.sql')).sort();
+  sql = migrationFiles.map((file) => fs.readFileSync(path.join(MIG_DIR, file), 'utf8')).join('\n');
+}
 
 const lc = sql; // keep case for identifiers; regexes are case-insensitive
 const grab = (re) => { const s = new Set(); let m; while ((m = re.exec(lc))) s.add(m[1].toLowerCase().replace(/^public\./, '')); return s; };
@@ -66,6 +96,8 @@ const missingFns = declaredFns.filter((f) => !prodFns.has(f));
 
 console.log(`\nMigration journal vs reality — ${new Date().toISOString()}`);
 console.log(`Project: ${PROJECT_LABEL}`);
+console.log(`  migration source: ${reconcileRef ? `base commit ${reconcileRef}` : 'current tree'}`);
+console.log(`  migration files: ${migrationFiles.length}`);
 console.log(`  declared tables: ${declaredTables.length} | prod tables: ${prodTables.size}`);
 console.log(`  declared funcs:  ${declaredFns.length} | prod funcs: ${prodFns.size}`);
 

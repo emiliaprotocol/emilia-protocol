@@ -113,13 +113,13 @@ describe('TRUST_TABLES list', () => {
     expect(tableMatch).not.toBeNull();
   });
 
-  it('contains the expected number of trust tables (22)', () => {
-    // Bumped when adding trust-bearing tables (latest: security_events).
+  it('contains the expected number of trust tables (31)', () => {
+    // Bumped when adding trust-bearing tables (latest: native mobile approval).
     // Update both the count and the in-source TRUST_TABLES list together
     // when a new trust-bearing table is introduced.
     const entries = tableMatch[1].match(/'[^']+'/g);
     expect(entries).not.toBeNull();
-    expect(entries.length).toBe(22);
+    expect(entries.length).toBe(31);
   });
 
   const expectedCoreTables = [
