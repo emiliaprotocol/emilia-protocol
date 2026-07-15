@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T06:51:16.496Z",
+  "generatedAt": "2026-07-15T07:47:12.775Z",
   "tests": {
     "total": 5597,
     "files": 284,
@@ -23,9 +23,9 @@
   },
   "securityCase": {
     "status": "passed",
-    "claims": 20,
-    "evidenceFiles": 98,
-    "evidenceBundleSha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+    "claims": 21,
+    "evidenceFiles": 100,
+    "evidenceBundleSha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
   },
   "conformance": {
     "suites": 18,

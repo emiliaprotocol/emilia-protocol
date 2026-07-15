@@ -28,6 +28,7 @@ execFileSync(process.execPath, [
   'packages/mobile/http.test.js',
   'packages/mobile/index.test.js',
   'packages/mobile/strict-json.test.js',
+  'examples/regulatory-mobile-oversight/demo.test.mjs',
 ], { cwd: ROOT, env, stdio: 'inherit' });
 execFileSync('swift', ['test'], { cwd: path.join(ROOT, 'sdks/swift-mobile'), env, stdio: 'inherit' });
 execFileSync(path.join(ROOT, 'sdks/kotlin-mobile/gradlew'), ['testDebugUnitTest'], {

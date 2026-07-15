@@ -856,6 +856,57 @@
       "release_artifacts": ["mobile-sdk", "verify-sdk", "security-evidence"]
     },
     {
+      "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
+      "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
+      "acceptance_roots": [
+        "a relying-party-provisioned trust bundle containing the allowed action family, exact mobile reliance profile, Class-A approver directory, log key, policy hash, and operator execution-record key",
+        "a mobile ceremony result that the stateful service consumed and appended to its strict atomic audit log",
+        "the Class-A receipt verifier, CAID verifier, mobile execution-record verifier, and atomic evidence-record verifier"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "createMobileExecutionRecord", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "verifyMobileExecutionRecord", "exported": true },
+        { "language": "javascript", "file": "examples/regulatory-mobile-oversight/lib.mjs", "symbol": "verifyRegulatoryEvidence", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "createMobileExecutionRecord" },
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "verifyMobileExecutionRecord" },
+        { "language": "javascript", "file": "examples/regulatory-mobile-oversight/lib.mjs", "export": "verifyRegulatoryEvidence" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },
+        "python": { "status": "gap", "reason": "No Python implementation of the regulatory mobile export profile is claimed." },
+        "go": { "status": "gap", "reason": "No Go implementation of the regulatory mobile export profile is claimed." }
+      },
+      "vectors": [
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "accept_regulatory_mobile_evidence_export", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_regulatory_mobile_evidence_substitution", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/mobile/index.test.js", "title": "execution record requires a consumed, audited result and binds the runtime record", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "deterministic mobile fixture exercises the regulator evidence path", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "action and presentation substitution both refuse offline", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "evidence never supplies its own reviewer or operator trust keys", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "unknown package and trust claims are refused instead of ignored", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "runtime statement and audit record cannot be detached or relabeled", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "the report separates direct verification, operator assertions, and nonclaims", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The regulatory export composition and the distinction between direct offline checks and operator runtime assertions are executable but not represented in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "the relying party provisions its trust bundle out of band and correctly vets the reviewer directory, policy, mobile profile, log key, and operator execution-record key",
+        "the operator execution-record signer is protected and accountable for its statements about platform verification, challenge consumption, and audit persistence",
+        "all consequential execution paths are mediated by the same stateful service and system of record"
+      ],
+      "exclusions": [
+        "the operator execution-record signature authenticates the operator's assertion but does not independently replay Apple or Google verification, storage durability, one-time consumption, or physical effect",
+        "the deterministic runnable fixture uses synthetic records, a cryptographic platform-attestation test double, and in-memory backends; it is not evidence of a live-device or government deployment",
+        "the package does not establish clinical correctness, reviewer licensure, comprehension, legal compliance, non-bypassability, or real-world outcome"
+      ],
+      "release_artifacts": ["mobile-sdk", "verify-sdk", "security-evidence"]
+    },
+    {
       "claim_id": "mobile-enrollment-requires-two-verified-rows",
       "statement": "A mobile enrollment becomes active only after the agency authorizes the authenticated caller for the named approver at issuance and completion, a WebAuthn registration adapter returns an ES256 P-256 credential under the exact RP, origin, challenge, and user-verification requirements, a platform adapter independently verifies integrity evidence over the exact enrollment binding, the challenge is consumed once, and the directory plus audit event commit atomically.",
       "acceptance_roots": [

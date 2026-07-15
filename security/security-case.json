@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171",
-  "claim_count": 20,
-  "evidence_file_count": 98,
+  "evidence_bundle_sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524",
+  "claim_count": 21,
+  "evidence_file_count": 100,
   "execution": {
     "required": true,
     "status": "passed",
@@ -124,6 +124,19 @@
       },
       {
         "runner": "node-test",
+        "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+        "titles": [
+          "action and presentation substitution both refuse offline",
+          "deterministic mobile fixture exercises the regulator evidence path",
+          "evidence never supplies its own reviewer or operator trust keys",
+          "runtime statement and audit record cannot be detached or relabeled",
+          "the report separates direct verification, operator assertions, and nonclaims",
+          "unknown package and trust claims are refused instead of ignored"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/gate/evidence-atomic.test.js",
         "titles": [
           "atomic evidence: a backend cannot claim success without persisting the record",
@@ -193,6 +206,7 @@
         "runner": "node-test",
         "file": "packages/mobile/index.test.js",
         "titles": [
+          "execution record requires a consumed, audited result and binds the runtime record",
           "refuses action, presentation, origin, app, credential, profile, and UV substitution",
           "service fails closed on store, audit, and counter failures",
           "service registers exact bodies and only one concurrent presentation wins",
@@ -430,14 +444,14 @@
       "package": "@emilia-protocol/mobile",
       "version": "0.1.0",
       "filename": "emilia-protocol-mobile-0.1.0.tgz",
-      "sha256": "694f8ebfd8e48cba1506cc7b4ec8abd93048d904fbbde251924f03deecd3b109",
+      "sha256": "bc8c744ea4bb94095d3ff49684dc06b78cb7944dd4c627f7678723aaf55c70b4",
       "file_count": 10
     },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171",
-      "file_count": 98
+      "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524",
+      "file_count": 100
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -600,7 +614,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -863,7 +877,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -971,7 +985,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -1093,7 +1107,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -1237,7 +1251,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -1383,7 +1397,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -1542,7 +1556,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -1651,7 +1665,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -1783,7 +1797,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -1890,7 +1904,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -2014,7 +2028,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -2188,7 +2202,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -2322,7 +2336,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -2438,7 +2452,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -2572,7 +2586,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -2831,7 +2845,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -3022,7 +3036,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -3306,7 +3320,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -3477,7 +3491,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "694f8ebfd8e48cba1506cc7b4ec8abd93048d904fbbde251924f03deecd3b109"
+          "sha256": "bc8c744ea4bb94095d3ff49684dc06b78cb7944dd4c627f7678723aaf55c70b4"
         },
         {
           "artifact_id": "verify-sdk",
@@ -3485,7 +3499,157 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
+        }
+      ]
+    },
+    {
+      "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
+      "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
+      "acceptance_roots": [
+        "a relying-party-provisioned trust bundle containing the allowed action family, exact mobile reliance profile, Class-A approver directory, log key, policy hash, and operator execution-record key",
+        "a mobile ceremony result that the stateful service consumed and appended to its strict atomic audit log",
+        "the Class-A receipt verifier, CAID verifier, mobile execution-record verifier, and atomic evidence-record verifier"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "createMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "verifyMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "examples/regulatory-mobile-oversight/lib.mjs",
+          "symbol": "verifyRegulatoryEvidence",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "createMobileExecutionRecord"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "verifyMobileExecutionRecord"
+        },
+        {
+          "language": "javascript",
+          "file": "examples/regulatory-mobile-oversight/lib.mjs",
+          "export": "verifyRegulatoryEvidence"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the regulatory mobile export profile is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the regulatory mobile export profile is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_regulatory_mobile_evidence_export",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_regulatory_mobile_evidence_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "execution record requires a consumed, audited result and binds the runtime record",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "deterministic mobile fixture exercises the regulator evidence path",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "action and presentation substitution both refuse offline",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "evidence never supplies its own reviewer or operator trust keys",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "unknown package and trust claims are refused instead of ignored",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "runtime statement and audit record cannot be detached or relabeled",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "the report separates direct verification, operator assertions, and nonclaims",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The regulatory export composition and the distinction between direct offline checks and operator runtime assertions are executable but not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the relying party provisions its trust bundle out of band and correctly vets the reviewer directory, policy, mobile profile, log key, and operator execution-record key",
+        "the operator execution-record signer is protected and accountable for its statements about platform verification, challenge consumption, and audit persistence",
+        "all consequential execution paths are mediated by the same stateful service and system of record"
+      ],
+      "exclusions": [
+        "the operator execution-record signature authenticates the operator's assertion but does not independently replay Apple or Google verification, storage durability, one-time consumption, or physical effect",
+        "the deterministic runnable fixture uses synthetic records, a cryptographic platform-attestation test double, and in-memory backends; it is not evidence of a live-device or government deployment",
+        "the package does not establish clinical correctness, reviewer licensure, comprehension, legal compliance, non-bypassability, or real-world outcome"
+      ],
+      "release_artifacts": [
+        "mobile-sdk",
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "mobile-sdk",
+          "sha256": "bc8c744ea4bb94095d3ff49684dc06b78cb7944dd4c627f7678723aaf55c70b4"
+        },
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "6fab806e67ce4a6cda992dd32169d3f8bb8b6c3e2768327c977c3260ad3f2458"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     },
@@ -3600,11 +3764,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "694f8ebfd8e48cba1506cc7b4ec8abd93048d904fbbde251924f03deecd3b109"
+          "sha256": "bc8c744ea4bb94095d3ff49684dc06b78cb7944dd4c627f7678723aaf55c70b4"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+          "sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
         }
       ]
     }
@@ -3711,6 +3875,14 @@
       "sha256": "0475a4f3ed8e477f5674b8a97d558700a4d820fa49055c5aae1aaa01b19a40b3"
     },
     {
+      "path": "examples/regulatory-mobile-oversight/demo.test.mjs",
+      "sha256": "49bbf1faa9311ef552e52c9c10ad18a0397dff85d009a94302b8608b2ab14728"
+    },
+    {
+      "path": "examples/regulatory-mobile-oversight/lib.mjs",
+      "sha256": "9afce8eaec12751d3cbbc38ea6cec28e035aefb1543bb60bbfd624dcec970ad1"
+    },
+    {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
       "sha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3"
     },
@@ -3756,7 +3928,7 @@
     },
     {
       "path": "mobile/conformance/mobile-core.v1.json",
-      "sha256": "06727c183b54caa0d9f6bf1e31902a7106fb17f627725222997f5b6d2d468cc6"
+      "sha256": "f53bc94a77e340a20094d5b88e6db5d747cc0d01d8445985df916a60a6c94556"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -3844,11 +4016,11 @@
     },
     {
       "path": "packages/mobile/index.js",
-      "sha256": "6da8e7dfa8916783e9f7e11598cd2ad4fa6cafd7e794c8762aadff15e37f5312"
+      "sha256": "d7ecdc2858c6c9b3c068a3d93b049d0951dae362d35c91f263dad2bced994612"
     },
     {
       "path": "packages/mobile/index.test.js",
-      "sha256": "c0ea5f9c9e7c76c4d2e6cd070203bd5ee72a4817722ea559456519c9577741bb"
+      "sha256": "31c55ebd21570e9a2ac63364c63472bd654c8832460920d568ed779bd8109a2c"
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
@@ -3936,7 +4108,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "f5c9838d87a735b23e9b8edff9816f41e9397c30a8c47c04afd04c6f5f16a239"
+      "sha256": "f80eb7c7e97f7979cb76b4288e024c570e89002435280e567d6ecc1a1e169ef5"
     },
     {
       "path": "security/vectors.v1.json",

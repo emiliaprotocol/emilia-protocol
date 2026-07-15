@@ -157,6 +157,24 @@
         "file": "packages/mobile/http.test.js",
         "title": "mobile HTTP adapter rejects insecure, unauthenticated, duplicate, oversized, and unknown input"
       }
+    },
+    {
+      "id": "accept_regulatory_mobile_evidence_export",
+      "expect": { "valid": true },
+      "execution": {
+        "runner": "node-test",
+        "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+        "title": "deterministic mobile fixture exercises the regulator evidence path"
+      }
+    },
+    {
+      "id": "reject_regulatory_mobile_evidence_substitution",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "node-test",
+        "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+        "title": "action and presentation substitution both refuse offline"
+      }
     }
   ]
 }

@@ -10,6 +10,12 @@ approval ceremonies. It joins three independently checked facts:
 The result is the existing EP Class-A signoff shape. The mobile layer does not
 invent another receipt format or another signature algorithm.
 
+For regulator-facing exports, `createMobileExecutionRecord()` signs a closed
+operator statement that joins a verified ceremony to the exact challenge,
+receipt, profile, and atomic audit record. It requires the result returned by
+the durable consumption service; a pure `verifyMobileCeremony()` result is not
+enough. `verifyMobileExecutionRecord()` verifies that statement offline.
+
 ## Server flow
 
 ```js
@@ -90,6 +96,12 @@ display identity from the agency directory rather than the mobile request.
 The included memory backends and simulated attestation callbacks are test tools,
 not production configurations.
 
+The execution record is an operator attestation. It does not turn Apple/Google
+platform evidence, storage durability, one-time consumption, or physical effect
+into independently reproducible offline facts. The Class-A passkey remains
+directly verifiable; the runtime statement makes the operator accountable for
+the online checks it says passed.
+
 ## Security boundary
 
 The ceremony proves that a pinned enrolled key completed a platform-verified
@@ -97,3 +109,6 @@ ceremony over exact bytes. It does not prove civil identity, comprehension,
 legal sufficiency, safety, or that an operator has no bypass around the gate.
 See [`mobile/spec/EP-MOBILE-CEREMONY-v1.md`](../../mobile/spec/EP-MOBILE-CEREMONY-v1.md)
 and [`docs/mobile/THREAT-MODEL.md`](../../docs/mobile/THREAT-MODEL.md).
+
+The complete synthetic regulator export is
+[`examples/regulatory-mobile-oversight`](../../examples/regulatory-mobile-oversight).

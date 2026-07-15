@@ -44,6 +44,7 @@
     "caid:conformance": "node caid/conformance/run.mjs",
     "m2m:conformance": "node conformance/run-model-to-matter.mjs",
     "mobile:conformance": "node mobile/conformance/run.mjs",
+    "mobile:regulator-demo": "node examples/regulatory-mobile-oversight/demo.mjs",
     "conformance:manifest": "node scripts/generate-conformance-manifest.mjs --emit conformance/conformance-manifest.json",
     "conformance:manifest:check": "node scripts/generate-conformance-manifest.mjs --check",
     "conformance:manifest:clean-room": "node scripts/check-frozen-clean-room.mjs",

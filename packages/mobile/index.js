@@ -32,6 +32,21 @@ export const MOBILE_CEREMONY_VERSION = 'EP-MOBILE-CEREMONY-v1';
 export const MOBILE_PROFILE_VERSION = 'EP-MOBILE-RELIANCE-PROFILE-v1';
 export const MOBILE_ATTESTATION_BINDING_VERSION = 'EP-MOBILE-ATTESTATION-BINDING-v1';
 export const MOBILE_ACK_VERSION = 'EP-MOBILE-ACK-v1';
+export const MOBILE_EXECUTION_RECORD_VERSION = 'EP-MOBILE-EXECUTION-RECORD-v1';
+
+const MOBILE_CHECK_NAMES = Object.freeze([
+  'profile',
+  'freshness',
+  'action',
+  'presentation',
+  'signed_context',
+  'platform',
+  'app',
+  'device_key',
+  'origin',
+  'webauthn',
+  'attestation',
+]);
 
 export { createPlayIntegrityAttestationVerifier, createAppleAppAttestVerifier };
 export { createGovernmentMobileController };
@@ -852,12 +867,129 @@ export function verifyMobileAck(ack, publicKeySpkiB64u) {
   }
 }
 
+function auditRecordMatches(challenge, result) {
+  const record = result?.audit_record;
+  if (!isRecord(record)
+      || !Number.isSafeInteger(record.seq) || record.seq < 0
+      || typeof record.record_id !== 'string' || record.record_id.length < 16 || record.record_id.length > 256
+      || (record.prev_hash !== 'genesis' && !validHash(record.prev_hash))
+      || !validHash(record.hash)) return false;
+  const { hash, ...body } = record;
+  if (normalizeHash(hashCanonical(body)) !== normalizeHash(hash)) return false;
+  const expected = decisionRecord(challenge, result);
+  return Object.entries(expected).every(([key, value]) => equalCanonical(record[key], value));
+}
+
+/**
+ * Sign the operator's runtime statement after the durable ceremony service has
+ * consumed the challenge and appended its atomic audit record. This statement
+ * is deliberately separate from the Class-A signoff: its signature proves what
+ * the operator attested, not that Apple/Google, storage, or physical execution
+ * can be independently reconstructed offline.
+ */
+export function createMobileExecutionRecord({
+  challenge,
+  result,
+  receiptId,
+  recordedAt,
+  signerPrivateKey,
+  signerKeyId,
+} = {}) {
+  const context = challenge?.authorization_context;
+  const binding = context?.mobile_binding;
+  if (!validChallengeShape(challenge)
+      || result?.valid !== true || result.verdict !== 'verified'
+      || !['approved', 'denied'].includes(result.decision)
+      || !isRecord(result.checks)
+      || !MOBILE_CHECK_NAMES.every((name) => result.checks[name] === true)
+      || result.context_hash !== contextHash(context)
+      || result.approver_id !== context?.approver
+      || result.device_key_id !== binding?.device_key_id
+      || !auditRecordMatches(challenge, result)
+      || !validId(receiptId) || parseInstant(recordedAt) === null
+      || !validId(signerKeyId) || !signerPrivateKey) {
+    throw new TypeError('a durably consumed and audited mobile ceremony result is required');
+  }
+  const body = {
+    '@version': MOBILE_EXECUTION_RECORD_VERSION,
+    statement_type: 'operator_runtime_attestation',
+    verdict: 'verified',
+    decision: result.decision,
+    challenge_id: challenge.challenge_id,
+    action_hash: challenge.action_hash,
+    profile_hash: challenge.profile_hash,
+    context_hash: result.context_hash,
+    approver_id: result.approver_id,
+    device_key_id: result.device_key_id,
+    platform: binding.platform,
+    app_id: binding.app_id,
+    attestation_format: challenge.attestation.format,
+    receipt_id: receiptId,
+    audit_record_id: result.audit_record.record_id,
+    audit_record_hash: `sha256:${normalizeHash(result.audit_record.hash)}`,
+    online_checks: Object.fromEntries(MOBILE_CHECK_NAMES.map((name) => [name, true])),
+    operator_assertions: {
+      platform_attestation: 'verified_at_execution',
+      challenge_consumption: 'consumed_before_audit_record',
+      durable_audit: 'recorded',
+    },
+    recorded_at: recordedAt,
+    signer_key_id: signerKeyId,
+  };
+  const signature = crypto.sign(null, Buffer.from(canonicalize(body), 'utf8'), signerPrivateKey).toString('base64url');
+  return { ...body, signature: { algorithm: 'Ed25519', value: signature } };
+}
+
+/** Verify only the execution-record signature and closed wire shape. */
+export function verifyMobileExecutionRecord(record, publicKeySpkiB64u) {
+  try {
+    if (!isRecord(record) || record['@version'] !== MOBILE_EXECUTION_RECORD_VERSION
+        || record.statement_type !== 'operator_runtime_attestation'
+        || record.verdict !== 'verified' || !['approved', 'denied'].includes(record.decision)
+        || !validId(record.challenge_id) || !validHash(record.action_hash)
+        || !validHash(record.profile_hash) || !validHash(record.context_hash)
+        || !validId(record.approver_id) || !validId(record.device_key_id)
+        || !['ios', 'android'].includes(record.platform) || !validId(record.app_id)
+        || !['apple-app-attest', 'play-integrity-standard'].includes(record.attestation_format)
+        || !validId(record.receipt_id)
+        || typeof record.audit_record_id !== 'string' || record.audit_record_id.length < 16
+        || record.audit_record_id.length > 256 || !validHash(record.audit_record_hash)
+        || !isRecord(record.online_checks)
+        || Object.keys(record.online_checks).length !== MOBILE_CHECK_NAMES.length
+        || !MOBILE_CHECK_NAMES.every((name) => record.online_checks[name] === true)
+        || !equalCanonical(record.operator_assertions, {
+          platform_attestation: 'verified_at_execution',
+          challenge_consumption: 'consumed_before_audit_record',
+          durable_audit: 'recorded',
+        })
+        || parseInstant(record.recorded_at) === null || !validId(record.signer_key_id)
+        || !isRecord(record.signature) || record.signature.algorithm !== 'Ed25519'
+        || Object.keys(record.signature).length !== 2
+        || !Object.keys(record.signature).every((key) => ['algorithm', 'value'].includes(key))
+        || !validB64u(record.signature.value) || !validB64u(publicKeySpkiB64u, 4096)) return false;
+    const allowed = new Set([
+      '@version', 'statement_type', 'verdict', 'decision', 'challenge_id', 'action_hash',
+      'profile_hash', 'context_hash', 'approver_id', 'device_key_id', 'platform',
+      'app_id', 'attestation_format', 'receipt_id', 'audit_record_id',
+      'audit_record_hash', 'online_checks', 'operator_assertions', 'recorded_at',
+      'signer_key_id', 'signature',
+    ]);
+    if (!Object.keys(record).every((key) => allowed.has(key))) return false;
+    const { signature, ...body } = record;
+    const key = crypto.createPublicKey({ key: Buffer.from(publicKeySpkiB64u, 'base64url'), format: 'der', type: 'spki' });
+    return crypto.verify(null, Buffer.from(canonicalize(body), 'utf8'), key, Buffer.from(signature.value, 'base64url'));
+  } catch {
+    return false;
+  }
+}
+
 export default {
   MOBILE_CHALLENGE_VERSION,
   MOBILE_CEREMONY_VERSION,
   MOBILE_PROFILE_VERSION,
   MOBILE_ATTESTATION_BINDING_VERSION,
   MOBILE_ACK_VERSION,
+  MOBILE_EXECUTION_RECORD_VERSION,
   MOBILE_VERDICTS,
   hashCanonical,
   mobileProfileHash,
@@ -870,6 +1002,8 @@ export default {
   toClassASignoff,
   createMobileAck,
   verifyMobileAck,
+  createMobileExecutionRecord,
+  verifyMobileExecutionRecord,
   createPlayIntegrityAttestationVerifier,
   createAppleAppAttestVerifier,
   createGovernmentMobileController,

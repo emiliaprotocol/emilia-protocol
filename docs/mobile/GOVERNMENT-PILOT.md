@@ -36,6 +36,12 @@ can recover without deleting or rewriting evidence.
 Exit: signed acceptance record naming scope, residual risks, owners, and rollback
 conditions.
 
+The runnable regulator-export exercise in
+[`examples/regulatory-mobile-oversight`](../../examples/regulatory-mobile-oversight)
+is the minimum evidence review for this phase. Its trust bundle is provisioned
+separately from the evidence, and its report separates direct cryptographic
+checks from signed operator assertions and protocol nonclaims.
+
 ## Success metrics
 
 - protected actions missing a consumed ceremony: zero;

@@ -10,13 +10,17 @@ approval or denial over an exact consequential action. It composes the existing
 EP Class-A WebAuthn signoff with independently verified application and device
 integrity evidence.
 
-The profile has four artifacts:
+The profile has five artifacts:
 
 - `EP-MOBILE-RELIANCE-PROFILE-v1`: relying-party pins and requirements;
 - `AE-CHALLENGE-v1` with `challenge_profile=EP-MOBILE-CHALLENGE-v1`;
 - `EP-MOBILE-CEREMONY-v1`: passkey assertion plus platform attestation; and
-- optional `EP-MOBILE-ACK-v1`: a signed service acknowledgement after durable
-  verification, consumption, and recording.
+- optional `EP-MOBILE-ACK-v1`: a signed acknowledgement of a valid ceremony
+  result; it does not by itself establish durable consumption or recording; and
+- optional `EP-MOBILE-EXECUTION-RECORD-v1`: a signed operator runtime statement
+  whose creator requires a verified result carrying the reference service's
+  consumed-and-audited record, and which binds that claim to the challenge,
+  receipt, profile, online check set, and atomic audit-record hash.
 
 Enrollment uses `EP-MOBILE-ENROLLMENT-CHALLENGE-v1` and
 `EP-MOBILE-ENROLLMENT-v1`. It activates an enrollment only after both the
@@ -106,6 +110,11 @@ The server verifier MUST fail closed for:
 The service MUST atomically consume the exact registered challenge body. Two
 concurrent presentations of one challenge yield at most one verified result.
 
+`EP-MOBILE-EXECUTION-RECORD-v1` is an operator attestation about this runtime
+path. An offline verifier can authenticate the statement and all of its joins,
+but the signature does not independently prove the truth of storage durability,
+platform verification, challenge consumption, or downstream physical effect.
+
 ## 6. Denials
 
 `denied` is a signed terminal outcome over the same action context. It MUST NOT
@@ -143,3 +152,4 @@ dishonest-display residual.
 - Schemas: `mobile/spec/ep-mobile-v1.schema.json` and
   `mobile/spec/ep-mobile-enrollment-v1.schema.json`
 - Full gate: `npm run mobile:conformance`
+- Regulator export: `examples/regulatory-mobile-oversight/`

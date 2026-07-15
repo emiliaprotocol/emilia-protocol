@@ -122,6 +122,7 @@ export const MOBILE_CEREMONY_VERSION: 'EP-MOBILE-CEREMONY-v1';
 export const MOBILE_PROFILE_VERSION: 'EP-MOBILE-RELIANCE-PROFILE-v1';
 export const MOBILE_ATTESTATION_BINDING_VERSION: 'EP-MOBILE-ATTESTATION-BINDING-v1';
 export const MOBILE_ACK_VERSION: 'EP-MOBILE-ACK-v1';
+export const MOBILE_EXECUTION_RECORD_VERSION: 'EP-MOBILE-EXECUTION-RECORD-v1';
 export const MOBILE_ENROLLMENT_CHALLENGE_VERSION: 'EP-MOBILE-ENROLLMENT-CHALLENGE-v1';
 export const MOBILE_ENROLLMENT_VERSION: 'EP-MOBILE-ENROLLMENT-v1';
 export const MOBILE_VERDICTS: readonly string[];
@@ -246,3 +247,15 @@ export function createMobileHttpHandler(input: {
 
 export function createMobileAck(input: Record<string, unknown>): Record<string, unknown>;
 export function verifyMobileAck(ack: Record<string, unknown>, publicKeySpkiB64u: string): boolean;
+export function createMobileExecutionRecord(input: {
+  challenge: MobileChallenge;
+  result: MobileVerificationResult;
+  receiptId: string;
+  recordedAt: string;
+  signerPrivateKey: unknown;
+  signerKeyId: string;
+}): Record<string, unknown>;
+export function verifyMobileExecutionRecord(
+  record: Record<string, unknown>,
+  publicKeySpkiB64u: string,
+): boolean;

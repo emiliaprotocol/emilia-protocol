@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-15T06:51:16.496Z",
+  "evidence_snapshot_at": "2026-07-15T07:47:12.775Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "0f89cf74f3c7ffde0dae7e04cdad86ac44f4a3fd48d40bc0d8ec86e30ae81bff",
+    "input_digest_sha256": "806e1ce1a8853ce55e6c0b96331f6e7258ac2e4543bd6b044824da7306571721",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,8 +17,8 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "1b5eed2f9d214f4711ae81113d2f2a7b7df0a5bac8876f7bfa0d0cead57c130e",
-        "bytes": 1067
+        "sha256": "d404aae639a2f2dc90bcaad66778f32738b383660455a2b9b6f5fdc239a9cd7e",
+        "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "f5c9838d87a735b23e9b8edff9816f41e9397c30a8c47c04afd04c6f5f16a239",
-        "bytes": 88728
+        "sha256": "f80eb7c7e97f7979cb76b4288e024c570e89002435280e567d6ecc1a1e169ef5",
+        "bytes": 94121
       },
       {
         "path": "security/security-case.json",
-        "sha256": "4956970543f182c0a6d6ba4be5c632f8793b435de46a6d511df4e794dfb90b7e",
-        "bytes": 146238
+        "sha256": "2b571d4a5c972e8338ec9aae93bf71c3e70721b4a7395c5dd8c212a20c2d3702",
+        "bytes": 153998
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -172,9 +172,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 20,
-      "evidence_files": 98,
-      "evidence_bundle_sha256": "2064e7a7aaaab49c05cddd80b549516321ee1a00056618d47093eabb2d8c9171"
+      "claims": 21,
+      "evidence_files": 100,
+      "evidence_bundle_sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
     },
     "caid": {
       "core_vectors": 48,
@@ -1781,6 +1781,77 @@
         "the ceremony does not prove civil identity, comprehension, legality, wisdom, safety, execution, or physical outcome",
         "App Attest and Play Integrity verification are online dependencies at ceremony time and are not silently claimed as offline-verifiable evidence",
         "Swift and Kotlin canonical-byte agreement is same-team cross-platform consistency, not an independent implementation"
+      ]
+    },
+    {
+      "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
+      "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
+      "acceptance_roots": [
+        "a relying-party-provisioned trust bundle containing the allowed action family, exact mobile reliance profile, Class-A approver directory, log key, policy hash, and operator execution-record key",
+        "a mobile ceremony result that the stateful service consumed and appended to its strict atomic audit log",
+        "the Class-A receipt verifier, CAID verifier, mobile execution-record verifier, and atomic evidence-record verifier"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "createMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "verifyMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "examples/regulatory-mobile-oversight/lib.mjs",
+          "symbol": "verifyRegulatoryEvidence",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the regulatory mobile export profile is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the regulatory mobile export profile is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_regulatory_mobile_evidence_export",
+          "polarity": "positive"
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_regulatory_mobile_evidence_substitution",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The regulatory export composition and the distinction between direct offline checks and operator runtime assertions are executable but not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the relying party provisions its trust bundle out of band and correctly vets the reviewer directory, policy, mobile profile, log key, and operator execution-record key",
+        "the operator execution-record signer is protected and accountable for its statements about platform verification, challenge consumption, and audit persistence",
+        "all consequential execution paths are mediated by the same stateful service and system of record"
+      ],
+      "exclusions": [
+        "the operator execution-record signature authenticates the operator's assertion but does not independently replay Apple or Google verification, storage durability, one-time consumption, or physical effect",
+        "the deterministic runnable fixture uses synthetic records, a cryptographic platform-attestation test double, and in-memory backends; it is not evidence of a live-device or government deployment",
+        "the package does not establish clinical correctness, reviewer licensure, comprehension, legal compliance, non-bypassability, or real-world outcome"
       ]
     },
     {

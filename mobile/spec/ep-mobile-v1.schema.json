@@ -6,7 +6,8 @@
     { "$ref": "#/$defs/profile" },
     { "$ref": "#/$defs/challenge" },
     { "$ref": "#/$defs/ceremony" },
-    { "$ref": "#/$defs/acknowledgement" }
+    { "$ref": "#/$defs/acknowledgement" },
+    { "$ref": "#/$defs/executionRecord" }
   ],
   "$defs": {
     "safeInteger": {
@@ -319,6 +320,102 @@
         "approver_id": { "$ref": "#/$defs/identifier" },
         "device_key_id": { "$ref": "#/$defs/identifier" },
         "receipt_id": { "type": ["string", "null"] },
+        "recorded_at": { "$ref": "#/$defs/canonicalInstant" },
+        "signer_key_id": { "$ref": "#/$defs/identifier" },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "value"],
+          "properties": {
+            "algorithm": { "const": "Ed25519" },
+            "value": { "$ref": "#/$defs/base64url" }
+          }
+        }
+      }
+    },
+    "executionRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "statement_type",
+        "verdict",
+        "decision",
+        "challenge_id",
+        "action_hash",
+        "profile_hash",
+        "context_hash",
+        "approver_id",
+        "device_key_id",
+        "platform",
+        "app_id",
+        "attestation_format",
+        "receipt_id",
+        "audit_record_id",
+        "audit_record_hash",
+        "online_checks",
+        "operator_assertions",
+        "recorded_at",
+        "signer_key_id",
+        "signature"
+      ],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-EXECUTION-RECORD-v1" },
+        "statement_type": { "const": "operator_runtime_attestation" },
+        "verdict": { "const": "verified" },
+        "decision": { "enum": ["approved", "denied"] },
+        "challenge_id": { "$ref": "#/$defs/identifier" },
+        "action_hash": { "$ref": "#/$defs/hash" },
+        "profile_hash": { "$ref": "#/$defs/hash" },
+        "context_hash": { "$ref": "#/$defs/hash" },
+        "approver_id": { "$ref": "#/$defs/identifier" },
+        "device_key_id": { "$ref": "#/$defs/identifier" },
+        "platform": { "enum": ["ios", "android"] },
+        "app_id": { "$ref": "#/$defs/identifier" },
+        "attestation_format": { "enum": ["apple-app-attest", "play-integrity-standard"] },
+        "receipt_id": { "$ref": "#/$defs/identifier" },
+        "audit_record_id": { "type": "string", "minLength": 16, "maxLength": 256 },
+        "audit_record_hash": { "$ref": "#/$defs/hash" },
+        "online_checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "profile",
+            "freshness",
+            "action",
+            "presentation",
+            "signed_context",
+            "platform",
+            "app",
+            "device_key",
+            "origin",
+            "webauthn",
+            "attestation"
+          ],
+          "properties": {
+            "profile": { "const": true },
+            "freshness": { "const": true },
+            "action": { "const": true },
+            "presentation": { "const": true },
+            "signed_context": { "const": true },
+            "platform": { "const": true },
+            "app": { "const": true },
+            "device_key": { "const": true },
+            "origin": { "const": true },
+            "webauthn": { "const": true },
+            "attestation": { "const": true }
+          }
+        },
+        "operator_assertions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["platform_attestation", "challenge_consumption", "durable_audit"],
+          "properties": {
+            "platform_attestation": { "const": "verified_at_execution" },
+            "challenge_consumption": { "const": "consumed_before_audit_record" },
+            "durable_audit": { "const": "recorded" }
+          }
+        },
         "recorded_at": { "$ref": "#/$defs/canonicalInstant" },
         "signer_key_id": { "$ref": "#/$defs/identifier" },
         "signature": {

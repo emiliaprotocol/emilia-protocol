@@ -8,10 +8,12 @@ import {
   createMobileAck,
   createMobileChallenge,
   createMobileCeremonyService,
+  createMobileExecutionRecord,
   createMobileRelianceProfile,
   mobileProfileHash,
   verifyMobileAck,
   verifyMobileCeremony,
+  verifyMobileExecutionRecord,
 } from './index.js';
 import { createDurableChallengeStore } from '../gate/challenge-store.js';
 import { createMemoryBackend } from '../gate/store.js';
@@ -361,4 +363,68 @@ test('signed acknowledgement is independently verifiable and tamper evident', as
   assert.equal(verifyMobileAck(ack, publicKey), true);
   ack.decision = 'denied';
   assert.equal(verifyMobileAck(ack, publicKey), false);
+});
+
+test('execution record requires a consumed, audited result and binds the runtime record', async () => {
+  const item = fixture({ counter: 0 });
+  const service = createMobileCeremonyService({
+    challengeStore: durableChallengeStore(),
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    clock: () => NOW,
+  });
+  assert.equal((await service.issue({
+    action: item.challenge.action,
+    policy: { id: 'gov-benefits-high-risk-v1', human_approval: true },
+    policyId: 'gov-benefits-high-risk-v1',
+    initiatorId: 'ep:agent:benefits-assistant',
+    approverId: 'ep:approver:case-supervisor',
+    decision: 'approved',
+    presentation: item.challenge.presentation,
+    platform: 'ios',
+    appId: 'gov.example.ios.approvals',
+    deviceKeyId: item.deviceKeyId,
+    profile: item.profile,
+    issuedAt: '2026-07-14T19:00:00.000Z',
+    expiresAt: '2026-07-14T19:05:00.000Z',
+    challengeId: item.challenge.challenge_id,
+    nonce: item.challenge.nonce,
+  })).ok, true);
+  const result = await service.verifyAndConsume({
+    challenge: item.challenge,
+    response: item.response,
+    profile: item.profile,
+  });
+  const signer = crypto.generateKeyPairSync('ed25519');
+  const publicKey = signer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const record = createMobileExecutionRecord({
+    challenge: item.challenge,
+    result,
+    receiptId: 'ep:receipt:government-demo-execution-1',
+    recordedAt: NOW,
+    signerPrivateKey: signer.privateKey,
+    signerKeyId: 'ep:key:mobile-service-execution-1',
+  });
+  assert.equal(record.statement_type, 'operator_runtime_attestation');
+  assert.equal(record.audit_record_hash, `sha256:${result.audit_record.hash}`);
+  assert.equal(verifyMobileExecutionRecord(record, publicKey), true);
+
+  const unsignedSignatureClaim = structuredClone(record);
+  unsignedSignatureClaim.signature.untrusted_status = 'verified';
+  assert.equal(verifyMobileExecutionRecord(unsignedSignatureClaim, publicKey), false);
+
+  const tampered = structuredClone(record);
+  tampered.operator_assertions.challenge_consumption = 'not_consumed';
+  assert.equal(verifyMobileExecutionRecord(tampered, publicKey), false);
+
+  const pureResult = await verifyMobileCeremony({ ...item, now: NOW });
+  assert.throws(() => createMobileExecutionRecord({
+    challenge: item.challenge,
+    result: pureResult,
+    receiptId: 'ep:receipt:pure-verification-is-not-consumption',
+    recordedAt: NOW,
+    signerPrivateKey: signer.privateKey,
+    signerKeyId: 'ep:key:mobile-service-execution-1',
+  }), /durably consumed and audited/);
 });
