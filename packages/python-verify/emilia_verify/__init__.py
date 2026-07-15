@@ -28,6 +28,10 @@ from cryptography.hazmat.primitives.serialization import load_der_public_key
 __all__ = [
     "canonicalize", "is_canonicalizable", "verify_receipt", "verify_merkle_anchor",
     "VerifyResult", "evaluate_agent_binding",
+    # EP-RESOLUTION-v1
+    "compute_binding_moment_hash", "compute_resolution_response_hash",
+    "verify_resolution_receipt", "RESOLUTION_VERSION",
+    "RESOLUTION_CONTEXT_TYPE", "RESOLUTION_OUTCOMES",
     # EP-CURRENCY-v1
     "evaluate_currency", "CURRENCY_VERSION", "CURRENCY_STATUS", "CURRENCY_REASON",
     # EP-WITNESS-v1

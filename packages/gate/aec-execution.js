@@ -50,6 +50,19 @@ function humanFloorSatisfied(result, floor) {
   return classA || quorum;
 }
 
+function evidenceSatisfied(result) {
+  try {
+    if (!result || typeof result !== 'object') return false;
+    // New verifiers expose the evidence-layer term. Older supported 3.x
+    // verifiers expose the equivalent `allow` result only. If `satisfied` is
+    // present, it is authoritative so a conflicting compatibility alias can
+    // never upgrade a refusal.
+    return own(result, 'satisfied') ? result.satisfied === true : result.allow === true;
+  } catch {
+    return false;
+  }
+}
+
 function consumptionKey(result) {
   // Consume the executor-owned action instance, not a presenter-selected
   // component identifier. Otherwise an invalid decoy component or an alternate
@@ -216,7 +229,7 @@ export function createAECExecutionGate({
       expectedAction: actionSnapshot,
       verificationTime,
     });
-    if (!result.satisfied) return deny('aec_refused', result, { reasons: result.reasons });
+    if (!evidenceSatisfied(result)) return deny('aec_refused', result, { reasons: result.reasons });
     if (!humanFloorSatisfied(result, humanFloor)) return deny('human_floor_unsatisfied', result);
 
     const key = consumptionKey(result);
@@ -294,6 +307,7 @@ export const __aecExecutionSecurityInternals = Object.freeze({
   validLogRecord,
   validComponent,
   humanFloorSatisfied,
+  evidenceSatisfied,
   consumptionKey,
   instant,
 });

@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"os"
 
-	emiliaverify "github.com/emiliaprotocol/emilia-protocol/packages/go-verify"
+	emiliaverify "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2"
 )
 
 func main() {

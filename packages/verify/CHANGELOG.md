@@ -3,7 +3,7 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 3.9.0 (2026-07-14)
 
 ### Added
 
@@ -13,6 +13,19 @@ This package follows [Semantic Versioning](https://semver.org/).
   under a complete relying-party-pinned acceptance context (role key, RP ID,
   origin, option mapping, nonce, initiator, and in-window evaluation time) sets
   `authorizes_action: true`.
+
+### Changed
+
+- `verifyAuthorizationChain` now names its evidence-layer result `satisfied`.
+  The `allow` member remains as an equal compatibility alias; authorization is
+  still a separate relying-party decision.
+- Terminal revocations no longer age out through `maxAgeSeconds`. Verification
+  rejects future-effective and impossible calendar timestamps, malformed
+  targets, non-Ed25519 algorithm labels, and signatures outside the pinned
+  revoker context. Fresh non-revocation status remains a separate input.
+- Future-dated currency/status heads now return `stale`, never `fresh`.
+- JavaScript, Python, and Go carry the same resolution, revocation, currency,
+  and evidence-satisfaction behavior under the shared conformance vectors.
 
 ## 3.8.0 (2026-07-09)
 

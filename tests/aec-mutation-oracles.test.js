@@ -164,7 +164,7 @@ describe('AEC verifier mutation oracles', () => {
 describe('AEC execution mutation oracles', () => {
   const {
     deepFreeze, validLogRecord, validComponent,
-    humanFloorSatisfied, consumptionKey, instant,
+    humanFloorSatisfied, evidenceSatisfied, consumptionKey, instant,
   } = __aecExecutionSecurityInternals;
 
   it('deep-freezes nested and cyclic snapshots without changing primitives', () => {
@@ -221,6 +221,15 @@ describe('AEC execution mutation oracles', () => {
     expect(humanFloorSatisfied({ components: [classA] }, 'class_a_or_quorum')).toBe(true);
     expect(humanFloorSatisfied({ components: [quorum] }, 'class_a_or_quorum')).toBe(true);
     expect(humanFloorSatisfied({ components: [] }, 'class_a_or_quorum')).toBe(false);
+  });
+
+  it('accepts the legacy allow result only when the new satisfaction field is absent', () => {
+    expect(evidenceSatisfied({ satisfied: true, allow: false })).toBe(true);
+    expect(evidenceSatisfied({ satisfied: false, allow: true })).toBe(false);
+    expect(evidenceSatisfied({ allow: true })).toBe(true);
+    expect(evidenceSatisfied({ allow: false })).toBe(false);
+    expect(evidenceSatisfied(null)).toBe(false);
+    expect(evidenceSatisfied({ get satisfied() { throw new Error('hostile result'); } })).toBe(false);
   });
 
   it('keys consumption only by a bare lowercase SHA-256 digest', () => {
