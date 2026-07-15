@@ -6,7 +6,7 @@
 //   1. version + profile id   - the verify library knows how to parse; condition
 //                               claims are a declaration BY REFERENCE to the
 //                               profile, not a list of internals.
-//   2. key id                 - hash of the raw public key the RP pinned at
+//   2. key id                 - hash of the DER-encoded SPKI key the RP pinned at
 //                               registration. Check #3 is a LOOKUP, not a chain
 //                               walk. No cert.
 //   3. condition claims       - phase-table style; only what can honestly be
@@ -40,11 +40,11 @@ const LIT_PROFILE_ID = 'winmagic-lit:profile-x@v1';
 const SIGNATURE_LENGTH = 64; // Ed25519
 
 // The WinMagic-LIT device key pair (the Live Key). In production this is
-// provisioned on the device; the PRIVATE key never leaves it, the raw PUBLIC
-// key (or its hash) is pinned by RPs at registration.
+// provisioned on the device; the PRIVATE key never leaves it, and the
+// DER-encoded SPKI public key (or its hash) is pinned by RPs at registration.
 const litDeviceKeys = crypto.generateKeyPairSync('ed25519');
 
-// 2. Key identifier: hash of the raw public key. What the RP pins; a lookup key.
+// 2. Key identifier: hash of the DER-encoded SPKI key. What the RP pins; a lookup key.
 const litKeyId = (publicKey) =>
   `sha256:${sha256hex(publicKey.export({ type: 'spki', format: 'der' }))}`;
 
