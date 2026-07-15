@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
-import { CommitError, verifyCommit } from '@/lib/commit';
+import { CommitError } from '@/lib/commit';
 import { authorizeCommitIssuance } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
@@ -75,7 +75,11 @@ export async function POST(request) {
       // A row that merely says decision=allow is not authorization.
       let gateVerification;
       try {
-        gateVerification = await verifyCommit(body.gate_ref);
+        gateVerification = await protocolWrite({
+          type: COMMAND_TYPES.VERIFY_COMMIT,
+          actor: auth,
+          input: { commit_id: body.gate_ref },
+        });
       } catch (error) {
         logger.error('gate_ref verification failed', { code: error?.code, name: error?.name });
         return epProblem(503, 'gate_verify_unavailable', 'gate_ref could not be verified');

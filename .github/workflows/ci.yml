@@ -325,9 +325,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Install dependencies
-        working-directory: mcp-server
-        run: npm ci --ignore-scripts
+      - name: Install dependencies against the local unreleased verifier
+        run: |
+          npm pack ./packages/verify --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/verify-pack.json"
+          VERIFY_TARBALL=$(node -e "const r=require(process.argv[1]); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)" "$RUNNER_TEMP/verify-pack.json")
+          cd mcp-server
+          npm install --package-lock-only --ignore-scripts --no-save "$RUNNER_TEMP/$VERIFY_TARBALL"
+          npm ci --ignore-scripts
       - name: Verify npm pack succeeds
         working-directory: mcp-server
         run: npm pack
@@ -418,8 +422,8 @@ jobs:
 
   # ── Job 11c: Pinned external Rust implementation evidence ────────
   # Rebuilds an externally authored verifier from an immutable source tree and
-  # evaluates it with this repository's current vectors and hostility corpus.
-  # Both lanes must pass; a green standard suite cannot conceal parser or
+  # evaluates it with its immutable, time-pinned vector snapshot and the
+  # current pinned hostility corpus. Both lanes must pass; a green standard suite cannot conceal parser or
   # type-confusion failures in the adversarial corpus.
   external-rust-evidence:
     runs-on: ubuntu-latest
@@ -447,13 +451,15 @@ jobs:
           cargo +1.94.1 build --release --locked
           --manifest-path .external/ecr-wg/rust/ep-cleanroom-verifier/Cargo.toml
           --bin conformance
-      - name: Evaluate current byte-pinned conformance bundle
+      - name: Evaluate immutable byte-pinned conformance bundle
         run: |
           mkdir -p test-results
           node scripts/evaluate-external-implementation.mjs \
             --pin conformance/external/rust-cleanroom-jdieselny.v1.json \
             --source .external/ecr-wg \
             --runner .external/ecr-wg/rust/ep-cleanroom-verifier/target/release/conformance \
+            --bundle conformance/clean-room/frozen-v1/conformance/clean-room/bundle.v1.json \
+            --suite-root conformance/clean-room/frozen-v1 \
             --emit test-results/external-rust-conformance.json
       - name: Prepare suite-dispatch hostility runner
         run: |
