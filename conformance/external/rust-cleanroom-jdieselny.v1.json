@@ -42,6 +42,10 @@
   "hostility": {
     "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
     "runner_name": "rust-cleanroom-jdieselny",
+    "evaluator_commit": "18739076c822bdc757147326e8d36716432d1b41",
+    "evidence_run": "https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29178582162",
+    "evidence_artifact_id": 8255700893,
+    "scope": "time_pinned_corpus_and_evaluator",
     "corpus_sha256": "ce867caa8fc7e12d7514f6429f3fb8afd47805a66b61437a861bd84db6dc3296",
     "structured_cases": 353,
     "raw_parser_cases": 6,

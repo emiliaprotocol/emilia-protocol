@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-15T13:44:14.826Z",
+  "evidence_snapshot_at": "2026-07-15T14:23:55.700Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "08d62c20af5b75a3a721fe06d8875b5961235bc64f10106e498e7dc0a857238a",
+    "input_digest_sha256": "18fc95c284c765d9047aba43e8d8f45a3f2ec50fbba08509b9a937a2d92579ba",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "99d31f79652093fca18fd373076828e4f516235125db915f226275aa32999c85",
+        "sha256": "ff1accd8c82986aab04465be129290891b9748ca055447dd01bdff3045d1b98b",
         "bytes": 1068
       },
       {
@@ -27,8 +27,8 @@
       },
       {
         "path": "conformance/external/rust-cleanroom-jdieselny.v1.json",
-        "sha256": "f390e27dff0404a2cb34506270a6f7a979682e51e09b45fa09ab3e9c4f163860",
-        "bytes": 2031
+        "sha256": "7c59508adfb6f3c4d7ea072ef167d77f751030710fe82725e26523f67e36e7db",
+        "bytes": 2286
       },
       {
         "path": "security/claims.v1.json",
@@ -142,8 +142,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5711,
-      "files": 290,
+      "total": 5732,
+      "files": 291,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -236,6 +236,10 @@
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
       "runner_name": "rust-cleanroom-jdieselny",
+      "evaluator_commit": "18739076c822bdc757147326e8d36716432d1b41",
+      "evidence_run": "https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29178582162",
+      "evidence_artifact_id": 8255700893,
+      "scope": "time_pinned_corpus_and_evaluator",
       "corpus_sha256": "ce867caa8fc7e12d7514f6429f3fb8afd47805a66b61437a861bd84db6dc3296",
       "structured_cases": 353,
       "raw_parser_cases": 6,
