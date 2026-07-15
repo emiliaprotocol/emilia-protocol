@@ -44,8 +44,8 @@ payload carries five items:
 
 1. **version + profile id** — the verify library knows how to parse; condition
    claims are a declaration by reference to the profile, not a list of internals;
-2. **key id** — hash of the raw public key the relying party pinned at
-   registration, so verification is a lookup, not a chain walk;
+2. **key id** — hash of the DER-encoded SPKI public key the relying party pinned
+   at registration, so verification is a lookup, not a chain walk;
 3. **condition claims** — phase-table style (`user-verified-at-mint`,
    `posture-at-build`, `checksum`); mint inputs need no runtime assertion, the
    signature existing is the proof they held;
