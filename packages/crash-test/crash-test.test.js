@@ -65,7 +65,7 @@ describe('crash-test relying-party trust boundary', () => {
   });
 
   it('refuses duplicate JSON member names before parsing', () => {
-    const raw = readFileSync(trustPath, 'utf8').replace('{', '{"profile_id":"shadow",');
+    const raw = `{"profile_id":"shadow",${readFileSync(trustPath, 'utf8').slice(1)}`;
     const path = resolve(cwd, 'duplicate-profile.json');
     writeFileSync(path, raw);
     assert.equal(run(['verify', receiptPath, '--trust', path]).status, 2);

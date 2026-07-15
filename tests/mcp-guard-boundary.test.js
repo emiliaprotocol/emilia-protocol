@@ -144,7 +144,7 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
   it('refuses duplicate-key receipt JSON carried as base64', () => {
     const action = 'github.repo.delete';
     const receipt = mint(action);
-    const raw = JSON.stringify(receipt).replace('{', '{"@version":"EP-RECEIPT-v0",');
+    const raw = `{"@version":"EP-RECEIPT-v0",${JSON.stringify(receipt).slice(1)}`;
     const result = demandReceipt({
       action,
       args: { __ep: { receipt_b64: Buffer.from(raw).toString('base64') } },
