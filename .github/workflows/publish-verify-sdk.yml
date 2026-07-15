@@ -86,11 +86,12 @@ jobs:
         # tooling always installs a current npm with full provenance support.
         run: npm install -g npm@11.18.0 --min-release-age=0
 
-      # Zero-dependency package — no install step. The package.json "files"
-      # array controls exactly what ships: index.js plus every module it
-      # re-exports (web, federation, quorum, revocation, provenance,
-      # time-attestation, evidence-record, cli) and index.d.ts/README/LICENSE.
-      # `npm pack --dry-run` below prints the authoritative list before publish.
+      # The published verifier remains zero-dependency. Its test suite also
+      # exercises the optional PQ adapter, so install the repository's locked
+      # development tooling without running lifecycle scripts.
+      - name: Install locked test tooling
+        working-directory: ${{ github.workspace }}
+        run: npm ci --ignore-scripts
 
       - name: Run tests
         run: npm test
