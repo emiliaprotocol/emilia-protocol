@@ -92,7 +92,7 @@ for (let i = 0; i < 8; i++) { const r = receipt(`ok${i}`); decisions.push({ deci
 { const r = receipt('over'); decisions.push({ decision_id: 'PA-over-ceiling', action: act(r, 120000), receipt: r, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' }); }
 
 const pkg = buildAssurancePackage(decisions, { profile: PROFILE, organization: { id: 'planX', name: 'Synthetic Health Plan' }, now: NOW });
-const rp = reperformAssurancePackage(pkg, { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', now: NOW });
+const rp = reperformAssurancePackage(pkg, { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'], now: NOW });
 
 console.log('\nContinuous assurance over agentic prior authorization (synthetic, no PHI).');
 console.log(`Package: ${pkg.decisions.length} automated PA decisions | digest ${pkg.package_digest.slice(0, 16)}…\n`);

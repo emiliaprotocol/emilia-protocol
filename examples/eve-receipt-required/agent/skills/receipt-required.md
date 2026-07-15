@@ -40,7 +40,8 @@ did not happen; nothing was mutated.
   to run the action again, obtain a new receipt.
 - **Never fabricate or reuse.** Do not edit a receipt's fields, copy one from another action, or
   invent a key. Tampered or mismatched receipts are rejected by construction.
-- **A transient failure does not burn the approval.** If the mutation itself errors, the receipt is
-  released and can be retried; you do not need a new one.
+- **An error after invocation burns the approval.** The mutation may have happened before its response
+  was lost, so automatic retry could duplicate it. Reconcile the downstream result and obtain a fresh
+  receipt only if another execution is actually required.
 
 The invariant: **no receipt, no mutation; if it runs, the proof travels.**

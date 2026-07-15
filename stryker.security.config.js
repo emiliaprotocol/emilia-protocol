@@ -4,6 +4,14 @@
 export default {
   testRunner: 'vitest',
   vitest: { configFile: 'vitest.config.js', related: false },
+  ignorePatterns: [
+    'sdks/swift-mobile/.build/**',
+    'sdks/kotlin-mobile/.gradle/**',
+    'sdks/kotlin-mobile/build/**',
+    'sdks/kotlin-mobile/sample/build/**',
+    '.next/**',
+    'reports/**',
+  ],
   mutate: [
     // Include every helper that can change a security verdict or the bytes it
     // binds. Constants, exports, and the legacy in-memory demo store remain out

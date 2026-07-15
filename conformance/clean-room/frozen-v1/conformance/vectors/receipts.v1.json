@@ -1,0 +1,341 @@
+{
+  "suite": "EP-RECEIPT-v1",
+  "vectors_version": "1.0.0",
+  "description": "Canonical cross-language conformance vectors for the EMILIA Protocol authorization-receipt format (EP-RECEIPT-v1). An EP-conformant verifier MUST return expect.valid for every vector. Used to prove the JS, Python, and Go reference verifiers agree.",
+  "algorithm": {
+    "signature": "Ed25519",
+    "canonicalization": "recursive key-sorted JSON (RFC 8785-style)",
+    "anchor": "SHA-256 sorted-pair Merkle"
+  },
+  "count": 13,
+  "vectors": [
+    {
+      "id": "accept_minimal",
+      "description": "Minimal valid receipt",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_min",
+          "issuer": "ep:demo",
+          "created_at": "2026-06-11T00:00:00Z"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "U2oSPM0Lts4cR1ZaLUSW1c23yhDMNNH-QCH9sWexaANZbCbdlawmZ89dC5qfnJlGFsqPRtBLwY8gp8jX9C0NAw"
+        }
+      }
+    },
+    {
+      "id": "accept_nested_context",
+      "description": "Deeply nested payload — recursive canonicalization must match across implementations",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_nested",
+          "action_type": "large_payment_release",
+          "context": {
+            "amount": 82000,
+            "currency": "USD",
+            "change": {
+              "after_bank_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "fields": [
+                "routing",
+                "account"
+              ]
+            },
+            "risk_signals": [
+              "new_destination",
+              "after_hours"
+            ]
+          },
+          "issued_at": "2026-06-09T17:21:05.000Z"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "lVK7j6HEnhRA9iwb3XvEHebLkpKl3tNJt7r9selwlXzHvqnHMfGQQtZRTXsb-IwGK25QDB6Si3ZCdmcOJBCLDw"
+        }
+      }
+    },
+    {
+      "id": "accept_key_order_independent",
+      "description": "Reordered keys verify identically (canonical JSON is order-independent)",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "nested": {
+            "b": 3,
+            "y": 2
+          },
+          "z": 26,
+          "a": 1,
+          "receipt_id": "tr_order"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "gxnxj0LoF5nHmEI4Od_DrSnSn6fS-uQu5DATiqqGFGWTZ3-C_9hKkrTwy8Nwg4VolnIU6AjdwAbMiA1QzITkAw"
+        }
+      }
+    },
+    {
+      "id": "reject_legacy_v1_anchor_by_default",
+      "description": "A legacy EP-MERKLE-v1 (sorted-pair, unbound) anchor is refused by default, production requires v2. Verifiable only via an explicit allowLegacyMerkle opt-in (see the per-language unit tests).",
+      "expect": {
+        "valid": false
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_anchored",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "dQmzySMOWNUMpZOFkPdGhJu8URSNaS1mHpLgL0XXsG-o_XUPVZOfLan8gglVq2I2UnOhyc2BFCK2LK__ta2PAg"
+        },
+        "anchor": {
+          "leaf_hash": "c0cb6810219b31e0542dedc589b9dcba8bd9eca0aa0ce95c1555183256c67c2b",
+          "merkle_proof": [
+            {
+              "hash": "57f4fd4eae885cdc862a0a0fa216880b896316fcffa5c4fd1ee485aa5714b3d0",
+              "position": "right"
+            }
+          ],
+          "merkle_root": "73027e0c013ed6ce34519954ad6250cd62badd5bc5e23e2bcf46b5c92451af62"
+        }
+      }
+    },
+    {
+      "id": "accept_with_merkle_anchor_v2",
+      "description": "Valid receipt with a v2 domain-separated, payload-bound Merkle anchor",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_anchored_v2",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "AfF4nxdGj4O-Huqj5XCqX1rPOO9MHdZMEviMrqTCMOM6A9RVSrdKTAS_tdG_8HgbT_ZJVIBr2HnE3zd7t8nxBw"
+        },
+        "anchor": {
+          "alg": "EP-MERKLE-v2",
+          "leaf_hash": "49e4fa6eec990de1897dfcdd3b7a7cb6af458bf8d8a2aaddb9c61837bb26f804",
+          "merkle_proof": [
+            {
+              "hash": "52ab2e6d1cf6ebb89e4d01bb94ca71b5df78f609154b2735251abbeb37274038",
+              "position": "right"
+            }
+          ],
+          "merkle_root": "388fbc92013502492595c9092b268c1ec0ab562ae2bec40602e83a9cca0239c3"
+        }
+      }
+    },
+    {
+      "id": "reject_v2_unbound_leaf",
+      "description": "v2 anchor leaf_hash not bound to the receipt payload is refused",
+      "expect": {
+        "valid": false
+      },
+      "reason": "anchor_leaf_unbound",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_v2_unbound",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "l0WQYrf-O0SlhvxjZYc6nSPeZT-j19yI-pKz5jqf2Fe6mjZACU92J93HsnmlQLFrZ7FADnR1Byc5vDu3wXABDg"
+        },
+        "anchor": {
+          "alg": "EP-MERKLE-v2",
+          "leaf_hash": "407f447a518bd5dd58e4c17b09934eb0e5041816b9cebf85d2a44b70d3fba0ab",
+          "merkle_proof": [
+            {
+              "hash": "52ab2e6d1cf6ebb89e4d01bb94ca71b5df78f609154b2735251abbeb37274038",
+              "position": "right"
+            }
+          ],
+          "merkle_root": "388fbc92013502492595c9092b268c1ec0ab562ae2bec40602e83a9cca0239c3"
+        }
+      }
+    },
+    {
+      "id": "reject_unsupported_version",
+      "description": "Unknown document version is refused",
+      "expect": {
+        "valid": false
+      },
+      "reason": "unsupported_version",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v2",
+        "payload": {
+          "receipt_id": "tr_v2"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "GWBHpiwxzpfqlqVBRVLLDAn4JxNKCvsqPHCiU-zROG-iOC2dODgz9VvnmhBFclULVWB8GqyDbrworrP0JMr4Cg"
+        }
+      }
+    },
+    {
+      "id": "reject_missing_signature",
+      "description": "Missing signature value is refused",
+      "expect": {
+        "valid": false
+      },
+      "reason": "missing_signature",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_nosig"
+        },
+        "signature": {
+          "algorithm": "Ed25519"
+        }
+      }
+    },
+    {
+      "id": "reject_tampered_payload",
+      "description": "Payload mutated after signing — signature no longer matches",
+      "expect": {
+        "valid": false
+      },
+      "reason": "tampered_payload",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_tamper",
+          "context": {
+            "amount": 820000
+          }
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "QRgQnvFjoVYlpcmjJ7uRf2TXSvINGZkdCS5FIY5EfcA5xRVT5NmE88iswicqlYYNvf553fnojJjYKyIxXpBzAA"
+        }
+      }
+    },
+    {
+      "id": "reject_tampered_nested_param",
+      "description": "A nested action parameter (destination bank) was swapped after signing — recursive canonicalization binds every parameter, so the signature no longer matches",
+      "expect": {
+        "valid": false
+      },
+      "reason": "tampered_payload",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_param",
+          "action_type": "large_payment_release",
+          "context": {
+            "amount": 82000,
+            "currency": "USD",
+            "change": {
+              "after_bank_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "fields": [
+                "routing",
+                "account"
+              ]
+            }
+          }
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "325QngVhsqYvI1jgYRDFwTlSGuJNt3hSjThErMRy5X4Ne0jOvsVOnH9GZFd9c_ysz58M1nkFpGs26ci0O-aBBw"
+        }
+      }
+    },
+    {
+      "id": "reject_wrong_key",
+      "description": "Valid signature, but verified against an unrelated public key",
+      "expect": {
+        "valid": false
+      },
+      "reason": "wrong_key",
+      "public_key": "MCowBQYDK2VwAyEAVRVPQgZepaG-oFRjgmviaE65LfksEAAnqrquV8pVQgc",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_wrongkey",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "lfAmwfvNsXpKSEcQXEFqHAeTMgNDTEemR5-6V3cHqQyDE30W7UIkSwFbXetXFsvKLs4SnzcpbHtpZ4exdtgLBg"
+        }
+      }
+    },
+    {
+      "id": "reject_malformed_signature",
+      "description": "Signature value is not a valid signature",
+      "expect": {
+        "valid": false
+      },
+      "reason": "malformed_signature",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_bad"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "bm90LWEtc2lnbmF0dXJl"
+        }
+      }
+    },
+    {
+      "id": "reject_tampered_anchor",
+      "description": "Receipt signature is valid but the Merkle proof does not reconstruct the claimed root",
+      "expect": {
+        "valid": false
+      },
+      "reason": "tampered_anchor",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_badanchor",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "Lj-wvX57BKC9O5gKh90lubfDO-nYv77LX63K5W940BfgkSZqZ1bITyT8stgNXDlYw4jnCoK6eC_PwCz9I-nhCA"
+        },
+        "anchor": {
+          "leaf_hash": "c0cb6810219b31e0542dedc589b9dcba8bd9eca0aa0ce95c1555183256c67c2b",
+          "merkle_proof": [
+            {
+              "hash": "521536a74c32eeea57beaec93f3634392f3099ea864bf0892d442a447bc17795",
+              "position": "right"
+            }
+          ],
+          "merkle_root": "73027e0c013ed6ce34519954ad6250cd62badd5bc5e23e2bcf46b5c92451af62"
+        }
+      }
+    }
+  ]
+}

@@ -145,8 +145,8 @@ func resolutionSignedOrigin(signoff map[string]any) string {
 	if err != nil {
 		return ""
 	}
-	var client map[string]any
-	if err := json.Unmarshal(raw, &client); err != nil {
+	client, err := decodeStrictJSONObject(raw)
+	if err != nil {
 		return ""
 	}
 	return getStr(client, "origin")
@@ -363,7 +363,7 @@ func VerifyResolutionReceipt(receipt map[string]any, opts ResolutionOptions) (re
 	if !checks["origin"] {
 		return resolutionRefuse("webauthn_origin_not_allowed", checks, outcome)
 	}
-	checks["webauthn"] = VerifyWebAuthnSignoff(signoff, pin["public_key"], opts.RPID).Valid
+	checks["webauthn"] = VerifyWebAuthnSignoff(signoff, pin["public_key"], opts.RPID, opts.AllowedOrigins).Valid
 	if !checks["webauthn"] {
 		return resolutionRefuse("webauthn_verification_failed", checks, outcome)
 	}

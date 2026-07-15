@@ -76,8 +76,12 @@ function guardedRequest(doc, action) {
 // proof verification. So proof-backed cases create their harness inline and pin
 // ONLY that harness's keys via a per-test env setup.
 async function setupWith({ harness } = {}) {
-  process.env.EP_TRUSTED_ISSUER_KEYS = [softwareIssuerB64u, ...(harness ? [harness.publicKey] : [])].join(',');
-  process.env.EP_PINNED_APPROVER_KEYS = JSON.stringify(harness ? harness.approverKeys : {});
+  const verifierHarness = harness || createEg1Harness({ action: { action_type: QUORUM_ACTION }, idPrefix: 'config' });
+  process.env.EP_TRUSTED_ISSUER_KEYS = [softwareIssuerB64u, verifierHarness.publicKey].join(',');
+  process.env.EP_PINNED_APPROVER_KEYS = JSON.stringify(verifierHarness.approverKeys);
+  process.env.EP_WEBAUTHN_RP_ID = verifierHarness.rpId;
+  process.env.EP_WEBAUTHN_ALLOWED_ORIGINS = JSON.stringify(verifierHarness.allowedOrigins);
+  process.env.EP_QUORUM_POLICIES = JSON.stringify({ [QUORUM_ACTION]: verifierHarness.quorumPolicy });
   delete process.env.NODE_ENV;
   const consumption = await import('../lib/http/guarded-consumption.js');
   consumption.__resetGuardedConsumptionStoreForTests();
@@ -89,6 +93,9 @@ describe('/api/v1/guarded assurance-tier enforcement', () => {
   afterEach(() => {
     delete process.env.EP_TRUSTED_ISSUER_KEYS;
     delete process.env.EP_PINNED_APPROVER_KEYS;
+    delete process.env.EP_WEBAUTHN_RP_ID;
+    delete process.env.EP_WEBAUTHN_ALLOWED_ORIGINS;
+    delete process.env.EP_QUORUM_POLICIES;
   });
 
   it('REFUSES a valid software-tier receipt for a quorum action (deploy.production)', async () => {

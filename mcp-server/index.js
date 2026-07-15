@@ -67,9 +67,31 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { AutoReceiptMiddleware } from './auto-receipt.js';
 
+let strictJsonGate;
+try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
+catch { ({ strictJsonGate } = await import('../packages/verify/strict-json.js')); }
+
 // NOTE: use the www host. The apex 307-redirects to www, and fetch drops the
 // Authorization header on the cross-origin redirect — which would 401 authed calls.
-const BASE_URL = process.env.EP_BASE_URL || 'https://www.emiliaprotocol.ai';
+const MAX_API_RESPONSE_BYTES = 8 * 1024 * 1024;
+const API_TIMEOUT_MS = 15_000;
+
+function isLoopbackHost(hostname) {
+  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  return normalized === 'localhost' || normalized === '::1' || /^127(?:\.\d{1,3}){3}$/.test(normalized);
+}
+
+export function normalizeSecureBaseUrl(value, label = 'EP_BASE_URL') {
+  const parsed = new URL(value);
+  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLoopbackHost(parsed.hostname))) {
+    throw new Error(`${label} must use HTTPS (HTTP is allowed only for loopback development)`);
+  }
+  if (parsed.username || parsed.password) throw new Error(`${label} must not contain credentials`);
+  parsed.hash = '';
+  return parsed.toString().replace(/\/+$/, '');
+}
+
+const BASE_URL = normalizeSecureBaseUrl(process.env.EP_BASE_URL || 'https://www.emiliaprotocol.ai');
 const API_KEY = process.env.EP_API_KEY || '';
 
 // =============================================================================
@@ -98,10 +120,21 @@ async function epFetch(path, options = {}) {
   };
   const res = await fetch(url, {
     method: options.method || 'GET',
+    redirect: 'error',
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
-  const data = await res.json();
+  const raw = await res.text();
+  if (Buffer.byteLength(raw, 'utf8') > MAX_API_RESPONSE_BYTES) {
+    throw new Error(`EP API response exceeds ${MAX_API_RESPONSE_BYTES} bytes`);
+  }
+  let data = {};
+  if (raw) {
+    const gate = strictJsonGate(raw);
+    if (!gate.ok) throw new Error(`EP API returned ambiguous or invalid JSON: ${gate.reason}`);
+    data = JSON.parse(raw);
+  }
   if (!res.ok) throw new Error(data.error || `EP API error: ${res.status}`);
   return data;
 }
@@ -117,12 +150,12 @@ const TOOLS = [
   {
     name: 'ep_guard_action',
     description:
-      'REQUIRED before any irreversible action: payments, wire transfers, fund releases, ' +
+      'Request authorization before an irreversible action: payments, wire transfers, fund releases, ' +
       'deletions, record or account changes, or sending messages with real-world effect. ' +
-      'Submits the exact action for policy evaluation and human authorization. Returns ' +
-      'APPROVED with a receipt the action may proceed under, or BLOCKED with a receipt_id + ' +
-      'signoff_id while a named human reviews. Do NOT execute the action without an APPROVED ' +
-      'result — if BLOCKED, poll ep_check_signoff with the receipt_id.',
+      'Submits the exact action for policy evaluation and human authorization. This MCP tool ' +
+      'does not itself sit at the executor choke point: even after approval, the executor MUST ' +
+      'match the returned action_hash and atomically consume the receipt before effect. If ' +
+      'BLOCKED, poll ep_check_signoff with the receipt_id.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -142,8 +175,9 @@ const TOOLS = [
     name: 'ep_check_signoff',
     description:
       'Poll a pending authorization after ep_guard_action returns BLOCKED. Pass the ' +
-      'receipt_id. Returns PENDING, APPROVED (the action may now proceed), or DENIED (with ' +
-      'reason). Safe to call repeatedly until a decision is reached.',
+      'receipt_id. Returns PENDING, APPROVED_PENDING_CONSUME, CONSUMED, or DENIED. Approval ' +
+      'alone is not permission to execute: the executor must match action_hash and atomically ' +
+      'consume the receipt at its own choke point.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -848,6 +882,8 @@ async function handleTool(name, args) {
           target_resource_id: args.target_resource_id,
           amount: args.amount,
           currency: args.currency,
+          payment_address: args.destination,
+          display_summary: args.summary,
           risk_flags: args.risk_flags || [],
           target_changed_fields: args.action_type === 'vendor_bank_account_change' ? ['bank_account'] : [],
         },
@@ -857,7 +893,9 @@ async function handleTool(name, args) {
           `receipt_id: ${mint.receipt_id}\nDo not execute this action.`;
       }
       if (!mint.signoff_required) {
-        return `APPROVED — no human signoff required.\nreceipt_id: ${mint.receipt_id}\nThe action may proceed.`;
+        return `APPROVED_PENDING_CONSUME — policy did not require human signoff.\n` +
+          `receipt_id: ${mint.receipt_id}\naction_hash: ${mint.action_hash}\n` +
+          `Do NOT execute from this response. The executor must match the exact action and atomically consume this receipt at its choke point.`;
       }
       // 2. Signoff required → open the signoff request for a named human.
       const sign = await epFetch('/api/v1/signoffs/request', {
@@ -866,6 +904,7 @@ async function handleTool(name, args) {
       });
       return `BLOCKED — a named human must authorize this before it runs.\n` +
         `receipt_id: ${mint.receipt_id}\nsignoff_id: ${sign.signoff_id}\nstatus: ${sign.status}\n` +
+        `action_hash: ${mint.action_hash}\n` +
         `reason: ${(mint.reasons || []).join('; ') || 'policy requires signoff'}\n` +
         `Do NOT execute the action. Poll ep_check_signoff with this receipt_id until approved.`;
     }
@@ -874,9 +913,13 @@ async function handleTool(name, args) {
       if (!API_KEY) return 'Error: EP_API_KEY required. Set it in MCP server config.';
       const data = await epFetch(`/api/v1/trust-receipts/${encodeURIComponent(args.receipt_id)}`, { auth: true });
       const status = data.receipt_status || data.status || 'pending_signoff';
-      // approved_pending_consume = signoff granted, not yet consumed; consumed = fully done.
-      if (['approved_pending_consume', 'approved', 'consumed', 'fulfilled'].includes(status)) {
-        return `APPROVED — the action is authorized and may proceed.\nreceipt_id: ${args.receipt_id}`;
+      if (['approved_pending_consume', 'approved'].includes(status)) {
+        return `APPROVED_PENDING_CONSUME — human approval is present.\nreceipt_id: ${args.receipt_id}\n` +
+          `action_hash: ${data.action_hash || 'unavailable'}\n` +
+          `Do NOT execute from this response. The executor must match the exact action and atomically consume this receipt at its choke point.`;
+      }
+      if (['consumed', 'fulfilled'].includes(status)) {
+        return `CONSUMED — this authorization has already been spent.\nreceipt_id: ${args.receipt_id}\nDo not execute another effect from this response.`;
       }
       if (['denied', 'rejected', 'revoked'].includes(status)) {
         return `DENIED — a human rejected this action.\nreceipt_id: ${args.receipt_id}\nreason: ${data.reason || 'not stated'}\nDo not execute the action.`;

@@ -219,8 +219,12 @@ import { verifyFederatedReceipt, verifyFederatedReceiptOffline } from '@emilia-p
 // hint, not a trust root.
 const verdict = await verifyFederatedReceipt(receipt, {
   keyDiscoveryUrl: 'https://op-a.example/.well-known/ep-keys.json',
+  expectedSigner: 'ep:operator:op-a',
 });
 // { accepted, verified, revoked, signer, keyMatched: 'current'|'historical', checks }
+
+// If the live revocation surface is unavailable, a valid signature remains
+// verified:true but accepted is false until status can be confirmed.
 
 // Air-gapped: supply the issuer's ep-keys.json + revocation set yourself.
 const offline = verifyFederatedReceiptOffline(receipt, discoveryDoc, { revokedReceiptIds });

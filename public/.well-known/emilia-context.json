@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-15T05:18:21.240Z",
+  "evidence_snapshot_at": "2026-07-15T14:32:54.611Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "9d10177b9f3a3d6293cf02b056646f73450bd44eb67cf5b7e00bde7eaca35e0b",
+    "input_digest_sha256": "79382b6140419c1417e1ff622088c17231751377e1a0d3c7c9972dc7a983af4e",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "4ca1e1f67a9a25f2e3045b62861da42de8a7870b4da875af08dc6ab2d23e6638",
-        "bytes": 13950
+        "sha256": "fc52b05000813c6fd09f0ede5d85b24a55677e348e6878c7c0c8012247f2a4fa",
+        "bytes": 15679
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,28 +17,28 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "9bd2159a87a9a43993dc2eae1eadad2afb79265db1a8beba13d9068d872d65fd",
-        "bytes": 1067
+        "sha256": "264adc7861b019b34c5c2c4d97ee3bb85d405d5986015e3125faeab70a1949fe",
+        "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "e21418bb603760a7530193027cab58f1147b88a8ee915cf7e9619ac3db7014d2",
-        "bytes": 5620
+        "sha256": "04139382d6767b88b83cc8c07752e364043ea218630fd1b81af30426c995790f",
+        "bytes": 5622
       },
       {
         "path": "conformance/external/rust-cleanroom-jdieselny.v1.json",
-        "sha256": "f390e27dff0404a2cb34506270a6f7a979682e51e09b45fa09ab3e9c4f163860",
-        "bytes": 2031
+        "sha256": "7c59508adfb6f3c4d7ea072ef167d77f751030710fe82725e26523f67e36e7db",
+        "bytes": 2286
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "6bfc499dd34d0d509dcc27df4c71520e400a155fbde911acada6fe17d15b9daa",
-        "bytes": 78904
+        "sha256": "f80eb7c7e97f7979cb76b4288e024c570e89002435280e567d6ecc1a1e169ef5",
+        "bytes": 94121
       },
       {
         "path": "security/security-case.json",
-        "sha256": "1ae347de0af44e8960237196c8d683e20e01a09562711d83c3c7518972a3358a",
-        "bytes": 130788
+        "sha256": "2a0bce956588da16aa1ce317c989ccaa995afd7e58dbfff5c3a92b54c66d5a34",
+        "bytes": 154002
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -142,17 +142,17 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5597,
-      "files": 284,
+      "total": 5732,
+      "files": 291,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
       "suites": 18,
-      "vectors": 232,
+      "vectors": 250,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "99bc0f825e3eb1ac83b5b1dd3fb271547ed2aa818db2eb8bf8217a389acdc050",
+      "manifest_sha256": "707f95f8b0d8c58be6ae256144cbb6c8f1889832936bdcd98fec8ae2e826d410",
       "vector_bundle_sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
     },
     "formal": {
@@ -172,9 +172,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 18,
-      "evidence_files": 89,
-      "evidence_bundle_sha256": "1a81343eb4192ebc3c58828951e447df7cfe6ffbc851f6c15cc2062ee0434ef2"
+      "claims": 21,
+      "evidence_files": 100,
+      "evidence_bundle_sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
     },
     "caid": {
       "core_vectors": 48,
@@ -231,11 +231,15 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 232
+      "current_vectors": 250
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
       "runner_name": "rust-cleanroom-jdieselny",
+      "evaluator_commit": "18739076c822bdc757147326e8d36716432d1b41",
+      "evidence_run": "https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29178582162",
+      "evidence_artifact_id": 8255700893,
+      "scope": "time_pinned_corpus_and_evaluator",
       "corpus_sha256": "ce867caa8fc7e12d7514f6429f3fb8afd47805a66b61437a861bd84db6dc3296",
       "structured_cases": 353,
       "raw_parser_cases": 6,
@@ -1693,6 +1697,231 @@
         "this claim covers the AEC composition verifier, not the standalone reliance kernel",
         "offline AEC verification does not prove current revocation status or atomic one-time consumption; an execution gate must enforce those stateful properties separately"
       ]
+    },
+    {
+      "claim_id": "mobile-ceremony-exact-binding-and-consumption",
+      "statement": "A native mobile approval or denial is accepted only when exact relying-party-created action, presentation, decision, profile, app, enrollment, origin, and validity bytes pass the pinned Class-A WebAuthn path, independently verified platform evidence is bound to the same request, and the exact registered challenge body is consumed atomically and recorded durably.",
+      "acceptance_roots": [
+        "relying-party-pinned mobile reliance profile, WebAuthn RP ID, origin allowlist, app allowlist, enrollment key, and platform-attestation policy",
+        "agency-authenticated caller and mandatory authorization policy bound to the action reference, approver, profile, app, and enrolled device",
+        "durable body-bound challenge store, authenticator counter store, and strict durable evidence log",
+        "government system of record computes the protected action and presentation"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "verifyMobileCeremony",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "createMobileCeremonyService",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/government.js",
+          "symbol": "createGovernmentMobileController",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/http.js",
+          "symbol": "createMobileHttpHandler",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_ios_and_android_class_a",
+          "polarity": "positive"
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_substitution_matrix",
+          "polarity": "negative"
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_replay_and_state_failure",
+          "polarity": "negative"
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_http_boundary_attacks",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The mobile app-integrity row, native SDK validation, HTTP boundary, system-of-record controller, and exact stateful ceremony service are executable but are not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the enrollment directory correctly binds the approver, credential, app, and attestation key",
+        "the agency identity provider authenticates the caller and the configured authorization hook implements the relying party's intended personnel policy",
+        "the configured App Attest or Play Integrity verifier validates provider evidence and applies the relying party's pins",
+        "all protected execution paths require the consumed ceremony and clocks and durable stores meet their deployment assumptions"
+      ],
+      "exclusions": [
+        "the ceremony does not prove civil identity, comprehension, legality, wisdom, safety, execution, or physical outcome",
+        "App Attest and Play Integrity verification are online dependencies at ceremony time and are not silently claimed as offline-verifiable evidence",
+        "Swift and Kotlin canonical-byte agreement is same-team cross-platform consistency, not an independent implementation"
+      ]
+    },
+    {
+      "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
+      "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
+      "acceptance_roots": [
+        "a relying-party-provisioned trust bundle containing the allowed action family, exact mobile reliance profile, Class-A approver directory, log key, policy hash, and operator execution-record key",
+        "a mobile ceremony result that the stateful service consumed and appended to its strict atomic audit log",
+        "the Class-A receipt verifier, CAID verifier, mobile execution-record verifier, and atomic evidence-record verifier"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "createMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "verifyMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "examples/regulatory-mobile-oversight/lib.mjs",
+          "symbol": "verifyRegulatoryEvidence",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the regulatory mobile export profile is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the regulatory mobile export profile is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_regulatory_mobile_evidence_export",
+          "polarity": "positive"
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_regulatory_mobile_evidence_substitution",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The regulatory export composition and the distinction between direct offline checks and operator runtime assertions are executable but not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the relying party provisions its trust bundle out of band and correctly vets the reviewer directory, policy, mobile profile, log key, and operator execution-record key",
+        "the operator execution-record signer is protected and accountable for its statements about platform verification, challenge consumption, and audit persistence",
+        "all consequential execution paths are mediated by the same stateful service and system of record"
+      ],
+      "exclusions": [
+        "the operator execution-record signature authenticates the operator's assertion but does not independently replay Apple or Google verification, storage durability, one-time consumption, or physical effect",
+        "the deterministic runnable fixture uses synthetic records, a cryptographic platform-attestation test double, and in-memory backends; it is not evidence of a live-device or government deployment",
+        "the package does not establish clinical correctness, reviewer licensure, comprehension, legal compliance, non-bypassability, or real-world outcome"
+      ]
+    },
+    {
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "statement": "A mobile enrollment becomes active only after the agency authorizes the authenticated caller for the named approver at issuance and completion, a WebAuthn registration adapter returns an ES256 P-256 credential under the exact RP, origin, challenge, and user-verification requirements, a platform adapter independently verifies integrity evidence over the exact enrollment binding, the challenge is consumed once, and the directory plus audit event commit atomically.",
+      "acceptance_roots": [
+        "authenticated approver enrollment request and relying-party-owned RP, origin, and app configuration",
+        "cryptographic WebAuthn registration and platform-enrollment verification adapters",
+        "durable body-bound challenge store and atomic enrollment-directory audit commit"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "symbol": "buildMobileEnrollmentBinding",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "symbol": "createMobileEnrollmentService",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python enrollment service port is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go enrollment service port is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_atomic_mobile_enrollment",
+          "polarity": "positive"
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_unverified_or_replayed_mobile_enrollment",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models."
+        }
+      ],
+      "assumptions": [
+        "the injected WebAuthn adapter performs full registration attestation verification and returns the authentic P-256 SPKI",
+        "the injected platform adapter verifies the provider chain or service response under relying-party pins",
+        "the authenticated enrollment requester is permitted to enroll the named approver and the directory operation is atomic"
+      ],
+      "exclusions": [
+        "the package does not infer civil identity from a passkey or platform attestation",
+        "enrollment authorization, personnel vetting, device management, and recovery policy remain relying-party responsibilities",
+        "the simulated adapters in unit tests are test doubles and not production token verifiers"
+      ]
     }
   ],
   "non_claims": [
@@ -1710,6 +1939,9 @@
     "EQUIVALENT_UNDER_PROFILE is valid only under the exact mapping profiles and type-definition sources pinned by the relying party; missing or lossy mappings are INDETERMINATE.",
     "AEC SATISFIED is evidence sufficiency under one relying-party requirement, not a universal ALLOW or legal authorization decision.",
     "An offline receipt cannot prove global non-replay across independent executors; one-time enforcement requires a shared atomic consumption domain.",
+    "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
+    "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
+    "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
     "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims."
   ],
   "source_precedence": [
@@ -2122,6 +2354,22 @@
     {
       "path": "standards/staged/draft-schrock-model-to-matter-00.xml",
       "purpose": "July 19 Experimental Model-to-Matter filing candidate with explicit non-goals and implementation status"
+    },
+    {
+      "path": "packages/mobile",
+      "purpose": "fail-closed native mobile enrollment and Class-A ceremony service with independently verified platform evidence, atomic consumption, and signed acknowledgements"
+    },
+    {
+      "path": "sdks/swift-mobile",
+      "purpose": "Swift package for iOS passkey, App Attest enrollment and assertions, exact challenge validation, and shared canonical-byte vectors"
+    },
+    {
+      "path": "sdks/kotlin-mobile",
+      "purpose": "Android library and reference app for Credential Manager passkeys, Play Integrity, exact challenge validation, and shared canonical-byte vectors"
+    },
+    {
+      "path": "examples/mobile-government",
+      "purpose": "buildable iOS and Android government approval reference applications using system-of-record actions and server-pinned profiles"
     }
   ],
   "commands": [
@@ -2136,6 +2384,10 @@
     {
       "command": "npm run m2m:conformance",
       "purpose": "run the deterministic Model-to-Matter executor profile vectors"
+    },
+    {
+      "command": "npm run mobile:conformance",
+      "purpose": "run mobile server, enrollment, attestation, replay, canonical-byte, Swift, and Kotlin tests"
     },
     {
       "command": "npm run check:security-case",

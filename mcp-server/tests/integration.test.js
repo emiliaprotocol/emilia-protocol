@@ -60,7 +60,7 @@ function mockOk(body) {
   fetchSpy.mockResolvedValueOnce({
     ok: true,
     status: 200,
-    json: async () => body,
+    text: async () => JSON.stringify(body),
   });
 }
 
@@ -68,7 +68,7 @@ function mockError(body, status) {
   fetchSpy.mockResolvedValueOnce({
     ok: false,
     status,
-    json: async () => body,
+    text: async () => JSON.stringify(body),
   });
 }
 
@@ -133,6 +133,38 @@ describe.skipIf(SKIP)('ep_trust_profile', () => {
     const msg = typeof result === 'string' ? result : result?.message ?? '';
     expect(msg).not.toMatch(/\s+at\s+\w/);
     expect(msg).toMatch(/not found|404|error/i);
+  });
+});
+
+describe.skipIf(SKIP)('security boundaries', () => {
+  it('binds destination and displayed summary into the minted action', async () => {
+    mockOk({ decision: 'allow', signoff_required: false, receipt_id: 'tr_1', action_hash: 'sha256:abc' });
+    const result = await handleTool('ep_guard_action', {
+      organization_id: 'org-1',
+      action_type: 'large_payment_release',
+      target_resource_id: 'wire-1',
+      amount: 250000,
+      currency: 'USD',
+      destination: 'acct-ending-7788',
+      summary: 'Release payment to approved vendor',
+    });
+    const [, options] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.payment_address).toBe('acct-ending-7788');
+    expect(body.display_summary).toBe('Release payment to approved vendor');
+    expect(result).toContain('APPROVED_PENDING_CONSUME');
+    expect(result).toContain('Do NOT execute from this response');
+    expect(result).not.toContain('may proceed');
+  });
+
+  it('refuses ambiguous duplicate-member API decisions', async () => {
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => '{"decision":"allow","decision":"deny"}',
+    });
+    await expect(handleTool('ep_trust_evaluate', { entity_id: 'e1' }))
+      .rejects.toThrow(/duplicate object member/);
   });
 });
 

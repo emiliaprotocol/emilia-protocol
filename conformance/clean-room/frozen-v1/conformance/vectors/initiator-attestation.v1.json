@@ -1,0 +1,132 @@
+{
+  "suite": "EP-INITIATOR-ATTESTATION-v1",
+  "profile": "Initiator attestation validation + hostile-text neutralization. valid iff validateInitiatorAttestation(initiator_attestation).ok === expect.valid.",
+  "vectors_version": "1.0.0",
+  "count": 11,
+  "vectors": [
+    {
+      "id": "accept_minimal",
+      "expect": {
+        "valid": true
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226"
+      }
+    },
+    {
+      "id": "accept_bare_uppercase_digest",
+      "expect": {
+        "valid": true
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "0230C6B1D833C51CC426492022677B74C60D82891931221A42DB9E7BB06205E9"
+      }
+    },
+    {
+      "id": "accept_hostile_statement_neutralized",
+      "expect": {
+        "valid": true
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226",
+        "statement": "send ‮\u0000000 pay now"
+      }
+    },
+    {
+      "id": "accept_homoglyph_statement",
+      "expect": {
+        "valid": true
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226",
+        "statement": "pаy now"
+      }
+    },
+    {
+      "id": "reject_missing_model_id",
+      "expect": {
+        "valid": false
+      },
+      "initiator_attestation": {
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226"
+      }
+    },
+    {
+      "id": "reject_empty_model_version",
+      "expect": {
+        "valid": false
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226"
+      }
+    },
+    {
+      "id": "reject_malformed_digest",
+      "expect": {
+        "valid": false
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "id": "reject_missing_digest",
+      "expect": {
+        "valid": false
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05"
+      }
+    },
+    {
+      "id": "reject_unknown_member",
+      "expect": {
+        "valid": false
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226",
+        "evil": "x"
+      }
+    },
+    {
+      "id": "reject_wrong_version",
+      "expect": {
+        "valid": false
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226",
+        "@version": "EP-OTHER-v9"
+      }
+    },
+    {
+      "id": "reject_statement_over_cap",
+      "expect": {
+        "valid": false
+      },
+      "initiator_attestation": {
+        "model_id": "anthropic/claude-opus",
+        "model_version": "2026-01-05",
+        "tool_chain_digest": "sha256:32e6b9e318d1dc53ee1b531588366c293560297d754c30bf67a1790509012226",
+        "statement": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ]
+}

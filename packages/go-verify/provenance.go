@@ -14,6 +14,22 @@ const ProvenanceVersion = "EP-PROVENANCE-CHAIN-v1"
 
 var provenanceProofFields = []string{"delegation_id", "delegator", "delegatee", "scope", "max_value_usd", "expires_at", "constraints"}
 
+func validProvenanceVerificationProfile(profile map[string]any) ([]string, bool) {
+	if profile == nil || getMap(profile["approver_keys"]) == nil || getStr(profile, "log_public_key") == "" || getStr(profile, "rp_id") == "" {
+		return nil, false
+	}
+	origins, ok := stringSliceOption(profile, "allowed_origins")
+	if !ok || len(origins) == 0 {
+		return nil, false
+	}
+	for _, origin := range origins {
+		if origin == "" {
+			return nil, false
+		}
+	}
+	return origins, true
+}
+
 // ProvenanceResult mirrors the JS { valid, checks } shape (advisory blocks omitted).
 type ProvenanceResult struct {
 	Valid  bool            `json:"valid"`
@@ -199,8 +215,10 @@ func provDelegationProofBytes(link map[string]any) string {
 }
 
 // VerifyProvenanceOffline verifies an EP-PROVENANCE-CHAIN-v1 document. opts keys:
-// humanKeyClasses ([]any), delegationKeys (map), now (RFC3339), allowUnsignedDelegations
-// (bool), requireActionApprovalAlways (bool).
+// humanKeyClasses ([]any), delegationKeys (map), rootVerification (map),
+// actionVerification (map), now (milliseconds), allowUnsignedDelegations
+// (bool), requireActionApprovalAlways (bool). Verification profiles are
+// relying-party inputs; keys carried inside the document are never trust roots.
 func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) ProvenanceResult {
 	checks := map[string]bool{
 		"version": false, "root_receipt_valid": false, "root_human_signoff": false,
@@ -238,11 +256,22 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 	}
 
 	root := getMap(doc["root_signoff"])
-	if root == nil || getMap(root["receipt"]) == nil || getMap(root["verification"]) == nil {
+	rootVerification := getMap(opts["rootVerification"])
+	if rootVerification == nil {
+		rootVerification = getMap(opts["root_verification"])
+	}
+	if root == nil || getMap(root["receipt"]) == nil {
+		fail("root_receipt_valid")
+	} else if _, ok := validProvenanceVerificationProfile(rootVerification); !ok {
 		fail("root_receipt_valid")
 	} else {
-		ver := getMap(root["verification"])
-		r0 := VerifyTrustReceipt(getMap(root["receipt"]), map[string]any{"approverKeys": ver["approver_keys"], "logPublicKey": ver["log_public_key"]})
+		rootOrigins, _ := validProvenanceVerificationProfile(rootVerification)
+		r0 := VerifyTrustReceipt(getMap(root["receipt"]), map[string]any{
+			"approverKeys": rootVerification["approver_keys"],
+			"logPublicKey": rootVerification["log_public_key"],
+			"rpId": rootVerification["rp_id"],
+			"allowedOrigins": rootOrigins,
+		})
 		checks["root_receipt_valid"] = r0.Valid
 		checks["root_human_signoff"] = provHasHumanSignoff(getMap(root["receipt"]), humanClasses)
 	}
@@ -253,13 +282,26 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 	reversibilityAsserted := false
 	needApproval := requireAlways || !reversibilityAsserted
 	approval := getMap(doc["action_approval"])
+	actionVerification := getMap(opts["actionVerification"])
+	if actionVerification == nil {
+		actionVerification = getMap(opts["action_verification"])
+	}
 	if needApproval && getMap(approval["receipt"]) == nil {
 		fail("per_action_required")
 	}
 	if ar := getMap(approval["receipt"]); ar != nil {
-		ver := getMap(approval["verification"])
-		ra := VerifyTrustReceipt(ar, map[string]any{"approverKeys": ver["approver_keys"], "logPublicKey": ver["log_public_key"]})
-		checks["action_receipt_valid"] = ra.Valid
+		if _, ok := validProvenanceVerificationProfile(actionVerification); !ok {
+			fail("action_receipt_valid")
+		} else {
+			actionOrigins, _ := validProvenanceVerificationProfile(actionVerification)
+			ra := VerifyTrustReceipt(ar, map[string]any{
+				"approverKeys": actionVerification["approver_keys"],
+				"logPublicKey": actionVerification["log_public_key"],
+				"rpId": actionVerification["rp_id"],
+				"allowedOrigins": actionOrigins,
+			})
+			checks["action_receipt_valid"] = ra.Valid
+		}
 		if irr, _ := exec["irreversible"].(bool); irr {
 			checks["action_human_signoff"] = provHasHumanSignoff(ar, humanClasses)
 		}

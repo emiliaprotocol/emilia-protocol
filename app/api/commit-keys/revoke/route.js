@@ -44,11 +44,12 @@ export async function POST(request) {
   if (!kid) return epProblem(400, 'missing_kid', 'kid is required');
   const reason = typeof body?.reason === 'string' ? body.reason.slice(0, 500) : null;
 
-  const revoked_at = new Date().toISOString();
   const supabase = getGuardedClient();
-  const { error } = await supabase
-    .from('revoked_commit_keys')
-    .upsert({ kid, reason, revoked_by: auth.operator_id, revoked_at }, { onConflict: 'kid' });
+  const { data, error } = await supabase.rpc('revoke_commit_key_atomic', {
+    p_kid: kid,
+    p_reason: reason,
+    p_revoked_by: auth.operator_id,
+  });
 
   if (error) {
     logger.error('[commit-keys/revoke] failed:', error);
@@ -56,6 +57,12 @@ export async function POST(request) {
   }
 
   // Loud by design — revoking a signing key is a high-consequence operation.
+  const revoked_at = data?.[0]?.revoked_at || data?.revoked_at;
+  if (!revoked_at) {
+    logger.error('[commit-keys/revoke] RPC returned no revocation record');
+    return epProblem(503, 'revoke_failed', 'Could not record key revocation');
+  }
+
   logger.warn('[commit-keys/revoke] commit signing key REVOKED', { kid, operator: auth.operator_id });
   return NextResponse.json({ revoked: true, kid, revoked_at, revoked_by: auth.operator_id });
 }

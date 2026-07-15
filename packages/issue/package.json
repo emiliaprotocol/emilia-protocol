@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/issue",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Zero-dependency local issuance of EP authorization receipts (EP-RECEIPT-v1; I-D draft-schrock-ep-authorization-receipts §6.2), signed locally with your own keys. The signing-side companion to @emilia-protocol/verify: issue locally, verify anywhere. Issuance uses Node built-in crypto only; the `demo` command self-verifies via an optional @emilia-protocol/verify. No EP infrastructure required.",
   "license": "Apache-2.0",
   "type": "module",
@@ -19,6 +19,7 @@
   "files": [
     "index.js",
     "cli.js",
+    "strict-json.js",
     "index.d.ts",
     "README.md",
     "LICENSE"
@@ -50,7 +51,7 @@
     "access": "public"
   },
   "optionalDependencies": {
-    "@emilia-protocol/verify": "^3.8.0"
+    "@emilia-protocol/verify": "^3.10.0"
   },
   "scripts": {
     "test": "node --test test.js"

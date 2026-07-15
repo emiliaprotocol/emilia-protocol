@@ -12,24 +12,34 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks
 // ---------------------------------------------------------------------------
 
-// Mock getServiceClient for gate_ref verification (commit issue route)
+const routeDbState = vi.hoisted(() => ({
+  gateCommit: null,
+  gateReadError: null,
+  consumeData: [{ gate_ref: 'epc_gate_allow' }],
+  consumeError: null,
+}));
+
+// Mock getServiceClient for gate_ref verification and atomic consumption.
 vi.mock('@/lib/supabase', () => {
-  const mockGateCommit = {
-    commit_id: 'epc_gate_allow',
-    entity_id: 'test-entity',
-    action_type: 'transact',
-    decision: 'allow',
-    scope: {},
-  };
-  const chain = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    maybeSingle: vi.fn().mockResolvedValue({ data: mockGateCommit }),
-    insert: vi.fn().mockResolvedValue({ error: null }),
+  const client = {
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn(async () => ({
+        data: routeDbState.gateCommit,
+        error: routeDbState.gateReadError,
+      })),
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    })),
+    rpc: vi.fn(async () => ({
+      data: routeDbState.consumeData,
+      error: routeDbState.consumeError,
+    })),
   };
   return {
     authenticateRequest: vi.fn(),
-    getServiceClient: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue(chain) }),
+    getServiceClient: vi.fn().mockReturnValue(client),
+    __mockServiceClient: client,
   };
 });
 
@@ -58,7 +68,7 @@ vi.mock('@/lib/commit-auth', () => ({
   authorizeCommitAccess: vi.fn(),
 }));
 
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest, __mockServiceClient as mockServiceClient } from '@/lib/supabase';
 import {
   issueCommit,
   verifyCommit,
@@ -70,6 +80,11 @@ import {
 } from '@/lib/commit';
 import { authorizeCommitIssuance, authorizeCommitAccess } from '@/lib/commit-auth';
 import { ProtocolWriteError, _internals as _pwInternals } from '@/lib/protocol-write';
+import {
+  buildGateCommitBindingFromIssueRequest,
+  GATE_COMMIT_BINDING_VERSION,
+  hashGateCommitBinding,
+} from '@/lib/gate-commit-binding';
 
 // Route handlers
 import { POST as issueRoute } from '@/app/api/commit/issue/route';
@@ -124,6 +139,29 @@ beforeEach(() => {
   authorizeCommitAccess.mockReturnValue({ authorized: true });
   commitInternals.getPublicKeyBase64.mockReturnValue('public-key-base64');
   commitInternals.getAllTrustedKeys.mockReturnValue([{ kid: 'ep-signing-key-1', publicKeyBase64: 'public-key-base64' }]);
+  verifyCommit.mockResolvedValue({ valid: true, status: 'active', decision: 'allow', reasons: [] });
+  routeDbState.gateReadError = null;
+  routeDbState.consumeData = [{ gate_ref: 'epc_gate_allow' }];
+  routeDbState.consumeError = null;
+  const gateBindingHash = hashGateCommitBinding(buildGateCommitBindingFromIssueRequest({
+    action_type: 'transact',
+    entity_id: 'test-entity',
+    gate_ref: 'epc_gate_allow',
+  }));
+  routeDbState.gateCommit = {
+    commit_id: 'epc_gate_allow',
+    entity_id: 'test-entity',
+    action_type: 'transact',
+    decision: 'allow',
+    status: 'active',
+    expires_at: '2099-01-01T00:00:00.000Z',
+    kid: 'ep-signing-key-1',
+    scope: {
+      gate_binding_version: GATE_COMMIT_BINDING_VERSION,
+      gate_binding_hash: gateBindingHash,
+    },
+    policy_snapshot: null,
+  };
 });
 
 // ============================================================================
@@ -199,10 +237,7 @@ describe('POST /api/commit/issue — response shape', () => {
 
   it('refuses a REPLAYED gate_ref — one-time consumption (gate-bypass-via-replay fix)', async () => {
     issueCommit.mockResolvedValue(MOCK_COMMIT);
-    // The consumed_gate_refs PRIMARY KEY rejects the second use of a gate_ref
-    // with a unique_violation (23505); the route must refuse and never issue.
-    getServiceClient().from('consumed_gate_refs').insert
-      .mockResolvedValueOnce({ error: { code: '23505', message: 'duplicate key' } });
+    routeDbState.consumeError = { code: '23505', message: 'duplicate key' };
 
     const req = makeRequest({
       action_type: 'transact',
@@ -216,6 +251,91 @@ describe('POST /api/commit/issue — response shape', () => {
     expect(res.status).toBe(403);
     expect(JSON.stringify(data)).toMatch(/gate_already_consumed/);
     // A replayed gate must NOT reach issuance.
+    expect(issueCommit).not.toHaveBeenCalled();
+  });
+
+  it('refuses material action substitution under a valid gate_ref', async () => {
+    issueCommit.mockResolvedValue(MOCK_COMMIT);
+
+    const req = makeRequest({
+      action_type: 'transact',
+      entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
+      counterparty_entity_id: 'attacker-counterparty',
+      max_value_usd: 1_000_000,
+    });
+
+    const res = await issueRoute(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(data)).toMatch(/gate_action_mismatch/);
+    expect(mockServiceClient.rpc).not.toHaveBeenCalled();
+    expect(issueCommit).not.toHaveBeenCalled();
+  });
+
+  it('refuses legacy gate references without exact-action binding', async () => {
+    routeDbState.gateCommit = { ...routeDbState.gateCommit, scope: {} };
+
+    const res = await issueRoute(makeRequest({
+      action_type: 'transact',
+      entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
+    }));
+    const data = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(data)).toMatch(/gate_binding_missing/);
+    expect(issueCommit).not.toHaveBeenCalled();
+  });
+
+  it('refuses a gate that no longer verifies as active', async () => {
+    verifyCommit.mockResolvedValue({
+      valid: false,
+      status: 'revoked',
+      decision: 'allow',
+      reasons: ['revoked'],
+    });
+
+    const res = await issueRoute(makeRequest({
+      action_type: 'transact',
+      entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
+    }));
+
+    expect(res.status).toBe(403);
+    expect(issueCommit).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when gate verification storage is unavailable', async () => {
+    verifyCommit.mockRejectedValue(new ProtocolWriteError('database relation missing', {
+      status: 503,
+      code: 'COMMIT_VERIFY_DB_ERROR',
+    }));
+
+    const res = await issueRoute(makeRequest({
+      action_type: 'transact',
+      entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
+    }));
+    const data = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(JSON.stringify(data)).toMatch(/gate_verify_unavailable/);
+    expect(JSON.stringify(data)).not.toMatch(/relation missing/i);
+    expect(issueCommit).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the atomic database recheck sees stale or revoked state', async () => {
+    routeDbState.consumeError = { code: 'P0005', message: 'GATE_NOT_ACTIVE' };
+
+    const res = await issueRoute(makeRequest({
+      action_type: 'transact',
+      entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
+    }));
+
+    expect(res.status).toBe(403);
     expect(issueCommit).not.toHaveBeenCalled();
   });
 });

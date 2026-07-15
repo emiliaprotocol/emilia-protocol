@@ -39,7 +39,7 @@ function buildChain(table) {
   const state = { table, filters: {}, method: null };
 
   const chain = {
-    select: (cols, opts) => { state.method = 'select'; state.cols = cols; return chain; },
+    select: (cols, opts) => { state.method = 'select'; state.cols = cols; state.opts = opts; return chain; },
     eq: (col, val) => { state.filters[col] = val; return chain; },
     gte: (col, val) => { state.filters[`${col}_gte`] = val; return chain; },
     order: () => chain,
@@ -75,6 +75,7 @@ function buildChain(table) {
         }),
       };
     },
+    then: (resolve, reject) => Promise.resolve({ data: null, error: null, count: 0 }).then(resolve, reject),
   };
   return chain;
 }
@@ -100,6 +101,7 @@ vi.mock('@/lib/sybil', () => ({
 }));
 
 vi.mock('@/lib/signatures', () => ({
+  buildIdentifiedSubmissionDigest: vi.fn(() => ({ digest: 'a'.repeat(64) })),
   resolveProvenanceTier: vi.fn(() => ({ tier: 'self_attested', warning: null })),
 }));
 

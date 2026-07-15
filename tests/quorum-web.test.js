@@ -22,8 +22,8 @@ function rawToDer(raw) {
   o[p++] = 0x30; o[p++] = L; o[p++] = 0x02; o[p++] = rb.length; o.set(rb, p); p += rb.length;
   o[p++] = 0x02; o[p++] = sb.length; o.set(sb, p); return o;
 }
-async function signSim(context, { wrongKey = false } = {}) {
-  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+async function signSim(context, { wrongKey = false, pair: suppliedPair = null } = {}) {
+  const pair = suppliedPair || await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
   const verKey = wrongKey ? (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])).publicKey : pair.publicKey;
   const spki = new Uint8Array(await crypto.subtle.exportKey('spki', verKey));
   const ch = b64u(await sha(utf8(canon(context))));
@@ -31,7 +31,7 @@ async function signSim(context, { wrongKey = false } = {}) {
   const ad = new Uint8Array(37); ad.set(await sha(utf8(HOST)), 0); ad[32] = 0x05;
   const signed = new Uint8Array(ad.length + 32); signed.set(ad, 0); signed.set(await sha(cd), ad.length);
   const sig = new Uint8Array(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, pair.privateKey, signed));
-  return { approver_public_key: b64u(spki), signoff: { '@type': 'ep.signoff', context, webauthn: { authenticator_data: b64u(ad), client_data_json: b64u(cd), signature: b64u(rawToDer(sig)) } } };
+  return { approver_public_key: b64u(spki), signoff: { '@type': 'ep.signoff', context, webauthn: { authenticator_data: b64u(ad), client_data_json: b64u(cd), signature: b64u(rawToDer(sig)) } }, _pair: pair };
 }
 
 const ROSTER = [
@@ -50,7 +50,7 @@ describe('lib/quorum-web.js — EP-QUORUM-v1 (Web Crypto)', () => {
   it('authorizes a genuine ordered 3-of-3 quorum (every check passes)', async () => {
     ACTION = Array.from(await sha(utf8(canon({ a: 'release', amt: 40000000 }))), (x) => x.toString(16).padStart(2, '0')).join('');
     const m = [await member(0), await member(1), await member(2)];
-    const r = await verifyQuorum(quorum(m), { rpId: HOST });
+    const r = await verifyQuorum(quorum(m), { rpId: HOST, allowedOrigins: [`https://${HOST}`] });
     expect(r.valid).toBe(true);
     for (const v of Object.values(r.checks)) expect(v).toBe(true);
   });
@@ -82,6 +82,35 @@ describe('lib/quorum-web.js — EP-QUORUM-v1 (Web Crypto)', () => {
     const m = [await member(0), await member(1, { wrongKey: true }), await member(2)];
     const r = await verifyQuorum(quorum(m), { rpId: HOST });
     expect(r.valid).toBe(false); expect(r.checks.all_signatures_valid).toBe(false);
+  });
+
+  it('rejects: a non-canonical device-key encoding cannot fill a seat', async () => {
+    const pol = { mode: 'threshold', required: 2, approvers: ROSTER.slice(0, 2), distinct_humans: true, window_sec: 900 };
+    const firstSigned = await signSim(ctx(ROSTER[0], 0), {});
+    const secondSigned = await signSim(ctx(ROSTER[1], 1), { pair: firstSigned._pair });
+    const first = { ...firstSigned, role: ROSTER[0].role };
+    const second = { ...secondSigned, role: ROSTER[1].role, approver_public_key: secondSigned.approver_public_key + '=' };
+    const result = await verifyQuorum(quorum([first, second], pol), { rpId: HOST });
+    expect(result.valid).toBe(false);
+    expect(result.checks.all_signatures_valid).toBe(false);
+  });
+
+  it('rejects: an unknown policy mode is not treated as threshold', async () => {
+    const pol = { mode: 'advisory', required: 2, approvers: ROSTER.slice(0, 2), distinct_humans: true, window_sec: 900 };
+    const result = await verifyQuorum(quorum([await member(0), await member(1)], pol), { rpId: HOST });
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects: ordered_chain true with a broken signed predecessor link', async () => {
+    const first = { ...await signSim(ctx(ROSTER[0], 0), {}), role: ROSTER[0].role };
+    const secondContext = { ...ctx(ROSTER[1], 1), prev_context_hash: '0'.repeat(64) };
+    const second = { ...await signSim(secondContext, {}), role: ROSTER[1].role };
+    const thirdContext = { ...ctx(ROSTER[2], 2), prev_context_hash: '1'.repeat(64) };
+    const third = { ...await signSim(thirdContext, {}), role: ROSTER[2].role };
+    const policy = { ...ordered(), ordered_chain: true };
+    const result = await verifyQuorum(quorum([first, second, third], policy), { rpId: HOST });
+    expect(result.valid).toBe(false);
+    expect(result.checks.chain_linked).toBe(false);
   });
 
   it('rejects: an ineligible role/approver', async () => {

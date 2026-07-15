@@ -4,7 +4,7 @@
   "vectors_version": "1.0.0",
   "description": "Shared vectors for approved, declined, amended, and rejected resolution receipts, including the rule that only approved can authorize the original action.",
   "scope_note": "The source binding_moment, exact expected action digest, expected RP ID, and role-pinned principal key are verifier inputs. A valid receipt proves the presented resolution under those inputs. It does not prove the envelope briefing was truthful, the decision was wise, or an approved receipt was consumed exactly once; consumption remains a stateful enforcement property.",
-  "count": 32,
+  "count": 33,
   "vectors": [
     {
       "id": "accept_approved",
@@ -35,8 +35,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -113,8 +113,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSWpVQnNKR2lpc043YURDM3hpMUQ3eWRQUkltaVV0MURyX3pPekl1LVpsdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEUCIQD7U0RvHziU5CtUNX5tRpBsAZmrx4eKwKS3U8mE9icwrAIgHxHp4bJNB7005XmUUBpuQ7I0vux4kWwDzMQGMe7T5rw"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSWpVQnNKR2lpc043YURDM3hpMUQ3eWRQUkltaVV0MURyX3pPekl1LVpsdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQCWkkbaqkWd1ejf0ecC7-FuWuyw-VyYjzeXDWD-3ugP0AIgBhxaZwSnYity-k1nOWVDBJKDNXF0jOYHScfaEOdMGCk"
           }
         }
       },
@@ -193,8 +193,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSjJ4amx2NlRiV1VvN204QkptM2UxMzNwdDlycDhIUG9vSUFnU2dkVVlMTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEYCIQCFqlvzOUThSibcHcQlOGyS27MCRhUTKfsARxr9wabqfQIhAJlrzeb4HHeAc7jje_hXs__nEKcCGQ2MT6sAyAtwXAY8"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSjJ4amx2NlRiV1VvN204QkptM2UxMzNwdDlycDhIUG9vSUFnU2dkVVlMTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEYCIQDd3ZMKG1ZZ_O1iKbEWVgtUDD8dEc1ue-cOwOWmao9FdwIhAJ4Sw2rfZzt_qV0gnS7YdT9SsXyQifNQbHeNG4M1g05a"
           }
         }
       },
@@ -272,8 +272,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUzNod2RwUDFyMm1LTDU5aUVnYUQybFAtRXprMlhlN0plZzJ4Ni1IWHJZTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEYCIQC7p4XZFn43Irf1sKxFd3M-U8fqDTj1g3CmCBsSDvbYGQIhAKPt0RXVTkIoTCDq29yDtpKZq4xylwp5ltQW_7-Cgrbt"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUzNod2RwUDFyMm1LTDU5aUVnYUQybFAtRXprMlhlN0plZzJ4Ni1IWHJZTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCID9TZFL3u_yfqa143JuQg6X2UwQdURMALrDaNiN0s2egAiEA0smi7BSG5zsadoTyIoHeaQf9FiR9X5EzmJEgWgI53q4"
           }
         }
       },
@@ -350,8 +350,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSWpVQnNKR2lpc043YURDM3hpMUQ3eWRQUkltaVV0MURyX3pPekl1LVpsdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEUCIQD7U0RvHziU5CtUNX5tRpBsAZmrx4eKwKS3U8mE9icwrAIgHxHp4bJNB7005XmUUBpuQ7I0vux4kWwDzMQGMe7T5rw"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSWpVQnNKR2lpc043YURDM3hpMUQ3eWRQUkltaVV0MURyX3pPekl1LVpsdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQCWkkbaqkWd1ejf0ecC7-FuWuyw-VyYjzeXDWD-3ugP0AIgBhxaZwSnYity-k1nOWVDBJKDNXF0jOYHScfaEOdMGCk"
           }
         }
       },
@@ -430,8 +430,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSjJ4amx2NlRiV1VvN204QkptM2UxMzNwdDlycDhIUG9vSUFnU2dkVVlMTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEYCIQCFqlvzOUThSibcHcQlOGyS27MCRhUTKfsARxr9wabqfQIhAJlrzeb4HHeAc7jje_hXs__nEKcCGQ2MT6sAyAtwXAY8"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSjJ4amx2NlRiV1VvN204QkptM2UxMzNwdDlycDhIUG9vSUFnU2dkVVlMTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEYCIQDd3ZMKG1ZZ_O1iKbEWVgtUDD8dEc1ue-cOwOWmao9FdwIhAJ4Sw2rfZzt_qV0gnS7YdT9SsXyQifNQbHeNG4M1g05a"
           }
         }
       },
@@ -509,8 +509,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUzNod2RwUDFyMm1LTDU5aUVnYUQybFAtRXprMlhlN0plZzJ4Ni1IWHJZTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEYCIQC7p4XZFn43Irf1sKxFd3M-U8fqDTj1g3CmCBsSDvbYGQIhAKPt0RXVTkIoTCDq29yDtpKZq4xylwp5ltQW_7-Cgrbt"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUzNod2RwUDFyMm1LTDU5aUVnYUQybFAtRXprMlhlN0plZzJ4Ni1IWHJZTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCID9TZFL3u_yfqa143JuQg6X2UwQdURMALrDaNiN0s2egAiEA0smi7BSG5zsadoTyIoHeaQf9FiR9X5EzmJEgWgI53q4"
           }
         }
       },
@@ -588,8 +588,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -666,8 +666,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -745,8 +745,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -823,8 +823,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -901,8 +901,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -979,8 +979,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSWpVQnNKR2lpc043YURDM3hpMUQ3eWRQUkltaVV0MURyX3pPekl1LVpsdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIFSwtAiepvpZT1WOIkYU9gsekIm0JEsX4-wEni7D2MjOAiAjZN8Nui1Dqr7DPHKhBC7JRSiI8Z154TNGyBiDhdPbgw"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSWpVQnNKR2lpc043YURDM3hpMUQ3eWRQUkltaVV0MURyX3pPekl1LVpsdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDSI1iixLkTJ8ePvrcyyHp_fT5nHMecxTQWrQvdbWSY0gIgA3kDv8sliFXP2OykkyxyFr2dhEsBgueFdgP5awR7a94"
           }
         }
       },
@@ -1058,8 +1058,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1137,8 +1137,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1216,8 +1216,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1290,8 +1290,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1369,8 +1369,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1448,8 +1448,87 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vYXR0YWNrZXIuZXhhbXBsZSJ9",
-            "signature": "MEQCIBrvHQ4py8eZAoBcqRlQtBY3TJD32XoZv8Stst02AUCbAiAeye52ILEhpAj1aTYaTNdJXgg8AoLaxA7ZOq-pjQIuAQ"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vYXR0YWNrZXIuZXhhbXBsZSIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+            "signature": "MEUCICQaMcLcjvPBSFmTtNSHqG-vwSZLt5Sp7sncGa_Ss8WWAiEArYWTmbjpNSrkk6dbHGz-BeZwi1V_-tQIfoJDU6LkRHs"
+          }
+        }
+      },
+      "binding_moment": {
+        "synopsis": "Release the staged disbursement after the second review.",
+        "findings": [
+          "The payee and amount match the approved invoice."
+        ],
+        "recommendations": [
+          "Release the payment.",
+          "Hold for another review."
+        ],
+        "offer": "Ask for the invoice or account-change history.",
+        "question": {
+          "stem": "Should the staged disbursement be released?",
+          "options": [
+            {
+              "label": "Release",
+              "reasoning": "The verification checks passed."
+            },
+            {
+              "label": "Hold",
+              "reasoning": "A further review can still be requested."
+            }
+          ],
+          "recommended_idx": 0,
+          "hatches": {
+            "free_text": true,
+            "dialogue": true
+          }
+        }
+      },
+      "expected_action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_selected_option": 0,
+      "expected_nonce": "res_8c0f0e9e7f8a4c9aa3c7",
+      "expected_initiator": "spiffe://operator.example/agent/7",
+      "evaluation_time": "2026-07-14T05:30:00.000Z",
+      "rp_id": "emiliaprotocol.ai",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "principal_keys": {
+        "ep:key:jchen#resolution-1": {
+          "principal": "ep:principal:jchen",
+          "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE266uOoRjQjNARlRRFAk4TauY-BDwMuzKFbVukKS-RpGXCwgPfFu-DvIt6P1d9ThQTy8qN3WJpPMue1CXlsNcDw"
+        }
+      }
+    },
+    {
+      "id": "reject_cross_origin_ceremony",
+      "description": "A cross-origin WebAuthn ceremony is refused even when its origin string is allowlisted.",
+      "failure_class": "audience",
+      "expect": {
+        "valid": false
+      },
+      "resolution_receipt": {
+        "profile": "EP-RESOLUTION-v1",
+        "signoff": {
+          "@type": "ep.signoff",
+          "context": {
+            "ep_version": "1.0",
+            "context_type": "ep.resolution.v1",
+            "envelope_hash": "sha256:5f5c09a3d5967e32675679d121a6093d89ffe3c8dd6a4c7f92910d720db291b4",
+            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "principal": "ep:principal:jchen",
+            "principal_key_id": "ep:key:jchen#resolution-1",
+            "initiator": "spiffe://operator.example/agent/7",
+            "nonce": "res_8c0f0e9e7f8a4c9aa3c7",
+            "issued_at": "2026-07-14T05:25:00.000Z",
+            "expires_at": "2026-07-14T05:35:00.000Z",
+            "resolution": {
+              "outcome": "approved",
+              "selected_option": 0
+            }
+          },
+          "webauthn": {
+            "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOnRydWV9",
+            "signature": "MEYCIQCE3DzAzxPBPvhLsCjz8YWgaZRmSeIl61rJoqFEmG4ZUwIhANHC52yMpcYB9NPMSpW0F83MSAogH1G_Ky7oxgYZmq12"
           }
         }
       },
@@ -1527,8 +1606,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1606,8 +1685,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOFNtWmlaR0NjbkpfSzB1NUdiU0xZcWQ4RHVhdEZLYjhOblRweU02X1NabyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEYCIQDnVcBHZXOn2wW0ZgdhHzM9DybvMwC-cSfw6ElHWV5SgQIhAKQYteAmw4yoi-Nzlcp0zfSweOC9baLYyub3AEf_4dEb"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOFNtWmlaR0NjbkpfSzB1NUdiU0xZcWQ4RHVhdEZLYjhOblRweU02X1NabyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIBzU9GJAT-P_rrhDLoUi0OGvdE95h5E-UgZfGZTV_6nGAiEA8HI8dDhm1Wqb-Fvlns8-SBPXNl8DQCGDXFCtC50AU7Q"
           }
         }
       },
@@ -1685,8 +1764,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1764,8 +1843,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIBxxuS1fQqWtELkO9ItynJLZ8EJ3svwYXntUSGcZZi9YAiAtFRSkGM6D3BY4jGHBXiKaq9xViAOFjBMI82N4GIEWxg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNWYyeHNzVS1aMndEWFhNTHNabDRCaXRkamQ0cE9nc19vU2RRZWFZT0F0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDroGqk7Fc2mdQVVSRi1p-3qDUBsuhRto_0Fynee8PaogIgKvkURlCf18n3skLrEYNOThvqXMrOuxPxgIKVp6LBU6U"
           }
         }
       },
@@ -1842,8 +1921,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTTQ4SjY3VHd4WjFnR3lUZEdLNXdkN0ZlVDNGYVVVaXRJaFVSdXBqRWNUTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEUCIQCGIzYvkTDn2r6a2h7EPAlCQmdlsVSGN_Y8GlYraBsknAIgLHqQfMS2r_jC7gxqIoEg9u4BolLDK-UzE2fkxuiiH2g"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTTQ4SjY3VHd4WjFnR3lUZEdLNXdkN0ZlVDNGYVVVaXRJaFVSdXBqRWNUTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDeufUjxIXDjiMNEwrqIPsLw2ClTN_g9DMdP2zsdXBnkQIgGhENPCcLzHW7SV4EIL4tWThs8TL65NPlDHPGaXOPtt0"
           }
         }
       },
@@ -1919,8 +1998,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWm9ocmt6M3ZPWlhBcVg5eVRSamZrdGpCS1BxOGJpYzlsY085U0t3SXdhSSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIQDguivkXNtgrfk2kGeppYeBR4w5ao3_Tx6DlgcUvxiVUAIfePgGTTJGqyguWNPl3qSzJKEN0LwL0N3v5-DxZKLUbg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWm9ocmt6M3ZPWlhBcVg5eVRSamZrdGpCS1BxOGJpYzlsY085U0t3SXdhSSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEQCICq1tBvqXEWK54-2YtlfYA1EeDkJPuiRGi_p8mdj1yaPAiBYVIGZIpEN8p1XQL64wcOofHjW20aXWAzUYgvXFxO-jg"
           }
         }
       },
@@ -1997,8 +2076,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY2RYdkl3SmhkeDVMay1qSXIydzdJb2xqdUJTQVFkQjZjeFlDOHltbWE3TSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEYCIQCzpa4DHkBEPVpYDrLOBeKNs_6KtZyLCf7n8aeVdjpK8AIhAJsdxayW6UkHDmUEKkQFcZyTm9C0mAKYChzuhsNvuRXn"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY2RYdkl3SmhkeDVMay1qSXIydzdJb2xqdUJTQVFkQjZjeFlDOHltbWE3TSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEQCIBomtzKcCPLNBCGPuXyNosijOKlwH7HXaOaJd-CbF-q2AiA2Zp0B5auvQ509n2Xe1eQj-UayZFIWB8sE3lDnsp64yg"
           }
         }
       },
@@ -2076,8 +2155,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRE56OE9mdHUtQTRvMmQ4Q0djRWlYSGZuWGpQMDEza0tHY1pyVUNab0M5QSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEUCICY_oiaw_Fd5zrXqlx7PJ-9evOTBoTWe0M_IMdTUxtW3AiEAwBW1ePtKI2ONbcCkxNS6ovnzpdCelP2Z0BKpFTJLOPQ"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRE56OE9mdHUtQTRvMmQ4Q0djRWlYSGZuWGpQMDEza0tHY1pyVUNab0M5QSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCICDzD4RsKpHelj9hs6yvWzOVmXKvveh4thLqumRUcqR-AiEAyIfQX4lD_p2Wlv79z4mu_l-t_EbXSugcXJkivl2D-cs"
           }
         }
       },
@@ -2154,8 +2233,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVkRERFlfWHk2Smk2dDJoZ3EtMEpwWGxyMWx2YTVheG9pQUt3ZU1YVmJpbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIH9w0S2vP86dN0dh1prvBENTFjQUj98WqZeWNV3Rg00qAiA2RXLBofWDkWFWnIvRBEhH22nwHk-ma18zxTcBdmizcg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVkRERFlfWHk2Smk2dDJoZ3EtMEpwWGxyMWx2YTVheG9pQUt3ZU1YVmJpbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIAsE_YPrhWHFsBjFqfTOzmfNwNNaINV_jtlrRZ1I2b9fAiEAvwPMd4W1MmJTrXhMo8cvFuVDuoWByN5U386U1p5zc4k"
           }
         }
       },
@@ -2233,8 +2312,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiU09iUXhETFQwVHUySTRaUGhBVWVBYnFCck9OWjBGNUtBcmlrNm51ckg2SSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEYCIQCW0LILzMATDnwAUdEti2BWs2vQpJ6SIM_3BJb_rOaEVwIhAJheWhELMci4IYDwh3ftTu3qFSz2arFrbi2WLfdFQE57"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiU09iUXhETFQwVHUySTRaUGhBVWVBYnFCck9OWjBGNUtBcmlrNm51ckg2SSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIFBlDHXs-41M_JKWt5sPsqqDqVjvrXgfbRuGswn2bEKiAiEA3u-9ZfHKxfron-cRc-lTSbn_pSa1AlOWmA2dg_hFVxE"
           }
         }
       },
@@ -2312,8 +2391,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicFQ4Q1FhWVBOMUNUX1ptcGJhYjRTUXA3RXZ4alRQS2RBeTVFZ2k1aHNIcyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEQCIC0QYhgNROlBZoc6omcojuFrzewPJ2SPp5yb49BB6G9wAiA2C-EGxMQu51dJAdOSfzcdWKy0nYxjP-rJnkBuY_qnAg"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicFQ4Q1FhWVBOMUNUX1ptcGJhYjRTUXA3RXZ4alRQS2RBeTVFZ2k1aHNIcyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIEs1OhVDlU9T5w-cAUha782IFtfVb1y1SX2QzyLQwu4JAiEAstfdLdIMxG1T_xHEJTnWKcIsXwNb6chAcQ1cFYSPITU"
           }
         }
       },
@@ -2390,8 +2469,8 @@
           },
           "webauthn": {
             "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAQ",
-            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiT1dNWlN5WXJnT0EyNDBodDZnNXlQTzEwbW9HblViWjRqWjd5Q3RzS3l6MCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-            "signature": "MEUCIQDh9NtAh8-IIlLww8yJgw-zVwLJrpBmBdiJDAPYa7szuQIgU67keK9O40uGJ1Wy2DV6yM_9qpFiA0j1wYqJ2z445nw"
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiT1dNWlN5WXJnT0EyNDBodDZnNXlQTzEwbW9HblViWjRqWjd5Q3RzS3l6MCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEQCIGWEUHTCnQ0_ojkx2KHg5KiyafJhGervMIeyjpb2o2LzAiB4NfN4u93HJFiAyZTOpgPrW3YoarQHZO-FH5EtBFrkAw"
           }
         }
       },

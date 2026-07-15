@@ -20,8 +20,10 @@ const pinPath = option('--pin');
 const sourcePath = option('--source');
 const runnerPath = option('--runner');
 const emitPath = option('--emit');
+const bundlePath = option('--bundle') || BUNDLE_PATH;
+const suiteRootPath = option('--suite-root') || ROOT;
 if (!pinPath || !sourcePath || !runnerPath || !emitPath) {
-  console.error('usage: evaluate-external-implementation --pin FILE --source CHECKOUT --runner EXECUTABLE --emit FILE');
+  console.error('usage: evaluate-external-implementation --pin FILE --source CHECKOUT --runner EXECUTABLE --emit FILE [--bundle FILE --suite-root DIR]');
   process.exit(2);
 }
 
@@ -89,14 +91,23 @@ if (!statementVerification.accepted || statement.result?.status !== 'verified'
   throw new Error(`construction statement refused: ${statementVerification.reason || statement.result?.status || 'organization_mismatch'}`);
 }
 
-const { bytes: bundleBytes, value: bundle } = readStrictJson(BUNDLE_PATH, 'vector bundle');
+const bundleAbsolute = path.resolve(bundlePath);
+const suiteRootAbsolute = fs.realpathSync(path.resolve(suiteRootPath));
+const { bytes: bundleBytes, value: bundle } = readStrictJson(bundleAbsolute, 'vector bundle');
 if (bundle['@version'] !== 'EP-CLEAN-ROOM-VECTOR-BUNDLE-v1' || !Array.isArray(bundle.suites)) {
   throw new Error('unsupported vector bundle');
 }
 const suites = [];
 let vectorCount = 0;
 for (const suiteRef of bundle.suites) {
-  const suitePath = path.resolve(ROOT, suiteRef.path);
+  const suiteCandidate = path.resolve(suiteRootAbsolute, suiteRef.path);
+  if (suiteCandidate !== suiteRootAbsolute && !suiteCandidate.startsWith(`${suiteRootAbsolute}${path.sep}`)) {
+    throw new Error(`vector suite escapes the pinned suite root: ${suiteRef.path}`);
+  }
+  const suitePath = fs.realpathSync(suiteCandidate);
+  if (suitePath !== suiteRootAbsolute && !suitePath.startsWith(`${suiteRootAbsolute}${path.sep}`)) {
+    throw new Error(`vector suite resolves outside the pinned suite root: ${suiteRef.path}`);
+  }
   const { bytes, value: suite } = readStrictJson(suitePath, `suite ${suiteRef.path}`);
   if (sha256(bytes) !== suiteRef.sha256) throw new Error(`vector bundle drift: ${suiteRef.path}`);
   let stdout;

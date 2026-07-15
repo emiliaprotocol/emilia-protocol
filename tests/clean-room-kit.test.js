@@ -14,6 +14,9 @@ describe('external clean-room input kit', () => {
     expect(paths).toContain('conformance/clean-room/specification-bundle.v1.json');
     expect(paths).toContain('conformance/vectors/receipts.v1.json');
     expect(paths.some((entry) => /^(app|lib|packages|conformance\/runners)\//.test(entry))).toBe(false);
+    const bundle = JSON.parse(fs.readFileSync('conformance/clean-room/bundle.v1.json', 'utf8'));
+    const receiptPin = bundle.suites.find((entry) => entry.path === 'conformance/vectors/receipts.v1.json');
+    expect(files.find((entry) => entry.path === receiptPin.path)?.sha256).toBe(receiptPin.sha256);
   });
 
   it('builds a reproducible archive and exact content report', () => {

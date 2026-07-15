@@ -16,13 +16,13 @@
 package emiliaverify
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math"
 	"sort"
 	"strconv"
@@ -409,20 +409,18 @@ func hashPairV2(left, right string) string {
 }
 
 func b64urlDecode(s string) ([]byte, error) {
-	if m := len(s) % 4; m != 0 {
-		s += strings.Repeat("=", 4-m)
+	if s == "" || strings.ContainsAny(s, "+/=") || len(s)%4 == 1 {
+		return nil, fmt.Errorf("value is not canonical base64url")
 	}
-	return base64.URLEncoding.DecodeString(s)
+	decoded, err := base64.RawURLEncoding.Strict().DecodeString(s)
+	if err != nil || base64.RawURLEncoding.EncodeToString(decoded) != s {
+		return nil, fmt.Errorf("value is not canonical base64url")
+	}
+	return decoded, nil
 }
 
 func decodeJSON(data []byte) (map[string]any, error) {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	var doc map[string]any
-	if err := dec.Decode(&doc); err != nil {
-		return nil, err
-	}
-	return doc, nil
+	return decodeStrictJSONObject(data)
 }
 
 func contains(list []string, s string) bool {

@@ -136,8 +136,10 @@ export async function POST(request) {
     };
 
     // No DB persistence here. /api/receipt is the protocol-standard
-    // signed-document endpoint — the EP-RECEIPT-v1 payload IS the receipt
-    // (self-verifying via the embedded Ed25519 signature). Callers who need
+    // signed-document endpoint — the EP-RECEIPT-v1 payload IS the receipt.
+    // It is cryptographically verifiable with an independently trusted issuer
+    // key; the signature and key-discovery hint do not establish their own
+    // authority. Callers who need
     // the receipt in the trust-DB should POST it to /api/receipts/submit,
     // which goes through canonical-writer.js (the only sanctioned trust-table
     // writer per check-protocol-discipline.js). Keeping a best-effort insert

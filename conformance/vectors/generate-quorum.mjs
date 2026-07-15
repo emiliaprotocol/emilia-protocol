@@ -23,7 +23,7 @@ const chainHash = (ctx) => crypto.createHash('sha256').update(canon(ctx), 'utf8'
 // Mint one real member assertion. Bend exactly one thing per negative vector.
 // prevContextHash !== null  -> bind this signoff to its predecessor (ordered chain).
 // sharedSigner provided      -> reuse a device key across slots (distinct-keys negative).
-function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = false, malformSig = false, prevContextHash = null, sharedSigner = null, initiator = 'ent_agent_7' }) {
+function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = false, malformSig = false, prevContextHash = null, sharedSigner = null, initiator = 'ent_agent_7', crossOrigin = false }) {
   const signer = sharedSigner || crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const verifierKey = wrongKey ? crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }).publicKey : signer.publicKey;
   const context = {
@@ -36,7 +36,7 @@ function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = fals
   };
   if (prevContextHash !== null) context.prev_context_hash = prevContextHash;
   const challenge = crypto.createHash('sha256').update(canon(context), 'utf8').digest().toString('base64url');
-  const clientData = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
+  const clientData = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai', crossOrigin }), 'utf8');
   const authData = Buffer.concat([
     crypto.createHash('sha256').update('emiliaprotocol.ai', 'utf8').digest(),
     Buffer.from([0x05]), // UP + UV
@@ -102,6 +102,18 @@ add('accept_ordered_3of3', 'Ordered quorum (strong chain): Program Officer -> Au
 add('accept_threshold_2of3', 'Threshold quorum: 2 of 3 eligible approvers sign the exact action', 'accept', true, {
   '@type': 'ep.quorum', action_hash: ACTION, policy: thresholdPolicy,
   members: [member({ ...PO, issuedAt: t(1) }), member({ ...IG, issuedAt: t(2) })],
+});
+
+add('reject_unknown_policy_mode', 'An unknown policy mode must not be silently interpreted as threshold', 'structural', false, {
+  '@type': 'ep.quorum', action_hash: ACTION, policy: { ...thresholdPolicy, mode: 'advisory' },
+  members: [member({ ...PO, issuedAt: t(1) }), member({ ...IG, issuedAt: t(2) })],
+});
+
+// REJECT — a signature made in a cross-origin ceremony is not admitted merely
+// because its visible origin string appears in the allowlist.
+add('reject_cross_origin_ceremony', 'One quorum member signed in a cross-origin WebAuthn ceremony', 'audience', false, {
+  '@type': 'ep.quorum', action_hash: ACTION, policy: thresholdPolicy,
+  members: [member({ ...PO, issuedAt: t(1), crossOrigin: true }), member({ ...IG, issuedAt: t(2) })],
 });
 
 // REJECT — under threshold (required 3, only 2 present).

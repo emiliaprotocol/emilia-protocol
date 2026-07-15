@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import { deriveSignoffUserVerification } from '../lib/guard-signoff-uv.js';
 
 const RP_ID = 'emiliaprotocol.ai';
+const ORIGIN = 'https://www.emiliaprotocol.ai';
 const ACTION_HASH = 'a'.repeat(64);
 
 function canon(v) {
@@ -21,7 +22,7 @@ function canon(v) {
 }
 
 // Build a real P-256 assertion + enrolled SPKI, mirroring approve-webauthn.
-function build({ flags = 0x05, actionHash = ACTION_HASH, rpId = RP_ID } = {}) {
+function build({ flags = 0x05, actionHash = ACTION_HASH, rpId = RP_ID, origin = ORIGIN, crossOrigin = false } = {}) {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const context = {
     ep_version: '1.0', context_type: 'ep.signoff.v1',
@@ -31,7 +32,7 @@ function build({ flags = 0x05, actionHash = ACTION_HASH, rpId = RP_ID } = {}) {
   };
   const challenge = crypto.createHash('sha256').update(canon(context), 'utf8').digest().toString('base64url');
   const clientData = Buffer.from(
-    JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8',
+    JSON.stringify({ type: 'webauthn.get', challenge, origin, crossOrigin }), 'utf8',
   );
   const authData = Buffer.concat([
     crypto.createHash('sha256').update(rpId, 'utf8').digest(),
@@ -57,7 +58,7 @@ describe('deriveSignoffUserVerification', () => {
   it('verifies a genuine UV (0x05) assertion bound to the action', () => {
     const { decision, spki } = build({ flags: 0x05 });
     const r = deriveSignoffUserVerification({
-      decision, approverPublicKeySpki: spki, expectedActionHash: ACTION_HASH, rpId: RP_ID,
+      decision, approverPublicKeySpki: spki, expectedActionHash: ACTION_HASH, rpId: RP_ID, allowedOrigins: [ORIGIN],
     });
     expect(r.verified).toBe(true);
     expect(r.reason).toBe('user_verified');
@@ -88,6 +89,26 @@ describe('deriveSignoffUserVerification', () => {
       decision, approverPublicKeySpki: spki, expectedActionHash: ACTION_HASH, rpId: RP_ID,
     });
     expect(r.verified).toBe(false);
+  });
+
+  it('refuses an unlisted or cross-origin ceremony at consume time', () => {
+    const wrongOrigin = build({ origin: 'https://attacker.example' });
+    expect(deriveSignoffUserVerification({
+      decision: wrongOrigin.decision,
+      approverPublicKeySpki: wrongOrigin.spki,
+      expectedActionHash: ACTION_HASH,
+      rpId: RP_ID,
+      allowedOrigins: [ORIGIN],
+    }).verified).toBe(false);
+
+    const crossOrigin = build({ crossOrigin: true });
+    expect(deriveSignoffUserVerification({
+      decision: crossOrigin.decision,
+      approverPublicKeySpki: crossOrigin.spki,
+      expectedActionHash: ACTION_HASH,
+      rpId: RP_ID,
+      allowedOrigins: [ORIGIN],
+    }).verified).toBe(false);
   });
 
   it('refuses when the enrolled key does not match the signature', () => {

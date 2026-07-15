@@ -77,6 +77,8 @@ type vec struct {
 	VerifyOpts              map[string]any               `json:"verify_opts"`
 	ProvenanceChain         map[string]any               `json:"provenance_chain"`
 	DelegationKeys          map[string]any               `json:"delegation_keys"`
+	RootVerification        map[string]any               `json:"root_verification"`
+	ActionVerification      map[string]any               `json:"action_verification"`
 	NowMs                   *float64                     `json:"now_ms"`
 	EvidenceRecord          map[string]any               `json:"evidence_record"`
 	ProtectedHash           string                       `json:"protected_hash"`
@@ -409,9 +411,9 @@ func main() {
 				valid = result.Valid && result.AuthorizesAction
 			}
 		case v.Signoff != nil:
-			valid = emiliaverify.VerifyWebAuthnSignoff(v.Signoff, v.ApproverPublicKey, v.RPID).Valid
+			valid = emiliaverify.VerifyWebAuthnSignoff(v.Signoff, v.ApproverPublicKey, v.RPID, v.AllowedOrigins).Valid
 		case v.Quorum != nil:
-			valid = emiliaverify.VerifyQuorum(v.Quorum, "emiliaprotocol.ai").Valid
+			valid = emiliaverify.VerifyQuorum(v.Quorum, "emiliaprotocol.ai", []string{"https://www.emiliaprotocol.ai"}).Valid
 		case v.Revocation != nil:
 			opts := map[string]any{"revokerKeys": v.RevokerKeys}
 			if v.Now != "" {
@@ -438,7 +440,11 @@ func main() {
 			}
 			valid = emiliaverify.VerifyTrustReceipt(v.TrustReceipt, opts).Valid
 		case v.ProvenanceChain != nil:
-			opts := map[string]any{"delegationKeys": v.DelegationKeys}
+			opts := map[string]any{
+				"delegationKeys":     v.DelegationKeys,
+				"rootVerification":   v.RootVerification,
+				"actionVerification": v.ActionVerification,
+			}
 			if v.NowMs != nil {
 				opts["now"] = *v.NowMs
 			}

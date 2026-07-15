@@ -6,7 +6,12 @@ import { gateMcpTool, gateMcpTools } from './mcp.js';
 
 function setup() {
   const harness = createEg1Harness();
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys });
+  const gate = createTrustedActionFirewall({
+    trustedKeys: [harness.publicKey],
+    approverKeys: harness.approverKeys,
+    rpId: harness.rpId,
+    allowedOrigins: harness.allowedOrigins,
+  });
   return { harness, gate, action: harness.action };
 }
 
@@ -82,6 +87,16 @@ test('gateMcpTool accepts the base64 receipt carrier', async () => {
   const res = await tool({ _emilia_receipt_b64: Buffer.from(JSON.stringify(receipt), 'utf8').toString('base64') });
   assert.equal(res.paid, true);
   assert.equal(res._emilia.gate, 'allowed');
+});
+
+test('gateMcpTool refuses a duplicate-member base64 receipt carrier', async () => {
+  const { gate, action } = setup();
+  let ran = false;
+  const tool = gateMcpTool(gate, { tool: 'release_payment', observedAction: () => action }, async () => { ran = true; return { paid: true }; });
+  const duplicate = Buffer.from('{"payload":{},"payload":{"forged":true}}', 'utf8').toString('base64');
+  const res = await tool({ _emilia_receipt_b64: duplicate });
+  assert.equal(res.isError, true);
+  assert.equal(ran, false);
 });
 
 test('gateMcpTool does not let a lower-priority valid carrier override an invalid primary carrier', async () => {

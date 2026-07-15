@@ -20,9 +20,11 @@ import (
 // Before the fix, the json.Number path disabled the gate and the doc stayed valid.
 
 type provAcceptVector struct {
-	doc            map[string]any
-	delegationKeys any
-	nowMs          *float64
+	doc                map[string]any
+	delegationKeys     any
+	rootVerification   any
+	actionVerification any
+	nowMs              *float64
 }
 
 func loadFirstProvenanceAccept(t *testing.T) *provAcceptVector {
@@ -33,10 +35,12 @@ func loadFirstProvenanceAccept(t *testing.T) *provAcceptVector {
 	}
 	var suite struct {
 		Vectors []struct {
-			Expect          map[string]any `json:"expect"`
-			ProvenanceChain map[string]any `json:"provenance_chain"`
-			DelegationKeys  any            `json:"delegation_keys"`
-			NowMs           *float64       `json:"now_ms"`
+			Expect             map[string]any `json:"expect"`
+			ProvenanceChain    map[string]any `json:"provenance_chain"`
+			DelegationKeys     any            `json:"delegation_keys"`
+			RootVerification   any            `json:"root_verification"`
+			ActionVerification any            `json:"action_verification"`
+			NowMs              *float64       `json:"now_ms"`
 		} `json:"vectors"`
 	}
 	if err := json.Unmarshal(raw, &suite); err != nil {
@@ -44,7 +48,13 @@ func loadFirstProvenanceAccept(t *testing.T) *provAcceptVector {
 	}
 	for _, v := range suite.Vectors {
 		if valid, _ := v.Expect["valid"].(bool); valid {
-			return &provAcceptVector{doc: v.ProvenanceChain, delegationKeys: v.DelegationKeys, nowMs: v.NowMs}
+			return &provAcceptVector{
+				doc:                v.ProvenanceChain,
+				delegationKeys:     v.DelegationKeys,
+				rootVerification:   v.RootVerification,
+				actionVerification: v.ActionVerification,
+				nowMs:              v.NowMs,
+			}
 		}
 	}
 	t.Skip("no accept vector present")
@@ -59,7 +69,12 @@ func TestProvenanceExpiryGateNotSkippedUnderJSONNumberNow(t *testing.T) {
 
 	// Baseline: at the vector's own `now`, the accept vector verifies.
 	if vec.nowMs != nil {
-		base := VerifyProvenanceOffline(vec.doc, map[string]any{"delegationKeys": vec.delegationKeys, "now": *vec.nowMs})
+		base := VerifyProvenanceOffline(vec.doc, map[string]any{
+			"delegationKeys":     vec.delegationKeys,
+			"rootVerification":   vec.rootVerification,
+			"actionVerification": vec.actionVerification,
+			"now":                *vec.nowMs,
+		})
 		if !base.Valid {
 			t.Fatalf("baseline accept vector did not verify at its own now")
 		}
@@ -75,7 +90,12 @@ func TestProvenanceExpiryGateNotSkippedUnderJSONNumberNow(t *testing.T) {
 	if err := dec.Decode(&nowJN); err != nil {
 		t.Fatalf("decode json.Number now: %v", err)
 	}
-	res := VerifyProvenanceOffline(vec.doc, map[string]any{"delegationKeys": vec.delegationKeys, "now": nowJN})
+	res := VerifyProvenanceOffline(vec.doc, map[string]any{
+		"delegationKeys":     vec.delegationKeys,
+		"rootVerification":   vec.rootVerification,
+		"actionVerification": vec.actionVerification,
+		"now":                nowJN,
+	})
 	if res.Checks["delegations_not_expired"] {
 		t.Fatalf("fail-open: delegations_not_expired stayed true under a year-2100 json.Number now; the expiry gate was skipped")
 	}

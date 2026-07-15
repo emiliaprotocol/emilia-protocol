@@ -1,17 +1,23 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "ep-verify"
-version = "0.1.0"
+version = "0.2.0"
 description = "One-line offline verifier for EMILIA Protocol authorization receipts (EP-RECEIPT-v1). Thin CLI over emilia-verify: proves signature, binding, and anchor integrity against keys you pin; never business correctness."
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
-dependencies = ["emilia-verify>=2.2.0"]
+dependencies = ["emilia-verify>=2.7.0,<3"]
 authors = [{ name = "Iman Schrock", email = "team@emiliaprotocol.ai" }]
 urls = { Homepage = "https://www.emiliaprotocol.ai", Repository = "https://github.com/emiliaprotocol/emilia-protocol" }
 
 [project.scripts]
 ep-verify = "ep_verify.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest>=8.4.2"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ep_verify"]

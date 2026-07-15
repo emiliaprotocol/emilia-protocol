@@ -133,7 +133,14 @@ describe('HTTP/API Receipt Required conformance', () => {
     for (const action of await catalog()) {
       const software = await POST(request({
         demo: action.id,
-        emilia_receipt: mint(action.action, { outcome: 'allow' }),
+        emilia_receipt: mint(action.action, {
+          extra: {
+            policy_id: action.policy_id,
+            assurance_class: action.assurance_class,
+            human_present: true,
+            quorum: { threshold: 2, signers: ['alice', 'bob'] },
+          },
+        }),
       }));
       expect(software.status).toBe(428);
       expect((await software.json()).rejected.reason).toBe('assurance_proof_required');
@@ -146,7 +153,7 @@ describe('HTTP/API Receipt Required conformance', () => {
           }),
         }));
         expect(singleHuman.status).toBe(428);
-        expect((await singleHuman.json()).rejected.reason).toBe('assurance_too_low');
+        expect((await singleHuman.json()).rejected.reason).toBe('assurance_proof_required');
 
         const signed = await POST(request({
           demo: action.id,

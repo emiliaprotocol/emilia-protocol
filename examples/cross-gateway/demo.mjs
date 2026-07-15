@@ -61,14 +61,16 @@ const QUORUM = Object.freeze({
  * ledger, its own evidence log. `pins` is what THIS gateway trusts out of
  * band; nothing else reaches its trust boundary.
  */
-function makeGateway(rpId, pins) {
+function makeGateway(gatewayId, pins) {
   return {
-    rpId,
+    gatewayId,
     gate: createGate({
       manifest: manifestFromPack([...ACTION_PACK]),
       trustedKeys: [pins.issuerKey],
       approverKeys: pins.approverKeys,
-      rpId,
+      rpId: pins.rpId,
+      allowedOrigins: pins.allowedOrigins,
+      quorumPolicy: pins.quorumPolicy,
     }),
   };
 }
@@ -94,14 +96,20 @@ async function gatewayACheck(gatewayA, action, receipt) {
     observedAction: action,
     consumptionMode: 'none',
   });
-  return decisionRecord(gatewayA.rpId, decision);
+  return decisionRecord(gatewayA.gatewayId, decision);
 }
 
 /** Run the cross-gateway lab and return a machine-readable result. */
 export async function runCrossGatewayLab() {
   // The approving humans and the issuer live in the sending organization.
   const harness = createEg1Harness({ action: EXACT_ACTION, idPrefix: 'xgw' });
-  const pins = { issuerKey: harness.publicKey, approverKeys: harness.approverKeys };
+  const pins = {
+    issuerKey: harness.publicKey,
+    approverKeys: harness.approverKeys,
+    rpId: harness.rpId,
+    allowedOrigins: harness.allowedOrigins,
+    quorumPolicy: harness.quorumPolicy,
+  };
 
   // Both organizations pinned the issuer and approver keys OUT OF BAND.
   // The gate instances share nothing: not a store, not a log, not a registry.
@@ -120,7 +128,7 @@ export async function runCrossGatewayLab() {
       executor,
     );
     return {
-      record: decisionRecord(gatewayB.rpId, outcome.authorization),
+      record: decisionRecord(gatewayB.gatewayId, outcome.authorization),
       outcome,
     };
   }
@@ -176,7 +184,7 @@ export async function runCrossGatewayLab() {
     id: 'decision-does-not-travel',
     title: 'Gateway B refuses when offered Gateway A\'s allow verdict instead of the artifact',
     a: aDecision,
-    b: decisionRecord(gatewayB.rpId, bFromVerdictOnly),
+    b: decisionRecord(gatewayB.gatewayId, bFromVerdictOnly),
     executor_called: false,
     verdict: 'refuse',
     reason: bFromVerdictOnly.reason,
@@ -198,7 +206,7 @@ export async function runCrossGatewayLab() {
     id: 'tampered-in-transit-refused-at-b',
     title: 'The amount is altered between the gateways; Gateway B refuses the mismatched action',
     a: aHonest,
-    b: decisionRecord(gatewayB.rpId, bAltered),
+    b: decisionRecord(gatewayB.gatewayId, bAltered),
     executor_called: false,
     verdict: 'refuse',
     reason: bAltered.reason,
@@ -211,6 +219,9 @@ export async function runCrossGatewayLab() {
   const misconfiguredA = makeGateway('gateway-a2.org-a.example', {
     issuerKey: rogue.publicKey,
     approverKeys: rogue.approverKeys,
+    rpId: rogue.rpId,
+    allowedOrigins: rogue.allowedOrigins,
+    quorumPolicy: rogue.quorumPolicy,
   });
   const rogueArtifact = rogue.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
   const aRogue = await gatewayACheck(misconfiguredA, EXACT_ACTION, rogueArtifact);
@@ -224,7 +235,7 @@ export async function runCrossGatewayLab() {
     id: 'b-does-not-inherit-a-trust',
     title: 'A gateway that pins a rogue issuer allows; Gateway B, which does not pin it, refuses the same artifact',
     a: aRogue,
-    b: decisionRecord(gatewayB.rpId, bRogue),
+    b: decisionRecord(gatewayB.gatewayId, bRogue),
     executor_called: false,
     verdict: 'refuse',
     reason: bRogue.reason,
@@ -242,7 +253,7 @@ export async function runCrossGatewayLab() {
     id: 'replay-refused-at-b',
     title: 'The already-consumed artifact cannot drive a second execution at Gateway B',
     a: null,
-    b: decisionRecord(gatewayB.rpId, replay.authorization),
+    b: decisionRecord(gatewayB.gatewayId, replay.authorization),
     executor_called: executorCalls.length > beforeReplay,
     verdict: 'refuse',
     reason: replay.authorization.reason,

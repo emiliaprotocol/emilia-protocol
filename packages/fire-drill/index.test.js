@@ -24,32 +24,45 @@ test('MCP manifest: an ungated dangerous tool FAILS', () => {
       { name: 'delete_customer_data', description: 'hard delete a customer' },
     ],
   });
-  assert.equal(r.eg1, 'fail');
+  assert.equal(r.eg1, 'not_assessed');
+  assert.equal(r.static_result, 'incomplete');
   assert.equal(r.summary.dangerous, 1);
-  assert.equal(r.summary.ungated, 1);
+  assert.equal(r.summary.missing_declaration, 1);
   assert.equal(r.score, 0);
-  assert.match(r.findings[0].message, /delete_customer_data`? can execute without an accountable human receipt/);
+  assert.match(r.findings[0].message, /delete_customer_data`? does not declare a required receipt input/);
   assert.ok(r.findings[0].fix.includes('@emilia-protocol/gate'));
 });
 
-test('MCP manifest: a dangerous tool with a receipt parameter PASSES', () => {
+test('MCP manifest: only a required receipt property completes static coverage', () => {
+  const optional = scanMcpManifest({ tools: [{
+    name: 'release_payment',
+    inputSchema: { type: 'object', properties: { emilia_receipt: { type: 'object' } } },
+  }] });
+  assert.equal(optional.static_result, 'incomplete');
+
   const r = scanMcpManifest({
     tools: [{
       name: 'release_payment',
       description: 'move money',
-      inputSchema: { type: 'object', properties: { amount: { type: 'number' }, emilia_receipt: { type: 'object' } } },
+      inputSchema: {
+        type: 'object',
+        properties: { amount: { type: 'number' }, emilia_receipt: { type: 'object' } },
+        required: ['amount', 'emilia_receipt'],
+      },
     }],
   });
-  assert.equal(r.eg1, 'pass');
+  assert.equal(r.eg1, 'not_assessed');
+  assert.equal(r.static_result, 'complete');
   assert.equal(r.summary.dangerous, 1);
-  assert.equal(r.summary.gated, 1);
+  assert.equal(r.summary.declared, 1);
   assert.equal(r.score, 100);
 });
 
 test('a fully read-only manifest scores 100', () => {
   const r = scanMcpManifest({ tools: [{ name: 'list_items' }, { name: 'get_status' }] });
   assert.equal(r.score, 100);
-  assert.equal(r.eg1, 'pass');
+  assert.equal(r.static_result, 'complete');
+  assert.equal(r.eg1, 'not_assessed');
   assert.equal(r.summary.dangerous, 0);
 });
 
@@ -58,7 +71,8 @@ test('OpenAPI: an ungated DELETE FAILS; a receipt header PASSES', () => {
     openapi: '3.0.0',
     paths: { '/customers/{id}': { delete: { operationId: 'deleteCustomer', summary: 'delete a customer' } } },
   });
-  assert.equal(fail.eg1, 'fail');
+  assert.equal(fail.static_result, 'incomplete');
+  assert.equal(fail.eg1, 'not_assessed');
   assert.equal(fail.findings[0].operation, 'deleteCustomer');
 
   const pass = scanOpenApi({
@@ -72,20 +86,21 @@ test('OpenAPI: an ungated DELETE FAILS; a receipt header PASSES', () => {
       },
     },
   });
-  assert.equal(pass.eg1, 'pass');
+  assert.equal(pass.static_result, 'complete');
+  assert.equal(pass.eg1, 'not_assessed');
 });
 
 test('partial coverage produces a fractional score', () => {
   const r = scanMcpManifest({
     tools: [
       { name: 'delete_record', description: 'delete' }, // ungated
-      { name: 'release_payment', inputSchema: { properties: { emilia_receipt: {} } } }, // gated
+      { name: 'release_payment', inputSchema: { properties: { emilia_receipt: {} }, required: ['emilia_receipt'] } }, // declared
     ],
   });
   assert.equal(r.summary.dangerous, 2);
-  assert.equal(r.summary.gated, 1);
+  assert.equal(r.summary.declared, 1);
   assert.equal(r.score, 50);
-  assert.equal(r.eg1, 'fail');
+  assert.equal(r.static_result, 'incomplete');
 });
 
 test('scan() auto-detects the input shape', () => {
@@ -95,14 +110,14 @@ test('scan() auto-detects the input shape', () => {
   assert.throws(() => scan({ nonsense: true }));
 });
 
-test('badgeSvg renders green for pass, red for fail, score when given', () => {
-  const pass = badgeSvg({ eg1: 'pass' });
-  assert.ok(pass.startsWith('<svg') && pass.includes('EG-1 Enforced') && pass.includes('#16A34A'));
-  const fail = badgeSvg({ eg1: 'fail' });
-  assert.ok(fail.includes('not earned') && fail.includes('#DC2626'));
+test('badgeSvg never claims or colors static coverage as EG-1 enforcement', () => {
+  const complete = badgeSvg({ score: 100 });
+  assert.ok(complete.startsWith('<svg') && complete.includes('static 100/100') && complete.includes('#D97706'));
+  assert.ok(!complete.includes('EG-1 Enforced') && !complete.includes('#16A34A'));
+  const fail = badgeSvg({ score: 0 });
+  assert.ok(fail.includes('static 0/100') && fail.includes('#DC2626'));
   const partial = badgeSvg({ score: 50 });
-  assert.ok(partial.includes('50/100') && partial.includes('#D97706'));
-  assert.ok(badgeSvg({ score: 100 }).includes('#16A34A'));
+  assert.ok(partial.includes('static 50/100') && partial.includes('#D97706'));
 });
 
 test('badgeSvg escapes quotes — no attribute breakout / event-handler injection', () => {
@@ -116,18 +131,18 @@ test('badgeSvg escapes quotes — no attribute breakout / event-handler injectio
   assert.ok(svg2.includes('&lt;svg onload'), 'angle bracket must be entity-escaped');
 });
 
-test('generatePullRequest lists failing ops + the gate fix', () => {
+test('generatePullRequest lists missing declarations + the gate fix', () => {
   const r = scanMcpManifest({ tools: [{ name: 'delete_records' }, { name: 'release_payment' }] });
   const pr = generatePullRequest(r, { project: 'acme/mcp' });
-  assert.match(pr.title, /Require an EMILIA receipt for 2 high-risk actions for acme\/mcp/);
+  assert.match(pr.title, /Declare required receipt evidence for 2 high-risk actions for acme\/mcp/);
   assert.ok(pr.body.includes('gateMcpTool') && pr.body.includes('delete_records') && pr.body.includes('release_payment'));
 });
 
-test('generatePullRequest confirms a clean pass', () => {
+test('generatePullRequest keeps runtime enforcement unassessed on static completion', () => {
   const r = scanMcpManifest({ tools: [{ name: 'get_status' }] });
   const pr = generatePullRequest(r);
-  assert.match(pr.title, /Confirm EG-1 Enforced/);
-  assert.ok(pr.body.includes('EG-1 Enforced'));
+  assert.match(pr.title, /Review runtime receipt enforcement/);
+  assert.ok(pr.body.includes('Runtime enforcement is not assessed'));
 });
 
 test('aggregate summarizes a corpus honestly', () => {
@@ -138,9 +153,9 @@ test('aggregate summarizes a corpus honestly', () => {
   ];
   const agg = aggregate(reports);
   assert.equal(agg.servers, 3);
-  assert.equal(agg.servers_with_unguarded_action, 2);
-  assert.equal(agg.pct_servers_with_unguarded_action, 67);
-  assert.equal(agg.unguarded_operations, 3);
+  assert.equal(agg.servers_missing_declaration, 2);
+  assert.equal(agg.pct_servers_missing_declaration, 67);
+  assert.equal(agg.missing_declarations, 3);
   assert.ok(agg.by_family.money_movement >= 1 && agg.by_family.data_destruction >= 1);
 });
 
@@ -148,11 +163,11 @@ test('aggregate of an empty corpus is a clean 100', () => {
   const agg = aggregate([]);
   assert.equal(agg.servers, 0);
   assert.equal(agg.mean_score, 100);
-  assert.equal(agg.pct_servers_with_unguarded_action, 0);
+  assert.equal(agg.pct_servers_missing_declaration, 0);
 });
 
 test('the representative corpus computes a real index (mostly unguarded)', () => {
   const agg = aggregate(REPRESENTATIVE_CORPUS.map((c) => scan(c.manifest)));
   assert.equal(agg.servers, REPRESENTATIVE_CORPUS.length);
-  assert.ok(agg.pct_servers_with_unguarded_action >= 80); // the point of the Report
+  assert.ok(agg.pct_servers_missing_declaration >= 80);
 });

@@ -17,7 +17,7 @@ This mirrors, in Python, the canonical @emilia-protocol/require-receipt
 ``makeReceiptGate`` + ``verifyEmiliaReceipt`` semantics:
   * TARGET BINDING   — a receipt binds the exact action ("action" or "action:target").
   * AGE / OUTCOME    — reject stale receipts and non-allow outcomes.
-  * REPLAY SAFETY    — reserve on check, commit on success, release on failure.
+  * REPLAY SAFETY    — reserve before execution; commit after any execution attempt.
   * SANITIZED REASON — refusals expose only a reason code, never signer detail.
 
 CrewAI is an OPTIONAL peer: the gate and decorator are pure Python and work with
@@ -31,6 +31,8 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import functools
+import re
+import threading
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable, Optional
 
@@ -49,6 +51,9 @@ __all__ = [
 DEFAULT_MAX_AGE_SEC = 900
 DEFAULT_ALLOWED_OUTCOMES = ("allow", "allow_with_signoff")
 RECEIPT_VERSION = "EP-RECEIPT-v1"
+_RFC3339_INSTANT = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 # The receipt is out-of-band call metadata (the LLM controls the tool args, not
 # the authorization). Carry it on a context variable the caller sets around the
@@ -87,17 +92,33 @@ class ReceiptRequired(Exception):
 
 
 class _InMemoryStore:
-    """Process-local consumed-receipt store. Pass a shared/durable store
-    ({has, add}) for one-time consumption across instances/restarts."""
+    """Process-local atomic receipt store. Production fleets pass a shared,
+    ownership-fenced ``{reserve, commit, release}`` implementation."""
 
     def __init__(self):
-        self._consumed: set = set()
+        self._states: dict = {}
+        self._lock = threading.Lock()
 
-    def has(self, receipt_id: str) -> bool:
-        return receipt_id in self._consumed
+    def reserve(self, receipt_id: str) -> bool:
+        with self._lock:
+            if receipt_id in self._states:
+                return False
+            self._states[receipt_id] = "reserved"
+            return True
 
-    def add(self, receipt_id: str) -> None:
-        self._consumed.add(receipt_id)
+    def commit(self, receipt_id: str) -> bool:
+        with self._lock:
+            if self._states.get(receipt_id) != "reserved":
+                raise RuntimeError("consumption reservation not owned")
+            self._states[receipt_id] = "committed"
+            return True
+
+    def release(self, receipt_id: str) -> bool:
+        with self._lock:
+            if self._states.get(receipt_id) != "reserved":
+                raise RuntimeError("consumption reservation not owned")
+            del self._states[receipt_id]
+            return True
 
 
 def _normalize_target(target: Any) -> Optional[str]:
@@ -109,13 +130,13 @@ def _normalize_target(target: Any) -> Optional[str]:
 
 
 def _parse_iso_epoch(s: Any) -> Optional[float]:
-    if not isinstance(s, str) or not s:
+    if not isinstance(s, str) or not _RFC3339_INSTANT.fullmatch(s):
         return None
     try:
         v = s[:-1] + "+00:00" if s.endswith("Z") else s
         dt = datetime.fromisoformat(v)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            return None
         return dt.timestamp()
     except Exception:
         return None
@@ -129,9 +150,9 @@ class ReceiptGate:
     """Offline Receipt-Required gate for one action type.
 
     Prefer ``run(receipt, fn, target=...)`` — it orchestrates verify -> reserve ->
-    run -> commit/release so a caller cannot get the ordering wrong. Use the
-    lower-level ``check``/``commit``/``release`` only to gate and act in separate
-    steps.
+    run -> commit after any invocation attempt so a caller cannot get the
+    ordering wrong. Use the lower-level ``check``/``commit``/``release`` only
+    when the caller can prove whether execution began.
     """
 
     def __init__(
@@ -142,16 +163,34 @@ class ReceiptGate:
         max_age_sec: int = DEFAULT_MAX_AGE_SEC,
         allowed_outcomes: Iterable[str] = DEFAULT_ALLOWED_OUTCOMES,
         store: Any = None,
+        assurance_class: str = "software",
+        verify_assurance: Optional[Callable[[Any, str], Any]] = None,
+        max_future_skew_sec: int = 60,
     ):
         if not action:
             raise ValueError("ReceiptGate: `action` is required")
         self._action = action
         self._trusted = list(trusted_keys)
         self._allow_inline = allow_inline_key
+        if max_age_sec is not None and (
+            isinstance(max_age_sec, bool) or not isinstance(max_age_sec, (int, float)) or max_age_sec <= 0
+        ):
+            raise ValueError("ReceiptGate: max_age_sec must be positive or None")
+        if isinstance(max_future_skew_sec, bool) or not isinstance(max_future_skew_sec, (int, float)) or max_future_skew_sec < 0:
+            raise ValueError("ReceiptGate: max_future_skew_sec must be non-negative")
+        if assurance_class not in ("software", "class_a", "quorum"):
+            raise ValueError("ReceiptGate: assurance_class must be software, class_a, or quorum")
         self._max_age = max_age_sec
+        self._max_future_skew = max_future_skew_sec
         self._outcomes = tuple(allowed_outcomes) if allowed_outcomes else None
         self._store = store if store is not None else _InMemoryStore()
-        self._inflight: set = set()
+        for method in ("reserve", "commit", "release"):
+            if not callable(getattr(self._store, method, None)):
+                raise ValueError(
+                    f"ReceiptGate: store must implement atomic {method}(); legacy {{has, add}} stores are not fleet-safe"
+                )
+        self._assurance_class = assurance_class
+        self._verify_assurance = verify_assurance
 
     def bound_action_for(self, target: Any = None) -> str:
         if callable(self._action):
@@ -188,9 +227,18 @@ class ReceiptGate:
         payload = receipt["payload"]
         claim = payload.get("claim") or {}
 
-        if self._max_age and payload.get("created_at"):
-            created = _parse_iso_epoch(payload["created_at"])
-            if created is not None and (_now() - created) > self._max_age:
+        receipt_id = payload.get("receipt_id")
+        if not isinstance(receipt_id, str) or not receipt_id:
+            return (False, "receipt_id_required", None)
+
+        if self._max_age is not None:
+            created = _parse_iso_epoch(payload.get("created_at"))
+            if created is None:
+                return (False, "receipt_timestamp_invalid", None)
+            age = _now() - created
+            if age < -self._max_future_skew:
+                return (False, "receipt_from_future", None)
+            if age > self._max_age:
                 return (False, "receipt_expired", None)
 
         if claim.get("action_type") != bound_action:
@@ -199,7 +247,25 @@ class ReceiptGate:
         if self._outcomes and claim.get("outcome") not in self._outcomes:
             return (False, "outcome_not_accepted", None)
 
-        return (True, None, payload.get("receipt_id"))
+        if self._assurance_class != "software":
+            if not callable(self._verify_assurance):
+                return (False, "assurance_verifier_required", None)
+            try:
+                result = self._verify_assurance(receipt, self._assurance_class)
+            except Exception:
+                return (False, "assurance_verification_failed", None)
+            if isinstance(result, str):
+                have, assurance_ok = result, True
+            elif isinstance(result, dict):
+                have = result.get("tier") or result.get("have") or result.get("assurance_class")
+                assurance_ok = result.get("ok") is True
+            else:
+                have, assurance_ok = None, False
+            rank = {"software": 0, "class_a": 1, "quorum": 2}
+            if not assurance_ok or have not in rank or rank[have] < rank[self._assurance_class]:
+                return (False, "assurance_too_low", None)
+
+        return (True, None, receipt_id)
 
     def check(self, receipt: Any, target: Any = None) -> dict:
         """Verify + reserve a receipt WITHOUT consuming it. On ok, the caller MUST
@@ -211,31 +277,50 @@ class ReceiptGate:
         ok, reason, receipt_id = self._verify(receipt, bound)
         if not ok:
             return {"ok": False, "reason": reason, "action": bound}
-        if self._store.has(receipt_id) or receipt_id in self._inflight:
+        try:
+            reserved = self._store.reserve(receipt_id)
+        except Exception:
+            return {"ok": False, "reason": "consumption_store_unavailable", "action": bound}
+        if reserved is not True:
             return {"ok": False, "reason": "replay_refused", "action": bound}
-        self._inflight.add(receipt_id)
         return {"ok": True, "receipt_id": receipt_id, "action": bound}
 
     def commit(self, receipt_id: str) -> None:
-        """Finalize one-time consumption after the action SUCCEEDS."""
-        self._inflight.discard(receipt_id)
-        self._store.add(receipt_id)
+        """Finalize one-time consumption after an execution attempt begins."""
+        try:
+            committed = self._store.commit(receipt_id)
+        except Exception as error:
+            raise RuntimeError("consumption commit failed closed") from error
+        if committed is not True:
+            raise RuntimeError("consumption commit failed closed")
 
     def release(self, receipt_id: str) -> None:
-        """Release the reservation after the action FAILS — approval stays retryable."""
-        self._inflight.discard(receipt_id)
+        """Release only when the caller can prove execution never began."""
+        try:
+            released = self._store.release(receipt_id)
+        except Exception as error:
+            raise RuntimeError("consumption release failed closed") from error
+        if released is not True:
+            raise RuntimeError("consumption release failed closed")
 
     def run(self, receipt: Any, fn: Callable[[], Any], target: Any = None) -> Any:
-        """Verify+reserve, run ``fn``, then commit on success / release on failure.
-        ``fn`` MUST raise on failure (so the approval is not consumed). Raises
-        ReceiptRequired on a refused/missing receipt."""
+        """Verify, reserve, invoke ``fn``, then commit after any attempt.
+
+        An exception cannot prove the external effect did not happen before its
+        response was lost, so the receipt is burned rather than retried. Raises
+        ReceiptRequired on a refused or missing receipt.
+        """
         c = self.check(receipt, target)
         if not c["ok"]:
             raise ReceiptRequired(c["reason"], c["action"])
         try:
             result = fn()
-        except Exception:
-            self.release(c["receipt_id"])
+        except BaseException as effect_error:
+            try:
+                self.commit(c["receipt_id"])
+            except Exception as commit_error:
+                if hasattr(effect_error, "add_note"):
+                    effect_error.add_note(f"EMILIA consumption remains closed: {commit_error}")
             raise
         self.commit(c["receipt_id"])
         return result
@@ -250,6 +335,9 @@ def require_receipt(
     max_age_sec: int = DEFAULT_MAX_AGE_SEC,
     get_receipt: Optional[Callable[..., Optional[dict]]] = None,
     store: Any = None,
+    assurance_class: str = "software",
+    verify_assurance: Optional[Callable[[Any, str], Any]] = None,
+    max_future_skew_sec: int = 60,
 ):
     """Decorator: gate a tool function behind an offline EMILIA receipt.
 
@@ -264,6 +352,9 @@ def require_receipt(
         allow_inline_key=allow_inline_key,
         max_age_sec=max_age_sec,
         store=store,
+        assurance_class=assurance_class,
+        verify_assurance=verify_assurance,
+        max_future_skew_sec=max_future_skew_sec,
     )
 
     def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -289,6 +380,9 @@ def guard_crewai_tool(
     max_age_sec: int = DEFAULT_MAX_AGE_SEC,
     get_receipt: Optional[Callable[..., Optional[dict]]] = None,
     store: Any = None,
+    assurance_class: str = "software",
+    verify_assurance: Optional[Callable[[Any, str], Any]] = None,
+    max_future_skew_sec: int = 60,
 ):
     """Wrap a CrewAI BaseTool *instance* so its ``_run`` requires a receipt.
 
@@ -307,6 +401,9 @@ def guard_crewai_tool(
         max_age_sec=max_age_sec,
         get_receipt=get_receipt,
         store=store,
+        assurance_class=assurance_class,
+        verify_assurance=verify_assurance,
+        max_future_skew_sec=max_future_skew_sec,
     )
     tool._run = deco(original)  # instance attribute shadows the class method
     return tool

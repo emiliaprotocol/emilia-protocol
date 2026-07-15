@@ -24,6 +24,12 @@ describe('browser verifier — published source vs app copy', () => {
     expect(vendored).toBe(published);
   });
 
+  it('the strict nested-JSON gate is byte-identical in both browser bundles', () => {
+    const published = readFileSync(resolve(root, 'packages/verify/strict-json.js'), 'utf8');
+    const vendored = readFileSync(resolve(root, 'lib/strict-json.js'), 'utf8');
+    expect(vendored).toBe(published);
+  });
+
   it('the vendored verifier actually verifies a signed receipt (smoke)', async () => {
     const crypto = await import('crypto');
     const { verifyReceipt } = await import('../lib/verify-web.js');

@@ -30,14 +30,14 @@ export class MemoryConsumptionStore {
     return true;
   }
 
-  /** Commit a reserved id after the action succeeds. */
+  /** Commit a reserved id after an external-effect attempt begins. */
   async commit(key) {
     this.reserved.delete(key);
     this.seen.add(key);
     return true;
   }
 
-  /** Release a reserved id after the action fails; approval stays retryable. */
+  /** Release only when the caller can prove the external effect never began. */
   async release(key) {
     this.reserved.delete(key);
     return true;

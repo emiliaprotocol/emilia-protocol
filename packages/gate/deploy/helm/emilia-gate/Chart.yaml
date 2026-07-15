@@ -19,7 +19,7 @@ type: application
 version: 0.1.0
 # Version of @emilia-protocol/gate this chart tracks; used as the default
 # image tag when .Values.image.tag is empty.
-appVersion: "0.9.5"
+appVersion: "0.10.0"
 kubeVersion: ">=1.23.0-0"
 home: https://emiliaprotocol.ai
 sources:

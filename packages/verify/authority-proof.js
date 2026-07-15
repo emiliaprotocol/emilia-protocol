@@ -47,7 +47,7 @@ export function authorityProofDigest(proof) {
  * Verify an EP-AUTHORITY-PROOF-v1 against pinned registry issuer keys.
  * @param {object} proof
  * @param {object} opts
- * @param {Array<{issuer_id?:string,key_id?:string,public_key:string}>} opts.pinnedRegistryKeys
+ * @param {Array<{issuer_id:string,key_id?:string,public_key:string}>} opts.pinnedRegistryKeys
  * @param {string} [opts.expectRegistryHead]  proof.registry_head must equal this (equivocation)
  * @param {number} [opts.expectMinEpoch]      proof.registry_epoch must be >= this (staleness)
  * @returns {{verified:boolean, accepted:boolean, checks:object, reason?:string, proof_digest?:string}}
@@ -99,7 +99,9 @@ export function verifyAuthorityProof(proof, opts = {}) {
 
   const pinned = Array.isArray(opts.pinnedRegistryKeys) ? opts.pinnedRegistryKeys : [];
   const keyMatched = pinned.filter((k) => k?.public_key === sig.public_key && (k.key_id === undefined || k.key_id === derivedKeyId));
-  const pin = keyMatched.find((k) => k?.issuer_id === undefined || k.issuer_id === derivedKeyId || k.issuer_id === proof.authority_id);
+  const pin = keyMatched.find((k) => typeof k?.issuer_id === 'string'
+    && k.issuer_id.length > 0
+    && k.issuer_id === proof.authority_id);
   if (!pin) {
     return { verified: false, accepted: false, checks, reason: keyMatched.length ? 'pin_mismatched_issuer' : 'registry_key_not_pinned', proof_digest: digest };
   }

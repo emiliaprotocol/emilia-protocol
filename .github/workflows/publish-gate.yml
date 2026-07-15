@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact tag, for example gate-v0.9.5
+        description: Exact tag, for example gate-v0.10.0
         required: true
         type: string
       confirmation:

@@ -3,6 +3,33 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.10.0 (2026-07-15)
+
+### Security (please upgrade)
+
+- Human signoffs, quorum members, provenance links, resolution receipts, trust
+  receipts, and evidence-chain components now enforce relying-party ID and
+  origin scope consistently across JavaScript, browser, Python, and Go ports.
+- Role, issuer, approver, authority, profile-registry, and key-class decisions
+  are derived from relying-party pins rather than presenter-controlled labels,
+  embedded keys, or self-asserted metadata.
+- Strict JSON parsing rejects duplicate members before security-relevant
+  canonicalization. SPKI identity comparisons use canonical fingerprints so
+  alternate encodings cannot fill multiple quorum seats or alias a pinned key.
+- Reliance evaluation now requires an exact action join, pinned organizational
+  quorum policy, and pinned registry identity. The CLI treats `--key` as an
+  authoritative trust anchor and exposes RP/origin policy flags.
+- Shared conformance adds cross-origin, key-role, authority, provenance, and
+  hostile-parser refusals. The release security case binds the executable
+  claims to the current artifacts and cross-language vectors.
+
+### Changed
+
+- Some artifacts accepted by earlier releases will now be refused until the
+  verifier is supplied with the relying party's explicit trust roots, RP ID,
+  origin allowlist, and required quorum/profile policy. This is intentional
+  fail-closed behavior.
+
 ## 3.9.0 (2026-07-14)
 
 ### Added

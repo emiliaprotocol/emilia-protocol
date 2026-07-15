@@ -89,11 +89,11 @@ test('drop-in enforces assuranceClass, including quorum', async () => {
 
   const software = await gate.run(mint('deploy.production', { outcome: 'allow' }), {}, async () => 'should-not-run');
   expect(software.ok).toBe(false);
-  expect(software.body.rejected.reason).toBe('assurance_proof_required');
+  expect(software.body.rejected.reason).toBe('quorum_policy_required');
 
   const classA = await gate.run(mint('deploy.production'), {}, async () => 'should-not-run');
   expect(classA.ok).toBe(false);
-  expect(classA.body.rejected.reason).toBe('assurance_proof_required');
+  expect(classA.body.rejected.reason).toBe('quorum_policy_required');
 
   const verifiedGate = makeReceiptGate({
     action: 'deploy.production',

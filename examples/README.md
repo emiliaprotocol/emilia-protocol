@@ -14,6 +14,8 @@ Each example runs offline (a local policy stub), so you see all three outcomes i
 | Multi-handshake quorum (protocol) | [`multi-handshake/`](multi-handshake/) | `node examples/multi-handshake/compose-and-verify.mjs` |
 | Model-to-Matter frontier-science clearance | [`model-to-matter/`](model-to-matter/) | `node examples/model-to-matter/demo.mjs` |
 | Google Cloud external reliance lab | [`google-cloud-reliance/`](google-cloud-reliance/) | `node examples/google-cloud-reliance/demo.mjs` |
+| Native government mobile approval | [`mobile-government/`](mobile-government/) | `npm run mobile:conformance` |
+| Regulatory mobile oversight export | [`regulatory-mobile-oversight/`](regulatory-mobile-oversight/) | `npm run mobile:regulator-demo` |
 
 Shared Python helper: [`emilia_guard.py`](emilia_guard.py) — `guard_action()` and the `guard`
 decorator. HTTP is dependency-injected: pass a `fetch` callable (requests/httpx) for live calls;

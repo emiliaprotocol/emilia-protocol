@@ -21,6 +21,9 @@
  * args.emilia_receipt, then a base64 string in args._emilia_receipt_b64.
  */
 
+const { parseReceiptCarrier } = await import('@emilia-protocol/require-receipt')
+  .catch(() => import('../require-receipt/index.js'));
+
 function resolveReceipt(args, opts) {
   if (typeof opts.receipt === 'function') return opts.receipt(args);
   if (opts.receipt) return opts.receipt;
@@ -28,7 +31,7 @@ function resolveReceipt(args, opts) {
     if (args._emilia_receipt) return args._emilia_receipt;
     if (args.emilia_receipt) return args.emilia_receipt;
     if (typeof args._emilia_receipt_b64 === 'string') {
-      try { return JSON.parse(Buffer.from(args._emilia_receipt_b64, 'base64').toString('utf8')); } catch { return null; }
+      return parseReceiptCarrier(args._emilia_receipt_b64);
     }
   }
   return null;

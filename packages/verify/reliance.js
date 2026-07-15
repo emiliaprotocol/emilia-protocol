@@ -98,6 +98,42 @@ function pubKeyB64u(pub) {
   return null;
 }
 
+function spkiFingerprint(value) {
+  try {
+    const key = crypto.createPublicKey({
+      key: Buffer.from(value, 'base64url'),
+      format: 'der',
+      type: 'spki',
+    });
+    return crypto.createHash('sha256')
+      .update(key.export({ type: 'spki', format: 'der' }))
+      .digest('hex');
+  } catch {
+    return null;
+  }
+}
+
+function validateQuorumPolicy(policy) {
+  const issues = [];
+  if (!policy || typeof policy !== 'object' || Array.isArray(policy)) return ['quorum_policy must be an object'];
+  if (!['threshold', 'ordered'].includes(policy.mode)) issues.push('quorum_policy.mode must be threshold or ordered');
+  if (!Array.isArray(policy.approvers) || policy.approvers.length === 0
+    || policy.approvers.some((entry) => !entry || typeof entry.role !== 'string' || entry.role.length === 0
+      || typeof entry.approver !== 'string' || entry.approver.length === 0)) {
+    issues.push('quorum_policy.approvers must name at least one role and approver');
+  }
+  if (policy.mode === 'threshold' && (!Number.isSafeInteger(policy.required) || policy.required < 2
+    || policy.required > (Array.isArray(policy.approvers) ? policy.approvers.length : 0))) {
+    issues.push('quorum_policy.required must be an integer from 2 through the roster size');
+  }
+  if (policy.distinct_humans === false) issues.push('quorum_policy.distinct_humans cannot be false for reliance');
+  if (policy.window_sec !== undefined
+    && (!Number.isSafeInteger(policy.window_sec) || policy.window_sec <= 0)) {
+    issues.push('quorum_policy.window_sec must be a positive safe integer');
+  }
+  return issues;
+}
+
 function digestHex(value) {
   if (typeof value !== 'string') return null;
   const match = value.match(SHA256_DIGEST);
@@ -246,6 +282,19 @@ export function evaluateReliance(input = {}, opts = {}) {
     return deny('do_not_rely_unsigned', 'reliance evaluation time is missing or malformed');
   }
 
+  const requiresHumanCeremony = requiredAssurance === 'class_a'
+    || requiredAssurance === 'quorum'
+    || requiredEvidence.has('class_a_or_quorum');
+  if (requiresHumanCeremony
+    && (typeof opts.rpId !== 'string' || opts.rpId.length === 0
+      || !Array.isArray(opts.allowedOrigins) || opts.allowedOrigins.length === 0
+      || opts.allowedOrigins.some((origin) => typeof origin !== 'string' || origin.length === 0))) {
+    const verdict = requiredAssurance === 'quorum'
+      ? 'do_not_rely_quorum_unsatisfied'
+      : 'do_not_rely_no_class_a';
+    return deny(verdict, 'human ceremony reliance requires a relying-party-pinned WebAuthn RP ID and non-empty origin allowlist');
+  }
+
   // ── 1. RECEIPT — cryptographically valid and bound to THIS action ──────────
   if (!receipt || typeof receipt !== 'object') return deny('do_not_rely_unsigned', 'no receipt supplied');
   const rc = verifyTrustReceipt(receipt, opts);
@@ -296,7 +345,10 @@ export function evaluateReliance(input = {}, opts = {}) {
   for (const s of (Array.isArray(receipt.signoffs) ? receipt.signoffs : [])) {
     const ctx = ctxByHash.get(hexOf(s?.context_hash));
     if (!ctx?.approver) continue;
-    verifiedApprovers.push({ approver: ctx.approver, key_class: approverKeys[s?.approver_key_id]?.key_class || s?.key_class || 'B' });
+    verifiedApprovers.push({
+      approver: ctx.approver,
+      key_class: approverKeys[s?.approver_key_id]?.key_class === 'A' ? 'A' : 'B',
+    });
   }
   const classASigners = verifiedApprovers.filter((a) => a.key_class === 'A').map((a) => a.approver);
   const allSigners = verifiedApprovers.map((a) => a.approver);
@@ -326,11 +378,24 @@ export function evaluateReliance(input = {}, opts = {}) {
   let achievedAssurance = 'signed';
   const boundQuorum = () => {
     if (quorumResult !== undefined) return quorumResult;
-    const q = quorum && verifyQuorum(quorum, opts);
+    const trustedPolicy = prof.quorum_policy;
+    const members = Array.isArray(quorum?.members) ? quorum.members : [];
+    const pinnedEntries = Object.values(approverKeys).filter((entry) => entry && typeof entry === 'object');
+    const keysAnchored = members.length > 0 && members.every((member) => {
+      const approver = member?.signoff?.context?.approver;
+      const fingerprint = spkiFingerprint(member?.approver_public_key);
+      return fingerprint !== null && pinnedEntries.some((entry) => entry.approver_id === approver
+        && entry.key_class === 'A'
+        && spkiFingerprint(entry.public_key) === fingerprint);
+    });
+    const policyPinned = validateQuorumPolicy(trustedPolicy).length === 0;
+    const q = quorum && keysAnchored && policyPinned
+      ? verifyQuorum({ ...quorum, policy: trustedPolicy }, opts)
+      : null;
     const ok = Boolean(q?.valid)
       && digestHex(quorum?.action_hash) !== null
       && digestHex(quorum?.action_hash) === receiptActionHash;
-    quorumResult = { q, ok };
+    quorumResult = { q, ok, keysAnchored, policyPinned };
     return quorumResult;
   };
   if (requiredAssurance === 'class_a') {
@@ -375,7 +440,7 @@ export function evaluateReliance(input = {}, opts = {}) {
       return deny('do_not_rely_registry_unavailable', 'no authority registry key is pinned for the signed action organization');
     }
     const registryPin = organizationRegistryKeys.find((key) => key?.public_key === authorityProof?.signature?.public_key
-      && (key.issuer_id === authorityProof?.authority_id || key.issuer_id === authorityProof?.signature?.key_id));
+      && key.issuer_id === authorityProof?.authority_id);
     const ap = verifyAuthorityProof(authorityProof, {
       pinnedRegistryKeys: organizationRegistryKeys,
       ...(registryPin ? { expectRegistryHead: registryPin.registry_head, expectMinEpoch: registryPin.min_epoch } : {}),
@@ -559,6 +624,9 @@ export function validateRelianceProfile(profile) {
     && profile.accepted_policy_hashes.some((h) => typeof h !== 'string' || h.length === 0)) {
     issues.push('accepted_policy_hashes contains an invalid policy hash');
   }
+  if (profile.quorum_policy !== undefined) {
+    issues.push(...validateQuorumPolicy(profile.quorum_policy));
+  }
   if (profile.max_revocation_staleness_sec !== undefined
     && (!Number.isFinite(profile.max_revocation_staleness_sec) || profile.max_revocation_staleness_sec < 0)) {
     issues.push('max_revocation_staleness_sec must be a finite non-negative number');
@@ -577,6 +645,8 @@ export const __relianceSecurityInternals = Object.freeze({
   strictInstantMs,
   toMs,
   pubKeyB64u,
+  spkiFingerprint,
+  validateQuorumPolicy,
   digestHex,
   parseNonNegativeDecimal,
   decimalGreaterThan,

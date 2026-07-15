@@ -25,6 +25,8 @@
  * adds the three things a firewall needs over a bare verifier: assurance-tier
  * enforcement, replay defense, and the evidence log. Fails closed.
  */
+import crypto from 'node:crypto';
+
 const {
   verifyEmiliaReceipt,
   receiptChallenge,
@@ -32,7 +34,9 @@ const {
   validateActionRiskManifest,
   findActionRequirement,
   evaluateReceiptAssurance,
+  validatePinnedQuorumPolicy,
   receiptAssuranceTier: receiptAssuranceTierFromProof,
+  parseReceiptCarrier,
   RECEIPT_REQUIRED_STATUS,
   RECEIPT_REQUIRED_HEADER,
 } = await import('@emilia-protocol/require-receipt').catch(() => import('../require-receipt/index.js'));
@@ -90,13 +94,11 @@ export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
 /**
- * Verify a PRE-COMPUTED reliance packet's admissibility block against a profile
- * the relying party PINNED. This is the gate's whole job re: admissibility — it
- * does NOT re-evaluate raw evidence and does NOT define the bar. The relying
- * party's own evaluator (lib/evidence/admissibility-profiles.js) computes the
- * verdict OFFLINE against its pinned profile and produces the reliance packet;
- * the gate only confirms the packet answers the SAME profile_hash and carries an
- * 'admissible' verdict. Pure, dependency-light, fail-closed.
+ * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.
+ * This helper does NOT authenticate the block or establish evaluator provenance.
+ * An execution gate must first verify a signature over the packet or recompute
+ * the verdict from trusted evidence. createGate enforces that boundary through
+ * its verifyAdmissibilityPacket callback whenever a profile is pinned.
  *
  * @param {{id?:string, profile_hash:string}} pinned  the profile the relying party requires
  * @param {object|null} presented  a reliance packet, or its `.admissibility` block,
@@ -156,13 +158,13 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
  *      strongest model — the verifier never trusts a key that travels inside the
  *      receipt. Delegated to require-receipt's receiptAssuranceTierFromProof.
  *
- *  (b) Self-contained embedded evidence (DoD audit fix): a full EP-QUORUM-v1
+ *  (b) Embedded evidence (DoD audit fix): a full EP-QUORUM-v1
  *      document (payload.quorum) whose per-signer WebAuthn assertions verify via
  *      verifyQuorum (distinct humans + distinct keys + threshold + action-binding
  *      + window) earns `quorum`; a WebAuthn device signoff (payload.signoff =
  *      {context, webauthn}) that verifies against the approver's own key via
- *      verifyWebAuthnSignoff earns `class_a`. Used where the approver keys travel
- *      with the receipt rather than being pinned by the relying party.
+ *      verifyWebAuthnSignoff earns `class_a`. Quorum additionally requires an
+ *      out-of-band organizational policy and identity-bound approver directory.
  *
  *      TRUST-LAUNDERING GUARD: an approver key carried INSIDE the receipt proves
  *      only that whoever minted the receipt also holds that key — it is NOT proof
@@ -170,8 +172,8 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
  *      key would collapse VERIFIED into ACCEPTED (any party can mint a fresh
  *      keypair, self-sign a signoff, and embed both). So path (b) elevates the
  *      tier ONLY when either: (i) the caller explicitly opts in with
- *      `allowEmbeddedApproverKeys:true` (the documented self-contained mode,
- *      DEFAULT OFF); or (ii) every embedded approver key that would earn the
+ *      `allowEmbeddedApproverKeys:true` for a single Class-A integrity demo
+ *      (DEFAULT OFF); or (ii) the embedded approver key that would earn the
  *      credit is present in the relying party's PINNED approver key set
  *      (opts.approverKeys). With no pin and no opt-in, path (b) may still VERIFY
  *      the signoff/quorum, but it does NOT elevate above `software`. Fail-closed.
@@ -181,9 +183,9 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
  * @param {object} [opts.approverKeys] pinned approver keys for path (a) and the
  *   path-(b) fallback: a receipt-embedded approver key elevates the tier only if
  *   it is one of these pinned keys (unless allowEmbeddedApproverKeys is set)
- * @param {boolean} [opts.allowEmbeddedApproverKeys=false] explicit opt-in to the
- *   self-contained mode where an UNPINNED approver key carried inside the receipt
- *   may still elevate the path-(b) tier. DEFAULT OFF (fail-closed).
+ * @param {boolean} [opts.allowEmbeddedApproverKeys=false] explicit opt-in where
+ *   one unpinned embedded key may earn Class-A integrity. It never earns quorum.
+ * @param {object} [opts.quorumPolicy] relying-party-pinned organizational rule
  * @param {function} [opts.verifyAssurance] custom assurance verifier for path (a)
  * @param {string} [opts.rpId]  bind embedded device assertions to this WebAuthn RP id (path b)
  * @param {boolean} [opts.detail] return a {tier, quorum, signoff} object instead of the string
@@ -202,13 +204,16 @@ export function receiptAssuranceTier(doc, opts = {}) {
 
   // --- Path (b): self-contained embedded per-signer evidence (DoD audit fix). ---
   const p = doc?.payload || {};
-  const verifyOpts = opts.rpId ? { rpId: opts.rpId } : {};
+  const verifyOpts = {
+    ...(opts.rpId ? { rpId: opts.rpId } : {}),
+    ...(Array.isArray(opts.allowedOrigins) ? { allowedOrigins: opts.allowedOrigins } : {}),
+  };
   // The relying party's PINNED approver public keys (base64url SPKI-DER strings).
   // An embedded approver key elevates the tier only if it is in this set, unless
   // the caller explicitly opts into the self-contained mode.
   const allowEmbedded = opts.allowEmbeddedApproverKeys === true;
-  const pinnedKeys = pinnedApproverKeySet(opts.approverKeys);
-  const keyIsTrusted = (k) => allowEmbedded || (typeof k === 'string' && pinnedKeys.has(k));
+  const keyIsTrusted = (k, approver) => allowEmbedded
+    || Boolean(findPinnedApproverKey(opts.approverKeys, k, approver));
 
   // quorum: a real, self-contained EP-QUORUM-v1 evidence document. Accept it
   // under payload.quorum or payload.claim.quorum. It only counts if it is a full
@@ -219,12 +224,27 @@ export function receiptAssuranceTier(doc, opts = {}) {
   // when every member's embedded approver key is pinned (or the caller opted in).
   const q = p.quorum || p.claim?.quorum;
   if (detail.tier !== 'quorum' && isQuorumEvidence(q)) {
-    const qr = verifyQuorum(q, verifyOpts);
-    const membersTrusted = allowEmbedded
-      || (Array.isArray(q.members) && q.members.length > 0
-          && q.members.every((m) => keyIsTrusted(m?.approver_public_key)));
-    detail.quorum = { valid: qr.valid, checks: qr.checks, embedded_keys_trusted: membersTrusted };
-    if (qr.valid && membersTrusted) detail.tier = 'quorum';
+    const policy = validatePinnedQuorumPolicy(opts.quorumPolicy || opts.quorum_policy);
+    const trustedMembers = Array.isArray(q.members) ? q.members.map((member) => {
+      const entry = findPinnedApproverKey(
+        opts.approverKeys,
+        member?.approver_public_key,
+        member?.signoff?.context?.approver,
+      );
+      return entry ? { ...member, approver_public_key: entry.public_key } : null;
+    }) : [];
+    const membersTrusted = trustedMembers.length > 0 && trustedMembers.every(Boolean);
+    const qr = policy.ok && membersTrusted
+      ? verifyQuorum({ ...q, policy: policy.policy, members: trustedMembers }, verifyOpts)
+      : { valid: false, checks: {} };
+    detail.quorum = {
+      valid: qr.valid,
+      checks: qr.checks,
+      policy_pinned: policy.ok,
+      embedded_keys_trusted: membersTrusted,
+      refusal: !policy.ok ? policy.reason : (!membersTrusted ? 'quorum_member_key_unpinned' : null),
+    };
+    if (qr.valid && policy.ok && membersTrusted) detail.tier = 'quorum';
   }
 
   // class_a: a verifiable WebAuthn device signoff. The signoff evidence is
@@ -237,7 +257,7 @@ export function receiptAssuranceTier(doc, opts = {}) {
       const key = so.approver_public_key || p.approver_public_key || p.claim?.approver_public_key;
       if (key) {
         const sr = verifyWebAuthnSignoff(so, key, verifyOpts);
-        const trusted = keyIsTrusted(key);
+        const trusted = keyIsTrusted(key, so?.context?.approver);
         detail.signoff = { valid: sr.valid, checks: sr.checks, embedded_key_trusted: trusted };
         if (sr.valid && trusted && (TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) detail.tier = 'class_a';
       }
@@ -254,25 +274,21 @@ export function receiptAssuranceTier(doc, opts = {}) {
  * array/set of key strings. Used to decide whether a receipt-embedded approver
  * key may elevate the path-(b) tier. Never throws.
  */
-function pinnedApproverKeySet(approverKeys) {
-  const out = new Set();
-  if (!approverKeys) return out;
-  if (approverKeys instanceof Set) {
-    for (const k of approverKeys) if (typeof k === 'string' && k) out.add(k);
-    return out;
-  }
-  if (Array.isArray(approverKeys)) {
-    for (const k of approverKeys) if (typeof k === 'string' && k) out.add(k);
-    return out;
-  }
-  if (typeof approverKeys === 'object') {
-    for (const entry of Object.values(approverKeys)) {
-      if (typeof entry === 'string' && entry) { out.add(entry); continue; }
-      const pk = entry && typeof entry === 'object' ? entry.public_key : null;
-      if (typeof pk === 'string' && pk) out.add(pk);
-    }
-  }
-  return out;
+function spkiFingerprint(value) {
+  try {
+    const key = crypto.createPublicKey({ key: Buffer.from(value, 'base64url'), format: 'der', type: 'spki' });
+    return crypto.createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
+  } catch { return null; }
+}
+
+function findPinnedApproverKey(approverKeys, presentedKey, approver) {
+  if (!approverKeys || typeof approverKeys !== 'object' || Array.isArray(approverKeys)) return null;
+  const presentedFingerprint = spkiFingerprint(presentedKey);
+  if (!presentedFingerprint || typeof approver !== 'string' || !approver) return null;
+  const matches = Object.values(approverKeys).filter((entry) => entry && typeof entry === 'object'
+    && entry.approver_id === approver
+    && spkiFingerprint(entry.public_key) === presentedFingerprint);
+  return matches.length === 1 ? matches[0] : null;
 }
 
 /** A quorum evidence doc must carry members with per-signer signoffs to be verifiable. */
@@ -300,13 +316,19 @@ function isSignoffEvidence(s) {
  * @param {object} [opts.approverKeys] PINNED approver keys ({ keyId: { public_key, key_class } }).
  *   Used both for the pinned assurance-proof path and to authorize receipt-embedded
  *   approver keys under the self-contained embedded-evidence path.
- * @param {boolean} [opts.allowEmbeddedApproverKeys=false] opt into the self-contained
- *   embedded-evidence mode: when true, a class_a/quorum tier may be credited from an
- *   approver key carried INSIDE the receipt even if that key is not pinned. DEFAULT OFF
- *   — with no pinned approverKeys and no opt-in, embedded evidence verifies but does not
- *   elevate above 'software' (prevents VERIFIED collapsing into ACCEPTED / trust-laundering).
+ * @param {boolean} [opts.allowEmbeddedApproverKeys=false] allow one embedded key
+ *   to earn Class-A integrity in demos. Embedded keys never establish quorum.
+ * @param {object} [opts.quorumPolicy] global relying-party-pinned quorum rule
+ * @param {object} [opts.quorumPolicies] action_type -> pinned quorum rule
+ * @param {string} [opts.rpId] WebAuthn relying-party identifier. Required for
+ *   built-in Class-A or quorum assurance verification.
+ * @param {string[]} [opts.allowedOrigins] exact WebAuthn origins accepted by the
+ *   relying party. Required for built-in Class-A or quorum verification.
+ * @param {function} [opts.verifyAdmissibilityPacket] trusted relying-party hook.
+ *   Required whenever an admissibility profile is pinned. It must authenticate
+ *   the presented packet or recompute the verdict and return the trusted block.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, requiredAdmissibilityProfile = null, allowEmbeddedApproverKeys = false } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -346,6 +368,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     const requiredTier = requirement
       ? requirement.assurance_class
       : (selector.assurance_class || 'software');
+    const pinnedQuorumPolicy = requirement?.quorum_policy
+      || (quorumPolicies && typeof quorumPolicies === 'object' ? quorumPolicies[action] : null)
+      || quorumPolicy;
     const observed = observedAction || selector.observedAction || selector.actionDetails || null;
 
     async function decide(allow, status, reason, extra = {}) {
@@ -428,12 +453,38 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     //       WebAuthn device signoff) re-verified via verifyQuorum /
     //       verifyWebAuthnSignoff (DoD audit fix).
     // A receipt that only CLAIMS a higher tier earns 'software' and is refused.
+    const needRank = TIER_RANK[requiredTier];
+    if (needRank === undefined) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'unknown_required_tier', { have_tier: 'software', need_tier: requiredTier, assurance_tier_source: 'cryptographic_verification' });
+    }
+    if (needRank >= TIER_RANK.class_a && typeof verifyAssurance !== 'function'
+        && (typeof rpId !== 'string' || !rpId
+          || !Array.isArray(allowedOrigins) || allowedOrigins.length === 0
+          || allowedOrigins.some((origin) => typeof origin !== 'string' || !origin))) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'assurance_context_unpinned', {
+        have_tier: 'software', need_tier: requiredTier,
+        assurance_tier_source: 'cryptographic_verification',
+      });
+    }
+    if (requiredTier === 'quorum' && typeof verifyAssurance !== 'function') {
+      const policy = validatePinnedQuorumPolicy(pinnedQuorumPolicy);
+      if (!policy.ok) {
+        return decide(false, RECEIPT_REQUIRED_STATUS, policy.reason, {
+          have_tier: 'software', need_tier: requiredTier,
+          assurance_tier_source: 'cryptographic_verification',
+        });
+      }
+    }
     const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
       approverKeys: approver_keys || approverKeys,
       verifyAssurance,
+      rpId,
+      allowedOrigins,
+      quorumPolicy: pinnedQuorumPolicy,
     });
     const tierResult = receiptAssuranceTier(receipt, {
-      rpId, detail: true, approverKeys: approver_keys || approverKeys, verifyAssurance,
+      rpId, allowedOrigins, detail: true, approverKeys: approver_keys || approverKeys,
+      verifyAssurance, quorumPolicy: pinnedQuorumPolicy,
       // Trust-laundering guard: a receipt-embedded approver key does NOT elevate
       // the tier unless it is in the pinned approverKeys set, or the operator
       // explicitly opted into the self-contained embedded-evidence mode. DEFAULT OFF.
@@ -442,13 +493,6 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // Take the strongest tier either path proves.
     const have = (TIER_RANK[assurance.have] ?? 0) >= (TIER_RANK[tierResult.tier] ?? 0)
       ? assurance.have : tierResult.tier;
-    const needRank = TIER_RANK[requiredTier];
-    // Fail CLOSED on an unknown / mis-cased required tier: never silently treat
-    // it as 'software'. If a manifest asks for a tier this gate does not model,
-    // no receipt can satisfy it.
-    if (needRank === undefined) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'unknown_required_tier', { have_tier: have, need_tier: requiredTier, assurance_tier_source: 'cryptographic_verification' });
-    }
     if ((TIER_RANK[have] ?? 0) < needRank) {
       // The credited tier (from either proof path) is below what the action
       // requires. The canonical machine-readable reason is 'assurance_too_low';
@@ -479,9 +523,32 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // When no profile is pinned, this whole block is inert — behavior is
     // byte-for-byte unchanged from the pre-admissibility gate.
     const pinnedProfile = admissibilityProfile || selector.admissibilityProfile || requiredAdmissibilityProfile;
+    let trustedAdmissibility = null;
     if (pinnedProfile) {
       const presentedAdmissibility = admissibility ?? presentedPacket ?? selector.reliancePacket ?? selector.admissibility ?? null;
-      const adm = verifyAdmissibilityAgainstPinnedProfile(pinnedProfile, presentedAdmissibility);
+      if (typeof verifyAdmissibilityPacket !== 'function') {
+        return decide(false, RECEIPT_REQUIRED_STATUS, 'admissibility_verifier_required', {
+          pinned_profile: { id: pinnedProfile.id ?? null, profile_hash: pinnedProfile.profile_hash ?? null },
+          have_tier: have,
+          assurance_tier_source: 'cryptographic_verification',
+        });
+      }
+      try {
+        trustedAdmissibility = await verifyAdmissibilityPacket({
+          pinned_profile: structuredClone(pinnedProfile),
+          presented: structuredClone(presentedAdmissibility),
+          receipt: structuredClone(receipt),
+          selector: structuredClone(selector),
+          observed_action: observed === null ? null : structuredClone(observed),
+        });
+      } catch {
+        return decide(false, RECEIPT_REQUIRED_STATUS, 'admissibility_verification_failed', {
+          pinned_profile: { id: pinnedProfile.id ?? null, profile_hash: pinnedProfile.profile_hash ?? null },
+          have_tier: have,
+          assurance_tier_source: 'cryptographic_verification',
+        });
+      }
+      const adm = verifyAdmissibilityAgainstPinnedProfile(pinnedProfile, trustedAdmissibility);
       if (!adm.ok) {
         return decide(false, RECEIPT_REQUIRED_STATUS, adm.reason, {
           admissibility_check: adm,
@@ -517,7 +584,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // Carry the admissibility block (from the presented packet) onto the decision
     // so a reliance packet built from this decision embeds the verdict the relying
     // party's evaluator computed. Only when something was actually presented.
-    const presentedAdmForAllow = admissibility ?? presentedPacket ?? selector.reliancePacket ?? selector.admissibility ?? null;
+    const presentedAdmForAllow = pinnedProfile
+      ? trustedAdmissibility
+      : (admissibility ?? presentedPacket ?? selector.reliancePacket ?? selector.admissibility ?? null);
     if (presentedAdmForAllow) {
       const admBlock = presentedAdmForAllow.admissibility !== undefined ? presentedAdmForAllow.admissibility : presentedAdmForAllow;
       if (admBlock) allowExtra.admissibility = admBlock;
@@ -534,7 +603,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       }
       let doc = null;
       const hdr = req.headers?.['x-emilia-receipt'];
-      if (hdr) { try { doc = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8')); } catch { /* fallthrough */ } }
+      if (hdr) doc = parseReceiptCarrier(hdr);
       if (!doc && req.body?.emilia_receipt) doc = req.body.emilia_receipt;
       const observedAction = typeof opts.observedAction === 'function'
         ? opts.observedAction(req)
@@ -572,7 +641,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
 
   /**
    * Recommended end-to-end path. Reserves the receipt, runs the side effect,
-   * commits one-time consumption only after success, and records execution.
+   * commits one-time consumption after the effect attempt, and records execution.
    * Once the executor is invoked, an exception is an INDETERMINATE outcome: the
    * external effect may have happened before its response was lost. The receipt
    * is therefore committed (or left reserved if the store is unavailable),
@@ -730,7 +799,7 @@ export async function gateConformance({ gate, harness, action, selector = EG1_DE
  */
 export async function gateConformanceSelfTest({ now } = {}) {
   const harness = createEg1Harness({ now });
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, now });
+  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, now });
   return gateConformance({ gate, harness });
 }
 
@@ -770,9 +839,9 @@ export async function cf1Conformance({ gate, wrongGate, harness, manifest = null
 export async function cf1ConformanceSelfTest({ now } = {}) {
   const harness = createEg1Harness({ now });
   const manifest = createDefaultActionRiskManifest();
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, now });
+  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, now });
   const wrongHarness = createEg1Harness({ now });
-  const wrongGate = createTrustedActionFirewall({ trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys, now });
+  const wrongGate = createTrustedActionFirewall({ trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys, rpId: wrongHarness.rpId, allowedOrigins: wrongHarness.allowedOrigins, now });
   return cf1Conformance({ gate, wrongGate, harness, manifest, selector: EG1_DEFAULT_SELECTOR, action: harness.action });
 }
 

@@ -1,0 +1,41 @@
+name: Publish ep-verify Python
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example ep-verify-py-v0.1.0
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH ep-verify@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
+  publish:
+    needs: approval
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/_publish-pypi-package.yml
+    with:
+      package_dir: packages/ep-verify-py
+      package_name: 'ep-verify'
+      artifact_id: ep-verify-python
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: ep-verify-py-v

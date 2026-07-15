@@ -21,6 +21,7 @@
  * from the wall clock implicitly, so verification is deterministic.
  */
 import crypto from 'node:crypto';
+import { strictJsonGate } from './strict-json.js';
 
 export const ENTITLEMENT_VERSION = 'EP-GATE-ENTITLEMENT-v1';
 export const ENTITLEMENT_TIERS = ['community', 'team', 'business', 'enterprise', 'regulated'];
@@ -110,9 +111,12 @@ export function verifyEntitlement(entitlementJson, { issuerKeys, now = Date.now 
 
   let doc = entitlementJson;
   if (typeof doc === 'string') {
-    try { doc = JSON.parse(doc); } catch { return community('entitlement_unparseable'); }
+    try {
+      if (Buffer.byteLength(doc, 'utf8') > 1024 * 1024 || !strictJsonGate(doc).ok) return community('entitlement_unparseable');
+      doc = JSON.parse(doc);
+    } catch { return community('entitlement_unparseable'); }
   }
-  if (!doc || typeof doc !== 'object') return community('entitlement_malformed');
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return community('entitlement_malformed');
   if (doc['@version'] !== ENTITLEMENT_VERSION) return community('unsupported_version');
 
   const p = doc.payload;

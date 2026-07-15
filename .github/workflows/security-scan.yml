@@ -33,6 +33,4 @@ jobs:
       # dev-only transitive of vitest and is never shipped to consumers.)
       - name: Check for known vulnerabilities (mcp-server)
         working-directory: mcp-server
-        run: |
-          npm ci --ignore-scripts
-          npm audit --audit-level=moderate
+        run: npm audit --package-lock-only --audit-level=moderate

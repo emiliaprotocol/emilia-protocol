@@ -84,7 +84,7 @@ function population() {
     { decision_id: 'd3', action: baseAction(r3, 90000), receipt: r3, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' },
   ];
 }
-const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', isConsumed: () => false, now: NOW };
+const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'], isConsumed: () => false, now: NOW };
 
 describe('EP-ASSURANCE-PACKAGE-v1', () => {
   it('bundles decisions into a content-addressed package', () => {

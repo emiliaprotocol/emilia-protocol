@@ -3,6 +3,7 @@ import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { logger } from '../../../../../lib/logger.js';
+import { strictJsonGate } from '@/lib/strict-json.js';
 
 /**
  * GET /api/trust/profile/:entityId
@@ -43,6 +44,8 @@ export async function GET(request, { params }) {
         if (weightsParam.length > 512) {
           return epProblem(400, 'weights_too_large', 'Weights JSON must be < 512 bytes');
         }
+        const strict = strictJsonGate(weightsParam);
+        if (!strict.ok) return epProblem(400, 'invalid_weights_json', `weights must be strict JSON: ${strict.reason}`);
         scoringWeights = JSON.parse(weightsParam);
       } catch {
         return epProblem(400, 'invalid_weights_json', 'weights parameter must be valid JSON');

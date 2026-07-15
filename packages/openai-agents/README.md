@@ -78,7 +78,7 @@ console.log(result.finalOutput);
 Per-interruption form, if you drive approvals yourself:
 
 ```js
-const decision = gate.decide(interruption, receiptForThisCall);
+const decision = await gate.decide(interruption, receiptForThisCall);
 if (decision.decision === 'approve') result.state.approve(interruption);
 else result.state.reject(interruption, { message: `EMILIA: ${decision.reason}` });
 ```
@@ -91,7 +91,7 @@ For every pending tool-approval interruption:
 | --- | --- |
 | **No receipt** for that interruption | **REJECT** — the tool stays blocked |
 | **Valid** EP-RECEIPT-v1, action-bound to that exact tool call | **APPROVE** — the tool runs |
-| **Replayed** receipt (`receipt_id` already consumed this process) | **REJECT** |
+| **Replayed** receipt (`receipt_id` already consumed by the configured store) | **REJECT** |
 | **Tampered / invalid** receipt (signature or action mismatch, untrusted issuer, expired) | **REJECT** |
 
 ## The six audit questions a receipt answers
@@ -99,7 +99,7 @@ For every pending tool-approval interruption:
 1. **Who approved it?** — `payload.subject` / `claim.approver` (a named, accountable human).
 2. **What exact action?** — `claim.action_type`, bound via `actionFor` to this specific tool call.
 3. **Was it altered after approval?** — no: the receipt is Ed25519-signed over sorted-key canonical JSON; any change breaks the signature.
-4. **Was it replayed?** — no: one-time consumption by `receipt_id` (per-process consumed set).
+4. **Was it replayed?** — no: one-time consumption by `receipt_id` in the configured atomic store.
 5. **Was it authorized for the right org / policy?** — pin `trustedKeys` to the issuers your policy accepts; only those verify.
 6. **Verifiable without trusting OpenAI, your app, or mutable logs?** — yes: verification is offline Ed25519 over canonical JSON; anyone holding the issuer's public key can re-check the artifact.
 
@@ -107,9 +107,9 @@ For every pending tool-approval interruption:
 
 - **Pin `trustedKeys`** to your real issuer key(s). **Drop `allowInlineKey`** (it only proves integrity, never trust).
 - **Bind to the target, not just the tool.** Make `actionFor` incorporate the specific resource the call touches (and ideally the `callId` / an args hash), so a receipt minted for one action can't be replayed against a different one.
-- A receipt is **consumed only when it actually drives an `approve`** — never on a reject — so a blocked approval stays retryable with a fresh, valid receipt.
+- Consumption is durably committed **before** `state.approve()` is called. If that commit fails, the runtime is rejected and the tool cannot run.
 - **Rejections are sanitized:** a reject decision carries only a machine-readable `reason` code, never the signer, the subject, or verifier internals.
-- The **consumed-receipt set is per-process** (replay defense across restarts/instances needs a shared store — see `@emilia-protocol/gate`).
+- The default store is process-local. Production fleets must pass a shared, ownership-fenced `{ reserve, commit, release }` store. `reserve` must be atomic insert-if-absent; an uncertain commit remains closed until operator reconciliation.
 - This is **necessary, not sufficient**. It composes with — and never substitutes for — the resource owner's own authorization and policy checks. It makes the human approval that OpenAI already asks for into auditable, portable evidence; it does not decide whether the action *should* be allowed.
 
 ## References

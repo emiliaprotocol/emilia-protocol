@@ -195,11 +195,11 @@ export default function AgentGauntletPage() {
                     lineHeight: 1.65,
                     overflowX: 'auto',
                   }}>{`$ npx @emilia-protocol/fire-drill tools.json
-  Target: mcp   Operations: 3   Dangerous: 2   Gated: 0
-  Agent Action Firewall score: 0/100
-  FAIL  release_payment  runs without an accountable receipt
-  FAIL  bulk_export      runs without an accountable receipt
-  EG-1: FAIL - dangerous operations can run without a receipt`}</pre>
+  Target: mcp   Operations: 3   Dangerous: 2   Receipt declared: 0
+  Static receipt declaration score: 0/100
+  MISSING  release_payment  required receipt declaration absent
+  MISSING  bulk_export      required receipt declaration absent
+  Runtime EG-1: NOT ASSESSED`}</pre>
                 </div>
               </div>
             </div>

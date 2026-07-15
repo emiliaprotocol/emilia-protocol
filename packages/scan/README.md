@@ -3,7 +3,7 @@
 
 Collapses the integration overhead of putting EMILIA in front of an AI app's
 consequential actions. Point it at what your agent can do; it tells you what
-should require a named human, and hands you the config and the one wrap to add.
+should require authorization evidence, and hands you proposed config to review.
 
 ```bash
 node cli.mjs --sample                        # see it work on a built-in sample
@@ -36,6 +36,9 @@ It does exactly three things, and never more:
   cannot map to a known category but that mutates state is defaulted to
   **fail-closed** (require a receipt) and flagged for your review, never waved
   through.
+- **It does not trust MCP hints as policy.** `readOnlyHint` is advisory. A
+  high-risk semantic match overrides it, and an otherwise opaque action defaults
+  to receipt-required until a reviewer confirms it is read-only.
 - **It will not edit your code.** It emits the manifest and the wrap; you apply
   them after review.
 - **It will never tell you that you are "protected."** It reports what it could
@@ -47,5 +50,9 @@ It does exactly three things, and never more:
 That honesty is the point. A tool that claimed to make AI safe by installing it
 would be lying; risk is specific to your application, and only you know it. This
 makes declaring it cheap, and keeps you in control of the declaration.
+
+JSON input is capped at 8 MiB, duplicate member names are refused, and scans are
+limited to 10,000 bounded action records. `--emit` refuses to overwrite an
+existing manifest.
 
 Part of [EMILIA Protocol](https://www.emiliaprotocol.ai). Apache-2.0.

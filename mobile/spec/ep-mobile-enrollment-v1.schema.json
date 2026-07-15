@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-mobile-enrollment-v1.schema.json",
+  "title": "EMILIA Mobile enrollment artifacts",
+  "oneOf": [
+    { "$ref": "#/$defs/challenge" },
+    { "$ref": "#/$defs/response" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9:_.@-]{3,256}$"
+    },
+    "base64url": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "instant": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "challenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "challenge_profile",
+        "challenge_id",
+        "enrollment_id",
+        "nonce",
+        "challenge",
+        "approver_id",
+        "platform",
+        "app_id",
+        "rp_id",
+        "origin",
+        "user",
+        "enrollment_valid_to",
+        "issued_at",
+        "expires_at",
+        "webauthn",
+        "platform_binding",
+        "platform_request_hash"
+      ],
+      "properties": {
+        "@version": { "const": "AE-CHALLENGE-v1" },
+        "challenge_profile": { "const": "EP-MOBILE-ENROLLMENT-CHALLENGE-v1" },
+        "challenge_id": { "$ref": "#/$defs/identifier" },
+        "enrollment_id": { "$ref": "#/$defs/identifier" },
+        "nonce": { "$ref": "#/$defs/identifier" },
+        "challenge": { "$ref": "#/$defs/base64url" },
+        "approver_id": { "$ref": "#/$defs/identifier" },
+        "platform": { "enum": ["ios", "android"] },
+        "app_id": { "$ref": "#/$defs/identifier" },
+        "rp_id": { "type": "string", "minLength": 1, "maxLength": 253 },
+        "origin": { "type": "string", "pattern": "^https://" },
+        "enrollment_valid_to": { "$ref": "#/$defs/instant" },
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "name", "display_name"],
+          "properties": {
+            "id": { "$ref": "#/$defs/base64url" },
+            "name": { "type": "string", "minLength": 1 },
+            "display_name": { "type": "string", "minLength": 1 }
+          }
+        },
+        "issued_at": { "$ref": "#/$defs/instant" },
+        "expires_at": { "$ref": "#/$defs/instant" },
+        "webauthn": { "type": "object" },
+        "platform_binding": { "type": "object" },
+        "platform_request_hash": { "$ref": "#/$defs/base64url" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "enrollment_id",
+        "approver_id",
+        "platform",
+        "app_id",
+        "platform_request_hash",
+        "attestation_key_id",
+        "requested_valid_to",
+        "passkey_registration",
+        "platform_attestation"
+      ],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-ENROLLMENT-v1" },
+        "enrollment_id": { "$ref": "#/$defs/identifier" },
+        "approver_id": { "$ref": "#/$defs/identifier" },
+        "platform": { "enum": ["ios", "android"] },
+        "app_id": { "$ref": "#/$defs/identifier" },
+        "platform_request_hash": { "$ref": "#/$defs/base64url" },
+        "attestation_key_id": { "$ref": "#/$defs/identifier" },
+        "requested_valid_to": { "$ref": "#/$defs/instant" },
+        "passkey_registration": { "type": "object" },
+        "platform_attestation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format", "token"],
+          "properties": {
+            "format": { "type": "string", "minLength": 1 },
+            "token": { "$ref": "#/$defs/base64url" }
+          }
+        }
+      }
+    }
+  }
+}

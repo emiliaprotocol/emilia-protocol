@@ -154,6 +154,8 @@ function mintReceipt({
         },
       },
       log_public_key: logKp.publicKeyB64u,
+      rp_id: 'rp',
+      allowed_origins: ['https://test.emilia'],
     };
     return { receipt, verification, approver, approverKeyId };
   });
@@ -252,6 +254,8 @@ const baseOpts = (b, over = {}) => ({
   now: NOW,
   humanKeyClasses: ['A'],
   delegationKeys: b.delegationKeys,
+  rootVerification: b.root.verification,
+  actionVerification: b.approval.verification,
   ...over,
 });
 

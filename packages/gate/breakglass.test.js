@@ -79,6 +79,14 @@ test('accepts a JSON string and an injected clock function', () => {
   assert.equal(out.valid, true);
 });
 
+test('refuses duplicate-member JSON before signature semantics are evaluated', () => {
+  const g = grant2of2();
+  const raw = `{"@version":"${BREAKGLASS_VERSION}","payload":${JSON.stringify(g.payload)},"payload":${JSON.stringify(g.payload)},"signatures":${JSON.stringify(g.signatures)}}`;
+  const out = verifyBreakGlass(raw, { issuerKeys: ISSUERS, now: IN_WINDOW, actionType: 'db.restore' });
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'grant_unparseable');
+});
+
 // ---------------------------------------------------------------- mint refuses to issue malformed grants
 
 test('mint throws on duplicate signer kids — one principal cannot fill two slots', () => {

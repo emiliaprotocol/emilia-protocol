@@ -17,9 +17,9 @@ vendor in the loop.** The approval becomes portable evidence an auditor can chec
 without trusting the operator. It is *necessary, not sufficient*: it composes with —
 never replaces — your tool's own checks.
 
-> EMILIA proves **who authorized** a specific action. It is not a truth oracle and
-> not an access-control runtime; it is the portable authorization receipt any
-> runtime can emit.
+> The base gate proves a pinned issuer signed an action-bound authorization claim.
+> For a human-presence claim, require `assurance_class="class_a"` and supply an
+> independent assurance verifier pinned to the relying party's keys, RP, and origins.
 
 ## Install
 
@@ -40,6 +40,8 @@ guard_crewai_tool(
     action="payment.release",
     trusted_keys=[ISSUER_SPKI_B64URL],     # pin the issuer keys you trust
     target_for=lambda to, amount: f"payment.release:{to}",  # optional per-call binding
+    assurance_class="class_a",
+    verify_assurance=verify_pinned_class_a_evidence,
 )
 
 # Bind the human-approved receipt for the agent step, then run as normal:
@@ -57,13 +59,19 @@ def send_payment(to: str, amount: int) -> str:
     return do_transfer(to, amount)
 ```
 
-Lower-level gate (verify -> reserve -> commit/release yourself):
+Lower-level gate (verify -> reserve -> execute -> commit yourself):
 
 ```python
 from emilia_crewai import ReceiptGate
 gate = ReceiptGate("payment.release", trusted_keys=[ISSUER_SPKI_B64URL])
 result = gate.run(receipt, lambda: do_transfer(to, amount), target=to)
 ```
+
+`run()` consumes the receipt after any execution attempt, including an exception:
+the external effect may have happened before its response was lost. Production
+fleets must pass an atomic, ownership-fenced `{reserve, commit, release}` store;
+the default is process-local. Call `release()` only when you can prove execution
+never began.
 
 ## Multi-agent / quorum
 
@@ -73,8 +81,8 @@ quorum produces a single composite, offline-verifiable receipt. See the
 
 ## What it is / isn't
 
-- **Is:** an offline gate that enforces *a named human authorized this exact action*
-  and yields portable, third-party-verifiable evidence.
+- **Is:** an offline gate for an action-bound issuer receipt, with an explicit
+  Class-A/quorum verifier hook for independently established human ceremony.
 - **Isn't:** authentication ("who is the agent"), access control, or a hosted runtime.
   It composes on top of whatever runtime you use.
 

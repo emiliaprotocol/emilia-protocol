@@ -33,6 +33,14 @@ const config = {
   vitest: {
     configFile: 'vitest.config.js',
   },
+  ignorePatterns: [
+    'sdks/swift-mobile/.build/**',
+    'sdks/kotlin-mobile/.gradle/**',
+    'sdks/kotlin-mobile/build/**',
+    'sdks/kotlin-mobile/sample/build/**',
+    '.next/**',
+    'reports/**',
+  ],
 
   // ── Mutation targets ────────────────────────────────────────────────────────
   // Focus on the invariant-bearing protocol core. Exclude:

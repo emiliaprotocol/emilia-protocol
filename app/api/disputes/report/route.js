@@ -54,7 +54,7 @@ export async function POST(request) {
       entity_id: entityId,
       report_type: reportType,
       reporter_ip_hash: reporterIpHash,
-    });
+    }, { failClosed: true });
 
     if (!abuseCheck.allowed) {
       return epProblem(429, 'report_throttled', `Report throttled: ${abuseCheck.pattern}. Try again later.`, {
