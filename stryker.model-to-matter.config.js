@@ -4,6 +4,14 @@
 export default {
   testRunner: 'vitest',
   vitest: { configFile: 'vitest.config.js', related: false },
+  ignorePatterns: [
+    'sdks/swift-mobile/.build/**',
+    'sdks/kotlin-mobile/.gradle/**',
+    'sdks/kotlin-mobile/build/**',
+    'sdks/kotlin-mobile/sample/build/**',
+    '.next/**',
+    'reports/**',
+  ],
   // Every executable function from sha256hex through effect verification.
   // Module-scope frozen protocol tables and export aggregation are exact-tested
   // separately; Vitest loads those ESM initializers before mutant activation.

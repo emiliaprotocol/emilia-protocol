@@ -12,6 +12,8 @@ import {
   computeResolutionResponseHash,
 } from '../../packages/verify/resolution.js';
 
+// Intentionally public deterministic fixture key. Never use outside tests.
+// nosemgrep: generic.secrets.security.detected-private-key.detected-private-key
 const TEST_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgSjVayBMRRDKrRITX
 WdPo+H/5oIqu2VUMEkc7PIt5MOehRANCAATbrq46hGNCM0BGVFEUCThNq5j4EPAy
@@ -59,6 +61,7 @@ function makeReceipt(resolution, {
   sourceBindingMoment = bindingMoment,
   signedRpId = RP_ID,
   signedOrigin = 'https://www.emiliaprotocol.ai',
+  crossOrigin = false,
   flags = 0x05,
   tamperAfterSign = null,
 } = {}) {
@@ -78,7 +81,7 @@ function makeReceipt(resolution, {
   };
   const challenge = crypto.createHash('sha256').update(canonicalize(context), 'utf8').digest('base64url');
   const clientData = Buffer.from(JSON.stringify({
-    type: 'webauthn.get', challenge, origin: signedOrigin,
+    type: 'webauthn.get', challenge, origin: signedOrigin, crossOrigin,
   }), 'utf8');
   const authData = Buffer.concat([
     crypto.createHash('sha256').update(signedRpId, 'utf8').digest(),
@@ -174,6 +177,8 @@ add('reject_wrong_rp', 'The relying party expects a different WebAuthn RP ID.', 
   { rp_id: 'other.example' });
 add('reject_wrong_origin', 'A valid signature from an origin outside the relying-party allowlist is refused.', 'audience', false,
   makeReceipt({ outcome: 'approved', selected_option: 0 }, { signedOrigin: 'https://attacker.example' }));
+add('reject_cross_origin_ceremony', 'A cross-origin WebAuthn ceremony is refused even when its origin string is allowlisted.', 'audience', false,
+  makeReceipt({ outcome: 'approved', selected_option: 0 }, { crossOrigin: true }));
 add('reject_expired_ceremony', 'Evaluation time is outside the signed ceremony window.', 'lifecycle', false, approved,
   { evaluation_time: '2026-07-14T06:00:00.000Z' });
 add('reject_impossible_calendar_date', 'February 30 is not an RFC 3339 instant and must not normalize to March.', 'lifecycle', false,

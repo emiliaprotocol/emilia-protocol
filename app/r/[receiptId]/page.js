@@ -354,14 +354,14 @@ export default async function ReceiptPage({ params }) {
         <section style={{ marginBottom: 48 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: color.t1 }}>Verify it yourself</h2>
           <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.7, marginBottom: 16 }}>
-            This receipt&apos;s signature is verifiable offline by anyone — zero EP infrastructure required. Install the package, fetch the evidence packet, run verify:
+            This receipt&apos;s signature and signed fields are verifiable offline — zero EP infrastructure required at verification time. The public key below proves cryptographic integrity; establish issuer identity or acceptance by pinning that key through your own trust configuration.
           </p>
           <pre style={{
             background: '#0F172A', color: '#E8EAF0',
             fontFamily: font.mono, fontSize: 12, lineHeight: 1.6,
             padding: 20, borderRadius: radius.base,
             overflow: 'auto', margin: 0,
-          }}>{r.is_demo ? `npm install @emilia-protocol/verify@^1.0.1
+          }}>{r.is_demo ? `npm install @emilia-protocol/verify@latest
 
 import { verifyReceipt } from '@emilia-protocol/verify';
 
@@ -375,7 +375,7 @@ const result = verifyReceipt(document, public_key);
 //
 // The deeply-nested claim.context.change.after_bank_hash and every
 // risk_signal are bound by the recursive canonical signature.` :
-`npm install @emilia-protocol/verify@^1.0.1
+`npm install @emilia-protocol/verify@latest
 
 // Production endpoint — requires bearer auth (your tenant's evidence)
 import { verifyReceipt } from '@emilia-protocol/verify';

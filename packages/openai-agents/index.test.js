@@ -165,31 +165,31 @@ test('the four checks: missing -> blocked, valid -> approved, replay -> rejected
   });
 });
 
-test('decide(): per-interruption API mirrors resolve()', () => {
+test('decide(): per-interruption API mirrors resolve()', async () => {
   _resetConsumed();
   const gate = newGate();
   const interruption = makeInterruption({ name: 'refund', args: { amount: 10 }, callId: 'd1' });
 
   // missing
-  assert.equal(gate.decide(interruption, null).decision, 'reject');
+  assert.equal((await gate.decide(interruption, null)).decision, 'reject');
   // valid
-  const ok = gate.decide(interruption, mintReceipt({ action: 'openai.tool.refund' }));
+  const ok = await gate.decide(interruption, mintReceipt({ action: 'openai.tool.refund' }));
   assert.equal(ok.decision, 'approve');
   assert.equal(ok.toolName, 'refund');
   assert.equal(ok.callId, 'd1');
 });
 
-test('action binding: a receipt for the WRONG tool is rejected', () => {
+test('action binding: a receipt for the WRONG tool is rejected', async () => {
   _resetConsumed();
   const gate = newGate();
   const interruption = makeInterruption({ name: 'cancelOrder', callId: 'x1' });
   const wrong = mintReceipt({ action: 'openai.tool.somethingElse' });
-  const d = gate.decide(interruption, wrong);
+  const d = await gate.decide(interruption, wrong);
   assert.equal(d.decision, 'reject');
   assert.equal(d.reason, 'action_mismatch');
 });
 
-test('untrusted issuer: valid signature but unknown key is rejected', () => {
+test('untrusted issuer: valid signature but unknown key is rejected', async () => {
   _resetConsumed();
   // Gate trusts only TRUSTED_KEY; mint with a different key.
   const gate = newGate();
@@ -207,7 +207,7 @@ test('untrusted issuer: valid signature but unknown key is rejected', () => {
     signature: { algorithm: 'Ed25519', value: sig.toString('base64url') },
     public_key: other.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
   };
-  const d = gate.decide(makeInterruption({ name: 'cancelOrder' }), receipt);
+  const d = await gate.decide(makeInterruption({ name: 'cancelOrder' }), receipt);
   assert.equal(d.decision, 'reject');
   assert.equal(d.reason, 'untrusted_or_invalid_signature');
 });
@@ -224,4 +224,80 @@ test('array receipts are matched to interruptions by action_type', async () => {
   const { decisions } = await gate.resolve({ interruptions: [i1, i2], state: makeFakeState() }, { receipts });
   assert.equal(decisions[0].decision, 'approve');
   assert.equal(decisions[1].decision, 'approve');
+});
+
+test('durable consumption failure never reaches the OpenAI runtime approve boundary', async () => {
+  _resetConsumed();
+  const store = {
+    ownershipFenced: true,
+    async reserve() { return true; },
+    async commit() { throw new Error('durable store unavailable'); },
+    async release() { return true; },
+  };
+  const gate = requireReceiptForOpenAIAgent({
+    trustedKeys: [TRUSTED_KEY],
+    maxAgeSec: 900,
+    actionFor,
+    store,
+  });
+  const interruption = makeInterruption({ name: 'wire', callId: 'commit_failure' });
+  const receipt = mintReceipt({ action: 'openai.tool.wire' });
+  const state = makeFakeState();
+
+  const result = await gate.resolve(
+    { interruptions: [interruption], state },
+    { receipts: { commit_failure: receipt } },
+  );
+
+  assert.equal(result.decisions[0].decision, 'reject');
+  assert.equal(result.decisions[0].reason, 'approve_or_consumption_failed');
+  assert.equal(state.approvedCalls.length, 0, 'runtime approve must happen only after durable commit');
+  assert.equal(state.rejectedCalls.length, 1);
+});
+
+test('action derivation errors and empty bindings reject without reaching runtime approve', async () => {
+  for (const badActionFor of [() => '', () => { throw new Error('bad arguments'); }]) {
+    const gate = requireReceiptForOpenAIAgent({
+      trustedKeys: [TRUSTED_KEY],
+      actionFor: badActionFor,
+    });
+    const interruption = makeInterruption({ name: 'wire', callId: crypto.randomUUID() });
+    const state = makeFakeState();
+    const result = await gate.resolve(
+      { interruptions: [interruption], state },
+      { receipts: { [interruption.rawItem.callId]: mintReceipt({ action: 'openai.tool.wire' }) } },
+    );
+    assert.equal(result.decisions[0].decision, 'reject');
+    assert.equal(result.decisions[0].reason, 'action_binding_invalid');
+    assert.equal(state.approvedCalls.length, 0);
+  }
+});
+
+test('duplicate or non-object tool arguments refuse before action binding', async () => {
+  const gate = newGate();
+  for (const raw of ['{"amount":1,"amount":999999}', '["not","an","argument object"]', 'not-json']) {
+    const interruption = makeInterruption({ name: 'wire', callId: crypto.randomUUID() });
+    interruption.arguments = raw;
+    interruption.rawItem.arguments = raw;
+    const state = makeFakeState();
+    const result = await gate.resolve(
+      { interruptions: [interruption], state },
+      { receipts: { [interruption.rawItem.callId]: mintReceipt({ action: 'openai.tool.wire' }) } },
+    );
+    assert.equal(result.decisions[0].decision, 'reject');
+    assert.equal(result.decisions[0].reason, 'tool_arguments_invalid');
+    assert.equal(state.approvedCalls.length, 0);
+  }
+});
+
+test('plain-object receipt lookup ignores inherited properties', async () => {
+  const gate = newGate();
+  const interruption = makeInterruption({ name: 'wire', callId: 'inherited_receipt' });
+  const receipts = Object.create({
+    inherited_receipt: mintReceipt({ action: 'openai.tool.wire' }),
+  });
+  const state = makeFakeState();
+  const result = await gate.resolve({ interruptions: [interruption], state }, { receipts });
+  assert.equal(result.decisions[0].reason, 'no_receipt_for_interruption');
+  assert.equal(state.approvedCalls.length, 0);
 });

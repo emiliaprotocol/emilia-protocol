@@ -34,6 +34,7 @@ import {
   RECEIPT_PROOF_HEADER,
   RECEIPT_REQUIRED_HEADER,
   RECEIPT_REQUIRED_STATUS,
+  parseReceiptCarrier,
   receiptChallenge,
   receiptRequiredHeader,
 } from '@/packages/require-receipt/index.js';
@@ -84,12 +85,105 @@ const DEMO_ACTIONS = {
 
 const DEFAULT_DEMO = 'release_funds';
 const gates = new Map();
+const DEMO_RP_ID = 'www.emiliaprotocol.ai';
+const DEMO_ORIGIN = `https://${DEMO_RP_ID}`;
+
+function createDemoApprover(keyId, approverId) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  return {
+    keyId,
+    approverId,
+    privateKey,
+    publicKey: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+  };
+}
+
+const DEMO_APPROVERS = [
+  createDemoApprover('http-demo-approver-1', 'ep:approver:demo-primary'),
+  createDemoApprover('http-demo-approver-2', 'ep:approver:demo-secondary'),
+];
+const DEMO_APPROVER_KEYS = Object.freeze(Object.fromEntries(DEMO_APPROVERS.map((entry) => [
+  entry.keyId,
+  Object.freeze({
+    public_key: entry.publicKey,
+    key_class: 'A',
+    approver_id: entry.approverId,
+  }),
+])));
+const DEMO_QUORUM_POLICY = Object.freeze({
+  mode: 'threshold',
+  required: 2,
+  distinct_humans: true,
+  window_sec: 900,
+  approvers: Object.freeze(DEMO_APPROVERS.map((entry, index) => Object.freeze({
+    role: index === 0 ? 'operator' : 'reviewer',
+    approver: entry.approverId,
+  }))),
+});
 
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
   if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
   if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
   return JSON.stringify(v);
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(value).digest();
+}
+
+function sha256Hex(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function demoWebAuthnSignoff(payload, approver) {
+  const context = {
+    '@version': 'EP-ASSURANCE-CONTEXT-v1',
+    receipt_id: payload.receipt_id,
+    claim_hash: `sha256:${sha256Hex(canonicalize(payload.claim || {}))}`,
+  };
+  const contextHash = `sha256:${sha256Hex(canonicalize(context))}`;
+  const digest = Buffer.from(contextHash.slice('sha256:'.length), 'hex');
+  const clientDataBytes = Buffer.from(JSON.stringify({
+    type: 'webauthn.get',
+    challenge: digest.toString('base64url'),
+    origin: DEMO_ORIGIN,
+    crossOrigin: false,
+  }), 'utf8');
+  const counter = Buffer.alloc(4);
+  counter.writeUInt32BE(1);
+  const authenticatorData = Buffer.concat([
+    sha256(DEMO_RP_ID),
+    Buffer.from([0x05]),
+    counter,
+  ]);
+  const signature = crypto.sign(
+    'sha256',
+    Buffer.concat([authenticatorData, sha256(clientDataBytes)]),
+    approver.privateKey,
+  );
+  return {
+    contextHash,
+    signoff: {
+      approver_key_id: approver.keyId,
+      key_class: 'A',
+      webauthn: {
+        authenticator_data: authenticatorData.toString('base64url'),
+        client_data_json: clientDataBytes.toString('base64url'),
+        signature: signature.toString('base64url'),
+      },
+    },
+  };
+}
+
+function demoAssuranceProof(payload, requiresQuorum) {
+  const signed = (requiresQuorum ? DEMO_APPROVERS : [DEMO_APPROVERS[0]])
+    .map((entry) => demoWebAuthnSignoff(payload, entry));
+  return {
+    '@version': 'EP-ASSURANCE-PROOF-v1',
+    context_hash: signed[0].contextHash,
+    signoffs: signed.map((entry) => entry.signoff),
+  };
 }
 
 function boundActionFor(demo) {
@@ -114,27 +208,13 @@ function gateFor(demo) {
       manifestUrl: MANIFEST_URL,
       maxAgeSec: 900,
       statusCode: RR,
-      verifyAssurance: (doc) => demoAssurance(demo, doc),
+      approverKeys: DEMO_APPROVER_KEYS,
+      rpId: DEMO_RP_ID,
+      allowedOrigins: [DEMO_ORIGIN],
+      ...(demo.quorum?.required ? { quorumPolicy: DEMO_QUORUM_POLICY } : {}),
     }));
   }
   return gates.get(demo.id);
-}
-
-function demoAssurance(demo, doc) {
-  const claim = doc?.payload?.claim || {};
-  if (claim.policy_id !== demo.policy_id || claim.outcome !== 'allow_with_signoff') {
-    return { ok: false, tier: 'software', reason: 'assurance_proof_required' };
-  }
-  if (demo.quorum?.required) {
-    const q = claim.quorum || {};
-    const signers = Array.isArray(q.signers) ? q.signers : [];
-    const threshold = Number(q.threshold ?? q.m ?? 0);
-    if (threshold >= 2 && new Set(signers).size >= threshold) {
-      return { ok: true, tier: 'quorum', reason: 'demo_assurance_verified' };
-    }
-    return { ok: false, tier: 'class_a', reason: 'assurance_too_low' };
-  }
-  return { ok: true, tier: 'class_a', reason: 'demo_assurance_verified' };
 }
 
 function challengeHeaders(demo) {
@@ -188,15 +268,14 @@ function receiptOptions(demo) {
   };
 }
 
-function signDemoReceipt(demo, approver) {
+function signDemoReceipt(demo) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const publicKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
-  const human = approver || 'ep:approver:demo-human';
   const quorumClaim = demo.quorum?.required
     ? {
         quorum: {
           threshold: demo.quorum.m || 2,
-          signers: [human, 'ep:approver:demo-second-human'],
+          signers: DEMO_APPROVERS.map((entry) => entry.approverId),
         },
       }
     : {};
@@ -207,12 +286,15 @@ function signDemoReceipt(demo, approver) {
     claim: {
       action_type: boundActionFor(demo),
       outcome: 'allow_with_signoff',
-      approver: human,
+      // Attribution is derived from the relying party's pinned approver
+      // directory. A caller cannot choose the human identity written here.
+      approver: DEMO_APPROVERS[0].approverId,
       policy_id: demo.policy_id,
       assurance_class: demo.assurance_class,
       ...quorumClaim,
     },
   };
+  payload.assurance_proof = demoAssuranceProof(payload, demo.quorum?.required === true);
   const value = crypto
     .sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey)
     .toString('base64url');
@@ -242,12 +324,12 @@ export async function POST(request) {
   }
 
   if (body?.sign_demo_receipt === true || body?.intent === 'sign_demo_receipt') {
-    const receipt = signDemoReceipt(demo, body?.approver);
+    const receipt = signDemoReceipt(demo);
     return NextResponse.json({
       status: 200,
       demo: bodySummary(demo),
       receipt,
-      note: 'Demo-only self-signed receipt. Production gates pin trusted issuer keys.',
+      note: 'Automated test fixture only: it demonstrates verification and enforcement, not a real human ceremony. Production gates pin issuer and enrolled approver keys.',
       signed: {
         action: boundActionFor(demo),
         policy_id: demo.policy_id,
@@ -261,13 +343,7 @@ export async function POST(request) {
   if (body?.emilia_receipt) doc = body.emilia_receipt;
   if (!doc) {
     const hdr = request.headers.get('x-emilia-receipt');
-    if (hdr) {
-      try {
-        doc = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8'));
-      } catch {
-        doc = null;
-      }
-    }
+    if (hdr) doc = parseReceiptCarrier(hdr, { maxBytes: MAX_RECEIPT_DEMO_BYTES });
   }
 
   if (!doc) {
@@ -311,7 +387,7 @@ export async function POST(request) {
     },
     evidence_packet: {
       '@version': 'EP-DEMO-EVIDENCE-v1',
-      statement: "EMILIA makes agent accountability verifiable. If the action runs, anyone can verify who approved exactly what, under which policy, without trusting EMILIA's server.",
+      statement: 'This automated fixture demonstrates exact-action verification, pinned ceremony checks, and one-time enforcement. It is not evidence that a real person approved an action.',
       receipt_id: out.receiptId,
       authorized_action: out.result.authorized_action,
       policy_id: demo.policy_id,
@@ -325,8 +401,8 @@ export async function POST(request) {
       ],
       verifier: {
         offline: true,
-        algorithm: 'Ed25519 over canonical JSON',
-        production_note: 'Pin trusted issuer keys; inline keys are accepted here only for a public self-contained demo.',
+        algorithm: 'Ed25519 receipt plus P-256 WebAuthn-shaped assurance over a bound context',
+        production_note: 'Pin trusted issuer keys, enrolled approver keys, RP ID, and origins. Inline receipt keys and server-generated ceremony fixtures are accepted here only for a public self-contained demo.',
       },
     },
   }, { headers: { 'Cache-Control': 'no-store' } });

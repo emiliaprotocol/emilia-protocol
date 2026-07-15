@@ -66,7 +66,7 @@ const proof = signAuthorityProof({
   registry_head: cfoBinding.authority_registry_head, registry_epoch: 17, policy_hash: POLICY_HASH, issued_at: AT,
 }, registryKey);
 const accepted = verifyAuthorityProof(proof, {
-  pinnedRegistryKeys: [{ issuer_id: proof.signature.key_id, public_key: registryPub }],
+  pinnedRegistryKeys: [{ issuer_id: proof.authority_id, public_key: registryPub }],
   expectMinEpoch: 17,
 });
 const unpinned = verifyAuthorityProof(proof, { pinnedRegistryKeys: [] });

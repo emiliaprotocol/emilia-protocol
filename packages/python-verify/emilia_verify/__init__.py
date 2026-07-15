@@ -119,7 +119,14 @@ def is_canonicalizable(value: Any) -> bool:
 
 
 def _b64url_decode(s: str) -> bytes:
-    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+    if (not isinstance(s, str) or not s
+            or any(ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-" for ch in s)
+            or len(s) % 4 == 1):
+        raise ValueError("value is not canonical base64url")
+    decoded = base64.b64decode(s + "=" * (-len(s) % 4), altchars=b"-_", validate=True)
+    if base64.urlsafe_b64encode(decoded).decode().rstrip("=") != s:
+        raise ValueError("value is not canonical base64url")
+    return decoded
 
 
 def _sha256_hex(s: str) -> str:
@@ -259,6 +266,19 @@ _FLAG_UP = 0x01
 _FLAG_UV = 0x04
 
 
+def _reject_duplicate_members(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate object member name")
+        result[key] = value
+    return result
+
+
+def _strict_json_loads(raw: str):
+    return json.loads(raw, object_pairs_hook=_reject_duplicate_members)
+
+
 def verify_webauthn_signoff(signoff: Any, approver_public_key_spki_b64u: str, opts: Optional[dict] = None) -> dict:
     """Verify a Class-A WebAuthn device signoff (ECDSA P-256). Mirrors the JS
     verifyWebAuthnSignoff byte-for-byte; never raises — returns {valid, checks}."""
@@ -273,7 +293,7 @@ def verify_webauthn_signoff(signoff: Any, approver_public_key_spki_b64u: str, op
         if not ad_b64 or not cd_b64 or not sig_b64:
             return {"valid": False, "checks": checks}
         client_bytes = _b64url_decode(cd_b64)
-        client = json.loads(client_bytes.decode("utf-8"))
+        client = _strict_json_loads(client_bytes.decode("utf-8"))
         expected = base64.urlsafe_b64encode(
             hashlib.sha256(canonicalize(ctx).encode("utf-8")).digest()).decode().rstrip("=")
         checks["challenge_binding"] = client.get("challenge") == expected
@@ -287,6 +307,12 @@ def verify_webauthn_signoff(signoff: Any, approver_public_key_spki_b64u: str, op
         rp = opts.get("rpId")
         if rp:
             checks["rp_id_hash"] = hashlib.sha256(rp.encode("utf-8")).digest() == ad[:32]
+        allowed_origins = opts.get("allowedOrigins")
+        if allowed_origins is not None:
+            if (not isinstance(allowed_origins, list) or not allowed_origins
+                    or client.get("origin") not in allowed_origins
+                    or client.get("crossOrigin") is True):
+                return {"valid": False, "checks": checks}
         signed = ad + hashlib.sha256(client_bytes).digest()
         pub = load_der_public_key(_b64url_decode(approver_public_key_spki_b64u))
         try:
@@ -385,7 +411,7 @@ def _resolution_binding_moment_shape_valid(binding_moment: Any) -> bool:
 def _resolution_signed_origin(signoff: Any):
     try:
         encoded = signoff["webauthn"]["client_data_json"]
-        client = json.loads(_b64url_decode(encoded).decode("utf-8"))
+        client = _strict_json_loads(_b64url_decode(encoded).decode("utf-8"))
         origin = client.get("origin") if isinstance(client, dict) else None
         return origin if isinstance(origin, str) and origin else None
     except Exception:
@@ -557,7 +583,10 @@ def verify_resolution_receipt(receipt: Any, opts: Optional[dict] = None) -> dict
         if not checks["origin"]:
             return _resolution_refuse("webauthn_origin_not_allowed", checks, outcome)
 
-        webauthn = verify_webauthn_signoff(signoff, pin["public_key"], {"rpId": rp_id})
+        webauthn = verify_webauthn_signoff(signoff, pin["public_key"], {
+            "rpId": rp_id,
+            "allowedOrigins": allowed_origins,
+        })
         checks["webauthn"] = webauthn.get("valid") is True
         if not checks["webauthn"]:
             return _resolution_refuse("webauthn_verification_failed", checks, outcome)
@@ -585,7 +614,9 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
         action_hash = quorum.get("action_hash") if isinstance(quorum, dict) else None
         if not policy or not isinstance(members, list) or not members or not isinstance(action_hash, str) or not action_hash:
             return {"valid": False, "checks": checks, "members": members_out}
-        mode = "ordered" if policy.get("mode") == "ordered" else "threshold"
+        mode = policy.get("mode")
+        if mode not in ("ordered", "threshold"):
+            return {"valid": False, "checks": checks, "members": members_out}
         distinct_humans = policy.get("distinct_humans") is not False
         _ws = policy.get("window_sec")
         # exclude bool: isinstance(True,(int,float)) is True in Python, so a JSON
@@ -936,17 +967,27 @@ def _within_window(t: Any, frm: Any, to: Any) -> bool:
     return True
 
 
-def _verify_class_a_over_digest(webauthn: dict, digest_bytes: bytes, pub_spki_b64u: str) -> bool:
+def _verify_class_a_over_digest(webauthn: dict, digest_bytes: bytes, pub_spki_b64u: str, opts: Optional[dict] = None) -> bool:
     try:
+        opts = opts or {}
         cd = _b64url_decode(webauthn["client_data_json"])
-        client = json.loads(cd.decode("utf-8"))
+        client = _strict_json_loads(cd.decode("utf-8"))
         if client.get("type") != "webauthn.get":
             return False
         if client.get("challenge") != base64.urlsafe_b64encode(digest_bytes).decode().rstrip("="):
             return False
+        rp_id = opts.get("rpId")
+        allowed_origins = opts.get("allowedOrigins")
         ad = _b64url_decode(webauthn["authenticator_data"])
         if len(ad) < 37 or (ad[32] & _FLAG_UP) != _FLAG_UP or (ad[32] & _FLAG_UV) != _FLAG_UV:
             return False
+        if rp_id and hashlib.sha256(rp_id.encode("utf-8")).digest() != ad[:32]:
+            return False
+        if allowed_origins is not None:
+            if (not isinstance(allowed_origins, list) or not allowed_origins
+                    or client.get("origin") not in allowed_origins
+                    or client.get("crossOrigin") is True):
+                return False
         signed = ad + hashlib.sha256(cd).digest()
         pub = load_der_public_key(_b64url_decode(pub_spki_b64u))
         pub.verify(_b64url_decode(webauthn["signature"]), signed, _ec.ECDSA(_hashes.SHA256()))
@@ -1064,9 +1105,11 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         # with NO WebAuthn proof. A pinned Class-A key MUST be satisfied by a
         # real WebAuthn assertion and is rejected if it only carries a raw
         # signature. Mirrors index.js verifyTrustReceipt.
-        key_class = key_entry.get("key_class") or s.get("key_class") or "B"
+        # Key class is a relying-party directory fact. A missing class defaults
+        # to B; the presented signoff cannot promote its own key to Class A.
+        key_class = "A" if key_entry.get("key_class") == "A" else "B"
         if key_class == "A":
-            sig_ok = bool(s.get("webauthn")) and _verify_class_a_over_digest(s["webauthn"], digest_bytes, key_entry["public_key"])
+            sig_ok = bool(s.get("webauthn")) and _verify_class_a_over_digest(s["webauthn"], digest_bytes, key_entry["public_key"], opts)
         else:
             sig_ok = _verify_ed25519_over_digest(s.get("signature"), digest_bytes, key_entry["public_key"])
         if not sig_ok:
@@ -1309,16 +1352,36 @@ def verify_provenance_offline(doc, opts=None):
         checks[k] = False
         errors.append(m)
 
+    def valid_verification_profile(profile):
+        return (isinstance(profile, dict)
+                and isinstance(profile.get("approver_keys"), dict)
+                and isinstance(profile.get("log_public_key"), str)
+                and bool(profile.get("log_public_key"))
+                and isinstance(profile.get("rp_id"), str)
+                and bool(profile.get("rp_id"))
+                and isinstance(profile.get("allowed_origins"), list)
+                and bool(profile.get("allowed_origins"))
+                and all(isinstance(origin, str) and bool(origin)
+                        for origin in profile.get("allowed_origins")))
+
     if not isinstance(doc, dict) or doc.get("@version") != PROVENANCE_VERSION:
         return {"valid": False, "checks": checks, "errors": [f"unsupported version: {doc.get('@version') if isinstance(doc, dict) else None}"],
                 "links": [], "agent_identity": None, "liability": None}
     checks["version"] = True
 
     root = doc.get("root_signoff")
-    if not root or not root.get("receipt") or not root.get("verification"):
+    root_verification = opts.get("rootVerification") or opts.get("root_verification")
+    if not root or not root.get("receipt"):
         fail("root_receipt_valid", "missing root_signoff")
+    elif not valid_verification_profile(root_verification):
+        fail("root_receipt_valid", "relying-party root verification profile is required")
     else:
-        r0 = verify_trust_receipt(root["receipt"], {"approverKeys": root["verification"].get("approver_keys"), "logPublicKey": root["verification"].get("log_public_key")})
+        r0 = verify_trust_receipt(root["receipt"], {
+            "approverKeys": root_verification.get("approver_keys"),
+            "logPublicKey": root_verification.get("log_public_key"),
+            "rpId": root_verification.get("rp_id"),
+            "allowedOrigins": root_verification.get("allowed_origins"),
+        })
         checks["root_receipt_valid"] = r0["valid"]
         checks["root_human_signoff"] = _has_human_signoff(root["receipt"], human_classes)
 
@@ -1326,11 +1389,20 @@ def verify_provenance_offline(doc, opts=None):
     reversibility_asserted = False  # opts.reversibilityAsserted is a predicate; absent in serialized vectors
     need_approval = require_always or not reversibility_asserted
     approval = doc.get("action_approval")
+    action_verification = opts.get("actionVerification") or opts.get("action_verification")
     if need_approval and not (approval or {}).get("receipt"):
         fail("per_action_required", "no action_approval present")
     if (approval or {}).get("receipt"):
-        ra = verify_trust_receipt(approval["receipt"], {"approverKeys": (approval.get("verification") or {}).get("approver_keys"), "logPublicKey": (approval.get("verification") or {}).get("log_public_key")})
-        checks["action_receipt_valid"] = ra["valid"]
+        if not valid_verification_profile(action_verification):
+            fail("action_receipt_valid", "relying-party action verification profile is required")
+        else:
+            ra = verify_trust_receipt(approval["receipt"], {
+                "approverKeys": action_verification.get("approver_keys"),
+                "logPublicKey": action_verification.get("log_public_key"),
+                "rpId": action_verification.get("rp_id"),
+                "allowedOrigins": action_verification.get("allowed_origins"),
+            })
+            checks["action_receipt_valid"] = ra["valid"]
         if exec_.get("irreversible") is True:
             checks["action_human_signoff"] = _has_human_signoff(approval["receipt"], human_classes)
         checks["execution_binding"] = _hex_of(exec_.get("action_hash")) == _hex_of(approval["receipt"].get("action_hash"))
@@ -1554,7 +1626,7 @@ def _aec_webauthn_origin(webauthn: Any):
         if not isinstance(encoded, str) or not encoded or any(
                 ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-" for ch in encoded):
             return None
-        client_data = json.loads(_b64url_decode(encoded).decode("utf-8"))
+        client_data = _strict_json_loads(_b64url_decode(encoded).decode("utf-8"))
         origin = client_data.get("origin") if isinstance(client_data, dict) else None
         return origin if isinstance(origin, str) else None
     except Exception:
@@ -1659,7 +1731,10 @@ def _builtin_aec_verifiers() -> dict:
                     or _aec_webauthn_origin(m["signoff"].get("webauthn")) not in allowed_origins
                     or not _aec_fresh_at(signed_ctx, ctx.get("verificationTime"), profile["max_age_sec"])):
                 return {"valid": False, "action_digest": None}
-        r = verify_quorum(ev, {"rpId": profile["rp_id"]}) or {}
+        r = verify_quorum(ev, {
+            "rpId": profile["rp_id"],
+            "allowedOrigins": list(allowed_origins),
+        }) or {}
         valid = bool(r.get("valid"))
         return {"valid": valid, "action_digest": ((ev or {}).get("action_hash") if valid else None)}
 
@@ -1714,6 +1789,8 @@ def _builtin_aec_verifiers() -> dict:
         r = verify_trust_receipt(ev, {
             "approverKeys": profile["approver_keys"],
             "logPublicKey": profile["log_public_key"],
+            "rpId": profile["rp_id"],
+            "allowedOrigins": list(allowed_origins),
         })
         valid = isinstance(r, dict) and r.get("valid") is True
         return {"valid": valid, "action_digest": (ev.get("action_hash") if valid else None)}

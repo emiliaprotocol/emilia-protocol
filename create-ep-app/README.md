@@ -1,40 +1,26 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# create-ep-app
+# `@emilia-protocol/create-ep-app`
 
-Zero to a verified **EMILIA Protocol** trust system in five minutes — no Supabase,
-no Vercel, no blockchain wallet. Just Node.js 20+.
+Creates a minimal, local issuer-to-verifier demonstration using the published
+`@emilia-protocol/issue` and `@emilia-protocol/verify` packages.
 
 ```bash
-npx @emilia-protocol/create-ep-app my-trust-system
-cd my-trust-system
+npx @emilia-protocol/create-ep-app my-ep-demo
+cd my-ep-demo
 npm install
-npm run dev
+npm run demo
 ```
 
-## What it scaffolds
+The generated verifier requires a separately loaded relying-party trust
+profile. It does not trust a key merely because a receipt names it, and it does
+not contain a custom verifier.
 
-A minimal but complete EP-powered app that demonstrates the core loop:
+This is a development scaffold, not a production authorization service. The
+demo establishes cryptographic binding under locally pinned development keys;
+it does not establish real-world identity, authority, human perception,
+execution, effects, safety, or legal reliance.
 
-- Entity registration
-- Receipt submission + verification
-- Trust profile view
-- Handshake ceremony demo
-- Self-verifying receipt generation
-- **Offline** receipt verification (no server required to check a receipt)
+Apache-2.0.
 
-It exists so a developer can hold a working, offline-verifiable authorization
-receipt in their hands before reading a spec — the top of the adoption funnel
-for the [EMILIA Protocol](https://www.emiliaprotocol.ai) consequence firewall.
-
-## Requirements
-
-- Node.js >= 20
-
-## Note on the package name
-
-Always run the **scoped** name `@emilia-protocol/create-ep-app`. The unscoped
-`create-ep-app` name on npm belongs to an unrelated third party — do not run it.
-
-## License
-
-Apache-2.0
+Always use the scoped command shown above. The unscoped `create-ep-app` name is
+owned by an unrelated third party and is not an EMILIA package.

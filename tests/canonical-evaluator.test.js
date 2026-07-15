@@ -365,22 +365,28 @@ describe('resolvePolicy', () => {
     expect(result.name).toBe('custom');
   });
 
-  it('falls back to standard for invalid JSON string', () => {
+  it('refuses an unknown or invalid policy name instead of silently weakening to standard', () => {
     const result = resolvePolicy('not-valid-json');
-    expect(result.resolved).toEqual(MOCK_TRUST_POLICIES.standard);
-    expect(result.name).toBe('standard');
+    expect(result.invalid).toBe(true);
+    expect(result.resolved).toBeNull();
   });
 
-  it('falls back to standard for JSON that is an array', () => {
+  it('refuses JSON that is an array', () => {
     const result = resolvePolicy(JSON.stringify([1, 2, 3]));
-    expect(result.resolved).toEqual(MOCK_TRUST_POLICIES.standard);
-    expect(result.name).toBe('standard');
+    expect(result.invalid).toBe(true);
+    expect(result.resolved).toBeNull();
   });
 
-  it('falls back to standard for JSON that is null', () => {
+  it('refuses JSON that is null', () => {
     const result = resolvePolicy('null');
-    expect(result.resolved).toEqual(MOCK_TRUST_POLICIES.standard);
-    expect(result.name).toBe('standard');
+    expect(result.invalid).toBe(true);
+    expect(result.resolved).toBeNull();
+  });
+
+  it('refuses duplicate-member custom policy JSON', () => {
+    const result = resolvePolicy('{"min_score":90,"min_score":0}');
+    expect(result.invalid).toBe(true);
+    expect(result.error).toMatch(/duplicate object member/);
   });
 
   it('passes through custom policy object directly', () => {
@@ -390,17 +396,17 @@ describe('resolvePolicy', () => {
     expect(result.name).toBe('custom');
   });
 
-  it('returns standard for non-string non-object input (number)', () => {
+  it('refuses a non-string non-object input', () => {
     const result = resolvePolicy(42);
-    expect(result.resolved).toEqual(MOCK_TRUST_POLICIES.standard);
-    expect(result.name).toBe('standard');
+    expect(result.invalid).toBe(true);
+    expect(result.resolved).toBeNull();
   });
 
   it('rejects JSON strings longer than 4096 chars', () => {
     const longString = JSON.stringify({ data: 'x'.repeat(5000) });
     const result = resolvePolicy(longString);
-    // Over 4096 chars — JSON parse is skipped, so falls back to standard
-    expect(result.resolved).toEqual(MOCK_TRUST_POLICIES.standard);
+    expect(result.invalid).toBe(true);
+    expect(result.resolved).toBeNull();
   });
 });
 

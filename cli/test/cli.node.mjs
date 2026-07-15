@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { EPClient } from '../lib/client.mjs';
+import { EPClient, normalizeSecureBaseUrl } from '../lib/client.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliRoot = resolve(here, '..');
@@ -74,6 +74,23 @@ test('API client turns non-JSON failures into bounded errors', async () => {
     { status: 502 },
   ));
   await assert.rejects(() => client.health(), /HTTP 502: <html>upstream unavailable<\/html>/);
+});
+
+test('API client refuses credential transport over non-loopback HTTP', () => {
+  assert.throws(() => new EPClient('http://api.example.test', 'secret', async () => {}), /must use HTTPS/);
+  assert.equal(normalizeSecureBaseUrl('http://127.0.0.1:8787/'), 'http://127.0.0.1:8787');
+  assert.throws(() => normalizeSecureBaseUrl('https://user:pass@example.test'), /must not contain credentials/);
+});
+
+test('API client refuses ambiguous duplicate-member responses and disables redirects', async () => {
+  let observed;
+  const client = new EPClient('https://example.test', '', async (_url, options) => {
+    observed = options;
+    return new Response('{"decision":"allow","decision":"deny"}', { status: 200 });
+  });
+  await assert.rejects(() => client.health(), /duplicate object member/);
+  assert.equal(observed.redirect, 'error');
+  assert.ok(observed.signal instanceof AbortSignal);
 });
 
 test('write commands refuse locally when the API key is absent', () => {

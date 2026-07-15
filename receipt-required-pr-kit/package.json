@@ -8,6 +8,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@emilia-protocol/require-receipt": "^0.4.1"
+    "@emilia-protocol/require-receipt": "^0.5.4"
   }
 }

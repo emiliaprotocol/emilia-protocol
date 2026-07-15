@@ -171,7 +171,7 @@ describe('Receipt Required challenge', () => {
     });
     expect(nextRan).toBe(false);
     expect(res.statusCode).toBe(RECEIPT_REQUIRED_STATUS);
-    expect(res.body.rejected.reason).toBe('assurance_proof_required');
+    expect(res.body.rejected.reason).toBe('quorum_policy_required');
 
     const ok = fakeResponse();
     const verifiedGate = requireEmiliaReceipt({

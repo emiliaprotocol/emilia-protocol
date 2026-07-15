@@ -27,6 +27,15 @@ const pkg = JSON.parse(readFileSync(join(here, 'package.json'), 'utf8'));
 
 let index = readFileSync(join(here, 'index.js'), 'utf8');
 let gate = readFileSync(join(here, 'gate.js'), 'utf8');
+let strictJson = readFileSync(join(here, 'strict-json.js'), 'utf8');
+
+// Inline the nested-JSON ambiguity guard so the copy-in artifact stays zero-dep.
+index = index.replace("import { strictJsonGate } from './strict-json.js';\n", '');
+index = index.replace("export { strictJsonGate } from './strict-json.js';\n", '');
+strictJson = strictJson
+  .replace(/export const /g, 'const ')
+  .replace(/export function /g, 'function ')
+  .replace(/\nexport default \{ strictJsonGate, MAX_JSON_DEPTH \};\n?/, '\n');
 
 // 1. Drop the JWS profile re-export (the only path that pulls in `jose`).
 const jwsMarker = '// EP-RECEIPT-JWS-PROFILE-v1:';
@@ -46,11 +55,13 @@ if (!gateImport.test(gate)) throw new Error('build-drop-in: gate.js import block
 gate = gate.replace(gateImport, '').trimStart();
 gate = gate.replace(/\nexport \{ receiptAssuranceTier \};\n/, '\n');
 
-const body = `${index.trimEnd()}\n\n// ── inlined from gate.js ───────────────────────────────────────────────────\n\n${gate.trimEnd()}\n`;
+const body = `${strictJson.trimEnd()}\n\n// ── inlined from index.js ──────────────────────────────────────────────────\n\n${index.trimEnd()}\n\n// ── inlined from gate.js ───────────────────────────────────────────────────\n\n${gate.trimEnd()}\n`;
 
 // Guard: the drop-in must import nothing but node: builtins.
-const badImports = [...body.matchAll(/from\s+['"]([^'"]+)['"]/g)]
-  .map((m) => m[1])
+const moduleSpecifiers = [...body.matchAll(
+  /^(?:import|export)\s+(?:[\s\S]*?\sfrom\s+)?['"]([^'"]+)['"];?\s*$/gm,
+)].map((match) => match[1]);
+const badImports = moduleSpecifiers
   .filter((s) => !s.startsWith('node:'));
 if (badImports.length) throw new Error(`build-drop-in: drop-in is not zero-dep — non-node imports: ${badImports.join(', ')}`);
 
@@ -63,8 +74,8 @@ const banner = `// SPDX-License-Identifier: Apache-2.0
 //   • Zero dependencies (Node built-in crypto only). Copy this file into your
 //     repo — no npm package, no supply-chain or version surface to own.
 //   • The gate blocks an irreversible action unless it arrives with a valid,
-//     action-bound, non-replayed EMILIA authorization receipt (proof a named
-//     human approved THIS exact action), verified offline (Ed25519 over JCS).
+//     action-bound, non-replayed EMILIA authorization receipt at the configured
+//     assurance tier, verified offline (Ed25519/WebAuthn over canonical bytes).
 //   • Off by default: you decide which actions require a receipt.
 //
 //   Quick use:
@@ -78,7 +89,9 @@ const banner = `// SPDX-License-Identifier: Apache-2.0
 //        real actions — an inline key proves integrity, not WHO authorized.
 //     2. The default consumed-store is in-memory (process-local). For restart-
 //        durable / multi-instance one-time consumption, pass a shared store:
-//        makeReceiptGate({ ..., store: { has:(id)=>kv.has(id), add:(id)=>kv.add(id) } }).
+//        makeReceiptGate({ ..., store: { reserve, commit, release } }).
+//        reserve MUST be an atomic insert-if-absent. Once execution begins, an
+//        indeterminate result is committed, never released for automatic retry.
 //
 //   Conformance: this drop-in passes EMILIA RR-1 (challenge-on-missing, runs-on-
 //   valid, replay-refused, forged-refused). Verify with @emilia-protocol/fire-drill.

@@ -252,6 +252,20 @@ test('CLI keygen + issue round-trips through verifyTrustReceipt', () => {
   assert.equal(r.valid, true);
 });
 
+test('CLI refuses duplicate-member action JSON instead of signing parser-dependent semantics', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-issue-cli-duplicate-'));
+  const keysPath = path.join(dir, 'issuer-keys.json');
+  const actionPath = path.join(dir, 'action.json');
+  const receiptPath = path.join(dir, 'receipt.json');
+  fs.writeFileSync(actionPath, '{"action_type":"payment.release","action_type":"payment.redirect"}');
+  execFileSync(process.execPath, ['./cli.js', 'keygen', '--out', keysPath], { cwd: HERE });
+  assert.throws(
+    () => execFileSync(process.execPath, ['./cli.js', 'issue', '--keys', keysPath, '--action', actionPath, '--out', receiptPath], { cwd: HERE, stdio: 'pipe' }),
+    /Command failed/,
+  );
+  assert.equal(fs.existsSync(receiptPath), false);
+});
+
 test('CLI demo subcommand issues and verifies end-to-end (smoke)', () => {
   const out = execFileSync(process.execPath, ['./cli.js', 'demo'], { cwd: HERE, encoding: 'utf8' });
   assert.match(out, /VERIFIED/);

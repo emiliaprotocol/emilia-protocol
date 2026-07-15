@@ -140,15 +140,16 @@ export function buildAssurancePackage(decisions = [], { profile, organization = 
  * @param {object} [opts.approverKeys]  auditor-pinned approver keys (out of band)
  * @param {string} [opts.logPublicKey]  auditor-pinned transparency-log key
  * @param {string} [opts.rpId]
+ * @param {string[]} [opts.allowedOrigins]
  * @param {object} [opts.revokerKeys]
  * @param {(key:object)=>boolean} [opts.isConsumed] auditor-owned consumption lookup
  * @param {number|string|Date} [opts.now]  reliance-evaluation clock (pin for determinism)
  * @returns {object} EP-ASSURANCE-REPERFORMANCE-v1
  */
-export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey = null, rpId = null, revokerKeys = {}, isConsumed, now = 0 } = {}) {
+export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey = null, rpId = null, allowedOrigins = [], revokerKeys = {}, isConsumed, now = 0 } = {}) {
   if (!pkg || pkg['@version'] !== ASSURANCE_PACKAGE_VERSION) throw new Error('assurance-reperform: not an EP-ASSURANCE-PACKAGE-v1');
   const profile = pkg.reliance_profile;
-  const evalOpts = { approverKeys, logPublicKey, rpId, revokerKeys, ...(typeof isConsumed === 'function' ? { isConsumed } : {}) };
+  const evalOpts = { approverKeys, logPublicKey, rpId, allowedOrigins, revokerKeys, ...(typeof isConsumed === 'function' ? { isConsumed } : {}) };
   const relianceNow = typeof now === 'function' ? now() : now;
 
   const results = (Array.isArray(pkg.decisions) ? pkg.decisions : []).map((it) => {

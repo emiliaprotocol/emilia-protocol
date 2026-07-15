@@ -107,7 +107,7 @@ describe('MCP Receipt Required boundary red-team', () => {
       });
       const softwareResult = await freshServer(tool)(tool, args, software);
       expect(softwareResult.status).toBe(428);
-      expect(softwareResult.body.rejected.reason).toBe('assurance_too_low');
+      expect(softwareResult.body.rejected.reason).toBe('assurance_proof_required');
 
       if (req.assurance_class === 'quorum') {
         const singleHuman = signAction(bound, {

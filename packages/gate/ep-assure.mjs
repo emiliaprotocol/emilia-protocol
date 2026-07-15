@@ -15,7 +15,7 @@
  *   { "package": <EP-ASSURANCE-PACKAGE-v1>, "keys": {...}, "now": <iso|ms> }
  *   { "decisions": [...], "profile": <EP-RELIANCE-PROFILE-v1>, "keys": {...}, "now": <iso|ms> }
  *
- * keys (auditor-pinned, out of band): { approverKeys, logPublicKey, rpId, revokerKeys }
+ * keys (auditor-pinned, out of band): { approverKeys, logPublicKey, rpId, allowedOrigins, revokerKeys }
  * --json   print the full EP-ASSURANCE-REPERFORMANCE-v1 document instead of text
  * --strict exit non-zero if ANY drift is found (default: only inadmissible-reliance drift)
  */
@@ -45,7 +45,8 @@ let doc;
 try {
   doc = reperformAssurancePackage(pkg, {
     approverKeys: keys.approverKeys || {}, logPublicKey: keys.logPublicKey || null,
-    rpId: keys.rpId || null, revokerKeys: keys.revokerKeys || {}, now,
+    rpId: keys.rpId || null, allowedOrigins: keys.allowedOrigins || [],
+    revokerKeys: keys.revokerKeys || {}, now,
   });
 } catch (e) { fail(e.message); }
 

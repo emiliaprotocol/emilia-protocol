@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-15T07:47:12.775Z",
+  "evidence_snapshot_at": "2026-07-15T13:44:14.826Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "806e1ce1a8853ce55e6c0b96331f6e7258ac2e4543bd6b044824da7306571721",
+    "input_digest_sha256": "08d62c20af5b75a3a721fe06d8875b5961235bc64f10106e498e7dc0a857238a",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,13 +17,13 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d404aae639a2f2dc90bcaad66778f32738b383660455a2b9b6f5fdc239a9cd7e",
+        "sha256": "99d31f79652093fca18fd373076828e4f516235125db915f226275aa32999c85",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "e21418bb603760a7530193027cab58f1147b88a8ee915cf7e9619ac3db7014d2",
-        "bytes": 5620
+        "sha256": "04139382d6767b88b83cc8c07752e364043ea218630fd1b81af30426c995790f",
+        "bytes": 5622
       },
       {
         "path": "conformance/external/rust-cleanroom-jdieselny.v1.json",
@@ -37,8 +37,8 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "2b571d4a5c972e8338ec9aae93bf71c3e70721b4a7395c5dd8c212a20c2d3702",
-        "bytes": 153998
+        "sha256": "3479d912b6b717cddfe2bb87be443943a01fa6977cf69a6a7383ae4f5c46c963",
+        "bytes": 154002
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -142,17 +142,17 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5597,
-      "files": 284,
+      "total": 5711,
+      "files": 290,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
       "suites": 18,
-      "vectors": 232,
+      "vectors": 250,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "99bc0f825e3eb1ac83b5b1dd3fb271547ed2aa818db2eb8bf8217a389acdc050",
+      "manifest_sha256": "707f95f8b0d8c58be6ae256144cbb6c8f1889832936bdcd98fec8ae2e826d410",
       "vector_bundle_sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
     },
     "formal": {
@@ -174,7 +174,7 @@
       "status": "passed",
       "claims": 21,
       "evidence_files": 100,
-      "evidence_bundle_sha256": "834e9ccf44518ba85399241d4e71b5a93ae84a7209bdc0052956ba77ba02b524"
+      "evidence_bundle_sha256": "60e89b84dbebeeeea76aff4227f4a6a6b0fc1526936796c9396ff2e9b3040e66"
     },
     "caid": {
       "core_vectors": 48,
@@ -231,7 +231,7 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 232
+      "current_vectors": 250
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",

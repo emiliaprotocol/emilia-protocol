@@ -50,7 +50,7 @@ kubectl -n emilia create secret generic emilia-gate-issuer-keys \
 helm install gate ./emilia-gate \
   --namespace emilia --create-namespace \
   --set image.repository=YOUR_REGISTRY/emilia-gate \
-  --set image.tag=0.9.5 \
+  --set image.tag=0.10.0 \
   --set issuerKeys.existingSecret=emilia-gate-issuer-keys
 
 # 3. (Optional) expose /metrics + ServiceMonitor stub (needs Prometheus Operator).

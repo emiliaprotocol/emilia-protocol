@@ -16,6 +16,7 @@ import { strictParseGate } from '../conformance/runners/strict-json.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MANIFEST_PATH = path.join(ROOT, 'conformance/clean-room/conformance-manifest.v1.json');
 const BUNDLE_PATH = path.join(ROOT, 'conformance/clean-room/bundle.v1.json');
+const FROZEN_ROOT = path.join(ROOT, 'conformance/clean-room/frozen-v1');
 const FROZEN_MANIFEST_SHA256 = '2fcc8f5a5823f414f4ab505601891c98c4f2bf4180e658d97b0db36be3a99147';
 
 const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -53,9 +54,9 @@ assert(
 const manifestSuites = new Map(manifest.suites.map((suite) => [suite.path, suite]));
 let vectors = 0;
 for (const suite of bundle.suites) {
-  const file = path.join(ROOT, suite.path);
-  const bytes = fs.readFileSync(file);
-  const parsed = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  const file = path.resolve(FROZEN_ROOT, suite.path);
+  assert(file.startsWith(`${FROZEN_ROOT}${path.sep}`), `${suite.path} escapes the frozen root`);
+  const { bytes, value: parsed } = readStrictJson(file, suite.path);
   const recorded = manifestSuites.get(suite.path);
   assert(sha256(bytes) === suite.sha256, `${suite.path} bytes drifted`);
   assert(recorded?.sha256 === suite.sha256, `${suite.path} manifest hash drifted`);

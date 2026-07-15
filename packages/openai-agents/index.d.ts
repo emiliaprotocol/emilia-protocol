@@ -36,6 +36,12 @@ export interface RequireReceiptForOpenAIAgentOptions {
   allowInlineKey?: boolean;
   /** Reject receipts older than this many seconds. Default 900. */
   maxAgeSec?: number;
+  /** Atomic ownership-fenced consumption store. */
+  store?: {
+    reserve(id: string): boolean | Promise<boolean>;
+    commit(id: string): boolean | Promise<boolean>;
+    release(id: string): boolean | Promise<boolean>;
+  };
   /**
    * REQUIRED. Map a tool call to the canonical EP action_type the receipt must
    * bind. For per-target binding, incorporate the SPECIFIC resource the call
@@ -48,7 +54,7 @@ export interface RequireReceiptForOpenAIAgentOptions {
 
 export interface OpenAIAgentReceiptGate {
   /** Decide a single interruption against a single receipt. */
-  decide(interruption: unknown, receipt: object | null | undefined): ReceiptDecision;
+  decide(interruption: unknown, receipt: object | null | undefined): Promise<ReceiptDecision>;
   /** Resolve all pending tool-approval interruptions on a run result. */
   resolve(
     runResult: { interruptions?: unknown[]; state?: unknown },

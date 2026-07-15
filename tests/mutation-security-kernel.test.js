@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import crypto from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
   MemoryConsumptionStore,
@@ -218,7 +219,8 @@ describe('mutation oracles for the replay kernel', () => {
 
 describe('mutation oracles for reliance parsing and signed material', () => {
   const {
-    strictInstantMs, toMs, pubKeyB64u, digestHex, parseNonNegativeDecimal,
+    strictInstantMs, toMs, pubKeyB64u, spkiFingerprint, validateQuorumPolicy,
+    digestHex, parseNonNegativeDecimal,
     decimalGreaterThan, decimalEqual, exactMaterial, decimalMaterial,
     signedActionMaterial,
   } = __relianceSecurityInternals;
@@ -226,11 +228,16 @@ describe('mutation oracles for reliance parsing and signed material', () => {
   it('strictly parses RFC3339 instants across calendar and offset boundaries', () => {
     expect(Number.isFinite(strictInstantMs('2024-02-29T23:59:59Z'))).toBe(true);
     expect(Number.isFinite(strictInstantMs('2026-01-01T00:00:00+23:59'))).toBe(true);
+    expect(Number.isFinite(strictInstantMs('2026-01-01T00:00:00-23:59'))).toBe(true);
+    expect(strictInstantMs('2026-01-01T00:00:00+00:01')).toBe(
+      Date.parse('2026-01-01T00:00:00+00:01'),
+    );
     for (const invalid of [
       null, 0, '', '2026-01-01', '2026-02-29T00:00:00Z',
       '2026-01-01T24:00:00Z', '2026-01-01T00:60:00Z',
       '2026-01-01T00:00:60Z', '2026-01-01T00:00:00+24:00',
-      '2026-01-01T00:00:00+00:60',
+      '2026-01-01T00:00:00-24:00', '2026-01-01T00:00:00+00:60',
+      '2026-01-01T00:00:00-00:60',
     ]) expect(Number.isNaN(strictInstantMs(invalid))).toBe(true);
   });
 
@@ -242,6 +249,8 @@ describe('mutation oracles for reliance parsing and signed material', () => {
     expect(Number.isNaN(toMs(new Date('invalid')))).toBe(true);
     expect(toMs(0)).toBe(0);
     expect(Number.isNaN(toMs(Number.POSITIVE_INFINITY))).toBe(true);
+    expect(Number.isNaN(toMs(null))).toBe(true);
+    expect(Number.isNaN(toMs(true))).toBe(true);
     expect(Number.isNaN(toMs({}))).toBe(true);
     expect(pubKeyB64u('key')).toBe('key');
     expect(pubKeyB64u({ public_key: 'nested' })).toBe('nested');
@@ -251,6 +260,81 @@ describe('mutation oracles for reliance parsing and signed material', () => {
     expect(digestHex('ab'.repeat(32))).toBe('ab'.repeat(32));
     expect(digestHex('sha256:abc')).toBeNull();
     expect(digestHex(null)).toBeNull();
+  });
+
+  it('canonicalizes valid SPKI keys and refuses every malformed key shape', () => {
+    const { publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+    const der = publicKey.export({ type: 'spki', format: 'der' });
+    const encoded = der.toString('base64url');
+    const expected = crypto.createHash('sha256').update(der).digest('hex');
+    expect(spkiFingerprint(encoded)).toBe(expected);
+    expect(spkiFingerprint(encoded)).toMatch(/^[0-9a-f]{64}$/);
+    for (const malformed of [null, undefined, '', 'not-an-spki', 0, {}, []]) {
+      expect(spkiFingerprint(malformed)).toBeNull();
+    }
+  });
+
+  it('validates every pinned quorum-policy field at exact boundaries', () => {
+    const validThreshold = {
+      mode: 'threshold',
+      required: 2,
+      distinct_humans: true,
+      window_sec: 60,
+      approvers: [
+        { role: 'requester', approver: 'alice' },
+        { role: 'reviewer', approver: 'bob' },
+      ],
+    };
+    const validOrdered = {
+      mode: 'ordered',
+      distinct_humans: true,
+      approvers: [{ role: 'reviewer', approver: 'alice' }],
+    };
+    expect(validateQuorumPolicy(validThreshold)).toEqual([]);
+    expect(validateQuorumPolicy(validOrdered)).toEqual([]);
+
+    for (const malformed of [null, undefined, false, 0, 'policy', []]) {
+      expect(validateQuorumPolicy(malformed)).toEqual(['quorum_policy must be an object']);
+    }
+
+    const cases = [
+      [{ ...validThreshold, mode: 'other' }, 'quorum_policy.mode must be threshold or ordered'],
+      [{ ...validThreshold, approvers: null }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [null] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: 1, approver: 'alice' }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: '', approver: 'alice' }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: 'reviewer', approver: 1 }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: 'reviewer', approver: '' }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, required: 1 }, 'quorum_policy.required must be an integer from 2 through the roster size'],
+      [{ ...validThreshold, required: 2.5 }, 'quorum_policy.required must be an integer from 2 through the roster size'],
+      [{ ...validThreshold, required: 3 }, 'quorum_policy.required must be an integer from 2 through the roster size'],
+      [{ ...validThreshold, distinct_humans: false }, 'quorum_policy.distinct_humans cannot be false for reliance'],
+      [{ ...validThreshold, window_sec: 0 }, 'quorum_policy.window_sec must be a positive safe integer'],
+      [{ ...validThreshold, window_sec: -1 }, 'quorum_policy.window_sec must be a positive safe integer'],
+      [{ ...validThreshold, window_sec: 1.5 }, 'quorum_policy.window_sec must be a positive safe integer'],
+    ];
+    for (const [policy, issue] of cases) {
+      expect(validateQuorumPolicy(policy)).toContain(issue);
+    }
+    expect(validateQuorumPolicy({ ...validThreshold, required: 2, window_sec: 1 })).toEqual([]);
+    expect(validateQuorumPolicy({ ...validThreshold, window_sec: undefined })).toEqual([]);
+  });
+
+  it('surfaces pinned quorum-policy validation through the reliance profile', () => {
+    const minimal = { '@type': RELIANCE_PROFILE_VERSION };
+    const valid = {
+      mode: 'threshold', required: 2, distinct_humans: true,
+      approvers: [
+        { role: 'requester', approver: 'alice' },
+        { role: 'reviewer', approver: 'bob' },
+      ],
+    };
+    expect(validateRelianceProfile({ ...minimal, quorum_policy: valid })).toEqual({ ok: true, issues: [] });
+    expect(validateRelianceProfile({ ...minimal, quorum_policy: { ...valid, distinct_humans: false } })).toEqual({
+      ok: false,
+      issues: ['quorum_policy.distinct_humans cannot be false for reliance'],
+    });
   });
 
   it('compares non-negative decimal material without scale or syntax ambiguity', () => {

@@ -180,8 +180,11 @@ export async function POST(request, { params }) {
           );
         }
         const members = decisionsToMembers(base.quorum_policy, approvedDecisions, credsByCredentialId);
-        const { rpID } = getRpConfig();
-        const gate = quorumGate(base.quorum_policy, base.action_hash, members, { rpId: rpID });
+        const { rpID, origin } = getRpConfig();
+        const gate = quorumGate(base.quorum_policy, base.action_hash, members, {
+          rpId: rpID,
+          allowedOrigins: [origin],
+        });
         if (!gate.satisfied) {
           const failed = Object.entries(gate.checks || {})
             .filter(([, v]) => v === false)
@@ -235,12 +238,13 @@ export async function POST(request, { params }) {
             }
             approverPublicKeySpki = (credRows || [])[0]?.public_key_spki || null;
           }
-          const { rpID } = getRpConfig();
+          const { rpID, origin } = getRpConfig();
           const uv = deriveSignoffUserVerification({
             decision: approved.after_state,
             approverPublicKeySpki,
             expectedActionHash: base.action_hash,
             rpId: rpID,
+            allowedOrigins: [origin],
           });
           if (!uv.verified) {
             return epProblem(

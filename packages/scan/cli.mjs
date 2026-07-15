@@ -9,6 +9,11 @@
 import fs from 'node:fs';
 import { scanActions, KNOWN_CATEGORIES } from './index.js';
 
+let strictJsonGate;
+try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
+catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
+const MAX_INPUT_BYTES = 8 * 1024 * 1024;
+
 const SAMPLE = [
   { name: 'getAccountBalance', description: 'Return the current balance for an account' },
   { name: 'searchTransactions', description: 'Search transaction history' },
@@ -24,6 +29,9 @@ const SAMPLE = [
 ];
 
 function ingest(raw) {
+  if (Buffer.byteLength(raw, 'utf8') > MAX_INPUT_BYTES) throw new Error(`Input exceeds ${MAX_INPUT_BYTES} bytes.`);
+  const gate = strictJsonGate(raw);
+  if (!gate.ok) throw new Error(`Input refused: ${gate.reason}.`);
   const j = JSON.parse(raw);
   if (j && j.openapi && j.paths) {
     const actions = [];
@@ -49,7 +57,9 @@ if (args.includes('--sample')) {
 } else {
   const file = args.find((a) => !a.startsWith('--') && a !== emitPath);
   if (!file) { console.error('usage: cli.mjs <actions.json|openapi.json> [--emit manifest.json] | --sample'); process.exit(2); }
-  input = ingest(fs.readFileSync(file, 'utf8'));
+  const raw = fs.readFileSync(file);
+  if (raw.length > MAX_INPUT_BYTES) { console.error(`input exceeds ${MAX_INPUT_BYTES} bytes`); process.exit(2); }
+  input = ingest(raw.toString('utf8'));
 }
 
 const rep = scanActions(input.actions, { source: input.source, blindSpots: input.blindSpots });
@@ -81,7 +91,15 @@ console.log(`     ${C.dim}const dispatch = withMcpGuard(yourDispatch, { manifest
 console.log('  3. Pin your issuer/approver keys. Until keys are pinned and the wrap is in place, NOTHING is enforced.');
 
 if (emitPath) {
-  fs.writeFileSync(emitPath, `${JSON.stringify(rep.manifest, null, 2)}\n`);
+  try {
+    fs.writeFileSync(emitPath, `${JSON.stringify(rep.manifest, null, 2)}\n`, { flag: 'wx' });
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      console.error(`refusing to overwrite existing manifest: ${emitPath}`);
+      process.exit(2);
+    }
+    throw error;
+  }
   console.log(`\n${C.b}Proposed manifest written:${C.r} ${emitPath} ${C.dim}(a proposal to review, not a live control)${C.r}`);
 }
 console.log('');

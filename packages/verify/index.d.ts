@@ -99,7 +99,7 @@ export function verifyWebAuthnSignoff(
     };
   },
   approverPublicKeySpkiB64u: string,
-  opts?: { rpId?: string }
+  opts?: { rpId?: string; allowedOrigins?: string[] }
 ): WebAuthnSignoffResult;
 
 // ── Trust Receipt — full offline verification (I-D Section 6.3) ─────────────
@@ -210,6 +210,7 @@ export interface InitiatorAttestationResult {
 export type TrustReceiptStrictCheckName =
   | 'pinned_keys'
   | 'rp_id'
+  | 'origin'
   | 'user_presence'
   | 'user_verification'
   | 'key_windows'
@@ -270,6 +271,8 @@ export interface TrustReceiptVerificationOptions {
   strict?: boolean;
   /** Expected WebAuthn RP ID for Class-A signoffs in strict mode. */
   rpId?: string;
+  /** Allowed WebAuthn origins for Class-A signoffs. Required in strict mode. */
+  allowedOrigins?: string[];
   /** Expected policy hash all contexts must carry in strict mode. */
   expectedPolicyHash?: string;
   /**
@@ -573,7 +576,11 @@ export function verifyFederatedReceipt(
     trustedIssuers?: TrustedIssuers;
     allowInsecureFetch?: boolean;
   }
-): Promise<FederatedVerificationResult & { fetched: Record<string, unknown>; revocation_confirmed?: boolean }>;
+): Promise<FederatedVerificationResult & {
+  fetched: Record<string, unknown>;
+  revocation_confirmed?: boolean;
+  revocation_status?: 'confirmed_not_revoked' | 'revoked' | 'unavailable';
+}>;
 
 /** EP-QUORUM-v1 multi-party (M-of-N / ordered) approval verification result. */
 export interface QuorumResult {
@@ -591,4 +598,4 @@ export interface QuorumResult {
 }
 
 /** Verify an EP-QUORUM-v1 multi-party approval (composes verifyWebAuthnSignoff; fail-closed). */
-export function verifyQuorum(quorum: object, opts?: { rpId?: string }): QuorumResult;
+export function verifyQuorum(quorum: object, opts?: { rpId?: string; allowedOrigins?: string[] }): QuorumResult;

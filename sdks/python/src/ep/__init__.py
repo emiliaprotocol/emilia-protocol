@@ -15,11 +15,12 @@ Zero dependencies -- uses urllib.request (stdlib).
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import urllib.error
 import urllib.request
 from typing import Any, Callable, Dict, List, Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 
 from .types import (
     # Core params
@@ -147,7 +148,7 @@ __all__ = [
     "SuppressionResponse",
 ]
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 
 class EPError(Exception):
@@ -157,6 +158,45 @@ class EPError(Exception):
         super().__init__(message)
         self.status = status
         self.code = code
+
+
+def _normalize_base_url(base_url: str, allow_insecure_http: bool) -> str:
+    """Validate the authority boundary used for API credentials.
+
+    The SDK is caller-directed rather than a server-side URL fetcher, so custom
+    HTTPS deployments are supported. Cleartext HTTP is restricted to loopback
+    development unless the caller explicitly accepts the transport risk.
+    """
+    if not isinstance(base_url, str) or not base_url.strip():
+        raise ValueError("base_url must be a non-empty absolute URL")
+
+    candidate = base_url.strip().rstrip("/")
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in candidate):
+        raise ValueError("base_url must not contain control characters")
+
+    parsed = urlsplit(candidate)
+    if parsed.scheme not in ("https", "http") or not parsed.netloc or not parsed.hostname:
+        raise ValueError("base_url must be an absolute http(s) URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("base_url must not contain embedded credentials")
+    if parsed.query or parsed.fragment:
+        raise ValueError("base_url must not contain a query string or fragment")
+
+    if parsed.scheme == "http" and not allow_insecure_http:
+        hostname = parsed.hostname.rstrip(".").lower()
+        is_loopback = hostname == "localhost" or hostname.endswith(".localhost")
+        if not is_loopback:
+            try:
+                is_loopback = ipaddress.ip_address(hostname).is_loopback
+            except ValueError:
+                is_loopback = False
+        if not is_loopback:
+            raise ValueError(
+                "cleartext remote base_url refused; use HTTPS or set "
+                "allow_insecure_http=True explicitly"
+            )
+
+    return candidate
 
 
 # ---------------------------------------------------------------------------
@@ -483,8 +523,9 @@ class EPClient:
         api_key: Optional[str] = None,
         timeout: int = 10,
         retries: int = 2,
+        allow_insecure_http: bool = False,
     ):
-        self._base_url = base_url.rstrip("/")
+        self._base_url = _normalize_base_url(base_url, allow_insecure_http)
         self._api_key = api_key or ""
         self._timeout = timeout
         self._retries = retries
@@ -515,7 +556,9 @@ class EPClient:
         for attempt in range(self._retries + 1):
             req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
             try:
-                with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+                # The constructor validates the caller-selected base URL and
+                # refuses cleartext remote credential transport by default.
+                with urllib.request.urlopen(req, timeout=self._timeout) as resp:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                     raw = resp.read().decode("utf-8")
                     return json.loads(raw) if raw else None
             except urllib.error.HTTPError as e:

@@ -72,6 +72,13 @@ test('Play Integrity adapter refuses each relying-party pin failure', async () =
     environmentDetails: { appAccessRiskVerdict: { appsDetected: ['UNKNOWN_CAPTURING'] } },
   });
   assert.equal((await playVerifier(capturing, { requireNoCaptureOrControl: true })(playRequest)).valid, false);
+
+  const omittedRiskVerdict = playPayload({ environmentDetails: {} });
+  assert.equal(
+    (await playVerifier(omittedRiskVerdict, { requireNoCaptureOrControl: true })(playRequest)).valid,
+    false,
+    'a required capture/control verdict must not pass when Google omitted the evidence',
+  );
 });
 
 test('Apple App Attest adapter pins request bytes and advances the hardware assertion counter', async () => {

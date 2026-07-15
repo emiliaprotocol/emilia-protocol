@@ -191,6 +191,19 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   const errors = [];
   const links = [];
   const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
+  const validVerificationProfile = (profile) => (
+    profile
+    && typeof profile === 'object'
+    && profile.approver_keys
+    && typeof profile.approver_keys === 'object'
+    && typeof profile.log_public_key === 'string'
+    && profile.log_public_key.length > 0
+    && typeof profile.rp_id === 'string'
+    && profile.rp_id.length > 0
+    && Array.isArray(profile.allowed_origins)
+    && profile.allowed_origins.length > 0
+    && profile.allowed_origins.every((origin) => typeof origin === 'string' && origin.length > 0)
+  );
 
   if (doc?.['@version'] !== PROVENANCE_VERSION) {
     errors.push(`unsupported version: ${doc?.['@version']}`);
@@ -199,12 +212,17 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   checks.version = true;
 
   const root = doc.root_signoff;
-  if (!root?.receipt || !root?.verification) {
-    fail('root_receipt_valid', 'missing root_signoff.receipt or root_signoff.verification');
+  const rootVerification = opts.rootVerification || opts.root_verification;
+  if (!root?.receipt) {
+    fail('root_receipt_valid', 'missing root_signoff.receipt');
+  } else if (!validVerificationProfile(rootVerification)) {
+    fail('root_receipt_valid', 'relying-party root verification profile is required');
   } else {
     const r0 = verifyTrustReceipt(root.receipt, {
-      approverKeys: root.verification.approver_keys,
-      logPublicKey: root.verification.log_public_key,
+      approverKeys: rootVerification.approver_keys,
+      logPublicKey: rootVerification.log_public_key,
+      rpId: rootVerification.rp_id,
+      allowedOrigins: rootVerification.allowed_origins,
     });
     checks.root_receipt_valid = r0.valid;
     if (!r0.valid) errors.push(`root receipt failed v1 verification: ${(r0.errors || []).join('; ')}`);
@@ -216,16 +234,23 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   const reversibilityAsserted = typeof opts.reversibilityAsserted === 'function' ? opts.reversibilityAsserted(exec) === true : false;
   const needApproval = requireActionApprovalAlways || !reversibilityAsserted;
   const approval = doc.action_approval;
+  const actionVerification = opts.actionVerification || opts.action_verification;
   if (needApproval && !approval?.receipt) {
     fail('per_action_required', 'execution is irreversible (or approval is always required) but no action_approval is present');
   }
   if (approval?.receipt) {
-    const ra = verifyTrustReceipt(approval.receipt, {
-      approverKeys: approval.verification?.approver_keys,
-      logPublicKey: approval.verification?.log_public_key,
-    });
-    checks.action_receipt_valid = ra.valid;
-    if (!ra.valid) errors.push(`action_approval receipt failed v1 verification: ${(ra.errors || []).join('; ')}`);
+    if (!validVerificationProfile(actionVerification)) {
+      fail('action_receipt_valid', 'relying-party action verification profile is required');
+    } else {
+      const ra = verifyTrustReceipt(approval.receipt, {
+        approverKeys: actionVerification.approver_keys,
+        logPublicKey: actionVerification.log_public_key,
+        rpId: actionVerification.rp_id,
+        allowedOrigins: actionVerification.allowed_origins,
+      });
+      checks.action_receipt_valid = ra.valid;
+      if (!ra.valid) errors.push(`action_approval receipt failed v1 verification: ${(ra.errors || []).join('; ')}`);
+    }
     if (exec.irreversible === true) {
       checks.action_human_signoff = hasHumanSignoff(approval.receipt, humanKeyClasses);
       if (!checks.action_human_signoff) errors.push('action_approval for an irreversible action carries no human signoff');

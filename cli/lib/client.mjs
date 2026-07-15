@@ -2,16 +2,34 @@
  * @emilia-protocol/cli — API client
  */
 
+let strictJsonGate;
+try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
+catch { ({ strictJsonGate } = await import('../../packages/verify/strict-json.js')); }
+
+const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
+const REQUEST_TIMEOUT_MS = 15_000;
+
+function isLoopbackHost(hostname) {
+  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  return normalized === 'localhost' || normalized === '::1' || /^127(?:\.\d{1,3}){3}$/.test(normalized);
+}
+
+export function normalizeSecureBaseUrl(baseUrl) {
+  const parsed = new URL(baseUrl);
+  if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLoopbackHost(parsed.hostname))) {
+    throw new Error('EP_BASE_URL must use HTTPS (HTTP is allowed only for loopback development)');
+  }
+  if (parsed.username || parsed.password) throw new Error('EP_BASE_URL must not contain credentials');
+  parsed.hash = '';
+  return parsed.toString().replace(/\/+$/, '');
+}
+
 export class EPClient {
   constructor(baseUrl, apiKey = '', fetchImpl = globalThis.fetch) {
-    const parsed = new URL(baseUrl);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      throw new Error('EP_BASE_URL must use http or https');
-    }
     if (typeof fetchImpl !== 'function') {
       throw new Error('A fetch implementation is required');
     }
-    this.baseUrl = parsed.toString().replace(/\/+$/, '');
+    this.baseUrl = normalizeSecureBaseUrl(baseUrl);
     this.apiKey = apiKey;
     this.fetch = fetchImpl;
   }
@@ -22,20 +40,28 @@ export class EPClient {
     if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
     let res;
     try {
-      res = await this.fetch(url, { ...opts, headers: { ...headers, ...opts.headers } });
+      res = await this.fetch(url, {
+        ...opts,
+        redirect: 'error',
+        signal: opts.signal || AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: { ...headers, ...opts.headers },
+      });
     } catch (error) {
       throw new Error(`API request failed: ${error.message}`);
     }
 
     const body = await res.text();
+    if (Buffer.byteLength(body, 'utf8') > MAX_RESPONSE_BYTES) {
+      throw new Error(`API response exceeds ${MAX_RESPONSE_BYTES} bytes`);
+    }
     let data = {};
     if (body) {
-      try {
-        data = JSON.parse(body);
-      } catch {
+      const gate = strictJsonGate(body);
+      if (!gate.ok) {
         if (!res.ok) throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
-        throw new Error(`Expected JSON from ${url}`);
+        throw new Error(`Expected unambiguous JSON from ${url}: ${gate.reason}`);
       }
+      data = JSON.parse(body);
     }
     if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
     return data;

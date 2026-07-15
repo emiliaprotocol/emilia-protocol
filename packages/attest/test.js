@@ -34,6 +34,7 @@ test('signWorkReceipt: produces an EP-RECEIPT-v1 that verifies under verifyRecei
   const { document, public_key } = signWorkReceipt({
     identity: identityFile,
     knownGoodHash: knownGood,
+    knownGoodSubject: 'ep:approver:c-dawg',
     work: workFile,
     signerPrivateKey: privateKey,
     subject: 'ep:approver:c-dawg',
@@ -59,6 +60,7 @@ test('fail-closed: refuses to sign when the identity does not match known-good',
   assert.throws(() => signWorkReceipt({
     identity: identityFile,
     knownGoodHash: 'not-the-real-hash',
+    knownGoodSubject: 'ep:approver:c-dawg',
     work: workFile,
     signerPrivateKey: privateKey,
     subject: 'ep:approver:c-dawg',
@@ -69,7 +71,7 @@ test('fail-closed: refuses to sign when the identity does not match known-good',
 test('tamper: swapping the work hash after signing breaks the signature', () => {
   const { privateKey } = generateEd25519KeyPair();
   const { document, public_key } = signWorkReceipt({
-    identity: identityFile, knownGoodHash: knownGood, work: workFile,
+    identity: identityFile, knownGoodHash: knownGood, knownGoodSubject: 'ep:approver:c-dawg', work: workFile,
     signerPrivateKey: privateKey, subject: 'ep:approver:c-dawg', issuedAt: '2026-06-28T18:00:00Z',
   });
   document.payload.work.hash = crypto.randomBytes(32).toString('hex'); // claim a different artifact ran
@@ -77,5 +79,36 @@ test('tamper: swapping the work hash after signing breaks the signature', () => 
 });
 
 test('ATTEST_VERSION is exported', () => {
-  assert.equal(ATTEST_VERSION, 'EP-ATTEST-v1');
+  assert.equal(ATTEST_VERSION, 'EP-ATTEST-v2');
+});
+
+test('subject cannot be relabeled independently of the relying-party identity pin', () => {
+  const { privateKey } = generateEd25519KeyPair();
+  assert.throws(() => signWorkReceipt({
+    identity: identityFile,
+    knownGoodHash: knownGood,
+    knownGoodSubject: 'ep:agent:approved-builder',
+    work: workFile,
+    signerPrivateKey: privateKey,
+    subject: 'ep:approver:cfo',
+    issuedAt: '2026-06-28T18:00:00Z',
+  }), /subject does not match/);
+});
+
+test('refuses malformed time and non-Ed25519 signer keys', () => {
+  const ed = generateEd25519KeyPair();
+  const base = {
+    identity: identityFile,
+    knownGoodHash: knownGood,
+    knownGoodSubject: 'ep:approver:c-dawg',
+    work: workFile,
+    subject: 'ep:approver:c-dawg',
+  };
+  assert.throws(() => signWorkReceipt({ ...base, signerPrivateKey: ed.privateKey, issuedAt: 'tomorrow' }), /RFC3339/);
+  const p256 = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  assert.throws(() => signWorkReceipt({
+    ...base,
+    signerPrivateKey: p256.privateKey,
+    issuedAt: '2026-06-28T18:00:00Z',
+  }), /Ed25519/);
 });

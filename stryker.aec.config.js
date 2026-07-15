@@ -4,6 +4,14 @@
 export default {
   testRunner: 'vitest',
   vitest: { configFile: 'vitest.config.js', related: false },
+  ignorePatterns: [
+    'sdks/swift-mobile/.build/**',
+    'sdks/kotlin-mobile/.gradle/**',
+    'sdks/kotlin-mobile/build/**',
+    'sdks/kotlin-mobile/sample/build/**',
+    '.next/**',
+    'reports/**',
+  ],
   mutate: [
     'packages/verify/evidence-chain.js:55-532',
     'packages/gate/aec-execution.js:20-287',

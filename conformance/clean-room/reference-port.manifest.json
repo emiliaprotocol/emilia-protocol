@@ -16,7 +16,7 @@
   "runner": {
     "protocol": "EP-CONFORMANCE-FILE-RUNNER-v1",
     "artifact_argument_index": 0,
-    "artifact_sha256": "c73c33ef84e9a740144f76474be1c5b576aad193ee2927cc79c078b0929604ef",
+    "artifact_sha256": "5b7e9ec0735ddde680459b23b992f02495f5da4148907296c8706bdaaccbdf91",
     "fixed_arguments": [
       "conformance/runners/run-js.mjs"
     ]

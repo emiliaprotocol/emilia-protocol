@@ -28,7 +28,7 @@ export default function EssayArticle({ slug }) {
 
   return (
     <div style={{ minHeight: '100vh', background: color.bg, color: color.t1 }}>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style>{`
         .essay-shell { max-width: 720px; margin: 0 auto; padding: 88px 24px 112px; font-family: 'IBM Plex Sans', -apple-system, sans-serif; }
         .essay-eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: ${color.t3}; margin-bottom: 16px; }
         .essay-title { font-family: 'IBM Plex Sans', sans-serif; font-size: clamp(30px, 5vw, 44px); font-weight: 700; letter-spacing: -1px; line-height: 1.1; color: ${color.t1}; margin: 0 0 20px; }
@@ -49,7 +49,7 @@ export default function EssayArticle({ slug }) {
         .essay-foot { margin-top: 56px; padding-top: 28px; border-top: 1px solid ${color.border}; }
         .essay-foot a { font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; font-weight: 500; color: ${color.gold}; text-decoration: none; }
         .essay-foot a:hover { text-decoration: underline; }
-      `}} />
+      `}</style>
       <SiteNav activePage="Essays" />
       <article className="essay-shell">
         <div className="essay-eyebrow">Essay</div>
@@ -57,7 +57,8 @@ export default function EssayArticle({ slug }) {
         <div className="essay-byline">
           By <strong>{essay.author}</strong> · {formatDate(essay.date)}
         </div>
-        <div className="essay-body" dangerouslySetInnerHTML={{ __html: html }} />
+        {/* essayMdToHtml escapes raw HTML and only emits its fixed markup set. */}
+        <div className="essay-body" dangerouslySetInnerHTML={{ __html: html }} /> {/* nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml */}
         <div className="essay-foot">
           <a href="/essays">← All essays</a>
         </div>

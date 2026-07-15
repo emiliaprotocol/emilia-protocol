@@ -75,13 +75,14 @@ async function insertEntity(entityId) {
   return rows[0].id;
 }
 
-async function insertReceipt(entityId, submittedBy = 'submitter-1') {
+async function insertReceipt(entityId, submittedBy = 'submitter-1', previousHash = null) {
+  const receiptHash = `hash-${Math.random().toString(36).slice(2)}`;
   const { rows } = await query(
-    `INSERT INTO receipts (entity_id, submitted_by, composite_score, receipt_hash)
-     VALUES ($1, $2, $3, $4) RETURNING id`,
-    [entityId, submittedBy, 88, `hash-${Math.random().toString(36).slice(2)}`],
+    `INSERT INTO receipts (entity_id, submitted_by, composite_score, receipt_hash, previous_hash)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id, receipt_hash`,
+    [entityId, submittedBy, 88, receiptHash, previousHash],
   );
-  return rows[0].id;
+  return rows[0];
 }
 
 async function insertHandshake() {
@@ -128,13 +129,13 @@ async function insertAttestation(challengeId, bindingId) {
 describe.skipIf(SKIP)('DB invariant: receipts are append-only', () => {
   it('allows inserting a receipt', async () => {
     await insertEntity('ent-receipt-1');
-    const id = await insertReceipt('ent-receipt-1');
-    expect(id).toBeTruthy();
+    const row = await insertReceipt('ent-receipt-1');
+    expect(row.id).toBeTruthy();
   });
 
   it('blocks UPDATE on a receipt', async () => {
     await insertEntity('ent-receipt-2');
-    const id = await insertReceipt('ent-receipt-2');
+    const { id } = await insertReceipt('ent-receipt-2');
     await expect(
       query(`UPDATE receipts SET composite_score = 99 WHERE id = $1`, [id]),
     ).rejects.toThrow('RECEIPT_IMMUTABLE');
@@ -142,7 +143,7 @@ describe.skipIf(SKIP)('DB invariant: receipts are append-only', () => {
 
   it('blocks DELETE on a receipt', async () => {
     await insertEntity('ent-receipt-3');
-    const id = await insertReceipt('ent-receipt-3');
+    const { id } = await insertReceipt('ent-receipt-3');
     await expect(
       query(`DELETE FROM receipts WHERE id = $1`, [id]),
     ).rejects.toThrow('RECEIPT_IMMUTABLE');
@@ -150,13 +151,22 @@ describe.skipIf(SKIP)('DB invariant: receipts are append-only', () => {
 
   it('allows multiple receipts for the same entity (ledger grows)', async () => {
     await insertEntity('ent-receipt-4');
-    await insertReceipt('ent-receipt-4', 'submitter-a');
-    await insertReceipt('ent-receipt-4', 'submitter-b');
-    await insertReceipt('ent-receipt-4', 'submitter-c');
+    const first = await insertReceipt('ent-receipt-4', 'submitter-a');
+    const second = await insertReceipt('ent-receipt-4', 'submitter-b', first.receipt_hash);
+    await insertReceipt('ent-receipt-4', 'submitter-c', second.receipt_hash);
     const { rows } = await query(
       `SELECT count(*) FROM receipts WHERE entity_id = $1`, ['ent-receipt-4'],
     );
     expect(parseInt(rows[0].count, 10)).toBe(3);
+  });
+
+  it('refuses two children of the same receipt-chain predecessor', async () => {
+    await insertEntity('ent-receipt-fork');
+    const root = await insertReceipt('ent-receipt-fork', 'submitter-a');
+    await insertReceipt('ent-receipt-fork', 'submitter-b', root.receipt_hash);
+    await expect(
+      insertReceipt('ent-receipt-fork', 'submitter-c', root.receipt_hash),
+    ).rejects.toThrow(/idx_receipts_single_child_per_parent|duplicate key/i);
   });
 });
 

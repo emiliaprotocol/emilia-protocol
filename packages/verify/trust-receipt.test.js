@@ -163,6 +163,7 @@ const STRICT_OPTS = {
   ...OPTS,
   strict: true,
   rpId: 'www.emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
   expectedPolicyHash: 'sha256:77ab1234',
 };
 
@@ -557,6 +558,7 @@ test('strict verifier — complete receipt passes strict deployment gate', () =>
   assert.deepEqual(r.strict.checks, {
     pinned_keys: true,
     rp_id: true,
+    origin: true,
     user_presence: true,
     user_verification: true,
     key_windows: true,
@@ -572,16 +574,16 @@ test('strict verifier — default mode still does not evaluate the strict gate',
 });
 
 test('strict verifier — requires caller-pinned expected policy hash', () => {
-  const r = verifyTrustReceipt(buildReceipt(), { ...OPTS, strict: true, rpId: 'www.emiliaprotocol.ai' });
+  const r = verifyTrustReceipt(buildReceipt(), { ...OPTS, strict: true, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'] });
   assert.equal(r.checks.context_commitments, true, JSON.stringify(r.errors));
   assert.equal(r.strict.checks.policy_hash, false);
   assert.equal(r.valid, false);
   assert.match(r.errors.join(' '), /strict policy_hash requires opts\.expectedPolicyHash/);
 });
 
-test('strict verifier — rejects Class-A WebAuthn assertions for the wrong RP ID', () => {
+test('verifier rejects Class-A WebAuthn assertions for the wrong pinned RP ID', () => {
   const r = verifyTrustReceipt(buildReceipt(), { ...STRICT_OPTS, rpId: 'login.evil.example' });
-  assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
+  assert.equal(r.checks.signoff_signatures, false, JSON.stringify(r.errors));
   assert.equal(r.strict.checks.rp_id, false);
   assert.equal(r.valid, false);
   assert.match(r.strict.errors.join(' '), /rpIdHash/);
@@ -642,7 +644,7 @@ const KEYS_A_ED = {
   'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: approverAEd.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
 const OPTS_A_ED = { approverKeys: KEYS_A_ED, logPublicKey: logKey.pub };
-const STRICT_OPTS_A_ED = { ...OPTS_A_ED, strict: true, rpId: 'www.emiliaprotocol.ai', expectedPolicyHash: 'sha256:77ab1234' };
+const STRICT_OPTS_A_ED = { ...OPTS_A_ED, strict: true, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'], expectedPolicyHash: 'sha256:77ab1234' };
 
 // Build a receipt where the CFO (pinned Class-A key ep:key:cfo#1) signs off with
 // a DOWNGRADED signoff: declared key_class:'B' and a bare Ed25519 signature over
@@ -681,6 +683,30 @@ test('class-downgrade — pinned Class-A downgrade is REJECTED under the strict 
   assert.equal(r.strict.checks.no_unsigned, false);
   assert.match(r.strict.errors.join(' '), /Class-A/);
   assert.equal(r.valid, false);
+});
+
+test('class-escalation — an unclassified pinned key cannot self-declare Class-A', () => {
+  const unclassified = {
+    ...KEYS,
+    'ep:key:cfo#1': { ...KEYS['ep:key:cfo#1'] },
+  };
+  delete unclassified['ep:key:cfo#1'].key_class;
+  const receipt = buildReceipt();
+
+  const regular = verifyTrustReceipt(receipt, { approverKeys: unclassified, logPublicKey: logKey.pub });
+  assert.equal(regular.checks.signoff_signatures, false, JSON.stringify(regular.errors));
+  assert.equal(regular.valid, false);
+
+  const strict = verifyTrustReceipt(receipt, {
+    approverKeys: unclassified,
+    logPublicKey: logKey.pub,
+    strict: true,
+    rpId: 'www.emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+    expectedPolicyHash: 'sha256:77ab1234',
+  });
+  assert.equal(strict.checks.signoff_signatures, false, JSON.stringify(strict.errors));
+  assert.equal(strict.valid, false);
 });
 
 // ── step 5c: opt-in priorCheckpoint consistency knob ─────────────────────────

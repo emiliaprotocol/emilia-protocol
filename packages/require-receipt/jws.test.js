@@ -47,6 +47,13 @@ function keyFromSeed(byte) {
 const KEY = keyFromSeed(0xA1);
 const OTHER = keyFromSeed(0xB2);
 
+function signedRawJws(headerText, payloadText) {
+  const hB64 = Buffer.from(headerText, 'utf8').toString('base64url');
+  const pB64 = Buffer.from(payloadText, 'utf8').toString('base64url');
+  const sig = crypto.sign(null, Buffer.from(`${hB64}.${pB64}`, 'ascii'), KEY.priv).toString('base64url');
+  return `${hB64}.${pB64}.${sig}`;
+}
+
 function sampleDoc(payload) {
   return { '@version': 'EP-RECEIPT-v1', payload, public_key: KEY.pubB64u };
 }
@@ -153,6 +160,35 @@ test('rejects a malformed compact serialization', () => {
   assert.equal(verifyReceiptJws('only.two', KEY.pubB64u).valid, false);
   assert.equal(verifyReceiptJws('a.b.c.d', KEY.pubB64u).valid, false);
   assert.equal(verifyReceiptJws(42, KEY.pubB64u).valid, false);
+});
+
+test('rejects validly signed duplicate protected-header and payload members', () => {
+  const duplicateHeader = signedRawJws(
+    `{"alg":"${JWS_ALG}","alg":"${JWS_ALG}","typ":"${JWS_TYP}"}`,
+    '{"receipt_id":"duplicate_header"}',
+  );
+  const duplicatePayload = signedRawJws(
+    `{"alg":"${JWS_ALG}","typ":"${JWS_TYP}"}`,
+    '{"receipt_id":"first","receipt_id":"first"}',
+  );
+
+  assert.equal(verifyReceiptJws(duplicateHeader, KEY.pubB64u).valid, false);
+  assert.match(verifyReceiptJws(duplicateHeader, KEY.pubB64u).error, /strict JSON/);
+  assert.equal(verifyReceiptJws(duplicatePayload, KEY.pubB64u).valid, false);
+  assert.match(verifyReceiptJws(duplicatePayload, KEY.pubB64u).error, /strict JSON/);
+});
+
+test('rejects protected members outside the profile and non-canonical base64url', () => {
+  const unknownMember = signedRawJws(
+    `{"alg":"${JWS_ALG}","typ":"${JWS_TYP}","jwk":{"kty":"OKP"}}`,
+    '{"receipt_id":"unknown_header"}',
+  );
+  assert.equal(verifyReceiptJws(unknownMember, KEY.pubB64u).valid, false);
+
+  const valid = serializeReceiptJws(sampleDoc({ receipt_id: 'padded' }), KEY.priv);
+  const [h, p, s] = valid.split('.');
+  assert.equal(verifyReceiptJws(`${h}=.${p}.${s}`, KEY.pubB64u).valid, false);
+  assert.equal(verifyReceiptJws(`${h}.${p}.${Buffer.alloc(63).toString('base64url')}`, KEY.pubB64u).valid, false);
 });
 
 test('rejects a payload that is valid-signed but not canonical (round-trip guard)', () => {

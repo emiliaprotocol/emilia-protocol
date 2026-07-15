@@ -134,6 +134,8 @@ function mintReceipt({
         },
       },
       log_public_key: logKp.publicKeyB64u,
+      rp_id: 'rp',
+      allowed_origins: ['https://test.emilia'],
     };
     return { receipt, verification, approver, approverKeyId };
   });
@@ -236,6 +238,8 @@ const baseOpts = (b, over = {}) => ({
   now: NOW,
   humanKeyClasses: ['A'],
   delegationKeys: b.delegationKeys,
+  rootVerification: b.root.verification,
+  actionVerification: b.approval.verification,
   ...over,
 });
 
@@ -373,16 +377,28 @@ describe('verifyProvenanceOffline — version + structural early exits', () => {
     const res = verifyProvenanceOffline({ '@version': PROVENANCE_VERSION });
     expect(res.valid).toBe(false);
     expect(res.checks.root_receipt_valid).toBe(false);
-    expect(res.errors).toContain('missing root_signoff.receipt or root_signoff.verification');
+    expect(res.errors).toContain('missing root_signoff.receipt');
   });
 
-  it('rejects when root_signoff.verification is missing', async () => {
+  it('ignores presenter-carried verification keys and requires relying-party pins', async () => {
     const b = await buildBaseline();
     const doc = assemble(b);
     delete doc.root_signoff.verification;
-    const res = verifyProvenanceOffline(doc, baseOpts(b));
-    expect(res.valid).toBe(false);
-    expect(res.checks.root_receipt_valid).toBe(false);
+    delete doc.action_approval.verification;
+
+    const pinned = verifyProvenanceOffline(doc, baseOpts(b));
+    expect(pinned.valid).toBe(true);
+
+    const selfAnchored = verifyProvenanceOffline(assemble(b), {
+      now: NOW,
+      humanKeyClasses: ['A'],
+      delegationKeys: b.delegationKeys,
+    });
+    expect(selfAnchored.valid).toBe(false);
+    expect(selfAnchored.checks.root_receipt_valid).toBe(false);
+    expect(selfAnchored.checks.action_receipt_valid).toBe(false);
+    expect(selfAnchored.errors).toContain('relying-party root verification profile is required');
+    expect(selfAnchored.errors).toContain('relying-party action verification profile is required');
   });
 });
 
@@ -494,7 +510,9 @@ describe('verifyProvenanceOffline — per-action approval option branches', () =
         executed_at: '2026-06-13T11:45:00.000Z',
       },
     });
-    const res = verifyProvenanceOffline(doc, baseOpts(b));
+    const res = verifyProvenanceOffline(doc, baseOpts(b, {
+      actionVerification: softApproval.verification,
+    }));
     expect(res.checks.action_human_signoff).toBe(true);
     expect(res.errors, JSON.stringify(res, null, 2)).toEqual([]);
     expect(res.valid).toBe(true);
@@ -890,7 +908,7 @@ describe('verifyProvenanceOffline — advisory agent_identity / liability blocks
 });
 
 describe('verifyProvenanceOffline — option defaults', () => {
-  it('uses DEFAULT_HUMAN_KEY_CLASSES (A) and Date.now() when opts omitted', async () => {
+  it('uses strict trust-root defaults and Date.now() when opts are omitted', async () => {
     const b = await buildBaseline();
     // EXPIRES_AT is in the past relative to a real Date.now() (2026-06-13T18:00),
     // so with default `now` the delegation should be expired. We only assert that
@@ -899,8 +917,10 @@ describe('verifyProvenanceOffline — option defaults', () => {
     const res = verifyProvenanceOffline(doc);
     expect(typeof res.valid).toBe('boolean');
     expect(res.checks.version).toBe(true);
-    // Class A is counted as human under the default policy.
-    expect(res.checks.root_human_signoff).toBe(true);
+    // No relying-party verification profile means the embedded keys confer no
+    // authority, even though the receipt labels its signoff Class A.
+    expect(res.checks.root_receipt_valid).toBe(false);
+    expect(res.errors).toContain('relying-party root verification profile is required');
   });
 
   it('rejects when the verifier human policy excludes the root signoff class', async () => {

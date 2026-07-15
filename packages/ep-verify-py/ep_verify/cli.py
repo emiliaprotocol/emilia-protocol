@@ -14,11 +14,28 @@ import sys
 from emilia_verify import verify_receipt
 
 USAGE = "usage: ep-verify <receipt.json> [--keys keys.json]"
+MAX_INPUT_BYTES = 8 * 1024 * 1024
+
+
+def _reject_duplicate_members(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate object member name")
+        value[key] = item
+    return value
+
+
+def _load_strict_json(path):
+    with open(path, "rb") as f:
+        raw = f.read(MAX_INPUT_BYTES + 1)
+    if len(raw) > MAX_INPUT_BYTES:
+        raise ValueError("input exceeds 8 MiB limit")
+    return json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_members)
 
 
 def _load_keys(path):
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = _load_strict_json(path)
     if isinstance(data, str):
         return [data]
     if isinstance(data, list):
@@ -43,8 +60,7 @@ def main(argv=None):
         keys_path = argv[i + 1]
 
     try:
-        with open(receipt_path, "r", encoding="utf-8") as f:
-            doc = json.load(f)
+        doc = _load_strict_json(receipt_path)
     except Exception:
         print("REFUSED")
         print(json.dumps({"result": "refused", "reason": "receipt_unreadable_or_malformed"}))

@@ -21,6 +21,8 @@
 // research project.
 import { HIGH_RISK_ACTION_PACKS, DEFAULT_PASS_THROUGH_ACTIONS, createDefaultActionRiskManifest } from './risk-packs.js';
 
+const MAX_ACTIONS = 10_000;
+
 // Keyword signals per risk category, keyed to the EP risk-pack ids so a matched
 // action inherits that pack's assurance_class, required_fields, and rationale.
 // Deliberately conservative: strong verbs/nouns only, so a match is defensible.
@@ -36,7 +38,7 @@ const CATEGORY_SIGNALS = [
   { pack: 'regulated.decision_override', any: ['override', 'adjudicate', 'dispose', 'approve_case', 'final_decision', 'waive', 'exception_approve'] },
 ];
 
-const READ_ONLY_SIGNALS = ['get', 'list', 'read', 'search', 'lookup', 'fetch', 'query', 'describe', 'view', 'count', 'status', 'summary', 'preview', 'health', 'ping'];
+const READ_ONLY_SIGNALS = ['get', 'list', 'read', 'search', 'lookup', 'fetch', 'query', 'describe', 'view', 'count', 'status', 'summary', 'summarize', 'preview', 'health', 'ping'];
 const MUTATING_SIGNALS = ['create', 'update', 'set', 'write', 'post', 'put', 'patch', 'modify', 'edit', 'add', 'remove', 'send', 'submit', 'execute', 'run', 'apply', 'trigger', 'cancel', 'revoke', 'issue'];
 
 const packById = Object.fromEntries(HIGH_RISK_ACTION_PACKS.map((p) => [p.id, p]));
@@ -48,18 +50,16 @@ function norm(s) {
 // Classify ONE action. Returns a proposed control with an explicit reason and
 // confidence, or a fail-closed "unclassified" when it mutates but doesn't match.
 export function classifyAction(action) {
+  if (!action || typeof action !== 'object' || Array.isArray(action)) {
+    return { decision: 'review_fail_closed', receipt_required: true, assurance_class: 'class_a', reason: 'malformed action — defaults to require a receipt', confidence: 'low' };
+  }
   const hay = `${norm(action.name)}_${norm(action.description)}`;
-  const ann = action.annotations || {};
-
-  // Standard MCP annotations are authoritative when the tool author set them.
-  if (ann.readOnlyHint === true) {
-    return { decision: 'pass_through', receipt_required: false, reason: 'annotation:readOnlyHint', confidence: 'high' };
-  }
-  if (ann.destructiveHint === true && !matchCategory(hay)) {
-    return { decision: 'gate', receipt_required: true, assurance_class: 'class_a', category: 'annotated_destructive', reason: 'annotation:destructiveHint', confidence: 'high' };
-  }
-
+  const ann = action.annotations && typeof action.annotations === 'object' && !Array.isArray(action.annotations)
+    ? action.annotations : {};
   const cat = matchCategory(hay);
+
+  // Semantic risk signals outrank presenter-authored annotations. A payment or
+  // delete tool cannot label itself read-only and bypass review.
   if (cat) {
     const pack = packById[cat.pack];
     return {
@@ -70,9 +70,13 @@ export function classifyAction(action) {
       assurance_class: pack?.assurance_class || 'class_a',
       required_fields: pack?.execution_binding?.required_fields || ['action_type'],
       why: pack?.why,
-      reason: `matched category "${cat.pack}" on token "${cat.hit}"`,
+      reason: `matched category "${cat.pack}" on token "${cat.hit}"${ann.readOnlyHint === true ? '; conflicting readOnlyHint ignored' : ''}`,
       confidence: 'medium',
     };
+  }
+
+  if (ann.destructiveHint === true) {
+    return { decision: 'gate', receipt_required: true, assurance_class: 'class_a', category: 'annotated_destructive', reason: 'annotation:destructiveHint', confidence: 'high' };
   }
 
   const looksReadOnly = READ_ONLY_SIGNALS.some((k) => hay.startsWith(k) || hay.includes(`_${k}_`) || hay.endsWith(`_${k}`));
@@ -80,14 +84,27 @@ export function classifyAction(action) {
     || ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(action.http_method || '').toUpperCase());
 
   if (looksReadOnly && !looksMutating) {
-    return { decision: 'pass_through', receipt_required: false, reason: 'read-only verb, no mutation signal', confidence: 'low' };
+    return {
+      decision: 'pass_through',
+      receipt_required: false,
+      reason: ann.readOnlyHint === true ? 'read-only verb plus advisory readOnlyHint; confirm handler behavior' : 'read-only verb, no mutation signal; confirm handler behavior',
+      confidence: 'low',
+    };
   }
   if (looksMutating) {
     // The honest core: a state-changing action we could not map to a known risk
     // category is NOT waved through. It defaults fail-closed and asks a human.
     return { decision: 'review_fail_closed', receipt_required: true, assurance_class: 'class_a', reason: 'mutating action, unrecognized category — defaults to require a receipt; confirm or downgrade', confidence: 'low' };
   }
-  return { decision: 'review', receipt_required: false, reason: 'no strong signal either way — confirm', confidence: 'low' };
+  return {
+    decision: 'review_fail_closed',
+    receipt_required: true,
+    assurance_class: 'class_a',
+    reason: ann.readOnlyHint === true
+      ? 'readOnlyHint is advisory and no independent read-only signal was found — defaults to require a receipt'
+      : 'no strong read-only signal — defaults to require a receipt; confirm or downgrade',
+    confidence: 'low',
+  };
 }
 
 function matchCategory(hay) {
@@ -100,6 +117,16 @@ function matchCategory(hay) {
 
 // Scan a list of actions -> full report. Actions: [{name, description?, annotations?, http_method?}].
 export function scanActions(actions, { source = 'list', blindSpots = [] } = {}) {
+  if (!Array.isArray(actions) || actions.length > MAX_ACTIONS) {
+    throw new Error(`scan: actions must be an array with at most ${MAX_ACTIONS} entries`);
+  }
+  for (const action of actions) {
+    if (!action || typeof action !== 'object' || Array.isArray(action)
+        || typeof action.name !== 'string' || !action.name || action.name.length > 256
+        || (action.description !== undefined && (typeof action.description !== 'string' || action.description.length > 16_384))) {
+      throw new Error('scan: each action requires a non-empty name and bounded string description');
+    }
+  }
   const results = actions.map((a) => ({ action: a, classification: classifyAction(a) }));
   const bucket = (d) => results.filter((r) => r.classification.decision === d);
   const gated = bucket('gate');

@@ -90,12 +90,12 @@ def _run(v):
                 resolution_opts[option_name] = v.get(wire_name)
         result = verify_resolution_receipt(receipt, resolution_opts)
         return bool(result["valid"] and result["authorizes_action"]) if "resolution_authorization" in v else result["valid"]
-    if "signoff" in v: return verify_webauthn_signoff(v["signoff"], v["approver_public_key"], {"rpId": v.get("rp_id")})["valid"]
-    if "quorum" in v: return verify_quorum(v["quorum"], {"rpId": "emiliaprotocol.ai"})["valid"]
+    if "signoff" in v: return verify_webauthn_signoff(v["signoff"], v["approver_public_key"], {"rpId": v.get("rp_id"), "allowedOrigins": v.get("allowed_origins")})["valid"]
+    if "quorum" in v: return verify_quorum(v["quorum"], {"rpId": "emiliaprotocol.ai", "allowedOrigins": ["https://www.emiliaprotocol.ai"]})["valid"]
     if "revocation" in v: return verify_revocation(v["target"], v["revocation"], {"revokerKeys": v.get("revoker_keys"), "maxAgeSeconds": v.get("max_age_seconds"), "now": v.get("now")})["valid"]
     if "time_attestation" in v: return verify_time_attestation(v["time_attestation"], {"tsaKeys": v.get("tsa_keys"), "expectedHash": v.get("expected_hash"), "notBefore": v.get("not_before"), "notAfter": v.get("not_after")})["valid"]
     if "trust_receipt" in v: return verify_trust_receipt(v["trust_receipt"], {"approverKeys": v["verification"]["approver_keys"], "logPublicKey": v["verification"]["log_public_key"], **(v.get("verify_opts") or {})})["valid"]
-    if "provenance_chain" in v: return verify_provenance_offline(v["provenance_chain"], {"delegationKeys": v.get("delegation_keys"), "now": v.get("now_ms")})["valid"]
+    if "provenance_chain" in v: return verify_provenance_offline(v["provenance_chain"], {"delegationKeys": v.get("delegation_keys"), "rootVerification": v.get("root_verification"), "actionVerification": v.get("action_verification"), "now": v.get("now_ms")})["valid"]
     if "evidence_record" in v: return verify_evidence_record(v["evidence_record"], {"tsaKeys": v.get("tsa_keys"), "protectedHash": v.get("protected_hash")})["valid"]
     if "canonicalization" in v: return run_canonicalization(v["canonicalization"])
     # EP-CURRENCY-v1: valid iff the two-valued currency status equals expect_status.

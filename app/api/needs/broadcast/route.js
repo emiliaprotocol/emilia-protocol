@@ -7,6 +7,7 @@ import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+import { strictJsonGate } from '@/lib/strict-json.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
 
@@ -68,8 +69,12 @@ export async function POST(request) {
       } else if (typeof body.context === 'string') {
         // Attempt to parse JSON string; reject freeform text
         try {
+          if (Buffer.byteLength(body.context, 'utf8') > 64 * 1024 || !strictJsonGate(body.context).ok) {
+            throw new Error('strict JSON required');
+          }
           const parsed = JSON.parse(body.context);
-          if (typeof parsed === 'object') needContext = parsed;
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) needContext = parsed;
+          else throw new Error('context must be an object');
         } catch {
           return epProblem(400, 'invalid_context', 'context must be a structured object (e.g. { "category": "electronics", "geo": "US-CA" }), not freeform text.');
         }

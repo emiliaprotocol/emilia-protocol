@@ -25,54 +25,98 @@ const MAX_MCP_BYTES = 256 * 1024;
 
 const text = (obj) => ({ content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] });
 
+export async function verifyReceiptTool({ document, public_key }) {
+  if (typeof public_key !== 'string' || !public_key) {
+    return {
+      valid: false,
+      accepted: null,
+      scope: 'cryptographic_integrity',
+      error: 'A caller-supplied issuer key is required. Artifact-embedded keys cannot establish their own trust.',
+    };
+  }
+  const result = await verifyReceipt(document, public_key);
+  return {
+    ...result,
+    accepted: null,
+    scope: 'cryptographic_integrity',
+    key_source: 'caller_supplied',
+    limitation: 'This verifies bytes under the supplied key. It does not establish who controls that key, issuer authority, policy acceptance, or legal reliance.',
+  };
+}
+
+export async function verifySignoffTool({ signoff, approver_public_key, rp_id, allowed_origins }) {
+  if (typeof approver_public_key !== 'string' || !approver_public_key) {
+    return {
+      valid: false,
+      accepted: null,
+      scope: 'scoped_webauthn_integrity',
+      error: 'A caller-supplied approver key is required. Artifact-embedded keys cannot establish their own identity.',
+    };
+  }
+  if (typeof rp_id !== 'string' || !rp_id
+      || !Array.isArray(allowed_origins) || allowed_origins.length === 0
+      || allowed_origins.some((origin) => typeof origin !== 'string' || !origin)) {
+    return {
+      valid: false,
+      accepted: null,
+      scope: 'scoped_webauthn_integrity',
+      error: 'rp_id and at least one exact allowed_origins entry are required for WebAuthn verification.',
+    };
+  }
+  const result = await verifyWebAuthnSignoff(signoff, approver_public_key, {
+    rpId: rp_id,
+    allowedOrigins: allowed_origins,
+  });
+  return {
+    ...result,
+    accepted: null,
+    scope: 'scoped_webauthn_integrity',
+    key_source: 'caller_supplied',
+    limitation: 'This verifies a user-present, user-verified ceremony under the supplied key and WebAuthn scope. It does not prove legal identity, perception, authority, or relying-party acceptance.',
+  };
+}
+
 const handler = createMcpHandler(
   (server) => {
     server.registerTool(
       'ep_verify_receipt',
       {
-        title: 'Verify authorization receipt (offline math, in-process)',
+        title: 'Check receipt signature integrity (offline, in-process)',
         annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         description:
-          'Verify an EP-RECEIPT-v1 trust receipt with pure public-key math — '
-          + 'Ed25519 over canonical JSON plus optional Merkle anchor. Proves the '
-          + 'receipt was signed by its issuer and not altered. No account, no '
+          'Check an EP-RECEIPT-v1 with pure public-key math — Ed25519 over '
+          + 'canonical JSON plus an optional Merkle anchor — under a key supplied '
+          + 'by the caller. This checks integrity, not issuer identity, authority, '
+          + 'policy acceptance, or legal reliance. No account, no '
           + 'stored state; the same open-source verifier anyone can run '
           + '(npm: @emilia-protocol/verify).',
         inputSchema: {
           document: z.record(z.string(), z.unknown()).describe('The EP-RECEIPT-v1 document (JSON object)'),
-          public_key: z.string().optional().describe("Issuer Ed25519 public key (base64url SPKI DER). Optional if the document embeds issuer_public_key."),
+          public_key: z.string().min(1).describe('Issuer Ed25519 public key from the caller\'s trust configuration (base64url SPKI DER). Artifact-embedded keys are not accepted as trust anchors.'),
         },
       },
-      async ({ document, public_key }) => {
-        const key = public_key || document?.issuer_public_key;
-        if (!key) return text({ valid: false, error: 'No public key: pass public_key or embed issuer_public_key in the document.' });
-        return text(await verifyReceipt(document, key));
-      },
+      async (input) => text(await verifyReceiptTool(input)),
     );
 
     server.registerTool(
       'ep_verify_signoff',
       {
-        title: 'Verify Class-A Device Signoff (offline math, in-process)',
+        title: 'Check scoped WebAuthn signoff (offline, in-process)',
         annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         description:
-          'Verify a Class-A human device signoff: a WebAuthn assertion (ECDSA '
-          + 'P-256) whose challenge is the SHA-256 of the canonicalized '
-          + 'authorization context. Proves a named human approved this EXACT '
-          + 'action on their own device (user-present + user-verified) — change '
-          + 'one field and verification fails.',
+          'Check a WebAuthn assertion (ECDSA P-256) whose challenge is the '
+          + 'SHA-256 of the canonicalized authorization context, under a '
+          + 'caller-supplied key, RP ID, and exact origin allowlist. This checks '
+          + 'a user-present and user-verified ceremony; it does not establish '
+          + 'legal identity, authority, perception, or relying-party acceptance.',
         inputSchema: {
           signoff: z.record(z.string(), z.unknown()).describe('Signoff object with { context, webauthn: { authenticator_data, client_data_json, signature } }'),
-          approver_public_key: z.string().optional().describe('Approver P-256 public key (base64url SPKI DER). Optional if the signoff embeds approver_public_key.'),
-          rp_id: z.string().optional().describe('Expected relying-party ID (e.g. emiliaprotocol.ai). Optional if embedded as rp_id.'),
+          approver_public_key: z.string().min(1).describe('Approver P-256 public key from the caller\'s trust configuration (base64url SPKI DER).'),
+          rp_id: z.string().min(1).describe('Expected WebAuthn relying-party ID (e.g. emiliaprotocol.ai).'),
+          allowed_origins: z.array(z.string().min(1)).min(1).describe('Exact WebAuthn origins accepted by the relying party.'),
         },
       },
-      async ({ signoff, approver_public_key, rp_id }) => {
-        const key = approver_public_key || signoff?.approver_public_key;
-        if (!key) return text({ valid: false, error: 'No public key: pass approver_public_key or embed it in the signoff.' });
-        const rpId = rp_id || signoff?.rp_id || undefined;
-        return text(await verifyWebAuthnSignoff(signoff, key, rpId ? { rpId } : {}));
-      },
+      async (input) => text(await verifySignoffTool(input)),
     );
 
   },

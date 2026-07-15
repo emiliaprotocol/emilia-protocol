@@ -24,6 +24,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readFileSync as _r 
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { evaluateGuardPolicy, GUARD_ACTION_TYPES, GUARD_DECISIONS } from '../lib/guard-policies.js';
+import { strictJsonGate } from '../lib/strict-json.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -136,6 +137,14 @@ function arg(name) {
 function readStdin() {
   try { return _r(0, 'utf8'); } catch { return ''; }
 }
+function parseBoundaryJson(raw, maxBytes = 1024 * 1024) {
+  if (typeof raw !== 'string' || Buffer.byteLength(raw, 'utf8') > maxBytes) throw new Error('JSON input is too large');
+  const strict = strictJsonGate(raw);
+  if (!strict.ok) throw new Error(`strict JSON required: ${strict.reason}`);
+  const value = JSON.parse(raw);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('JSON input must be an object');
+  return value;
+}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 function blockedDecision(d) {
@@ -164,7 +173,7 @@ async function main() {
 
   if (hookMode) {
     let evt = {};
-    try { evt = JSON.parse(readStdin() || '{}'); } catch { failClosed('Could not parse the Claude Code hook event.'); }
+    try { evt = parseBoundaryJson(readStdin() || '{}'); } catch { failClosed('Could not parse the Claude Code hook event.'); }
     if (evt.tool_name && evt.tool_name !== 'Bash') process.exit(0);
     command = evt.tool_input?.command || '';
     subject = 'agent:claude-code';
@@ -186,7 +195,8 @@ async function main() {
 
   const actionJson = arg('--action');
   if (actionJson) {
-    const input = JSON.parse(actionJson);
+    let input;
+    try { input = parseBoundaryJson(actionJson); } catch { failClosed('Could not parse the action as strict JSON.'); }
     const base = evaluateGuardPolicy(input);
     verdict = { actionType: input.actionType || 'custom', engine: 'guard-policies', what: 'a policy-engine action', ...base };
     subject = input.actorId ? `actor:${input.actorId}` : subject;

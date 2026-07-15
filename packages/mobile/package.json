@@ -21,7 +21,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.8.1"
+    "@emilia-protocol/verify": "^3.10.0"
   },
   "keywords": [
     "emilia-protocol",

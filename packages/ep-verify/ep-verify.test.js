@@ -118,6 +118,29 @@ test('malformed receipt file (invalid JSON) -> REFUSED malformed_json, exit 1', 
   assert.equal(out.detail.reason, 'malformed_json');
 });
 
+test('duplicate receipt member -> REFUSED before JSON key collapse', () => {
+  const { pub } = makeKey();
+  const dir = tempDir();
+  const receiptPath = join(dir, 'duplicate.json');
+  writeFileSync(receiptPath, '{"@version":"EP-RECEIPT-v1","@version":"attacker"}');
+  const keysPath = writeJson(dir, 'keys.json', [pub]);
+  const out = runCli([receiptPath, '--keys', keysPath]);
+  assert.equal(out.code, 1);
+  assert.equal(out.detail.reason, 'malformed_json');
+  assert.match(out.detail.error, /duplicate object member/);
+});
+
+test('duplicate key-directory member -> REFUSED before trust-pin collapse', () => {
+  const { privateKey, pub } = makeKey();
+  const dir = tempDir();
+  const receiptPath = writeJson(dir, 'receipt.json', receipt(privateKey));
+  const keysPath = join(dir, 'duplicate-keys.json');
+  writeFileSync(keysPath, `{"keys":["${pub}"],"keys":[]}`);
+  const out = runCli([receiptPath, '--keys', keysPath]);
+  assert.equal(out.code, 1);
+  assert.equal(out.detail.reason, 'malformed_keys');
+});
+
 test('valid JSON that is not an EP receipt -> REFUSED unsupported_version, exit 1', () => {
   const { pub } = makeKey();
   const dir = tempDir();

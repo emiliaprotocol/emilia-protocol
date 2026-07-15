@@ -201,6 +201,7 @@ export function createApprovalAuthority(options = {}) {
       approverKeys: Object.freeze({ [approver.approverKeyId]: Object.freeze(clone(approver.keyEntry)) }),
       logPublicKey: log.publicKeyB64u,
       rpId,
+      allowedOrigins: Object.freeze([options.origin ?? `https://${rpId}`]),
     }),
   });
 }
@@ -249,6 +250,7 @@ function authorizationVerifier({ action, policy, verification, revokedEvidenceDi
       logPublicKey: verification.logPublicKey,
       strict: true,
       rpId: verification.rpId,
+      allowedOrigins: verification.allowedOrigins,
       expectedPolicyHash: policyHash(policy),
     });
     let receiptActionDigest = null;

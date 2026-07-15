@@ -13,7 +13,7 @@ forged receipt    -> refused (signature / action-binding fails)
 
 That set of four is the **RR-1** conformance level. `receipt-required.test.js` re-proves it on every push (including that the secure default below fails closed).
 
-> **Replay scope:** "one-time consumption" holds within the configured store. The **default store is process-local (in-memory)** — it does *not* survive a restart or span multiple instances. For durable / multi-instance replay protection, pass a durable `store` ({ has, add }) to the gate (Redis/DB).
+> **Replay scope:** "one-time consumption" holds within the configured store. The **default store is process-local (in-memory)** — it does *not* survive a restart or span multiple instances. For durable / multi-instance replay protection, pass an ownership-fenced durable `store` implementing atomic `{ reserve, commit, release }` operations (Redis/DB). An uncertain reservation must remain closed until reconciliation.
 
 ## 10-minute adoption
 
@@ -45,5 +45,7 @@ This kit will **not** accept a self-signed (inline-key) receipt for a destructiv
 - **`EMILIA_TRUSTED_KEYS`** (comma-separated base64url SPKI) — the issuer key(s) you trust. Set this for production. Receipts not signed by a pinned key are refused.
 - **No trusted keys + no inline opt-in → fails closed.** The action is refused (`receipt_enforcement_misconfigured`); it never runs under an untrusted key. For a destructive operation, refusing is the safe outcome.
 - **`EMILIA_ALLOW_INLINE_KEY=1`** — accept inline (self-signed) receipt keys. **Non-production demos only** — never for a real destructive action.
+- **`EMILIA_APPROVER_KEYS_JSON`** — relying-party-owned directory of enrolled approver keys. Each entry names its pinned `public_key`, `key_class`, and `approver_id`; receipt-supplied roles never establish human assurance.
+- **`EMILIA_RP_ID`** and **`EMILIA_ALLOWED_ORIGINS`** — the WebAuthn RP ID and comma-separated origin allowlist used to verify the human ceremony. A Class-A action fails closed when any of these three assurance inputs is absent or malformed.
 
-Production checklist: pin `EMILIA_TRUSTED_KEYS`; leave `EMILIA_ALLOW_INLINE_KEY` unset; configure a durable replay `store` if you run more than one instance; serve the manifest and set `EMILIA_MANIFEST_URL`.
+Production checklist: pin `EMILIA_TRUSTED_KEYS`; configure the approver directory, RP ID, and origins; leave `EMILIA_ALLOW_INLINE_KEY` unset; configure a durable replay `store` if you run more than one instance; serve the manifest and set `EMILIA_MANIFEST_URL`.

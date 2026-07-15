@@ -11,6 +11,7 @@ import { strictParseGate } from '../conformance/runners/strict-json.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_PATH = path.join(ROOT, 'conformance/clean-room/bundle.v1.json');
 const SPECIFICATION_BUNDLE_PATH = path.join(ROOT, 'conformance/clean-room/specification-bundle.v1.json');
+const FROZEN_ROOT = path.join(ROOT, 'conformance/clean-room/frozen-v1');
 const argv = process.argv.slice(2);
 
 function option(name) {
@@ -109,6 +110,14 @@ function verifyRunnerBinding(manifest) {
   return { path: artifact, sha256: actual };
 }
 
+function frozenMemberPath(memberPath, bundleLabel) {
+  const resolved = path.resolve(FROZEN_ROOT, memberPath);
+  if (!resolved.startsWith(`${FROZEN_ROOT}${path.sep}`)) {
+    throw new Error(`${bundleLabel} member escapes frozen root`);
+  }
+  return resolved;
+}
+
 function verifyPinnedBundle(bundlePath, expectedVersion, memberField) {
   const bytes = fs.readFileSync(bundlePath);
   const bundle = readJson(bundlePath, expectedVersion);
@@ -117,8 +126,7 @@ function verifyPinnedBundle(bundlePath, expectedVersion, memberField) {
     if (typeof member?.path !== 'string' || !/^[0-9a-f]{64}$/.test(member.sha256 || '')) {
       throw new Error(`${expectedVersion} contains a malformed member`);
     }
-    const memberPath = path.resolve(ROOT, member.path);
-    if (memberPath !== ROOT && !memberPath.startsWith(`${ROOT}${path.sep}`)) throw new Error(`${expectedVersion} member escapes repository root`);
+    const memberPath = frozenMemberPath(member.path, expectedVersion);
     const memberBytes = fs.readFileSync(memberPath);
     if (sha256(memberBytes) !== member.sha256 || (member.bytes !== undefined && memberBytes.length !== member.bytes)) {
       throw new Error(`${expectedVersion} drift: ${member.path}`);
@@ -191,11 +199,14 @@ if (requireExternal) {
 const suiteResults = [];
 let vectorCount = 0;
 for (const suiteRef of bundle.suites) {
-  const suitePath = path.resolve(ROOT, suiteRef.path);
+  const suitePath = frozenMemberPath(suiteRef.path, 'vector bundle');
   const suiteBytes = fs.readFileSync(suitePath);
   const actualHash = sha256(suiteBytes);
   if (actualHash !== suiteRef.sha256) throw new Error(`vector bundle drift: ${suiteRef.path}`);
-  const suite = JSON.parse(suiteBytes);
+  const suiteText = new TextDecoder('utf-8', { fatal: true }).decode(suiteBytes);
+  const suiteGate = strictParseGate(suiteText);
+  if (!suiteGate.ok) throw new Error(`frozen vector JSON refused: ${suiteRef.path}: ${suiteGate.reason}`);
+  const suite = JSON.parse(suiteText);
   let output;
   try {
     output = execFileSync(command, [...commandArgs, suitePath], {

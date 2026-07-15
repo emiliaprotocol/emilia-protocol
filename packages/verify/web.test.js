@@ -62,7 +62,15 @@ function makeCommitmentProof() {
 }
 
 // Mirrors test.js makeSignoff — a real P-256 assertion over an EP context.
-function makeSignoff({ tamperContext = null, flags = 0x05, type = 'webauthn.get', rpId = 'emiliaprotocol.ai' } = {}) {
+function makeSignoff({
+  tamperContext = null,
+  flags = 0x05,
+  type = 'webauthn.get',
+  rpId = 'emiliaprotocol.ai',
+  origin = 'https://www.emiliaprotocol.ai',
+  crossOrigin,
+  duplicateChallenge = false,
+} = {}) {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const context = {
     ep_version: '1.0', context_type: 'ep.signoff.v1',
@@ -71,7 +79,10 @@ function makeSignoff({ tamperContext = null, flags = 0x05, type = 'webauthn.get'
     issued_at: '2026-06-09T17:21:05.000Z', expires_at: '2026-06-09T17:26:05.000Z',
   };
   const challenge = crypto.createHash('sha256').update(canon(context), 'utf8').digest().toString('base64url');
-  const clientData = Buffer.from(JSON.stringify({ type, challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
+  const clientDataText = duplicateChallenge
+    ? `{"type":${JSON.stringify(type)},"challenge":${JSON.stringify(challenge)},"challenge":${JSON.stringify(challenge)},"origin":${JSON.stringify(origin)}}`
+    : JSON.stringify({ type, challenge, origin, ...(crossOrigin === undefined ? {} : { crossOrigin }) });
+  const clientData = Buffer.from(clientDataText, 'utf8');
   const authData = Buffer.concat([
     crypto.createHash('sha256').update(rpId, 'utf8').digest(),
     Buffer.from([flags]),
@@ -214,7 +225,10 @@ test('commitment proof: unsigned proof — explicit structure-only mode matches'
 
 test('signoff: valid device assertion — both verifiers accept, identically', async () => {
   const { signoff, spki } = makeSignoff();
-  await assertEquivalentSignoff(signoff, spki, { rpId: 'emiliaprotocol.ai' }, true);
+  await assertEquivalentSignoff(signoff, spki, {
+    rpId: 'emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  }, true);
 });
 
 test('signoff: tampered action — both reject (challenge no longer binds)', async () => {
@@ -229,6 +243,35 @@ test('signoff: no user verification — both reject', async () => {
 
 test('signoff: wrong relying party — both reject', async () => {
   const { signoff, spki } = makeSignoff({ rpId: 'evil.example' });
+  await assertEquivalentSignoff(signoff, spki, { rpId: 'emiliaprotocol.ai' }, false);
+});
+
+test('signoff: wrong or cross-origin ceremony — both reject', async () => {
+  const wrong = makeSignoff();
+  await assertEquivalentSignoff(wrong.signoff, wrong.spki, {
+    rpId: 'emiliaprotocol.ai',
+    allowedOrigins: ['https://admin.emiliaprotocol.ai'],
+  }, false);
+
+  const crossed = makeSignoff({ crossOrigin: true });
+  await assertEquivalentSignoff(crossed.signoff, crossed.spki, {
+    rpId: 'emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  }, false);
+});
+
+test('signoff: duplicate clientDataJSON member — both reject before interpretation', async () => {
+  const { signoff, spki } = makeSignoff({ duplicateChallenge: true });
+  await assertEquivalentSignoff(signoff, spki, {
+    rpId: 'emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  }, false);
+});
+
+test('signoff: DER signature with ignored trailing bytes — both reject', async () => {
+  const { signoff, spki } = makeSignoff();
+  const signature = Buffer.from(signoff.webauthn.signature, 'base64url');
+  signoff.webauthn.signature = Buffer.concat([signature, Buffer.from([0])]).toString('base64url');
   await assertEquivalentSignoff(signoff, spki, { rpId: 'emiliaprotocol.ai' }, false);
 });
 

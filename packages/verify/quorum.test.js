@@ -16,7 +16,7 @@ import { canonicalize } from './index.js';
 const suite = JSON.parse(
   readFileSync(new URL('../../conformance/vectors/quorum.v1.json', import.meta.url), 'utf8'),
 );
-const OPTS = { rpId: 'emiliaprotocol.ai' };
+const OPTS = { rpId: 'emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai', 'https://emiliaprotocol.ai'] };
 
 test('EP-QUORUM-v1: every conformance vector matches expect.valid', () => {
   for (const v of suite.vectors) {
@@ -157,4 +157,30 @@ test('EP-QUORUM-v1: one key in two seats is rejected even with distinct_humans:f
   // distinct_humans is DISABLED, so that check passes — proving key-uniqueness
   // is enforced independently, not as a side effect of separation-of-duties.
   assert.strictEqual(checks.distinct_humans, true, 'distinct_humans is off, so it passes');
+});
+
+test('EP-QUORUM-v1: a non-canonical SPKI encoding cannot fill a seat', () => {
+  const k = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const canonicalKey = spkiB64u(k.publicKey);
+  const paddedKey = `${canonicalKey}${'='.repeat((4 - canonicalKey.length % 4) % 4)}`;
+  assert.notEqual(canonicalKey, paddedKey, 'fixture needs two textual encodings');
+  const s1 = mintSignoff(ctx('ep:approver:alice', 'ent_agent_7', '2026-06-11T00:01:00.000Z', 'n1'), k.privateKey);
+  const s2 = mintSignoff(ctx('ep:approver:bob', 'ent_agent_7', '2026-06-11T00:02:00.000Z', 'n2'), k.privateKey);
+  const quorum = {
+    '@type': 'ep.quorum', action_hash: ACTION_HASH,
+    policy: {
+      mode: 'threshold', required: 2, distinct_humans: true, window_sec: 900,
+      approvers: [
+        { role: 'r1', approver: 'ep:approver:alice' },
+        { role: 'r2', approver: 'ep:approver:bob' },
+      ],
+    },
+    members: [
+      { role: 'r1', approver_public_key: canonicalKey, signoff: s1 },
+      { role: 'r2', approver_public_key: paddedKey, signoff: s2 },
+    ],
+  };
+  const { valid, checks } = verifyQuorum(quorum, OPTS);
+  assert.equal(valid, false);
+  assert.equal(checks.all_signatures_valid, false);
 });

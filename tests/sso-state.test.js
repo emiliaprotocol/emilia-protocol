@@ -7,7 +7,14 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
+import crypto from 'node:crypto';
 import { signState, verifyState } from '../lib/sso/state.js';
+
+function signedRawState(raw) {
+  const body = Buffer.from(raw, 'utf8').toString('base64url');
+  const mac = crypto.createHmac('sha256', 'test-secret-for-sso-state').update(body).digest('base64url');
+  return `${body}.${mac}`;
+}
 
 beforeAll(() => {
   process.env.SSO_STATE_SECRET = 'test-secret-for-sso-state';
@@ -35,6 +42,13 @@ describe('SSO state token', () => {
     expect(verifyState('')).toBeNull();
     expect(verifyState('no-dot')).toBeNull();
     expect(verifyState(undefined)).toBeNull();
+    expect(verifyState(`${signState({ tenant: 't' })}.extra`)).toBeNull();
+  });
+
+  it('rejects valid-MAC ambiguous JSON and a far-future issued-at', () => {
+    const now = Date.now();
+    expect(verifyState(signedRawState(`{"tenant":"safe","tenant":"attacker","iat":${now}}`))).toBeNull();
+    expect(verifyState(signedRawState(`{"tenant":"t","iat":${now + 120_000}}`))).toBeNull();
   });
 
   it('rejects an expired token', () => {

@@ -30,6 +30,7 @@ vi.mock('@/lib/sybil', () => ({
 }));
 
 vi.mock('@/lib/signatures', () => ({
+  buildIdentifiedSubmissionDigest: vi.fn(() => ({ digest: 'a'.repeat(64) })),
   resolveProvenanceTier: vi.fn(),
 }));
 
@@ -81,9 +82,18 @@ function makeChain(resolveValue = { data: null, error: null }) {
  *
  * @param {Object} handlers  key = table name, value = function(table) => chain
  */
-function makeSupabase(handlers = {}) {
+function makeSupabase(handlers = {}, { quotaResult = { count: 0, data: null, error: null } } = {}) {
+  let quotaPending = quotaResult !== null;
   return {
     from: vi.fn((table) => {
+      if (table === 'receipts' && quotaPending) {
+        quotaPending = false;
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockResolvedValue(quotaResult),
+        };
+      }
       if (handlers[table]) return handlers[table](table);
       return makeChain({ data: null, error: null });
     }),
@@ -91,7 +101,7 @@ function makeSupabase(handlers = {}) {
   };
 }
 
-const SUBMITTER = { id: 'submitter-uuid', emilia_score: 80 };
+const SUBMITTER = { id: 'submitter-uuid', emilia_score: 80, public_key: 'trusted-entity-spki' };
 const TARGET_ENTITY = { id: 'target-uuid', entity_id: 'target-slug' };
 
 function defaultHandlers(overrides = {}) {
@@ -383,6 +393,12 @@ describe('createReceipt — provenanceWarning and warnings array', () => {
 
     const result = await createReceipt(defaultParams({ signals: { delivery_accuracy: 90 } }));
     expect(result.warnings).toContain('Provenance downgraded: missing signature');
+    expect(mockResolveProvenanceTier).toHaveBeenLastCalledWith(
+      'self_attested',
+      'a'.repeat(64),
+      {},
+      'trusted-entity-spki',
+    );
   });
 
   it('does not include warnings key when no warnings or flags (line 521)', async () => {
@@ -631,12 +647,77 @@ describe('createReceipt — daily quota exceeded', () => {
     const db = makeSupabase({
       entities: () => makeChain({ data: TARGET_ENTITY, error: null }),
       receipts: () => quotaChain,
-    });
+    }, { quotaResult: { count: 500, data: null, error: null } });
     db.rpc = vi.fn().mockResolvedValue({ data: [{ established: false }] });
     mockGetServiceClient.mockReturnValue(db);
 
     const result = await createReceipt(defaultParams());
     expect(result.status).toBe(429);
     expect(result.error).toMatch(/Daily receipt limit/i);
+  });
+});
+
+describe('createReceipt — database trust boundaries fail closed', () => {
+  it('returns 503 when the target lookup fails instead of reporting a false 404', async () => {
+    const db = makeSupabase({
+      entities: () => makeChain({ data: null, error: { code: '08006', message: 'connection failure' } }),
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await createReceipt(defaultParams());
+    expect(result).toMatchObject({ status: 503, error: 'Target entity lookup unavailable' });
+  });
+
+  it('returns 503 when quota storage reports an error instead of treating usage as zero', async () => {
+    const db = makeSupabase({
+      entities: () => makeChain({ data: TARGET_ENTITY, error: null }),
+    }, { quotaResult: { count: null, data: null, error: { code: '57014', message: 'query cancelled' } } });
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await createReceipt(defaultParams());
+    expect(result).toMatchObject({ status: 503, error: 'Receipt quota service unavailable' });
+    expect(mockRunReceiptFraudChecks).not.toHaveBeenCalled();
+  });
+
+  it('returns 503 when the idempotency lookup is indeterminate', async () => {
+    const receipts = makeChain({ data: null, error: { code: '08006', message: 'connection failure' } });
+    const db = makeSupabase(defaultHandlers({ receipts: () => receipts }));
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await createReceipt(defaultParams());
+    expect(result).toMatchObject({ status: 503, error: 'Receipt idempotency service unavailable' });
+  });
+
+  it('returns 503 when the receipt-chain head cannot be established', async () => {
+    const receipts = makeChain();
+    receipts.single
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: { code: '08006', message: 'connection failure' } });
+    const db = makeSupabase(defaultHandlers({ receipts: () => receipts }));
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await createReceipt(defaultParams());
+    expect(result).toMatchObject({ status: 503, error: 'Receipt chain unavailable' });
+    expect(receipts.insert).not.toHaveBeenCalled();
+  });
+
+  it('does not misreport a chain-predecessor collision as a successful deduplication', async () => {
+    const receipts = makeChain();
+    receipts.single.mockResolvedValue({ data: null, error: null });
+    receipts.insert.mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: '23505', message: 'duplicate key on idx_receipts_single_child_per_parent' },
+      }),
+    });
+    const db = makeSupabase(defaultHandlers({ receipts: () => receipts }));
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await createReceipt(defaultParams());
+    expect(result.status).toBe(503);
+    expect(result.error).toMatch(/chain changed concurrently/i);
+    expect(result.deduplicated).toBeUndefined();
   });
 });

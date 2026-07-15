@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Offline authorization-receipt verification and hosted EMILIA Protocol operations from the command line.",
   "license": "Apache-2.0",
   "type": "module",
@@ -16,7 +16,7 @@
     "test": "node --test test/*.node.mjs"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "3.9.0"
+    "@emilia-protocol/verify": "3.10.0"
   },
   "engines": {
     "node": ">=18.19.0"

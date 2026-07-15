@@ -14,8 +14,12 @@ CREATE TABLE receipts (
   submitted_by      TEXT NOT NULL,
   composite_score   FLOAT NOT NULL CHECK (composite_score BETWEEN 0 AND 100),
   receipt_hash      TEXT NOT NULL,
+  previous_hash     TEXT,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX idx_receipts_single_child_per_parent
+  ON receipts (entity_id, COALESCE(previous_hash, 'root'));
 
 -- Hard gate: receipts are immutable — no updates, no deletes.
 CREATE OR REPLACE FUNCTION prevent_receipt_mutation()

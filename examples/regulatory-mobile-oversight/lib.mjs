@@ -393,6 +393,7 @@ export function verifyRegulatoryEvidence(evidence, trustBundle) {
       logPublicKey: trustBundle.log_public_key,
       strict: true,
       rpId: profile.rp_id,
+      allowedOrigins: profile.allowed_origins,
       expectedPolicyHash: trustBundle.expected_policy_hash,
     });
     checks.receipt = receiptResult.valid === true && receiptResult.strict?.valid === true;

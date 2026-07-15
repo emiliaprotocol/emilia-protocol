@@ -13,7 +13,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { requireReceiptForLangChainTool, _resetConsumed } from './index.js';
+import {
+  requireReceiptForLangChainTool,
+  guardAction,
+  withGuard,
+  _resetConsumed,
+} from './index.js';
 
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
@@ -125,7 +130,7 @@ test('per-call binding: receipt for target A cannot drive target B', async () =>
   assert.equal(tool.calls.length, 1);
 });
 
-test('transient tool failure does NOT consume the receipt (retryable)', async () => {
+test('indeterminate tool failure consumes the receipt and blocks automatic retry', async () => {
   _resetConsumed();
   let attempts = 0;
   const flaky = {
@@ -139,9 +144,10 @@ test('transient tool failure does NOT consume the receipt (retryable)', async ()
   const guarded = requireReceiptForLangChainTool(flaky, { action: 'payment.release', trustedKeys: [TRUSTED_KEY] });
   const r = mintReceipt({ action: 'payment.release' });
   await assert.rejects(() => guarded.invoke({ to: 'acct_1' }, cfg(r)), /transient downstream error/);
-  // The approval was NOT burned by the failure — the same receipt now succeeds.
-  const out = await guarded.invoke({ to: 'acct_1' }, cfg(r));
-  assert.deepEqual(out, { ok: true, ran: { to: 'acct_1' } });
+  // The downstream may have applied the effect before losing its response. The
+  // approval is burned, so the same receipt cannot duplicate the action.
+  await assert.rejects(() => guarded.invoke({ to: 'acct_1' }, cfg(r)), /EMILIA blocked/);
+  assert.equal(attempts, 1);
 });
 
 test('tool identity/name preserved through the proxy', async () => {
@@ -149,4 +155,81 @@ test('tool identity/name preserved through the proxy', async () => {
   const guarded = requireReceiptForLangChainTool(tool, { action: 'payment.release', trustedKeys: [TRUSTED_KEY] });
   assert.equal(guarded.name, 'wire_transfer');
   assert.equal(guarded.description, 'test tool');
+});
+
+test('actionFor is evaluated once and derivation failures block before tool execution', async () => {
+  _resetConsumed();
+  const tool = fakeTool();
+  let calls = 0;
+  const guarded = requireReceiptForLangChainTool(tool, {
+    actionFor: () => {
+      calls += 1;
+      return calls === 1 ? 'payment.release:acct_A' : 'payment.release:attacker';
+    },
+    trustedKeys: [TRUSTED_KEY],
+  });
+  await guarded.invoke({ to: 'acct_A' }, cfg(mintReceipt({ action: 'payment.release:acct_A' })));
+  assert.equal(calls, 1, 'a stateful mapper must not be re-evaluated after verification begins');
+
+  const blockedTool = fakeTool();
+  const blocked = requireReceiptForLangChainTool(blockedTool, {
+    actionFor: () => { throw new Error('bad input'); },
+    trustedKeys: [TRUSTED_KEY],
+  });
+  await assert.rejects(
+    () => blocked.invoke({}, cfg(mintReceipt({ action: 'payment.release' }))),
+    /action_binding_invalid/,
+  );
+  assert.equal(blockedTool.calls.length, 0);
+});
+
+function gateResponse(raw, { status = 200, ok = status >= 200 && status < 300 } = {}) {
+  return { status, ok, async json() { return raw; } };
+}
+
+test('legacy hosted guard allows only an explicit successful allow verdict', async () => {
+  const allowed = await guardAction({
+    action: 'payment.release',
+    fetchImpl: async () => gateResponse({ decision: 'allow' }),
+  });
+  assert.equal(allowed.allow, true);
+  assert.equal(allowed.deny, false);
+
+  for (const fetchImpl of [
+    async () => gateResponse({}),
+    async () => gateResponse({ decision: 'unexpected' }),
+    async () => gateResponse({ decision: 'allow' }, { status: 500, ok: false }),
+    async () => { throw new Error('network unavailable'); },
+  ]) {
+    const result = await guardAction({ action: 'payment.release', fetchImpl });
+    assert.equal(result.allow, false);
+    assert.equal(result.deny, true);
+  }
+
+  const review = await guardAction({
+    action: 'payment.release',
+    fetchImpl: async () => gateResponse({ decision: 'review' }),
+  });
+  assert.equal(review.allow, false);
+  assert.equal(review.signoffRequired, true);
+});
+
+test('legacy withGuard requires explicit verified signoff callback success', async () => {
+  const tool = fakeTool();
+  const fetchImpl = async () => gateResponse({ decision: 'review' });
+  const merelyNotified = withGuard(tool, {
+    action: 'payment.release',
+    fetchImpl,
+    onSignoff: async () => undefined,
+  });
+  await assert.rejects(() => merelyNotified.invoke({ amount: 10 }), /did not receive verified signoff/);
+  assert.equal(tool.calls.length, 0);
+
+  const approved = withGuard(tool, {
+    action: 'payment.release',
+    fetchImpl,
+    onSignoff: async () => ({ approved: true }),
+  });
+  await approved.invoke({ amount: 10 });
+  assert.equal(tool.calls.length, 1);
 });
