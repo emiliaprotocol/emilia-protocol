@@ -157,7 +157,16 @@ jobs:
           retention-days: 90
 
       - name: Publish the attested tarball through npm OIDC
-        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+          PACKAGE_NAME: ${{ inputs.package_name }}
+        run: |
+          VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
+          if npm view "${PACKAGE_NAME}@${VERSION}" version --min-release-age=0 >/dev/null 2>&1; then
+            echo "${PACKAGE_NAME}@${VERSION} already exists; continuing to mandatory byte verification."
+          else
+            npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
+          fi
 
       - name: Verify registry bytes match the attested tarball
         env:
@@ -168,7 +177,7 @@ jobs:
           VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
           mkdir -p registry-copy
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if npm pack "${PACKAGE_NAME}@${VERSION}" --json --pack-destination registry-copy > registry-copy/pack.json; then
+            if npm pack "${PACKAGE_NAME}@${VERSION}" --min-release-age=0 --json --pack-destination registry-copy > registry-copy/pack.json; then
               break
             fi
             sleep 5
