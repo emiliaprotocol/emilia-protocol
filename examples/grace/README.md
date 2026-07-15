@@ -1,13 +1,30 @@
-# GRACE — Proof-of-Curtailment (reference demo)
+# GRACE - Proof-of-Curtailment reference circuits
 
 **The verifiable receipt layer for grid-responsive AI compute, built for settlement.**
-A COSA × EMILIA composition: COSA moves the megawatts; EMILIA proves the move was authorized and delivered.
+A COSA and EMILIA composition: the actuator moves the load; EMILIA verifies the
+authorization and binds the resulting evidence.
 
 > When the grid asks an AI datacenter to reduce load, GRACE proves *who* authorized it,
 > *what* was allowed, *whether* the facility complied, and *what* should be paid — verifiable
 > by anyone, offline, without trusting the operator's own logs.
 
-## Run it
+## Run the mobile-to-settlement circuit
+
+```bash
+node examples/grace/live-control-room.mjs
+npx vitest run tests/grace-mobile-grid.test.js
+```
+
+This is the current end-to-end reference: two distinct Class-A mobile handshakes,
+bounded execution, signed COSA reference acknowledgment, separately signed meter
+evidence, an Action State `-02` Signed Statement, and one-time settlement. It also
+executes replay, action-substitution, and meter-rule-smuggling attacks and requires all
+three to refuse.
+
+The browser control room at `/grace/live` uses the same implementation. Every adapter
+is visibly marked as a reference simulation; no physical grid event is claimed.
+
+## Run the original receipt vector
 
 ```bash
 pip install emilia-verify cryptography
@@ -20,10 +37,11 @@ fresh clone of this repo runs as-is.
 ## What it shows (7 steps, ~1 second)
 
 1. **Authorize** — a named grid authority signs a bounded `grid.curtailment` order
-   (`facility`, `target_delta_w`, `window`, `protected_lanes`, `baseline_method_hash`, `expiry`).
+   (`facility`, `target_delta_kw`, `window`, `baseline_method_hash`, `expiry`).
 2. **Verify & gate** — the facility controller verifies it **offline, fail-closed**, against a
    *pinned* authority key. No valid order → no posture change.
-3. **Shed** — the scheduler (COSA in production) drops compute; watts fall from baseline to target.
+3. **Shed** — a scheduler adapter drops compute; the repository currently ships a signed COSA
+   reference adapter, not a production actuator integration.
 4. **Measure** — an **attested meter** signs the power telemetry. Distinct key from the authority
    (the same dual-key separation as COSA L5 authenticity vs EMILIA L7 authorization).
 5. **Prove** — delivered kWh = baseline − actual, integrated from the *signed* samples, against a
@@ -47,7 +65,10 @@ and input manipulation**. Necessary, not sufficient.
 
 ## Where this plugs in
 
-The shed actuator is **pluggable**: COSA is the reference backend, but any scheduler (k8s, Slurm,
+The shed actuator is **pluggable**: COSA is the first reference backend, but any scheduler (k8s, Slurm,
 Ray, or `nvidia-smi` power caps) can satisfy the same interface — *receipt in → posture change
 out → attested telemetry in → bundle out*. This demo simulates the meter and the shed so it runs
-on a laptop; the production demo swaps in a smart PDU on a live wattage graph and a real workload.
+on a laptop. A physical claim requires a host-approved workload controller and an independently
+keyed smart PDU or meter.
+
+See `docs/GRACE-MOBILE-COSA-ACTION-STATE.md` for the exact contracts and trust boundaries.

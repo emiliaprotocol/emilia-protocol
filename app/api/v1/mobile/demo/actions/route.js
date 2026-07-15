@@ -9,40 +9,40 @@ import { mobileJson, mobileProblem } from '@/lib/mobile/response.js';
 import { logger } from '@/lib/logger.js';
 import { checkRateLimit } from '@/lib/rate-limit.js';
 import { requirePermission } from '@/lib/cloud/authorize.js';
+import {
+  buildCurtailmentPresentation,
+  createCurtailmentAction,
+} from '@/lib/grace/mobile-grid.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
 const MEMBERS = new Set(['approver_id', 'scenario']);
 
-function scenario(name, actionReference) {
+function scenario(name, actionReference, approverId) {
   const common = { action_id: actionReference, requested_by: 'ep:agent:operations-copilot' };
   if (name === 'grid') {
     const earliestStart = new Date(Date.now() + 15 * 60_000).toISOString();
+    const latestEnd = new Date(Date.parse(earliestStart) + 90 * 60_000).toISOString();
+    const action = createCurtailmentAction({
+      actionId: actionReference,
+      facility: 'facility:us-west-dc-17',
+      targetDeltaKw: '18000',
+      notBefore: earliestStart,
+      notAfter: latestEnd,
+      issuedAt: new Date().toISOString(),
+      baselineMethodHash: `sha256:${crypto.createHash('sha256').update('CAISO-demo-baseline-v1').digest('hex')}`,
+      envelopeId: 'grace:envelope:demo-summer-2026',
+      requestedBy: common.requested_by,
+    });
     return {
-      action: {
-        '@type': 'grid.datacenter.curtailment',
-        ...common,
-        facility_id: 'us-west-dc-17',
-        requested_reduction_mw: 18,
-        duration_minutes: 90,
-        earliest_start: earliestStart,
-        grid_event: 'CAISO-stage-2-heat',
+      action,
+      presentation: buildCurtailmentPresentation(action),
+      policy: {
+        policy_id: 'emilia.demo.grid.v1',
+        max_reduction_kw: '20000',
+        human_approval: 'class_a',
+        required_approvals: 1,
+        approvers: [approverId],
       },
-      presentation: {
-        title: 'Reduce load by 18 MW',
-        summary: 'An autonomous grid coordinator is requesting a bounded data-center curtailment during a heat emergency.',
-        risk: 'critical infrastructure',
-        material_fields: {
-          facility: 'US West Data Center 17',
-          reduction: '18 MW',
-          duration: '90 minutes',
-          earliest_start: new Intl.DateTimeFormat('en-US', {
-            hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-          }).format(new Date(earliestStart)),
-          grid_event: 'CAISO Stage 2 heat event',
-        },
-        consequence: 'Approval permits one exact curtailment command. It does not authorize later or larger reductions.',
-      },
-      policy: { policy_id: 'emilia.demo.grid.v1', max_reduction_mw: 20, human_approval: 'class_a' },
     };
   }
   if (name === 'healthcare') {
@@ -126,7 +126,7 @@ export async function POST(request) {
       return mobileProblem(400, 'invalid_demo_action', 'approver_id or scenario is invalid');
     }
     const actionReference = `mobact_${crypto.randomBytes(16).toString('hex')}`;
-    const selected = scenario(scenarioName, actionReference);
+    const selected = scenario(scenarioName, actionReference, approverId);
     const expiresAt = new Date(Date.now() + 4 * 60 * 60_000).toISOString();
     await createDemoAction(getGuardedClient(), {
       action_reference: actionReference,

@@ -52,6 +52,8 @@ declare
   session_touched_wrong_key boolean;
   demo_created boolean;
   demo_created_again boolean;
+  grace_created boolean;
+  grace_created_again boolean;
 begin
   select mobile_state_add_if_absent('challenge:contract-0001', 'issued') into state_added;
   select mobile_state_add_if_absent('challenge:contract-0001', 'issued') into state_added_again;
@@ -114,6 +116,83 @@ begin
     raise exception 'policy-id substitution was accepted';
   end if;
 
+  select create_grace_mobile_action_group(
+    jsonb_build_array(
+      jsonb_build_object('action_reference', 'mobact_' || repeat('5', 32), 'approver_id', 'approver-grace-1'),
+      jsonb_build_object('action_reference', 'mobact_' || repeat('6', 32), 'approver_id', 'approver-grace-2')
+    ),
+    'entity-mobile-contract', 'ep:agent:grid',
+    jsonb_build_object(
+      '@version', 'EP-GRACE-CURTAILMENT-ACTION-v1',
+      'action_id', 'grace:event:contract-1',
+      'action_type', 'grid.curtailment',
+      'effect_class', 'power_reduction',
+      'facility', 'facility:contract-1',
+      'target_delta_kw', '30000',
+      'window', jsonb_build_object(
+        'not_before', '2099-07-15T20:15:00.000Z',
+        'not_after', '2099-07-15T21:45:00.000Z'
+      ),
+      'issued_at', '2099-07-15T20:00:00.000Z',
+      'expires_at', '2099-07-15T21:45:00.000Z',
+      'baseline_method_hash', 'sha256:' || repeat('b', 64),
+      'control_mode', 'human_on_the_loop',
+      'envelope_id', 'grace:envelope:contract-1',
+      'requested_by', 'ep:agent:grid'
+    ),
+    jsonb_build_object('title', 'Reduce load'),
+    jsonb_build_object(
+      'policy_id', 'ep:grace:contract:v1',
+      'action_family', 'grid.curtailment',
+      'human_approval', 'class_a',
+      'required_approvals', 2,
+      'approvers', jsonb_build_array('approver-grace-1', 'approver-grace-2'),
+      'hard_cut_threshold_kw', '25000'
+    ),
+    'ep:grace:contract:v1', now() + interval '1 day'
+  ) into grace_created;
+  select create_grace_mobile_action_group(
+    jsonb_build_array(
+      jsonb_build_object('action_reference', 'mobact_' || repeat('5', 32), 'approver_id', 'approver-grace-1'),
+      jsonb_build_object('action_reference', 'mobact_' || repeat('6', 32), 'approver_id', 'approver-grace-2')
+    ),
+    'entity-mobile-contract', 'ep:agent:grid',
+    jsonb_build_object(
+      '@version', 'EP-GRACE-CURTAILMENT-ACTION-v1',
+      'action_id', 'grace:event:contract-1',
+      'action_type', 'grid.curtailment',
+      'effect_class', 'power_reduction',
+      'facility', 'facility:contract-1',
+      'target_delta_kw', '30000',
+      'window', jsonb_build_object(
+        'not_before', '2099-07-15T20:15:00.000Z',
+        'not_after', '2099-07-15T21:45:00.000Z'
+      ),
+      'issued_at', '2099-07-15T20:00:00.000Z',
+      'expires_at', '2099-07-15T21:45:00.000Z',
+      'baseline_method_hash', 'sha256:' || repeat('b', 64),
+      'control_mode', 'human_on_the_loop',
+      'envelope_id', 'grace:envelope:contract-1',
+      'requested_by', 'ep:agent:grid'
+    ),
+    jsonb_build_object('title', 'Reduce load'),
+    jsonb_build_object(
+      'policy_id', 'ep:grace:contract:v1',
+      'action_family', 'grid.curtailment',
+      'human_approval', 'class_a',
+      'required_approvals', 2,
+      'approvers', jsonb_build_array('approver-grace-1', 'approver-grace-2'),
+      'hard_cut_threshold_kw', '25000'
+    ),
+    'ep:grace:contract:v1', now() + interval '1 day'
+  ) into grace_created_again;
+  if grace_created is not true or grace_created_again is not false then
+    raise exception 'GRACE action group did not commit atomically or refuse duplicate state';
+  end if;
+  if (select count(*) from mobile_actions where action ->> 'action_id' = 'grace:event:contract-1') <> 2 then
+    raise exception 'GRACE action group did not create one ceremony per approver';
+  end if;
+
   select enroll_mobile_device(
     'entity-mobile-contract',
     '00000000-0000-0000-0000-000000000001',
@@ -171,13 +250,24 @@ begin
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0001', 'sha256:' || repeat('a', 64),
-    'approved', 'verified', evidence_hash, atomic_record, atomic_body
+    'approved', 'verified',
+    jsonb_build_object(
+      'context', jsonb_build_object(
+        'action_hash', 'sha256:' || repeat('a', 64),
+        'decision', 'approved', 'approver', 'approver-1'
+      ),
+      'signoff', jsonb_build_object(
+        'key_class', 'A', 'context_hash', 'sha256:' || repeat('c', 64)
+      )
+    ),
+    evidence_hash, atomic_record, atomic_body
   ) into committed;
   if committed ->> 'ok' <> 'true' then raise exception 'atomic action/evidence commit failed: %', committed; end if;
   if not exists (
     select 1 from mobile_actions
     where entity_ref = 'entity-mobile-contract' and action_reference = 'action-0001'
       and status = 'approved' and decision_challenge_id = 'challenge-0001'
+      and decision_evidence -> 'signoff' ->> 'key_class' = 'A'
   ) then raise exception 'terminal action update missing'; end if;
   if not exists (
     select 1 from mobile_evidence_records
@@ -193,7 +283,17 @@ begin
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0002', 'sha256:' || repeat('d', 64),
-    'approved', 'verified', atomic_hash,
+    'approved', 'verified',
+    jsonb_build_object(
+      'context', jsonb_build_object(
+        'action_hash', 'sha256:' || repeat('d', 64),
+        'decision', 'approved', 'approver', 'approver-1'
+      ),
+      'signoff', jsonb_build_object(
+        'key_class', 'A', 'context_hash', 'sha256:' || repeat('0', 64)
+      )
+    ),
+    atomic_hash,
     jsonb_build_object(
       'seq', 2, 'prev_hash', atomic_hash,
       'record_id', 'mar_00000000000000000000000000000003',
@@ -248,7 +348,17 @@ begin
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0003', 'sha256:' || repeat('e', 64),
-    'approved', 'verified', atomic_hash, revoked_record, revoked_body
+    'approved', 'verified',
+    jsonb_build_object(
+      'context', jsonb_build_object(
+        'action_hash', 'sha256:' || repeat('e', 64),
+        'decision', 'approved', 'approver', 'approver-1'
+      ),
+      'signoff', jsonb_build_object(
+        'key_class', 'A', 'context_hash', 'sha256:' || repeat('f', 64)
+      )
+    ),
+    atomic_hash, revoked_record, revoked_body
   ) into committed;
   if committed ->> 'reason' <> 'session_inactive' then
     raise exception 'revoked-session commit did not fail closed: %', committed;
@@ -281,6 +391,11 @@ begin
        'create_mobile_demo_action(text,text,text,text,jsonb,jsonb,jsonb,text,timestamptz,timestamptz)',
        'EXECUTE'
      )
+     or has_function_privilege(
+       'anon',
+       'create_grace_mobile_action_group(jsonb,text,text,jsonb,jsonb,jsonb,text,timestamptz,timestamptz)',
+       'EXECUTE'
+     )
      or has_function_privilege('anon', 'append_mobile_evidence_record(text,text,jsonb,text)', 'EXECUTE')
      or has_function_privilege(
        'authenticated',
@@ -289,7 +404,7 @@ begin
      )
      or has_function_privilege(
        'anon',
-       'commit_mobile_action_decision(text,uuid,text,text,text,text,text,jsonb,text,timestamptz)',
+       'commit_mobile_action_decision(text,uuid,text,text,text,text,jsonb,text,jsonb,text,timestamptz)',
        'EXECUTE'
      ) then
     raise exception 'public database privilege exposed';

@@ -44,6 +44,8 @@ function fixture({
   key = p256(),
   challengeId = `mob_${crypto.randomBytes(8).toString('hex')}`,
   nonce = `sig_${crypto.randomBytes(16).toString('hex')}`,
+  approverIndex = 1,
+  requiredApprovals = 1,
 } = {}) {
   const credentialId = crypto.randomBytes(32).toString('base64url');
   const deviceKeyId = `ep:key:mobile-${platform}-${crypto.randomBytes(4).toString('hex')}`;
@@ -80,6 +82,8 @@ function fixture({
     policyId: 'gov-benefits-high-risk-v1',
     initiatorId: 'ep:agent:benefits-assistant',
     approverId: 'ep:approver:case-supervisor',
+    approverIndex,
+    requiredApprovals,
     decision,
     presentation: {
       title: 'Payment destination change',
@@ -173,6 +177,14 @@ test('verifies iOS and Android ceremonies as the same Class-A evidence shape', a
     assert.equal(result.class_a.context.mobile_binding.platform, platform);
     assert.deepEqual(Object.values(result.checks), Array(Object.keys(result.checks).length).fill(true));
   }
+});
+
+test('binds a mobile handshake to its true multi-approver index and threshold', async () => {
+  const item = fixture({ approverIndex: 3, requiredApprovals: 2 });
+  const result = await verifyMobileCeremony({ ...item, now: NOW });
+  assert.equal(result.valid, true);
+  assert.equal(result.class_a.context.approver_index, 3);
+  assert.equal(result.class_a.context.required_approvals, 2);
 });
 
 test('signed denial is a terminal evidence outcome, not relabeled approval', async () => {

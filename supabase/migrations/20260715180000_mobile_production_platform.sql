@@ -134,6 +134,7 @@ create table if not exists mobile_actions (
   status text not null default 'pending' check (status in ('pending', 'approved', 'denied', 'expired', 'cancelled')),
   decision_challenge_id text,
   decision_verdict text,
+  decision_evidence jsonb,
   decided_at timestamptz,
   expires_at timestamptz not null,
   created_at timestamptz not null default now(),
@@ -143,6 +144,8 @@ create table if not exists mobile_actions (
 
 create index if not exists mobile_actions_inbox_idx
   on mobile_actions (entity_ref, approver_id, status, created_at desc);
+create unique index if not exists mobile_actions_entity_action_approver_idx
+  on mobile_actions (entity_ref, (action ->> 'action_id'), approver_id);
 
 create table if not exists mobile_action_challenges (
   challenge_id text primary key check (char_length(challenge_id) between 8 and 256),
@@ -364,6 +367,133 @@ begin
     p_action_reference, p_entity_ref, p_approver_id, p_initiator_id, p_action,
     p_presentation, p_policy, p_policy_id, p_expires_at
   );
+  return true;
+exception when unique_violation or check_violation or foreign_key_violation or not_null_violation then
+  return false;
+end;
+$$;
+
+create or replace function create_grace_mobile_action_group(
+  p_assignments jsonb,
+  p_entity_ref text,
+  p_initiator_id text,
+  p_action jsonb,
+  p_presentation jsonb,
+  p_policy jsonb,
+  p_policy_id text,
+  p_expires_at timestamptz,
+  p_now timestamptz default now()
+) returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  assignment_count integer;
+  required_count integer;
+  assignment_approvers jsonb;
+  target_delta_kw numeric;
+  hard_cut_threshold_kw numeric;
+begin
+  if p_assignments is null
+     or jsonb_typeof(p_assignments) <> 'array'
+     or p_entity_ref is null
+     or p_initiator_id is null
+     or char_length(p_initiator_id) not between 3 and 256
+     or p_action is null
+     or jsonb_typeof(p_action) <> 'object'
+     or p_action ->> '@version' is distinct from 'EP-GRACE-CURTAILMENT-ACTION-v1'
+     or p_action ->> 'action_type' is distinct from 'grid.curtailment'
+     or p_action ->> 'effect_class' is distinct from 'power_reduction'
+     or p_action ->> 'control_mode' not in ('human_on_the_loop', 'human_in_the_loop')
+     or char_length(coalesce(p_action ->> 'action_id', '')) not between 3 and 256
+     or char_length(coalesce(p_action ->> 'facility', '')) not between 3 and 256
+     or coalesce(p_action ->> 'target_delta_kw', '') !~ '^(0|[1-9][0-9]*)(\.[0-9]{1,3})?$'
+     or coalesce(p_action ->> 'baseline_method_hash', '') !~ '^sha256:[0-9a-f]{64}$'
+     or char_length(coalesce(p_action ->> 'envelope_id', '')) not between 3 and 256
+     or char_length(coalesce(p_action ->> 'requested_by', '')) not between 3 and 256
+     or p_action - array[
+       '@version', 'action_id', 'action_type', 'effect_class', 'facility',
+       'target_delta_kw', 'window', 'issued_at', 'expires_at',
+       'baseline_method_hash', 'control_mode', 'envelope_id', 'requested_by'
+     ] <> '{}'::jsonb
+     or p_presentation is null
+     or jsonb_typeof(p_presentation) <> 'object'
+     or p_policy is null
+     or jsonb_typeof(p_policy) <> 'object'
+     or p_policy_id is null
+     or char_length(p_policy_id) not between 3 and 128
+     or p_policy ->> 'policy_id' is distinct from p_policy_id
+     or p_policy ->> 'action_family' is distinct from 'grid.curtailment'
+     or p_policy ->> 'human_approval' is distinct from 'class_a'
+     or jsonb_typeof(p_policy -> 'approvers') <> 'array'
+     or coalesce(p_policy ->> 'required_approvals', '') !~ '^[1-9][0-9]*$'
+     or char_length(coalesce(p_policy ->> 'required_approvals', '')) > 2
+     or coalesce(p_policy ->> 'hard_cut_threshold_kw', '') !~ '^[1-9][0-9]*$'
+     or p_policy - array[
+       'policy_id', 'action_family', 'human_approval', 'required_approvals',
+       'approvers', 'hard_cut_threshold_kw'
+     ] <> '{}'::jsonb
+     or p_expires_at is null
+     or p_now is null
+     or p_expires_at <= p_now
+     or octet_length(p_action::text) > 65536
+     or octet_length(p_presentation::text) > 65536
+     or octet_length(p_policy::text) > 16384 then
+    return false;
+  end if;
+
+  assignment_count := jsonb_array_length(p_assignments);
+  begin
+    required_count := (p_policy ->> 'required_approvals')::integer;
+    target_delta_kw := (p_action ->> 'target_delta_kw')::numeric;
+    hard_cut_threshold_kw := (p_policy ->> 'hard_cut_threshold_kw')::numeric;
+  exception when others then
+    return false;
+  end;
+
+  if assignment_count not between 1 and 16
+     or required_count > assignment_count
+     or target_delta_kw <= 0
+     or (target_delta_kw >= hard_cut_threshold_kw and required_count < 2)
+     or jsonb_array_length(p_policy -> 'approvers') <> assignment_count
+     or exists (
+       select 1 from jsonb_array_elements(p_assignments) item
+       where jsonb_typeof(item) <> 'object'
+          or item - 'action_reference' - 'approver_id' <> '{}'::jsonb
+          or coalesce(item ->> 'action_reference', '') !~ '^mobact_[0-9a-f]{32}$'
+          or char_length(coalesce(item ->> 'approver_id', '')) not between 3 and 128
+     )
+     or exists (
+       select 1
+       from jsonb_array_elements(p_assignments) item
+       group by item ->> 'action_reference'
+       having count(*) > 1
+     )
+     or exists (
+       select 1
+       from jsonb_array_elements(p_assignments) item
+       group by item ->> 'approver_id'
+       having count(*) > 1
+     ) then
+    return false;
+  end if;
+
+  select jsonb_agg(item ->> 'approver_id' order by ordinal)
+    into assignment_approvers
+    from jsonb_array_elements(p_assignments) with ordinality a(item, ordinal);
+  if assignment_approvers is distinct from p_policy -> 'approvers' then
+    return false;
+  end if;
+
+  insert into mobile_actions(
+    action_reference, entity_ref, approver_id, initiator_id, action, presentation,
+    policy, policy_id, expires_at
+  )
+  select
+    item ->> 'action_reference', p_entity_ref, item ->> 'approver_id', p_initiator_id,
+    p_action, p_presentation, p_policy, p_policy_id, p_expires_at
+  from jsonb_array_elements(p_assignments) item;
   return true;
 exception when unique_violation or check_violation or foreign_key_violation or not_null_violation then
   return false;
@@ -708,6 +838,7 @@ end;
 $$;
 
 drop function if exists commit_mobile_action_decision(text, text, text, text, text, timestamptz);
+drop function if exists commit_mobile_action_decision(text, uuid, text, text, text, text, text, jsonb, text, timestamptz);
 
 create or replace function commit_mobile_action_decision(
   p_entity_ref text,
@@ -716,6 +847,7 @@ create or replace function commit_mobile_action_decision(
   p_action_hash text,
   p_decision text,
   p_verdict text,
+  p_decision_evidence jsonb,
   p_expected_hash text,
   p_record jsonb,
   p_canonical_body text,
@@ -737,6 +869,13 @@ declare
 begin
   if p_entity_ref is null
      or p_session_id is null
+     or p_challenge_id is null
+     or char_length(p_challenge_id) not between 8 and 256
+     or coalesce(p_action_hash, '') !~ '^sha256:[0-9a-f]{64}$'
+     or p_decision is null
+     or p_decision not in ('approved', 'denied')
+     or p_verdict is distinct from 'verified'
+     or p_now is null
      or jsonb_typeof(p_record) <> 'object'
      or p_canonical_body is null
      or octet_length(p_canonical_body) > 1048576
@@ -745,12 +884,24 @@ begin
      or coalesce(p_record ->> 'prev_hash', '') !~ '^(genesis|[0-9a-f]{64})$'
      or jsonb_typeof(p_record -> 'seq') <> 'number'
      or coalesce(p_record ->> 'seq', '') !~ '^(0|[1-9][0-9]*)$'
-     or p_record ->> 'event_type' <> 'mobile.ceremony.decision'
-     or p_record ->> 'session_id' <> p_session_id::text
-     or p_record ->> 'challenge_id' <> p_challenge_id
-     or p_record ->> 'action_hash' <> p_action_hash
-     or p_record ->> 'decision' <> p_decision
-     or p_record ->> 'verdict' <> p_verdict then
+     or p_record ->> 'event_type' is distinct from 'mobile.ceremony.decision'
+     or p_record ->> 'session_id' is distinct from p_session_id::text
+     or p_record ->> 'challenge_id' is distinct from p_challenge_id
+     or p_record ->> 'action_hash' is distinct from p_action_hash
+     or p_record ->> 'decision' is distinct from p_decision
+     or p_record ->> 'verdict' is distinct from p_verdict
+     or char_length(coalesce(p_record ->> 'approver_id', '')) not between 3 and 128
+     or coalesce(p_record ->> 'context_hash', '') !~ '^sha256:[0-9a-f]{64}$'
+     or p_decision_evidence is null
+     or jsonb_typeof(p_decision_evidence) is distinct from 'object'
+     or jsonb_typeof(p_decision_evidence -> 'context') is distinct from 'object'
+     or jsonb_typeof(p_decision_evidence -> 'signoff') is distinct from 'object'
+     or p_decision_evidence -> 'context' ->> 'action_hash' is distinct from p_action_hash
+     or p_decision_evidence -> 'context' ->> 'decision' is distinct from p_decision
+     or p_decision_evidence -> 'context' ->> 'approver' is distinct from p_record ->> 'approver_id'
+     or p_decision_evidence -> 'signoff' ->> 'key_class' is distinct from 'A'
+     or p_decision_evidence -> 'signoff' ->> 'context_hash' is distinct from p_record ->> 'context_hash'
+     or octet_length(p_decision_evidence::text) > 262144 then
     return jsonb_build_object('ok', false, 'reason', 'malformed');
   end if;
 
@@ -815,6 +966,7 @@ begin
   set status = p_decision,
       decision_challenge_id = p_challenge_id,
       decision_verdict = p_verdict,
+      decision_evidence = p_decision_evidence,
       decided_at = p_now,
       updated_at = p_now
   where action_reference = mapping.action_reference
@@ -863,6 +1015,8 @@ revoke all on function create_mobile_pairing(text, text, text, text, jsonb, time
 revoke all on function touch_mobile_session(uuid, text, timestamptz) from anon, authenticated, public;
 revoke all on function create_mobile_demo_action(text, text, text, text, jsonb, jsonb, jsonb, text, timestamptz, timestamptz)
   from anon, authenticated, public;
+revoke all on function create_grace_mobile_action_group(jsonb, text, text, jsonb, jsonb, jsonb, text, timestamptz, timestamptz)
+  from anon, authenticated, public;
 revoke all on function exchange_mobile_pairing(text, text, text, text, timestamptz) from anon, authenticated, public;
 revoke all on function advance_mobile_counter(text, bigint) from anon, authenticated, public;
 revoke all on function append_mobile_audit_event(text, jsonb) from anon, authenticated, public;
@@ -871,7 +1025,7 @@ revoke all on function enroll_mobile_device(text, uuid, jsonb, jsonb) from anon,
 revoke all on function revoke_mobile_session(text, uuid, timestamptz) from anon, authenticated, public;
 revoke all on function register_mobile_action_challenge(text, uuid, text, text, text, text, text, timestamptz, timestamptz)
   from anon, authenticated, public;
-revoke all on function commit_mobile_action_decision(text, uuid, text, text, text, text, text, jsonb, text, timestamptz)
+revoke all on function commit_mobile_action_decision(text, uuid, text, text, text, text, jsonb, text, jsonb, text, timestamptz)
   from anon, authenticated, public;
 
 revoke insert, update, delete, truncate, references, trigger on mobile_kv_state, mobile_pairings, mobile_sessions,
@@ -889,6 +1043,8 @@ grant execute on function create_mobile_pairing(text, text, text, text, jsonb, t
 grant execute on function touch_mobile_session(uuid, text, timestamptz) to service_role;
 grant execute on function create_mobile_demo_action(text, text, text, text, jsonb, jsonb, jsonb, text, timestamptz, timestamptz)
   to service_role;
+grant execute on function create_grace_mobile_action_group(jsonb, text, text, jsonb, jsonb, jsonb, text, timestamptz, timestamptz)
+  to service_role;
 grant execute on function exchange_mobile_pairing(text, text, text, text, timestamptz) to service_role;
 grant execute on function advance_mobile_counter(text, bigint) to service_role;
 grant execute on function append_mobile_audit_event(text, jsonb) to service_role;
@@ -897,5 +1053,5 @@ grant execute on function enroll_mobile_device(text, uuid, jsonb, jsonb) to serv
 grant execute on function revoke_mobile_session(text, uuid, timestamptz) to service_role;
 grant execute on function register_mobile_action_challenge(text, uuid, text, text, text, text, text, timestamptz, timestamptz)
   to service_role;
-grant execute on function commit_mobile_action_decision(text, uuid, text, text, text, text, text, jsonb, text, timestamptz)
+grant execute on function commit_mobile_action_decision(text, uuid, text, text, text, text, jsonb, text, jsonb, text, timestamptz)
   to service_role;

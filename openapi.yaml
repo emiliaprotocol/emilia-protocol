@@ -9,7 +9,7 @@ info:
     Supporting line for AI-native contexts: MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.
 
     Extensions include Handshake for pre-action trust enforcement and Accountable Signoff when policy requires named human ownership.
-  version: 1.1.0
+  version: 1.2.0
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
@@ -64,6 +64,8 @@ tags:
     description: Accountable Signoff — named human ownership for high-risk actions requiring explicit attestation
   - name: Mobile Approval
     description: Native passkey approval, platform attestation, pairing, and exact-action ceremonies
+  - name: GRACE
+    description: Bounded grid-curtailment authorization and reference evidence composition
   - name: GovGuard
     description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
@@ -4621,6 +4623,136 @@ paths:
         '404': { description: Mobile demo injection is disabled }
         '429': { description: Demo action rate exceeded }
         '503': { description: Demo action service unavailable }
+
+  # ===========================================================================
+  # GRACE grid curtailment
+  # ===========================================================================
+
+  /api/v1/grace/curtailment/actions:
+    post:
+      tags: [GRACE]
+      operationId: createGraceCurtailmentActionGroup
+      summary: Create one bounded grid-curtailment approval group
+      description: |
+        Canonicalizes one `grid.curtailment` action and atomically creates the
+        named mobile-approver assignments. The relying-party policy, exact
+        approval surface, action digest, approver order, and threshold are
+        server-derived. A curtailment at or above the configured hard-cut floor
+        requires at least two distinct approvers.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - action_id
+                - facility
+                - target_delta_kw
+                - not_before
+                - not_after
+                - baseline_method_hash
+                - envelope_id
+                - initiator_id
+                - approver_ids
+                - required_approvals
+              properties:
+                action_id: { type: string, minLength: 3, maxLength: 256 }
+                facility: { type: string, minLength: 3, maxLength: 256 }
+                target_delta_kw:
+                  type: string
+                  pattern: '^(0|[1-9][0-9]*)(\.[0-9]{1,3})?$'
+                  description: Positive decimal kilowatts, encoded as a string.
+                not_before: { type: string, format: date-time }
+                not_after: { type: string, format: date-time }
+                baseline_method_hash:
+                  type: string
+                  pattern: '^sha256:[0-9a-f]{64}$'
+                envelope_id: { type: string, minLength: 3, maxLength: 256 }
+                initiator_id: { type: string, minLength: 3, maxLength: 256 }
+                approver_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 16
+                  uniqueItems: true
+                  items:
+                    type: string
+                    pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+                required_approvals: { type: integer, minimum: 1, maximum: 16 }
+                control_mode:
+                  type: string
+                  enum: [human_on_the_loop, human_in_the_loop]
+                  default: human_on_the_loop
+      responses:
+        '201':
+          description: Canonical action and mobile approval group created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [action_id, action_hash, required_approvals, assignments, expires_at]
+                properties:
+                  action_id: { type: string }
+                  action_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  required_approvals: { type: integer }
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [action_reference, approver_id]
+                      properties:
+                        action_reference: { type: string, pattern: '^mobact_[0-9a-f]{32}$' }
+                        approver_id: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '400': { description: Malformed action or insufficient hard-cut quorum }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '415': { description: Request is not application/json }
+        '429': { description: Action-creation rate exceeded }
+        '503': { description: Durable GRACE action service unavailable }
+
+  /api/v1/grace/reference-scenario:
+    get:
+      tags: [GRACE]
+      operationId: runGraceReferenceScenario
+      summary: Run the public signed GRACE reference composition
+      description: |
+        Runs a synthetic 18 MW scenario through two Class-A mobile approvals,
+        bounded one-time dispatch, separately signed actuator and meter evidence,
+        an Action State COSE Signed Statement, one-time entitlement redemption,
+        and hostile replay cases. Cryptographic verification is real; the
+        adapters are simulations and this endpoint makes no physical-grid claim.
+      security: []
+      responses:
+        '200':
+          description: Completed reference proof and hostile-refusal results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, reference_only, physical_claim, action, action_hash, authorization, acknowledgment, meter_statement, compliance, action_state, settlement, attacks, pins]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  reference_only: { type: boolean, enum: [true] }
+                  physical_claim: { type: boolean, enum: [false] }
+                  description: { type: string }
+                  action: { type: object }
+                  action_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  authorization: { type: object }
+                  acknowledgment: { type: object }
+                  meter_statement: { type: object }
+                  compliance: { type: object }
+                  action_state: { type: object }
+                  settlement: { type: object }
+                  attacks: { type: object }
+                  pins: { type: object }
+        '429': { description: Public reference-run rate exceeded }
+        '503': { description: Reference scenario unavailable }
 components:
   securitySchemes:
     BearerAuth:

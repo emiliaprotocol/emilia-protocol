@@ -10,6 +10,7 @@ import {
   authenticateMobileToken,
   commitMobileActionDecision,
   createDemoAction,
+  createGraceMobileActionGroup,
   createMobileAuditLog,
   createMobileCounterStore,
   createMobileEnrollmentDirectory,
@@ -339,6 +340,10 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
+      decisionEvidence: {
+        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
+        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
+      },
       auditEntry: {
         event_type: 'mobile.ceremony.decision',
         challenge_id: 'challenge-0001',
@@ -372,6 +377,10 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
+      decisionEvidence: {
+        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
+        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
+      },
       auditEntry: {
         event_type: 'mobile.ceremony.decision',
         challenge_id: 'challenge-0001',
@@ -401,6 +410,10 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
+      decisionEvidence: {
+        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
+        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
+      },
       auditEntry: {
         event_type: 'mobile.ceremony.decision',
         challenge_id: 'challenge-0001',
@@ -427,6 +440,10 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
+      decisionEvidence: {
+        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
+        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
+      },
       auditEntry: {
         event_type: 'mobile.ceremony.decision',
         challenge_id: 'challenge-0001',
@@ -471,6 +488,36 @@ describe('durable mobile storage adapters', () => {
     expect(rpc).toHaveBeenCalledWith('create_mobile_demo_action', expect.objectContaining({
       p_entity_ref: 'entity-1',
       p_action_reference: demo.action_reference,
+    }));
+  });
+
+  it('creates a GRACE approval group through one atomic RPC using snapshots', async () => {
+    rpc.mockResolvedValueOnce({ data: true, error: null });
+    const assignments = [
+      { action_reference: `mobact_${'1'.repeat(32)}`, approver_id: 'ep:approver:grid' },
+      { action_reference: `mobact_${'2'.repeat(32)}`, approver_id: 'ep:approver:facility' },
+    ];
+    const result = await createGraceMobileActionGroup({ rpc }, {
+      assignments,
+      entityRef: 'entity-1',
+      initiatorId: 'ep:agent:grid',
+      action: { '@version': 'EP-GRACE-CURTAILMENT-ACTION-v1', action_type: 'grid.curtailment' },
+      presentation: { title: 'Reduce load' },
+      policy: {
+        policy_id: 'ep:grace:v1',
+        required_approvals: 2,
+        approvers: assignments.map((item) => item.approver_id),
+      },
+      policyId: 'ep:grace:v1',
+      expiresAt: '2099-07-15T21:45:00.000Z',
+    });
+    assignments[0].approver_id = 'attacker';
+    expect(result[0].approver_id).toBe('ep:approver:grid');
+    expect(rpc).toHaveBeenCalledWith('create_grace_mobile_action_group', expect.objectContaining({
+      p_entity_ref: 'entity-1',
+      p_assignments: expect.arrayContaining([
+        expect.objectContaining({ approver_id: 'ep:approver:grid' }),
+      ]),
     }));
   });
 });

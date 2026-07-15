@@ -49,23 +49,23 @@ final class ApprovalViewModel: ObservableObject {
 #if DEBUG
         guard arguments.contains("-emilia-reference-demo") else { return }
         let action = MobileAPI.InboxAction(
-            actionReference: "demo:grid:curtailment:campus-3:20260715T2110Z",
-            title: "Approve 40 MW curtailment",
-            summary: "Hold AI campus load at 78 MW for 15 minutes during a regional grid emergency.",
+            actionReference: "grace:event:caiso-reference-0042",
+            title: "Approve 18 MW curtailment",
+            summary: "Reduce facility load from 64 MW to approximately 46 MW for 90 minutes.",
             risk: "critical",
             materialFields: [
-                "campus": "Northern Virginia AI Campus 3",
-                "power_reduction": "40 MW",
-                "window": "2:10-2:25 PM ET",
-                "trigger": "PJM emergency instruction",
-                "maximum_payment": "$28,000",
+                "facility": "US West AI Data Center 17",
+                "power_reduction": "18 MW",
+                "window": "1:15-2:45 PM PT",
+                "trigger": "CAISO reference dispatch",
+                "approval_rule": "2-person Class-A quorum",
             ],
-            expiresAt: "2026-07-15T21:12:00.000Z",
-            createdAt: "2026-07-15T21:09:00.000Z"
+            expiresAt: "2026-07-15T21:45:00.000Z",
+            createdAt: "2026-07-15T20:00:00.000Z"
         )
         accessToken = "debug-reference-demo"
-        approverID = "grid-duty-officer"
-        profileID = "us-grid-critical-action-v1"
+        approverID = "ep:approver:grid-operator"
+        profileID = "ep:grace:mobile-curtailment:v1"
         deviceKeyID = "ep:key:debug-reference-device"
         appAttestKeyID = "appattest:debug-reference-key"
         sessionExpiresAt = "2026-07-15T22:00:00.000Z"

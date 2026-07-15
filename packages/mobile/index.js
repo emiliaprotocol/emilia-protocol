@@ -350,6 +350,8 @@ export function buildMobileAuthorizationContext({
   policyHash = null,
   initiatorId,
   approverId,
+  approverIndex = 1,
+  requiredApprovals = 1,
   nonce,
   issuedAt,
   expiresAt,
@@ -363,7 +365,10 @@ export function buildMobileAuthorizationContext({
   attestationKeyId,
 } = {}) {
   if (!validHash(actionHash) || (policyHash !== null && !validHash(policyHash))
-      || !validId(initiatorId) || !validId(approverId) || !validId(nonce)
+      || !validId(initiatorId) || !validId(approverId)
+      || !Number.isSafeInteger(approverIndex) || approverIndex < 1 || approverIndex > 1024
+      || !Number.isSafeInteger(requiredApprovals) || requiredApprovals < 1 || requiredApprovals > 1024
+      || !validId(nonce)
       || parseInstant(issuedAt) === null || parseInstant(expiresAt) === null
       || parseInstant(issuedAt) >= parseInstant(expiresAt)
       || !['approved', 'denied'].includes(decision) || !validHash(displayHash)
@@ -380,8 +385,8 @@ export function buildMobileAuthorizationContext({
     policy_hash: policyHash,
     initiator: initiatorId,
     approver: approverId,
-    approver_index: 1,
-    required_approvals: 1,
+    approver_index: approverIndex,
+    required_approvals: requiredApprovals,
     nonce,
     issued_at: issuedAt,
     expires_at: expiresAt,
@@ -423,6 +428,8 @@ export function createMobileChallenge({
   policyId = null,
   initiatorId,
   approverId,
+  approverIndex = 1,
+  requiredApprovals = 1,
   decision,
   presentation,
   platform,
@@ -459,6 +466,8 @@ export function createMobileChallenge({
     policyHash: computedPolicyHash,
     initiatorId,
     approverId,
+    approverIndex,
+    requiredApprovals,
     nonce,
     issuedAt,
     expiresAt,
@@ -540,8 +549,12 @@ function validContextShape(context) {
     && Object.keys(context).every((key) => CONTEXT_MEMBERS.has(key))
     && context.ep_version === '1.0'
     && context.context_type === 'ep.signoff.v1'
-    && context.approver_index === 1
-    && context.required_approvals === 1
+    && Number.isSafeInteger(context.approver_index)
+    && Number.isSafeInteger(context.required_approvals)
+    && context.approver_index >= 1
+    && context.required_approvals >= 1
+    && context.approver_index <= 1024
+    && context.required_approvals <= 1024
     && ['approved', 'denied'].includes(context.decision)
     && isRecord(context.mobile_binding)
     && Object.keys(context.mobile_binding).every((key) => MOBILE_BINDING_MEMBERS.has(key))

@@ -120,6 +120,7 @@ const ROUTE_POLICIES = {
   'POST /api/v1/mobile/enrollments':            { rateCategory: 'mobile_runtime_ip', useAuth: false },
   'DELETE /api/v1/mobile/session':              { rateCategory: 'mobile_runtime_ip', useAuth: false },
   'POST /api/v1/mobile/demo/actions':           { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/grace/curtailment/actions':      { rateCategory: 'protocol_write', useAuth: true },
   // GovGuard + FinGuard demo adapters (MD §8) — thin façades over
   // /api/v1/trust-receipts pre-filled for specific workflows. Same auth +
   // rate posture as the underlying create endpoint. All implemented via

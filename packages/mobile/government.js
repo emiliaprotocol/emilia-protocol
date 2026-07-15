@@ -93,6 +93,8 @@ export function createGovernmentMobileController({
         policyId: resolved.policy_id || null,
         initiatorId: resolved.initiator_id,
         approverId: resolved.approver_id,
+        approverIndex: resolved.approver_index || 1,
+        requiredApprovals: resolved.required_approvals || 1,
         decision: request.decision,
         presentation: resolved.presentation,
         platform: request.platform,

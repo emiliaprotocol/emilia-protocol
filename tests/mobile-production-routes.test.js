@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   listMobileActions: vi.fn(),
   revokeMobileSession: vi.fn(),
   createDemoAction: vi.fn(),
+  createGraceMobileActionGroup: vi.fn(),
   loggerError: vi.fn(),
 }));
 
@@ -31,6 +32,7 @@ vi.mock('@/lib/mobile/store.js', () => ({
   listMobileActions: (...args) => mocks.listMobileActions(...args),
   revokeMobileSession: (...args) => mocks.revokeMobileSession(...args),
   createDemoAction: (...args) => mocks.createDemoAction(...args),
+  createGraceMobileActionGroup: (...args) => mocks.createGraceMobileActionGroup(...args),
 }));
 vi.mock('@/lib/logger.js', () => ({
   logger: { error: (...args) => mocks.loggerError(...args) },
@@ -41,6 +43,8 @@ const exchangeRoute = await import('@/app/api/v1/mobile/pairings/exchange/route.
 const inboxRoute = await import('@/app/api/v1/mobile/inbox/route.js');
 const sessionRoute = await import('@/app/api/v1/mobile/session/route.js');
 const demoRoute = await import('@/app/api/v1/mobile/demo/actions/route.js');
+const graceRoute = await import('@/app/api/v1/grace/curtailment/actions/route.js');
+const graceReferenceRoute = await import('@/app/api/v1/grace/reference-scenario/route.js');
 const appleAssociation = await import('@/app/.well-known/apple-app-site-association/route.js');
 const androidAssociation = await import('@/app/.well-known/assetlinks.json/route.js');
 
@@ -121,6 +125,7 @@ describe('native pairing, inbox, and terminal session routes', () => {
     mocks.listMobileActions.mockResolvedValue([]);
     mocks.revokeMobileSession.mockResolvedValue(true);
     mocks.createDemoAction.mockResolvedValue('mobact_1');
+    mocks.createGraceMobileActionGroup.mockImplementation(async (_client, input) => input.assignments);
   });
 
   afterEach(() => {
@@ -230,8 +235,8 @@ describe('native pairing, inbox, and terminal session routes', () => {
     expect(response.status).toBe(201);
     const inserted = mocks.createDemoAction.mock.calls[0][1];
     expect(inserted.entity_ref).toBe('entity-1');
-    expect(inserted.action['@type']).toBe('grid.datacenter.curtailment');
-    expect(inserted.action.requested_reduction_mw).toBe(18);
+    expect(inserted.action.action_type).toBe('grid.curtailment');
+    expect(inserted.action.target_delta_kw).toBe('18000');
     expect(inserted.presentation.material_fields.reduction).toBe('18 MW');
     expect(mocks.checkRateLimit).toHaveBeenCalledWith('entity-1', 'protocol_write');
 
@@ -241,6 +246,67 @@ describe('native pairing, inbox, and terminal session routes', () => {
       scenario: 'grid',
     }));
     expect(disabled.status).toBe(404);
+  });
+
+  it('creates one canonical hard-curtailment ceremony per pinned approver', async () => {
+    const response = await graceRoute.POST(post('/api/v1/grace/curtailment/actions', {
+      action_id: 'grace:event:test-2099-1',
+      facility: 'facility:test-dc-1',
+      target_delta_kw: '30000',
+      not_before: '2099-07-15T20:15:00.000Z',
+      not_after: '2099-07-15T21:45:00.000Z',
+      baseline_method_hash: `sha256:${'a'.repeat(64)}`,
+      envelope_id: 'grace:envelope:test-2099',
+      initiator_id: 'ep:agent:grid-coordinator',
+      approver_ids: ['ep:approver:grid-operator', 'ep:approver:facility-operator'],
+      required_approvals: 2,
+    }));
+    expect(response.status).toBe(201);
+    const created = mocks.createGraceMobileActionGroup.mock.calls[0][1];
+    expect(created.action.action_type).toBe('grid.curtailment');
+    expect(created.action.target_delta_kw).toBe('30000');
+    expect(created.presentation.material_fields.reduction).toBe('30 MW');
+    expect(created.policy).toMatchObject({
+      human_approval: 'class_a',
+      required_approvals: 2,
+      approvers: ['ep:approver:grid-operator', 'ep:approver:facility-operator'],
+    });
+    expect(created.assignments).toHaveLength(2);
+    expect(new Set(created.assignments.map((item) => item.action_reference)).size).toBe(2);
+  });
+
+  it('refuses a hard cut without a two-person rule and never accepts caller presentation bytes', async () => {
+    const base = {
+      action_id: 'grace:event:test-2099-2',
+      facility: 'facility:test-dc-1',
+      target_delta_kw: '30000',
+      not_before: '2099-07-15T20:15:00.000Z',
+      not_after: '2099-07-15T21:45:00.000Z',
+      baseline_method_hash: `sha256:${'a'.repeat(64)}`,
+      envelope_id: 'grace:envelope:test-2099',
+      initiator_id: 'ep:agent:grid-coordinator',
+      approver_ids: ['ep:approver:grid-operator'],
+      required_approvals: 1,
+    };
+    expect((await graceRoute.POST(post('/api/v1/grace/curtailment/actions', base))).status).toBe(400);
+    expect((await graceRoute.POST(post('/api/v1/grace/curtailment/actions', {
+      ...base,
+      presentation: { title: 'Approve something else' },
+    }))).status).toBe(400);
+    expect(mocks.createGraceMobileActionGroup).not.toHaveBeenCalled();
+  });
+
+  it('serves an honest runnable GRACE reference circuit with all attacks refused', async () => {
+    const response = await graceReferenceRoute.GET(new Request(
+      'https://www.emiliaprotocol.ai/api/v1/grace/reference-scenario',
+    ));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({ ok: true, reference_only: true, physical_claim: false });
+    expect(body.authorization.valid).toBe(true);
+    expect(body.authorization.members).toHaveLength(2);
+    expect(body.settlement.settled).toBe(true);
+    expect(Object.values(body.attacks).every((attack) => attack.refused)).toBe(true);
   });
 
   it('rejects non-JSON pairing surfaces before authentication or storage', async () => {
