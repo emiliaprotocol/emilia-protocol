@@ -16,7 +16,7 @@ services:
       POSTGRES_PASSWORD: ep_test
       POSTGRES_DB:       ep_test
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ep_test -d ep_test"]
       interval: 5s

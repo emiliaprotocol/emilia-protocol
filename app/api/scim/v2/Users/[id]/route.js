@@ -4,7 +4,9 @@
 
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
-import { toScimUser, fromScimUser, applyPatch, etag } from '@/lib/scim/core';
+import {
+  toScimUser, fromScimUser, applyPatch, etag, validateScimUser,
+} from '@/lib/scim/core';
 import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
 import { revokeApproverCredentials, recordApproverEligible } from '@/lib/scim/approver-link';
 import { isScimAutoApproverEnabled } from '@/lib/env';
@@ -42,13 +44,18 @@ export async function PUT(request, { params }) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.value;
 
+  const validation = validateScimUser(body);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
+
   const supabase = getGuardedClient();
   const { data: current, error: loadErr } = await loadUser(supabase, auth.tenantId, id);
   if (loadErr) return scimErrorResponse(503, 'Directory unavailable');
   if (!current) return scimErrorResponse(404, `User ${id} not found`);
 
   const fields = fromScimUser(body);
-  if (!fields.user_name) return scimErrorResponse(400, 'userName is required', 'invalidValue');
 
   return writeUser(supabase, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
@@ -72,6 +79,11 @@ export async function PATCH(request, { params }) {
   const patched = applyPatch(toScimUser(current, base), body);
   if (patched.error) return scimErrorResponse(patched.error.status, patched.error.detail, patched.error.scimType);
 
+  const validation = validateScimUser(patched.resource);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
   const fields = fromScimUser(patched.resource);
   return writeUser(supabase, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
