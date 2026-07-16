@@ -17,7 +17,7 @@ function fakeDb() {
 }
 function setup(action) {
   const harness = createEg1Harness({ action });
-  return { harness, gate: createGate({ manifest: createSupabaseManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins }), db: fakeDb() };
+  return { harness, gate: createGate({ manifest: createSupabaseManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true }), db: fakeDb() };
 }
 
 const SQL = 'DELETE FROM payments WHERE id = 1';

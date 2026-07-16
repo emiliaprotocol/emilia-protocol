@@ -11,6 +11,7 @@ function setup() {
     approverKeys: harness.approverKeys,
     rpId: harness.rpId,
     allowedOrigins: harness.allowedOrigins,
+    allowEphemeralStore: true,
   });
   return { harness, gate, action: harness.action };
 }

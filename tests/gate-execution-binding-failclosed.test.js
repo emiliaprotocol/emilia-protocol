@@ -76,4 +76,97 @@ describe('Gate execution-binding — fail-closed on absent observed action', () 
     expect(r.required).toBe(false);
     expect(r.ok).toBe(true);
   });
+
+  it('REFUSES the historical NaN/null nested-value collision', () => {
+    const requirement = { execution_binding: { required_fields: ['material'] } };
+    const receipt = { payload: { claim: { material: { amount: Number.NaN } } } };
+    const r = verifyExecutionBinding({
+      requirement,
+      receipt,
+      observedAction: { material: { amount: null } },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.invalid_signed_fields).toContain('material');
+    expect(r.invalid_observed_fields).toEqual([]);
+    expect(r.signed_hash).toBeNull();
+  });
+
+  it('REFUSES observed-side invalidity independently of a valid signed value', () => {
+    const requirement = { execution_binding: { required_fields: ['material'] } };
+    const receipt = { payload: { claim: { material: { amount: 1 } } } };
+    const r = verifyExecutionBinding({
+      requirement,
+      receipt,
+      observedAction: { material: { amount: Number.NaN } },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.invalid_signed_fields).toEqual([]);
+    expect(r.invalid_observed_fields).toEqual(['material']);
+    expect(r.observed_hash).toBeNull();
+  });
+
+  it('REFUSES a missing signed field independently of a present observed field', () => {
+    const r = verifyExecutionBinding({
+      requirement: REQUIREMENT,
+      receipt: { payload: { claim: { beneficiary_account_hash: 'sha256:vendorA' } } },
+      observedAction: { amount_usd: 250000, beneficiary_account_hash: 'sha256:vendorA' },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.missing_signed_fields).toEqual(['amount_usd']);
+    expect(r.missing_observed_fields).toEqual([]);
+  });
+
+  it('REFUSES aliases spanning separate required fields on either side', () => {
+    const requirement = { execution_binding: { required_fields: ['left', 'right'] } };
+    const signedShared = { amount: 1 };
+    const signedAlias = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: { left: signedShared, right: signedShared } } },
+      observedAction: { left: { amount: 1 }, right: { amount: 1 } },
+    });
+    expect(signedAlias.ok).toBe(false);
+    expect(signedAlias.invalid_signed_fields).toEqual(['left', 'right']);
+    expect(signedAlias.invalid_observed_fields).toEqual([]);
+
+    const observedShared = { amount: 1 };
+    const observedAlias = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: { left: { amount: 1 }, right: { amount: 1 } } } },
+      observedAction: { left: observedShared, right: observedShared },
+    });
+    expect(observedAlias.ok).toBe(false);
+    expect(observedAlias.invalid_signed_fields).toEqual([]);
+    expect(observedAlias.invalid_observed_fields).toEqual(['left', 'right']);
+  });
+
+  it('REFUSES every value outside the EP canonical JSON profile before hashing', () => {
+    const shared = { value: 1 };
+    const cycle = {};
+    cycle.self = cycle;
+    const cases = [
+      ['undefined', undefined],
+      ['NaN', Number.NaN],
+      ['Infinity', Number.POSITIVE_INFINITY],
+      ['fractional number', 1.5],
+      ['unsafe integer', Number.MAX_SAFE_INTEGER + 1],
+      ['BigInt', 1n],
+      ['non-plain object', new Date('2026-01-01T00:00:00.000Z')],
+      ['cycle', cycle],
+      ['alias', { left: shared, right: shared }],
+    ];
+
+    for (const [name, value] of cases) {
+      const requirement = { execution_binding: { required_fields: ['material'] } };
+      const receipt = { payload: { claim: { material: value } } };
+      expect(() => verifyExecutionBinding({
+        requirement,
+        receipt,
+        observedAction: { material: value },
+      }), name).not.toThrow();
+      const r = verifyExecutionBinding({ requirement, receipt, observedAction: { material: value } });
+      expect(r.ok, name).toBe(false);
+      expect(r.invalid_signed_fields, name).toContain('material');
+      expect(r.invalid_observed_fields, name).toContain('material');
+    }
+  });
 });

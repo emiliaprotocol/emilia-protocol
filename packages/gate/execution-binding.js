@@ -6,33 +6,125 @@ import crypto from 'node:crypto';
 
 export const EXECUTION_BINDING_VERSION = 'EP-GATE-EXECUTION-BINDING-v1';
 
-export function canonicalize(v) {
-  if (v === null || v === undefined) return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
+const MAX_JSON_DEPTH = 64;
+const MAX_JSON_NODES = 50000;
+const MAX_JSON_STRING_BYTES = 1024 * 1024;
+
+function validUnicodeString(value) {
+  for (let i = 0; i < value.length; i++) {
+    const unit = value.charCodeAt(i);
+    if (unit >= 0xd800 && unit <= 0xdbff) {
+      const next = value.charCodeAt(++i);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+    } else if (unit >= 0xdc00 && unit <= 0xdfff) return false;
+  }
+  return true;
+}
+
+function isPlainObject(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * Match the hardened EP canonical JSON safety profile: valid Unicode strings,
+ * booleans, null, safe integers, dense arrays, and plain data objects. Object
+ * identity is unique across the graph, so cycles and aliases both refuse.
+ */
+function assertCanonicalJson(value) {
+  const stack = [{ value, depth: 0 }];
+  const seen = new WeakSet();
+  let nodes = 0;
+  let stringBytes = 0;
+
+  while (stack.length) {
+    const current = stack.pop();
+    if (++nodes > MAX_JSON_NODES || current.depth > MAX_JSON_DEPTH) {
+      throw new TypeError('value exceeds the EP canonical JSON resource profile');
+    }
+    const v = current.value;
+    if (v === null || typeof v === 'boolean') continue;
+    if (typeof v === 'string') {
+      if (!validUnicodeString(v)) throw new TypeError('value contains invalid Unicode');
+      stringBytes += Buffer.byteLength(v, 'utf8');
+      if (stringBytes > MAX_JSON_STRING_BYTES) throw new TypeError('value exceeds the EP canonical JSON string limit');
+      continue;
+    }
+    if (typeof v === 'number') {
+      if (!Number.isSafeInteger(v)) throw new TypeError('value contains a non-safe integer');
+      continue;
+    }
+    if (!Array.isArray(v) && !isPlainObject(v)) {
+      throw new TypeError('value contains a non-plain JSON object');
+    }
+    if (seen.has(v)) throw new TypeError('value contains a cycle or alias');
+    seen.add(v);
+
+    if (Array.isArray(v)) {
+      const ownKeys = Reflect.ownKeys(v);
+      if (ownKeys.length !== v.length + 1 || !ownKeys.includes('length')) {
+        throw new TypeError('value contains a sparse or extended array');
+      }
+      for (let i = 0; i < v.length; i++) {
+        const descriptor = Object.getOwnPropertyDescriptor(v, String(i));
+        if (!descriptor || descriptor.enumerable !== true || !Object.hasOwn(descriptor, 'value')) {
+          throw new TypeError('value contains a sparse or accessor array');
+        }
+        stack.push({ value: descriptor.value, depth: current.depth + 1 });
+      }
+      continue;
+    }
+
+    for (const key of Reflect.ownKeys(v)) {
+      if (typeof key !== 'string' || !validUnicodeString(key)) {
+        throw new TypeError('value contains a non-JSON object key');
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(v, key);
+      if (!descriptor || descriptor.enumerable !== true || !Object.hasOwn(descriptor, 'value')) {
+        throw new TypeError('value contains a non-data JSON property');
+      }
+      stringBytes += Buffer.byteLength(key, 'utf8');
+      if (stringBytes > MAX_JSON_STRING_BYTES) throw new TypeError('value exceeds the EP canonical JSON string limit');
+      stack.push({ value: descriptor.value, depth: current.depth + 1 });
+    }
+  }
+}
+
+function canonicalizeValidated(v) {
+  if (v === null) return 'null';
+  if (Array.isArray(v)) return `[${v.map(canonicalizeValidated).join(',')}]`;
   if (typeof v === 'object') {
-    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
+    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalizeValidated(v[k])).join(',')}}`;
   }
   return JSON.stringify(v);
+}
+
+export function canonicalize(v) {
+  assertCanonicalJson(v);
+  return canonicalizeValidated(v);
 }
 
 export function hashCanonical(v) {
   return crypto.createHash('sha256').update(canonicalize(v)).digest('hex');
 }
 
-function hasValue(v) {
-  return v !== undefined && v !== null;
-}
-
-function normalize(v) {
-  if (Array.isArray(v)) return [...new Set(v.map((x) => String(x)))].sort();
-  if (v && typeof v === 'object') {
-    return Object.fromEntries(Object.keys(v).sort().map((k) => [k, normalize(v[k])]));
+function fieldValue(container, field) {
+  if (!isPlainObject(container)) return { state: 'invalid' };
+  const descriptor = Object.getOwnPropertyDescriptor(container, field);
+  if (!descriptor) return { state: 'missing' };
+  if (descriptor.enumerable !== true || !Object.hasOwn(descriptor, 'value')) return { state: 'invalid' };
+  if (descriptor.value === null) return { state: 'missing' };
+  try {
+    assertCanonicalJson(descriptor.value);
+    return { state: 'valid', value: descriptor.value };
+  } catch {
+    return { state: 'invalid' };
   }
-  return v;
 }
 
 function equalValue(a, b) {
-  return hashCanonical(normalize(a)) === hashCanonical(normalize(b));
+  return canonicalize(a) === canonicalize(b);
 }
 
 export function materialFieldsFor(requirement) {
@@ -55,36 +147,59 @@ export function verifyExecutionBinding({ requirement, receipt, observedAction } 
   const observed = observedAction || {};
   const missingSigned = [];
   const missingObserved = [];
+  const invalidSigned = [];
+  const invalidObserved = [];
   const mismatched = [];
   const signedValues = {};
   const observedValues = {};
 
   for (const field of requiredFields) {
-    const expected = signed[field];
-    const actual = observed[field];
-    if (!hasValue(expected)) {
+    const expected = fieldValue(signed, field);
+    const actual = fieldValue(observed, field);
+    if (expected.state === 'missing') {
       missingSigned.push(field);
-      continue;
+    } else if (expected.state === 'invalid') {
+      invalidSigned.push(field);
+    } else {
+      signedValues[field] = expected.value;
     }
-    signedValues[field] = normalize(expected);
-    if (!hasValue(actual)) {
+    if (actual.state === 'missing') {
       missingObserved.push(field);
-      continue;
+    } else if (actual.state === 'invalid') {
+      invalidObserved.push(field);
+    } else {
+      observedValues[field] = actual.value;
     }
-    observedValues[field] = normalize(actual);
-    if (!equalValue(expected, actual)) mismatched.push(field);
+    if (expected.state === 'valid' && actual.state === 'valid'
+        && !equalValue(expected.value, actual.value)) mismatched.push(field);
+  }
+
+  // Per-field checks do not see one object reused by two required fields.
+  // Validate the aggregate graphs before computing either digest.
+  try { assertCanonicalJson(signedValues); } catch {
+    for (const field of Object.keys(signedValues)) {
+      if (!invalidSigned.includes(field)) invalidSigned.push(field);
+    }
+  }
+  try { assertCanonicalJson(observedValues); } catch {
+    for (const field of Object.keys(observedValues)) {
+      if (!invalidObserved.includes(field)) invalidObserved.push(field);
+    }
   }
 
   return {
     '@version': EXECUTION_BINDING_VERSION,
-    ok: missingSigned.length === 0 && missingObserved.length === 0 && mismatched.length === 0,
+    ok: missingSigned.length === 0 && missingObserved.length === 0
+      && invalidSigned.length === 0 && invalidObserved.length === 0 && mismatched.length === 0,
     required: true,
     required_fields: requiredFields,
     missing_signed_fields: missingSigned,
     missing_observed_fields: missingObserved,
+    invalid_signed_fields: invalidSigned,
+    invalid_observed_fields: invalidObserved,
     mismatched_fields: mismatched,
-    signed_hash: hashCanonical(signedValues),
-    observed_hash: hashCanonical(observedValues),
+    signed_hash: invalidSigned.length === 0 ? hashCanonical(signedValues) : null,
+    observed_hash: invalidObserved.length === 0 ? hashCanonical(observedValues) : null,
     note: 'Executor MUST provide observedAction from the system of record; request-body fields are not a trust source.',
   };
 }

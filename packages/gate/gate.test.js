@@ -5,7 +5,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { createGate, createTrustedActionFirewall, createEg1Harness, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier, mintDeviceSignoff, mintQuorumEvidence } from './index.js';
+import {
+  createGate as createGateCore,
+  createTrustedActionFirewall as createTrustedActionFirewallCore,
+  createEg1Harness,
+  DEFAULT_GATE_MANIFEST,
+  HIGH_RISK_ACTION_PACKS,
+  receiptAssuranceTier,
+  mintDeviceSignoff,
+  mintQuorumEvidence,
+} from './index.js';
+
+const createGate = (opts = {}) => createGateCore({ allowEphemeralStore: true, ...opts });
+const createTrustedActionFirewall = (opts = {}) => createTrustedActionFirewallCore({
+  allowEphemeralStore: true,
+  ...opts,
+});
 
 function canon(v) {
   if (v === null || v === undefined) return JSON.stringify(v);

@@ -4,8 +4,8 @@
  *
  * A receipt authorizes ONE action, once. The gate consumes a receipt's
  * identifier the first time it is used; any later presentation of the same
- * receipt is a replay and is refused. The default store is in-memory; fleets
- * use the ownership-fenced durable contract below.
+ * receipt is a replay and is refused. The in-memory store is an explicit
+ * test/demo opt-in; security-bearing gates use the durable contract below.
  */
 export class MemoryConsumptionStore {
   constructor() {
@@ -53,6 +53,17 @@ export class MemoryConsumptionStore {
 }
 
 export const DURABLE_CONSUMPTION_VERSION = 'EP-GATE-DURABLE-CONSUMPTION-v2';
+
+/** Capability contract required by security-bearing Gate execution paths. */
+export function isSecureConsumptionStore(store) {
+  if (!store || typeof store !== 'object') return false;
+  return store.durable === true
+    && store.ownershipFenced === true
+    && store.permanentConsumption === true
+    && typeof store.consume === 'function'
+    && typeof store.reserve === 'function'
+    && typeof store.commit === 'function';
+}
 
 const COMMITTED_VALUE = 'committed:v2';
 const RESERVED_PREFIX = 'reserved:v2:';
@@ -174,4 +185,10 @@ export function createMemoryBackend() {
   };
 }
 
-export default { MemoryConsumptionStore, createDurableConsumptionStore, createMemoryBackend, DURABLE_CONSUMPTION_VERSION };
+export default {
+  MemoryConsumptionStore,
+  createDurableConsumptionStore,
+  createMemoryBackend,
+  isSecureConsumptionStore,
+  DURABLE_CONSUMPTION_VERSION,
+};

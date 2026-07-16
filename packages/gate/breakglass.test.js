@@ -11,10 +11,15 @@ import {
   verifyBreakGlass,
   consumeBreakGlass,
   buildBreakGlassEvidence,
+  runBreakGlass,
   BREAKGLASS_VERSION,
   BREAKGLASS_EVIDENCE_KIND,
 } from './breakglass.js';
-import { MemoryConsumptionStore } from './store.js';
+import {
+  MemoryConsumptionStore,
+  createDurableConsumptionStore,
+  createMemoryBackend,
+} from './store.js';
 import { createEvidenceLog } from './evidence.js';
 
 function makeSigner(kid) {
@@ -26,6 +31,25 @@ const alice = makeSigner('kid-alice');
 const bob = makeSigner('kid-bob');
 const carol = makeSigner('kid-carol');
 const ISSUERS = { [alice.kid]: alice.pub, [bob.kid]: bob.pub, [carol.kid]: carol.pub };
+
+function pinnedPolicy(signers = [alice, bob, carol], minimumThreshold = 2) {
+  return {
+    minimum_threshold: minimumThreshold,
+    roster: signers.map((signer) => ({
+      kid: signer.kid,
+      principal_id: signer.principal_id || `principal:${signer.kid}`,
+      key: signer.pub,
+    })),
+  };
+}
+
+const POLICY = pinnedPolicy();
+
+function durableStore() {
+  const backend = createMemoryBackend();
+  backend.durable = true;
+  return createDurableConsumptionStore(backend);
+}
 
 const NBF = '2026-07-04T00:00:00.000Z';
 const EXP = '2026-07-04T04:00:00.000Z';
@@ -42,7 +66,43 @@ function grant2of2(fields = {}) {
   return mintBreakGlassAuthorization([alice, bob], { ...FIELDS, ...fields });
 }
 function verify(g, opts = {}) {
-  return verifyBreakGlass(g, { issuerKeys: ISSUERS, now: IN_WINDOW, actionType: 'db.restore', ...opts });
+  return verifyBreakGlass(g, {
+    issuerKeys: ISSUERS,
+    policy: POLICY,
+    now: IN_WINDOW,
+    actionType: 'db.restore',
+    ...opts,
+  });
+}
+
+function rawGrant(signers, fields) {
+  const core = {
+    scope: { action_types: fields.scope.action_types.slice() },
+    window: { ...fields.window },
+    reason: fields.reason,
+    incident_ref: fields.incident_ref,
+    threshold: fields.threshold,
+  };
+  const canonical = (value) => {
+    if (value === null) return 'null';
+    if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+    if (typeof value === 'object') {
+      return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+  };
+  const grant_id = `bg_${crypto.createHash('sha256').update(canonical(core)).digest('hex')}`;
+  const payload = { grant_id, ...core };
+  const bytes = Buffer.from(canonical(payload), 'utf8');
+  return {
+    '@version': BREAKGLASS_VERSION,
+    payload,
+    signatures: signers.map((signer) => ({
+      kid: signer.kid,
+      algorithm: 'Ed25519',
+      value: crypto.sign(null, bytes, signer.privateKey).toString('base64url'),
+    })),
+  };
 }
 
 // ---------------------------------------------------------------- happy path
@@ -74,7 +134,7 @@ test('threshold-of-N: 2-of-3 verifies with any two distinct signers', () => {
 test('accepts a JSON string and an injected clock function', () => {
   const g = grant2of2();
   const out = verifyBreakGlass(JSON.stringify(g), {
-    issuerKeys: ISSUERS, now: () => IN_WINDOW, actionType: 'feature.kill_switch',
+    issuerKeys: ISSUERS, policy: POLICY, now: () => IN_WINDOW, actionType: 'feature.kill_switch',
   });
   assert.equal(out.valid, true);
 });
@@ -91,6 +151,13 @@ test('refuses duplicate-member JSON before signature semantics are evaluated', (
 
 test('mint throws on duplicate signer kids — one principal cannot fill two slots', () => {
   assert.throws(() => mintBreakGlassAuthorization([alice, { ...bob, kid: alice.kid }], FIELDS), /distinct/);
+});
+
+test('mint throws when one SPKI is presented under two kids', () => {
+  assert.throws(
+    () => mintBreakGlassAuthorization([alice, { ...alice, kid: 'kid-alice-alias' }], FIELDS),
+    /SPKI keys must be distinct/,
+  );
 });
 
 test('mint throws on threshold exceeding signer count', () => {
@@ -115,6 +182,42 @@ test('threshold unmet: fewer signatures than threshold -> refused', () => {
   assert.equal(out.reason, 'threshold_unmet');
   assert.equal(out.threshold, 2);
   assert.equal(out.signatures, 1);
+});
+
+test('relying-party minimum defeats a presenter self-declaring threshold=1', () => {
+  const g = rawGrant([alice], { ...FIELDS, threshold: 1 });
+  const out = verify(g);
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'policy_threshold_unmet');
+  assert.equal(out.required_threshold, 2);
+});
+
+test('pinned roster refuses an otherwise valid signer selected by the presenter', () => {
+  const g = rawGrant([alice, carol], FIELDS);
+  const out = verify(g, { policy: pinnedPolicy([alice, bob]) });
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'signer_not_in_roster');
+  assert.equal(out.kid, carol.kid);
+});
+
+test('two kids for one principal cannot fill two break-glass slots', () => {
+  const aliceSecondKey = { ...carol, kid: 'kid-alice-secondary', principal_id: 'principal:alice' };
+  const alicePrimary = { ...alice, principal_id: 'principal:alice' };
+  const g = rawGrant([alicePrimary, aliceSecondKey], FIELDS);
+  const out = verify(g, { policy: pinnedPolicy([alicePrimary, aliceSecondKey, bob]) });
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'duplicate_signer_principal');
+  assert.equal(out.principal_id, 'principal:alice');
+});
+
+test('the same SPKI under two kids cannot fill two break-glass slots', () => {
+  const alias = { ...alice, kid: 'kid-alice-alias', principal_id: 'principal:alias-record' };
+  const alicePrimary = { ...alice, principal_id: 'principal:alice' };
+  const g = rawGrant([alicePrimary, alias], FIELDS);
+  const out = verify(g, { policy: pinnedPolicy([alicePrimary, alias, bob]) });
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'duplicate_signer_key');
+  assert.match(out.spki_fingerprint, /^sha256:[0-9a-f]{64}$/);
 });
 
 test('non-distinct signer kids: same signature twice -> refused, not counted twice', () => {
@@ -167,21 +270,42 @@ test('tampered window -> bad_signature (timestamps are authenticated)', () => {
   assert.equal(out.reason, 'bad_signature');
 });
 
-test('unknown kid -> refused even if other signatures are fine', () => {
+test('an incomplete pinned key policy is invalid even if one signature is fine', () => {
   const g = grant2of2();
   const out = verifyBreakGlass(g, {
-    issuerKeys: { [alice.kid]: alice.pub }, // bob is not pinned
+    issuerKeys: { [alice.kid]: alice.pub },
+    policy: pinnedPolicy([alice]), // bob is not on the relying-party roster
     now: IN_WINDOW, actionType: 'db.restore',
   });
   assert.equal(out.valid, false);
-  assert.equal(out.reason, 'unknown_kid');
+  assert.equal(out.reason, 'invalid_policy');
+});
+
+test('missing relying-party policy is refused even when every issuer key is pinned', () => {
+  const out = verifyBreakGlass(grant2of2(), {
+    issuerKeys: ISSUERS,
+    now: IN_WINDOW,
+    actionType: 'db.restore',
+  });
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'missing_policy');
+});
+
+test('roster omission is reported for a policy that can otherwise meet quorum', () => {
+  const out = verifyBreakGlass(grant2of2(), {
+    policy: pinnedPolicy([alice, carol, { ...carol, kid: 'kid-dave', principal_id: 'principal:dave' }]),
+    now: IN_WINDOW,
+    actionType: 'db.restore',
+  });
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'signer_not_in_roster');
   assert.equal(out.kid, 'kid-bob');
 });
 
-test('no pinned keys at all -> refused (grant cannot nominate its own keys)', () => {
+test('no relying-party policy at all -> refused (grant cannot nominate its own trust policy)', () => {
   const out = verifyBreakGlass(grant2of2(), { now: IN_WINDOW, actionType: 'db.restore' });
   assert.equal(out.valid, false);
-  assert.equal(out.reason, 'unknown_kid');
+  assert.equal(out.reason, 'missing_policy');
 });
 
 test('one bad signature refuses the whole grant', () => {
@@ -324,4 +448,110 @@ test('end-to-end: verify -> consume -> evidence -> replay refused', async () => 
   assert.equal(log.all().length, 2);
   assert.equal(log.all()[1].decision.allow, false);
   assert.equal(log.all()[1].decision.reason, 'already_consumed');
+});
+
+test('runBreakGlass enforces verify -> permanent consumption -> evidence -> effect order', async () => {
+  const events = [];
+  const baseStore = durableStore();
+  const store = {
+    ...baseStore,
+    async consume(key) {
+      events.push('consume');
+      return baseStore.consume(key);
+    },
+  };
+  const baseEvidence = createEvidenceLog({ strict: true });
+  const evidence = {
+    ...baseEvidence,
+    async record(entry) {
+      events.push('evidence');
+      return baseEvidence.record(entry);
+    },
+  };
+
+  const out = await runBreakGlass({
+    grant: grant2of2(),
+    policy: POLICY,
+    actionType: 'db.restore',
+    store,
+    evidence,
+    now: IN_WINDOW,
+  }, async ({ verification, evidence: record }) => {
+    events.push('effect');
+    assert.equal(verification.valid, true);
+    assert.equal(record.kind, BREAKGLASS_EVIDENCE_KIND);
+    return 'restored';
+  });
+
+  assert.equal(out.ok, true);
+  assert.equal(out.result, 'restored');
+  assert.deepEqual(events, ['consume', 'evidence', 'effect']);
+});
+
+test('runBreakGlass never invokes the effect without a successful strict evidence record', async () => {
+  const store = durableStore();
+  const evidence = createEvidenceLog({
+    strict: true,
+    sink: async () => { throw new Error('evidence unavailable'); },
+  });
+  let effects = 0;
+  const grant = grant2of2();
+
+  const out = await runBreakGlass({
+    grant,
+    policy: POLICY,
+    actionType: 'db.restore',
+    store,
+    evidence,
+    now: IN_WINDOW,
+  }, async () => { effects += 1; });
+
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'evidence_record_failed');
+  assert.equal(effects, 0);
+  assert.equal((await consumeBreakGlass(grant, store)).reason, 'already_consumed', 'failed evidence burns the grant');
+});
+
+test('runBreakGlass refuses ephemeral consumption and non-strict evidence before any effect', async () => {
+  const grant = grant2of2();
+  let effects = 0;
+  const effect = async () => { effects += 1; };
+
+  const ephemeral = await runBreakGlass({
+    grant,
+    policy: POLICY,
+    actionType: 'db.restore',
+    store: new MemoryConsumptionStore(),
+    evidence: createEvidenceLog({ strict: true }),
+    now: IN_WINDOW,
+  }, effect);
+  assert.equal(ephemeral.ok, false);
+  assert.equal(ephemeral.reason, 'secure_consumption_store_required');
+
+  const nonStrict = await runBreakGlass({
+    grant,
+    policy: POLICY,
+    actionType: 'db.restore',
+    store: durableStore(),
+    evidence: createEvidenceLog({ strict: false }),
+    now: IN_WINDOW,
+  }, effect);
+  assert.equal(nonStrict.ok, false);
+  assert.equal(nonStrict.reason, 'strict_evidence_required');
+  assert.equal(effects, 0);
+});
+
+test('runBreakGlass treats a malformed evidence acknowledgement as no evidence', async () => {
+  let effects = 0;
+  const out = await runBreakGlass({
+    grant: grant2of2(),
+    policy: POLICY,
+    actionType: 'db.restore',
+    store: durableStore(),
+    evidence: { strict: true, record: async () => ({ kind: 'not-an-evidence-record' }) },
+    now: IN_WINDOW,
+  }, async () => { effects += 1; });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'evidence_record_failed');
+  assert.equal(effects, 0);
 });

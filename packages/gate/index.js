@@ -47,7 +47,7 @@ const {
 // in-repo source so the monorepo test/build works without a node_modules link.
 const { verifyWebAuthnSignoff, verifyQuorum } = await import('@emilia-protocol/verify')
   .catch(() => import('../verify/index.js'));
-import { MemoryConsumptionStore } from './store.js';
+import { MemoryConsumptionStore, isSecureConsumptionStore } from './store.js';
 import {
   canonicalEvidenceJson,
   createAtomicEvidenceLog,
@@ -62,6 +62,15 @@ import { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 import { createDefaultActionControlManifest, findActionControl, validateActionControlManifest } from './action-control-manifest.js';
+import {
+  mintBreakGlassAuthorization,
+  verifyBreakGlass,
+  consumeBreakGlass,
+  buildBreakGlassEvidence,
+  runBreakGlass,
+  BREAKGLASS_VERSION,
+  BREAKGLASS_EVIDENCE_KIND,
+} from './breakglass.js';
 
 export {
   MemoryConsumptionStore,
@@ -70,7 +79,12 @@ export {
   createAtomicEvidenceLog,
   createMemoryAtomicEvidenceBackend,
 };
-export { createDurableConsumptionStore, createMemoryBackend, DURABLE_CONSUMPTION_VERSION } from './store.js';
+export {
+  createDurableConsumptionStore,
+  createMemoryBackend,
+  isSecureConsumptionStore,
+  DURABLE_CONSUMPTION_VERSION,
+} from './store.js';
 export { createDurableChallengeStore, challengeStorageKey, challengeBodyDigest, DURABLE_CHALLENGE_STORE_VERSION } from './challenge-store.js';
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 export { classifyRetention, buildRetentionExport, RETENTION_EXPORT_VERSION } from './retention.js';
@@ -101,8 +115,21 @@ export {
   createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence,
 } from './eg1-conformance.js';
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
+export {
+  mintBreakGlassAuthorization,
+  verifyBreakGlass,
+  consumeBreakGlass,
+  buildBreakGlassEvidence,
+  runBreakGlass,
+  BREAKGLASS_VERSION,
+  BREAKGLASS_EVIDENCE_KIND,
+};
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
+
+function safeCanonicalHash(value) {
+  try { return hashCanonical(value); } catch { return null; }
+}
 
 /**
  * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.
@@ -318,7 +345,8 @@ function isSignoffEvidence(s) {
  * @param {object} [opts.manifest]      EP-ACTION-RISK-MANIFEST-v0.1 (which actions are guarded, their tier)
  * @param {string[]} [opts.trustedKeys] base64url SPKI-DER issuer keys you trust
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this
- * @param {object} [opts.store]         consumption store (default in-memory)
+ * @param {object} [opts.store]         durable, ownership-fenced, permanent consumption store
+ * @param {boolean} [opts.allowEphemeralStore=false] explicit test/demo opt-in for in-memory state
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
  * @param {boolean} [opts.allowInlineKey=false] accept the receipt's own key (integrity, NOT trust)
  * @param {object} [opts.keyRegistry] a key registry (createKeyRegistry) for rotation + revocation;
@@ -352,17 +380,27 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // eslint-disable-next-line no-console
     console.warn('EMILIA Gate: allowInlineKey=true accepts a receipt\'s OWN key. This proves INTEGRITY (the receipt was not tampered with) but NOT issuer TRUST (anyone can mint a receipt with their own key). Use for demos only; pin trustedKeys in production.');
   }
-  // Replay defense is only sound if the consumption store is shared across every
-  // instance that can serve the action. The in-memory default is per-process, so
-  // a receipt consumed on one pod/lambda could be replayed on another. Fail
-  // CLOSED in production unless the operator explicitly accepts a single instance.
+  // Replay defense is only sound if the store is shared, ownership-fenced, and
+  // permanent. This is a security property in every environment; NODE_ENV must
+  // never silently decide whether a receipt can be replayed.
   let consumption = store;
   if (!consumption) {
-    const isProd = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production';
-    if (isProd && !allowEphemeralStore) {
-      throw new Error('EMILIA Gate: no consumption store provided. The default in-memory store is per-process and is NOT safe for multi-instance or serverless deployments — a receipt consumed on one instance can be replayed on another, defeating one-time consumption. Provide a shared store ({ async consume(key) {...} }, e.g. Redis/DB-backed), or pass allowEphemeralStore:true to acknowledge a single-instance deployment.');
-    }
+    if (!allowEphemeralStore) throw new Error(
+      'EMILIA Gate requires a durable, ownership-fenced, permanent consumption store. '
+      + 'Pass allowEphemeralStore:true only for an explicit test/demo gate.',
+    );
     consumption = new MemoryConsumptionStore();
+  }
+  for (const method of ['consume', 'reserve', 'commit']) {
+    if (typeof consumption?.[method] !== 'function') {
+      throw new Error(`EMILIA Gate consumption store must implement ${method}()`);
+    }
+  }
+  if (!allowEphemeralStore && !isSecureConsumptionStore(consumption)) {
+    throw new Error(
+      'EMILIA Gate requires a durable, ownership-fenced, permanent consumption store. '
+      + 'Pass allowEphemeralStore:true only for an explicit test/demo gate.',
+    );
   }
   const evidence = log || createEvidenceLog({ strict: strictEvidence });
 
@@ -396,7 +434,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         required_tier: requiredTier,
         receipt_id: receipt?.payload?.receipt_id ?? null,
         subject: receipt?.payload?.subject ?? null,
-        observed_action_hash: observed ? hashCanonical(observed) : null,
+        observed_action_hash: observed ? safeCanonicalHash(observed) : null,
         ...extra,
       };
       let record;
@@ -644,7 +682,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       action: authorization?.action ?? auth.action ?? null,
       receipt_id: auth.receipt_id ?? null,
       outcome, // 'executed' | 'failed'
-      observed_action_hash: observedAction ? hashCanonical(observedAction) : null,
+      observed_action_hash: observedAction ? safeCanonicalHash(observedAction) : null,
       execution_binding: executionBinding || authorization?.evidence?.execution_binding || authorization?.execution_binding || null,
       ...(detail !== undefined ? { detail } : {}),
     });
@@ -810,7 +848,11 @@ export async function gateConformance({ gate, harness, action, selector = EG1_DE
  */
 export async function gateConformanceSelfTest({ now } = {}) {
   const harness = createEg1Harness({ now });
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, now });
+  const gate = createTrustedActionFirewall({
+    trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys,
+    rpId: harness.rpId, allowedOrigins: harness.allowedOrigins,
+    now, allowEphemeralStore: true,
+  });
   return gateConformance({ gate, harness });
 }
 
@@ -850,15 +892,24 @@ export async function cf1Conformance({ gate, wrongGate, harness, manifest = null
 export async function cf1ConformanceSelfTest({ now } = {}) {
   const harness = createEg1Harness({ now });
   const manifest = createDefaultActionRiskManifest();
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, now });
+  const gate = createTrustedActionFirewall({
+    trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys,
+    rpId: harness.rpId, allowedOrigins: harness.allowedOrigins,
+    now, allowEphemeralStore: true,
+  });
   const wrongHarness = createEg1Harness({ now });
-  const wrongGate = createTrustedActionFirewall({ trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys, rpId: wrongHarness.rpId, allowedOrigins: wrongHarness.allowedOrigins, now });
+  const wrongGate = createTrustedActionFirewall({
+    trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys,
+    rpId: wrongHarness.rpId, allowedOrigins: wrongHarness.allowedOrigins,
+    now, allowEphemeralStore: true,
+  });
   return cf1Conformance({ gate, wrongGate, harness, manifest, selector: EG1_DEFAULT_SELECTOR, action: harness.action });
 }
 
 export default {
   createGate,
   createTrustedActionFirewall,
+  runBreakGlass,
   receiptAssuranceTier,
   verifyAdmissibilityAgainstPinnedProfile,
   ADMISSIBILITY_VERDICTS,

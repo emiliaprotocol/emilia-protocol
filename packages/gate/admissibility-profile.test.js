@@ -43,6 +43,7 @@ function gateTrustingHarness(harness, { verifyAdmissibilityPacket = async ({ pre
     rpId: harness.rpId,
     allowedOrigins: harness.allowedOrigins,
     verifyAdmissibilityPacket,
+    allowEphemeralStore: true,
   });
 }
 

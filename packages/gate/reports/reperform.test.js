@@ -114,6 +114,7 @@ async function realGateEntries() {
     allowEmbeddedApproverKeys: true,
     rpId: 'emiliaprotocol.ai',
     allowedOrigins: ['https://www.emiliaprotocol.ai'],
+    allowEphemeralStore: true,
   });
   const r = receipt(privateKey, { outcome: 'allow_with_signoff' });
   const passthrough = await g.check({ selector: READ });

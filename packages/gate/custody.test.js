@@ -17,7 +17,10 @@ test('key registry: a revoked issuer key is refused (fail closed)', async () => 
   const h = createEg1Harness();
   const { DEFAULT_GATE_MANIFEST } = await import('./action-packs.js');
   const registry = createKeyRegistry([{ kid: 'issuer-1', key: h.publicKey }]);
-  const gate = createGate({ manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: h.approverKeys, rpId: h.rpId, allowedOrigins: h.allowedOrigins });
+  const gate = createGate({
+    manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: h.approverKeys,
+    rpId: h.rpId, allowedOrigins: h.allowedOrigins, allowEphemeralStore: true,
+  });
 
   const ok = await gate.run({ selector: SEL, receipt: h.mint({ outcome: 'allow_with_signoff' }), observedAction: h.action }, async () => ({ ran: true }));
   assert.equal(ok.ok, true, 'valid key works before revocation');
@@ -34,7 +37,10 @@ test('key registry: a receipt signed by a not-yet-valid / expired key is refused
   // Key only valid in the far future.
   const future = Date.now() + 10 * 24 * 60 * 60 * 1000;
   const registry = createKeyRegistry([{ kid: 'k', key: h.publicKey, not_before: new Date(future).toISOString() }]);
-  const gate = createGate({ manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: h.approverKeys, rpId: h.rpId, allowedOrigins: h.allowedOrigins });
+  const gate = createGate({
+    manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: h.approverKeys,
+    rpId: h.rpId, allowedOrigins: h.allowedOrigins, allowEphemeralStore: true,
+  });
   const out = await gate.run({ selector: SEL, receipt: h.mint({ outcome: 'allow_with_signoff' }), observedAction: h.action }, async () => ({ ran: true }));
   assert.equal(out.ok, false, 'a receipt issued before the key window is refused');
 });
@@ -49,8 +55,14 @@ test('key registry: rotation overlap — both keys valid in the window', async (
   ]);
   // Two gate instances share the same registry (two pods, same trust config,
   // independent consumption stores) — both issuer keys verify during overlap.
-  const gateA = createGate({ manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: h.approverKeys, rpId: h.rpId, allowedOrigins: h.allowedOrigins });
-  const gateB = createGate({ manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: other.approverKeys, rpId: other.rpId, allowedOrigins: other.allowedOrigins });
+  const gateA = createGate({
+    manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: h.approverKeys,
+    rpId: h.rpId, allowedOrigins: h.allowedOrigins, allowEphemeralStore: true,
+  });
+  const gateB = createGate({
+    manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry, approverKeys: other.approverKeys,
+    rpId: other.rpId, allowedOrigins: other.allowedOrigins, allowEphemeralStore: true,
+  });
   const a = await gateA.run({ selector: SEL, receipt: h.mint({ outcome: 'allow_with_signoff' }), observedAction: h.action }, async () => 1);
   const b = await gateB.run({ selector: SEL, receipt: other.mint({ outcome: 'allow_with_signoff' }), observedAction: other.action }, async () => 2);
   assert.equal(a.ok, true);
@@ -61,10 +73,36 @@ test('key registry: rotation overlap — both keys valid in the window', async (
   assert.throws(() => registry.revoke('does-not-exist'));
 });
 
+test('key registry: supplied invalid or non-RFC3339 dates throw instead of becoming unwindowed', () => {
+  const h = createEg1Harness();
+  for (const not_after of ['not-a-date', '01/02/2030', 1893456000000, null, undefined]) {
+    assert.throws(
+      () => createKeyRegistry([{ kid: 'eternal-if-normalized', key: h.publicKey, not_after }]),
+      /not_after.*RFC3339/,
+    );
+  }
+  const registry = createKeyRegistry();
+  assert.throws(
+    () => registry.add({ kid: 'bad-rotation', key: h.publicKey, not_before: 'tomorrow' }),
+    /not_before.*RFC3339/,
+  );
+});
+
+test('key registry: invalid receipt evaluation times fail closed for every key', () => {
+  const h = createEg1Harness();
+  const registry = createKeyRegistry([{ kid: 'unwindowed', key: h.publicKey }]);
+  assert.deepEqual(registry.keysValidAt('not-a-date'), []);
+  assert.deepEqual(registry.keysValidAt(1893456000000), []);
+  assert.deepEqual(registry.keysValidAt(undefined), []);
+});
+
 test('flat trustedKeys still works (back-compat)', async () => {
   const h = createEg1Harness();
   const { DEFAULT_GATE_MANIFEST } = await import('./action-packs.js');
-  const gate = createGate({ manifest: DEFAULT_GATE_MANIFEST, trustedKeys: [h.publicKey], approverKeys: h.approverKeys, rpId: h.rpId, allowedOrigins: h.allowedOrigins });
+  const gate = createGate({
+    manifest: DEFAULT_GATE_MANIFEST, trustedKeys: [h.publicKey], approverKeys: h.approverKeys,
+    rpId: h.rpId, allowedOrigins: h.allowedOrigins, allowEphemeralStore: true,
+  });
   const out = await gate.run({ selector: SEL, receipt: h.mint({ outcome: 'allow_with_signoff' }), observedAction: h.action }, async () => ({ ran: true }));
   assert.equal(out.ok, true);
 });
@@ -75,6 +113,7 @@ test('durable store: a receipt consumed on one gate cannot be replayed on anothe
   const h = createEg1Harness();
   const { DEFAULT_GATE_MANIFEST } = await import('./action-packs.js');
   const backend = createMemoryBackend(); // a single SHARED backend == two pods sharing Redis
+  backend.durable = true; // capability stand-in for the test's shared durable service
   const gateA = createGate({ manifest: DEFAULT_GATE_MANIFEST, trustedKeys: [h.publicKey], approverKeys: h.approverKeys, rpId: h.rpId, allowedOrigins: h.allowedOrigins, store: createDurableConsumptionStore(backend) });
   const gateB = createGate({ manifest: DEFAULT_GATE_MANIFEST, trustedKeys: [h.publicKey], approverKeys: h.approverKeys, rpId: h.rpId, allowedOrigins: h.allowedOrigins, store: createDurableConsumptionStore(backend) });
   const receipt = h.mint({ outcome: 'allow_with_signoff' });
@@ -134,7 +173,10 @@ test('retention: export manifest carries the evidence head + counts', () => {
 test('gate.retention() classifies the live evidence log', async () => {
   const h = createEg1Harness();
   const { DEFAULT_GATE_MANIFEST } = await import('./action-packs.js');
-  const gate = createGate({ manifest: DEFAULT_GATE_MANIFEST, trustedKeys: [h.publicKey], approverKeys: h.approverKeys, rpId: h.rpId, allowedOrigins: h.allowedOrigins });
+  const gate = createGate({
+    manifest: DEFAULT_GATE_MANIFEST, trustedKeys: [h.publicKey], approverKeys: h.approverKeys,
+    rpId: h.rpId, allowedOrigins: h.allowedOrigins, allowEphemeralStore: true,
+  });
   await gate.run({ selector: SEL, receipt: h.mint({ outcome: 'allow_with_signoff' }), observedAction: h.action }, async () => ({ ran: true }));
   const r = gate.retention();
   assert.ok(r.summary.total >= 1);
