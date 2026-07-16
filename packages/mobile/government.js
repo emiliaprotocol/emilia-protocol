@@ -11,6 +11,7 @@ export function createGovernmentMobileController({
   profiles,
   resolveRequest,
   authorize,
+  registerChallenge = null,
 } = {}) {
   if (typeof service?.issue !== 'function' || typeof service?.verifyAndConsume !== 'function') {
     throw new TypeError('service must be an EMILIA mobile ceremony service');
@@ -18,6 +19,9 @@ export function createGovernmentMobileController({
   if (!(profiles instanceof Map) || profiles.size === 0) throw new TypeError('profiles must be a non-empty Map');
   if (typeof resolveRequest !== 'function') throw new TypeError('resolveRequest must read the system of record');
   if (typeof authorize !== 'function') throw new TypeError('authorize must enforce the government caller policy');
+  if (registerChallenge !== null && typeof registerChallenge !== 'function') {
+    throw new TypeError('registerChallenge must be a function when provided');
+  }
   const byHash = new Map([...profiles.values()].map((profile) => [profile.profile_hash, profile]));
   const issueMembers = new Set([
     'profile_id', 'action_reference', 'approver_id', 'decision', 'platform',
@@ -83,12 +87,14 @@ export function createGovernmentMobileController({
       if (resolved.approver_id !== request.approver_id) {
         return { ok: false, verdict: 'refuse_unauthorized', challenge: null };
       }
-      return service.issue({
+      const issued = await service.issue({
         action: resolved.action,
         policy: resolved.policy || null,
         policyId: resolved.policy_id || null,
         initiatorId: resolved.initiator_id,
         approverId: resolved.approver_id,
+        approverIndex: resolved.approver_index || 1,
+        requiredApprovals: resolved.required_approvals || 1,
         decision: request.decision,
         presentation: resolved.presentation,
         platform: request.platform,
@@ -100,6 +106,23 @@ export function createGovernmentMobileController({
         challengeId: resolved.challenge_id,
         nonce: resolved.nonce,
       });
+      if (issued.ok !== true || registerChallenge === null) return issued;
+      try {
+        const registered = await registerChallenge({
+          action_reference: request.action_reference,
+          approver_id: request.approver_id,
+          decision: request.decision,
+          challenge_id: issued.challenge.challenge_id,
+          action_hash: issued.challenge.action_hash,
+          expires_at: issued.challenge.expires_at,
+        });
+        if (registered !== true) {
+          return { ok: false, verdict: 'refuse_replay', challenge: null };
+        }
+      } catch {
+        return { ok: false, verdict: 'refuse_store_unavailable', challenge: null };
+      }
+      return issued;
     },
 
     async verify(presentation, caller = null) {

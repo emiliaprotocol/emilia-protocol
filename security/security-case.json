@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634",
-  "claim_count": 21,
-  "evidence_file_count": 100,
+  "evidence_bundle_sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5",
+  "claim_count": 22,
+  "evidence_file_count": 104,
   "execution": {
     "required": true,
     "status": "passed",
@@ -314,6 +314,19 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.js",
+        "titles": [
+          "burns an indeterminate dispatch and never retries the physical effect",
+          "consumes one execution and one settlement under concurrent duplicate delivery",
+          "executes, measures, emits a valid -02 Signed Statement, and settles once",
+          "refuses an inactive or expired action before touching COSA",
+          "refuses initiator self-approval under the pinned mobile roster",
+          "refuses meter signature substitution and market-rule smuggling"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/model-to-matter.test.js",
         "titles": [
           "admits at most one clearance across distinct challenges for the same action",
@@ -436,7 +449,7 @@
       "package": "@emilia-protocol/gate",
       "version": "0.10.0",
       "filename": "emilia-protocol-gate-0.10.0.tgz",
-      "sha256": "6c0d028b6b236ffc911d8a9e0620d4f011f946857679a2fe75455accd81c9fff",
+      "sha256": "ed14d13a1c2157a516a952275e33078897541f6f5ed5a91bc88c56d117e6724e",
       "file_count": 63
     },
     "mobile-sdk": {
@@ -444,14 +457,14 @@
       "package": "@emilia-protocol/mobile",
       "version": "0.1.0",
       "filename": "emilia-protocol-mobile-0.1.0.tgz",
-      "sha256": "1176e402c29c69ab6e84afd2c20a6cf7dba2a6a0acce8c57179e03b1d63f91ef",
+      "sha256": "36c03b3aabfad480db161966f5bad6ec81e559d80aa03ab0663d99025322a6bc",
       "file_count": 10
     },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634",
-      "file_count": 100
+      "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5",
+      "file_count": 104
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -614,7 +627,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -877,7 +890,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -985,7 +998,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -1107,7 +1120,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -1251,7 +1264,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -1397,7 +1410,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -1556,7 +1569,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -1665,7 +1678,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -1793,11 +1806,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "6c0d028b6b236ffc911d8a9e0620d4f011f946857679a2fe75455accd81c9fff"
+          "sha256": "ed14d13a1c2157a516a952275e33078897541f6f5ed5a91bc88c56d117e6724e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -1900,11 +1913,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "6c0d028b6b236ffc911d8a9e0620d4f011f946857679a2fe75455accd81c9fff"
+          "sha256": "ed14d13a1c2157a516a952275e33078897541f6f5ed5a91bc88c56d117e6724e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -2024,11 +2037,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "6c0d028b6b236ffc911d8a9e0620d4f011f946857679a2fe75455accd81c9fff"
+          "sha256": "ed14d13a1c2157a516a952275e33078897541f6f5ed5a91bc88c56d117e6724e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -2198,11 +2211,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "6c0d028b6b236ffc911d8a9e0620d4f011f946857679a2fe75455accd81c9fff"
+          "sha256": "ed14d13a1c2157a516a952275e33078897541f6f5ed5a91bc88c56d117e6724e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -2336,7 +2349,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -2452,7 +2465,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -2586,7 +2599,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -2845,7 +2858,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -3036,7 +3049,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -3320,7 +3333,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -3491,7 +3504,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "1176e402c29c69ab6e84afd2c20a6cf7dba2a6a0acce8c57179e03b1d63f91ef"
+          "sha256": "36c03b3aabfad480db161966f5bad6ec81e559d80aa03ab0663d99025322a6bc"
         },
         {
           "artifact_id": "verify-sdk",
@@ -3499,7 +3512,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -3641,7 +3654,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "1176e402c29c69ab6e84afd2c20a6cf7dba2a6a0acce8c57179e03b1d63f91ef"
+          "sha256": "36c03b3aabfad480db161966f5bad6ec81e559d80aa03ab0663d99025322a6bc"
         },
         {
           "artifact_id": "verify-sdk",
@@ -3649,7 +3662,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     },
@@ -3764,11 +3777,182 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "1176e402c29c69ab6e84afd2c20a6cf7dba2a6a0acce8c57179e03b1d63f91ef"
+          "sha256": "36c03b3aabfad480db161966f5bad6ec81e559d80aa03ab0663d99025322a6bc"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
+        }
+      ]
+    },
+    {
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "statement": "A GRACE curtailment reaches dispatch only while one canonical action is active, inside the pinned envelope, and approved by the required distinct Class-A mobile roster; post-dispatch compliance is computed only from a separately keyed meter statement, a confirmed Action State record requires that meter digest, and a compliant settlement entitlement is consumed at most once.",
+      "acceptance_roots": [
+        "relying-party-pinned curtailment envelope, mobile profile, approver roster, RP ID, origins, and Class-A credential keys",
+        "deployment-pinned actuator, meter, Action State, and settlement trust configuration",
+        "owner-fenced durable execution and settlement stores"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "verifyGraceMobileAuthorization",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "executeGraceCurtailment",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "buildActionStateCapsule",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "export": "verifyGraceMobileAuthorization"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "export": "executeGraceCurtailment"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "export": "buildActionStateCapsule"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/grace-mobile-grid.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python port of the GRACE vertical composition is claimed; the existing Python receipt verifier is a lower-layer primitive."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go port of the GRACE vertical composition is claimed; the existing Go receipt verifier is a lower-layer primitive."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "accept_two_person_curtailment_and_single_settlement",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_initiator_self_approval",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_inactive_action_before_dispatch",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_concurrent_replay",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_meter_rule_smuggling",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "executes, measures, emits a valid -02 Signed Statement, and settles once",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "refuses initiator self-approval under the pinned mobile roster",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "refuses an inactive or expired action before touching COSA",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "burns an indeterminate dispatch and never retries the physical effect",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "consumes one execution and one settlement under concurrent duplicate delivery",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "refuses meter signature substitution and market-rule smuggling",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "examples/grace/live-control-room.mjs",
+          "contains": [
+            "2 distinct Class-A handshakes: VERIFIED",
+            "CONSUMED ONCE",
+            "no physical grid event is claimed"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "every protected curtailment path is completely mediated by the execution store and configured actuator",
+        "the deployed actuator and meter adapters verify under correctly provisioned, independently governed keys and the meter reports truthful physical readings",
+        "the execution and settlement stores preserve owner fencing and atomic reserve or commit behavior under deployment faults",
+        "the grid program selects the correct baseline methodology and settlement policy"
+      ],
+      "exclusions": [
+        "the shipped COSA actuator and meter are reference simulations and are not evidence of a physical grid event, utility integration, adoption, or partner endorsement",
+        "cryptographic meter integrity does not prove sensor truth, baseline economic correctness, grid safety, or absence of an out-of-band bypass",
+        "the Action State output is an unregistered signed statement and is not claimed as a SCITT transparency-service anchor",
+        "the upstream Action State parser check is time-pinned interoperability evidence, not an independent implementation of GRACE"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
         }
       ]
     }
@@ -3820,7 +4004,7 @@
     },
     {
       "path": ".github/workflows/publish-verify-sdk.yml",
-      "sha256": "83f502173db3cfb80e159a894cfb68a499c68569e8ec2bac0ed6de9d03ed4a77"
+      "sha256": "22cb21ca30ba5af23f42389b771e917fd2af8c033ea13891e0d5c74428a5e5e5"
     },
     {
       "path": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js",
@@ -3845,6 +4029,10 @@
     {
       "path": "conformance/vectors/authority.v1.json",
       "sha256": "6d5b49bb698e08346e93484a85c82502a84ad1c49d8d68ab7491fa9c4530a983"
+    },
+    {
+      "path": "conformance/vectors/grace-mobile-grid.v1.json",
+      "sha256": "3c5b90805a9756792540fe8c14fe3765329b6cd404437d99452cb62dca30b787"
     },
     {
       "path": "conformance/vectors/model-to-matter.v1.json",
@@ -3873,6 +4061,10 @@
     {
       "path": "conformance/vectors/trust-receipt.exec.v1.json",
       "sha256": "aff19fb8475547cc1bdd57f20a64ac6e610f59b9e37d9e24326079ffa0ab4d19"
+    },
+    {
+      "path": "examples/grace/live-control-room.mjs",
+      "sha256": "02901677973dd36f29b828369ba6c120bcd8c4e59738ce68e2a0a253aa0cb2b1"
     },
     {
       "path": "examples/regulatory-mobile-oversight/demo.test.mjs",
@@ -3905,6 +4097,10 @@
     {
       "path": "lib/frontier/model-to-matter.js",
       "sha256": "abbc9c55f5cdf96dfc22ffb10010d34f6c27fa8b43f50127f22ecab118fdeb82"
+    },
+    {
+      "path": "lib/grace/mobile-grid.js",
+      "sha256": "28cf25c611d6244fd3520361eb1b9508216a5317598b853b0ddb5997799cf4a4"
     },
     {
       "path": "lib/guard-signoff.js",
@@ -3944,7 +4140,7 @@
     },
     {
       "path": "packages/gate/evidence.js",
-      "sha256": "d036538b52c23a780493a856228d2020f006ce8bbf48769c9cf2e8e2881042af"
+      "sha256": "cd47641e6a2a3713ba5c74a102ac31d014f5c5713aedcf1663bc6de3feec4025"
     },
     {
       "path": "packages/gate/gate.test.js",
@@ -3952,7 +4148,7 @@
     },
     {
       "path": "packages/gate/index.js",
-      "sha256": "fb8b177a8580c930e69122024d061462c899a3e5ef7d339476525de3e4097872"
+      "sha256": "e845f929ecc4f90b1c30d165972f4af9b9c7b0ccbee171774c047677b38c57d1"
     },
     {
       "path": "packages/gate/store-faults.test.js",
@@ -3992,23 +4188,23 @@
     },
     {
       "path": "packages/mobile/enrollment.js",
-      "sha256": "1002ad4e7be5d46228e8833fa8964cf72ca8cb1bea48ded65e83db0998db9dab"
+      "sha256": "ed1094aefec73d0474615012907b807f0a2e8481896ec5ff42d05330efdff2f2"
     },
     {
       "path": "packages/mobile/enrollment.test.js",
-      "sha256": "669bee89031e90eb5e1573d522b727eefcaeaa47bb7f482fc5818985952ae03f"
+      "sha256": "dccad1e9111bb1c44c1a621046c691b79386ef6dcd2941aebca8727e324134ea"
     },
     {
       "path": "packages/mobile/government.js",
-      "sha256": "f43a47a51f703a49a7bed5ab89995cdd6d8caf74748d9684bb2725d01171b165"
+      "sha256": "e408b736bbbaf381fbd8f6d9a632805ccafcd9b66a24ff714174d2f0ed5b1359"
     },
     {
       "path": "packages/mobile/government.test.js",
-      "sha256": "beca394e1b4560ee4ff60a032a822447b81bc5eaef1cc7ef04f66af8886b336c"
+      "sha256": "2751add4d40ff58657270a5cdf6bf1689d9a6bcc2c653100bce9db74987c06ba"
     },
     {
       "path": "packages/mobile/http.js",
-      "sha256": "e5b3a212d449829123557c438101b122166a2cb8bc651cd0f62bb5640f6df1fb"
+      "sha256": "ffe72fb25767b8b5c2e5e19546db907b8a794f995aab85259b92d0fca57af0f8"
     },
     {
       "path": "packages/mobile/http.test.js",
@@ -4016,11 +4212,11 @@
     },
     {
       "path": "packages/mobile/index.js",
-      "sha256": "8fb04804c8c5a7450701d3bf013f2a4dc4d65bd33851d57622d89077b8176bba"
+      "sha256": "072dd6d2ac5a0b5c803488afa927103451ee5bb1aba832069efe591adaf359b0"
     },
     {
       "path": "packages/mobile/index.test.js",
-      "sha256": "b03534717ee6ffc232a7f7122e693eb46131dcafdf80c3dbc5f3b243d3f98496"
+      "sha256": "87521b8ccffb2796434315d6c6d22ec3f9f47d6e86837a1a2dcef2b33b17f6b9"
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
@@ -4108,7 +4304,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "f80eb7c7e97f7979cb76b4288e024c570e89002435280e567d6ecc1a1e169ef5"
+      "sha256": "7add9f158c3b8c5ced208a9468a2e131baf92c601d08098bbc75a21476ca6b28"
     },
     {
       "path": "security/vectors.v1.json",
@@ -4129,6 +4325,10 @@
     {
       "path": "tests/evidence-challenge-durable.test.js",
       "sha256": "17466f71be88b3fb2962df6fb90b4e252d89a780360a63e4903cbe8fec2898b4"
+    },
+    {
+      "path": "tests/grace-mobile-grid.test.js",
+      "sha256": "095259824dcaa31861b3125bd8b4378d8288a2ee950afd8cae8cd3a09fbe5b27"
     },
     {
       "path": "tests/model-to-matter.test.js",

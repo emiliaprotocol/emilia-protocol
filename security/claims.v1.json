@@ -951,6 +951,71 @@
         "the simulated adapters in unit tests are test doubles and not production token verifiers"
       ],
       "release_artifacts": ["mobile-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "statement": "A GRACE curtailment reaches dispatch only while one canonical action is active, inside the pinned envelope, and approved by the required distinct Class-A mobile roster; post-dispatch compliance is computed only from a separately keyed meter statement, a confirmed Action State record requires that meter digest, and a compliant settlement entitlement is consumed at most once.",
+      "acceptance_roots": [
+        "relying-party-pinned curtailment envelope, mobile profile, approver roster, RP ID, origins, and Class-A credential keys",
+        "deployment-pinned actuator, meter, Action State, and settlement trust configuration",
+        "owner-fenced durable execution and settlement stores"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "verifyGraceMobileAuthorization", "exported": true },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "executeGraceCurtailment", "exported": true },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "buildActionStateCapsule", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "verifyGraceMobileAuthorization" },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "executeGraceCurtailment" },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "buildActionStateCapsule" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/grace-mobile-grid.v1.json" },
+        "python": { "status": "gap", "reason": "No Python port of the GRACE vertical composition is claimed; the existing Python receipt verifier is a lower-layer primitive." },
+        "go": { "status": "gap", "reason": "No Go port of the GRACE vertical composition is claimed; the existing Go receipt verifier is a lower-layer primitive." }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "accept_two_person_curtailment_and_single_settlement", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_initiator_self_approval", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_inactive_action_before_dispatch", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_concurrent_replay", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_meter_rule_smuggling", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/grace-mobile-grid.test.js", "title": "executes, measures, emits a valid -02 Signed Statement, and settles once", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses initiator self-approval under the pinned mobile roster", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses an inactive or expired action before touching COSA", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "burns an indeterminate dispatch and never retries the physical effect", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "consumes one execution and one settlement under concurrent duplicate delivery", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses meter signature substitution and market-rule smuggling", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "examples/grace/live-control-room.mjs",
+          "contains": [
+            "2 distinct Class-A handshakes: VERIFIED",
+            "CONSUMED ONCE",
+            "no physical grid event is claimed"
+          ]
+        }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "every protected curtailment path is completely mediated by the execution store and configured actuator",
+        "the deployed actuator and meter adapters verify under correctly provisioned, independently governed keys and the meter reports truthful physical readings",
+        "the execution and settlement stores preserve owner fencing and atomic reserve or commit behavior under deployment faults",
+        "the grid program selects the correct baseline methodology and settlement policy"
+      ],
+      "exclusions": [
+        "the shipped COSA actuator and meter are reference simulations and are not evidence of a physical grid event, utility integration, adoption, or partner endorsement",
+        "cryptographic meter integrity does not prove sensor truth, baseline economic correctness, grid safety, or absence of an out-of-band bypass",
+        "the Action State output is an unregistered signed statement and is not claimed as a SCITT transparency-service anchor",
+        "the upstream Action State parser check is time-pinned interoperability evidence, not an independent implementation of GRACE"
+      ],
+      "release_artifacts": ["security-evidence"]
     }
   ]
 }

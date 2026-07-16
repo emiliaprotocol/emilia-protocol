@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 import SwiftUI
+import UIKit
 
 @main
-struct GovernmentApprovalApp: App {
+struct EmiliaApproverApp: App {
     @StateObject private var model = ApprovalViewModel()
 
     var body: some Scene {
         WindowGroup {
             ApprovalView(model: model)
-                .tint(Color(red: 0.08, green: 0.31, blue: 0.42))
+                .preferredColorScheme(nil)
+                .onOpenURL { model.receivePairingLink($0) }
+                .onReceive(NotificationCenter.default.publisher(for: UIScreen.capturedDidChangeNotification)) { _ in
+                    model.updateScreenCaptureState()
+                }
+                .task { model.updateScreenCaptureState() }
         }
     }
 }

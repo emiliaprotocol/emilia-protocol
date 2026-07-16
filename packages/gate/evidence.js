@@ -28,14 +28,16 @@ function sha256hex(s) {
 }
 
 /** Canonical JSON (recursive sorted keys) — matches @emilia-protocol/verify. */
-function canonical(v) {
+export function canonicalEvidenceJson(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (Array.isArray(v)) return `[${v.map(canonicalEvidenceJson).join(',')}]`;
   if (typeof v === 'object') {
-    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonical(v[k])).join(',')}}`;
+    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalEvidenceJson(v[k])).join(',')}}`;
   }
   return JSON.stringify(v);
 }
+
+const canonical = canonicalEvidenceJson;
 
 export function createEvidenceLog({ sink, strict = false } = {}) {
   const records = [];

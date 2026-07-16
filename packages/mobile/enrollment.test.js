@@ -45,6 +45,9 @@ function service(overrides = {}) {
       platform: request.platform,
       hardware_backed: true,
       strong_integrity: true,
+      platform_public_key: request.platform === 'ios'
+        ? passkey.publicKey.export({ type: 'spki', format: 'pem' })
+        : null,
     }),
     authorizeEnrollment: async (input) => input.caller?.subject === CALLER.subject
       && input.approver_id === 'ep:approver:case-supervisor',
@@ -93,6 +96,7 @@ test('enrolls only after both independently verified registration rows and atomi
   assert.equal(result.enrollment.platform, 'ios');
   assert.equal(item.directory.rows.length, 1);
   assert.equal(item.directory.rows[0].event.device_key_id, result.enrollment.device_key_id);
+  assert.match(result.enrollment.platform_public_key, /BEGIN PUBLIC KEY/);
 });
 
 test('refuses enrollment binding, WebAuthn, platform, replay, and storage failures', async () => {
@@ -127,6 +131,24 @@ test('refuses enrollment binding, WebAuthn, platform, replay, and storage failur
   const platform = service({ verifyPlatformEnrollment: async () => ({ valid: false }) });
   const platformChallenge = await issued(platform);
   assert.equal((await platform.value.complete({ caller: CALLER, challenge: platformChallenge, response: response(platformChallenge) })).verdict, 'refuse_attestation');
+
+  const missingAppleKey = service({
+    verifyPlatformEnrollment: async (request) => ({
+      valid: true,
+      request_hash: request.expected_request_hash,
+      app_id: request.expected_app_id,
+      attestation_key_id: request.expected_attestation_key_id,
+      platform: 'ios',
+      hardware_backed: true,
+      strong_integrity: true,
+    }),
+  });
+  const missingAppleKeyChallenge = await issued(missingAppleKey);
+  assert.equal((await missingAppleKey.value.complete({
+    caller: CALLER,
+    challenge: missingAppleKeyChallenge,
+    response: response(missingAppleKeyChallenge),
+  })).verdict, 'refuse_attestation');
 
   const replay = service();
   const replayChallenge = await issued(replay);
@@ -171,4 +193,37 @@ test('refuses enrollment when the agency caller is absent or not bound to the ap
   });
   assert.equal(deniedCompletion.verdict, 'refuse_unauthorized');
   assert.equal(item.directory.rows.length, 0);
+});
+
+test('accepts native Android origins and standard Apple App Attest key identifiers', async () => {
+  const android = service();
+  const androidIssue = await android.value.issue({
+    approverId: 'ep:approver:case-supervisor',
+    platform: 'android',
+    appId: 'ai.emiliaprotocol.approver',
+    rpId: 'www.emiliaprotocol.ai',
+    origin: `android:apk-key-hash:${'a'.repeat(43)}`,
+    userName: 'case-supervisor@example.gov',
+    displayName: 'Case Supervisor',
+    caller: CALLER,
+  });
+  assert.equal(androidIssue.ok, true);
+  assert.equal((await android.value.issue({
+    approverId: 'ep:approver:case-supervisor',
+    platform: 'android',
+    appId: 'ai.emiliaprotocol.approver',
+    rpId: 'www.emiliaprotocol.ai',
+    origin: 'android:apk-key-hash:not-a-sha256-value',
+    userName: 'case-supervisor@example.gov',
+    displayName: 'Case Supervisor',
+    caller: CALLER,
+  })).verdict, 'refuse_malformed');
+
+  const apple = service();
+  const appleChallenge = await issued(apple);
+  const appleResponse = response(appleChallenge);
+  appleResponse.attestation_key_id = `${'A'.repeat(40)}+/=`;
+  const completed = await apple.value.complete({ caller: CALLER, challenge: appleChallenge, response: appleResponse });
+  assert.equal(completed.ok, true);
+  assert.equal(completed.enrollment.attestation_key_id, appleResponse.attestation_key_id);
 });

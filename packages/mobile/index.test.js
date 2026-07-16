@@ -44,6 +44,8 @@ function fixture({
   key = p256(),
   challengeId = `mob_${crypto.randomBytes(8).toString('hex')}`,
   nonce = `sig_${crypto.randomBytes(16).toString('hex')}`,
+  approverIndex = 1,
+  requiredApprovals = 1,
 } = {}) {
   const credentialId = crypto.randomBytes(32).toString('base64url');
   const deviceKeyId = `ep:key:mobile-${platform}-${crypto.randomBytes(4).toString('hex')}`;
@@ -80,6 +82,8 @@ function fixture({
     policyId: 'gov-benefits-high-risk-v1',
     initiatorId: 'ep:agent:benefits-assistant',
     approverId: 'ep:approver:case-supervisor',
+    approverIndex,
+    requiredApprovals,
     decision,
     presentation: {
       title: 'Payment destination change',
@@ -173,6 +177,14 @@ test('verifies iOS and Android ceremonies as the same Class-A evidence shape', a
     assert.equal(result.class_a.context.mobile_binding.platform, platform);
     assert.deepEqual(Object.values(result.checks), Array(Object.keys(result.checks).length).fill(true));
   }
+});
+
+test('binds a mobile handshake to its true multi-approver index and threshold', async () => {
+  const item = fixture({ approverIndex: 3, requiredApprovals: 2 });
+  const result = await verifyMobileCeremony({ ...item, now: NOW });
+  assert.equal(result.valid, true);
+  assert.equal(result.class_a.context.approver_index, 3);
+  assert.equal(result.class_a.context.required_approvals, 2);
 });
 
 test('signed denial is a terminal evidence outcome, not relabeled approval', async () => {
@@ -403,6 +415,63 @@ test('service fails closed on store, audit, and counter failures', async () => {
     clock: () => NOW,
   });
   assert.equal((await counterRollback.verifyAndConsume(item)).verdict, 'refuse_counter_rollback');
+});
+
+test('service commits the protected action exactly once before reporting verified', async () => {
+  const item = fixture({ counter: 0 });
+  let committed = 0;
+  const committedEvidence = durableAuditLog();
+  const service = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    commitDecision: async ({ challenge, result, auditEntry }) => {
+      assert.equal(challenge.challenge_id, item.challenge.challenge_id);
+      assert.equal(result.decision, 'approved');
+      assert.equal(auditEntry.event_type, 'mobile.ceremony.decision');
+      committed += 1;
+      return {
+        committed: true,
+        audit_record: await committedEvidence.record(auditEntry),
+      };
+    },
+    clock: () => NOW,
+  });
+  const accepted = await service.verifyAndConsume(item);
+  assert.equal(accepted.valid, true);
+  assert.equal(committed, 1);
+  assert.equal(accepted.audit_record.event_type, 'mobile.ceremony.decision');
+
+  const splitWrite = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    async commitDecision() { return true; },
+    clock: () => NOW,
+  });
+  assert.equal((await splitWrite.verifyAndConsume(item)).verdict, 'refuse_audit_unavailable');
+
+  const conflict = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    async commitDecision() { return false; },
+    clock: () => NOW,
+  });
+  assert.equal((await conflict.verifyAndConsume(item)).verdict, 'refuse_replay');
+
+  const unavailable = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: item.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    async commitDecision() { throw new Error('database unavailable'); },
+    clock: () => NOW,
+  });
+  assert.equal((await unavailable.verifyAndConsume(item)).verdict, 'refuse_store_unavailable');
 });
 
 test('signed acknowledgement is independently verifiable and tamper evident', async () => {

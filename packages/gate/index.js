@@ -48,7 +48,12 @@ const {
 const { verifyWebAuthnSignoff, verifyQuorum } = await import('@emilia-protocol/verify')
   .catch(() => import('../verify/index.js'));
 import { MemoryConsumptionStore } from './store.js';
-import { createAtomicEvidenceLog, createEvidenceLog, createMemoryAtomicEvidenceBackend } from './evidence.js';
+import {
+  canonicalEvidenceJson,
+  createAtomicEvidenceLog,
+  createEvidenceLog,
+  createMemoryAtomicEvidenceBackend,
+} from './evidence.js';
 import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest } from './action-packs.js';
 import { hashCanonical, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket, ADMISSIBILITY_VERDICTS } from './reliance-packet.js';
@@ -58,7 +63,13 @@ import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 import { createDefaultActionControlManifest, findActionControl, validateActionControlManifest } from './action-control-manifest.js';
 
-export { MemoryConsumptionStore, createEvidenceLog, createAtomicEvidenceLog, createMemoryAtomicEvidenceBackend };
+export {
+  MemoryConsumptionStore,
+  canonicalEvidenceJson,
+  createEvidenceLog,
+  createAtomicEvidenceLog,
+  createMemoryAtomicEvidenceBackend,
+};
 export { createDurableConsumptionStore, createMemoryBackend, DURABLE_CONSUMPTION_VERSION } from './store.js';
 export { createDurableChallengeStore, challengeStorageKey, challengeBodyDigest, DURABLE_CHALLENGE_STORE_VERSION } from './challenge-store.js';
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';

@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-15T14:32:54.611Z",
+  "evidence_snapshot_at": "2026-07-15T23:27:05.715Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "79382b6140419c1417e1ff622088c17231751377e1a0d3c7c9972dc7a983af4e",
+    "input_digest_sha256": "f5712c02fe2f3dc178d60c67433a03629c8c08b6ba77359d185b3e2ae50e4596",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "fc52b05000813c6fd09f0ede5d85b24a55677e348e6878c7c0c8012247f2a4fa",
-        "bytes": 15679
+        "sha256": "f1fd5cb99fc207f3cb371af5c98f3dc3408b813e126b467da6a3588ac8ec66b0",
+        "bytes": 16828
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "264adc7861b019b34c5c2c4d97ee3bb85d405d5986015e3125faeab70a1949fe",
+        "sha256": "77178ae0e71af5db945a992bee50fbc1d32cd969f0e7c3aa772850e85b8fac77",
         "bytes": 1068
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "f80eb7c7e97f7979cb76b4288e024c570e89002435280e567d6ecc1a1e169ef5",
-        "bytes": 94121
+        "sha256": "7add9f158c3b8c5ced208a9468a2e131baf92c601d08098bbc75a21476ca6b28",
+        "bytes": 99894
       },
       {
         "path": "security/security-case.json",
-        "sha256": "2a0bce956588da16aa1ce317c989ccaa995afd7e58dbfff5c3a92b54c66d5a34",
-        "bytes": 154002
+        "sha256": "1e7d694841756831b7aa8f890956e4159871454117f478d77f213d12d1a24a63",
+        "bytes": 162165
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -142,8 +142,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5732,
-      "files": 291,
+      "total": 5828,
+      "files": 296,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -172,9 +172,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 21,
-      "evidence_files": 100,
-      "evidence_bundle_sha256": "15f5f6c49c0f52f1f428d0cd648009ff37de0bcf963c0a3cc438a8c089692634"
+      "claims": 22,
+      "evidence_files": 104,
+      "evidence_bundle_sha256": "3ecb200df98a328f3fe1c52a63448eaef8c32d49bde39ebbbcb1f8161ec9a3b5"
     },
     "caid": {
       "core_vectors": 48,
@@ -1922,6 +1922,94 @@
         "enrollment authorization, personnel vetting, device management, and recovery policy remain relying-party responsibilities",
         "the simulated adapters in unit tests are test doubles and not production token verifiers"
       ]
+    },
+    {
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "statement": "A GRACE curtailment reaches dispatch only while one canonical action is active, inside the pinned envelope, and approved by the required distinct Class-A mobile roster; post-dispatch compliance is computed only from a separately keyed meter statement, a confirmed Action State record requires that meter digest, and a compliant settlement entitlement is consumed at most once.",
+      "acceptance_roots": [
+        "relying-party-pinned curtailment envelope, mobile profile, approver roster, RP ID, origins, and Class-A credential keys",
+        "deployment-pinned actuator, meter, Action State, and settlement trust configuration",
+        "owner-fenced durable execution and settlement stores"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "verifyGraceMobileAuthorization",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "executeGraceCurtailment",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "buildActionStateCapsule",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/grace-mobile-grid.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python port of the GRACE vertical composition is claimed; the existing Python receipt verifier is a lower-layer primitive."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go port of the GRACE vertical composition is claimed; the existing Go receipt verifier is a lower-layer primitive."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "accept_two_person_curtailment_and_single_settlement",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_initiator_self_approval",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_inactive_action_before_dispatch",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_concurrent_replay",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_meter_rule_smuggling",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "every protected curtailment path is completely mediated by the execution store and configured actuator",
+        "the deployed actuator and meter adapters verify under correctly provisioned, independently governed keys and the meter reports truthful physical readings",
+        "the execution and settlement stores preserve owner fencing and atomic reserve or commit behavior under deployment faults",
+        "the grid program selects the correct baseline methodology and settlement policy"
+      ],
+      "exclusions": [
+        "the shipped COSA actuator and meter are reference simulations and are not evidence of a physical grid event, utility integration, adoption, or partner endorsement",
+        "cryptographic meter integrity does not prove sensor truth, baseline economic correctness, grid safety, or absence of an out-of-band bypass",
+        "the Action State output is an unregistered signed statement and is not claimed as a SCITT transparency-service anchor",
+        "the upstream Action State parser check is time-pinned interoperability evidence, not an independent implementation of GRACE"
+      ]
     }
   ],
   "non_claims": [
@@ -1942,6 +2030,7 @@
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
+    "The GRACE live control room uses signed COSA and meter reference adapters. It exercises real verification and one-time state transitions but does not claim a physical grid event, production COSA integration, utility adoption, meter truth, or SCITT anchoring.",
     "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims."
   ],
   "source_precedence": [
@@ -2370,6 +2459,18 @@
     {
       "path": "examples/mobile-government",
       "purpose": "buildable iOS and Android government approval reference applications using system-of-record actions and server-pinned profiles"
+    },
+    {
+      "path": "lib/grace/mobile-grid.js",
+      "purpose": "canonical grid.curtailment composition across distinct Class-A mobile approvals, bounded one-time dispatch, independent meter evidence, Action State, and settlement"
+    },
+    {
+      "path": "conformance/vectors/grace-mobile-grid.v1.json",
+      "purpose": "JavaScript-only GRACE vertical composition claims covering the accepted path plus self-approval, inactive action, replay, and meter-rule-smuggling refusals"
+    },
+    {
+      "path": "app/grace/live",
+      "purpose": "public reference control room backed by the executable GRACE scenario and explicitly labeled as a non-physical simulation"
     }
   ],
   "commands": [
@@ -2388,6 +2489,10 @@
     {
       "command": "npm run mobile:conformance",
       "purpose": "run mobile server, enrollment, attestation, replay, canonical-byte, Swift, and Kotlin tests"
+    },
+    {
+      "command": "node examples/grace/live-control-room.mjs",
+      "purpose": "run the GRACE mobile-to-COSA-to-meter-to-Action-State-to-settlement reference circuit and its three attack cases"
     },
     {
       "command": "npm run check:security-case",

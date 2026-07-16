@@ -11,6 +11,7 @@ export interface MobileEnrollment {
   platform: MobilePlatform;
   app_id: string;
   attestation_key_id: string;
+  platform_public_key?: string | null;
   status?: 'active' | 'revoked';
   valid_from: string;
   valid_to: string;
@@ -96,6 +97,13 @@ export interface MobileVerificationResult {
   audit_record?: unknown;
 }
 
+export interface MobileEvidenceRecord extends Record<string, JsonValue> {
+  seq: number;
+  prev_hash: string;
+  record_id: string;
+  hash: string;
+}
+
 export interface MobileAttestationResult {
   valid: boolean;
   request_hash?: string;
@@ -104,6 +112,7 @@ export interface MobileAttestationResult {
   platform?: MobilePlatform;
   hardware_backed?: boolean;
   strong_integrity?: boolean;
+  platform_public_key?: string;
   [key: string]: unknown;
 }
 
@@ -179,6 +188,11 @@ export function createMobileCeremonyService(input: {
   auditLog: { durable?: boolean; strict?: boolean; record(event: Record<string, unknown>): Promise<unknown> };
   attestationVerifier: MobileAttestationVerifier;
   counterStore?: { advance(key: string, value: number): Promise<boolean> } | null;
+  commitDecision?: ((input: {
+    challenge: MobileChallenge;
+    result: MobileVerificationResult;
+    auditEntry: Record<string, JsonValue>;
+  }) => Promise<false | { committed: true; audit_record: MobileEvidenceRecord }>) | null;
   clock?: () => string;
   allowEphemeral?: boolean;
 }): MobileCeremonyService;
@@ -231,6 +245,7 @@ export function createGovernmentMobileController(input: {
   profiles: Map<string, MobileRelianceProfile>;
   resolveRequest(input: Record<string, unknown>): Promise<Record<string, unknown>>;
   authorize(input: Record<string, unknown>): Promise<boolean> | boolean;
+  registerChallenge?: ((input: Record<string, unknown>) => Promise<boolean>) | null;
 }): {
   issue(request: Record<string, unknown>, caller?: unknown): Promise<{ ok: boolean; verdict: string; challenge: MobileChallenge | null }>;
   verify(presentation: { challenge: MobileChallenge; response: MobileCeremonyResponse }, caller?: unknown): Promise<MobileVerificationResult>;
@@ -241,8 +256,9 @@ export function createMobileHttpHandler(input: {
   enrollmentService: ReturnType<typeof createMobileEnrollmentService>;
   authenticate(request: Request): Promise<unknown> | unknown;
   resolveEnrollmentIdentity(input: { caller: unknown; approver_id: string }): Promise<{ userName: string; displayName: string }> | { userName: string; displayName: string };
-  enrollmentConfig: { rpId: string; origin: string };
+  enrollmentConfig: { rpId: string; origin?: string; origins?: { ios: string; android: string } };
   maxBodyBytes?: number;
+  routePrefix?: string;
 }): (request: Request) => Promise<Response>;
 
 export function createMobileAck(input: Record<string, unknown>): Record<string, unknown>;

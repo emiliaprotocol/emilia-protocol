@@ -24,8 +24,12 @@ function playPayload(overrides = {}) {
     },
     deviceIntegrity: {
       deviceRecognitionVerdict: ['MEETS_DEVICE_INTEGRITY', 'MEETS_STRONG_INTEGRITY'],
+      deviceAttributes: { sdkVersion: 35 },
     },
-    environmentDetails: { appAccessRiskVerdict: { appsDetected: ['KNOWN_INSTALLED'] } },
+    environmentDetails: {
+      appAccessRiskVerdict: { appsDetected: ['KNOWN_INSTALLED'] },
+      playProtectVerdict: 'NO_ISSUES',
+    },
     ...overrides,
   };
 }
@@ -36,6 +40,9 @@ function playVerifier(payload, options = {}) {
     packageName: 'gov.example.android.approvals',
     certificateDigests: ['release-cert-sha256'],
     attestationKeyId: 'play-integrity:gov.example.android.approvals',
+    allowedVersionCodes: [42],
+    minimumSdkVersion: 33,
+    requirePlayProtect: true,
     clock: () => NOW,
     ...options,
   });
@@ -63,8 +70,21 @@ test('Play Integrity adapter refuses each relying-party pin failure', async () =
     playPayload({ requestDetails: { ...playPayload().requestDetails, timestampMillis: String(NOW - 999_000) } }),
     playPayload({ appIntegrity: { ...playPayload().appIntegrity, packageName: 'gov.attacker.app' } }),
     playPayload({ appIntegrity: { ...playPayload().appIntegrity, certificateSha256Digest: ['wrong-cert'] } }),
+    playPayload({ appIntegrity: { ...playPayload().appIntegrity, versionCode: '41' } }),
     playPayload({ accountDetails: { appLicensingVerdict: 'UNLICENSED' } }),
     playPayload({ deviceIntegrity: { deviceRecognitionVerdict: ['MEETS_DEVICE_INTEGRITY'] } }),
+    playPayload({
+      deviceIntegrity: {
+        ...playPayload().deviceIntegrity,
+        deviceAttributes: { sdkVersion: 32 },
+      },
+    }),
+    playPayload({
+      environmentDetails: {
+        ...playPayload().environmentDetails,
+        playProtectVerdict: 'POSSIBLE_RISK',
+      },
+    }),
   ];
   for (const payload of cases) assert.equal((await playVerifier(payload)(playRequest)).valid, false);
 

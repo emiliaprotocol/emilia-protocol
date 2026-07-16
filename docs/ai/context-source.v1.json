@@ -90,6 +90,7 @@
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
+    "The GRACE live control room uses signed COSA and meter reference adapters. It exercises real verification and one-time state transitions but does not claim a physical grid event, production COSA integration, utility adoption, meter truth, or SCITT anchoring.",
     "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims."
   ],
   "source_precedence": [
@@ -200,6 +201,18 @@
     {
       "path": "examples/mobile-government",
       "purpose": "buildable iOS and Android government approval reference applications using system-of-record actions and server-pinned profiles"
+    },
+    {
+      "path": "lib/grace/mobile-grid.js",
+      "purpose": "canonical grid.curtailment composition across distinct Class-A mobile approvals, bounded one-time dispatch, independent meter evidence, Action State, and settlement"
+    },
+    {
+      "path": "conformance/vectors/grace-mobile-grid.v1.json",
+      "purpose": "JavaScript-only GRACE vertical composition claims covering the accepted path plus self-approval, inactive action, replay, and meter-rule-smuggling refusals"
+    },
+    {
+      "path": "app/grace/live",
+      "purpose": "public reference control room backed by the executable GRACE scenario and explicitly labeled as a non-physical simulation"
     }
   ],
   "commands": [
@@ -218,6 +231,10 @@
     {
       "command": "npm run mobile:conformance",
       "purpose": "run mobile server, enrollment, attestation, replay, canonical-byte, Swift, and Kotlin tests"
+    },
+    {
+      "command": "node examples/grace/live-control-room.mjs",
+      "purpose": "run the GRACE mobile-to-COSA-to-meter-to-Action-State-to-settlement reference circuit and its three attack cases"
     },
     {
       "command": "npm run check:security-case",

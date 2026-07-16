@@ -39,6 +39,7 @@ permitted to act for the requested approver and enrolled device.
 
 ```sh
 npm run mobile:conformance
+npm run mobile:release-check
 
 cd examples/mobile-government/ios
 xcodegen generate
@@ -50,6 +51,27 @@ cd ../../../sdks/kotlin-mobile
 ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew :sample:assembleDebug
 ```
 
-The checked-in identifiers and endpoints use `example.gov`. They are
-configuration examples, not evidence that any state or agency has adopted or
-endorsed the platform.
+## Demo
+
+Run the production-shaped QR/backend demo against a configured deployment:
+
+```sh
+EMILIA_API_KEY=... npm run mobile:live-demo -- --scenario grid
+```
+
+Run the debug-only iOS showroom of the exact-action review surface:
+
+```sh
+npm run mobile:ios-showcase
+```
+
+The showroom carries a visible `DEMO` label and is compiled out of Release. It
+does not claim a passkey, App Attest, backend consumption, or execution result.
+Use the live demo plus a paired physical device for the real ceremony.
+
+The reference apps use the permanent EMILIA identity
+`ai.emiliaprotocol.approver` and the API at `www.emiliaprotocol.ai`. They are
+open reference clients, not evidence that any state or agency has adopted or
+endorsed the platform. Production distribution remains blocked until the
+account-owned store, signing, attestation, and privacy steps in
+[`docs/mobile/RELEASE.md`](../../docs/mobile/RELEASE.md) are complete.

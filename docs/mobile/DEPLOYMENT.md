@@ -28,6 +28,12 @@ POST /v1/mobile/enrollments/challenges
 POST /v1/mobile/enrollments
 ```
 
+The hosted reference adapter additionally exposes pairing exchange, an
+entity-scoped inbox, a demo action injector for authenticated operators, and an
+atomic disconnect endpoint under `/api/v1/mobile`. The disconnect endpoint
+revokes both the bearer session and its bound enrollment in one database
+transaction; deleting local app data alone is not revocation.
+
 All four endpoints MUST authenticate the caller and pass the resulting principal
 to the controller. The controller's mandatory `authorize` hook runs before a
 system-of-record lookup or ceremony verification. Authentication failure,

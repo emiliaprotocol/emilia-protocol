@@ -1,0 +1,51 @@
+{
+  "suite": "EP-GRACE-MOBILE-GRID-v1",
+  "description": "Executable claim vectors for the JavaScript GRACE mobile-to-COSA-to-meter-to-Action-State composition. These are vertical composition vectors, not cross-language verifier vectors or evidence of a physical grid deployment.",
+  "vectors": [
+    {
+      "id": "accept_two_person_curtailment_and_single_settlement",
+      "expect": { "valid": true },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.js",
+        "title": "executes, measures, emits a valid -02 Signed Statement, and settles once"
+      }
+    },
+    {
+      "id": "reject_initiator_self_approval",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.js",
+        "title": "refuses initiator self-approval under the pinned mobile roster"
+      }
+    },
+    {
+      "id": "reject_inactive_action_before_dispatch",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.js",
+        "title": "refuses an inactive or expired action before touching COSA"
+      }
+    },
+    {
+      "id": "reject_concurrent_replay",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.js",
+        "title": "consumes one execution and one settlement under concurrent duplicate delivery"
+      }
+    },
+    {
+      "id": "reject_meter_rule_smuggling",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.js",
+        "title": "refuses meter signature substitution and market-rule smuggling"
+      }
+    }
+  ]
+}

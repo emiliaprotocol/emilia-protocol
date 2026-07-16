@@ -19,6 +19,11 @@ function parseMillis(value) {
   return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
 
+function parsePositiveInteger(value) {
+  const number = typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
+  return Number.isSafeInteger(number) && number > 0 ? number : null;
+}
+
 /**
  * Adapt the official Google decodeIntegrityToken response into the closed
  * result consumed by verifyMobileCeremony. `decodeToken` owns OAuth and the
@@ -32,6 +37,9 @@ export function createPlayIntegrityAttestationVerifier({
   requireLicensed = true,
   requireStrongIntegrity = true,
   requireNoCaptureOrControl = false,
+  requirePlayProtect = false,
+  allowedVersionCodes = [],
+  minimumSdkVersion = null,
   maxTokenAgeMs = 120_000,
   clock = Date.now,
 } = {}) {
@@ -42,11 +50,19 @@ export function createPlayIntegrityAttestationVerifier({
     throw new TypeError('at least one pinned certificate digest is required');
   }
   if (typeof attestationKeyId !== 'string' || !attestationKeyId) throw new TypeError('attestationKeyId is required');
+  if (!Array.isArray(allowedVersionCodes)
+      || allowedVersionCodes.some((version) => parsePositiveInteger(version) === null)) {
+    throw new TypeError('allowedVersionCodes must contain positive integer app versions');
+  }
+  if (minimumSdkVersion !== null && parsePositiveInteger(minimumSdkVersion) === null) {
+    throw new TypeError('minimumSdkVersion must be a positive integer or null');
+  }
   if (!Number.isSafeInteger(maxTokenAgeMs) || maxTokenAgeMs <= 0 || maxTokenAgeMs > 600_000) {
     throw new TypeError('maxTokenAgeMs must be a positive integer no greater than 600000');
   }
   if (typeof clock !== 'function') throw new TypeError('clock must be a function');
   const pinnedCertificates = new Set(certificateDigests);
+  const pinnedVersions = new Set(allowedVersionCodes.map((version) => parsePositiveInteger(version)));
 
   return async function verifyPlayIntegrity({
     format,
@@ -77,7 +93,10 @@ export function createPlayIntegrityAttestationVerifier({
       const labels = Array.isArray(device.deviceRecognitionVerdict) ? device.deviceRecognitionVerdict : [];
       const meetsDevice = labels.includes('MEETS_DEVICE_INTEGRITY');
       const meetsStrong = labels.includes('MEETS_STRONG_INTEGRITY');
+      const versionCode = parsePositiveInteger(app.versionCode);
+      const sdkVersion = parsePositiveInteger(device.deviceAttributes?.sdkVersion);
       const accessRisk = payload.environmentDetails?.appAccessRiskVerdict;
+      const playProtectVerdict = payload.environmentDetails?.playProtectVerdict;
       const detected = accessRisk?.appsDetected;
       const accessRiskPresent = isRecord(accessRisk) && Array.isArray(detected);
       const riskyEnvironment = Array.isArray(detected)
@@ -89,18 +108,25 @@ export function createPlayIntegrityAttestationVerifier({
         && app.appRecognitionVerdict === 'PLAY_RECOGNIZED'
         && app.packageName === packageName
         && certificatePinned
+        && (pinnedVersions.size === 0 || pinnedVersions.has(versionCode))
         && (!requireLicensed || account.appLicensingVerdict === 'LICENSED')
         && meetsDevice
         && (!requireStrongIntegrity || meetsStrong)
+        && (minimumSdkVersion === null || (sdkVersion !== null && sdkVersion >= minimumSdkVersion))
         && (!requireNoCaptureOrControl || (accessRiskPresent && !riskyEnvironment));
+      const protectedEnvironment = valid
+        && (!requirePlayProtect || playProtectVerdict === 'NO_ISSUES');
       return {
-        valid,
+        valid: protectedEnvironment,
         request_hash: request.requestHash,
         app_id: packageName,
         attestation_key_id: attestationKeyId,
         platform: 'android',
         hardware_backed: meetsStrong,
         strong_integrity: meetsStrong,
+        version_code: versionCode,
+        sdk_version: sdkVersion,
+        play_protect_verdict: typeof playProtectVerdict === 'string' ? playProtectVerdict : null,
         token_timestamp_ms: tokenMillis,
       };
     } catch {
@@ -133,6 +159,7 @@ export function createAppleAppAttestVerifier({
     format,
     token,
     expected_request_hash: expectedRequestHash,
+    expected_binding: expectedBinding,
     expected_app_id: expectedAppId,
     expected_attestation_key_id: expectedAttestationKeyId,
     platform,
@@ -146,6 +173,7 @@ export function createAppleAppAttestVerifier({
       const result = await verifyAssertion({
         assertionObject,
         clientDataHash,
+        expectedBinding,
         appId,
         keyId: attestationKeyId,
         environment,
@@ -165,6 +193,7 @@ export function createAppleAppAttestVerifier({
         hardware_backed: true,
         strong_integrity: true,
         assertion_counter: result.counter,
+        integrity_signals: isRecord(result.integrity_signals) ? result.integrity_signals : null,
       };
     } catch {
       return { valid: false };
