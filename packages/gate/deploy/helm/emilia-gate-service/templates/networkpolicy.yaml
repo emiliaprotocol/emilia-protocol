@@ -1,0 +1,113 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $ingressPeers := default (list) .Values.networkPolicy.ingress.additionalPeers }}
+{{- $postgresSelector := default (dict) .Values.networkPolicy.egress.postgres.podSelector }}
+{{- $postgresCidrs := default (list) .Values.networkPolicy.egress.postgres.cidrs }}
+{{- $kmsCidrs := default (list) .Values.networkPolicy.egress.kmsCidrs }}
+{{- $githubCidrs := default (list) .Values.networkPolicy.egress.githubCidrs }}
+{{- $siemCidrs := default (list) .Values.networkPolicy.egress.siemCidrs }}
+{{- $httpsCidrs := concat $kmsCidrs $githubCidrs $siemCidrs }}
+{{- $additionalEgress := default (list) .Values.networkPolicy.egress.additionalRules }}
+{{- $hasIngress := or .Values.networkPolicy.ingress.allowSameNamespace (gt (len $ingressPeers) 0) }}
+{{- $hasBaseEgress := or .Values.networkPolicy.egress.dns.enabled (gt (len $postgresSelector) 0) (gt (len $postgresCidrs) 0) }}
+{{- $hasServiceEgress := or (gt (len $httpsCidrs) 0) (gt (len $additionalEgress) 0) }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "emilia-gate-service.fullname" . }}-base
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emilia-gate-service.labels" . | nindent 4 }}
+spec:
+  # Selects the long-lived service and the migration hook. The migration pod
+  # receives DNS/Postgres only, never service-only GitHub/KMS/SIEM egress.
+  podSelector:
+    matchLabels:
+      {{- include "emilia-gate-service.baseSelectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    {{- if $hasBaseEgress }}
+    {{- if .Values.networkPolicy.egress.dns.enabled }}
+    - to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.egress.dns.namespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.egress.dns.podSelector | nindent 12 }}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    {{- end }}
+    {{- with $postgresSelector }}
+    - to:
+        - podSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- with $.Values.networkPolicy.egress.postgres.namespaceSelector }}
+          namespaceSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      ports:
+        - port: {{ $.Values.networkPolicy.egress.postgres.port }}
+          protocol: TCP
+    {{- end }}
+    {{- range $postgresCidrs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        - port: {{ $.Values.networkPolicy.egress.postgres.port }}
+          protocol: TCP
+    {{- end }}
+    {{- else }}
+    []
+    {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "emilia-gate-service.fullname" . }}-service-access
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emilia-gate-service.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "emilia-gate-service.serviceSelectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    {{- if $hasIngress }}
+    - from:
+        {{- if .Values.networkPolicy.ingress.allowSameNamespace }}
+        - podSelector: {}
+        {{- end }}
+        {{- with $ingressPeers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      ports:
+        - port: {{ .Values.runtime.port }}
+          protocol: TCP
+    {{- else }}
+    []
+    {{- end }}
+  egress:
+    {{- if $hasServiceEgress }}
+    {{- range $httpsCidrs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        - port: 443
+          protocol: TCP
+    {{- end }}
+    {{- with $additionalEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- else }}
+    []
+    {{- end }}
+{{- end }}

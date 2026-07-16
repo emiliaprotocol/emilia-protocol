@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1.7
+
+# This builds a local BYOC artifact. It is not an official published image.
+# Override NODE_IMAGE with an organization-approved digest when required.
+ARG NODE_IMAGE=node:22.17.1-alpine3.22@sha256:5539840ce9d013fa13e3b9814c9353024be7ac75aca5db6d039504a56c04ea59
+
+FROM ${NODE_IMAGE} AS dependencies
+WORKDIR /opt/dependencies
+
+# apps/gate-service is dependency-light. pg is present only so an operator ESM
+# config can bind the required durable stores to Postgres without extending the
+# reference image. Cloud KMS SDKs remain operator choices in a derived image.
+RUN npm init --yes \
+    && npm install --omit=dev --ignore-scripts --no-audit --no-fund --save-exact pg@8.22.0 \
+    && npm cache clean --force
+
+FROM ${NODE_IMAGE} AS runtime
+
+LABEL org.opencontainers.image.title="EMILIA Gate BYOC reference image" \
+      org.opencontainers.image.description="Operator-built HTTP enforcement service for EMILIA Gate" \
+      org.opencontainers.image.source="https://github.com/emiliaprotocol/emilia-protocol" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+RUN addgroup -S -g 10001 gate \
+    && adduser -S -D -H -u 10001 -G gate gate \
+    && mkdir -p /app/config /tmp \
+    && chown -R 10001:10001 /app /tmp
+
+WORKDIR /app
+
+COPY --from=dependencies --chown=10001:10001 /opt/dependencies/node_modules ./node_modules
+COPY --chown=10001:10001 apps/gate-service/package.json ./apps/gate-service/package.json
+COPY --chown=10001:10001 apps/gate-service/src ./apps/gate-service/src
+COPY --chown=10001:10001 packages/gate ./packages/gate
+COPY --chown=10001:10001 packages/require-receipt ./packages/require-receipt
+COPY --chown=10001:10001 packages/verify ./packages/verify
+
+# Keep test/deployment fixtures in the source tree, not in the runtime image.
+RUN find /app/packages -type f \( -name '*.test.js' -o -name '*.test.mjs' \) -delete \
+    && rm -rf /app/packages/gate/deploy/helm /app/packages/gate/deploy/terraform
+
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=8080 \
+    EMILIA_GATE_CONFIG=/app/config/gate.config.mjs
+
+USER 10001:10001
+EXPOSE 8080
+STOPSIGNAL SIGTERM
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/v1/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+
+ENTRYPOINT ["node", "apps/gate-service/src/server.js"]

@@ -1,0 +1,73 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "emilia-gate-service.fullname" . }}-migrate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emilia-gate-service.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  activeDeadlineSeconds: {{ .Values.migrations.activeDeadlineSeconds }}
+  backoffLimit: {{ .Values.migrations.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migrations.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "emilia-gate-service.baseSelectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ include "emilia-gate-service.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.migrations.command | nindent 12 }}
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: EMILIA_GATE_CONFIG
+              value: {{ printf "%s/%s" .Values.configuration.mountPath .Values.configuration.configKey | quote }}
+            - name: {{ .Values.secrets.postgres.envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "emilia-gate-service.migrationPostgresSecret" . }}
+                  key: {{ default .Values.secrets.postgres.key .Values.migrations.postgres.key }}
+                  optional: false
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.migrations.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: configuration
+              mountPath: {{ .Values.configuration.mountPath }}
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 32Mi
+        - name: configuration
+          secret:
+            secretName: {{ include "emilia-gate-service.configurationSecret" . }}
+            optional: false
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.configuration.configKey }}
+                path: {{ .Values.configuration.configKey }}
+              - key: {{ .Values.configuration.migrationKey }}
+                path: {{ .Values.configuration.migrationKey }}
+{{- end }}

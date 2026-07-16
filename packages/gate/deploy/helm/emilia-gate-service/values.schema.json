@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "EMILIA Gate service Helm values",
+  "type": "object",
+  "required": ["image", "configuration", "secrets"],
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "digest", "pullPolicy"],
+      "properties": {
+        "repository": { "type": "string" },
+        "tag": { "type": "string" },
+        "digest": { "type": "string" },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      },
+      "additionalProperties": false
+    },
+    "imagePullSecrets": { "type": "array" },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "service": {
+      "type": "object",
+      "required": ["type", "port"],
+      "properties": {
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "annotations": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["port", "logLevel", "terminationGracePeriodSeconds", "extraEnv"],
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "logLevel": { "type": "string", "enum": ["debug", "info", "warn", "error"] },
+        "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1 },
+        "extraEnv": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "configuration": {
+      "type": "object",
+      "required": ["existingSecret", "configKey", "migrationKey", "mountPath"],
+      "properties": {
+        "existingSecret": { "type": "string" },
+        "configKey": { "type": "string", "minLength": 1 },
+        "migrationKey": { "type": "string", "minLength": 1 },
+        "mountPath": { "type": "string", "pattern": "^/" }
+      },
+      "additionalProperties": false
+    },
+    "secrets": {
+      "type": "object",
+      "required": ["postgres", "kms", "issuerRoots"],
+      "properties": {
+        "postgres": { "$ref": "#/definitions/secretReference" },
+        "kms": { "$ref": "#/definitions/secretReference" },
+        "issuerRoots": { "$ref": "#/definitions/secretReference" }
+      },
+      "additionalProperties": false
+    },
+    "migrations": {
+      "type": "object",
+      "required": ["enabled", "postgres", "command", "activeDeadlineSeconds", "backoffLimit", "ttlSecondsAfterFinished", "resources"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "postgres": {
+          "type": "object",
+          "required": ["existingSecret", "key"],
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "key": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "command": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "activeDeadlineSeconds": { "type": "integer", "minimum": 1 },
+        "backoffLimit": { "type": "integer", "minimum": 0 },
+        "ttlSecondsAfterFinished": { "type": "integer", "minimum": 0 },
+        "resources": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "probes": {
+      "type": "object",
+      "required": ["startup", "liveness", "readiness"],
+      "properties": {
+        "startup": { "$ref": "#/definitions/probe" },
+        "liveness": { "$ref": "#/definitions/probe" },
+        "readiness": { "$ref": "#/definitions/probe" }
+      },
+      "additionalProperties": false
+    },
+    "resources": { "type": "object" },
+    "podDisruptionBudget": {
+      "type": "object",
+      "required": ["enabled", "minAvailable"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "minAvailable": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string" }] }
+      },
+      "additionalProperties": false
+    },
+    "podSecurityContext": { "type": "object" },
+    "containerSecurityContext": { "type": "object" },
+    "networkPolicy": { "type": "object" },
+    "topologySpreadConstraints": { "type": "array" },
+    "podAnnotations": { "type": "object" },
+    "podLabels": { "type": "object" },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "secretReference": {
+      "type": "object",
+      "required": ["existingSecret", "key", "envName"],
+      "properties": {
+        "existingSecret": { "type": "string" },
+        "key": { "type": "string", "minLength": 1 },
+        "envName": { "type": "string", "pattern": "^[A-Z_][A-Z0-9_]*$" }
+      },
+      "additionalProperties": false
+    },
+    "probe": {
+      "type": "object",
+      "required": ["path", "periodSeconds", "timeoutSeconds", "failureThreshold"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^/" },
+        "periodSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "failureThreshold": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

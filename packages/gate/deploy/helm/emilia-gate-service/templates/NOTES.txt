@@ -1,0 +1,12 @@
+EMILIA Gate service was rendered as a BYOC deployment.
+
+Image: {{ include "emilia-gate-service.image" . }}
+Service: {{ include "emilia-gate-service.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+
+The chart did not create any Secret. Operator configuration, Postgres, KMS, and
+issuer-root values are referenced from existing Secret names supplied at
+install time.
+
+Readiness:
+  kubectl -n {{ .Release.Namespace }} port-forward service/{{ include "emilia-gate-service.fullname" . }} 8080:{{ .Values.service.port }}
+  curl --fail http://127.0.0.1:8080{{ .Values.probes.readiness.path }}

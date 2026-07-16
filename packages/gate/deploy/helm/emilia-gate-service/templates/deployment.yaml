@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "emilia-gate-service.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "emilia-gate-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "emilia-gate-service.serviceSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "emilia-gate-service.serviceSelectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "emilia-gate-service.fullname" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.runtime.terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gate-service
+          image: {{ include "emilia-gate-service.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.runtime.port }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: {{ .Values.runtime.port | quote }}
+            - name: EMILIA_GATE_CONFIG
+              value: {{ printf "%s/%s" .Values.configuration.mountPath .Values.configuration.configKey | quote }}
+            - name: EP_GATE_PORT
+              value: {{ .Values.runtime.port | quote }}
+            - name: EP_GATE_LOG_LEVEL
+              value: {{ .Values.runtime.logLevel | quote }}
+            - name: {{ .Values.secrets.postgres.envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "emilia-gate-service.postgresSecret" . }}
+                  key: {{ .Values.secrets.postgres.key }}
+                  optional: false
+            - name: {{ .Values.secrets.kms.envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "emilia-gate-service.kmsSecret" . }}
+                  key: {{ .Values.secrets.kms.key }}
+                  optional: false
+            - name: {{ .Values.secrets.issuerRoots.envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "emilia-gate-service.issuerRootsSecret" . }}
+                  key: {{ .Values.secrets.issuerRoots.key }}
+                  optional: false
+            {{- with .Values.runtime.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.probes.startup.path }}
+              port: http
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: configuration
+              mountPath: {{ .Values.configuration.mountPath }}
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: configuration
+          secret:
+            secretName: {{ include "emilia-gate-service.configurationSecret" . }}
+            optional: false
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.configuration.configKey }}
+                path: {{ .Values.configuration.configKey }}
+      topologySpreadConstraints:
+        {{- range .Values.topologySpreadConstraints }}
+        - maxSkew: {{ .maxSkew }}
+          topologyKey: {{ .topologyKey }}
+          whenUnsatisfiable: {{ .whenUnsatisfiable }}
+          labelSelector:
+            matchLabels:
+              {{- include "emilia-gate-service.serviceSelectorLabels" $ | nindent 14 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

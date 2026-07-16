@@ -1,0 +1,11 @@
+apiVersion: v2
+name: emilia-gate-service
+description: BYOC deployment chart for the EMILIA Gate service
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+annotations:
+  emiliaprotocol.ai/deployment-model: byoc
+  emiliaprotocol.ai/maturity: reference
+  artifacthub.io/license: Apache-2.0

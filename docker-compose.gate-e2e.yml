@@ -1,0 +1,139 @@
+# Local end-to-end harness for Dockerfile.gate. This file does not name or pull
+# an EMILIA application image: Compose builds the gate from the local checkout.
+# It uses test-only credentials supplied through file-backed Compose Secrets
+# and must never point at a real GitHub repository credential.
+
+name: emilia-gate-e2e
+
+services:
+  postgres:
+    image: postgres:16.9-alpine3.22@sha256:7c688148e5e156d0e86df7ba8ae5a05a2386aaec1e2ad8e6d11bdf10504b1fb7
+    restart: "no"
+    read_only: true
+    environment:
+      POSTGRES_DB: gate_e2e
+      POSTGRES_USER: gate
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - gate_postgres_data:/var/lib/postgresql/data
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,size=8m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gate -d gate_e2e"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    networks:
+      - data
+    mem_limit: 512m
+    cpus: 1.0
+
+  migrate:
+    image: postgres:16.9-alpine3.22@sha256:7c688148e5e156d0e86df7ba8ae5a05a2386aaec1e2ad8e6d11bdf10504b1fb7
+    restart: "no"
+    read_only: true
+    user: "70:70"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - export PGPASSWORD="$$(cat /run/secrets/postgres_password)"; psql --host=postgres --username=gate --dbname=gate_e2e --set=ON_ERROR_STOP=1 --file=/migrations/001_evidence.sql; exec psql --host=postgres --username=gate --dbname=gate_e2e --set=ON_ERROR_STOP=1 --file=/migrations/002_e2e.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+        restart: true
+    secrets:
+      - postgres_password
+    configs:
+      - source: gate_evidence_schema
+        target: /migrations/001_evidence.sql
+      - source: gate_e2e_schema
+        target: /migrations/002_e2e.sql
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - data
+    mem_limit: 128m
+    cpus: 0.5
+
+  gate:
+    build:
+      context: .
+      dockerfile: Dockerfile.gate
+    image: emilia-gate-service:e2e-local
+    restart: "no"
+    init: true
+    user: "10001:10001"
+    read_only: true
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "8080"
+      EMILIA_GATE_CONFIG: /app/config/gate.config.mjs
+      EMILIA_GATE_POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      EP_KMS_KEY_ID_FILE: /run/secrets/kms_key_id
+      EP_GATE_ISSUER_ROOTS_FILE: /run/secrets/issuer_roots
+      GITHUB_TOKEN_FILE: /run/secrets/github_token
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    secrets:
+      - postgres_password
+      - kms_key_id
+      - issuer_roots
+      - github_token
+    configs:
+      - source: gate_e2e_configuration
+        target: /app/config/gate.config.mjs
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001
+    ports:
+      - "127.0.0.1:8787:8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/v1/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 512m
+    cpus: 1.0
+    stop_grace_period: 30s
+    networks:
+      - data
+      - egress
+
+volumes:
+  gate_postgres_data:
+
+networks:
+  data:
+    internal: true
+  egress:
+
+secrets:
+  postgres_password:
+    file: ${EMILIA_GATE_E2E_POSTGRES_PASSWORD_FILE:?set EMILIA_GATE_E2E_POSTGRES_PASSWORD_FILE}
+  kms_key_id:
+    file: ${EMILIA_GATE_E2E_KMS_KEY_ID_FILE:?set EMILIA_GATE_E2E_KMS_KEY_ID_FILE}
+  issuer_roots:
+    file: ${EMILIA_GATE_E2E_ISSUER_ROOTS_FILE:?set EMILIA_GATE_E2E_ISSUER_ROOTS_FILE}
+  github_token:
+    file: ${EMILIA_GATE_E2E_GITHUB_TOKEN_FILE:?set EMILIA_GATE_E2E_GITHUB_TOKEN_FILE}
+
+configs:
+  gate_evidence_schema:
+    file: ./packages/gate/deploy/sql/001-runtime.sql
+  gate_e2e_schema:
+    file: ./packages/gate/deploy/helm/emilia-gate-service/tests/fixtures/001_gate.sql
+  gate_e2e_configuration:
+    file: ./packages/gate/deploy/helm/emilia-gate-service/tests/fixtures/gate.config.mjs
