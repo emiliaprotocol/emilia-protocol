@@ -1,0 +1,22 @@
+{
+  "name": "@emilia-protocol/gate-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BYOC HTTP enforcement service for complete-mediated GitHub repository deletion.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "exports": {
+    ".": "./src/runtime.js",
+    "./config": "./src/config.js",
+    "./github-client": "./src/github-client.js",
+    "./routes": "./src/routes.js",
+    "./server": "./src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "license": "Apache-2.0"
+}
