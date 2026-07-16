@@ -53,6 +53,10 @@ CREATE INDEX IF NOT EXISTS ${CONSUMPTION_TABLE}_expires_idx
 /** The exact statements the backend issues — exported for transparency and so
  * a fake client can implement them without parsing SQL. */
 export const CONSUMPTION_SQL = {
+  health: `SELECT
+  to_regclass('public.${CONSUMPTION_TABLE}') IS NOT NULL AS table_ready,
+  CASE WHEN to_regclass('public.${CONSUMPTION_TABLE}') IS NULL THEN FALSE
+    ELSE has_table_privilege(current_user, to_regclass('public.${CONSUMPTION_TABLE}'), 'SELECT,INSERT,UPDATE,DELETE') END AS can_use`,
   /** $1 key, $2 state, $3 consumed_at ms, $4 expires_at ms|null. rowCount 1 = consumed, 0 = replay. */
   addIfAbsent: `INSERT INTO ${CONSUMPTION_TABLE} (consumption_key, state, consumed_at, expires_at) `
     + 'VALUES ($1, $2, $3, $4) ON CONFLICT (consumption_key) DO NOTHING',
@@ -101,6 +105,16 @@ export function createPostgresBackend({ query, now = Date.now } = {}) {
 
   return {
     durable: true,
+    async health() {
+      const res = await query(CONSUMPTION_SQL.health, []);
+      if (!res || res.rowCount !== 1 || !Array.isArray(res.rows) || res.rows.length !== 1) {
+        throw new Error('consumption health: malformed Postgres result');
+      }
+      return {
+        ok: res.rows[0].table_ready === true && res.rows[0].can_use === true,
+        version: PG_CONSUMPTION_VERSION,
+      };
+    },
     /** True iff THIS call inserted the row — the atomic consumed-vs-replay decision. */
     async addIfAbsent(key, value, opt) {
       const res = await query(CONSUMPTION_SQL.addIfAbsent, [key, value, nowMs(), expiryFor(opt)]);

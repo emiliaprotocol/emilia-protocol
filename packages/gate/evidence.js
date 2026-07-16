@@ -231,6 +231,11 @@ export function createAtomicEvidenceLog(backend, {
     atomicAppend: true,
     streamId,
 
+    async health() {
+      if (typeof backend.health !== 'function') return { ok: false, reason: 'backend_health_unavailable' };
+      return backend.health();
+    },
+
     async record(entry) {
       const snapshot = structuredClone(entry);
       assertLogEntry(snapshot);

@@ -10,10 +10,8 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 import proofStats from '@/lib/proof-stats.json';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Homepage — mission-led buyer flow.
-// The first viewport establishes why the agentic era needs shared trust
-// infrastructure. Detailed mechanics and machine-verifiable evidence remain
-// available one click away on /protocol and /proof.
+// Homepage — product-led buyer flow. The mission remains, but the first
+// viewport names the control, the consequence boundary, and the live proof.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
@@ -119,20 +117,20 @@ export default function HomePage() {
         <C>
           <motion.div className="ep-home-calm-copy" {...heroIn(0)}>
             <div className="ep-home-calm-kicker">
-              EMILIA Protocol <span>· Open trust infrastructure</span>
+              EMILIA Gate <span>· The Consequence Firewall</span>
             </div>
-            <h1 id="home-trust-thesis">Trust infrastructure for a world humans and machines share.</h1>
+            <h1 id="home-trust-thesis">Before a machine changes the world, make it prove the action was authorized.</h1>
             <p className="ep-home-calm-lede">
-              As machines begin to act in the world, coexistence needs a shared way to establish
-              who may do what, under whose authority, before it happens.
+              EMILIA Gate sits immediately before consequential execution. It verifies a portable
+              receipt bound to the exact action, enforces the required human or quorum approval,
+              and consumes the authorization once.
             </p>
             <p className="ep-home-calm-detail">
-              EMILIA binds identity, authority, and human intent to the exact action before
-              execution, then leaves evidence anyone can verify.
+              No valid receipt, no movement of money, code, permissions, data, energy, or physical state.
             </p>
             <div className="ep-home-calm-actions">
-              <Link href="/protocol" className="ep-home-hero-primary">Explore the protocol</Link>
-              <Link href="/proof" className="ep-home-hero-secondary">Inspect the proof →</Link>
+              <Link href="/gate/live" className="ep-home-hero-primary">Open the live Gate</Link>
+              <Link href="/gate" className="ep-home-hero-secondary">Review the architecture →</Link>
             </div>
           </motion.div>
         </C>
@@ -201,7 +199,7 @@ export default function HomePage() {
               ))}
             </div>
             <div style={{ marginTop: 28 }}>
-              <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Try the Receipt Required demo →</Link>
+              <Link href="/gate/live" className="ep-cta-secondary" style={cta.secondary}>Run the live Gate →</Link>
             </div>
           </motion.div>
         </C>

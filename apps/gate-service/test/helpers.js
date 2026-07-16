@@ -33,6 +33,8 @@ export const DELETE_BODY = Object.freeze({
   repo: 'prod',
 });
 
+export const TEST_API_TOKEN = 'test-gate-api-token-0000000000000001';
+
 export function receiptCarrier(receipt) {
   return Buffer.from(JSON.stringify(receipt), 'utf8').toString('base64');
 }
@@ -56,6 +58,7 @@ export function createActionStore() {
     async get(id) {
       return structuredClone(records.get(id) ?? null);
     },
+    async health() { return { ok: true }; },
   };
 }
 
@@ -63,6 +66,7 @@ export function createDurableTestState() {
   let reservationCounter = 0;
   const consumptionBackend = createMemoryBackend();
   consumptionBackend.durable = true;
+  consumptionBackend.health = async () => ({ ok: true });
   const consumptionStore = createDurableConsumptionStore(consumptionBackend, {
     reservationTokenFactory: () => `test-reservation-token-${String(++reservationCounter).padStart(12, '0')}`,
   });
@@ -70,6 +74,7 @@ export function createDurableTestState() {
   let evidenceCounter = 0;
   const evidenceBackend = createMemoryAtomicEvidenceBackend();
   evidenceBackend.durable = true;
+  evidenceBackend.health = async () => ({ ok: true });
   const evidenceLog = createAtomicEvidenceLog(evidenceBackend, {
     streamId: 'gate-service-test',
     recordIdFactory: () => `test-evidence-record-${String(++evidenceCounter).padStart(12, '0')}`,
@@ -95,6 +100,7 @@ export async function createServiceFixture(testContext, {
   repository = REPOSITORY,
   deleteImpl = null,
   logger = null,
+  readiness = async () => ({ ok: true }),
 } = {}) {
   const state = createDurableTestState();
   const harness = createEg1Harness({ action: harnessAction });
@@ -119,6 +125,8 @@ export async function createServiceFixture(testContext, {
     consumptionStore: state.consumptionStore,
     evidenceLog: state.evidenceLog,
     actionStore: state.actionStore,
+    authenticateRequest: async (request) => request.headers?.authorization === `Bearer ${TEST_API_TOKEN}`,
+    readiness,
     trustedKeys: [harness.publicKey],
     approverKeys: harness.approverKeys,
     rpId: harness.rpId,
@@ -144,8 +152,12 @@ export async function createServiceFixture(testContext, {
     rawBody,
     carrier,
     headers = {},
+    authenticated = true,
   } = {}) {
-    const requestHeaders = { ...headers };
+    const requestHeaders = {
+      ...(authenticated ? { Authorization: `Bearer ${TEST_API_TOKEN}` } : {}),
+      ...headers,
+    };
     let payload;
     if (rawBody !== undefined) {
       payload = rawBody;

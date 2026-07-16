@@ -16,6 +16,8 @@ function validConfig() {
     consumptionStore: state.consumptionStore,
     evidenceLog: state.evidenceLog,
     actionStore: state.actionStore,
+    authenticateRequest: async () => true,
+    readiness: async () => ({ ok: true }),
     trustedKeys: [harness.publicKey],
     approverKeys: harness.approverKeys,
     rpId: harness.rpId,
@@ -39,6 +41,20 @@ test('configuration requires operator-supplied durable state and pinned trust', 
   assert.throws(
     () => validateGateServiceConfig(weakEvidence),
     (error) => error.reasons.includes('durable_atomic_evidence_log_required'),
+  );
+
+  const unauthenticated = validConfig();
+  delete unauthenticated.authenticateRequest;
+  assert.throws(
+    () => validateGateServiceConfig(unauthenticated),
+    (error) => error.reasons.includes('request_authenticator_required'),
+  );
+
+  const unreadable = validConfig();
+  delete unreadable.readiness;
+  assert.throws(
+    () => validateGateServiceConfig(unreadable),
+    (error) => error.reasons.includes('readiness_check_required'),
   );
 });
 

@@ -178,7 +178,7 @@ export function createMobileEnrollmentService({
         webauthn: {
           rp: { id: rpId, name: 'EMILIA Government Approval' },
           challenge: challenge.challenge,
-          user: challenge.user,
+          user: { ...challenge.user },
           pub_key_cred_params: [{ type: 'public-key', alg: -7 }],
           authenticator_selection: {
             resident_key: 'preferred',

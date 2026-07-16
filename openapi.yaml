@@ -66,6 +66,8 @@ tags:
     description: Native passkey approval, platform attestation, pairing, and exact-action ceremonies
   - name: GRACE
     description: Bounded grid-curtailment authorization and reference evidence composition
+  - name: EMILIA Gate
+    description: Consequence Firewall enforcement and public reference scenarios
   - name: GovGuard
     description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
@@ -4753,6 +4755,61 @@ paths:
                   pins: { type: object }
         '429': { description: Public reference-run rate exceeded }
         '503': { description: Reference scenario unavailable }
+
+  /api/v1/gate/reference-scenario:
+    get:
+      tags: [EMILIA Gate]
+      operationId: runGateReferenceScenario
+      summary: Run the public EMILIA Gate consequence-firewall scenario
+      description: |
+        Runs a synthetic consequential action through the real Gate runtime:
+        missing evidence is challenged, a generated human or quorum ceremony is
+        bound to the exact action, the authorized effect runs once, and drift,
+        tampering, wrong-authority, and replay presentations are refused. Keys
+        and effects are reference-only; this endpoint makes no production-system
+        or physical-world claim.
+      security: []
+      parameters:
+        - in: query
+          name: profile
+          required: false
+          schema:
+            type: string
+            enum: [treasury, production, data, healthcare]
+            default: treasury
+      responses:
+        '200':
+          description: Completed reference execution and hostile-refusal results
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, reference_only, physical_claim, run_id, profile, action, action_hash, challenge, ceremony, authorization, execution, reliance, evidence, attacks, limitations]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  reference_only: { type: boolean, enum: [true] }
+                  physical_claim: { type: boolean, enum: [false] }
+                  generated_at: { type: string, format: date-time }
+                  run_id: { type: string }
+                  profile: { type: object }
+                  action: { type: object }
+                  action_hash: { type: string }
+                  challenge: { type: object }
+                  ceremony: { type: object }
+                  authorization: { type: object }
+                  execution: { type: object }
+                  reliance: { type: object }
+                  evidence: { type: object }
+                  attacks:
+                    type: array
+                    items: { type: object }
+                  limitations:
+                    type: array
+                    items: { type: string }
+        '400': { description: Unknown reference profile }
+        '429': { description: Public reference-run rate exceeded }
+        '503': { description: Gate reference scenario unavailable }
 components:
   securitySchemes:
     BearerAuth:

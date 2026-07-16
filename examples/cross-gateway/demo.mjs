@@ -71,6 +71,7 @@ function makeGateway(gatewayId, pins) {
       rpId: pins.rpId,
       allowedOrigins: pins.allowedOrigins,
       quorumPolicy: pins.quorumPolicy,
+      allowEphemeralStore: true, // local compatibility lab; production gateways require durable shared state
     }),
   };
 }

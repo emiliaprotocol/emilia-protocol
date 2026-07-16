@@ -52,7 +52,7 @@ export default {
     'tests/audit-regression.test.js',
   ],
   thresholds: {
-    // Ratcheted over the full ranges above: 90.34% total / 91.03% covered.
+    // Ratcheted over the full ranges above: 90.42% total / 90.90% covered.
     // CI may improve it, but may never silently fall below the 90% floor.
     high: 95,
     low: 90,

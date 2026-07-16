@@ -3,7 +3,7 @@
  * EMILIA Gate — agentic audit-trail demo (EP-GATE-AUDIT-TRAIL-DEMO-v1).
  *
  * ONE COMMAND, <60s, fully offline: a scripted period of AI-agent activity runs
- * through a REAL Trusted Action Firewall (no mocks, no fabricated artifacts),
+ * through a real Consequence Firewall (no mocks, no fabricated artifacts),
  * then the full auditor-facing stack is generated over the gate's tamper-evident
  * evidence log and RE-PERFORMED as the third-party auditor would:
  *

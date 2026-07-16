@@ -87,6 +87,7 @@ const CODE = `import { createTrustedActionFirewall } from '@emilia-protocol/gate
 
 const gate = createTrustedActionFirewall({
   trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],
+  store: sharedConsumptionStore,
 });
 
 const observedAction = await paymentSystem.describeRelease('pi_123');
@@ -122,7 +123,8 @@ export default function GatePage() {
               by default. Fail closed.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="#loop" style={cta.primary}>How it works</a>
+              <a href="/gate/live" style={cta.primary}>Open live Gate</a>
+              <a href="#loop" style={cta.secondary}>How it works</a>
               <a href="#surfaces" style={cta.secondary}>Where it runs</a>
               <a href="/try/receipt-required" style={cta.secondary}>Try to break it</a>
               <a href="/fire-drill/cf-1" style={cta.secondary}>CF-1 conformance</a>

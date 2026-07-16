@@ -113,7 +113,8 @@ function receiptCarrier(request, maxChars) {
 
 export function createRequestHandler(runtime) {
   if (!runtime || typeof runtime.executeDelete !== 'function'
-      || typeof runtime.getAction !== 'function' || typeof runtime.health !== 'function') {
+      || typeof runtime.getAction !== 'function' || typeof runtime.health !== 'function'
+      || typeof runtime.authorize !== 'function') {
     throw new TypeError('runtime contract is invalid');
   }
 
@@ -128,8 +129,17 @@ export function createRequestHandler(runtime) {
       if (url.search) throw new HttpInputError(400, 'query_parameters_forbidden');
 
       if (request.method === 'GET' && url.pathname === '/v1/health') {
-        const result = runtime.health();
+        const result = await runtime.health();
         sendJson(response, result.status, result.body, result.headers);
+        return;
+      }
+
+      const actionMatch = /^\/v1\/actions\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
+      if ((url.pathname === '/v1/actions' || actionMatch)
+          && !(await runtime.authorize(request))) {
+        sendJson(response, 401, { status: 'refused', error: { code: 'authentication_required' } }, {
+          'WWW-Authenticate': 'Bearer realm="emilia-gate"',
+        });
         return;
       }
 
@@ -143,7 +153,6 @@ export function createRequestHandler(runtime) {
         return;
       }
 
-      const actionMatch = /^\/v1\/actions\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
       if (request.method === 'GET' && actionMatch) {
         const result = await runtime.getAction(actionMatch[1]);
         sendJson(response, result.status, result.body, result.headers);

@@ -53,9 +53,10 @@
     },
     "secrets": {
       "type": "object",
-      "required": ["postgres", "kms", "issuerRoots"],
+      "required": ["postgres", "apiToken", "kms", "issuerRoots"],
       "properties": {
         "postgres": { "$ref": "#/definitions/secretReference" },
+        "apiToken": { "$ref": "#/definitions/secretReference" },
         "kms": { "$ref": "#/definitions/secretReference" },
         "issuerRoots": { "$ref": "#/definitions/secretReference" }
       },

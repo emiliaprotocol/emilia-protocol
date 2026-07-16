@@ -6,7 +6,7 @@
  *
  *   import { createTrustedActionFirewall } from '@emilia-protocol/gate';
  *   import { gateMcpTool } from '@emilia-protocol/gate/mcp';
- *   const gate = createTrustedActionFirewall({ trustedKeys: [ISSUER] });
+ *   const gate = createTrustedActionFirewall({ trustedKeys: [ISSUER], store: sharedConsumptionStore });
  *
  *   server.tool('release_payment',
  *     gateMcpTool(gate, { tool: 'release_payment' }, async (args) => actuallyPay(args)));

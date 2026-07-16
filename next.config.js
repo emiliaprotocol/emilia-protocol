@@ -1,4 +1,5 @@
 const { withSentryConfig } = require('@sentry/nextjs');
+const path = require('node:path');
 
 /** @type {import('next').NextConfig} */
 // CSP is set dynamically per-request in middleware.js using a nonce,
@@ -25,6 +26,15 @@ const nextConfig = {
   // (e.g., ~/Documents/package-lock.json), which produces a "multiple
   // lockfiles detected" warning at build time.
   outputFileTracingRoot: __dirname,
+  // Published packages resolve their protocol dependencies by npm name and
+  // fall back to monorepo source at runtime. Webpack must resolve both branches
+  // before it can bundle a route, so point those package names at the exact
+  // in-repo implementations for the website and reference control rooms.
+  webpack(config) {
+    config.resolve.alias['@emilia-protocol/require-receipt'] = path.resolve(__dirname, 'packages/require-receipt/index.js');
+    config.resolve.alias['@emilia-protocol/verify'] = path.resolve(__dirname, 'packages/verify/index.js');
+    return config;
+  },
   // instrumentation.js is loaded automatically since Next.js 15 — the
   // experimental.instrumentationHook flag is no longer needed (and emits a
   // build warning if set).

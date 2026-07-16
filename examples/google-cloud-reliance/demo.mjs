@@ -43,6 +43,7 @@ function makeSubject({ action = EXACT_ACTION, idPrefix = 'gcp_rc1' } = {}) {
     rpId: harness.rpId,
     allowedOrigins: harness.allowedOrigins,
     quorumPolicy: harness.quorumPolicy,
+    allowEphemeralStore: true, // local compatibility lab; production Gate requires durable shared state
   });
   const calls = [];
   const client = {

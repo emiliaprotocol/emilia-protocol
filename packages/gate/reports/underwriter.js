@@ -168,7 +168,7 @@ export function buildUnderwriterAttestation(entries = [], {
       status: 'Not an insurance document. This attestation carries no coverage effect until adopted by the carrier.',
     },
     control_in_force: {
-      control: 'EMILIA Gate — Trusted Action Firewall',
+      control: 'EMILIA Gate — Consequence Firewall',
       mode: 'deny_by_default',
       statement: 'Guarded actions execute only with a valid, in-scope, sufficiently-assured, fresh, one-time authorization receipt; absent or insufficient proof is refused, and every decision is appended to a hash-chained evidence log.',
       guarded_decisions: guarded.length,

@@ -1,5 +1,5 @@
 /**
- * @emilia-protocol/gate — EMILIA Gate: the Trusted Action Firewall.
+ * @emilia-protocol/gate — EMILIA Gate: the Consequence Firewall.
  * @license Apache-2.0
  *
  * Deny-by-default enforcement for consequential machine actions. A guarded
@@ -841,7 +841,7 @@ export async function gateConformance({ gate, harness, action, selector = EG1_DE
 }
 
 /**
- * Self-certify the reference gate: build a default Trusted Action Firewall that
+ * Self-certify the reference gate: build a default Consequence Firewall that
  * trusts a fresh EG-1 harness key, then run all eight checks. This is the
  * canonical "EMILIA Gate earns EG-1" proof — runnable as a CLI (`eg1.mjs`),
  * shown on /gate, and the template an adopter copies for their integration.

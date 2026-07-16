@@ -27,6 +27,8 @@ function createFakePg({ failOn } = {}) {
     await Promise.resolve();
     if (failOn && failOn(text, params)) throw new Error('pg_unavailable');
     switch (text) {
+      case CONSUMPTION_SQL.health:
+        return { rowCount: 1, rows: [{ table_ready: true, can_use: true }] };
       case CONSUMPTION_SQL.addIfAbsent: {
         const [key, state, consumedAt, expiresAt] = params;
         if (table.has(key)) return { rowCount: 0, rows: [] }; // ON CONFLICT DO NOTHING
@@ -86,6 +88,13 @@ test('fails closed at construction: query must be a function', () => {
   assert.throws(() => createPostgresBackend({}), /query must be/);
   assert.throws(() => createPostgresBackend(), /query must be/);
   assert.throws(() => createPostgresBackend({ query: 'not-a-fn' }), /query must be/);
+});
+
+test('health proves the runtime table and required privileges are available', async () => {
+  const { backend } = makeBackend();
+  assert.deepEqual(await backend.health(), { ok: true, version: PG_CONSUMPTION_VERSION });
+  const malformed = createPostgresBackend({ query: async () => ({ rowCount: 0, rows: [] }) });
+  await assert.rejects(() => malformed.health(), /malformed Postgres result/);
 });
 
 test('addIfAbsent: first insert wins, replay refused (row count decides)', async () => {

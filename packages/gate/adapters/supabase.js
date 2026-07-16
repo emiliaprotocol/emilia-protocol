@@ -12,7 +12,7 @@
  *   import { createGate } from '@emilia-protocol/gate';
  *   import { createSupabaseManifest, guardSupabaseMutation, isDestructiveSql } from '@emilia-protocol/gate/adapters/supabase';
  *
- *   const gate = createGate({ manifest: createSupabaseManifest(), trustedKeys: [ISSUER] });
+ *   const gate = createGate({ manifest: createSupabaseManifest(), trustedKeys: [ISSUER], store: sharedConsumptionStore });
  *   // client: anything with .query(sql) (node-postgres / a Supabase RPC wrapper).
  *   await guardSupabaseMutation(gate, client, {
  *     op: 'sql.destructive', params: { sql: 'DELETE FROM payments WHERE id=1', table: 'payments' }, receipt,

@@ -1,13 +1,13 @@
-# EMILIA Gate — the Trusted Action Firewall
+# EMILIA Gate — the Consequence Firewall
 
-*Product brief · 2026-06 · EMILIA Protocol, Inc.*
+*Product brief · 2026-07 · EMILIA Protocol, Inc.*
 
 > **If an agent cannot produce a valid receipt, it cannot change money, code, permissions, data,
 > infrastructure, energy, or physical state.**
 
 **The frame:** *Antivirus scanned files. Firewalls filtered packets. EMILIA verifies actions before
-machines change the world.* The category is the **Consequence Firewall** (a.k.a. Trusted Action
-Firewall for Autonomous Systems): it sits at the **actuator boundary** — before API calls, deploys,
+machines change the world.* The category is the **Consequence Firewall**: it sits at the
+**actuator boundary** — before API calls, deploys,
 payments, deletes, exports; before robot motion, tool use, doors, lifts, vehicles; before energy
 curtailment posture changes; before autonomous systems execute bounded actions — **not inside the
 model.**
@@ -80,15 +80,18 @@ certs).
 | Layer | Package | Status |
 |-------|---------|--------|
 | Receipt verify + manifest + 428 challenge + Express middleware + RR-1 conformance | `@emilia-protocol/require-receipt` | shipped |
-| **Unified gate core: assurance tiers + one-time consumption + evidence log + `check`/`middleware`/`guard`** | **`@emilia-protocol/gate`** | **built (10 tests green, demo runs)** |
+| **Unified gate core: assurance tiers + one-time consumption + evidence log + `check`/`middleware`/`guard`** | **`@emilia-protocol/gate`** | **built and hardened; covered by the package, mutation, and release suites** |
+| **BYOC Gate service: complete mediation for GitHub repository deletion** | **`apps/gate-service`** | **built; exact system-of-record binding, replay refusal, indeterminate outcomes, and authenticated access** |
+| **Durable replay + evidence state** | **Postgres consumption and atomic evidence backends** | **built; ownership-fenced consumption, tenant/gate scoping, fork detection, and database immutability controls** |
 | MCP gateway | `@emilia-protocol/mcp-guard` | shipped |
-| Framework adapters | `@emilia-protocol/openai-guard`, `@emilia-protocol/langchain`, examples/*_guard | shipped |
+| Framework and actuator adapters | GitHub, Stripe, AWS, Supabase, OpenAI, LangChain, MCP | adapter libraries built; GitHub has the deployable reference service |
 | Offline verifiers (JS/Python/Go) | `@emilia-protocol/verify`, `python-verify`, `go-verify` | shipped |
 | Issuer / signoff | `@emilia-protocol/issue` | shipped |
+| Native approval capture | iOS and Android reference apps + SDKs | built on the mobile integration branch; production signing and store review remain deployment gates |
 
-**To build (the business):** the managed control plane — hosted issuer, approver directory, policy
-UI, transparency log, compliance export, fleet-grade consumption store. Open-core gate, paid control
-plane (same model as GRACE).
+**Commercial layer:** managed policy, approver-directory integrations, evidence export, deployment
+operations, continuous conformance, and warranties. The open verifier and enforcement semantics
+remain reproducible; customers pay EMILIA to operate the control across a fleet.
 
 ## Gate deployment surfaces (the land-grab order)
 
@@ -96,19 +99,19 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 
 1. **MCP** — wrap agent tools; dangerous action without a receipt returns `428`. *(shipped: `mcp-guard` + `gate`)*
 2. **APIs** — middleware for Express / FastAPI / Next / Go; protect POST/PUT/PATCH/DELETE. *(shipped: `gate.middleware`)*
-3. **Cloud** — GitHub, Vercel, AWS/IAM, Kubernetes, Terraform, Supabase, Stripe. *(adapters — build)*
+3. **Cloud** — GitHub, Vercel, AWS/IAM, Kubernetes, Terraform, Supabase, Stripe. *(GitHub BYOC service + GitHub/Stripe/AWS/Supabase adapters built; additional complete-mediation services follow)*
 4. **Robots** — a local daemon/sidecar at the actuator boundary, before motion/tool/door/vehicle commands; simulated first, then real hardware. *(build)*
-5. **EP-Gated conformance badge** — earned, not asserted: missing receipt refused · valid runs · replay refused · forged refused. *(shipped: RR-1 via `receiptRequiredConformance`)*
+5. **EP-Gated conformance badge** — earned, not asserted: missing receipt refused · valid runs · replay refused · forged refused. *(EG-1 reference harness built; public certification program remains future work)*
 6. **Attested Gate** — prove the gate is actually installed and running via device/workload attestation (compose WIMSE/SPIFFE). Crucial for robots and air-gapped/critical equipment. *(build)*
 
 ## Build order (for the managed product)
 
-1. **MCP Gateway** as the flagship dev-wedge entry (wrap MCP servers; 428 on dangerous unreceipted calls).
-2. **Guard SDK** — one `wrap()` across runtimes, all sharing the gate core.
-3. **HTTP middleware** for arbitrary APIs (ships in the gate core).
-4. **Policy UI** — manage the action-risk manifest + tiers without editing JSON.
-5. **Evidence pipeline** — durable, queryable, exportable audit (compliance/insurance value).
-6. **Managed control plane** — approver directory, transparency log, integrations.
+1. **BYOC consequence firewall** — deploy the GitHub reference service with customer-owned keys and Postgres state. *(built)*
+2. **MCP and HTTP entry points** — one enforcement contract across agent tools and ordinary APIs. *(core built; product packaging next)*
+3. **Native approval capture** — controlled material-field display plus platform attestation. *(reference apps built; signing/release hardening remains)*
+4. **Policy and coverage inventory** — show which consequential actions are gated, unknown, or uncovered. *(next commercial surface)*
+5. **Evidence operations** — searchable export, retention, fork alerts, and insurer/auditor packages over the durable evidence backend. *(backend built; managed operations next)*
+6. **Managed fleet** — directory integrations, rollout, drift detection, continuous conformance, and warranty. *(commercial expansion)*
 
 ## Standards
 

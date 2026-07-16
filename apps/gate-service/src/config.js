@@ -12,6 +12,8 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'consumptionStore',
   'evidenceLog',
   'actionStore',
+  'authenticateRequest',
+  'readiness',
   'trustedKeys',
   'keyRegistry',
   'approverKeys',
@@ -77,6 +79,12 @@ export function validateGateServiceConfig(input) {
 
   if (!hasMethods(input.connector, ['getRepository', 'deleteRepository'])) {
     errors.push('connector_contract_invalid');
+  }
+  if (typeof input.authenticateRequest !== 'function') {
+    errors.push('request_authenticator_required');
+  }
+  if (typeof input.readiness !== 'function') {
+    errors.push('readiness_check_required');
   }
 
   const consumptionStore = input.consumptionStore;
@@ -180,6 +188,8 @@ export function validateGateServiceConfig(input) {
     consumptionStore,
     evidenceLog,
     actionStore,
+    authenticateRequest: input.authenticateRequest,
+    readiness: input.readiness,
     trustedKeys: Object.freeze([...trustedKeys]),
     keyRegistry,
     approverKeys: snapshotMap(approverKeys),

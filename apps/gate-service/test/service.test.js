@@ -16,9 +16,37 @@ test('GET /v1/health exposes a secret-free readiness response', async (t) => {
     status: 'ok',
     service: 'emilia-gate-service',
     action: 'github.repo.delete',
+    dependencies: 'ready',
   });
   assert.equal(fixture.getCalls.length, 0);
   assert.equal(fixture.deleteCalls.length, 0);
+});
+
+test('unready dependencies return 503 without exposing dependency details', async (t) => {
+  const fixture = await createServiceFixture(t, { readiness: async () => ({ ok: false, secret: 'db-host' }) });
+  const response = await fixture.request('/v1/health');
+  assert.equal(response.status, 503);
+  assert.deepEqual(response.body, {
+    status: 'unavailable',
+    service: 'emilia-gate-service',
+    error: { code: 'dependency_not_ready' },
+  });
+  assert.equal(JSON.stringify(response.body).includes('db-host'), false);
+});
+
+test('unauthenticated requests are refused before repository observation', async (t) => {
+  const fixture = await createServiceFixture(t);
+  const response = await fixture.request('/v1/actions', {
+    method: 'POST',
+    body: DELETE_BODY,
+    authenticated: false,
+  });
+  assert.equal(response.status, 401);
+  assert.equal(response.body.error.code, 'authentication_required');
+  assert.match(response.headers.get('www-authenticate'), /^Bearer /);
+  assert.equal(fixture.getCalls.length, 0);
+  assert.equal(fixture.deleteCalls.length, 0);
+  assert.equal(fixture.actionStore.records.size, 0);
 });
 
 test('no receipt returns a 428 exact-action challenge and makes zero DELETE calls', async (t) => {

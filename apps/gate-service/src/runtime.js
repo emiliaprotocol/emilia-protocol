@@ -404,18 +404,38 @@ export function createGateRuntime(inputConfig) {
     }
   }
 
-  function health() {
-    return response(200, {
-      status: 'ok',
-      service: 'emilia-gate-service',
-      action: GITHUB_REPOSITORY_DELETE_ACTION,
-    });
+  async function authorize(request) {
+    try {
+      return (await config.authenticateRequest(request)) === true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function health() {
+    try {
+      const ready = await config.readiness();
+      if (ready !== true && ready?.ok !== true) throw new Error('dependency_not_ready');
+      return response(200, {
+        status: 'ok',
+        service: 'emilia-gate-service',
+        action: GITHUB_REPOSITORY_DELETE_ACTION,
+        dependencies: 'ready',
+      });
+    } catch {
+      return response(503, {
+        status: 'unavailable',
+        service: 'emilia-gate-service',
+        error: { code: 'dependency_not_ready' },
+      });
+    }
   }
 
   const maxReceiptCarrierChars = Math.ceil(config.maxReceiptBytes * 4 / 3) + 4;
   return Object.freeze({
     executeDelete,
     getAction,
+    authorize,
     health,
     limits: Object.freeze({
       maxBodyBytes: config.maxBodyBytes,

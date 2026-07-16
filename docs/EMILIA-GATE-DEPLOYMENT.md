@@ -36,12 +36,12 @@ log unless a replacement independently satisfies the same atomic append,
 readback, fork-detection, and least-privilege contract. Consumption and action
 status still require operator-reviewed durable adapters and migrations.
 
-The service listens on `HOST`/`PORT`; the assets set `0.0.0.0:8080`. Its current
-health API is `GET /v1/health`. That endpoint proves the process loaded its
-configuration and started, but it does not probe Postgres, GitHub, KMS, or the
-SIEM. Startup, liveness, and readiness probes use that route. Add external
-synthetic dependency checks and make the config factory perform a startup
-Postgres/KMS check when those dependencies are required for readiness.
+The service listens on `HOST`/`PORT`; the assets set `0.0.0.0:8080`. Its health
+API is `GET /v1/health`. The route returns 200 only when the operator-supplied
+readiness function proves the durable consumption, evidence, and action-state
+dependencies are usable; failures return a detail-free 503. It deliberately
+does not call GitHub, KMS, or SIEM services on every probe. Use separate external
+synthetics for connector reachability.
 
 ## Build the image
 
@@ -80,7 +80,8 @@ names and key names, never secret values.
 | `emilia-gate-configuration` | `migrate.mjs` | migration Job | Idempotent forward schema migration |
 | `emilia-gate-postgres` | `database-url` | service | Least-privilege runtime Postgres URL |
 | `emilia-gate-postgres-migrate` | `database-url` | migration Job | Optional DDL-capable migration URL |
-| `emilia-gate-kms` | `kms-key-id` | service | Operator KMS identifier/config consumed by the config module |
+| `emilia-gate-api-token` | `api-token` | service | Bearer token required before action lookup or execution |
+| `emilia-gate-kms` | `kms-key-id` | optional service extension | Only when an operator config adds a KMS-backed capability; Gate verification itself holds no signing key |
 | `emilia-gate-issuer-roots` | `issuer-roots.json` | service | Pinned issuer/approver trust material |
 
 Use a runtime database role that can read/write only the Gate tables. Give DDL
@@ -126,6 +127,10 @@ secrets:
     existingSecret: emilia-gate-postgres
     key: database-url
     envName: DATABASE_URL
+  apiToken:
+    existingSecret: emilia-gate-api-token
+    key: api-token
+    envName: EMILIA_GATE_API_TOKEN
   kms:
     existingSecret: emilia-gate-kms
     key: kms-key-id
@@ -236,14 +241,15 @@ image. Its GitHub connector is real, so use a deliberately invalid token when
 testing only health and never send `POST /v1/actions` against a production
 repository.
 
-Create four test-only files outside the repository, then point Compose at them.
+Create five test-only files outside the repository, then point Compose at them.
 The issuer-roots file contains the JSON trust object shown below; the other
-three files contain one value each. File-backed Secrets preserve the read-only
+four files contain one value each. File-backed Secrets preserve the read-only
 container filesystem in Docker Compose.
 
 ```bash
-export EMILIA_GATE_E2E_POSTGRES_PASSWORD_FILE=/secure/tmp/gate-postgres-password
-export EMILIA_GATE_E2E_KMS_KEY_ID_FILE=/secure/tmp/gate-kms-key-id
+export EMILIA_GATE_E2E_POSTGRES_OWNER_PASSWORD_FILE=/secure/tmp/gate-postgres-owner-password
+export EMILIA_GATE_E2E_POSTGRES_RUNTIME_PASSWORD_FILE=/secure/tmp/gate-postgres-runtime-password
+export EMILIA_GATE_E2E_API_TOKEN_FILE=/secure/tmp/gate-api-token
 export EMILIA_GATE_E2E_GITHUB_TOKEN_FILE=/secure/tmp/gate-github-token
 export EMILIA_GATE_E2E_ISSUER_ROOTS_FILE=/secure/tmp/gate-issuer-roots.json
 
@@ -271,8 +277,9 @@ docker compose -f docker-compose.gate-e2e.yml down --volumes
 ```
 
 Compose runs the repository's canonical Postgres evidence migration and
-backend. Its consumption/action schema and adapter wiring remain E2E fixtures,
-not a promised production schema. The operator's reviewed config/migration
+backend under a migration owner, then connects the service as a separate
+least-privilege runtime role. Its consumption/action schema and adapter wiring
+remain E2E fixtures, not a promised production schema. The operator's reviewed config/migration
 modules remain authoritative.
 
 ## Backup runbook

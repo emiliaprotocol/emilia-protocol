@@ -10,13 +10,14 @@ The chart intentionally refuses to render with its default values. Supply:
 - `configuration.existingSecret` containing `gate.config.mjs` and
   `migrate.mjs`;
 - `secrets.postgres.existingSecret` with the database URL key;
-- `secrets.kms.existingSecret` with the KMS key identifier/config key;
+- `secrets.apiToken.existingSecret` with the Gate action-API bearer token;
+- optionally, `secrets.kms.existingSecret` when the operator config uses a KMS-backed extension;
 - `secrets.issuerRoots.existingSecret` with the pinned issuer-root set.
 
 The chart never renders a Kubernetes `Secret`. Secret names and keys are wired
 with non-optional references. The migration hook receives the operator config
 and Postgres reference; set `migrations.postgres.existingSecret` to give it a
-separate DDL-capable role. The service receives the config and all three runtime
+ separate DDL-capable role. The service receives the config and runtime
 references. The config module must satisfy the durable store contracts in
 `apps/gate-service/README.md`. The chart does not substitute an in-memory
 adapter or invent a persistence schema on the operator's behalf.
@@ -31,7 +32,7 @@ helm upgrade --install emilia-gate \
   --set-string image.digest=sha256:REPLACE_WITH_IMAGE_DIGEST \
   --set-string configuration.existingSecret=emilia-gate-configuration \
   --set-string secrets.postgres.existingSecret=emilia-gate-postgres \
-  --set-string secrets.kms.existingSecret=emilia-gate-kms \
+  --set-string secrets.apiToken.existingSecret=emilia-gate-api-token \
   --set-string secrets.issuerRoots.existingSecret=emilia-gate-issuer-roots \
   --atomic --wait
 ```

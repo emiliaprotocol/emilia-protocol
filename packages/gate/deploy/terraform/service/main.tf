@@ -464,12 +464,25 @@ resource "kubernetes_deployment_v1" "gate" {
             }
           }
           env {
-            name = var.kms_env_name
+            name = var.api_token_env_name
             value_from {
               secret_key_ref {
-                name     = var.kms_secret_name
-                key      = var.kms_secret_key
+                name     = var.api_token_secret_name
+                key      = var.api_token_secret_key
                 optional = false
+              }
+            }
+          }
+          dynamic "env" {
+            for_each = var.kms_secret_name == null ? [] : [var.kms_secret_name]
+            content {
+              name = var.kms_env_name
+              value_from {
+                secret_key_ref {
+                  name     = env.value
+                  key      = var.kms_secret_key
+                  optional = false
+                }
               }
             }
           }

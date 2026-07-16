@@ -5,6 +5,7 @@ import {
   MemoryConsumptionStore,
   createDurableConsumptionStore,
   createMemoryBackend,
+  isSecureConsumptionStore,
 } from '../packages/gate/store.js';
 import {
   __relianceSecurityInternals,
@@ -80,6 +81,46 @@ describe('mutation oracles for the replay kernel', () => {
     // durability is strict-equality on the backend flag, never coerced from a truthy value.
     const truthyDurable = { ...createMemoryBackend(), durable: 1 };
     expect(createDurableConsumptionStore(truthyDurable, good).durable).toBe(false);
+
+    const explicitNull = createDurableConsumptionStore(durableBackend, { ttlSeconds: null, ...good });
+    expect(explicitNull.permanentConsumption).toBe(true);
+    expect(explicitNull.retentionSeconds).toBe(null);
+  });
+
+  it('exposes backend readiness without inventing a healthy fallback', async () => {
+    const noHealth = createDurableConsumptionStore(createMemoryBackend(), {
+      reservationTokenFactory: () => '1234567890abcdef',
+    });
+    await expect(noHealth.health()).resolves.toEqual({
+      ok: false,
+      reason: 'backend_health_unavailable',
+    });
+
+    const backend = createMemoryBackend();
+    const verdict = { ok: true, version: 'test-backend-v1' };
+    backend.health = vi.fn(async () => verdict);
+    const ready = createDurableConsumptionStore(backend, {
+      reservationTokenFactory: () => '1234567890abcdef',
+    });
+    await expect(ready.health()).resolves.toBe(verdict);
+    expect(backend.health).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires the complete secure-store capability shape', () => {
+    expect(isSecureConsumptionStore(null)).toBe(false);
+    expect(isSecureConsumptionStore('store')).toBe(false);
+    const complete = {
+      durable: true,
+      ownershipFenced: true,
+      permanentConsumption: true,
+      async consume() {},
+      async reserve() {},
+      async commit() {},
+    };
+    expect(isSecureConsumptionStore(complete)).toBe(true);
+    for (const missing of ['durable', 'ownershipFenced', 'permanentConsumption', 'consume', 'reserve', 'commit']) {
+      expect(isSecureConsumptionStore({ ...complete, [missing]: undefined })).toBe(false);
+    }
   });
 
   it('the in-memory backend declares itself non-durable', () => {

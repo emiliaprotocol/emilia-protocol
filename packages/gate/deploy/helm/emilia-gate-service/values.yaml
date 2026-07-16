@@ -42,6 +42,10 @@ secrets:
     existingSecret: ""
     key: database-url
     envName: DATABASE_URL
+  apiToken:
+    existingSecret: ""
+    key: api-token
+    envName: EMILIA_GATE_API_TOKEN
   kms:
     existingSecret: ""
     key: kms-key-id

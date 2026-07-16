@@ -11,7 +11,7 @@ and `migration_revision`; bump the revision when migration inputs change
 without changing the image.
 
 Only existing Secret names and keys enter Terraform. The operator config,
-Postgres URL, KMS identifier/config, and issuer roots are read at pod start with
+Postgres URL, Gate API token, and issuer roots are read at pod start with
 non-optional references. Their values are not module variables and therefore
 are not written to Terraform state by this module. The configuration Secret
 must contain `gate.config.mjs` and `migrate.mjs`; these remain operator-owned
@@ -32,7 +32,7 @@ module "emilia_gate" {
 
   configuration_secret_name = "emilia-gate-configuration"
   postgres_secret_name     = "emilia-gate-postgres"
-  kms_secret_name          = "emilia-gate-kms"
+  api_token_secret_name    = "emilia-gate-api-token"
   issuer_roots_secret_name = "emilia-gate-issuer-roots"
 
   # For managed Postgres, disable the in-cluster selector and allow only the

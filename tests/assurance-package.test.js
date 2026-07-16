@@ -95,6 +95,22 @@ describe('EP-ASSURANCE-PACKAGE-v1', () => {
     expect(pkg.exception_history.length).toBe(1); // d2 stated a refusal
   });
 
+  it('materializes shared JSON values but refuses cyclic evidence', () => {
+    const shared = { checked_at: '2026-07-07T14:00:00.000Z' };
+    const pkg = buildAssurancePackage([
+      { action: { action_type: 'a' }, revocation_state: shared },
+      { action: { action_type: 'b' }, revocation_state: shared },
+    ], { profile: PROFILE, now: NOW });
+    expect(pkg.decisions[0].evidence.revocation_state).toEqual(shared);
+    expect(pkg.decisions[0].evidence.revocation_state)
+      .not.toBe(pkg.decisions[1].evidence.revocation_state);
+
+    const cyclic = {};
+    cyclic.self = cyclic;
+    expect(() => buildAssurancePackage([{ action: cyclic }], { profile: PROFILE, now: NOW }))
+      .toThrow(/cyclic value/);
+  });
+
   it('re-performance recomputes every verdict and CATCHES the lie (drift)', () => {
     const pkg = buildAssurancePackage(population(), { profile: PROFILE, now: NOW });
     const rp = reperformAssurancePackage(pkg, OPTS);

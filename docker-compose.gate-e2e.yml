@@ -12,17 +12,17 @@ services:
     read_only: true
     environment:
       POSTGRES_DB: gate_e2e
-      POSTGRES_USER: gate
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_USER: gate_owner
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_owner_password
     secrets:
-      - postgres_password
+      - postgres_owner_password
     volumes:
       - gate_postgres_data:/var/lib/postgresql/data
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=32m
       - /var/run/postgresql:rw,noexec,nosuid,nodev,size=8m
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gate -d gate_e2e"]
+      test: ["CMD-SHELL", "pg_isready -U gate_owner -d gate_e2e"]
       interval: 3s
       timeout: 3s
       retries: 30
@@ -38,18 +38,21 @@ services:
     user: "70:70"
     entrypoint: ["/bin/sh", "-ec"]
     command:
-      - export PGPASSWORD="$$(cat /run/secrets/postgres_password)"; psql --host=postgres --username=gate --dbname=gate_e2e --set=ON_ERROR_STOP=1 --file=/migrations/001_evidence.sql; exec psql --host=postgres --username=gate --dbname=gate_e2e --set=ON_ERROR_STOP=1 --file=/migrations/002_e2e.sql
+      - export PGPASSWORD="$$(cat /run/secrets/postgres_owner_password)"; psql --host=postgres --username=gate_owner --dbname=gate_e2e --set=ON_ERROR_STOP=1 --file=/migrations/001_e2e.sql; psql --host=postgres --username=gate_owner --dbname=gate_e2e --set=ON_ERROR_STOP=1 --file=/migrations/002_evidence.sql; exec psql --host=postgres --username=gate_owner --dbname=gate_e2e --set=ON_ERROR_STOP=1 --set=runtime_password="$$(cat /run/secrets/postgres_runtime_password)" --file=/migrations/003_runtime_access.sql
     depends_on:
       postgres:
         condition: service_healthy
         restart: true
     secrets:
-      - postgres_password
+      - postgres_owner_password
+      - postgres_runtime_password
     configs:
-      - source: gate_evidence_schema
-        target: /migrations/001_evidence.sql
       - source: gate_e2e_schema
-        target: /migrations/002_e2e.sql
+        target: /migrations/001_e2e.sql
+      - source: gate_evidence_schema
+        target: /migrations/002_evidence.sql
+      - source: gate_runtime_access
+        target: /migrations/003_runtime_access.sql
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m
     cap_drop:
@@ -75,16 +78,16 @@ services:
       HOST: 0.0.0.0
       PORT: "8080"
       EMILIA_GATE_CONFIG: /app/config/gate.config.mjs
-      EMILIA_GATE_POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      EP_KMS_KEY_ID_FILE: /run/secrets/kms_key_id
+      EMILIA_GATE_RUNTIME_POSTGRES_PASSWORD_FILE: /run/secrets/postgres_runtime_password
+      EMILIA_GATE_API_TOKEN_FILE: /run/secrets/gate_api_token
       EP_GATE_ISSUER_ROOTS_FILE: /run/secrets/issuer_roots
       GITHUB_TOKEN_FILE: /run/secrets/github_token
     depends_on:
       migrate:
         condition: service_completed_successfully
     secrets:
-      - postgres_password
-      - kms_key_id
+      - postgres_runtime_password
+      - gate_api_token
       - issuer_roots
       - github_token
     configs:
@@ -121,10 +124,12 @@ networks:
   egress:
 
 secrets:
-  postgres_password:
-    file: ${EMILIA_GATE_E2E_POSTGRES_PASSWORD_FILE:?set EMILIA_GATE_E2E_POSTGRES_PASSWORD_FILE}
-  kms_key_id:
-    file: ${EMILIA_GATE_E2E_KMS_KEY_ID_FILE:?set EMILIA_GATE_E2E_KMS_KEY_ID_FILE}
+  postgres_owner_password:
+    file: ${EMILIA_GATE_E2E_POSTGRES_OWNER_PASSWORD_FILE:?set EMILIA_GATE_E2E_POSTGRES_OWNER_PASSWORD_FILE}
+  postgres_runtime_password:
+    file: ${EMILIA_GATE_E2E_POSTGRES_RUNTIME_PASSWORD_FILE:?set EMILIA_GATE_E2E_POSTGRES_RUNTIME_PASSWORD_FILE}
+  gate_api_token:
+    file: ${EMILIA_GATE_E2E_API_TOKEN_FILE:?set EMILIA_GATE_E2E_API_TOKEN_FILE}
   issuer_roots:
     file: ${EMILIA_GATE_E2E_ISSUER_ROOTS_FILE:?set EMILIA_GATE_E2E_ISSUER_ROOTS_FILE}
   github_token:
@@ -135,5 +140,7 @@ configs:
     file: ./packages/gate/deploy/sql/001-runtime.sql
   gate_e2e_schema:
     file: ./packages/gate/deploy/helm/emilia-gate-service/tests/fixtures/001_gate.sql
+  gate_runtime_access:
+    file: ./packages/gate/deploy/helm/emilia-gate-service/tests/fixtures/002_runtime_access.sql
   gate_e2e_configuration:
     file: ./packages/gate/deploy/helm/emilia-gate-service/tests/fixtures/gate.config.mjs

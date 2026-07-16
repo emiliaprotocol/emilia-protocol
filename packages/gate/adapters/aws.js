@@ -13,7 +13,7 @@
  *   import { createGate } from '@emilia-protocol/gate';
  *   import { createAwsManifest, guardAwsMutation } from '@emilia-protocol/gate/adapters/aws';
  *
- *   const gate = createGate({ manifest: createAwsManifest(), trustedKeys: [ISSUER] });
+ *   const gate = createGate({ manifest: createAwsManifest(), trustedKeys: [ISSUER], store: sharedConsumptionStore });
  *   // client: { iam: { attachUserPolicy, createAccessKey, deleteUser }, ec2: { authorizeSecurityGroupIngress } }
  *   await guardAwsMutation(gate, client, {
  *     op: 'iam.attach_policy', params: { user: 'svc-bot', policy_arn: 'arn:aws:iam::aws:policy/AdministratorAccess' }, receipt,

@@ -13,6 +13,9 @@ the repository `DELETE`.
 
 - The request body accepts exactly `action`, `owner`, and `repo`. Caller-supplied
   observed fields, receipts, and extra keys are refused.
+- Every action create/read request is authenticated before repository lookup or
+  durable-state access. The reference config uses a constant-time bearer-token
+  authenticator; an operator may supply an mTLS/OIDC-aware authenticator instead.
 - The only receipt ingress is `X-EMILIA-Receipt`, carrying canonical base64 or
   base64url of strict JSON. The decoded default limit is 64 KiB; duplicate JSON
   members, malformed UTF-8, mixed alphabets, and non-canonical encoding fail
@@ -33,8 +36,9 @@ the repository `DELETE`.
   bodies, connector errors, response bodies, tokens, and secrets are never
   passed to the logger.
 
-EMILIA evidence is not caller authentication or GitHub authorization. Put this
-service behind the organization's normal identity, permission, and network
+EMILIA evidence is not a substitute for caller authentication or GitHub
+authorization. The service enforces its own authenticator contract and should
+also sit behind the organization's normal identity, permission, and network
 controls. The GitHub credential needs repository Administration write access;
 see GitHub's [Delete a repository REST documentation](https://docs.github.com/en/rest/repos/repos#delete-a-repository).
 
@@ -46,6 +50,7 @@ connector closure, not in the gate config surface.
 
 ```js
 import { createGithubRestConnector } from './apps/gate-service/src/github-client.js';
+import { createStaticBearerAuthenticator } from './apps/gate-service/src/auth.js';
 
 export default async function config() {
   return {
@@ -55,7 +60,13 @@ export default async function config() {
     }),
     consumptionStore, // durable + ownershipFenced + permanentConsumption
     evidenceLog,      // durable + strict + forkAware + atomicAppend
-    actionStore,      // durable create/update/get contract
+    actionStore,      // durable create/update/get/health contract
+    authenticateRequest: createStaticBearerAuthenticator(process.env.EMILIA_GATE_API_TOKEN),
+    readiness: async () => ({
+      ok: (await consumptionStore.health()).ok
+        && (await evidenceLog.health()).ok
+        && (await actionStore.health()).ok,
+    }),
     trustedKeys: issuerPublicKeys,
     approverKeys,
     rpId: 'approve.example.com',
@@ -100,6 +111,7 @@ Present a receipt only as:
 
 ```text
 X-EMILIA-Receipt: base64(<EP-RECEIPT-v1 strict JSON>)
+Authorization: Bearer <operator-issued Gate API token>
 ```
 
 A missing, malformed, invalid, mismatched, or replayed receipt returns HTTP 428.
@@ -113,7 +125,9 @@ stored in this record.
 
 ### `GET /v1/health`
 
-Returns static process readiness without probing GitHub or exposing config.
+Returns 200 only after the operator readiness function proves the durable replay,
+evidence, and action-state dependencies are usable. It does not call GitHub or
+expose dependency addresses or credentials.
 
 ## Tests
 

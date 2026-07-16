@@ -12,7 +12,7 @@
  *   import { createGate } from '@emilia-protocol/gate';
  *   import { createStripeManifest, guardStripeMutation } from '@emilia-protocol/gate/adapters/stripe';
  *
- *   const gate = createGate({ manifest: createStripeManifest(), trustedKeys: [ISSUER] });
+ *   const gate = createGate({ manifest: createStripeManifest(), trustedKeys: [ISSUER], store: sharedConsumptionStore });
  *   await guardStripeMutation(gate, new Stripe(key), {
  *     op: 'payout.create', params: { amount: 40000, currency: 'usd', destination: 'acct_x' }, receipt,
  *   });

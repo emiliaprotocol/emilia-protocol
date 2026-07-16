@@ -1,6 +1,6 @@
 # @emilia-protocol/gate — EMILIA Gate
 
-**The Trusted Action Firewall.** Deny-by-default enforcement for consequential machine actions.
+**The Consequence Firewall.** Deny-by-default enforcement for consequential machine actions.
 
 > If an agent cannot produce a valid receipt, it cannot change money, code, permissions, data,
 > infrastructure, energy, or physical state.
@@ -32,6 +32,7 @@ import { createTrustedActionFirewall } from '@emilia-protocol/gate';
 
 const gate = createTrustedActionFirewall({
   trustedKeys: [ISSUER_PUBKEY_B64U], // pin the issuers you trust
+  store: sharedConsumptionStore,      // durable + ownership-fenced + permanent
   maxAgeSec: 900,
 });
 
@@ -95,7 +96,7 @@ Use your own manifest when you need custom policy:
 ```js
 import { createGate } from '@emilia-protocol/gate';
 
-const gate = createGate({ manifest, trustedKeys: [ISSUER_PUBKEY_B64U] });
+const gate = createGate({ manifest, trustedKeys: [ISSUER_PUBKEY_B64U], store: sharedConsumptionStore });
 ```
 
 ## Framework adapters
@@ -134,7 +135,7 @@ receipt-required one:
 import { createTrustedActionFirewall } from '@emilia-protocol/gate';
 import { gateMcpTool } from '@emilia-protocol/gate/mcp';
 
-const gate = createTrustedActionFirewall({ trustedKeys: [ISSUER_PUBKEY_B64U] });
+const gate = createTrustedActionFirewall({ trustedKeys: [ISSUER_PUBKEY_B64U], store: sharedConsumptionStore });
 
 server.tool('release_payment', gateMcpTool(
   gate,
@@ -156,7 +157,7 @@ mutating B). All share one fail-closed contract (`adapters/_kit.js`).
 import { createGate } from '@emilia-protocol/gate';
 import { createGithubManifest, guardGithubMutation } from '@emilia-protocol/gate/adapters/github';
 
-const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [ISSUER_PUBKEY_B64U] });
+const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [ISSUER_PUBKEY_B64U], store: sharedConsumptionStore });
 await guardGithubMutation(gate, octokit, {
   op: 'repo.delete',                 // | 'permission.change' | 'branch_protection.remove'
   params: { owner: 'acme', repo: 'prod' },
@@ -173,7 +174,7 @@ await guardGithubMutation(gate, octokit, {
 
 ```js
 import { createStripeManifest, guardStripeMutation } from '@emilia-protocol/gate/adapters/stripe';
-const gate = createGate({ manifest: createStripeManifest(), trustedKeys: [ISSUER_PUBKEY_B64U] });
+const gate = createGate({ manifest: createStripeManifest(), trustedKeys: [ISSUER_PUBKEY_B64U], store: sharedConsumptionStore });
 await guardStripeMutation(gate, stripe, { op: 'payout.create', params: { amount: 40000, currency: 'usd', destination: 'acct_x' }, receipt });
 // Supabase: guardSupabaseMutation(gate, db, { op: 'sql.destructive', params: { sql }, receipt })  // binds the exact statement
 // AWS:      guardAwsMutation(gate, client, { op: 'iam.attach_policy', params: { user, policy_arn }, receipt })
@@ -203,7 +204,13 @@ if it demonstrably passes all eight checks:
 import { createTrustedActionFirewall, createEg1Harness, gateConformance } from '@emilia-protocol/gate';
 
 const harness = createEg1Harness();
-const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey] });
+const gate = createTrustedActionFirewall({
+  trustedKeys: [harness.publicKey],
+  approverKeys: harness.approverKeys,
+  rpId: harness.rpId,
+  allowedOrigins: harness.allowedOrigins,
+  allowEphemeralStore: true, // conformance fixture only
+});
 const report = await gateConformance({ gate, harness });
 // report.passed === true; report.badge === 'EG-1 Enforced'
 ```
@@ -225,7 +232,9 @@ challenge. The Gate composes that and adds the three things a firewall needs:
   of every embedded device/quorum signature, use the EP §6.2 trust-receipt
   verifier in `@emilia-protocol/verify`.
 - **One-time consumption** — a receipt authorizes one action, once. Replays are refused
-  (`replay_refused`). Default store is in-memory; swap in Redis/DB for a fleet.
+  (`replay_refused`). Gate construction requires a durable, ownership-fenced, permanent store.
+  The process-local store is available only through explicit `allowEphemeralStore:true` for tests
+  and reference demos.
 - **Evidence log** — the local logger hash-chains decisions and detects alteration when given its
   complete process history. It is not a fleet ledger: a sink cannot prevent restart-from-genesis or
   cross-replica forks. Safety-critical deployments use `createAtomicEvidenceLog()` over a durable
@@ -265,7 +274,7 @@ const registry = createKeyRegistry([
   { kid: 'issuer-1', key: KEY1 },
   { kid: 'issuer-2', key: KEY2, not_before: '2026-07-01T00:00:00Z' }, // rotation window
 ]);
-const gate = createGate({ manifest, keyRegistry: registry });
+const gate = createGate({ manifest, keyRegistry: registry, store: sharedConsumptionStore });
 registry.revoke('issuer-1'); // compromised — refused immediately, live, no redeploy
 ```
 

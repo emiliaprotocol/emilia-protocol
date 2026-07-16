@@ -12,7 +12,7 @@
  *   import { createGate } from '@emilia-protocol/gate';
  *   import { createGithubManifest, guardGithubMutation } from '@emilia-protocol/gate/adapters/github';
  *
- *   const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [ISSUER] });
+ *   const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [ISSUER], store: sharedConsumptionStore });
  *   const octokit = new Octokit({ auth });
  *   await guardGithubMutation(gate, octokit, {
  *     op: 'repo.delete', params: { owner, repo }, receipt,  // throws if no valid receipt

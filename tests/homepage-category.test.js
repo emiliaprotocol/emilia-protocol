@@ -9,7 +9,7 @@ function read(relPath) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the shared-world trust mission and keeps technical proof in a restrained band', () => {
+  it('leads with the Consequence Firewall product and keeps technical proof in a restrained band', () => {
     const page = read('app/page.js');
     const layout = read('app/layout.js');
     const css = read('app/ep.css');
@@ -17,15 +17,16 @@ describe('homepage category contract', () => {
     expect(layout).toContain('The Consequence Firewall for AI Agents');
     expect(layout).toContain('secure agent actions');
     expect(layout).toContain('AI agent firewall');
-    expect(page).toContain('Trust infrastructure for a world humans and machines share.');
-    expect(page).toContain('coexistence needs a shared way to establish');
-    expect(page).toContain('EMILIA binds identity, authority, and human intent');
+    expect(page).toContain('EMILIA Gate <span>· The Consequence Firewall</span>');
+    expect(page).toContain('Before a machine changes the world, make it prove the action was authorized.');
+    expect(page).toContain('No valid receipt, no movement of money, code, permissions, data, energy, or physical state.');
     expect(css).toContain('hero-human-machine-shoreline-v1.webp');
     expect(page).toContain('Proof, not promises');
     expect(page).toContain('IETF Internet-Drafts');
     expect(page).toContain('verified lemmas');
     expect(page).toContain('counterexample traces');
-    expect(page).toContain('href="/protocol"');
+    expect(page).toContain('href="/gate/live"');
+    expect(page).toContain('href="/gate"');
     expect(page).toContain('href="/proof"');
     expect(page).not.toContain('<CrashTestDemo />');
     expect(page).not.toContain('emilia-sequence.mp4');

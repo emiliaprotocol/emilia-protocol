@@ -70,6 +70,33 @@ function toIso(now) {
   return new Date(ms == null ? 0 : ms).toISOString();
 }
 
+function portableJsonCopy(value, active = new Set()) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || Object.is(value, -0)) {
+      throw new TypeError('assurance-package: value is not canonical JSON');
+    }
+    return value;
+  }
+  if (typeof value !== 'object') {
+    throw new TypeError('assurance-package: value is not JSON');
+  }
+  if (active.has(value)) throw new TypeError('assurance-package: cyclic value');
+  active.add(value);
+  try {
+    if (Array.isArray(value)) return value.map((entry) => portableJsonCopy(entry, active));
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError('assurance-package: value must use plain JSON objects');
+    }
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, portableJsonCopy(entry, active)]),
+    );
+  } finally {
+    active.delete(value);
+  }
+}
+
 /**
  * Bundle N automated reliance decisions + the evidence each relied on into one
  * portable, content-addressed assurance package. Does NOT re-perform (that is the
@@ -87,18 +114,19 @@ function toIso(now) {
 export function buildAssurancePackage(decisions = [], { profile, organization = null, now = 0 } = {}) {
   if (!Array.isArray(decisions)) throw new Error('assurance-package: decisions must be an array');
   const items = decisions.map((d, i) => {
-    const decision_id = d?.decision_id ?? `decision-${i}`;
+    const source = portableJsonCopy(d ?? {});
+    const decision_id = source.decision_id ?? `decision-${i}`;
     return {
       decision_id,
-      action: d?.action ?? null,
-      policy_hash: d?.action?.policy_hash ?? null,
-      stated_verdict: typeof d?.stated_verdict === 'string' ? d.stated_verdict : null,
+      action: source.action ?? null,
+      policy_hash: source.action?.policy_hash ?? null,
+      stated_verdict: typeof source.stated_verdict === 'string' ? source.stated_verdict : null,
       evidence: {
-        receipt: d?.receipt ?? null,
-        quorum: d?.quorum ?? null,
-        authority_proof: d?.authority_proof ?? null,
-        revocation_state: d?.revocation_state ?? null,
-        consumption: d?.consumption ?? null,
+        receipt: source.receipt ?? null,
+        quorum: source.quorum ?? null,
+        authority_proof: source.authority_proof ?? null,
+        revocation_state: source.revocation_state ?? null,
+        consumption: source.consumption ?? null,
       },
     };
   });
@@ -106,11 +134,12 @@ export function buildAssurancePackage(decisions = [], { profile, organization = 
   const exceptions = items.filter((it) => it.stated_verdict && it.stated_verdict !== 'rely')
     .map((it) => ({ decision_id: it.decision_id, stated_verdict: it.stated_verdict, control_id: controlForVerdict(it.stated_verdict) }));
 
+  const profileCopy = profile == null ? null : portableJsonCopy(profile);
   const body = {
     '@version': ASSURANCE_PACKAGE_VERSION,
-    organization,
-    reliance_profile: profile ?? null,
-    profile_hash: profile ? hashCanonical(profile) : null,
+    organization: organization == null ? null : portableJsonCopy(organization),
+    reliance_profile: profileCopy,
+    profile_hash: profileCopy ? hashCanonical(profileCopy) : null,
     control_catalog: RELIANCE_CONTROL_CATALOG,
     decisions: items,
     exception_history: exceptions,

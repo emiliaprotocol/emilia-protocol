@@ -132,6 +132,10 @@ export function createDurableConsumptionStore(backend, { ttlSeconds, reservation
     ownershipFenced: true,
     permanentConsumption: ttlSeconds === undefined || ttlSeconds === null,
     retentionSeconds: ttlSeconds ?? null,
+    async health() {
+      if (typeof backend.health !== 'function') return { ok: false, reason: 'backend_health_unavailable' };
+      return backend.health();
+    },
     async reserve(key) {
       const token = reservationTokenFactory();
       if (typeof token !== 'string' || token.length < 16) {

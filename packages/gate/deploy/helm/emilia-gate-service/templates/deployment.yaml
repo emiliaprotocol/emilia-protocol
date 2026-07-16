@@ -66,12 +66,20 @@ spec:
                   name: {{ include "emilia-gate-service.postgresSecret" . }}
                   key: {{ .Values.secrets.postgres.key }}
                   optional: false
+            - name: {{ .Values.secrets.apiToken.envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "emilia-gate-service.apiTokenSecret" . }}
+                  key: {{ .Values.secrets.apiToken.key }}
+                  optional: false
+            {{- if .Values.secrets.kms.existingSecret }}
             - name: {{ .Values.secrets.kms.envName }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "emilia-gate-service.kmsSecret" . }}
                   key: {{ .Values.secrets.kms.key }}
                   optional: false
+            {{- end }}
             - name: {{ .Values.secrets.issuerRoots.envName }}
               valueFrom:
                 secretKeyRef:

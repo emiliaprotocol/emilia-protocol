@@ -58,8 +58,12 @@ app.kubernetes.io/component: service
 {{- required "configuration.existingSecret is required; apps/gate-service requires an operator-owned gate.config.mjs" .Values.configuration.existingSecret -}}
 {{- end -}}
 
+{{- define "emilia-gate-service.apiTokenSecret" -}}
+{{- required "secrets.apiToken.existingSecret is required; action routes require operator authentication" .Values.secrets.apiToken.existingSecret -}}
+{{- end -}}
+
 {{- define "emilia-gate-service.kmsSecret" -}}
-{{- required "secrets.kms.existingSecret is required; the chart only references existing Secrets" .Values.secrets.kms.existingSecret -}}
+{{- .Values.secrets.kms.existingSecret -}}
 {{- end -}}
 
 {{- define "emilia-gate-service.issuerRootsSecret" -}}

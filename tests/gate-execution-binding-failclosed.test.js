@@ -116,6 +116,55 @@ describe('Gate execution-binding — fail-closed on absent observed action', () 
     expect(r.missing_observed_fields).toEqual([]);
   });
 
+  it('distinguishes missing, non-enumerable, accessor, and invalid containers exactly', () => {
+    const requirement = { execution_binding: { required_fields: ['amount'] } };
+    const observedAction = { amount: 1 };
+
+    const absent = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: {} } },
+      observedAction,
+    });
+    expect(absent.missing_signed_fields).toEqual(['amount']);
+    expect(absent.invalid_signed_fields).toEqual([]);
+
+    const nonEnumerableClaim = {};
+    Object.defineProperty(nonEnumerableClaim, 'amount', { value: 1, enumerable: false });
+    const nonEnumerable = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: nonEnumerableClaim } },
+      observedAction,
+    });
+    expect(nonEnumerable.missing_signed_fields).toEqual([]);
+    expect(nonEnumerable.invalid_signed_fields).toEqual(['amount']);
+
+    const accessorClaim = {};
+    Object.defineProperty(accessorClaim, 'amount', { get: () => 1, enumerable: true });
+    const accessor = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: accessorClaim } },
+      observedAction,
+    });
+    expect(accessor.missing_signed_fields).toEqual([]);
+    expect(accessor.invalid_signed_fields).toEqual(['amount']);
+
+    const invalidContainer = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: [] } },
+      observedAction,
+    });
+    expect(invalidContainer.missing_signed_fields).toEqual([]);
+    expect(invalidContainer.invalid_signed_fields).toEqual(['amount']);
+
+    const nullValue = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: { amount: null } } },
+      observedAction,
+    });
+    expect(nullValue.missing_signed_fields).toEqual(['amount']);
+    expect(nullValue.invalid_signed_fields).toEqual([]);
+  });
+
   it('REFUSES aliases spanning separate required fields on either side', () => {
     const requirement = { execution_binding: { required_fields: ['left', 'right'] } };
     const signedShared = { amount: 1 };

@@ -19,6 +19,7 @@ values=(
   --set-string image.digest="$digest"
   --set-string configuration.existingSecret=gate-configuration
   --set-string secrets.postgres.existingSecret=gate-postgres
+  --set-string secrets.apiToken.existingSecret=gate-api-token
   --set-string secrets.kms.existingSecret=gate-kms
   --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots
   --set-string networkPolicy.egress.githubCidrs[0]=192.0.2.10/32
@@ -47,6 +48,7 @@ assert_rendered "allowPrivilegeEscalation: false"
 assert_rendered "automountServiceAccountToken: false"
 assert_rendered "registry.example.test/security/emilia-gate-service@$digest"
 assert_rendered "name: gate-postgres"
+assert_rendered "name: gate-api-token"
 assert_rendered "name: gate-kms"
 assert_rendered "name: gate-issuer-roots"
 assert_rendered "secretName: gate-configuration"
@@ -67,6 +69,18 @@ fi
 
 if "$helm_bin" template missing-required "$chart_dir" >/dev/null 2>&1; then
   echo "chart unexpectedly rendered without BYOC image and Secret references" >&2
+  exit 1
+fi
+
+without_kms="$($helm_bin template no-kms "$chart_dir" --namespace gate-system \
+  --set-string image.repository=registry.example.test/security/emilia-gate-service \
+  --set-string image.digest="$digest" \
+  --set-string configuration.existingSecret=gate-configuration \
+  --set-string secrets.postgres.existingSecret=gate-postgres \
+  --set-string secrets.apiToken.existingSecret=gate-api-token \
+  --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots)"
+if grep -Fq -- "EP_KMS_KEY_ID" <<<"$without_kms"; then
+  echo "chart rendered a KMS dependency even though no KMS extension was configured" >&2
   exit 1
 fi
 

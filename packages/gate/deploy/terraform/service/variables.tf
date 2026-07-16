@@ -143,13 +143,37 @@ variable "migration_postgres_secret_key" {
   nullable    = true
 }
 
-variable "kms_secret_name" {
-  description = "Name of an existing Secret containing the service KMS key identifier/config. Only the reference is stored by Terraform."
+variable "api_token_secret_name" {
+  description = "Name of an existing Secret containing the Gate action-API bearer token. Only the reference is stored by Terraform."
   type        = string
 
   validation {
-    condition     = trimspace(var.kms_secret_name) != ""
-    error_message = "kms_secret_name is required."
+    condition     = trimspace(var.api_token_secret_name) != ""
+    error_message = "api_token_secret_name is required."
+  }
+}
+
+variable "api_token_secret_key" {
+  description = "Key in api_token_secret_name containing the Gate API token."
+  type        = string
+  default     = "api-token"
+}
+
+variable "api_token_env_name" {
+  description = "Runtime environment variable populated from the Gate API-token Secret."
+  type        = string
+  default     = "EMILIA_GATE_API_TOKEN"
+}
+
+variable "kms_secret_name" {
+  description = "Optional existing Secret containing KMS configuration used by an operator extension. The Gate service itself does not mint or require a signing key."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.kms_secret_name == null ? true : trimspace(var.kms_secret_name) != ""
+    error_message = "kms_secret_name must be null or non-empty."
   }
 }
 
