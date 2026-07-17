@@ -289,6 +289,22 @@ describe('durable mobile storage adapters', () => {
       rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006', message: 'down' } }),
     });
     await expect(broken.addIfAbsent('challenge:0123456789', 'issued')).rejects.toThrow(/mobile state insert failed/);
+
+    expect(() => createMobileStateBackend(null)).toThrow(/Supabase client/);
+    const compareUnavailable = createMobileStateBackend({
+      from,
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    });
+    await expect(compareUnavailable.compareAndSet(
+      'challenge:0123456789',
+      'issued',
+      'consumed',
+    )).rejects.toThrow(/08006/);
+    const lookupUnavailable = createMobileStateBackend({
+      from: vi.fn(() => chain({ data: null, error: {} })),
+      rpc,
+    });
+    await expect(lookupUnavailable.has('challenge:0123456789')).rejects.toThrow(/database operation failed/);
   });
 
   it('advances hardware counters and appends the verifier-native portable record', async () => {
@@ -319,6 +335,33 @@ describe('durable mobile storage adapters', () => {
       p_record: record,
       p_canonical_body: expect.any(String),
     }));
+
+    expect(() => createMobileCounterStore({})).toThrow(/Supabase client/);
+    await expect(createMobileCounterStore({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }).advance('device-1', 5)).rejects.toThrow(/mobile counter advance failed/);
+    expect(() => createMobileAuditLog({ rpc: vi.fn() }, 'entity-1')).toThrow(/entityRef/);
+
+    const recordLookupUnavailable = createMobileAuditLog({
+      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+      rpc: vi.fn(),
+    }, 'entity-1');
+    await expect(recordLookupUnavailable.record({ event_type: 'mobile.test' })).rejects.toThrow(/record lookup failed/);
+
+    const headFrom = vi.fn()
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockReturnValueOnce(chain({ data: null, error: { code: '08006' } }));
+    const headUnavailable = createMobileAuditLog({
+      from: headFrom,
+      rpc: vi.fn(),
+    }, 'entity-1');
+    await expect(headUnavailable.record({ event_type: 'mobile.test' })).rejects.toThrow(/head lookup failed/);
+
+    const appendUnavailable = createMobileAuditLog({
+      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, 'entity-1');
+    await expect(appendUnavailable.record({ event_type: 'mobile.test' })).rejects.toThrow(/append_indeterminate/);
   });
 
   it('loads only active enrollments and preserves each platform public key', async () => {
@@ -331,6 +374,27 @@ describe('durable mobile storage adapters', () => {
     expect((await directory.platformKey('apple-key', 'ios')).platform_public_key).toBe('pem');
     expect(await directory.enrollAtomically({ enrollment: {}, event: {} })).toBe(true);
     expect(rpc).toHaveBeenCalledWith('enroll_mobile_device', expect.objectContaining({ p_session_id: 'session-1' }));
+
+    expect(() => createMobileEnrollmentDirectory(null, 'entity-1', 'session-1')).toThrow(/Supabase client/);
+    await expect(directory.platformKey('apple-key', 'web')).rejects.toThrow(/platform key lookup is malformed/);
+
+    const enrollmentUnavailable = createMobileEnrollmentDirectory({
+      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, 'entity-1', 'session-1');
+    await expect(enrollmentUnavailable.enrollAtomically({
+      enrollment: {},
+      event: {},
+    })).rejects.toThrow(/enrollment insert failed/);
+    await expect(enrollmentUnavailable.active()).rejects.toThrow(/directory unavailable/);
+    await expect(enrollmentUnavailable.platformKey('apple-key', 'ios')).rejects.toThrow(/platform key lookup failed/);
+
+    const emptyDirectory = createMobileEnrollmentDirectory({
+      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc,
+    }, 'entity-1', 'session-1');
+    expect(await emptyDirectory.active()).toEqual([]);
+    expect(await emptyDirectory.platformKey('apple-key', 'ios')).toBeNull();
   });
 
   it('hashes pairings and mobile bearer tokens without storing either secret', async () => {
@@ -385,6 +449,58 @@ describe('durable mobile storage adapters', () => {
       p_token_hash: sha256Hex(`ep_mobile_${'a'.repeat(43)}`),
     }));
     expect(await authenticateMobileToken(supabase, 'Bearer attacker-token')).toBeNull();
+    expect(await authenticateMobileToken(supabase)).toBeNull();
+
+    const pairingInput = {
+      code: 'ABCD-EFGH-JKLM',
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+      profileId: 'profile-1',
+      allowedApps: { ios: ['ai.emiliaprotocol.approver'], android: [] },
+      expiresAt: '2026-07-15T01:00:00.000Z',
+      sessionExpiresAt: '2026-08-15T00:00:00.000Z',
+    };
+    await expect(createPairing({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, pairingInput)).rejects.toThrow(/pairing creation failed/);
+    await expect(createPairing({
+      rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    }, pairingInput)).rejects.toThrow(/pairing creation refused/);
+    await expect(exchangePairing({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, {
+      code: pairingInput.code,
+      token: `ep_mobile_${'a'.repeat(43)}`,
+      platform: 'ios',
+      appId: 'ai.emiliaprotocol.approver',
+    })).rejects.toThrow(/pairing exchange failed/);
+    expect(await exchangePairing({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }, {
+      code: pairingInput.code,
+      token: `ep_mobile_${'a'.repeat(43)}`,
+      platform: 'ios',
+      appId: 'ai.emiliaprotocol.approver',
+    })).toEqual({ ok: false, reason: 'invalid_or_expired' });
+
+    await expect(authenticateMobileToken({
+      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+      rpc: vi.fn(),
+    }, `Bearer ep_mobile_${'a'.repeat(43)}`)).rejects.toThrow(/session lookup failed/);
+    expect(await authenticateMobileToken({
+      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: vi.fn(),
+    }, `Bearer ep_mobile_${'a'.repeat(43)}`)).toBeNull();
+    await expect(authenticateMobileToken({
+      from: vi.fn(() => chain({
+        data: {
+          session_id: '00000000-0000-0000-0000-000000000001',
+          expires_at: '2999-01-01T00:00:00.000Z',
+        },
+        error: null,
+      })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, `Bearer ep_mobile_${'a'.repeat(43)}`)).rejects.toThrow(/session update failed/);
   });
 
   it('refuses a token when its session is revoked between lookup and touch', async () => {
@@ -422,6 +538,13 @@ describe('durable mobile storage adapters', () => {
       p_entity_ref: 'entity-1',
       p_session_id: 'session-1',
     }));
+    expect(await revokeMobileSession(supabase, { sessionId: '', entityRef: 'entity-1' })).toBe(false);
+    await expect(revokeMobileSession({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, {
+      sessionId: 'session-1',
+      entityRef: 'entity-1',
+    })).rejects.toThrow(/session revocation failed/);
     expect(await registerMobileActionChallenge(supabase, {
       entityRef: 'entity-1',
       sessionId: 'session-1',
@@ -579,6 +702,54 @@ describe('durable mobile storage adapters', () => {
       p_entity_ref: 'entity-1',
       p_action_reference: demo.action_reference,
     }));
+
+    await expect(listMobileActions({
+      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+    }, {
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+    })).rejects.toThrow(/action inbox unavailable/);
+    expect(await listMobileActions({
+      from: vi.fn(() => chain({ data: null, error: null })),
+    }, {
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+    })).toEqual([]);
+    await expect(resolveMobileAction({
+      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+    }, {
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+      actionReference: 'action-1',
+    })).rejects.toThrow(/action lookup unavailable/);
+    expect(await resolveMobileAction({
+      from: vi.fn(() => chain({ data: null, error: null })),
+    }, {
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+      actionReference: 'action-1',
+    })).toBeNull();
+    expect(await resolveMobileAction({
+      from: vi.fn(() => chain({
+        data: {
+          action_reference: 'action-1',
+          presentation: PRESENTATION,
+          status: 'pending',
+          expires_at: '2000-01-01T00:00:00.000Z',
+        },
+        error: null,
+      })),
+    }, {
+      entityRef: 'entity-1',
+      approverId: 'approver-1',
+      actionReference: 'action-1',
+    })).toBeNull();
+    await expect(createDemoAction({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, demo)).rejects.toThrow(/demo action creation failed/);
+    await expect(createDemoAction({
+      rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    }, demo)).rejects.toThrow(/demo action creation refused/);
   });
 
   it('creates a GRACE approval group through one atomic RPC using snapshots', async () => {
@@ -614,5 +785,26 @@ describe('durable mobile storage adapters', () => {
         expect.objectContaining({ approver_id: 'ep:approver:grid' }),
       ]),
     }));
+
+    const input = {
+      assignments: [{ action_reference: `mobact_${'1'.repeat(32)}`, approver_id: 'ep:approver:grid' }],
+      entityRef: 'entity-1',
+      initiatorId: 'ep:agent:grid',
+      action: { '@version': 'EP-GRACE-CURTAILMENT-ACTION-v1', action_type: 'grid.curtailment' },
+      presentation: PRESENTATION,
+      policy: { policy_id: 'ep:grace:v1', required_approvals: 1 },
+      policyId: 'ep:grace:v1',
+      expiresAt: '2099-07-15T21:45:00.000Z',
+    };
+    await expect(createGraceMobileActionGroup({ rpc }, {
+      ...input,
+      assignments: [],
+    })).rejects.toThrow(/at least one mobile approval assignment/);
+    await expect(createGraceMobileActionGroup({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
+    }, input)).rejects.toThrow(/GRACE mobile action group creation failed/);
+    await expect(createGraceMobileActionGroup({
+      rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+    }, input)).rejects.toThrow(/GRACE mobile action group creation refused/);
   });
 });
