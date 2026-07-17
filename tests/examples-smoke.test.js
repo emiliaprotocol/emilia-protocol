@@ -61,3 +61,13 @@ describe('Google Cloud external reliance lab runs the real MCP boundary', () => 
     expect(out).toMatch(/execution binds authorization: yes/);
   });
 });
+
+describe('continuous-assurance example re-performs signed material, not presenter claims', () => {
+  it('accepts the clean population and isolates the planted authority-ceiling drift', () => {
+    const out = run('examples/reliance/ey-continuous-assurance.mjs');
+    expect(out).toMatch(/admissible\(rely\): 8 \| refused: 3 \| drift: 1/);
+    expect(out).toMatch(/PA-over-ceiling: stated=rely recomputed=do_not_rely_amount_exceeded/);
+    expect(out).toMatch(/OK — re-performance independently caught the PA/);
+    expect(out).not.toMatch(/FAILED/);
+  });
+});
