@@ -974,13 +974,35 @@ begin
      or coalesce(p_record ->> 'context_hash', '') !~ '^sha256:[0-9a-f]{64}$'
      or p_decision_evidence is null
      or jsonb_typeof(p_decision_evidence) is distinct from 'object'
-     or jsonb_typeof(p_decision_evidence -> 'context') is distinct from 'object'
-     or jsonb_typeof(p_decision_evidence -> 'signoff') is distinct from 'object'
-     or p_decision_evidence -> 'context' ->> 'action_hash' is distinct from p_action_hash
-     or p_decision_evidence -> 'context' ->> 'decision' is distinct from p_decision
-     or p_decision_evidence -> 'context' ->> 'approver' is distinct from p_record ->> 'approver_id'
-     or p_decision_evidence -> 'signoff' ->> 'key_class' is distinct from 'A'
-     or p_decision_evidence -> 'signoff' ->> 'context_hash' is distinct from p_record ->> 'context_hash'
+     or (
+       p_decision = 'approved'
+       and (
+         jsonb_typeof(p_decision_evidence -> 'context') is distinct from 'object'
+         or jsonb_typeof(p_decision_evidence -> 'signoff') is distinct from 'object'
+         or p_decision_evidence -> 'context' ->> 'action_hash' is distinct from p_action_hash
+         or p_decision_evidence -> 'context' ->> 'decision' is distinct from 'approved'
+         or p_decision_evidence -> 'context' ->> 'approver' is distinct from p_record ->> 'approver_id'
+         or p_decision_evidence -> 'signoff' ->> 'key_class' is distinct from 'A'
+         or p_decision_evidence -> 'signoff' ->> 'context_hash' is distinct from p_record ->> 'context_hash'
+       )
+     )
+     or (
+       p_decision = 'denied'
+       and (
+         p_decision_evidence - array[
+           '@version', 'challenge_id', 'action_hash', 'profile_hash',
+           'decision', 'approver_id', 'device_key_id', 'context_hash'
+         ]::text[] is distinct from '{}'::jsonb
+         or p_decision_evidence ->> '@version' is distinct from 'EP-MOBILE-DENIAL-EVIDENCE-v1'
+         or p_decision_evidence ->> 'challenge_id' is distinct from p_challenge_id
+         or p_decision_evidence ->> 'action_hash' is distinct from p_action_hash
+         or p_decision_evidence ->> 'profile_hash' is distinct from p_record ->> 'profile_hash'
+         or p_decision_evidence ->> 'decision' is distinct from 'denied'
+         or p_decision_evidence ->> 'approver_id' is distinct from p_record ->> 'approver_id'
+         or p_decision_evidence ->> 'device_key_id' is distinct from p_record ->> 'device_key_id'
+         or p_decision_evidence ->> 'context_hash' is distinct from p_record ->> 'context_hash'
+       )
+     )
      or octet_length(p_decision_evidence::text) > 262144 then
     return jsonb_build_object('ok', false, 'reason', 'malformed');
   end if;

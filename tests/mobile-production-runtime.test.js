@@ -41,6 +41,7 @@ vi.mock('@/lib/mobile/config.js', () => ({
   getMobileConfig: (...args) => mocks.getMobileConfig(...args),
 }));
 vi.mock('@/lib/mobile/store.js', () => ({
+  MOBILE_DENIAL_EVIDENCE_VERSION: 'EP-MOBILE-DENIAL-EVIDENCE-v1',
   authenticateMobileToken: (...args) => mocks.authenticateMobileToken(...args),
   commitMobileActionDecision: (...args) => mocks.commitMobileActionDecision(...args),
   createMobileAuditLog: (...args) => mocks.createMobileAuditLog(...args),
@@ -284,7 +285,11 @@ describe('mobile production runtime composition', () => {
 
     const committed = await mocks.captured.ceremony.commitDecision({
       challenge: { challenge_id: 'challenge-1', action_hash: 'hash' },
-      result: { decision: 'approved', verdict: 'accepted' },
+      result: {
+        decision: 'approved',
+        verdict: 'verified',
+        class_a: { context: { decision: 'approved' }, signoff: { key_class: 'A' } },
+      },
       auditEntry: { record_id: 'rec-1' },
     });
     expect(committed.audit_record.record_id).toBe('rec-1');
@@ -294,6 +299,50 @@ describe('mobile production runtime composition', () => {
       challengeId: 'challenge-1',
       actionHash: 'hash',
     }));
+  });
+
+  it('commits a verified denial as typed denial evidence without a class_a shape', async () => {
+    mocks.directoryActive.mockResolvedValue([{
+      approver_id: IOS_SESSION.approver_id,
+      public_key_spki: 'spki',
+    }]);
+    await runtime.createMobileRuntime({ request: request() });
+
+    const auditEntry = {
+      profile_hash: `sha256:${'b'.repeat(64)}`,
+      approver_id: IOS_SESSION.approver_id,
+      device_key_id: IOS_SESSION.device_key_id,
+      context_hash: `sha256:${'c'.repeat(64)}`,
+    };
+    await expect(mocks.captured.ceremony.commitDecision({
+      challenge: {
+        challenge_id: 'challenge-denied-1',
+        action_hash: `sha256:${'a'.repeat(64)}`,
+      },
+      result: {
+        valid: true,
+        decision: 'denied',
+        verdict: 'verified',
+        approver_id: IOS_SESSION.approver_id,
+        device_key_id: IOS_SESSION.device_key_id,
+        context_hash: auditEntry.context_hash,
+      },
+      auditEntry,
+    })).resolves.toMatchObject({ committed: true });
+
+    const stored = mocks.commitMobileActionDecision.mock.calls.at(-1)[1];
+    expect(stored.decisionEvidence).toEqual({
+      '@version': 'EP-MOBILE-DENIAL-EVIDENCE-v1',
+      challenge_id: 'challenge-denied-1',
+      action_hash: `sha256:${'a'.repeat(64)}`,
+      profile_hash: auditEntry.profile_hash,
+      decision: 'denied',
+      approver_id: IOS_SESSION.approver_id,
+      device_key_id: IOS_SESSION.device_key_id,
+      context_hash: auditEntry.context_hash,
+    });
+    expect(Object.hasOwn(stored.decisionEvidence, 'class_a')).toBe(false);
+    expect(Object.hasOwn(stored.decisionEvidence, 'signoff')).toBe(false);
   });
 
   it('fails closed at both network and paired-session rate boundaries', async () => {

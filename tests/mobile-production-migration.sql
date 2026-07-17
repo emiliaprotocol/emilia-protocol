@@ -30,6 +30,10 @@ insert into mobile_actions(
   (
     'action-0003', 'entity-mobile-contract', 'approver-1', 'agent-1',
     '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the pending item.","risk":"high","consequence":"The protected release will execute.","material_fields":{"item":"action-0003"}}', '{}', 'policy-1', now() + interval '1 day'
+  ),
+  (
+    'action-0004', 'entity-mobile-contract', 'approver-1', 'agent-1',
+    '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the pending item.","risk":"high","consequence":"The protected release will not execute.","material_fields":{"item":"action-0004"}}', '{}', 'policy-1', now() + interval '1 day'
   );
 
 do $$
@@ -46,6 +50,12 @@ declare
   atomic_body text;
   atomic_hash text;
   atomic_record jsonb;
+  denial_body text;
+  denial_hash text;
+  denial_record jsonb;
+  approval_guard_body text;
+  approval_guard_hash text;
+  approval_guard_record jsonb;
   revoked_body text;
   revoked_hash text;
   revoked_record jsonb;
@@ -354,36 +364,92 @@ begin
 
   if register_mobile_action_challenge(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
+    'action-0004', 'approver-1', 'challenge-0004',
+    'sha256:' || repeat('4', 64), 'denied', now() + interval '5 minutes'
+  ) is not true then raise exception 'denial challenge registration failed'; end if;
+
+  denial_body := '{"action_hash":"sha256:' || repeat('4', 64)
+    || '","approver_id":"approver-1","challenge_id":"challenge-0004","context_hash":"sha256:'
+    || repeat('5', 64)
+    || '","decision":"denied","device_key_id":"device-1","event_type":"mobile.ceremony.decision","prev_hash":"'
+    || atomic_hash
+    || '","profile_hash":"sha256:' || repeat('b', 64)
+    || '","record_id":"mar_00000000000000000000000000000005","seq":2,"session_id":"00000000-0000-0000-0000-000000000001","verdict":"verified"}';
+  denial_hash := encode(digest(convert_to(denial_body, 'UTF8'), 'sha256'), 'hex');
+  denial_record := denial_body::jsonb || jsonb_build_object('hash', denial_hash);
+  select commit_mobile_action_decision(
+    'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
+    'challenge-0004', 'sha256:' || repeat('4', 64),
+    'denied', 'verified',
+    jsonb_build_object(
+      '@version', 'EP-MOBILE-DENIAL-EVIDENCE-v1',
+      'challenge_id', 'challenge-0004',
+      'action_hash', 'sha256:' || repeat('4', 64),
+      'profile_hash', 'sha256:' || repeat('b', 64),
+      'decision', 'denied',
+      'approver_id', 'approver-1',
+      'device_key_id', 'device-1',
+      'context_hash', 'sha256:' || repeat('5', 64)
+    ),
+    atomic_hash, denial_record, denial_body
+  ) into committed;
+  if committed ->> 'ok' <> 'true' then
+    raise exception 'atomic denial/evidence commit failed: %', committed;
+  end if;
+  if not exists (
+    select 1
+    from mobile_actions action
+    join mobile_action_challenges challenge
+      on challenge.entity_ref = action.entity_ref
+     and challenge.action_reference = action.action_reference
+    where action.entity_ref = 'entity-mobile-contract'
+      and action.action_reference = 'action-0004'
+      and action.status = 'denied'
+      and action.decision_evidence ->> '@version' = 'EP-MOBILE-DENIAL-EVIDENCE-v1'
+      and not (action.decision_evidence ? 'class_a')
+      and not (action.decision_evidence ? 'signoff')
+      and challenge.challenge_id = 'challenge-0004'
+      and challenge.consumed_at is not null
+      and action.decided_at = challenge.consumed_at
+  ) then raise exception 'typed denial did not commit with challenge consumption'; end if;
+
+  if register_mobile_action_challenge(
+    'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'action-0002', 'approver-1', 'challenge-0002',
     'sha256:' || repeat('d', 64), 'approved', now() + interval '5 minutes'
   ) is not true then raise exception 'rollback challenge registration failed'; end if;
+  approval_guard_body := '{"action_hash":"sha256:' || repeat('d', 64)
+    || '","approver_id":"approver-1","challenge_id":"challenge-0002","context_hash":"sha256:'
+    || repeat('0', 64)
+    || '","decision":"approved","device_key_id":"device-1","event_type":"mobile.ceremony.decision","prev_hash":"'
+    || denial_hash
+    || '","profile_hash":"sha256:' || repeat('b', 64)
+    || '","record_id":"mar_00000000000000000000000000000003","seq":3,"session_id":"00000000-0000-0000-0000-000000000001","verdict":"verified"}';
+  approval_guard_hash := encode(digest(convert_to(approval_guard_body, 'UTF8'), 'sha256'), 'hex');
+  approval_guard_record := approval_guard_body::jsonb
+    || jsonb_build_object('hash', approval_guard_hash);
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0002', 'sha256:' || repeat('d', 64),
     'approved', 'verified',
     jsonb_build_object(
-      'context', jsonb_build_object(
-        'action_hash', 'sha256:' || repeat('d', 64),
-        'decision', 'approved', 'approver', 'approver-1'
-      ),
-      'signoff', jsonb_build_object(
-        'key_class', 'A', 'context_hash', 'sha256:' || repeat('0', 64)
-      )
+      '@version', 'EP-MOBILE-DENIAL-EVIDENCE-v1',
+      'challenge_id', 'challenge-0002',
+      'action_hash', 'sha256:' || repeat('d', 64),
+      'profile_hash', 'sha256:' || repeat('b', 64),
+      'decision', 'denied',
+      'approver_id', 'approver-1',
+      'device_key_id', 'device-1',
+      'context_hash', 'sha256:' || repeat('0', 64)
     ),
-    atomic_hash,
-    jsonb_build_object(
-      'seq', 2, 'prev_hash', atomic_hash,
-      'record_id', 'mar_00000000000000000000000000000003',
-      'event_type', 'mobile.ceremony.decision', 'challenge_id', 'challenge-0002',
-      'action_hash', 'sha256:' || repeat('d', 64), 'decision', 'approved',
-      'verdict', 'verified', 'hash', repeat('0', 64)
-    ),
-    '{}'
+    denial_hash, approval_guard_record, approval_guard_body
   ) into committed;
-  if committed ->> 'reason' <> 'malformed' then raise exception 'malformed atomic record was not refused'; end if;
+  if committed ->> 'reason' <> 'malformed' then
+    raise exception 'typed denial evidence was accepted for an approval';
+  end if;
   if (select status from mobile_actions
       where entity_ref = 'entity-mobile-contract' and action_reference = 'action-0002') <> 'pending' then
-    raise exception 'malformed evidence changed the protected action';
+    raise exception 'wrongly typed approval evidence changed the protected action';
   end if;
 
   if register_mobile_action_challenge(

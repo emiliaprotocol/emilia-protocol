@@ -2,7 +2,10 @@
 import crypto from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 
-import { lookupMobileCeremonyResult } from '@/lib/mobile/store.js';
+import {
+  lookupMobileCeremonyResult,
+  MOBILE_DENIAL_EVIDENCE_VERSION,
+} from '@/lib/mobile/store.js';
 import { canonicalEvidenceJson } from '@/packages/gate/evidence.js';
 
 const SESSION = Object.freeze({
@@ -21,7 +24,7 @@ function hashCanonical(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalEvidenceJson(value)).digest('hex')}`;
 }
 
-function committedRows() {
+function committedRows(decision = 'approved') {
   const context = {
     ep_version: '1.0',
     context_type: 'ep.signoff.v1',
@@ -35,7 +38,7 @@ function committedRows() {
     nonce: 'sig_0123456789abcdef0123456789abcdef',
     issued_at: '2026-07-16T20:00:00.000Z',
     expires_at: '2026-07-16T20:05:00.000Z',
-    decision: 'approved',
+    decision,
     display_hash: `sha256:${'c'.repeat(64)}`,
     mobile_binding: {
       profile: 'EP-MOBILE-CHALLENGE-v1',
@@ -48,27 +51,38 @@ function committedRows() {
     },
   };
   const contextHash = hashCanonical(context);
-  const decisionEvidence = {
-    context,
-    signoff: {
-      context_hash: contextHash,
-      key_class: 'A',
-      approver_key_id: SESSION.deviceKeyId,
-      signed_at: context.issued_at,
-      webauthn: {
-        authenticator_data: 'YXV0aC1kYXRh',
-        client_data_json: 'Y2xpZW50LWRhdGE',
-        signature: 'c2lnbmF0dXJl',
+  const decisionEvidence = decision === 'approved'
+    ? {
+      context,
+      signoff: {
+        context_hash: contextHash,
+        key_class: 'A',
+        approver_key_id: SESSION.deviceKeyId,
+        signed_at: context.issued_at,
+        webauthn: {
+          authenticator_data: 'YXV0aC1kYXRh',
+          client_data_json: 'Y2xpZW50LWRhdGE',
+          signature: 'c2lnbmF0dXJl',
+        },
       },
-    },
-  };
+    }
+    : {
+      '@version': MOBILE_DENIAL_EVIDENCE_VERSION,
+      challenge_id: CHALLENGE_ID,
+      action_hash: ACTION_HASH,
+      profile_hash: PROFILE_HASH,
+      decision: 'denied',
+      approver_id: SESSION.approverId,
+      device_key_id: SESSION.deviceKeyId,
+      context_hash: contextHash,
+    };
   const entry = {
     event_type: 'mobile.ceremony.decision',
     challenge_id: CHALLENGE_ID,
     action_hash: ACTION_HASH,
     profile_hash: PROFILE_HASH,
     verdict: 'verified',
-    decision: 'approved',
+    decision,
     approver_id: SESSION.approverId,
     device_key_id: SESSION.deviceKeyId,
     context_hash: contextHash,
@@ -91,7 +105,7 @@ function committedRows() {
       action_reference: 'mobact_0123456789abcdef0123456789abcdef',
       entity_ref: SESSION.entityRef,
       approver_id: SESSION.approverId,
-      decision: 'approved',
+      decision,
       action_hash: ACTION_HASH,
       expires_at: context.expires_at,
       consumed_at: '2026-07-16T20:01:00.000Z',
@@ -101,7 +115,7 @@ function committedRows() {
       action_reference: 'mobact_0123456789abcdef0123456789abcdef',
       entity_ref: SESSION.entityRef,
       approver_id: SESSION.approverId,
-      status: 'approved',
+      status: decision,
       decision_challenge_id: CHALLENGE_ID,
       decision_verdict: 'verified',
       decision_evidence: decisionEvidence,
@@ -163,6 +177,24 @@ describe('mobile ceremony committed-result lookup', () => {
       ['approver_id', SESSION.approverId],
       ['challenge_id', CHALLENGE_ID],
     ]));
+  });
+
+  it('recovers a committed denial as typed denial evidence without class_a approval evidence', async () => {
+    const rows = committedRows('denied');
+    const result = await lookupMobileCeremonyResult(database(rows), {
+      ...SESSION,
+      challengeId: CHALLENGE_ID,
+    });
+    expect(result).toEqual({
+      valid: true,
+      verdict: 'verified',
+      decision: 'denied',
+      reason: null,
+      context_hash: rows.mobile_actions[0].decision_evidence.context_hash,
+      denial_evidence: rows.mobile_actions[0].decision_evidence,
+    });
+    expect(Object.hasOwn(result, 'class_a')).toBe(false);
+    expect(Object.hasOwn(result.denial_evidence, 'signoff')).toBe(false);
   });
 
   it.each([

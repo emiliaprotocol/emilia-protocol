@@ -19,6 +19,7 @@ import {
   createPairing,
   exchangePairing,
   listMobileActions,
+  MOBILE_DENIAL_EVIDENCE_VERSION,
   registerMobileActionChallenge,
   resolveMobileAction,
   revokeMobileSession,
@@ -430,6 +431,63 @@ describe('durable mobile storage adapters', () => {
       },
     });
     expect(result).toMatchObject({ committed: true, audit_record: persisted });
+  });
+
+  it('commits typed denial evidence while refusing it for an approval', async () => {
+    let persisted = null;
+    rpc.mockImplementationOnce(async (name, args) => {
+      expect(name).toBe('commit_mobile_action_decision');
+      persisted = structuredClone(args.p_record);
+      return { data: { ok: true }, error: null };
+    });
+    from
+      .mockReturnValueOnce(chain({ data: null, error: null }))
+      .mockImplementationOnce(() => chain({ data: { record: persisted }, error: null }));
+    const denialEvidence = {
+      '@version': MOBILE_DENIAL_EVIDENCE_VERSION,
+      challenge_id: 'challenge-denied-1',
+      action_hash: `sha256:${'a'.repeat(64)}`,
+      profile_hash: `sha256:${'b'.repeat(64)}`,
+      decision: 'denied',
+      approver_id: 'approver-1',
+      device_key_id: 'device-1',
+      context_hash: `sha256:${'c'.repeat(64)}`,
+    };
+    const auditEntry = {
+      event_type: 'mobile.ceremony.decision',
+      challenge_id: denialEvidence.challenge_id,
+      action_hash: denialEvidence.action_hash,
+      profile_hash: denialEvidence.profile_hash,
+      verdict: 'verified',
+      decision: 'denied',
+      approver_id: denialEvidence.approver_id,
+      device_key_id: denialEvidence.device_key_id,
+      context_hash: denialEvidence.context_hash,
+    };
+    const input = {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      challengeId: denialEvidence.challenge_id,
+      actionHash: denialEvidence.action_hash,
+      decision: 'denied',
+      verdict: 'verified',
+      decisionEvidence: denialEvidence,
+      auditEntry,
+    };
+
+    const committed = await commitMobileActionDecision({ from, rpc }, input);
+    expect(committed).toMatchObject({ committed: true, audit_record: persisted });
+    expect(rpc).toHaveBeenCalledWith('commit_mobile_action_decision', expect.objectContaining({
+      p_decision: 'denied',
+      p_decision_evidence: denialEvidence,
+    }));
+
+    await expect(commitMobileActionDecision({ from, rpc }, {
+      ...input,
+      decision: 'approved',
+      auditEntry: { ...auditEntry, decision: 'approved' },
+    })).rejects.toThrow(/stored approved mobile decision evidence is malformed/);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 
   it('distinguishes a terminal action conflict from evidence-head contention', async () => {
