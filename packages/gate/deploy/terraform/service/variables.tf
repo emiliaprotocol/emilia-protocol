@@ -24,8 +24,17 @@ variable "image" {
   type        = string
 
   validation {
-    condition     = trimspace(var.image) != "" && !endswith(var.image, ":latest")
-    error_message = "image must be an explicit non-latest BYOC image reference."
+    condition = (
+      trimspace(var.image) == var.image
+      && (
+        can(regex("@sha256:[a-f0-9]{64}$", var.image))
+        || (
+          can(regex(":[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$", element(reverse(split("/", var.image)), 0)))
+          && !endswith(lower(var.image), ":latest")
+        )
+      )
+    )
+    error_message = "image must use an explicit non-latest tag or sha256 digest; untagged and implicit-latest references are refused."
   }
 }
 

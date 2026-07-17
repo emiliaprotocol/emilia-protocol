@@ -100,6 +100,11 @@ listener.
 advanced escape hatch. Its default export must return a config satisfying these
 security-relevant contracts:
 
+The repository's Helm and Terraform reference modules deliberately use this
+escape hatch so operators can own Kubernetes Secret mapping, migrations, and
+adapter lifecycle. That deployment choice does not make the custom module
+mandatory for direct or Docker use of the built-in production factory.
+
 ```js
 {
   tenantId: 'tenant-1',

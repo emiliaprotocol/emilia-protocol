@@ -26,14 +26,10 @@
  * SUPPORTS a re-performance procedure; it never issues an opinion.
  */
 import { hashCanonical } from '../execution-binding.js';
+import { evaluateReliance, RELIANCE_VERDICTS } from '@emilia-protocol/verify/reliance';
 
 export const ASSURANCE_PACKAGE_VERSION = 'EP-ASSURANCE-PACKAGE-v1';
 export const ASSURANCE_REPERFORMANCE_VERSION = 'EP-ASSURANCE-REPERFORMANCE-v1';
-
-// Cross-package resolution, same pattern the Gate uses: the pure offline reliance
-// verifier. No DB, no network.
-const { evaluateReliance, RELIANCE_VERDICTS } = await import('@emilia-protocol/verify/reliance')
-  .catch(() => import('../../verify/reliance.js'));
 
 export { RELIANCE_VERDICTS };
 

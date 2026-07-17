@@ -15,14 +15,13 @@
  * of its own — it enforces the one the pure offline verifier computed.
  */
 import { createEvidenceLog } from './evidence.js';
+import {
+  evaluateReliance,
+  RELIANCE_PROFILE_VERSION,
+  RELIANCE_VERDICTS,
+} from '@emilia-protocol/verify/reliance';
 
 const RECEIPT_REQUIRED_STATUS = 428;
-
-// Same cross-package resolution the Gate uses: prefer the published verifier,
-// fall back to the in-repo source so the monorepo builds without a node_modules
-// link. evaluateReliance is pure/offline; no DB, no network.
-const { evaluateReliance, RELIANCE_VERDICTS, RELIANCE_PROFILE_VERSION } = await import('@emilia-protocol/verify/reliance')
-  .catch(() => import('../verify/reliance.js'));
 
 export { RELIANCE_VERDICTS, RELIANCE_PROFILE_VERSION };
 

@@ -1,0 +1,6 @@
+{
+  "@version": "EP-GO-MODULE-RELEASE-v1",
+  "module": "caid",
+  "private": true,
+  "reason": "Repository-local CAID conformance implementation; not a public canonical Go import path."
+}

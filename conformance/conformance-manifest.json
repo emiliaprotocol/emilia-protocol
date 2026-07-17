@@ -146,12 +146,12 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "8c90db667135b5fc52e155296b1b998a4556a119dd8662447ddcb8f0d4cb5481"
+        "sha256": "728d883c94b1c2d9250d4042f87f174afad4024782b49c895eb7c37eeb3b0a1c"
       },
       "source": {
-        "files": 33,
-        "bytes": 278138,
-        "tree_sha256": "990e4269b797418e446d7961265ff061bbb1fd02819ed988da9c9807957dc7c5"
+        "files": 37,
+        "bytes": 292778,
+        "tree_sha256": "5e495b772c77abb5618b4ac555209b4c617ee03d26431f49a390f4b69ff7e742"
       },
       "suites": 18,
       "vectors": 251,
@@ -159,5 +159,5 @@
       "status": "pass"
     }
   ],
-  "manifest_sha256": "5b374fd62c97a16baa762eccea529576af84e2041470ea0dffa50b4d3cf9f6d9"
+  "manifest_sha256": "caf4cd1c562827e3ebcd5cb8dca1a9a466590a673d244938974872722c658ae2"
 }

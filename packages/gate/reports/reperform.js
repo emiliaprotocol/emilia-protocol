@@ -39,14 +39,8 @@
  */
 import crypto from 'node:crypto';
 import { createEvidenceLog } from '../evidence.js';
-
-// The protocol verifiers being re-driven. Same resolution pattern as
-// packages/gate/index.js: prefer the published package, fall back to the
-// in-repo source so the monorepo works without a node_modules link.
-const { verifyEmiliaReceipt, validatePinnedQuorumPolicy } = await import('@emilia-protocol/require-receipt')
-  .catch(() => import('../../require-receipt/index.js'));
-const { verifyWebAuthnSignoff, verifyQuorum } = await import('@emilia-protocol/verify')
-  .catch(() => import('../../verify/index.js'));
+import { validatePinnedQuorumPolicy, verifyEmiliaReceipt } from '@emilia-protocol/require-receipt';
+import { verifyQuorum, verifyWebAuthnSignoff } from '@emilia-protocol/verify';
 
 export const REPERFORMANCE_VERSION = 'EP-GATE-REPERFORMANCE-v1';
 

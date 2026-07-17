@@ -10,7 +10,11 @@
       "required": ["repository", "tag", "digest", "pullPolicy"],
       "properties": {
         "repository": { "type": "string" },
-        "tag": { "type": "string" },
+        "tag": {
+          "type": "string",
+          "pattern": "^(?:$|[A-Za-z0-9_][A-Za-z0-9._-]{0,127})$",
+          "not": { "pattern": "^[Ll][Aa][Tt][Ee][Ss][Tt]$" }
+        },
         "digest": { "type": "string" },
         "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
       },

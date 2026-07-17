@@ -97,6 +97,8 @@
     "adapters/salesforce.js",
     "demo.mjs",
     "custody-demo.mjs",
+    "LICENSE",
+    "CHANGELOG.md",
     "README.md",
     "enterprise.js",
     "metering.js",
@@ -138,7 +140,8 @@
     "cf1": "node cf1.mjs"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.10.0"
+    "@emilia-protocol/require-receipt": "0.6.0",
+    "@emilia-protocol/verify": "3.10.1"
   },
   "keywords": [
     "emilia",

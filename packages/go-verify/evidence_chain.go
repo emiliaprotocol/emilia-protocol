@@ -285,7 +285,7 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 			for origin := range allowedOrigins {
 				originList = append(originList, origin)
 			}
-			r := VerifyQuorum(m, rpID, originList)
+			r := VerifyQuorumWithOrigins(m, rpID, originList)
 			if !r.Valid {
 				return ComponentResult{Valid: false, ActionDigest: ""}
 			}

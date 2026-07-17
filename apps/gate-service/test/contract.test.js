@@ -42,12 +42,13 @@ test('OpenAPI contract covers every service route and critical fail-closed seman
 });
 
 test('deployment probes and the E2E harness use production service contracts', async () => {
-  const [compose, helmValues, terraform, deploymentGuide, e2eConfig] = await Promise.all([
+  const [compose, helmValues, terraform, deploymentGuide, e2eConfig, dockerfile] = await Promise.all([
     fs.readFile(new URL('../../../docker-compose.gate-e2e.yml', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/helm/emilia-gate-service/values.yaml', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/terraform/service/main.tf', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../docs/EMILIA-GATE-DEPLOYMENT.md', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/helm/emilia-gate-service/tests/fixtures/gate.config.mjs', import.meta.url), 'utf8'),
+    fs.readFile(new URL('../../../Dockerfile.gate', import.meta.url), 'utf8'),
   ]);
 
   for (const deployment of [compose, helmValues, terraform, deploymentGuide]) {
@@ -60,6 +61,13 @@ test('deployment probes and the E2E harness use production service contracts', a
   assert.equal((terraform.match(/path = "\/v1\/ready"/g) ?? []).length, 1);
   assert.match(e2eConfig, /createProductionGateConfig/);
   assert.doesNotMatch(e2eConfig, /createAtomicEvidenceLog|createPostgresBackend/);
+  for (const packageName of ['gate', 'require-receipt', 'verify']) {
+    assert.match(
+      dockerfile,
+      new RegExp(`ln -s \\.\\.\\/\\.\\.\\/packages\\/${packageName} \\/app\\/node_modules\\/@emilia-protocol\\/${packageName}`),
+      `runtime image must resolve @emilia-protocol/${packageName} from the exact copied source`,
+    );
+  }
 });
 
 test('service package, chart, and OpenAPI share one release identity', async () => {

@@ -18,6 +18,16 @@
       "execution": { "runner": "vitest", "file": "tests/v1-api.test.js", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt" }
     },
     {
+      "id": "accept_monotonic_witness_sequence",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/network-witness.test.js", "title": "accepts a higher witness sequence before any conflict" }
+    },
+    {
+      "id": "reject_witness_stream_after_equivocation",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/network-witness.test.js", "title": "permanently refuses every later sequence after same-sequence equivocation" }
+    },
+    {
       "id": "accept_single_reservation_winner",
       "expect": { "valid": true },
       "execution": { "runner": "node-test", "file": "packages/gate/store-faults.test.js", "title": "fault: a 100-way reservation storm admits exactly one worker" }
@@ -125,7 +135,37 @@
     {
       "id": "accept_all_declared_release_chains",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses the complete verifiable release chain" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "every declared package uses its complete verifiable release chain" }
+    },
+    {
+      "id": "accept_npm_pypi_release_byte_chains",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses reproducible registry-byte verification" }
+    },
+    {
+      "id": "accept_go_tag_proxy_chain",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "Go release isolates tag write authority and verifies the public proxy origin" }
+    },
+    {
+      "id": "reject_go_release_without_proxy_comparison",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go tag publisher without public-proxy source comparison" }
+    },
+    {
+      "id": "reject_go_release_write_job_code_execution",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses Go release code execution in the contents-write tag job" }
+    },
+    {
+      "id": "reject_go_release_mutable_or_credentialed_checkout",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go release checkout that follows mutable main or keeps credentials" }
+    },
+    {
+      "id": "reject_unclassified_go_module",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses an unclassified Go module even when its release manifest is absent" }
     },
     {
       "id": "reject_release_chain_without_registry_comparison",

@@ -363,7 +363,7 @@ func VerifyResolutionReceipt(receipt map[string]any, opts ResolutionOptions) (re
 	if !checks["origin"] {
 		return resolutionRefuse("webauthn_origin_not_allowed", checks, outcome)
 	}
-	checks["webauthn"] = VerifyWebAuthnSignoff(signoff, pin["public_key"], opts.RPID, opts.AllowedOrigins).Valid
+	checks["webauthn"] = VerifyWebAuthnSignoffWithOrigins(signoff, pin["public_key"], opts.RPID, opts.AllowedOrigins).Valid
 	if !checks["webauthn"] {
 		return resolutionRefuse("webauthn_verification_failed", checks, outcome)
 	}

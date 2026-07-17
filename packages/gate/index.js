@@ -26,8 +26,7 @@
  * enforcement, replay defense, and the evidence log. Fails closed.
  */
 import crypto from 'node:crypto';
-
-const {
+import {
   verifyEmiliaReceipt,
   receiptChallenge,
   receiptRequiredHeader,
@@ -35,18 +34,12 @@ const {
   findActionRequirement,
   evaluateReceiptAssurance,
   validatePinnedQuorumPolicy,
-  receiptAssuranceTier: receiptAssuranceTierFromProof,
+  receiptAssuranceTier as receiptAssuranceTierFromProof,
   parseReceiptCarrier,
   RECEIPT_REQUIRED_STATUS,
   RECEIPT_REQUIRED_HEADER,
-} = await import('@emilia-protocol/require-receipt').catch(() => import('../require-receipt/index.js'));
-// The real per-signer verifiers (WebAuthn device-signoff + M-of-N quorum). The
-// Gate MUST use these to CREDIT class_a / quorum — a receipt's self-asserted
-// outcome string or a fabricated quorum block is NOT proof. Same resolution
-// pattern as require-receipt: prefer the published package, fall back to the
-// in-repo source so the monorepo test/build works without a node_modules link.
-const { verifyWebAuthnSignoff, verifyQuorum } = await import('@emilia-protocol/verify')
-  .catch(() => import('../verify/index.js'));
+} from '@emilia-protocol/require-receipt';
+import { verifyWebAuthnSignoff, verifyQuorum } from '@emilia-protocol/verify';
 import { MemoryConsumptionStore, isSecureConsumptionStore } from './store.js';
 import {
   canonicalEvidenceJson,

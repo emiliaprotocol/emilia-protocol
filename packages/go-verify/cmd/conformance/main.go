@@ -411,9 +411,9 @@ func main() {
 				valid = result.Valid && result.AuthorizesAction
 			}
 		case v.Signoff != nil:
-			valid = emiliaverify.VerifyWebAuthnSignoff(v.Signoff, v.ApproverPublicKey, v.RPID, v.AllowedOrigins).Valid
+			valid = emiliaverify.VerifyWebAuthnSignoffWithOrigins(v.Signoff, v.ApproverPublicKey, v.RPID, v.AllowedOrigins).Valid
 		case v.Quorum != nil:
-			valid = emiliaverify.VerifyQuorum(v.Quorum, "emiliaprotocol.ai", []string{"https://www.emiliaprotocol.ai"}).Valid
+			valid = emiliaverify.VerifyQuorumWithOrigins(v.Quorum, "emiliaprotocol.ai", []string{"https://www.emiliaprotocol.ai"}).Valid
 		case v.Revocation != nil:
 			opts := map[string]any{"revokerKeys": v.RevokerKeys}
 			if v.Now != "" {

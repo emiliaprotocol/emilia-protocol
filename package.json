@@ -79,6 +79,7 @@
     ]
   },
   "dependencies": {
+    "@emilia-protocol/require-receipt": "file:packages/require-receipt",
     "@emilia-protocol/verify": "file:packages/verify",
     "@node-saml/node-saml": "^5.1.0",
     "@remotion/player": "^4.0.481",
@@ -126,6 +127,7 @@
     "pg": "^8.22.0",
     "qrcode": "1.5.4",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "yaml": "2.9.0"
   }
 }

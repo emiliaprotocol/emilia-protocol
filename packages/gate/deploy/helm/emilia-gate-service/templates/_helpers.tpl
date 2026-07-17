@@ -40,6 +40,9 @@ app.kubernetes.io/component: service
 {{- end -}}
 {{- printf "%s@%s" $repository .Values.image.digest -}}
 {{- else if .Values.image.tag -}}
+{{- if eq (lower .Values.image.tag) "latest" -}}
+{{- fail "image.tag=latest is mutable and refused; use an immutable version tag or digest" -}}
+{{- end -}}
 {{- printf "%s:%s" $repository .Values.image.tag -}}
 {{- else -}}
 {{- fail "set exactly one of image.tag or image.digest; mutable implicit latest is refused" -}}

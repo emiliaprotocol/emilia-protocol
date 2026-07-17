@@ -59,6 +59,40 @@ run "valid_distinct_migration_and_secret_env" {
   }
 }
 
+run "reject_explicit_latest_image" {
+  command = plan
+
+  variables {
+    namespace                      = "gate-system"
+    image                          = "registry.example.test/security/emilia-gate-service:latest"
+    configuration_secret_name      = "gate-configuration"
+    postgres_secret_name           = "gate-postgres"
+    migration_postgres_secret_name = "gate-postgres-migrate"
+    migration_postgres_secret_key  = "database-url"
+    api_token_secret_name          = "gate-api-token"
+    issuer_roots_secret_name       = "gate-issuer-roots"
+  }
+
+  expect_failures = [var.image]
+}
+
+run "reject_implicit_latest_image" {
+  command = plan
+
+  variables {
+    namespace                      = "gate-system"
+    image                          = "registry.example.test/security/emilia-gate-service"
+    configuration_secret_name      = "gate-configuration"
+    postgres_secret_name           = "gate-postgres"
+    migration_postgres_secret_name = "gate-postgres-migrate"
+    migration_postgres_secret_key  = "database-url"
+    api_token_secret_name          = "gate-api-token"
+    issuer_roots_secret_name       = "gate-issuer-roots"
+  }
+
+  expect_failures = [var.image]
+}
+
 run "reject_missing_migration_secret" {
   command = plan
 

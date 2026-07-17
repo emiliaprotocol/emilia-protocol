@@ -36,8 +36,15 @@ COPY --chown=10001:10001 packages/gate ./packages/gate
 COPY --chown=10001:10001 packages/require-receipt ./packages/require-receipt
 COPY --chown=10001:10001 packages/verify ./packages/verify
 
-# Keep test/deployment fixtures in the source tree, not in the runtime image.
-RUN find /app/packages -type f \( -name '*.test.js' -o -name '*.test.mjs' \) -delete \
+# The service imports the checkout directly, while the publishable Gate package
+# uses normal package specifiers. Link the exact copied sources into Node's
+# package namespace so the image exercises the same dependency boundary as a
+# clean npm consumer without fetching mutable registry bytes during the build.
+RUN mkdir -p /app/node_modules/@emilia-protocol \
+    && ln -s ../../packages/gate /app/node_modules/@emilia-protocol/gate \
+    && ln -s ../../packages/require-receipt /app/node_modules/@emilia-protocol/require-receipt \
+    && ln -s ../../packages/verify /app/node_modules/@emilia-protocol/verify \
+    && find /app/packages -type f \( -name '*.test.js' -o -name '*.test.mjs' \) -delete \
     && rm -rf /app/packages/gate/deploy/helm /app/packages/gate/deploy/terraform
 
 ENV NODE_ENV=production \

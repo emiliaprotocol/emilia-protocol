@@ -1,8 +1,8 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada",
-  "claim_count": 22,
+  "evidence_bundle_sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660",
+  "claim_count": 25,
   "evidence_file_count": 104,
   "execution": {
     "required": true,
@@ -113,7 +113,8 @@
         "suite": "conformance/vectors/trust-receipt.exec.v1.json",
         "cases": [
           "accept_valid_receipt",
-          "reject_pinned_class_a_bare_signature_downgrade"
+          "reject_pinned_class_a_bare_signature_downgrade",
+          "reject_signed_denial_as_authorization"
         ],
         "languages": [
           "javascript",
@@ -153,6 +154,15 @@
         "titles": [
           "run() commits a successful effect and permanently refuses replay",
           "run() consumes an indeterminate attempt when the executor throws"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/network-witness.test.js",
+        "titles": [
+          "accepts a higher witness sequence before any conflict",
+          "permanently refuses every later sequence after same-sequence equivocation"
         ],
         "result": "passed"
       },
@@ -260,6 +270,7 @@
         "runner": "node-test",
         "file": "packages/verify/trust-receipt.test.js",
         "titles": [
+          "a signed denied receipt remains valid decision evidence but cannot authorize reliance",
           "class-downgrade — pinned Class-A + declared key_class B + bare signature is REJECTED (default path)"
         ],
         "result": "passed"
@@ -357,6 +368,7 @@
         "titles": [
           "accepts an owner dispatch bound to the exact package version and tag",
           "binds the checked-out commit to a tag contained in main",
+          "permits tag creation only from the exact clean main commit with no existing tag",
           "rejects automatic events, other actors, tag drift, and weak confirmation"
         ],
         "result": "passed"
@@ -365,8 +377,15 @@
         "runner": "vitest",
         "file": "tests/release-chain-coverage.test.js",
         "titles": [
-          "every declared npm and PyPI package uses the complete verifiable release chain",
-          "refuses a reusable publisher with its post-registry byte comparison removed"
+          "Go release isolates tag write authority and verifies the public proxy origin",
+          "every declared npm and PyPI package uses reproducible registry-byte verification",
+          "refuses Go release code execution in the contents-write tag job",
+          "refuses a Go release checkout that follows mutable main or keeps credentials",
+          "refuses a Go tag publisher without public-proxy source comparison",
+          "refuses a reusable PyPI publisher with its post-registry byte comparison removed",
+          "refuses a reusable publisher with its post-registry byte comparison removed",
+          "refuses an unclassified Go module even when its release manifest is absent",
+          "refuses slash-bearing Go release artifact names derived from the tag"
         ],
         "result": "passed"
       },
@@ -449,8 +468,8 @@
       "package": "@emilia-protocol/gate",
       "version": "0.10.0",
       "filename": "emilia-protocol-gate-0.10.0.tgz",
-      "sha256": "dc8634ec9db3fc19972ccefb0cd2044b086dc52df423561a1635b0ea1ebd7398",
-      "file_count": 94
+      "sha256": "4d4b0b8419d358cd54df85e7db5cd08082c1b81991c69de6f4f31521dfa058e3",
+      "file_count": 96
     },
     "mobile-sdk": {
       "kind": "npm-tarball",
@@ -463,7 +482,7 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada",
+      "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660",
       "file_count": 104
     },
     "verify-sdk": {
@@ -627,7 +646,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -890,7 +909,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -998,7 +1017,126 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
+        }
+      ]
+    },
+    {
+      "claim_id": "signed-denial-cannot-authorize",
+      "statement": "An authentic device-signed negative human decision remains verifiable decision evidence but cannot satisfy approval, separation-of-duties, quorum, assurance, authority, action-material, or reliance predicates in the Trust Receipt verifier.",
+      "acceptance_roots": [
+        "approver credential keys and relying-party policy pinned independently of the presented receipt"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyTrustReceipt",
+          "exported": true
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_trust_receipt"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/trust_receipt.go",
+          "symbol": "VerifyTrustReceipt"
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "export": "verifyTrustReceipt"
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_trust_receipt"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/trust_receipt.go",
+          "symbol": "VerifyTrustReceipt"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "accept_valid_receipt",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "reject_signed_denial_as_authorization",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/verify/trust-receipt.test.js",
+          "title": "a signed denied receipt remains valid decision evidence but cannot authorize reliance",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "execution_has_honest_approvals_or_prior_compromise",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The composed model requires honest approval events or prior compromise before execution; the concrete four-outcome parser and every denied-evidence projection are enforced by executable cross-language code rather than modeled as one discriminated union."
+        }
+      ],
+      "assumptions": [
+        "the relying party pins the authentic approver directory and acceptance profile",
+        "the signoff outcome remains inside the authenticated context checked by each port"
+      ],
+      "exclusions": [
+        "the verifier preserves a valid negative decision as evidence but does not infer the reason, wisdom, or legal effect of that decision",
+        "this claim does not prevent a compromised authentic approver device from signing an approval"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "206858d4db38ea8452eef10955bd31f2c9ba805d2a4e23b6d167677a3f6860a6"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -1120,7 +1258,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -1264,7 +1402,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -1410,7 +1548,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -1569,7 +1707,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -1678,7 +1816,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -1806,11 +1944,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dc8634ec9db3fc19972ccefb0cd2044b086dc52df423561a1635b0ea1ebd7398"
+          "sha256": "4d4b0b8419d358cd54df85e7db5cd08082c1b81991c69de6f4f31521dfa058e3"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -1913,11 +2051,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dc8634ec9db3fc19972ccefb0cd2044b086dc52df423561a1635b0ea1ebd7398"
+          "sha256": "4d4b0b8419d358cd54df85e7db5cd08082c1b81991c69de6f4f31521dfa058e3"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -2037,11 +2175,140 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dc8634ec9db3fc19972ccefb0cd2044b086dc52df423561a1635b0ea1ebd7398"
+          "sha256": "4d4b0b8419d358cd54df85e7db5cd08082c1b81991c69de6f4f31521dfa058e3"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
+        }
+      ]
+    },
+    {
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "statement": "A pinned network-witness stream advances monotonically until two different signed statements claim the same sequence. That conflict permanently poisons the exact tenant, gate, witness, and capture-point stream; no later sequence can restore acceptance under that stream identity.",
+      "acceptance_roots": [
+        "relying-party-pinned witness key, capture-point identity, configuration digest, and durable sequence store",
+        "tenant and gate scope fixed outside the presented witness statement"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "symbol": "createMemoryWitnessSequenceStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "symbol": "acceptNetworkWitnessStatement",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/witness-postgres.js",
+          "symbol": "createPostgresWitnessSequenceStore",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "export": "createMemoryWitnessSequenceStore"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "export": "acceptNetworkWitnessStatement"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/witness-postgres.js",
+          "export": "createPostgresWitnessSequenceStore"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Python receipt-verifier surface."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Go receipt-verifier surface."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_monotonic_witness_sequence",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_witness_stream_after_equivocation",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/gate/network-witness.test.js",
+          "title": "accepts a higher witness sequence before any conflict",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/network-witness.test.js",
+          "title": "permanently refuses every later sequence after same-sequence equivocation",
+          "runner": "node-test"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "packages/gate/deploy/sql/001-runtime.sql",
+          "contains": [
+            "equivocated      BOOLEAN NOT NULL DEFAULT FALSE",
+            "SET equivocated = TRUE",
+            "IF v_equivocated THEN",
+            "sequence_equivocation"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "TLA+, Alloy, and Tamarin do not model this SQL-backed witness-stream state machine; monotonic advance, conflict poisoning, and post-conflict refusal are executable properties."
+        }
+      ],
+      "assumptions": [
+        "the production store linearizes advancement for one exact binary stream identifier",
+        "the witness signing key and capture point are provisioned independently and the signed observation body commits to the action digest",
+        "operators replace a poisoned stream only by provisioning and pinning a new stream identity"
+      ],
+      "exclusions": [
+        "a passive witness proves observation, not authorization, enforcement, physical execution, or sensor truth",
+        "the protocol cannot distinguish benign witness failure from malicious equivocation after a conflict"
+      ],
+      "release_artifacts": [
+        "gate-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "gate-sdk",
+          "sha256": "4d4b0b8419d358cd54df85e7db5cd08082c1b81991c69de6f4f31521dfa058e3"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -2211,11 +2478,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "dc8634ec9db3fc19972ccefb0cd2044b086dc52df423561a1635b0ea1ebd7398"
+          "sha256": "4d4b0b8419d358cd54df85e7db5cd08082c1b81991c69de6f4f31521dfa058e3"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -2349,7 +2616,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -2465,7 +2732,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -2599,19 +2866,19 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
     {
-      "claim_id": "all-package-releases-use-verifiable-bytes",
-      "statement": "Every declared npm and PyPI package release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "claim_id": "npm-pypi-releases-use-verifiable-bytes",
+      "statement": "Every declared npm and PyPI release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact with security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
       "acceptance_roots": [
         "the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory",
         "the FutureEnterprises owner identity",
-        "the protected registry-publishing-approval environment",
+        "the registry-publishing-approval environment",
         "GitHub Actions OIDC identity",
-        "registry trusted-publisher configuration for each package"
+        "npm and PyPI trusted-publisher configuration"
       ],
       "enforcement_path": [
         {
@@ -2665,21 +2932,21 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-approval.test.js"
+          "evidence": "tests/release-chain-coverage.test.js"
         },
         "python": {
           "status": "not_applicable",
-          "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript."
+          "reason": "Python packages are built by pinned Python tooling, while inventory and workflow enforcement are repository controls implemented in JavaScript."
         },
         "go": {
           "status": "not_applicable",
-          "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package."
+          "reason": "Go tag publication has a distinct source-and-proxy claim because a Go module is not an OIDC-uploaded registry artifact."
         }
       },
       "vectors": [
         {
           "suite": "security/vectors.v1.json",
-          "case_id": "accept_all_declared_release_chains",
+          "case_id": "accept_npm_pypi_release_byte_chains",
           "polarity": "positive",
           "expect": {
             "valid": true
@@ -2713,12 +2980,17 @@
       "tests": [
         {
           "file": "tests/release-chain-coverage.test.js",
-          "title": "every declared npm and PyPI package uses the complete verifiable release chain",
+          "title": "every declared npm and PyPI package uses reproducible registry-byte verification",
           "runner": "vitest"
         },
         {
           "file": "tests/release-chain-coverage.test.js",
           "title": "refuses a reusable publisher with its post-registry byte comparison removed",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses a reusable PyPI publisher with its post-registry byte comparison removed",
           "runner": "vitest"
         },
         {
@@ -2751,10 +3023,12 @@
           ]
         },
         {
-          "file": ".github/workflows/publish-cli.yml",
+          "file": ".github/workflows/_publish-pypi-package.yml",
           "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/cli'"
+            "verify-reproducible-wheel.mjs",
+            "gh-action-pypi-publish@",
+            "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"",
+            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
           ]
         },
         {
@@ -2762,41 +3036,6 @@
           "contains": [
             "uses: ./.github/workflows/_publish-npm-package.yml",
             "package_name: '@emilia-protocol/gate'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-issue.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/issue'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-langchain.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/langchain'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-mcp.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/mcp-server'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-require-receipt.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/require-receipt'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-typescript-sdk.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/sdk'"
           ]
         },
         {
@@ -2814,20 +3053,6 @@
           ]
         },
         {
-          "file": ".github/workflows/publish-python-sdk.yml",
-          "contains": [
-            "verify-reproducible-wheel.mjs sdks/python",
-            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-langchain-python.yml",
-          "contains": [
-            "verify-reproducible-wheel.mjs integrations/langchain-emilia",
-            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
-          ]
-        },
-        {
           "file": "release/release-packages.v1.json",
           "contains": [
             "EP-RELEASE-PACKAGE-REGISTRY-v1",
@@ -2839,7 +3064,7 @@
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties."
+          "gap": "Registry account state, hosted CI identity, OIDC, and artifact storage are operational controls rather than symbolic protocol properties."
         }
       ],
       "assumptions": [
@@ -2858,7 +3083,217 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
+        }
+      ]
+    },
+    {
+      "claim_id": "go-module-release-is-tag-and-proxy-bound",
+      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
+      "acceptance_roots": [
+        "the checked-in Go module release identity",
+        "the FutureEnterprises owner identity",
+        "the registry-publishing-approval environment",
+        "the workflow-dispatched refs/heads/main commit",
+        "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*",
+        "GitHub tag-ref authority",
+        "proxy.golang.org and sum.golang.org"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "discoverReleaseSurfaces",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "validateGoTagWorkflowText",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/require-release-approval.mjs",
+          "symbol": "verifyUnpublishedReleaseGitState",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "export": "discoverReleaseSurfaces"
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "export": "validateGoTagWorkflowText"
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/require-release-approval.mjs",
+          "export": "verifyUnpublishedReleaseGitState"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-chain-coverage.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Release workflow verification is a repository control implemented in JavaScript."
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "packages/go-verify/signoff_compatibility_test.go"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_go_tag_proxy_chain",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_without_proxy_comparison",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_write_job_code_execution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_mutable_or_credentialed_checkout",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_unclassified_go_module",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "Go release isolates tag write authority and verifies the public proxy origin",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses a Go tag publisher without public-proxy source comparison",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses Go release code execution in the contents-write tag job",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses a Go release checkout that follows mutable main or keeps credentials",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses slash-bearing Go release artifact names derived from the tag",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses an unclassified Go module even when its release manifest is absent",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-approval.test.js",
+          "title": "permits tag creation only from the exact clean main commit with no existing tag",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": ".github/workflows/publish-go-verify.yml",
+          "contains": [
+            "ref: ${{ github.sha }}",
+            "persist-credentials: false",
+            "--expected-commit \"$GITHUB_SHA\"",
+            "go-version-file: packages/go-verify/go.mod",
+            "refs/tags/packages/go-verify/v*",
+            "rules.has('deletion') && rules.has('update')",
+            "github.rest.git.createRef",
+            "p.Origin?.[key]",
+            "p.GoModSum",
+            "diff -ru packages/go-verify \"$PROXY_DIR\"",
+            "release-artifacts/go-verify-proxy.zip"
+          ]
+        },
+        {
+          "file": "packages/go-verify/go-release.json",
+          "contains": [
+            "EP-GO-MODULE-RELEASE-v1",
+            "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2",
+            "packages/go-verify/v2.3.1"
+          ]
+        },
+        {
+          "file": "release/release-packages.v1.json",
+          "contains": [
+            "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2",
+            "publish-go-verify.yml",
+            "go_tag"
+          ]
+        },
+        {
+          "file": "packages/go-verify/signoff_compatibility_test.go",
+          "contains": [
+            "func(map[string]any, string, string) SignoffResult",
+            "func(map[string]any, string) QuorumResult"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "GitHub job permissions, environment approvals, VCS refs, Go proxy behavior, and checksum-database state are operational controls."
+        }
+      ],
+      "assumptions": [
+        "GitHub records required-reviewer approval or an explicit administrator bypass on registry-publishing-approval",
+        "the GitHub ruleset API accurately reports active update-and-deletion protection",
+        "the dispatched main commit is the owner-reviewed source intended for release",
+        "proxy.golang.org and sum.golang.org remain independently available"
+      ],
+      "exclusions": [
+        "the proxy source-tree comparison proves source equivalence, not byte identity between the Git archive and the proxy's canonical module zip",
+        "the tag must exist before the proxy can serve it, so a post-tag verification failure requires a higher corrective version or module retraction and never a moved tag",
+        "the first live release still has to demonstrate environment and ruleset configuration"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -3049,7 +3484,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -3333,7 +3768,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -3512,7 +3947,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -3662,7 +4097,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -3781,7 +4216,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     },
@@ -3952,7 +4387,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+          "sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
         }
       ]
     }
@@ -3963,44 +4398,20 @@
       "sha256": "4b0742aee1b9390758cc90382dea44c2f7e9efc14852440e5038a91276e88eb3"
     },
     {
-      "path": ".github/workflows/publish-cli.yml",
-      "sha256": "97bad685687faf775d94a1fd836d6354278ed815e7d9a6a3d604a4927d063579"
+      "path": ".github/workflows/_publish-pypi-package.yml",
+      "sha256": "b798572fbfebb5db0e4ea20111b979c2de75968897f63020d1464d879f2cfa01"
     },
     {
       "path": ".github/workflows/publish-gate.yml",
       "sha256": "629abb37f70af11f8fca2431f248c4d03abd7d2d1c559c9b04136bf5d6a410eb"
     },
     {
-      "path": ".github/workflows/publish-issue.yml",
-      "sha256": "f545e4e2906300b8faa07296bfcecf66a3d76d5c2b7a8d80700bc11c12c215aa"
-    },
-    {
-      "path": ".github/workflows/publish-langchain-python.yml",
-      "sha256": "0088e6777d3c91614b8691da3adfe25a5bc0f8d742a9dc8e1b5d83ae7ec006e6"
-    },
-    {
-      "path": ".github/workflows/publish-langchain.yml",
-      "sha256": "e2b2f390c16890d14c6f743e1ee5adf4c7157af89743657c3b71200e6057b231"
-    },
-    {
-      "path": ".github/workflows/publish-mcp.yml",
-      "sha256": "e5b262417f800ccc47500e69e1665ab4e03f559f812425f63d2d05518ccf70c3"
-    },
-    {
-      "path": ".github/workflows/publish-python-sdk.yml",
-      "sha256": "dc6dc8b82d8d24ea42913e2b48442adef3cc314833c59885f322b936ba13b86c"
+      "path": ".github/workflows/publish-go-verify.yml",
+      "sha256": "e34988101df02fb996a1f6de3353a6207f3878c7c2e68fb56ad3b3821f85bc42"
     },
     {
       "path": ".github/workflows/publish-python-verify.yml",
       "sha256": "1eeea0a835c7307ae5cb35dc3c44253618e45e0a6e72c92021cadd4696e2577a"
-    },
-    {
-      "path": ".github/workflows/publish-require-receipt.yml",
-      "sha256": "96d8e08645b9053db9dcad2d873ffda9a3e8c52407dd54de45693550a7e84051"
-    },
-    {
-      "path": ".github/workflows/publish-typescript-sdk.yml",
-      "sha256": "3ef7d961ba06b50e8a4801697fcd5d0630792f170539236b275b57d2f916bd83"
     },
     {
       "path": ".github/workflows/publish-verify-sdk.yml",
@@ -4128,11 +4539,15 @@
     },
     {
       "path": "packages/gate/aec-execution.js",
-      "sha256": "17eacc91ec155ee0e5400b3c95c0e6e81133e3bccea5e77532d8d1966607340f"
+      "sha256": "f36ca5d5fd2672d4b8f02ca54b9ba4556e649c54a9a79d50a1624758f4792eed"
     },
     {
       "path": "packages/gate/challenge-store.js",
       "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
+    },
+    {
+      "path": "packages/gate/deploy/sql/001-runtime.sql",
+      "sha256": "0f3539da67d89140ed64ff71c0e44bdb088e9e53640581d543dbc9ab0dfef671"
     },
     {
       "path": "packages/gate/evidence-atomic.test.js",
@@ -4148,7 +4563,15 @@
     },
     {
       "path": "packages/gate/index.js",
-      "sha256": "bc6b0e31fb1710106dff482724dcf1df50b7f632fdeba3ba0a82918d28736a30"
+      "sha256": "c4f6d92ecf3ecdfbf3fb4bca3cc17c703ed91e6649226f02937db5466ee8c55a"
+    },
+    {
+      "path": "packages/gate/network-witness.js",
+      "sha256": "93fcd8c132172dc9e00f62f2d29fc8565e228d8cd2d5e9a20f998602e5f4a5d7"
+    },
+    {
+      "path": "packages/gate/network-witness.test.js",
+      "sha256": "882802cddeaddf695e100fd7db215b7658e9376bd929f5bbd77d3b4b1b4cbb4a"
     },
     {
       "path": "packages/gate/store-faults.test.js",
@@ -4163,12 +4586,20 @@
       "sha256": "5a58becf5e9e24fc954e9dc5500b94fb1070e89eb15dd50d4cbc17815d2dbe8c"
     },
     {
+      "path": "packages/gate/witness-postgres.js",
+      "sha256": "4a74a41093f8f512a637bb390d440c1aa43def6d77f41f7d12f9a1a48f5f7c11"
+    },
+    {
       "path": "packages/go-verify/evidence_chain.go",
-      "sha256": "42fecda858398ef394a43e4c7c5be3a046d8fc1708de4e0593eb5b9f989e9c4d"
+      "sha256": "7e4e8fdcd41ef5ac7f00d542e12a06078750466bb2e1bd5fb2b704392ef68a6a"
+    },
+    {
+      "path": "packages/go-verify/go-release.json",
+      "sha256": "70ae86b5af9b075fa131e4f98afd8493af334d7635a531aee7ddc2a36a4c8274"
     },
     {
       "path": "packages/go-verify/resolution.go",
-      "sha256": "657272313ad293b81ac98fde71af77bec4f67a0ed6ce9bc7c980b1cd84272acb"
+      "sha256": "3659a04b8e7bcc0506808a444615e76f9c72db670f750d92fbbfd7693874e32a"
     },
     {
       "path": "packages/go-verify/revocation.go",
@@ -4176,7 +4607,11 @@
     },
     {
       "path": "packages/go-verify/signoff.go",
-      "sha256": "72f70787fda0a4dcb0948f9d1a0519acfbaab819cf995a8e9075c7bbdc5afa56"
+      "sha256": "f4be0784bc567ce9ffba7713f73658a8724c6573a6876dbeacb61fd0e6c766a8"
+    },
+    {
+      "path": "packages/go-verify/signoff_compatibility_test.go",
+      "sha256": "7cc3cc0001fa930f4595fcd6c29f22c604263aff09159f8b593217b68b7e9ec9"
     },
     {
       "path": "packages/go-verify/timestamp_proof.go",
@@ -4276,11 +4711,11 @@
     },
     {
       "path": "release/release-packages.v1.json",
-      "sha256": "daed1b1cd9676e326ee088aa6f3e1dc15026ca4d11322430d68b4168d24f43fc"
+      "sha256": "252419e3d2a11178f35f16dca416c837a08c77d959173a63517cdc04b80ff43a"
     },
     {
       "path": "scripts/check-release-chain.mjs",
-      "sha256": "729d3033fa0ac939cde2a37fa84d49a3050af97e5bed0e11bf8c752aafbb924e"
+      "sha256": "e39990a2a354eeeb15771fa30d0cdcad90f85228d318ec68c1e7c5b4b672a9e9"
     },
     {
       "path": "scripts/python-artifact-integrity.mjs",
@@ -4288,7 +4723,7 @@
     },
     {
       "path": "scripts/require-release-approval.mjs",
-      "sha256": "bb388d7654be64ea9910fa4a45e94fa8ed93eea84e3d7fc3ff104d39c53073d4"
+      "sha256": "0ea6e19e1eb3296135459a6f05bf293863b6c5b97b0f9fd978fb95337bcbc268"
     },
     {
       "path": "scripts/verify-reproducible-package.mjs",
@@ -4304,11 +4739,11 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "7add9f158c3b8c5ced208a9468a2e131baf92c601d08098bbc75a21476ca6b28"
+      "sha256": "da657c4f7315930d54f303e3fedca17c98ca532983769ee105b03144cdefe9c5"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "c927d55de9bfb40a9e2c330d6927e5d011f7fdd53d13d342469d4af99ff5bf33"
+      "sha256": "ec05e6c8e201e52af90c98592f660406900868a38abb1b29202c5b524feb75e8"
     },
     {
       "path": "tests/aec-execution-gate.test.js",
@@ -4340,11 +4775,11 @@
     },
     {
       "path": "tests/release-approval.test.js",
-      "sha256": "ef6240456b0dd5270356e934b2ecdc4aab44332cd4401847c89522a760778dd3"
+      "sha256": "b3a9a07fdd331b96e2e62d3626c57798935d3ab5515af4f2bf0945da5baf55a7"
     },
     {
       "path": "tests/release-chain-coverage.test.js",
-      "sha256": "c572638971d4e0b85f11c83d49890fc729083049514dc2b94c1cc48f22f9c07d"
+      "sha256": "059ad0782f53ad604333f6f855992d7e1aa98a0d93e08ff7c213f162fd0a3e73"
     },
     {
       "path": "tests/release-reproducibility.test.js",

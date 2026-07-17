@@ -148,6 +148,48 @@ test('online ingestion refuses replay, rollback, equivocation, ephemeral product
   assert.equal(contradictory.reason, 'sequence_equivocation');
 });
 
+test('accepts a higher witness sequence before any conflict', async () => {
+  const first = fixture(7);
+  const store = createMemoryWitnessSequenceStore();
+  const options = {
+    pinnedWitnesses: [first.pin],
+    now: NOW,
+    sequenceStore: store,
+    allowEphemeralStore: true,
+  };
+  assert.equal((await acceptNetworkWitnessStatement(first.statement, options)).accepted, true);
+  const next = signNetworkWitnessStatement({
+    witness_id: 'witness:edge-1', capture_point_id: 'capture:grid-ingress-a', sequence: 8,
+    observed_at: '2026-07-16T19:59:50.000Z', event: 'request_observed', direction: 'ingress',
+    action_digest: ACTION, flow_digest: FLOW, config_digest: CONFIG,
+  }, first.privateKey);
+  assert.equal((await acceptNetworkWitnessStatement(next, options)).accepted, true);
+});
+
+test('permanently refuses every later sequence after same-sequence equivocation', async () => {
+  const first = fixture(7);
+  const store = createMemoryWitnessSequenceStore();
+  const options = {
+    pinnedWitnesses: [first.pin],
+    now: NOW,
+    sequenceStore: store,
+    allowEphemeralStore: true,
+  };
+  assert.equal((await acceptNetworkWitnessStatement(first.statement, options)).accepted, true);
+  const conflict = signNetworkWitnessStatement({
+    witness_id: 'witness:edge-1', capture_point_id: 'capture:grid-ingress-a', sequence: 7,
+    observed_at: '2026-07-16T19:59:45.000Z', event: 'response_observed', direction: 'egress',
+    action_digest: `sha256:${'44'.repeat(32)}`, config_digest: CONFIG,
+  }, first.privateKey);
+  assert.equal((await acceptNetworkWitnessStatement(conflict, options)).reason, 'sequence_equivocation');
+  const later = signNetworkWitnessStatement({
+    witness_id: 'witness:edge-1', capture_point_id: 'capture:grid-ingress-a', sequence: 8,
+    observed_at: '2026-07-16T19:59:50.000Z', event: 'request_observed', direction: 'ingress',
+    action_digest: ACTION, flow_digest: FLOW, config_digest: CONFIG,
+  }, first.privateKey);
+  assert.equal((await acceptNetworkWitnessStatement(later, options)).reason, 'sequence_equivocation');
+});
+
 test('a durable acceptance result can be reused only through the explicit trusted channel', async () => {
   const { statement, pin } = fixture();
   const memory = createMemoryWitnessSequenceStore();

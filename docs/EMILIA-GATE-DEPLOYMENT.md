@@ -13,8 +13,13 @@ Ingress or cloud load balancer.
 
 ## Runtime contract
 
-`apps/gate-service` intentionally leaves production adapters to the BYOC
-operator. It refuses to start unless `EMILIA_GATE_CONFIG` points to an ESM
+`apps/gate-service` has two production configuration paths. Direct and Docker
+deployments may use the built-in environment-backed Postgres factory documented
+in `apps/gate-service/README.md`; absence of `EMILIA_GATE_CONFIG` selects that
+factory and still requires durable stores, explicit repository scope, and
+pinned trust. The supplied Helm and Terraform assets intentionally select the
+advanced BYOC path because cluster Secret wiring and migration ownership are
+operator-specific. Those assets require `EMILIA_GATE_CONFIG` to point to an ESM
 module that supplies:
 
 - a GitHub connector;
@@ -23,10 +28,13 @@ module that supplies:
 - a durable action-status store;
 - pinned issuer and approver roots, RP ID, and allowed origins.
 
-There is no production in-memory fallback. The Helm chart and Terraform module
-mount an operator-owned `gate.config.mjs` and an idempotent `migrate.mjs` from
-an existing Kubernetes Secret. Treat both files as executable release
-artifacts: review, sign, version, and restrict changes to them.
+Neither path has a production in-memory fallback. The Helm chart and Terraform
+module mount an operator-owned `gate.config.mjs` and an idempotent `migrate.mjs`
+from an existing Kubernetes Secret. Treat both files as executable release
+artifacts: review, sign, version, and restrict changes to them. Removing the
+custom module from a manifest does not create an in-memory fallback; it changes
+the configuration contract and requires supplying every built-in factory
+environment variable instead.
 
 The repository does provide a canonical append-only evidence primitive:
 `packages/gate/evidence-postgres.js` with

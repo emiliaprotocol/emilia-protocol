@@ -76,6 +76,19 @@ if "$helm_bin" template missing-required "$chart_dir" >/dev/null 2>&1; then
   exit 1
 fi
 
+if "$helm_bin" template mutable-image "$chart_dir" --namespace gate-system \
+  --set-string image.repository=registry.example.test/security/emilia-gate-service \
+  --set-string image.tag=latest \
+  --set-string configuration.existingSecret=gate-configuration \
+  --set-string secrets.postgres.existingSecret=gate-postgres \
+  --set-string migrations.postgres.existingSecret=gate-postgres-migrate \
+  --set-string migrations.postgres.key=database-url \
+  --set-string secrets.apiToken.existingSecret=gate-api-token \
+  --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots >/dev/null 2>&1; then
+  echo "chart unexpectedly accepted image.tag=latest" >&2
+  exit 1
+fi
+
 if "$helm_bin" template missing-migration-secret "$chart_dir" --namespace gate-system \
   --set-string image.repository=registry.example.test/security/emilia-gate-service \
   --set-string image.digest="$digest" \

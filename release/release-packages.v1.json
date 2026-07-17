@@ -24,6 +24,7 @@
     { "package": "ep-verify", "ecosystem": "pypi", "path": "packages/ep-verify-py", "workflow": "publish-ep-verify-python.yml", "tag_prefix": "ep-verify-py-v", "mode": "pypi_reusable" },
     { "package": "emilia-verify", "ecosystem": "pypi", "path": "packages/python-verify", "workflow": "publish-python-verify.yml", "tag_prefix": "python-verify-v", "mode": "pypi_direct" },
     { "package": "emilia-protocol", "ecosystem": "pypi", "path": "sdks/python", "workflow": "publish-python-sdk.yml", "tag_prefix": "py-sdk-v", "mode": "pypi_direct" },
-    { "package": "langchain-emilia", "ecosystem": "pypi", "path": "integrations/langchain-emilia", "workflow": "publish-langchain-python.yml", "tag_prefix": "langchain-emilia-v", "mode": "pypi_direct" }
+    { "package": "langchain-emilia", "ecosystem": "pypi", "path": "integrations/langchain-emilia", "workflow": "publish-langchain-python.yml", "tag_prefix": "langchain-emilia-v", "mode": "pypi_direct" },
+    { "package": "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "ecosystem": "go", "path": "packages/go-verify", "workflow": "publish-go-verify.yml", "tag_prefix": "packages/go-verify/v", "mode": "go_tag" }
   ]
 }

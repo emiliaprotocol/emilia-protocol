@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-17T04:28:30.568Z",
+  "evidence_snapshot_at": "2026-07-17T05:36:18.601Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "085abccc2c7f352d779bbf20db0b601fa2d5cc62789c0b601d785c1226d789a4",
+    "input_digest_sha256": "f3464af31f43dd189bc2af6ab884d12af900372f4b8cd85455fb27b186aba277",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "bffa7fd57e4106c5bf033454c4ea61fe86f5adf6a91c8167931a153b10a4c5c2",
+        "sha256": "fc1b4de9588c56053924068c2287555850d9a217de23a10fe2a9d8d18af0d97b",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "37776c60692294275a9df1f5f3b7bf2f0d3047c823f2a83c798bc62bdb94226e",
+        "sha256": "9d1e7d290500759479bec9b38ec0314989ad2cda775990c75ee1bdb2319a7710",
         "bytes": 5622
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "7add9f158c3b8c5ced208a9468a2e131baf92c601d08098bbc75a21476ca6b28",
-        "bytes": 99894
+        "sha256": "da657c4f7315930d54f303e3fedca17c98ca532983769ee105b03144cdefe9c5",
+        "bytes": 112274
       },
       {
         "path": "security/security-case.json",
-        "sha256": "0fd50e481892d395c4c4025751e921196fd67f63b42defec5c74cd0284f95202",
-        "bytes": 162165
+        "sha256": "bc77f576b7e5ff64e2a290a80306f0fc694bc54c6235e0c1cf4946dc2c11c33a",
+        "bytes": 179190
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -142,7 +142,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5908,
+      "total": 5917,
       "files": 303,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -152,7 +152,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "5b374fd62c97a16baa762eccea529576af84e2041470ea0dffa50b4d3cf9f6d9",
+      "manifest_sha256": "caf4cd1c562827e3ebcd5cb8dca1a9a466590a673d244938974872722c658ae2",
       "vector_bundle_sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
     },
     "formal": {
@@ -172,9 +172,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 22,
+      "claims": 25,
       "evidence_files": 104,
-      "evidence_bundle_sha256": "9374506d0afb8d574403affdbf95aa4ba2eac4ec18b92c82009d59a8f0b5bada"
+      "evidence_bundle_sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
     },
     "caid": {
       "core_vectors": 48,
@@ -536,6 +536,75 @@
       ],
       "exclusions": [
         "enrollment fraud and compromised authenticators are outside this verifier claim"
+      ]
+    },
+    {
+      "claim_id": "signed-denial-cannot-authorize",
+      "statement": "An authentic device-signed negative human decision remains verifiable decision evidence but cannot satisfy approval, separation-of-duties, quorum, assurance, authority, action-material, or reliance predicates in the Trust Receipt verifier.",
+      "acceptance_roots": [
+        "approver credential keys and relying-party policy pinned independently of the presented receipt"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyTrustReceipt",
+          "exported": true
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_trust_receipt"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/trust_receipt.go",
+          "symbol": "VerifyTrustReceipt"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "accept_valid_receipt",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "reject_signed_denial_as_authorization",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "execution_has_honest_approvals_or_prior_compromise",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The composed model requires honest approval events or prior compromise before execution; the concrete four-outcome parser and every denied-evidence projection are enforced by executable cross-language code rather than modeled as one discriminated union."
+        }
+      ],
+      "assumptions": [
+        "the relying party pins the authentic approver directory and acceptance profile",
+        "the signoff outcome remains inside the authenticated context checked by each port"
+      ],
+      "exclusions": [
+        "the verifier preserves a valid negative decision as evidence but does not infer the reason, wisdom, or legal effect of that decision",
+        "this claim does not prevent a compromised authentic approver device from signing an approval"
       ]
     },
     {
@@ -1090,6 +1159,75 @@
       ]
     },
     {
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "statement": "A pinned network-witness stream advances monotonically until two different signed statements claim the same sequence. That conflict permanently poisons the exact tenant, gate, witness, and capture-point stream; no later sequence can restore acceptance under that stream identity.",
+      "acceptance_roots": [
+        "relying-party-pinned witness key, capture-point identity, configuration digest, and durable sequence store",
+        "tenant and gate scope fixed outside the presented witness statement"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "symbol": "createMemoryWitnessSequenceStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "symbol": "acceptNetworkWitnessStatement",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/witness-postgres.js",
+          "symbol": "createPostgresWitnessSequenceStore",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Python receipt-verifier surface."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Go receipt-verifier surface."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_monotonic_witness_sequence",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_witness_stream_after_equivocation",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "TLA+, Alloy, and Tamarin do not model this SQL-backed witness-stream state machine; monotonic advance, conflict poisoning, and post-conflict refusal are executable properties."
+        }
+      ],
+      "assumptions": [
+        "the production store linearizes advancement for one exact binary stream identifier",
+        "the witness signing key and capture point are provisioned independently and the signed observation body commits to the action digest",
+        "operators replace a poisoned stream only by provisioning and pinning a new stream identity"
+      ],
+      "exclusions": [
+        "a passive witness proves observation, not authorization, enforcement, physical execution, or sensor truth",
+        "the protocol cannot distinguish benign witness failure from malicious equivocation after a conflict"
+      ]
+    },
+    {
       "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
       "statement": "The stateful AEC execution gate pins custom component verifiers, verifier keys, human profiles, and the requirement at construction, captures the validated store and logger methods, and refuses transaction-scoped trust configuration. It reserves one non-expiring key derived only from the executor-bound canonical action digest before effect, so presenter-controlled decoy components, alternate proof forms, or post-construction method replacement cannot mint a fresh replay key for the same action. Production construction also requires an ownership-fenced durable consumption backend and a strict atomic shared-head evidence log that continues across replicas and restarts; the gate independently rehashes and exactly matches each acknowledgment, and successful atomic append readback must equal the submitted sequence, predecessor, identifier, and content.",
       "acceptance_roots": [
@@ -1372,14 +1510,14 @@
       ]
     },
     {
-      "claim_id": "all-package-releases-use-verifiable-bytes",
-      "statement": "Every declared npm and PyPI package release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "claim_id": "npm-pypi-releases-use-verifiable-bytes",
+      "statement": "Every declared npm and PyPI release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact with security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
       "acceptance_roots": [
         "the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory",
         "the FutureEnterprises owner identity",
-        "the protected registry-publishing-approval environment",
+        "the registry-publishing-approval environment",
         "GitHub Actions OIDC identity",
-        "registry trusted-publisher configuration for each package"
+        "npm and PyPI trusted-publisher configuration"
       ],
       "enforcement_path": [
         {
@@ -1416,21 +1554,21 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-approval.test.js"
+          "evidence": "tests/release-chain-coverage.test.js"
         },
         "python": {
           "status": "not_applicable",
-          "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript."
+          "reason": "Python packages are built by pinned Python tooling, while inventory and workflow enforcement are repository controls implemented in JavaScript."
         },
         "go": {
           "status": "not_applicable",
-          "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package."
+          "reason": "Go tag publication has a distinct source-and-proxy claim because a Go module is not an OIDC-uploaded registry artifact."
         }
       },
       "vectors": [
         {
           "suite": "security/vectors.v1.json",
-          "case_id": "accept_all_declared_release_chains",
+          "case_id": "accept_npm_pypi_release_byte_chains",
           "polarity": "positive"
         },
         {
@@ -1452,7 +1590,7 @@
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties."
+          "gap": "Registry account state, hosted CI identity, OIDC, and artifact storage are operational controls rather than symbolic protocol properties."
         }
       ],
       "assumptions": [
@@ -1464,6 +1602,97 @@
       "exclusions": [
         "static workflow coverage cannot prove registry-side trusted-publisher settings until a real owner-approved publish succeeds",
         "a credential acting as FutureEnterprises is operationally equivalent to the owner, so account security remains an external root"
+      ]
+    },
+    {
+      "claim_id": "go-module-release-is-tag-and-proxy-bound",
+      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
+      "acceptance_roots": [
+        "the checked-in Go module release identity",
+        "the FutureEnterprises owner identity",
+        "the registry-publishing-approval environment",
+        "the workflow-dispatched refs/heads/main commit",
+        "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*",
+        "GitHub tag-ref authority",
+        "proxy.golang.org and sum.golang.org"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "discoverReleaseSurfaces",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "validateGoTagWorkflowText",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/require-release-approval.mjs",
+          "symbol": "verifyUnpublishedReleaseGitState",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-chain-coverage.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Release workflow verification is a repository control implemented in JavaScript."
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "packages/go-verify/signoff_compatibility_test.go"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_go_tag_proxy_chain",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_without_proxy_comparison",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_write_job_code_execution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_mutable_or_credentialed_checkout",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_unclassified_go_module",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "GitHub job permissions, environment approvals, VCS refs, Go proxy behavior, and checksum-database state are operational controls."
+        }
+      ],
+      "assumptions": [
+        "GitHub records required-reviewer approval or an explicit administrator bypass on registry-publishing-approval",
+        "the GitHub ruleset API accurately reports active update-and-deletion protection",
+        "the dispatched main commit is the owner-reviewed source intended for release",
+        "proxy.golang.org and sum.golang.org remain independently available"
+      ],
+      "exclusions": [
+        "the proxy source-tree comparison proves source equivalence, not byte identity between the Git archive and the proxy's canonical module zip",
+        "the tag must exist before the proxy can serve it, so a post-tag verification failure requires a higher corrective version or module retraction and never a moved tag",
+        "the first live release still has to demonstrate environment and ruleset configuration"
       ]
     },
     {

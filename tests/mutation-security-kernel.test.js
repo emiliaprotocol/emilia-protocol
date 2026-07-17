@@ -7,7 +7,7 @@ import {
   createMemoryBackend,
   isSecureConsumptionStore,
 } from '../packages/gate/store.js';
-import { createGate, hashCanonical } from '../packages/gate/index.js';
+import { canonicalize, createGate, hashCanonical } from '../packages/gate/index.js';
 import {
   __relianceSecurityInternals,
   RELIANCE_PROFILE_VERSION,
@@ -24,6 +24,26 @@ import {
 function token(prefix = 'owner') {
   let n = 0;
   return () => `${prefix}-${String(++n).padStart(24, '0')}`;
+}
+
+function mintSoftwareReceipt(actionType) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const payload = {
+    receipt_id: `mutation_${crypto.randomUUID()}`,
+    subject: 'agent:mutation-test',
+    issuer: 'ep:org:mutation-test',
+    created_at: new Date().toISOString(),
+    claim: { action_type: actionType, outcome: 'allow' },
+  };
+  const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
+  return {
+    publicKey: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    receipt: {
+      '@version': 'EP-RECEIPT-v1',
+      payload,
+      signature: { algorithm: 'Ed25519', value },
+    },
+  };
 }
 
 describe('mutation oracles for the replay kernel', () => {
@@ -301,6 +321,26 @@ describe('mutation oracles for Gate admission inputs', () => {
       required_tier: 'class_a',
       observed_action_hash: hashCanonical(observed),
     });
+    expect(result.evidence.business_authorization).toEqual({
+      required: false,
+      ok: true,
+      reason: null,
+      expected: {
+        configured: false,
+        ok: true,
+        reason: null,
+        policy_id: null,
+        policy_hash: null,
+        tenant_id: null,
+        allowed_approvers: [],
+      },
+      evaluated: {
+        policy_id: null,
+        policy_hash: null,
+        tenant_id: null,
+        approvers: [],
+      },
+    });
   });
 
   it('uses the documented selector fallbacks only without a pinned manifest requirement', async () => {
@@ -325,6 +365,41 @@ describe('mutation oracles for Gate admission inputs', () => {
     const result = await gate.check({ selector: { action_type: 'cloud.delete' } });
     expect(record).toHaveBeenCalledTimes(1);
     expect(result.evidence.logger).toBe('pinned');
+  });
+
+  it('pins manifest quorum policy ahead of per-action and global fallback policies', async () => {
+    const actionType = 'payment.release';
+    const pinnedPolicy = {
+      mode: 'threshold',
+      required: 2,
+      distinct_humans: true,
+      approvers: [
+        { role: 'finance', approver: 'ep:approver:alice' },
+        { role: 'security', approver: 'ep:approver:bob' },
+      ],
+    };
+    const quorumManifest = structuredClone(manifest);
+    quorumManifest.actions[0].assurance_class = 'quorum';
+    quorumManifest.actions[0].quorum_policy = pinnedPolicy;
+    const { publicKey, receipt } = mintSoftwareReceipt(actionType);
+    const gate = createGate({
+      manifest: quorumManifest,
+      trustedKeys: [publicKey],
+      quorumPolicies: { [actionType]: { ...pinnedPolicy, mode: 'invalid-per-action-mode' } },
+      quorumPolicy: { ...pinnedPolicy, mode: 'invalid-global-mode' },
+      rpId: 'approve.example.test',
+      allowedOrigins: ['https://approve.example.test'],
+      allowEphemeralStore: true,
+    });
+
+    const result = await gate.check({
+      selector: { protocol: 'mcp', tool: 'release_payment' },
+      receipt,
+    });
+
+    expect(result.allow).toBe(false);
+    expect(result.reason).toBe('assurance_too_low');
+    expect(result.evidence.need_tier).toBe('quorum');
   });
 });
 

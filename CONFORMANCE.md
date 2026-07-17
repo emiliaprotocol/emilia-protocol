@@ -48,7 +48,7 @@ EP-RESOLUTION-v1                — 33 vectors   JavaScript ✓   Python ✓   G
 EP-QUORUM-v1                    — 15 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-REVOCATION-v1               — 12 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIME-ATTESTATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-TRUST-RECEIPT-v1 (§6.2)     — 13 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT-v1 (§6.2)     — 14 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TRUST-RECEIPT-v1 ts-profile —  7 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-PROVENANCE-CHAIN-v1         — 14 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
@@ -61,7 +61,7 @@ EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 250 vectors · 18 suites — JavaScript, Python, and Go verifiers agree.
+✅ 251 vectors · 18 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations.)
 ```

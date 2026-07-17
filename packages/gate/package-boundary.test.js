@@ -39,6 +39,28 @@ test('no file shipped in the package imports outside the package root', () => {
   assert.deepEqual(offenders, [], `package-root escapes found:\n${offenders.join('\n')}`);
 });
 
+test('every shipped bare import is declared as an exact runtime dependency', () => {
+  const shippedJs = (pkg.files || []).filter((f) => f.endsWith('.js') || f.endsWith('.mjs'));
+  const offenders = [];
+  for (const rel of shippedJs) {
+    const abs = path.join(pkgRoot, rel);
+    if (!fs.existsSync(abs)) continue;
+    const src = fs.readFileSync(abs, 'utf8');
+    for (const match of src.matchAll(IMPORT_RE)) {
+      const specifier = match[1];
+      if (specifier.startsWith('.') || specifier.startsWith('node:')) continue;
+      const packageName = specifier.startsWith('@')
+        ? specifier.split('/').slice(0, 2).join('/')
+        : specifier.split('/')[0];
+      const version = pkg.dependencies?.[packageName];
+      if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) {
+        offenders.push(`${rel}: imports undeclared or unpinned runtime package '${packageName}'`);
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], `runtime dependency defects found:\n${offenders.join('\n')}`);
+});
+
 test('the package-local strict JSON gate matches the shared carrier gate byte-for-byte', () => {
   const local = fs.readFileSync(path.join(pkgRoot, 'strict-json.js'), 'utf8');
   const shared = fs.readFileSync(path.join(pkgRoot, '../require-receipt/strict-json.js'), 'utf8');

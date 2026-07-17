@@ -9,9 +9,7 @@
  */
 import { createEvidenceLog, verifyEvidenceRecord } from './evidence.js';
 import { MemoryConsumptionStore } from './store.js';
-
-const { verifyAuthorizationChain } = await import('@emilia-protocol/verify/evidence-chain')
-  .catch(() => import('../verify/evidence-chain.js'));
+import { verifyAuthorizationChain } from '@emilia-protocol/verify/evidence-chain';
 
 const HUMAN_FLOORS = new Set(['class_a', 'quorum', 'class_a_or_quorum']);
 const HEX_256 = /^[0-9a-f]{64}$/;

@@ -21,8 +21,7 @@
  * args.emilia_receipt, then a base64 string in args._emilia_receipt_b64.
  */
 
-const { parseReceiptCarrier } = await import('@emilia-protocol/require-receipt')
-  .catch(() => import('../require-receipt/index.js'));
+import { parseReceiptCarrier } from '@emilia-protocol/require-receipt';
 
 function resolveReceipt(args, opts) {
   if (typeof opts.receipt === 'function') return opts.receipt(args);
