@@ -63,9 +63,10 @@ test('empty object verifier registry cannot inherit constructor and accept suppl
   assert.equal(result.accepted, false);
   assert.equal(result.verdict, 'refuse_verifier_unpinned');
   assert.equal(result.reason, 'pinned_verifier_missing');
+  assert.equal(result.checks.verifier, false);
 });
 
-test('object verifier registries ignore inherited prototype names and non-callable own entries', async () => {
+test('object verifier registries ignore inherited names, accessors, and non-callable own entries', async () => {
   for (const verifierId of Object.getOwnPropertyNames(Object.prototype)) {
     if (verifierId === 'constructor') continue;
     const result = await verifyDeploymentAttestation({}, {
@@ -82,19 +83,42 @@ test('object verifier registries ignore inherited prototype names and non-callab
     verifiers: { [profile.verifier_id]: {} },
   });
   assert.equal(nonCallable.verdict, 'refuse_verifier_unpinned');
+
+  let accessorCalled = false;
+  const accessorBacked = {};
+  Object.defineProperty(accessorBacked, profile.verifier_id, {
+    enumerable: true,
+    get() {
+      accessorCalled = true;
+      return async () => claims();
+    },
+  });
+  const accessorResult = await verifyDeploymentAttestation({}, {
+    profile,
+    now: NOW,
+    verifiers: accessorBacked,
+  });
+  assert.equal(accessorResult.verdict, 'refuse_verifier_unpinned');
+  assert.equal(accessorCalled, false);
 });
 
 test('accepts an own callable verifier whose id matches a prototype name', async () => {
   const constructorProfile = { ...profile, verifier_id: 'constructor' };
+  let verifierCalls = 0;
   const result = await verifyDeploymentAttestation({ token: 'opaque' }, {
     profile: constructorProfile,
     now: NOW,
     verifiers: {
-      constructor: async () => claims({ verifier_id: 'constructor' }),
+      constructor: async () => {
+        verifierCalls += 1;
+        return claims({ verifier_id: 'constructor' });
+      },
     },
   });
   assert.equal(result.accepted, true);
   assert.equal(result.verdict, 'attested');
+  assert.equal(result.checks.verifier, true);
+  assert.equal(verifierCalls, 1);
 });
 
 test('artifact labels cannot select an unpinned verifier', async () => {

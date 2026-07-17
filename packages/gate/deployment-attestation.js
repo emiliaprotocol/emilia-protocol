@@ -108,8 +108,8 @@ function fail(verdict, profileHash = null, extra = {}) {
 function verifierFor(verifiers, verifierId) {
   let verifier;
   if (verifiers instanceof Map) verifier = verifiers.get(verifierId);
-  else if (isPlainObject(verifiers) && Object.hasOwn(verifiers, verifierId)) {
-    verifier = verifiers[verifierId];
+  else if (isPlainObject(verifiers)) {
+    verifier = Object.getOwnPropertyDescriptor(verifiers, verifierId)?.value;
   }
   return typeof verifier === 'function' ? verifier : null;
 }
