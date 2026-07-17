@@ -66,10 +66,12 @@ external synthetics for connector reachability.
 
 ## Build the image
 
-The Dockerfile uses a pinned multi-platform Node 22 base, runs as UID/GID
-`10001`, and writes only to `/tmp` when the runtime supplies that mount. It
-includes `pg` for operator Postgres adapters. A cloud-specific KMS SDK is not
-chosen for the operator; extend the image when the config module needs one.
+The Dockerfile uses a versioned, digest-pinned multi-platform Node 22 base,
+runs as UID/GID `10001`, and writes only to `/tmp` when the runtime supplies
+that mount. The final serving image removes npm, npx, Corepack, and Yarn; it
+includes only the runtime `pg` dependency needed by the built-in Postgres
+adapters. A cloud-specific KMS SDK is not chosen for the operator; extend the
+image in a reviewed build stage when the config module needs one.
 
 ```bash
 export REGISTRY=registry.example.com/security

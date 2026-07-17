@@ -109,6 +109,16 @@ jobs:
         run: npm pack --dry-run --json
       - name: Build the production service image
         run: docker build --file Dockerfile.gate --tag emilia-gate-service:ci .
+      - name: Refuse high or critical runtime vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.72.0
+          image-ref: emilia-gate-service:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          hide-progress: true
 
   # ── Job 2: Build — Next.js production build must succeed ─────────
   build:

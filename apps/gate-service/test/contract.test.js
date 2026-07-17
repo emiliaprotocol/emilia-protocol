@@ -42,13 +42,14 @@ test('OpenAPI contract covers every service route and critical fail-closed seman
 });
 
 test('deployment probes and the E2E harness use production service contracts', async () => {
-  const [compose, helmValues, terraform, deploymentGuide, e2eConfig, dockerfile] = await Promise.all([
+  const [compose, helmValues, terraform, deploymentGuide, e2eConfig, dockerfile, ciWorkflow] = await Promise.all([
     fs.readFile(new URL('../../../docker-compose.gate-e2e.yml', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/helm/emilia-gate-service/values.yaml', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/terraform/service/main.tf', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../docs/EMILIA-GATE-DEPLOYMENT.md', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/helm/emilia-gate-service/tests/fixtures/gate.config.mjs', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../Dockerfile.gate', import.meta.url), 'utf8'),
+    fs.readFile(new URL('../../../.github/workflows/ci.yml', import.meta.url), 'utf8'),
   ]);
 
   for (const deployment of [compose, helmValues, terraform, deploymentGuide]) {
@@ -61,6 +62,32 @@ test('deployment probes and the E2E harness use production service contracts', a
   assert.equal((terraform.match(/path = "\/v1\/ready"/g) ?? []).length, 1);
   assert.match(e2eConfig, /createProductionGateConfig/);
   assert.doesNotMatch(e2eConfig, /createAtomicEvidenceLog|createPostgresBackend/);
+  assert.match(
+    dockerfile,
+    /ARG NODE_IMAGE=node:22\.23\.1-alpine3\.24@sha256:[0-9a-f]{64}/,
+    'runtime base must be versioned and digest-pinned',
+  );
+  for (const runtimeTool of [
+    '/usr/local/lib/node_modules/npm',
+    '/usr/local/lib/node_modules/corepack',
+    '/usr/local/bin/npm',
+    '/usr/local/bin/npx',
+    '/usr/local/bin/corepack',
+    '/usr/local/bin/yarn',
+    '/usr/local/bin/yarnpkg',
+  ]) {
+    assert.match(
+      dockerfile,
+      new RegExp(`rm (?:-rf|-f)[\\s\\S]*${runtimeTool.replaceAll('/', '\\/')}`),
+      `runtime image must remove ${runtimeTool}`,
+    );
+  }
+  assert.match(dockerfile, /USER 10001:10001/);
+  assert.match(ciWorkflow, /aquasecurity\/trivy-action@[0-9a-f]{40}/);
+  assert.match(ciWorkflow, /version: v0\.72\.0/);
+  assert.match(ciWorkflow, /severity: HIGH,CRITICAL/);
+  assert.doesNotMatch(ciWorkflow, /ignore-unfixed: true/);
+  assert.match(ciWorkflow, /exit-code: '1'/);
   for (const packageName of ['gate', 'require-receipt', 'verify']) {
     assert.match(
       dockerfile,
