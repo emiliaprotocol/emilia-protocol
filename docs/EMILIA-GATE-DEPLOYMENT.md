@@ -49,12 +49,12 @@ They default to one replica and refuse more than one unless both shared durable
 consumption and evidence backends are explicitly wired through existing Secret
 references. Prefer the `emilia-gate-service` deployment assets.
 
-The service listens on `HOST`/`PORT`; the assets set `0.0.0.0:8080`. Its health
-API is `GET /v1/health`. The route returns 200 only when the operator-supplied
-readiness function proves the durable consumption, evidence, and action-state
-dependencies are usable; failures return a detail-free 503. It deliberately
-does not call GitHub, KMS, or SIEM services on every probe. Use separate external
-synthetics for connector reachability.
+The service listens on `HOST`/`PORT`; the assets set `0.0.0.0:8080`. `GET
+/v1/live` is process-only. `GET /v1/ready` returns 200 only when the
+operator-supplied readiness function proves the durable consumption, evidence,
+and action-state dependencies are usable; failures return a detail-free 503.
+Neither route calls GitHub, KMS, or SIEM services on every probe. Use separate
+external synthetics for connector reachability.
 
 ## Build the image
 
@@ -358,7 +358,8 @@ cryptographic key parsing, then start and inspect health:
 
 ```bash
 docker compose -f docker-compose.gate-e2e.yml up --build --wait
-curl --fail --silent --show-error http://127.0.0.1:8787/v1/health
+curl --fail --silent --show-error http://127.0.0.1:8787/v1/live
+curl --fail --silent --show-error http://127.0.0.1:8787/v1/ready
 docker compose -f docker-compose.gate-e2e.yml down --volumes
 ```
 
@@ -421,7 +422,7 @@ a replay window. Treat restore as a security incident, not just database work.
    receipts cannot authorize again. If that cannot be proven, remain closed.
 5. Verify schema constraints, migration ledger, evidence head/sequence,
    network-witness checkpoints against the immutable statement archive, action
-   records, and permanent consumption rows with operator tooling. `/v1/health`
+   records, and permanent consumption rows with operator tooling. `/v1/ready`
    alone is not a restore check.
 6. Point a new Postgres Secret version at the restored database. Run the current
    forward migration Job. Do not grant the runtime role DDL privileges.

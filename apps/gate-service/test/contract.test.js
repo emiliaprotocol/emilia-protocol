@@ -42,13 +42,14 @@ test('OpenAPI contract covers every service route and critical fail-closed seman
 });
 
 test('deployment probes use the service live and ready contracts', async () => {
-  const [compose, helmValues, terraform] = await Promise.all([
+  const [compose, helmValues, terraform, deploymentGuide] = await Promise.all([
     fs.readFile(new URL('../../../docker-compose.gate-e2e.yml', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/helm/emilia-gate-service/values.yaml', import.meta.url), 'utf8'),
     fs.readFile(new URL('../../../packages/gate/deploy/terraform/service/main.tf', import.meta.url), 'utf8'),
+    fs.readFile(new URL('../../../docs/EMILIA-GATE-DEPLOYMENT.md', import.meta.url), 'utf8'),
   ]);
 
-  for (const deployment of [compose, helmValues, terraform]) {
+  for (const deployment of [compose, helmValues, terraform, deploymentGuide]) {
     assert.doesNotMatch(deployment, /\/v1\/health/, 'deployment must not probe an undefined route');
   }
   assert.match(compose, /\/v1\/ready/);
