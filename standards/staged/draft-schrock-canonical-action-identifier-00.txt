@@ -1045,9 +1045,9 @@ Internet-Draft                    CAID                         July 2026
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-04, 30 June 2026,
+              ep-authorization-receipts-06, 6 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
-              authorization-receipts-04>.
+              authorization-receipts-06>.
 
 Appendix A.  Acknowledgments
 
