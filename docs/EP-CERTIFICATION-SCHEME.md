@@ -1,19 +1,27 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # EMILIA Conformance and Certification Scheme (EP-CERT-v1)
 
-**Status:** scheme design, spec-level. Defines how conformance to the open EMILIA
-specification is demonstrated, who may attest it, and what a conformance mark does and does
-not assert. It builds on the [Neutrality Covenant](NEUTRALITY-COVENANT.md), the
-[Auditor Control Catalog](AUDITOR-CONTROL-CATALOG.md), and the public conformance vector
-suites. The spec and all vectors stay Apache-2.0; this scheme adds an attestation layer on
-top of them, it does not close them.
+**Status:** the evidence and re-performance machinery is operational; the
+certification scheme described here is not. EMILIA currently supports
+non-accredited conformance testing, signed external-verifier statements,
+deployment evidence, auditor workpapers, underwriter packages, and deterministic
+offline re-performance. It does not operate an accredited certification program
+or issue an "EMILIA Certified" mark.
+
+This document defines the future independent scheme: how conformance to the open
+EMILIA specification would be demonstrated, who may attest it, and what a
+conformance mark would and would not assert. It builds on the
+[Neutrality Covenant](NEUTRALITY-COVENANT.md), the
+[Auditor Control Catalog](AUDITOR-CONTROL-CATALOG.md), and the public conformance
+vector suites. The specification and vectors stay Apache-2.0; a future scheme
+adds an attestation layer on top of them, it does not close them.
 
 ## What this is, and the line it must not cross
 
-Owning the conformance suite and the mark is the durable position: the vectors are the
-gate every conforming verifier must pass, and the mark is the thing a buyer, an auditor, or
-a regulator can point at. But the whole value depends on the mark meaning exactly one thing
-and never more.
+Stewarding an open conformance suite creates a common technical bar: the vectors
+are the gate every conforming verifier must pass. A future mark gives a buyer, an
+auditor, or a regulator a stable object to cite. Its value depends on meaning
+exactly one thing and never more.
 
 **A conformance mark asserts:** this named implementation, at this version, correctly
 verifies the EMILIA conformance vector suites (accept the valid, refuse the invalid) and
@@ -41,11 +49,18 @@ define the bar, because the bar is the spec's own vectors.
 
 ### 2. The assessor registry (who may attest)
 
-A signed, versioned, publicly readable registry of accredited assessors, each entry
-carrying `{assessor_id, public_key, accreditation_scope, valid_from, valid_to, revoked_at}`.
-An assessor is any party (an implementer self-attesting, an independent lab, or an audit
-firm) whose conformance records the registry will resolve. Self-attestation is a first-class
-tier and is labeled as such; independent-lab and accredited-firm tiers carry higher weight.
+A signed, versioned, publicly readable registry of statement issuers, each entry
+carrying `{assessor_id, public_key, party_role, accreditation_scope, valid_from,
+valid_to, revoked_at}`. An issuer is any party whose conformance records the
+registry will resolve. `party_role` distinguishes first-party self-attestation,
+second-party customer assessment, and third-party assessment. Only an issuer
+whose applicable accreditation and scope have been independently confirmed may
+be labeled accredited; self-attestation is never accreditation.
+
+Self-attestation may remain a useful, explicitly labeled tier for open-source
+adoption. It cannot be presented as independent certification. Independent-lab
+and accredited-body tiers are separate claims, not stronger names for the same
+activity.
 The registry is a signed snapshot verified offline against a pinned steward key, the same
 shape as the EP authority registry, so a relying party checks an assessor the way it checks
 any other authority: active, in-window, not revoked, in scope.
@@ -79,21 +94,62 @@ re-derive.
 Per the [Neutrality Covenant](NEUTRALITY-COVENANT.md), the spec, the reference verifiers,
 and every conformance vector are Apache-2.0 forever, and the offline verifier never calls
 back to EMILIA. So there is no per-receipt metering point and there will never be a receipt
-fee. The paid surface is the attestation layer, never the protocol:
+fee. The paid surface is managed operation and assurance, never verification
+lock-in:
 
-- **Accreditation** of independent labs and audit firms into the assessor registry (charge
-  the assessor, in the PCI-SSC / QSA shape, never the deploying merchant).
-- **Conformance testing and reperformance** as a service for parties who want a record
-  without standing up the harness.
-- **A steward-run registry and reliance decisioning** layer for parties who want the
-  authority/assessor snapshots maintained and the acceptance decision run for them.
+- **EMILIA Conformance:** free self-test plus paid, non-accredited witnessed
+  testing and signed result packages for a named implementation and version.
+- **EMILIA Deployment Assurance:** review Gate placement, bypass paths, pinned
+  keys, policy configuration, failure behavior, and evidence retention. This is
+  a vendor assessment, not independent certification.
+- **EMILIA Continuous Assurance:** period-bound evidence packages, drift
+  detection, exception reporting, and auditor-ready offline re-performance.
+- **EMILIA Warranted Gate:** a separately contracted, narrowly scoped warranty
+  after a successful baseline review. It covers named control behavior and never
+  legal compliance, human understanding, or systems outside the protected
+  boundary.
+- **Future partner certification:** an independent certification body evaluates,
+  reviews, decides, surveils, and controls any certification mark. EMILIA may
+  steward the open scheme and supply evidence tooling, but it does not decide
+  whether its own customer passes.
 
 The mark's credibility is the asset. Charging to *issue* it to the wrong party, or letting
 it drift toward meaning "trustworthy deployment," destroys the asset. The scheme is built to
 make that drift impossible: the mark's own text carries its scope, and the honest-boundary
 row travels with every control.
 
-## What must exist before this is real (open work, stated honestly)
+## Conformity-assessment boundary
+
+| Activity | Current EMILIA claim | Future independent path |
+|---|---|---|
+| Testing | Non-accredited protocol, vector, and adversarial test report | A laboratory with an applicable [ISO/IEC 17025](https://www.iso.org/standard/66912.html) accreditation scope |
+| Deployment review | Vendor or first-party assessment of a named Gate boundary | Independent inspection under an applicable programme |
+| Verification | Period-bound re-performance of stated claims; the report names whether it is first-, second-, or third-party | A competent, impartial verification body operating under [ISO/IEC 17029](https://www.iso.org/standard/29352.html) |
+| Certification | Not offered by EMILIA for its own Gate | An independent body operating the open scheme under [ISO/IEC 17065](https://www.iso.org/standard/46568.html) and the scheme guidance in [ISO/IEC 17067](https://www.iso.org/standard/55087.html) |
+| Mark | No certification-looking mark today | Governed issuance, surveillance, suspension, withdrawal, and use under [ISO/IEC 17030](https://www.iso.org/standard/78283.html) |
+
+Accreditation status, assessment-party role, and certification are separate
+facts. Every issued report must state its scope, method, implementation version,
+suite version, period, assumptions, exceptions, expiry, issuer role, and
+accreditation status. A valid signature authenticates that statement; it does
+not expand its scope.
+
+## What is operational now
+
+- `EP-ASSURANCE-PACKAGE-v1` and `ep-assure` package a decision population and
+  independently recompute each reliance verdict under auditor-pinned inputs.
+- `EP-EXTERNAL-VERIFICATION-STATEMENT-v1` lets an outside verifier sign the
+  exact procedure, input digests, result, and limitations under a relying-party
+  pinned key.
+- Gate report modules produce deterministic auditor workpapers and underwriter
+  packages while leaving conclusions and opinions null by construction.
+- CF-1 and EG-1 provide executable conformance checks. They are technical
+  self-tests unless an identified outside party witnesses and signs the run.
+
+These are sellable assurance inputs and managed services. They are not an
+operating certification programme.
+
+## What must exist before certification is real
 
 1. A signed, versioned conformance-record format and a `conformance:record` command in the
    verifier that emits it.
@@ -101,7 +157,9 @@ row travels with every control.
    machinery).
 3. The `EP-CONFORMANT` mark object and its verifier.
 4. At least one independent assessor other than the steward, so the registry is not a
-   single-party list.
+   single-party list, plus documented evaluation, review, decision, surveillance,
+   complaints, appeals, suspension, and withdrawal procedures.
 
-None of these is built yet; this document is the design they implement against, not a claim
-that the scheme is operating.
+Until those controls exist and an independent body has accepted the applicable
+scope, public language must say `conformance test`, `deployment assessment`,
+`verification`, or `assurance package` as applicable, never `certified`.
