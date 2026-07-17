@@ -1,8 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js';
 
+export const GATE_ROUTE_PATHS = Object.freeze({
+  live: '/v1/live',
+  ready: '/v1/ready',
+  actions: '/v1/actions',
+  action: '/v1/actions/{id}',
+  execute: '/v1/actions/{id}/execute',
+  evidenceHead: '/v1/evidence/head',
+  evidenceRecord: '/v1/evidence/records/{recordId}',
+  evidenceHistory: '/v1/evidence/history',
+  evidenceVerify: '/v1/evidence/verify',
+  evidenceExport: '/v1/evidence/export',
+  metrics: '/v1/metrics',
+});
+
 const JSON_CONTENT_TYPE = /^application\/json(?:\s*;|$)/i;
 const UTF8 = new TextDecoder('utf-8', { fatal: true });
+const EVIDENCE_PATHS = new Set([
+  GATE_ROUTE_PATHS.evidenceHead,
+  GATE_ROUTE_PATHS.evidenceHistory,
+  GATE_ROUTE_PATHS.evidenceVerify,
+  GATE_ROUTE_PATHS.evidenceExport,
+]);
 
 class HttpInputError extends Error {
   constructor(status, code) {
@@ -111,10 +131,79 @@ function receiptCarrier(request, maxChars) {
   return value;
 }
 
+function exactQuery(url, { pagination = false } = {}) {
+  const allowed = new Set(['tenant_id', 'gate_id', 'action_id']);
+  if (pagination) {
+    allowed.add('cursor');
+    allowed.add('limit');
+  }
+  for (const key of url.searchParams.keys()) {
+    if (!allowed.has(key) || url.searchParams.getAll(key).length !== 1) {
+      throw new HttpInputError(400, 'query_parameters_invalid');
+    }
+  }
+  const required = {};
+  for (const key of ['tenant_id', 'gate_id', 'action_id']) {
+    const value = url.searchParams.get(key);
+    if (typeof value !== 'string' || value.length === 0 || value.length > 256
+        || /[\u0000-\u001f\u007f]/.test(value)) {
+      throw new HttpInputError(400, 'evidence_scope_invalid');
+    }
+    required[key] = value;
+  }
+  const result = {
+    scope: {
+      tenantId: required.tenant_id,
+      gateId: required.gate_id,
+      actionId: required.action_id,
+    },
+  };
+  if (pagination) {
+    const rawCursor = url.searchParams.get('cursor') ?? '0';
+    const rawLimit = url.searchParams.get('limit') ?? '50';
+    if (!/^(0|[1-9][0-9]*)$/.test(rawCursor) || !/^[1-9][0-9]*$/.test(rawLimit)) {
+      throw new HttpInputError(400, 'pagination_invalid');
+    }
+    const cursor = Number(rawCursor);
+    const limit = Number(rawLimit);
+    if (!Number.isSafeInteger(cursor) || !Number.isSafeInteger(limit)) {
+      throw new HttpInputError(400, 'pagination_invalid');
+    }
+    result.pagination = { cursor, limit };
+  }
+  return result;
+}
+
+function decodePathSegment(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    throw new HttpInputError(400, 'request_target_invalid');
+  }
+}
+
+function unauthorized(response) {
+  sendJson(response, 401, { status: 'refused', error: { code: 'authentication_required' } }, {
+    'WWW-Authenticate': 'Bearer realm="emilia-gate"',
+  });
+}
+
 export function createRequestHandler(runtime) {
-  if (!runtime || typeof runtime.executeDelete !== 'function'
-      || typeof runtime.getAction !== 'function' || typeof runtime.health !== 'function'
-      || typeof runtime.authorize !== 'function') {
+  const required = [
+    'executeDelete',
+    'resumeDelete',
+    'getAction',
+    'authenticate',
+    'live',
+    'ready',
+    'evidenceHead',
+    'getEvidenceRecord',
+    'evidenceHistory',
+    'verifyEvidence',
+    'exportEvidence',
+    'metrics',
+  ];
+  if (!runtime || required.some((method) => typeof runtime[method] !== 'function')) {
     throw new TypeError('runtime contract is invalid');
   }
 
@@ -126,46 +215,95 @@ export function createRequestHandler(runtime) {
       } catch {
         throw new HttpInputError(400, 'request_target_invalid');
       }
-      if (url.search) throw new HttpInputError(400, 'query_parameters_forbidden');
 
-      if (request.method === 'GET' && url.pathname === '/v1/health') {
-        const result = await runtime.health();
+      if (url.pathname === GATE_ROUTE_PATHS.live || url.pathname === GATE_ROUTE_PATHS.ready) {
+        if (url.search) throw new HttpInputError(400, 'query_parameters_forbidden');
+        if (request.method !== 'GET') {
+          sendJson(response, 405, { status: 'refused', error: { code: 'method_not_allowed' } }, { Allow: 'GET' });
+          return;
+        }
+        const result = url.pathname === GATE_ROUTE_PATHS.live ? runtime.live() : await runtime.ready();
         sendJson(response, result.status, result.body, result.headers);
         return;
       }
 
       const actionMatch = /^\/v1\/actions\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
-      if ((url.pathname === '/v1/actions' || actionMatch)
-          && !(await runtime.authorize(request))) {
-        sendJson(response, 401, { status: 'refused', error: { code: 'authentication_required' } }, {
-          'WWW-Authenticate': 'Bearer realm="emilia-gate"',
-        });
+      const executeMatch = /^\/v1\/actions\/([A-Za-z0-9_-]+)\/execute$/.exec(url.pathname);
+      const evidenceRecordMatch = /^\/v1\/evidence\/records\/([^/]+)$/.exec(url.pathname);
+      const protectedRoute = url.pathname === GATE_ROUTE_PATHS.actions
+        || actionMatch || executeMatch || EVIDENCE_PATHS.has(url.pathname)
+        || evidenceRecordMatch || url.pathname === GATE_ROUTE_PATHS.metrics;
+      if (!protectedRoute) {
+        sendJson(response, 404, { status: 'refused', error: { code: 'route_not_found' } });
         return;
       }
 
-      if (request.method === 'POST' && url.pathname === '/v1/actions') {
-        const body = await readStrictJsonBody(request, runtime.limits.maxBodyBytes);
-        const result = await runtime.executeDelete({
-          body,
-          receiptCarrier: receiptCarrier(request, runtime.limits.maxReceiptCarrierChars),
-        });
-        sendJson(response, result.status, result.body, result.headers);
+      const principal = await runtime.authenticate(request);
+      if (!principal) {
+        unauthorized(response);
         return;
       }
 
-      if (request.method === 'GET' && actionMatch) {
-        const result = await runtime.getAction(actionMatch[1]);
-        sendJson(response, result.status, result.body, result.headers);
-        return;
-      }
-
-      if (url.pathname === '/v1/actions' || actionMatch || url.pathname === '/v1/health') {
+      if (url.pathname === GATE_ROUTE_PATHS.actions || actionMatch || executeMatch) {
+        if (url.search) throw new HttpInputError(400, 'query_parameters_forbidden');
+        if (request.method === 'POST' && url.pathname === GATE_ROUTE_PATHS.actions) {
+          const body = await readStrictJsonBody(request, runtime.limits.maxBodyBytes);
+          const result = await runtime.executeDelete({
+            principal,
+            body,
+            receiptCarrier: receiptCarrier(request, runtime.limits.maxReceiptCarrierChars),
+          });
+          sendJson(response, result.status, result.body, result.headers);
+          return;
+        }
+        if (request.method === 'POST' && executeMatch) {
+          const body = await readStrictJsonBody(request, runtime.limits.maxBodyBytes);
+          const result = await runtime.resumeDelete({
+            id: executeMatch[1],
+            principal,
+            body,
+            receiptCarrier: receiptCarrier(request, runtime.limits.maxReceiptCarrierChars),
+          });
+          sendJson(response, result.status, result.body, result.headers);
+          return;
+        }
+        if (request.method === 'GET' && actionMatch) {
+          const result = await runtime.getAction(actionMatch[1], principal);
+          sendJson(response, result.status, result.body, result.headers);
+          return;
+        }
         sendJson(response, 405, { status: 'refused', error: { code: 'method_not_allowed' } }, {
-          Allow: url.pathname === '/v1/actions' ? 'POST' : 'GET',
+          Allow: url.pathname === GATE_ROUTE_PATHS.actions || executeMatch ? 'POST' : 'GET',
         });
         return;
       }
-      sendJson(response, 404, { status: 'refused', error: { code: 'route_not_found' } });
+
+      if (request.method !== 'GET') {
+        sendJson(response, 405, { status: 'refused', error: { code: 'method_not_allowed' } }, { Allow: 'GET' });
+        return;
+      }
+      const pagination = url.pathname === GATE_ROUTE_PATHS.evidenceHistory
+        || url.pathname === GATE_ROUTE_PATHS.evidenceExport;
+      const query = exactQuery(url, { pagination });
+      let result;
+      if (url.pathname === GATE_ROUTE_PATHS.evidenceHead) {
+        result = await runtime.evidenceHead(principal, query.scope);
+      } else if (evidenceRecordMatch) {
+        result = await runtime.getEvidenceRecord(
+          decodePathSegment(evidenceRecordMatch[1]),
+          principal,
+          query.scope,
+        );
+      } else if (url.pathname === GATE_ROUTE_PATHS.evidenceHistory) {
+        result = await runtime.evidenceHistory(principal, query.scope, query.pagination);
+      } else if (url.pathname === GATE_ROUTE_PATHS.evidenceVerify) {
+        result = await runtime.verifyEvidence(principal, query.scope);
+      } else if (url.pathname === GATE_ROUTE_PATHS.evidenceExport) {
+        result = await runtime.exportEvidence(principal, query.scope, query.pagination);
+      } else {
+        result = await runtime.metrics(principal, query.scope);
+      }
+      sendJson(response, result.status, result.body, result.headers);
     } catch (error) {
       if (error instanceof HttpInputError) {
         sendJson(response, error.status, { status: 'refused', error: { code: error.code } });

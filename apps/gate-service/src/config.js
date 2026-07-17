@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 export const DEFAULT_MAX_BODY_BYTES = 4 * 1024;
 export const DEFAULT_MAX_RECEIPT_BYTES = 64 * 1024;
 export const DEFAULT_CONNECTOR_TIMEOUT_MS = 15_000;
+export const DEFAULT_READINESS_TIMEOUT_MS = 3_000;
 
 const ALLOWED_CONFIG_KEYS = new Set([
   'connector',
@@ -13,6 +14,10 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'evidenceLog',
   'actionStore',
   'authenticateRequest',
+  'authorizeAction',
+  'authorizeEvidence',
+  'tenantId',
+  'gateId',
   'readiness',
   'trustedKeys',
   'keyRegistry',
@@ -24,10 +29,12 @@ const ALLOWED_CONFIG_KEYS = new Set([
   'maxBodyBytes',
   'maxReceiptBytes',
   'connectorTimeoutMs',
+  'readinessTimeoutMs',
   'now',
   'idFactory',
   'logger',
   'allowInlineKey',
+  'siemForwarder',
 ]);
 
 function isObject(value) {
@@ -58,6 +65,14 @@ function boundedInteger(value, fallback, min, max, field, errors) {
   return selected;
 }
 
+function scopedId(value, field, errors) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 256
+      || /[\u0000-\u001f\u007f]/.test(value)) {
+    errors.push(`${field}_invalid`);
+  }
+  return value;
+}
+
 export class GateServiceConfigError extends Error {
   constructor(reasons) {
     super(`EMILIA Gate service configuration refused: ${reasons.join(', ')}`);
@@ -83,9 +98,17 @@ export function validateGateServiceConfig(input) {
   if (typeof input.authenticateRequest !== 'function') {
     errors.push('request_authenticator_required');
   }
+  if (typeof input.authorizeAction !== 'function') {
+    errors.push('action_authorizer_required');
+  }
+  if (typeof input.authorizeEvidence !== 'function') {
+    errors.push('evidence_authorizer_required');
+  }
   if (typeof input.readiness !== 'function') {
     errors.push('readiness_check_required');
   }
+  const tenantId = scopedId(input.tenantId, 'tenant_id', errors);
+  const gateId = scopedId(input.gateId, 'gate_id', errors);
 
   const consumptionStore = input.consumptionStore;
   if (!hasMethods(consumptionStore, ['reserve', 'commit', 'consume', 'has'])
@@ -104,9 +127,13 @@ export function validateGateServiceConfig(input) {
       || evidenceLog?.atomicAppend !== true) {
     errors.push('durable_atomic_evidence_log_required');
   }
+  if (!hasMethods(evidenceLog, ['head', 'getRecord', 'history', 'verify'])) {
+    errors.push('durable_readable_evidence_log_required');
+  }
 
   const actionStore = input.actionStore;
-  if (!hasMethods(actionStore, ['create', 'update', 'get']) || actionStore?.durable !== true) {
+  if (!hasMethods(actionStore, ['create', 'update', 'get', 'transition', 'reconcileInterrupted'])
+      || actionStore?.durable !== true) {
     errors.push('durable_action_store_required');
   }
 
@@ -172,6 +199,14 @@ export function validateGateServiceConfig(input) {
     'connector_timeout_ms',
     errors,
   );
+  const readinessTimeoutMs = boundedInteger(
+    input.readinessTimeoutMs,
+    DEFAULT_READINESS_TIMEOUT_MS,
+    100,
+    30_000,
+    'readiness_timeout_ms',
+    errors,
+  );
 
   const now = input.now ?? Date.now;
   const idFactory = input.idFactory ?? (() => crypto.randomUUID());
@@ -179,6 +214,10 @@ export function validateGateServiceConfig(input) {
   if (typeof idFactory !== 'function') errors.push('id_factory_required');
   if (input.logger !== undefined && input.logger !== null && !isObject(input.logger)) {
     errors.push('logger_invalid');
+  }
+  if (input.siemForwarder !== undefined && input.siemForwarder !== null
+      && !hasMethods(input.siemForwarder, ['forward'])) {
+    errors.push('siem_forwarder_invalid');
   }
 
   if (errors.length > 0) throw new GateServiceConfigError(errors);
@@ -189,6 +228,10 @@ export function validateGateServiceConfig(input) {
     evidenceLog,
     actionStore,
     authenticateRequest: input.authenticateRequest,
+    authorizeAction: input.authorizeAction,
+    authorizeEvidence: input.authorizeEvidence,
+    tenantId,
+    gateId,
     readiness: input.readiness,
     trustedKeys: Object.freeze([...trustedKeys]),
     keyRegistry,
@@ -200,20 +243,32 @@ export function validateGateServiceConfig(input) {
     maxBodyBytes,
     maxReceiptBytes,
     connectorTimeoutMs,
+    readinessTimeoutMs,
     now,
     idFactory,
     logger: input.logger ?? null,
+    siemForwarder: input.siemForwarder ?? null,
     allowInlineKey: false,
   });
 }
 
-export async function loadGateServiceConfig(file = process.env.EMILIA_GATE_CONFIG) {
-  if (typeof file !== 'string' || file.length === 0) {
-    throw new GateServiceConfigError(['EMILIA_GATE_CONFIG_path_required']);
+export async function loadGateServiceConfig(
+  file = process.env.EMILIA_GATE_CONFIG,
+  { environment = process.env, productionFactory = null } = {},
+) {
+  let candidate;
+  if (file === undefined || file === null || file === '') {
+    const factory = productionFactory
+      ?? (await import('./production-config.js')).createProductionGateConfig;
+    candidate = await factory({ environment });
+  } else {
+    if (typeof file !== 'string') {
+      throw new GateServiceConfigError(['EMILIA_GATE_CONFIG_path_invalid']);
+    }
+    const moduleUrl = pathToFileURL(path.resolve(file)).href;
+    const loaded = await import(moduleUrl);
+    const exported = loaded.default;
+    candidate = typeof exported === 'function' ? await exported() : exported;
   }
-  const moduleUrl = pathToFileURL(path.resolve(file)).href;
-  const loaded = await import(moduleUrl);
-  const exported = loaded.default;
-  const candidate = typeof exported === 'function' ? await exported() : exported;
   return validateGateServiceConfig(candidate);
 }

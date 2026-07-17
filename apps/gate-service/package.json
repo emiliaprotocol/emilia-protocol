@@ -9,8 +9,10 @@
   },
   "exports": {
     ".": "./src/runtime.js",
+    "./auth": "./src/auth.js",
     "./config": "./src/config.js",
     "./github-client": "./src/github-client.js",
+    "./production-config": "./src/production-config.js",
     "./routes": "./src/routes.js",
     "./server": "./src/server.js"
   },

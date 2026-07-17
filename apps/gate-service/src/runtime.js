@@ -5,6 +5,7 @@ import {
   hashCanonical,
 } from '../../../packages/gate/index.js';
 import { parseReceiptCarrier } from '../../../packages/require-receipt/index.js';
+import { normalizePrincipal } from './auth.js';
 import { validateGateServiceConfig } from './config.js';
 
 export const GITHUB_REPOSITORY_DELETE_ACTION = 'github.repo.delete';
@@ -36,10 +37,17 @@ export const GITHUB_REPOSITORY_DELETE_MANIFEST = Object.freeze({
   })]),
 });
 
+export const INTERRUPTED_ACTION_STATUSES = Object.freeze(['observing', 'authorizing', 'executing']);
+export const EVIDENCE_EXPORT_VERSION = 'EP-GATE-EVIDENCE-EXPORT-v1';
+
 const BODY_KEYS = Object.freeze(['action', 'owner', 'repo']);
+const RESUME_BODY_KEYS = Object.freeze(['action', 'challenge_binding']);
 const ACTION_ID = /^[A-Za-z0-9_-]{16,128}$/;
+const RECORD_ID = /^[\x21-\x7e]{16,256}$/;
 const REPOSITORY_SEGMENT = /^[A-Za-z0-9_.-]+$/;
+const HEX_256 = /^[0-9a-f]{64}$/;
 const VISIBILITIES = new Set(['public', 'private', 'internal']);
+const MAX_EVIDENCE_PAGE = 100;
 
 function response(status, body, headers = {}) {
   return { status, body, headers };
@@ -66,24 +74,53 @@ function isPlainObject(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
-function validateDeleteRequest(body) {
-  if (!isPlainObject(body)) return { ok: false, code: 'request_object_required' };
-  const keys = Object.keys(body).sort();
-  if (keys.length !== BODY_KEYS.length || keys.some((key, index) => key !== [...BODY_KEYS].sort()[index])) {
-    return { ok: false, code: 'request_fields_invalid' };
-  }
-  if (body.action !== GITHUB_REPOSITORY_DELETE_ACTION) {
-    return { ok: false, code: 'unsupported_action' };
-  }
+function jsonSnapshot(value) {
+  const encoded = JSON.stringify(value);
+  if (typeof encoded !== 'string') throw new Error('evidence_entry_not_json');
+  const parsed = JSON.parse(encoded);
+  if (!isPlainObject(parsed)) throw new Error('evidence_entry_not_object');
+  return parsed;
+}
+
+function exactKeys(value, expected) {
+  if (!isPlainObject(value)) return false;
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  return actual.length === wanted.length && actual.every((key, index) => key === wanted[index]);
+}
+
+function validateLocator(locator) {
+  if (!isPlainObject(locator)) return { ok: false, code: 'target_invalid' };
   for (const field of ['owner', 'repo']) {
-    const value = body[field];
+    const value = locator[field];
     if (typeof value !== 'string' || value.length === 0 || value.length > 100
         || value === '.' || value === '..'
         || value !== value.trim() || !REPOSITORY_SEGMENT.test(value)) {
       return { ok: false, code: `${field}_invalid` };
     }
   }
-  return { ok: true, locator: { owner: body.owner, repo: body.repo } };
+  return { ok: true, locator: { owner: locator.owner, repo: locator.repo } };
+}
+
+function validateDeleteRequest(body) {
+  if (!isPlainObject(body)) return { ok: false, code: 'request_object_required' };
+  if (!exactKeys(body, BODY_KEYS)) return { ok: false, code: 'request_fields_invalid' };
+  if (body.action !== GITHUB_REPOSITORY_DELETE_ACTION) {
+    return { ok: false, code: 'unsupported_action' };
+  }
+  return validateLocator(body);
+}
+
+function validateResumeRequest(body) {
+  if (!isPlainObject(body)) return { ok: false, code: 'request_object_required' };
+  if (!exactKeys(body, RESUME_BODY_KEYS)) return { ok: false, code: 'request_fields_invalid' };
+  if (body.action !== GITHUB_REPOSITORY_DELETE_ACTION) {
+    return { ok: false, code: 'unsupported_action' };
+  }
+  if (typeof body.challenge_binding !== 'string' || !HEX_256.test(body.challenge_binding)) {
+    return { ok: false, code: 'challenge_binding_invalid' };
+  }
+  return { ok: true, challengeBinding: body.challenge_binding };
 }
 
 function boundedObservedText(value, field, max = 256) {
@@ -138,10 +175,18 @@ function timeoutLike(error) {
   return error?.timeout === true || error?.name === 'TimeoutError' || error?.name === 'AbortError';
 }
 
-function publicActionRecord(record, expectedId) {
+function challengeBinding(id, observedAction) {
+  return hashCanonical({ action_id: id, observed_action: observedAction });
+}
+
+function publicActionRecord(record, expectedId, principalId, { tenantId, gateId }) {
   if (!isPlainObject(record) || record.id !== expectedId
       || record.action !== GITHUB_REPOSITORY_DELETE_ACTION
+      || record.principal_id !== principalId
+      || record.tenant_id !== tenantId || record.gate_id !== gateId
       || typeof record.status !== 'string') return null;
+  const locator = validateLocator(record.target);
+  if (!locator.ok) return null;
   const projected = {};
   for (const field of [
     'id',
@@ -156,11 +201,7 @@ function publicActionRecord(record, expectedId) {
   ]) {
     if (typeof record[field] === 'string') projected[field] = record[field];
   }
-  if (isPlainObject(record.target)
-      && typeof record.target.owner === 'string'
-      && typeof record.target.repo === 'string') {
-    projected.target = { owner: record.target.owner, repo: record.target.repo };
-  }
+  projected.target = locator.locator;
   if (isPlainObject(record.observed_action)) {
     const observed = {};
     for (const field of [
@@ -171,19 +212,24 @@ function publicActionRecord(record, expectedId) {
       'default_branch',
       'visibility',
     ]) {
-      if (typeof record.observed_action[field] === 'string') {
-        observed[field] = record.observed_action[field];
-      }
+      if (typeof record.observed_action[field] === 'string') observed[field] = record.observed_action[field];
     }
     projected.observed_action = observed;
   }
   if (isPlainObject(record.error) && typeof record.error.code === 'string') {
     projected.error = { code: record.error.code };
   }
+  if (typeof record.challenge_binding_hash === 'string' && HEX_256.test(record.challenge_binding_hash)) {
+    projected.resume = {
+      method: 'POST',
+      path: `/v1/actions/${expectedId}/execute`,
+      challenge_binding: record.challenge_binding_hash,
+    };
+  }
   return projected;
 }
 
-function challengeBody(gateBody, { id, observedAction, carrierInvalid }) {
+function challengeBody(gateBody, { id, observedAction, carrierInvalid, binding }) {
   const required = isPlainObject(gateBody?.required) ? gateBody.required : {};
   return {
     ...(isPlainObject(gateBody) ? gateBody : {}),
@@ -195,7 +241,67 @@ function challengeBody(gateBody, { id, observedAction, carrierInvalid }) {
       action_hash: hashCanonical(observedAction),
       observed_action: observedAction,
     },
+    resume: {
+      method: 'POST',
+      path: `/v1/actions/${id}/execute`,
+      challenge_binding: binding,
+    },
   };
+}
+
+function redactedEvidenceRecord(record, actionId, actionRecord) {
+  if (!isPlainObject(record) || !Number.isSafeInteger(record.seq) || record.seq < 0
+      || typeof record.record_id !== 'string' || !RECORD_ID.test(record.record_id)
+      || typeof record.hash !== 'string' || !HEX_256.test(record.hash)
+      || (record.prev_hash !== 'genesis' && !HEX_256.test(record.prev_hash))) return null;
+  const decision = record.kind === 'decision' && record.selector?.action_id === actionId;
+  const execution = record.kind === 'execution'
+    && (record.hash === actionRecord.execution_evidence_hash
+      || record.authorizes_decision === actionRecord.authorization_evidence_hash);
+  if (!decision && !execution) return null;
+  const projected = {
+    seq: record.seq,
+    record_id: record.record_id,
+    prev_hash: record.prev_hash,
+    hash: record.hash,
+    kind: record.kind,
+  };
+  for (const field of [
+    'at',
+    'action',
+    'status',
+    'reason',
+    'required_tier',
+    'outcome',
+    'authorizes_decision',
+    'observed_action_hash',
+  ]) {
+    if (typeof record[field] === 'string') projected[field] = record[field];
+  }
+  if (typeof record.allow === 'boolean') projected.allow = record.allow;
+  projected.action_id = actionId;
+  return projected;
+}
+
+function verificationProjection(report) {
+  if (!isPlainObject(report) || typeof report.ok !== 'boolean') {
+    return { ok: false, reason: 'verification_report_invalid' };
+  }
+  if (report.ok) return { ok: true };
+  const projected = { ok: false, reason: 'evidence_verification_failed' };
+  if (typeof report.reason === 'string' && /^[A-Za-z0-9_:-]{1,128}$/.test(report.reason)) {
+    projected.reason = report.reason;
+  }
+  if (Number.isSafeInteger(report.at) && report.at >= 0) projected.at = report.at;
+  return projected;
+}
+
+function unavailableBody() {
+  return response(503, {
+    status: 'unavailable',
+    service: 'emilia-gate-service',
+    error: { code: 'dependency_not_ready' },
+  });
 }
 
 export function createGateRuntime(inputConfig) {
@@ -208,6 +314,8 @@ export function createGateRuntime(inputConfig) {
     create: config.actionStore.create.bind(config.actionStore),
     update: config.actionStore.update.bind(config.actionStore),
     get: config.actionStore.get.bind(config.actionStore),
+    transition: config.actionStore.transition.bind(config.actionStore),
+    reconcileInterrupted: config.actionStore.reconcileInterrupted.bind(config.actionStore),
   });
   const consumptionStore = Object.freeze({
     durable: true,
@@ -218,14 +326,54 @@ export function createGateRuntime(inputConfig) {
     consume: config.consumptionStore.consume.bind(config.consumptionStore),
     has: config.consumptionStore.has.bind(config.consumptionStore),
   });
+  const evidenceAdapter = Object.freeze({
+    record: config.evidenceLog.record.bind(config.evidenceLog),
+    head: config.evidenceLog.head.bind(config.evidenceLog),
+    getRecord: config.evidenceLog.getRecord.bind(config.evidenceLog),
+    history: config.evidenceLog.history.bind(config.evidenceLog),
+    verify: config.evidenceLog.verify.bind(config.evidenceLog),
+  });
+  const counters = {
+    actions_created_total: 0,
+    action_authorization_denied_total: 0,
+    challenges_total: 0,
+    executions_succeeded_total: 0,
+    executions_indeterminate_total: 0,
+    readiness_checks_total: 0,
+    readiness_failures_total: 0,
+    startup_reconciled_total: 0,
+    evidence_reads_total: 0,
+    telemetry_forwarded_total: 0,
+    telemetry_dropped_total: 0,
+  };
+
+  function forwardTelemetry(record) {
+    if (!config.siemForwarder) return;
+    queueMicrotask(() => {
+      Promise.resolve()
+        .then(() => config.siemForwarder.forward(structuredClone(record)))
+        .then((result) => {
+          if (result?.delivered === false) counters.telemetry_dropped_total += 1;
+          else counters.telemetry_forwarded_total += 1;
+        })
+        .catch(() => { counters.telemetry_dropped_total += 1; });
+    });
+  }
+
   const evidenceLog = Object.freeze({
     durable: true,
     persisted: true,
     strict: true,
     forkAware: true,
     atomicAppend: true,
-    record: config.evidenceLog.record.bind(config.evidenceLog),
-    verify: config.evidenceLog.verify.bind(config.evidenceLog),
+    async record(entry) {
+      // JSON round-trip removes object aliases that are semantically irrelevant
+      // but forbidden by the canonical evidence backend.
+      const record = await evidenceAdapter.record(jsonSnapshot(entry));
+      forwardTelemetry(record);
+      return record;
+    },
+    verify: evidenceAdapter.verify,
   });
   const gate = createTrustedActionFirewall({
     manifest: GITHUB_REPOSITORY_DELETE_MANIFEST,
@@ -244,6 +392,13 @@ export function createGateRuntime(inputConfig) {
     now: config.now,
   });
 
+  let initialized = false;
+  let accepting = false;
+  let closing = false;
+  let initializePromise = null;
+  let closePromise = null;
+  let readinessInFlight = null;
+
   function auditEvent(event, id, status) {
     try {
       config.logger?.info?.({
@@ -257,7 +412,80 @@ export function createGateRuntime(inputConfig) {
     }
   }
 
-  async function createAction(locator) {
+  async function initialize() {
+    if (initializePromise) return initializePromise;
+    initializePromise = (async () => {
+      const patch = {
+        status: 'indeterminate',
+        error: { code: 'service_restart_outcome_unknown' },
+        updated_at: currentTimestamp(config.now),
+      };
+      const updated = await actionStore.reconcileInterrupted({
+        action: GITHUB_REPOSITORY_DELETE_ACTION,
+        statuses: [...INTERRUPTED_ACTION_STATUSES],
+        patch: structuredClone(patch),
+      });
+      if (!Number.isSafeInteger(updated) || updated < 0) {
+        throw new Error('action_store_reconciliation_contract_invalid');
+      }
+      counters.startup_reconciled_total += updated;
+      initialized = true;
+      if (!closing) accepting = true;
+      return { reconciled: updated };
+    })();
+    return initializePromise;
+  }
+
+  function markUnready() {
+    accepting = false;
+  }
+
+  async function close() {
+    if (closePromise) return closePromise;
+    closing = true;
+    markUnready();
+    closePromise = (async () => {
+      const adapters = new Set([
+        config.connector,
+        config.consumptionStore,
+        config.evidenceLog,
+        config.actionStore,
+        config.siemForwarder,
+      ]);
+      const hooks = [...adapters]
+        .filter((adapter) => typeof adapter?.close === 'function')
+        .map((adapter) => Promise.resolve().then(() => adapter.close()));
+      const settled = await Promise.allSettled(hooks);
+      return {
+        closed: settled.filter((result) => result.status === 'fulfilled').length,
+        failed: settled.filter((result) => result.status === 'rejected').length,
+      };
+    })();
+    return closePromise;
+  }
+
+  async function authenticate(request) {
+    try {
+      return normalizePrincipal(await config.authenticateRequest(request));
+    } catch {
+      return null;
+    }
+  }
+
+  async function actionAuthorized(principal, locator) {
+    try {
+      return (await config.authorizeAction(
+        principal,
+        GITHUB_REPOSITORY_DELETE_ACTION,
+        locator.owner,
+        locator.repo,
+      )) === true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function createAction(principal, locator) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const id = config.idFactory();
       if (typeof id !== 'string' || !ACTION_ID.test(id)) throw new Error('action_id_factory_invalid');
@@ -266,51 +494,50 @@ export function createGateRuntime(inputConfig) {
         id,
         action: GITHUB_REPOSITORY_DELETE_ACTION,
         status: 'observing',
+        principal_id: principal.id,
+        tenant_id: config.tenantId,
+        gate_id: config.gateId,
         target: { ...locator },
         created_at: at,
         updated_at: at,
       };
       const created = await actionStore.create(structuredClone(record));
-      if (created === true) return record;
+      if (created === true) {
+        counters.actions_created_total += 1;
+        return record;
+      }
       if (created !== false) throw new Error('action_store_create_contract_invalid');
     }
     throw new Error('action_id_collision_limit');
   }
 
-  async function updateAction(id, patch) {
-    const updated = await actionStore.update(id, structuredClone({
+  async function updateAction(id, principalId, patch) {
+    const updated = await actionStore.update(id, principalId, structuredClone({
       ...patch,
       updated_at: currentTimestamp(config.now),
     }));
     if (updated !== true) throw new Error('action_store_update_failed');
   }
 
-  async function executeDelete({ body, receiptCarrier = null } = {}) {
-    const request = validateDeleteRequest(body);
-    if (!request.ok) return closedError(400, request.code);
-
-    let actionRecord;
-    try {
-      actionRecord = await createAction(request.locator);
-    } catch {
-      return closedError(503, 'action_store_unavailable');
-    }
+  async function continueDelete({ actionRecord, principal, receiptCarrier = null }) {
     const { id } = actionRecord;
-
+    const locator = validateLocator(actionRecord.target);
+    if (!locator.ok) return closedError(409, 'action_not_resumable', id);
     let observedAction;
     try {
       const repository = await connector.getRepository({
-        ...request.locator,
+        ...locator.locator,
         signal: timeoutSignal(config.connectorTimeoutMs),
       });
-      observedAction = observedGithubRepository(repository, request.locator);
-      await updateAction(id, {
+      observedAction = observedGithubRepository(repository, locator.locator);
+      await updateAction(id, principal.id, {
         status: 'authorizing',
         observed_action: observedAction,
+        challenge_binding_hash: null,
       });
     } catch (error) {
       const code = timeoutLike(error) ? 'github_observation_timeout' : 'github_observation_failed';
-      try { await updateAction(id, { status: 'failed', error: { code } }); } catch { /* closed response below */ }
+      try { await updateAction(id, principal.id, { status: 'failed', error: { code } }); } catch { /* closed below */ }
       auditEvent('observation_failed', id, 'failed');
       return closedError(timeoutLike(error) ? 504 : 502, code, id);
     }
@@ -327,6 +554,7 @@ export function createGateRuntime(inputConfig) {
         receipt,
         observedAction,
       }, async (authorization) => {
+        await updateAction(id, principal.id, { status: 'executing' });
         deleteAttempted = true;
         const deleted = await connector.deleteRepository({
           owner: observedAction.owner,
@@ -349,7 +577,8 @@ export function createGateRuntime(inputConfig) {
       const code = indeterminate
         ? (timeoutLike(error) ? 'github_delete_timeout_outcome_unknown' : 'github_delete_outcome_unknown')
         : 'gate_unavailable';
-      try { await updateAction(id, { status, error: { code } }); } catch { /* evidence remains authoritative */ }
+      try { await updateAction(id, principal.id, { status, error: { code } }); } catch { /* evidence remains authoritative */ }
+      if (indeterminate) counters.executions_indeterminate_total += 1;
       auditEvent(indeterminate ? 'delete_indeterminate' : 'gate_failed', id, status);
       const httpStatus = indeterminate ? (timeoutLike(error) ? 504 : 502) : 503;
       return closedError(httpStatus, code, id, status);
@@ -357,28 +586,40 @@ export function createGateRuntime(inputConfig) {
 
     if (!result.ok) {
       const reason = carrierInvalid ? 'receipt_carrier_invalid' : result.authorization.reason;
-      try { await updateAction(id, { status: 'challenged', reason }); } catch {
+      const binding = challengeBinding(id, observedAction);
+      try {
+        await updateAction(id, principal.id, {
+          status: 'challenged',
+          reason,
+          challenge_binding_hash: binding,
+          authorization_evidence_hash: result.authorization.evidence?.hash ?? null,
+        });
+      } catch {
         return closedError(503, 'action_store_unavailable', id);
       }
+      counters.challenges_total += 1;
       auditEvent('receipt_challenged', id, 'challenged');
       return response(428, challengeBody(result.body, {
         id,
         observedAction,
         carrierInvalid,
+        binding,
       }), result.authorization.header ? { 'Receipt-Required': result.authorization.header } : {});
     }
 
     try {
-      await updateAction(id, {
+      await updateAction(id, principal.id, {
         status: 'succeeded',
         outcome: 'deleted',
         authorization_evidence_hash: result.authorization.evidence?.hash ?? null,
         execution_evidence_hash: result.execution?.hash ?? null,
       });
     } catch {
+      counters.executions_indeterminate_total += 1;
       auditEvent('action_record_failed_after_delete', id, 'indeterminate');
       return closedError(503, 'action_record_failed_after_delete', id, 'indeterminate');
     }
+    counters.executions_succeeded_total += 1;
     auditEvent('delete_succeeded', id, 'succeeded');
     return response(200, {
       id,
@@ -393,56 +634,299 @@ export function createGateRuntime(inputConfig) {
     });
   }
 
-  async function getAction(id) {
+  async function executeDelete({ principal: candidate, body, receiptCarrier = null } = {}) {
+    const principal = normalizePrincipal(candidate);
+    if (!principal) return closedError(401, 'authentication_required');
+    const request = validateDeleteRequest(body);
+    if (!request.ok) return closedError(400, request.code);
+    if (!(await actionAuthorized(principal, request.locator))) {
+      counters.action_authorization_denied_total += 1;
+      return closedError(403, 'action_not_authorized');
+    }
+    let actionRecord;
+    try {
+      actionRecord = await createAction(principal, request.locator);
+    } catch {
+      return closedError(503, 'action_store_unavailable');
+    }
+    return continueDelete({ actionRecord, principal, receiptCarrier });
+  }
+
+  async function ownedAction(id, principal) {
+    const record = await actionStore.get(id, principal.id);
+    const projected = publicActionRecord(record, id, principal.id, config);
+    return projected ? { record, projected } : null;
+  }
+
+  async function resumeDelete({ id, principal: candidate, body, receiptCarrier = null } = {}) {
+    const principal = normalizePrincipal(candidate);
+    if (!principal) return closedError(401, 'authentication_required');
+    if (typeof id !== 'string' || !ACTION_ID.test(id)) return closedError(400, 'action_id_invalid');
+    const request = validateResumeRequest(body);
+    if (!request.ok) return closedError(400, request.code, id);
+    let owned;
+    try {
+      owned = await ownedAction(id, principal);
+    } catch {
+      return closedError(503, 'action_store_unavailable');
+    }
+    if (!owned) return closedError(404, 'action_not_found');
+    const locator = validateLocator(owned.record.target);
+    if (!locator.ok) return closedError(409, 'action_not_resumable', id);
+    if (!(await actionAuthorized(principal, locator.locator))) {
+      counters.action_authorization_denied_total += 1;
+      return closedError(403, 'action_not_authorized');
+    }
+    if (owned.record.status !== 'challenged'
+        || owned.record.challenge_binding_hash !== request.challengeBinding) {
+      return closedError(409, 'action_not_resumable', id);
+    }
+    let claimed;
+    try {
+      claimed = await actionStore.transition(id, principal.id, ['challenged'], {
+        status: 'observing',
+        updated_at: currentTimestamp(config.now),
+      });
+    } catch {
+      return closedError(503, 'action_store_unavailable', id);
+    }
+    if (claimed !== true) return closedError(409, 'action_not_resumable', id);
+    return continueDelete({
+      actionRecord: { ...owned.record, status: 'observing' },
+      principal,
+      receiptCarrier,
+    });
+  }
+
+  async function getAction(id, candidate) {
+    const principal = normalizePrincipal(candidate);
+    if (!principal) return closedError(401, 'authentication_required');
     if (typeof id !== 'string' || !ACTION_ID.test(id)) return closedError(400, 'action_id_invalid');
     try {
-      const record = publicActionRecord(await actionStore.get(id), id);
-      if (!record) return closedError(404, 'action_not_found');
-      return response(200, record);
+      const owned = await ownedAction(id, principal);
+      if (!owned) return closedError(404, 'action_not_found');
+      return response(200, owned.projected);
     } catch {
       return closedError(503, 'action_store_unavailable');
     }
   }
 
-  async function authorize(request) {
+  async function authorizedEvidenceScope(candidate, operation, scope, { requireAction = true } = {}) {
+    const principal = normalizePrincipal(candidate);
+    if (!principal) return { error: closedError(401, 'authentication_required') };
+    if (!isPlainObject(scope) || scope.tenantId !== config.tenantId || scope.gateId !== config.gateId
+        || typeof scope.actionId !== 'string' || scope.actionId.length === 0 || scope.actionId.length > 128) {
+      return { error: closedError(403, 'evidence_not_authorized') };
+    }
     try {
-      return (await config.authenticateRequest(request)) === true;
+      const allowed = await config.authorizeEvidence(
+        principal,
+        operation,
+        scope.tenantId,
+        scope.gateId,
+        scope.actionId,
+      );
+      if (allowed !== true) return { error: closedError(403, 'evidence_not_authorized') };
     } catch {
-      return false;
+      return { error: closedError(403, 'evidence_not_authorized') };
+    }
+    if (!requireAction) return { principal };
+    if (!ACTION_ID.test(scope.actionId)) return { error: closedError(400, 'action_id_invalid') };
+    try {
+      const owned = await ownedAction(scope.actionId, principal);
+      if (!owned) return { error: closedError(404, 'action_not_found') };
+      return { principal, actionRecord: owned.record };
+    } catch {
+      return { error: closedError(503, 'action_store_unavailable') };
     }
   }
 
-  async function health() {
+  async function readEvidencePage(scope, actionRecord, { cursor = 0, limit = 50 } = {}) {
+    if (!Number.isSafeInteger(cursor) || cursor < 0
+        || !Number.isSafeInteger(limit) || limit < 1 || limit > MAX_EVIDENCE_PAGE) {
+      return closedError(400, 'pagination_invalid');
+    }
     try {
-      const ready = await config.readiness();
-      if (ready !== true && ready?.ok !== true) throw new Error('dependency_not_ready');
+      const page = await evidenceAdapter.history({ ...scope, cursor, limit });
+      if (!isPlainObject(page) || !Array.isArray(page.records) || page.records.length > limit
+          || (page.nextCursor !== null
+            && (!Number.isSafeInteger(page.nextCursor) || page.nextCursor <= cursor))) {
+        throw new Error('evidence_history_contract_invalid');
+      }
+      const records = page.records.map((record) => redactedEvidenceRecord(
+        record,
+        scope.actionId,
+        actionRecord,
+      ));
+      if (records.some((record) => record === null)) throw new Error('evidence_scope_violation');
+      counters.evidence_reads_total += 1;
+      return response(200, { records, next_cursor: page.nextCursor });
+    } catch {
+      return closedError(503, 'evidence_unavailable');
+    }
+  }
+
+  async function evidenceHistory(candidate, scope, pagination) {
+    const authorized = await authorizedEvidenceScope(candidate, 'history', scope);
+    if (authorized.error) return authorized.error;
+    return readEvidencePage(scope, authorized.actionRecord, pagination);
+  }
+
+  async function getEvidenceRecord(recordId, candidate, scope) {
+    if (typeof recordId !== 'string' || !RECORD_ID.test(recordId)) {
+      return closedError(400, 'evidence_record_id_invalid');
+    }
+    const authorized = await authorizedEvidenceScope(candidate, 'record', scope);
+    if (authorized.error) return authorized.error;
+    try {
+      const raw = await evidenceAdapter.getRecord({ ...scope, recordId });
+      if (raw === null) return closedError(404, 'evidence_record_not_found');
+      const record = redactedEvidenceRecord(raw, scope.actionId, authorized.actionRecord);
+      if (!record) return closedError(404, 'evidence_record_not_found');
+      counters.evidence_reads_total += 1;
+      return response(200, { record });
+    } catch {
+      return closedError(503, 'evidence_unavailable');
+    }
+  }
+
+  async function evidenceHead(candidate, scope) {
+    const authorized = await authorizedEvidenceScope(candidate, 'head', scope);
+    if (authorized.error) return authorized.error;
+    try {
+      const head = await evidenceAdapter.head(scope);
+      if (head !== null && (!isPlainObject(head) || !Number.isSafeInteger(head.seq)
+          || head.seq < 0 || typeof head.hash !== 'string' || !HEX_256.test(head.hash))) {
+        throw new Error('evidence_head_contract_invalid');
+      }
+      counters.evidence_reads_total += 1;
+      return response(200, { head });
+    } catch {
+      return closedError(503, 'evidence_unavailable');
+    }
+  }
+
+  async function verifyEvidence(candidate, scope) {
+    const authorized = await authorizedEvidenceScope(candidate, 'verify', scope);
+    if (authorized.error) return authorized.error;
+    try {
+      const verification = verificationProjection(await evidenceAdapter.verify(scope));
+      counters.evidence_reads_total += 1;
+      return response(verification.ok ? 200 : 409, { verification });
+    } catch {
+      return closedError(503, 'evidence_unavailable');
+    }
+  }
+
+  async function exportEvidence(candidate, scope, pagination) {
+    const authorized = await authorizedEvidenceScope(candidate, 'export', scope);
+    if (authorized.error) return authorized.error;
+    const history = await readEvidencePage(scope, authorized.actionRecord, pagination);
+    if (history.status !== 200) return history;
+    let verification;
+    try {
+      verification = verificationProjection(await evidenceAdapter.verify(scope));
+    } catch {
+      return closedError(503, 'evidence_unavailable');
+    }
+    return response(verification.ok ? 200 : 409, {
+      version: EVIDENCE_EXPORT_VERSION,
+      scope: {
+        tenant_id: scope.tenantId,
+        gate_id: scope.gateId,
+        action_id: scope.actionId,
+      },
+      verification,
+      ...history.body,
+    });
+  }
+
+  async function metrics(candidate, scope) {
+    const authorized = await authorizedEvidenceScope(candidate, 'metrics', scope, { requireAction: false });
+    if (authorized.error) return authorized.error;
+    return response(200, {
+      status: 'ok',
+      service: 'emilia-gate-service',
+      lifecycle: {
+        initialized,
+        accepting,
+      },
+      counters: { ...counters },
+    });
+  }
+
+  function live() {
+    return response(200, { status: 'ok', service: 'emilia-gate-service' });
+  }
+
+  async function dependencyReadiness() {
+    counters.readiness_checks_total += 1;
+    const controller = new AbortController();
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new Error('readiness_timeout'));
+      }, config.readinessTimeoutMs);
+    });
+    try {
+      const value = await Promise.race([
+        Promise.resolve().then(() => config.readiness({ signal: controller.signal })),
+        timeout,
+      ]);
+      if (value !== true && value?.ok !== true) throw new Error('dependency_not_ready');
       return response(200, {
-        status: 'ok',
+        status: 'ready',
         service: 'emilia-gate-service',
-        action: GITHUB_REPOSITORY_DELETE_ACTION,
         dependencies: 'ready',
       });
     } catch {
-      return response(503, {
-        status: 'unavailable',
-        service: 'emilia-gate-service',
-        error: { code: 'dependency_not_ready' },
-      });
+      counters.readiness_failures_total += 1;
+      return unavailableBody();
+    } finally {
+      clearTimeout(timer);
     }
   }
 
+  async function ready() {
+    if (!initialized || !accepting) return unavailableBody();
+    if (!readinessInFlight) {
+      const pending = dependencyReadiness();
+      const shared = pending.finally(() => {
+        if (readinessInFlight === shared) readinessInFlight = null;
+      });
+      readinessInFlight = shared;
+    }
+    return readinessInFlight;
+  }
+
   const maxReceiptCarrierChars = Math.ceil(config.maxReceiptBytes * 4 / 3) + 4;
+  const requestTimeoutMs = Math.max(30_000, (config.connectorTimeoutMs * 2) + 5_000);
   return Object.freeze({
+    initialize,
+    markUnready,
+    close,
     executeDelete,
+    resumeDelete,
     getAction,
-    authorize,
-    health,
+    authenticate,
+    evidenceHead,
+    getEvidenceRecord,
+    evidenceHistory,
+    verifyEvidence,
+    exportEvidence,
+    metrics,
+    live,
+    ready,
     limits: Object.freeze({
       maxBodyBytes: config.maxBodyBytes,
       maxReceiptBytes: config.maxReceiptBytes,
       maxReceiptCarrierChars,
       maxHeaderBytes: maxReceiptCarrierChars + 8 * 1024,
       connectorTimeoutMs: config.connectorTimeoutMs,
+      readinessTimeoutMs: config.readinessTimeoutMs,
+      requestTimeoutMs,
+      maxEvidencePage: MAX_EVIDENCE_PAGE,
     }),
   });
 }

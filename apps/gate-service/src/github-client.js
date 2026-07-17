@@ -31,12 +31,42 @@ function repositoryUrl(baseUrl, owner, repo) {
 async function readBoundedJson(response, maxBytes) {
   const announced = Number(response?.headers?.get?.('content-length'));
   if (Number.isFinite(announced) && announced > maxBytes) {
+    cancelBody(response?.body);
     throw new GithubConnectorError('github_response_too_large');
   }
-  const text = await response.text();
-  if (Buffer.byteLength(text, 'utf8') > maxBytes || !strictJsonGate(text).ok) {
+  if (!response?.body || typeof response.body.getReader !== 'function') {
     throw new GithubConnectorError('github_response_invalid');
   }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (!chunk || chunk.done === true) break;
+      if (!(chunk.value instanceof Uint8Array)) {
+        throw new GithubConnectorError('github_response_invalid');
+      }
+      total += chunk.value.byteLength;
+      if (total > maxBytes) {
+        throw new GithubConnectorError('github_response_too_large');
+      }
+      chunks.push(Buffer.from(chunk.value.buffer, chunk.value.byteOffset, chunk.value.byteLength));
+    }
+  } catch (error) {
+    cancelBody(null, reader);
+    throw error;
+  } finally {
+    try { reader.releaseLock?.(); } catch { /* no-op */ }
+  }
+
+  let text;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks, total));
+  } catch {
+    throw new GithubConnectorError('github_response_invalid');
+  }
+  if (!strictJsonGate(text).ok) throw new GithubConnectorError('github_response_invalid');
   try {
     const parsed = JSON.parse(text);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -45,6 +75,15 @@ async function readBoundedJson(response, maxBytes) {
     return parsed;
   } catch {
     throw new GithubConnectorError('github_response_invalid');
+  }
+}
+
+function cancelBody(body, reader = null) {
+  try {
+    const result = reader?.cancel?.() ?? body?.cancel?.();
+    Promise.resolve(result).catch(() => {});
+  } catch {
+    // Cancellation is best effort; the connector still returns the closed error.
   }
 }
 
@@ -111,13 +150,15 @@ export function createGithubRestConnector({
           redirect: 'error',
           signal,
         });
+        if (response?.status !== 200) {
+          cancelBody(response?.body);
+          throw new GithubConnectorError('github_get_rejected', { status: response?.status ?? null });
+        }
+        return await readBoundedJson(response, maxResponseBytes);
       } catch (error) {
+        if (error instanceof GithubConnectorError) throw error;
         throw new GithubConnectorError('github_get_failed', { timeout: isAbort(error) });
       }
-      if (response?.status !== 200) {
-        throw new GithubConnectorError('github_get_rejected', { status: response?.status ?? null });
-      }
-      return readBoundedJson(response, maxResponseBytes);
     },
 
     async deleteRepository({ owner, repo, idempotencyKey, actionId, signal } = {}) {
@@ -144,11 +185,13 @@ export function createGithubRestConnector({
         });
       }
       if (response?.status !== 204) {
+        cancelBody(response?.body);
         throw new GithubConnectorError('github_delete_outcome_unknown', {
           status: response?.status ?? null,
           ambiguous: true,
         });
       }
+      cancelBody(response?.body);
       return { status: 204 };
     },
   });

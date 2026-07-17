@@ -16,7 +16,11 @@ function validConfig() {
     consumptionStore: state.consumptionStore,
     evidenceLog: state.evidenceLog,
     actionStore: state.actionStore,
-    authenticateRequest: async () => true,
+    authenticateRequest: async () => ({ id: 'operator:test' }),
+    authorizeAction: async () => true,
+    authorizeEvidence: async () => true,
+    tenantId: 'tenant:test',
+    gateId: 'gate:test',
     readiness: async () => ({ ok: true }),
     trustedKeys: [harness.publicKey],
     approverKeys: harness.approverKeys,
@@ -50,11 +54,54 @@ test('configuration requires operator-supplied durable state and pinned trust', 
     (error) => error.reasons.includes('request_authenticator_required'),
   );
 
+  const unauthorized = validConfig();
+  delete unauthorized.authorizeAction;
+  assert.throws(
+    () => validateGateServiceConfig(unauthorized),
+    (error) => error.reasons.includes('action_authorizer_required'),
+  );
+
+  const evidenceUnauthorized = validConfig();
+  delete evidenceUnauthorized.authorizeEvidence;
+  assert.throws(
+    () => validateGateServiceConfig(evidenceUnauthorized),
+    (error) => error.reasons.includes('evidence_authorizer_required'),
+  );
+
+  const unreconciled = validConfig();
+  delete unreconciled.actionStore.reconcileInterrupted;
+  assert.throws(
+    () => validateGateServiceConfig(unreconciled),
+    (error) => error.reasons.includes('durable_action_store_required'),
+  );
+
+  const nonAtomicResume = validConfig();
+  delete nonAtomicResume.actionStore.transition;
+  assert.throws(
+    () => validateGateServiceConfig(nonAtomicResume),
+    (error) => error.reasons.includes('durable_action_store_required'),
+  );
+
+  const writeOnlyEvidence = validConfig();
+  delete writeOnlyEvidence.evidenceLog.history;
+  assert.throws(
+    () => validateGateServiceConfig(writeOnlyEvidence),
+    (error) => error.reasons.includes('durable_readable_evidence_log_required'),
+  );
+
   const unreadable = validConfig();
   delete unreadable.readiness;
   assert.throws(
     () => validateGateServiceConfig(unreadable),
     (error) => error.reasons.includes('readiness_check_required'),
+  );
+});
+
+test('configuration bounds dependency readiness checks', () => {
+  assert.equal(validateGateServiceConfig(validConfig()).readinessTimeoutMs, 3000);
+  assert.throws(
+    () => validateGateServiceConfig({ ...validConfig(), readinessTimeoutMs: 99 }),
+    (error) => error.reasons.includes('readiness_timeout_ms_invalid'),
   );
 });
 
