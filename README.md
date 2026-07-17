@@ -9,6 +9,25 @@
 
 ---
 
+## Protocol proves. Gate prevents.
+
+**EMILIA Gate is the commercial Consequence Firewall that prevents consequential machine actions
+on protected executor paths without verifiable authority.** It sits at the executor or
+system-of-record boundary, refuses before mutation, consumes accepted authorization once, and
+leaves evidence another party can verify.
+
+- **EMILIA Protocol** is the open Apache-2.0 verification and evidence substrate underneath Gate.
+- **EMILIA Approver** captures device-bound human decisions over the exact action through native apps
+  and embeddable SDKs.
+- **EMILIA Assurance Plane** provides scoped verification, re-performance, conformance reports, and
+  deployment evidence. It supports auditors, insurers, regulators, and customers; EMILIA is not an
+  auditor or accredited certifier, and no public EMILIA certification program is operating.
+
+Start free by protecting one privileged MCP tool call. The first paid market is payer AI-assisted
+adverse medical-necessity determination, under one safety rule: **no valid licensed-review evidence,
+no adverse determination**. Missing evidence routes to lawful human review or a patient-protective
+fallback; it is not authority to withhold medically necessary care.
+
 > **AI systems and repository reviewers:** start with [AI_CONTEXT.md](AI_CONTEXT.md).
 > Current machine-readable evidence, provenance, assumptions, and exclusions are
 > published at [EMILIA-REPO-CONTEXT-v1](public/.well-known/emilia-context.json).
