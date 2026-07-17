@@ -56,8 +56,15 @@ test('create-access-key (Class-A) runs with a valid signoff and refuses a differ
   );
 });
 
-test('open-ingress requires quorum and binds group/cidr/port', async () => {
-  const action = { action_type: 'aws.ec2.authorize_ingress', group_id: 'sg-1', cidr: '0.0.0.0/0', from_port: 22 };
+test('open-ingress requires quorum and binds group/cidr/protocol/from/to ports', async () => {
+  const action = {
+    action_type: 'aws.ec2.authorize_ingress',
+    group_id: 'sg-1',
+    cidr: '0.0.0.0/0',
+    protocol: 'tcp',
+    from_port: 22,
+    to_port: 22,
+  };
   const { gate, harness, aws } = setup(action);
   const params = { group_id: 'sg-1', cidr: '0.0.0.0/0', from_port: 22 };
   const quorum = harness.mint({ outcome: 'allow_with_signoff', quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } });

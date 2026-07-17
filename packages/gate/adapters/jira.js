@@ -34,6 +34,7 @@ const OPS = {
   'issue.bulk_delete': {
     selector: { protocol: 'jira', tool: 'bulk_delete_issues' },
     observed: (p) => ({ action_type: 'jira.issue.bulk_delete', project: p.project, jql_hash: hashCanonical(String(p.jql || '').trim()) }),
+    actuator: (p, observed) => ({ ...observed, jql: p.jql }),
     perform: (c, p) => c.bulkDeleteIssues({ project: p.project, jql: p.jql }),
   },
   'project.delete': {

@@ -225,16 +225,16 @@ test('closed verdict set is exactly the five admissibility verdicts', () => {
   );
 });
 
-test('buildReliancePacket fails closed: a non-admissible block can never read as rely', () => {
+test('buildReliancePacket fails closed: a non-admissible block can never read as rely', async () => {
   const decision = { allow: true, reason: 'allow', action: 'x', evidence: { hash: 'h', receipt_id: 'r' } };
-  const packet = buildReliancePacket({
+  const packet = await buildReliancePacket({
     decision,
     admissibility: admissibilityBlock({ profileHash: PINNED_HASH, verdict: 'conflicted' }),
   });
   assert.equal(packet.verdict, 'do_not_rely');
   assert.equal(packet.admissibility.admissible, false);
   // And a bare/malformed block (no verdict) is also non-admissible, not a pass.
-  const bare = buildReliancePacket({ decision, admissibility: { profile_hash: PINNED_HASH } });
+  const bare = await buildReliancePacket({ decision, admissibility: { profile_hash: PINNED_HASH } });
   assert.equal(bare.verdict, 'do_not_rely');
   assert.equal(bare.admissibility.admissible, false);
 });

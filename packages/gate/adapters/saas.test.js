@@ -4,7 +4,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGate, createEg1Harness } from '../index.js';
-import { createVercelManifest, guardVercelMutation, VERCEL_OPS } from './vercel.js';
+import {
+  createVercelManifest, guardVercelMutation, VERCEL_OPS,
+  secretValueDigest, SECRET_VALUE_BINDING_VERSION,
+} from './vercel.js';
 import { createCloudflareManifest, guardCloudflareMutation, CLOUDFLARE_OPS } from './cloudflare.js';
 import { createLinearManifest, guardLinearMutation, LINEAR_OPS } from './linear.js';
 import { createJiraManifest, guardJiraMutation, JIRA_OPS } from './jira.js';
@@ -26,7 +29,14 @@ test('op inventories', () => {
 });
 
 test('vercel: env.set refused without receipt, runs with Class-A, drift refused', async () => {
-  const action = { action_type: 'vercel.env.set', project: 'app', key: 'STRIPE_KEY', target: 'production' };
+  const action = {
+    action_type: 'vercel.env.set',
+    project: 'app',
+    key: 'STRIPE_KEY',
+    target: 'production',
+    secret_value_digest: secretValueDigest('s'),
+    secret_value_version: SECRET_VALUE_BINDING_VERSION,
+  };
   const { harness, gate } = setup(createVercelManifest(), action);
   const calls = [];
   const client = { upsertEnv: async (p) => { calls.push(p); return { ok: true }; } };
@@ -35,7 +45,7 @@ test('vercel: env.set refused without receipt, runs with Class-A, drift refused'
   const ok = await guardVercelMutation(gate, client, { op: 'env.set', params: { project: 'app', key: 'STRIPE_KEY', target: 'production', value: 's' }, receipt: harness.mint({ outcome: A }) });
   assert.equal(ok.result.ok, true);
   await assert.rejects(
-    () => guardVercelMutation(gate, client, { op: 'env.set', params: { project: 'app', key: 'OTHER', target: 'production' }, receipt: harness.mint({ outcome: A }) }),
+    () => guardVercelMutation(gate, client, { op: 'env.set', params: { project: 'app', key: 'OTHER', target: 'production', value: 's' }, receipt: harness.mint({ outcome: A }) }),
     (e) => /binding/.test(e.gate.reason),
   );
 });

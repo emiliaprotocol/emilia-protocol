@@ -384,7 +384,7 @@ test('reliance packet ties allow decision, execution attestation, field binding,
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff', extra: observedAction });
   const authorization = await g.check({ selector, receipt: r, observedAction });
   const execution = await g.recordExecution({ authorization, observedAction, outcome: 'executed' });
-  const packet = g.reliancePacket({ authorization, execution });
+  const packet = await g.reliancePacket({ authorization, execution });
 
   assert.equal(packet.verdict, 'rely');
   assert.equal(packet.summary.decision_hash, authorization.evidence.hash);

@@ -39,6 +39,7 @@ const OPS = {
   'issue.bulk_delete': {
     selector: { protocol: 'linear', tool: 'bulk_delete_issues' },
     observed: (p) => ({ action_type: 'linear.issue.bulk_delete', team: p.team, query_hash: hashCanonical(String(p.query || '').trim()) }),
+    actuator: (p, observed) => ({ ...observed, query: p.query }),
     perform: (c, p) => c.bulkDeleteIssues({ team: p.team, query: p.query }),
   },
   'team.delete': {

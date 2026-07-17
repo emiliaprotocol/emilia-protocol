@@ -48,7 +48,7 @@ export const AWS_ACTION_PACK = Object.freeze([
     risk: 'critical', receipt_required: true, assurance_class: 'quorum',
     match: { protocol: 'aws', tool: 'authorize_security_group_ingress' },
     why: 'Opens the network. Bind group/CIDR/port so 0.0.0.0/0:22 cannot slip through.',
-    execution_binding: { required_fields: ['action_type', 'group_id', 'cidr', 'from_port'] },
+    execution_binding: { required_fields: ['action_type', 'group_id', 'cidr', 'protocol', 'from_port', 'to_port'] },
   }),
 ]);
 
@@ -70,9 +70,20 @@ const OPS = {
   },
   'ec2.authorize_ingress': {
     selector: { protocol: 'aws', tool: 'authorize_security_group_ingress' },
-    observed: (p) => ({ action_type: 'aws.ec2.authorize_ingress', group_id: p.group_id, cidr: p.cidr, from_port: p.from_port }),
+    observed: (p) => ({
+      action_type: 'aws.ec2.authorize_ingress',
+      group_id: p.group_id,
+      cidr: p.cidr,
+      protocol: p.protocol ?? 'tcp',
+      from_port: p.from_port,
+      to_port: p.to_port ?? p.from_port,
+    }),
     perform: (client, p) => client.ec2.authorizeSecurityGroupIngress({
-      GroupId: p.group_id, CidrIp: p.cidr, FromPort: p.from_port, ToPort: p.to_port ?? p.from_port, IpProtocol: p.protocol ?? 'tcp',
+      GroupId: p.group_id,
+      CidrIp: p.cidr,
+      FromPort: p.from_port,
+      ToPort: p.to_port,
+      IpProtocol: p.protocol,
     }),
   },
 };

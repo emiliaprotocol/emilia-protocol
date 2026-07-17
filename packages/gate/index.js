@@ -280,6 +280,15 @@ export function receiptAssuranceTier(doc, opts = {}) {
       checks: qr.checks,
       policy_pinned: policy.ok,
       embedded_keys_trusted: membersTrusted,
+      approvers: qr.valid
+        ? trustedMembers.map((member) => member?.signoff?.context?.approver).filter(nonEmptyString)
+        : [],
+      roles: qr.valid
+        ? trustedMembers.map((member) => ({
+          subject: member?.signoff?.context?.approver ?? null,
+          role: member?.role ?? null,
+        }))
+        : [],
       refusal: !policy.ok ? policy.reason : (!membersTrusted ? 'quorum_member_key_unpinned' : null),
     };
     if (qr.valid && policy.ok && membersTrusted) detail.tier = 'quorum';
@@ -296,7 +305,12 @@ export function receiptAssuranceTier(doc, opts = {}) {
       if (key) {
         const sr = verifyWebAuthnSignoff(so, key, verifyOpts);
         const trusted = keyIsTrusted(key, so?.context?.approver);
-        detail.signoff = { valid: sr.valid, checks: sr.checks, embedded_key_trusted: trusted };
+        detail.signoff = {
+          valid: sr.valid,
+          checks: sr.checks,
+          embedded_key_trusted: trusted,
+          approver: so?.context?.approver ?? null,
+        };
         if (sr.valid && trusted && (TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) detail.tier = 'class_a';
       }
     }
@@ -339,6 +353,199 @@ function isSignoffEvidence(s) {
   return !!s && typeof s === 'object' && s.context && s.webauthn;
 }
 
+function nonEmptyString(value) {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function businessAuthorizationSource(requirement) {
+  if (!requirement || typeof requirement !== 'object') return null;
+  const nested = requirement.business_authorization
+    || requirement.businessAuthorization
+    || requirement.authorization_requirement
+    || requirement.authorizationRequirement
+    || requirement.authorization_policy
+    || requirement.authorizationPolicy
+    || requirement.business_policy
+    || requirement.control?.business_authorization
+    || requirement.control?.authorization_requirement
+    || requirement.control?.authorization_policy;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested)) return nested;
+  const hasDirect = [
+    'policy', 'business_policy', 'policy_id', 'policy_hash', 'tenant_id', 'allowed_approvers',
+    'allowed_approver_subjects', 'allowed_approver_roles',
+  ].some((field) => Object.prototype.hasOwnProperty.call(requirement, field));
+  return hasDirect ? requirement : null;
+}
+
+/**
+ * Normalize the relying party's business-authorization pin for one action.
+ *
+ * Canonical manifest shape:
+ *   business_authorization: {
+ *     policy: { id, hash }, tenant_id,
+ *     allowed_approvers: [{ subject, role }]
+ *   }
+ *
+ * Flat policy_id/policy_hash and approver aliases are accepted so an existing
+ * manifest can add the control without changing its surrounding schema. Once
+ * any part is configured, every part is required; a partial pin is invalid.
+ */
+export function businessAuthorizationRequirement(requirement) {
+  const source = businessAuthorizationSource(requirement);
+  if (!source) {
+    return {
+      configured: false, ok: true, reason: null,
+      policy_id: null, policy_hash: null, tenant_id: null, allowed_approvers: [],
+    };
+  }
+  const policy = source.policy && typeof source.policy === 'object' && !Array.isArray(source.policy)
+    ? source.policy
+    : (source.business_policy && typeof source.business_policy === 'object' && !Array.isArray(source.business_policy)
+      ? source.business_policy : {});
+  const root = requirement && typeof requirement === 'object' ? requirement : {};
+  const policyId = nonEmptyString(source.policy_id ?? source.id ?? policy.policy_id ?? policy.id ?? root.policy_id);
+  const policyHash = nonEmptyString(source.policy_hash ?? source.hash ?? policy.policy_hash ?? policy.hash ?? root.policy_hash);
+  const tenantId = nonEmptyString(
+    source.tenant_id ?? source.tenant ?? source.organization_id
+    ?? root.tenant_id ?? root.tenant ?? root.organization_id,
+  );
+  const rawApprovers = source.allowed_approvers ?? source.approvers ?? source.approver_roster
+    ?? root.allowed_approvers ?? root.approvers ?? root.approver_roster;
+  const subjects = source.allowed_approver_subjects ?? source.approver_subjects
+    ?? root.allowed_approver_subjects ?? root.approver_subjects;
+  const roles = source.allowed_approver_roles ?? source.approver_roles
+    ?? root.allowed_approver_roles ?? root.approver_roles;
+  let allowed = [];
+  if (Array.isArray(rawApprovers)) {
+    allowed = rawApprovers.map((entry) => {
+      if (typeof entry === 'string') return { subject: entry, role: null };
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return { subject: null, role: null };
+      return {
+        subject: nonEmptyString(entry.subject ?? entry.approver ?? entry.principal_id),
+        role: nonEmptyString(entry.role ?? entry.approver_role),
+      };
+    });
+  } else if (Array.isArray(subjects)) {
+    const validRoles = Array.isArray(roles) ? roles.filter((role) => nonEmptyString(role)) : [];
+    allowed = subjects.flatMap((subject) => {
+      if (!validRoles.length) return [{ subject: nonEmptyString(subject), role: null }];
+      return validRoles.map((role) => ({ subject: nonEmptyString(subject), role }));
+    });
+  }
+  const malformed = !policyId || !policyHash || !tenantId || allowed.length === 0
+    || allowed.some((entry) => !entry.subject || !entry.role);
+  const duplicate = new Set(allowed.map((entry) => `${entry.subject}\u0000${entry.role}`)).size !== allowed.length;
+  return {
+    configured: true,
+    ok: !malformed && !duplicate,
+    reason: malformed ? 'business_authorization_incomplete'
+      : (duplicate ? 'business_authorization_duplicate_approver' : null),
+    policy_id: policyId,
+    policy_hash: policyHash,
+    tenant_id: tenantId,
+    allowed_approvers: allowed,
+  };
+}
+
+function signedString(candidates) {
+  const present = candidates.filter((value) => value !== undefined && value !== null);
+  if (!present.length) return { ok: true, value: null };
+  if (present.some((value) => !nonEmptyString(value))) return { ok: false, value: null };
+  const distinct = [...new Set(present)];
+  return distinct.length === 1 ? { ok: true, value: distinct[0] } : { ok: false, value: null };
+}
+
+function receiptRoleAssertions(receipt, tierResult) {
+  const claim = receipt?.payload?.claim || {};
+  const assertions = [];
+  const arrays = [claim.approvers, claim.approver_authorizations, claim.approver_roles];
+  for (const entries of arrays) {
+    if (!Array.isArray(entries)) continue;
+    for (const entry of entries) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+      const subject = nonEmptyString(entry.subject ?? entry.approver ?? entry.principal_id);
+      const role = nonEmptyString(entry.role ?? entry.approver_role);
+      if (subject && role) assertions.push({ subject, role });
+    }
+  }
+  const singleSubject = nonEmptyString(claim.approver ?? claim.approver_subject);
+  const singleRole = nonEmptyString(claim.approver_role ?? claim.role);
+  if (singleSubject && singleRole) assertions.push({ subject: singleSubject, role: singleRole });
+
+  if (tierResult?.quorum?.valid === true) {
+    for (const member of (receipt?.payload?.quorum?.members || [])) {
+      const subject = nonEmptyString(member?.signoff?.context?.approver);
+      const role = nonEmptyString(member?.role);
+      if (subject && role) assertions.push({ subject, role });
+    }
+  }
+  return assertions;
+}
+
+function verifiedApproverSubjects(assurance, tierResult) {
+  const subjects = new Set(Array.isArray(assurance?.approvers) ? assurance.approvers.filter(nonEmptyString) : []);
+  if (tierResult?.signoff?.valid === true && nonEmptyString(tierResult.signoff.approver)) {
+    subjects.add(tierResult.signoff.approver);
+  }
+  if (tierResult?.quorum?.valid === true) {
+    for (const subject of (tierResult.quorum.approvers || [])) {
+      if (nonEmptyString(subject)) subjects.add(subject);
+    }
+  }
+  return [...subjects].sort();
+}
+
+/**
+ * Verify signed business-policy and tenant fields plus the cryptographically
+ * credited human approvers against one action's relying-party pins.
+ */
+export function verifyBusinessAuthorization({ requirement, receipt, assurance, tierResult } = {}) {
+  const expected = businessAuthorizationRequirement(requirement);
+  const claim = receipt?.payload?.claim || {};
+  const payload = receipt?.payload || {};
+  const policyId = signedString([claim.policy_id, payload.policy_id]);
+  const policyHash = signedString([claim.policy_hash, payload.policy_hash]);
+  const tenantId = signedString([
+    claim.tenant_id, claim.organization_id, payload.tenant_id, payload.organization_id,
+  ]);
+  const subjects = verifiedApproverSubjects(assurance, tierResult);
+  const roleAssertions = receiptRoleAssertions(receipt, tierResult);
+  const evaluatedApprovers = subjects.map((subject) => {
+    const asserted = [...new Set(roleAssertions.filter((entry) => entry.subject === subject).map((entry) => entry.role))];
+    return { subject, roles: asserted };
+  });
+  const evaluated = {
+    policy_id: policyId.value,
+    policy_hash: policyHash.value,
+    tenant_id: tenantId.value,
+    approvers: evaluatedApprovers,
+  };
+  const base = { required: expected.configured, ok: true, reason: null, expected, evaluated };
+  if (!expected.configured) return base;
+  if (!expected.ok) return { ...base, ok: false, reason: expected.reason };
+  if (!policyId.ok) return { ...base, ok: false, reason: 'business_policy_id_ambiguous' };
+  if (!policyHash.ok) return { ...base, ok: false, reason: 'business_policy_hash_ambiguous' };
+  if (!tenantId.ok) return { ...base, ok: false, reason: 'business_tenant_ambiguous' };
+  if (policyId.value !== expected.policy_id) return { ...base, ok: false, reason: 'business_policy_id_mismatch' };
+  if (policyHash.value !== expected.policy_hash) return { ...base, ok: false, reason: 'business_policy_hash_mismatch' };
+  if (tenantId.value !== expected.tenant_id) return { ...base, ok: false, reason: 'business_tenant_mismatch' };
+  if (!subjects.length) return { ...base, ok: false, reason: 'business_approver_required' };
+
+  for (const approver of evaluatedApprovers) {
+    const allowedForSubject = expected.allowed_approvers.filter((entry) => entry.subject === approver.subject);
+    if (!allowedForSubject.length) return { ...base, ok: false, reason: 'business_approver_not_allowed' };
+    const allowedRoles = new Set(allowedForSubject.map((entry) => entry.role));
+    if (approver.roles.length && !approver.roles.some((role) => allowedRoles.has(role))) {
+      return { ...base, ok: false, reason: 'business_approver_role_not_allowed' };
+    }
+    // The manifest is the authoritative subject-to-role assignment. When the
+    // receipt does not repeat a role, record the pinned role rather than trusting
+    // an unsigned/free-text role label from elsewhere.
+    if (!approver.roles.length) approver.roles = [...allowedRoles].sort();
+  }
+  return base;
+}
+
 /**
  * Create a gate.
  * @param {object} opts
@@ -375,6 +582,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   if (manifest) {
     const m = validateActionRiskManifest(manifest);
     if (!m.ok) throw new Error('EMILIA Gate: invalid action-risk manifest: ' + m.errors.join('; '));
+    for (const [index, actionRequirement] of (manifest.actions || []).entries()) {
+      if (actionRequirement?.receipt_required !== true) continue;
+      const business = businessAuthorizationRequirement(actionRequirement);
+      if (business.configured && !business.ok) {
+        throw new Error(`EMILIA Gate: invalid action-risk manifest: actions[${index}].business_authorization ${business.reason}`);
+      }
+    }
   }
   if (allowInlineKey) {
     // eslint-disable-next-line no-console
@@ -421,6 +635,14 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       || (quorumPolicies && typeof quorumPolicies === 'object' ? quorumPolicies[action] : null)
       || quorumPolicy;
     const observed = observedAction || selector.observedAction || selector.actionDetails || null;
+    const businessExpected = businessAuthorizationRequirement(requirement);
+    let businessEvaluation = {
+      required: businessExpected.configured,
+      ok: !businessExpected.configured,
+      reason: null,
+      expected: businessExpected,
+      evaluated: { policy_id: null, policy_hash: null, tenant_id: null, approvers: [] },
+    };
 
     async function decide(allow, status, reason, extra = {}) {
       const entry = {
@@ -435,6 +657,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         receipt_id: receipt?.payload?.receipt_id ?? null,
         subject: receipt?.payload?.subject ?? null,
         observed_action_hash: observed ? safeCanonicalHash(observed) : null,
+        business_authorization: businessEvaluation,
+        evaluated_policy_id: businessEvaluation.evaluated.policy_id,
+        evaluated_policy_hash: businessEvaluation.evaluated.policy_hash,
+        evaluated_tenant_id: businessEvaluation.evaluated.tenant_id,
+        evaluated_approvers: businessEvaluation.evaluated.approvers,
         ...extra,
       };
       let record;
@@ -554,6 +781,23 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         tier_evidence: { quorum: tierResult.quorum, signoff: tierResult.signoff },
       });
     }
+    // Business authorization is a distinct trust root from receipt issuer
+    // integrity and assurance tier. The signed claim must name the exact policy
+    // id+hash and tenant this action requirement pins, and the humans who
+    // cryptographically earned the tier must belong to its subject/role roster.
+    // This runs BEFORE execution binding, admissibility, and receipt reservation.
+    businessEvaluation = verifyBusinessAuthorization({
+      requirement,
+      receipt,
+      assurance,
+      tierResult,
+    });
+    if (!businessEvaluation.ok) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, businessEvaluation.reason, {
+        have_tier: have,
+        assurance_tier_source: 'cryptographic_verification',
+      });
+    }
     // The high-risk action packs define material fields that must be observed
     // by the executor from the system of record. A signed, harmless-looking
     // claim cannot authorize a different real mutation.
@@ -643,27 +887,97 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     return decide(true, 200, 'allow', allowExtra);
   }
 
-  /** Express/Connect middleware: refuse the route unless a sufficient receipt is present. */
-  function middleware(opts = {}) {
-    return async function emiliaGate(req, res, next) {
-      let selector = typeof opts.selector === 'function' ? opts.selector(req) : { ...(opts.selector || {}) };
-      if (opts.action && !selector.action_type) {
-        selector.action_type = typeof opts.action === 'function' ? opts.action(req) : opts.action;
-      }
-      let doc = null;
+  async function requestGateInput(req, opts = {}) {
+    let selector = typeof opts.selector === 'function'
+      ? await opts.selector(req)
+      : { ...(opts.selector || {}) };
+    if (!selector || typeof selector !== 'object' || Array.isArray(selector)) selector = {};
+    if (opts.action && !selector.action_type) {
+      selector.action_type = typeof opts.action === 'function' ? await opts.action(req) : opts.action;
+    }
+    let receipt = typeof opts.receipt === 'function' ? await opts.receipt(req) : (opts.receipt ?? null);
+    if (!receipt) {
       const hdr = req.headers?.['x-emilia-receipt'];
-      if (hdr) doc = parseReceiptCarrier(hdr);
-      if (!doc && req.body?.emilia_receipt) doc = req.body.emilia_receipt;
-      const observedAction = typeof opts.observedAction === 'function'
-        ? opts.observedAction(req)
-        : (opts.observedAction || req.emiliaObservedAction || null);
-      const out = await check({ selector, receipt: doc, observedAction });
-      if (!out.allow) {
-        res.setHeader(RECEIPT_REQUIRED_HEADER, out.header);
-        return res.status(out.status).json(out.challenge);
-      }
-      req.emiliaGate = out;
-      return next();
+      if (hdr) receipt = parseReceiptCarrier(hdr);
+      if (!receipt && req.body?.emilia_receipt) receipt = req.body.emilia_receipt;
+    }
+    const observedAction = typeof opts.observedAction === 'function'
+      ? await opts.observedAction(req)
+      : (opts.observedAction || req.emiliaObservedAction || null);
+    const admissibilityProfile = typeof opts.admissibilityProfile === 'function'
+      ? await opts.admissibilityProfile(req)
+      : (opts.admissibilityProfile ?? null);
+    const presentedPacket = typeof opts.reliancePacket === 'function'
+      ? await opts.reliancePacket(req)
+      : (opts.reliancePacket ?? opts.admissibility ?? null);
+    return { selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket };
+  }
+
+  function sendRefusal(res, authorization) {
+    if (typeof res?.setHeader === 'function' && authorization.header) {
+      res.setHeader(RECEIPT_REQUIRED_HEADER, authorization.header);
+    }
+    if (typeof res?.status === 'function' && typeof res?.json === 'function') {
+      return res.status(authorization.status).json(authorization.challenge);
+    }
+    if (res) res.statusCode = authorization.status;
+    if (typeof res?.end === 'function') {
+      if (typeof res?.setHeader === 'function') res.setHeader('content-type', 'application/json');
+      return res.end(JSON.stringify(authorization.challenge));
+    }
+    return authorization;
+  }
+
+  /**
+   * Express/Connect route wrapper. The route handler itself is the effect
+   * callback owned by gate.run(), so authorization, receipt reservation,
+   * execution, consumption, and evidence form one lifecycle.
+   */
+  function route(handler, opts = {}) {
+    if (typeof handler !== 'function') throw new Error('EMILIA Gate route(): handler is required');
+    return async function emiliaGateRoute(req, res) {
+      const input = await requestGateInput(req, opts);
+      const out = await run(input, async (authorization) => {
+        req.emiliaGate = authorization;
+        return handler(req, res, authorization);
+      });
+      if (!out.ok) return sendRefusal(res, out.authorization);
+      req.emiliaGate = out.authorization;
+      req.emiliaGateExecution = out.execution;
+      req.emiliaReliancePacket = out.packet;
+      return out.result;
+    };
+  }
+
+  /**
+   * @deprecated Middleware cannot prove that code after next() actually ran.
+   * It therefore fails closed without parsing or consuming a presented receipt.
+   * Use gate.route(handler, opts), gate.guard(), or gate.run().
+   */
+  function middleware(opts = {}) {
+    return async function emiliaGateDeprecatedMiddleware(req, res) {
+      const selector = typeof opts.selector === 'function'
+        ? await opts.selector(req)
+        : { ...(opts.selector || {}) };
+      const action = (selector && (selector.action_type || selector.action))
+        || (typeof opts.action === 'function' ? await opts.action(req) : opts.action)
+        || null;
+      const reason = 'unsafe_middleware_deprecated';
+      const challenge = receiptChallenge(action, reason, {
+        status: RECEIPT_REQUIRED_STATUS,
+        assuranceClass: selector?.assurance_class || null,
+        maxAgeSec,
+        manifest: selector?.manifestUrl,
+      });
+      const authorization = {
+        allow: false,
+        status: RECEIPT_REQUIRED_STATUS,
+        reason,
+        action,
+        challenge,
+        header: receiptRequiredHeader({ action, assuranceClass: selector?.assurance_class || null, maxAgeSec }),
+      };
+      return sendRefusal(res, authorization);
     };
   }
 
@@ -716,7 +1030,8 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       if (opts.recordExecution === false) return { ok: true, result, authorization, execution: null, packet: null };
       phase = 'recording_execution';
       const execution = await recordExecution({ authorization, outcome: 'executed', observedAction });
-      return { ok: true, result, authorization, execution, packet: reliancePacket({ authorization, execution }) };
+      const packet = await reliancePacket({ authorization, execution });
+      return { ok: true, result, authorization, execution, packet };
     } catch (e) {
       // An exception after invoking fn() cannot establish that no external
       // effect occurred. Burn the approval if possible; if storage is down, the
@@ -781,7 +1096,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     };
   }
 
-  function reliancePacket({ authorization, execution = null, binding = null, admissibility = null } = {}) {
+  async function reliancePacket({ authorization, execution = null, binding = null, admissibility = null } = {}) {
     // The admissibility block rides on the authorization decision's evidence when
     // a reliance packet was presented at check() time; an explicit `admissibility`
     // arg overrides it. buildReliancePacket fails closed on a non-'admissible'
@@ -810,7 +1125,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
 
   return {
-    check, run, recordExecution, middleware, guard, reliancePacket, evidence,
+    check, run, recordExecution, route, wrapRoute: route, middleware, guard, reliancePacket, evidence,
     store: consumption, keyRegistry: registry, retention, retentionExport,
   };
 }
@@ -911,6 +1226,8 @@ export default {
   createTrustedActionFirewall,
   runBreakGlass,
   receiptAssuranceTier,
+  businessAuthorizationRequirement,
+  verifyBusinessAuthorization,
   verifyAdmissibilityAgainstPinnedProfile,
   ADMISSIBILITY_VERDICTS,
   MemoryConsumptionStore,

@@ -20,6 +20,8 @@
  */
 import { createAdapter, manifestFromPack, hashCanonical } from './_kit.js';
 
+export const RLS_DEFINITION_BINDING_VERSION = 'EP-SUPABASE-RLS-DEFINITION-v1';
+
 const DESTRUCTIVE = /\b(delete|drop|truncate|alter\s+table)\b/i;
 const UPDATE_NO_WHERE = /\bupdate\b(?:(?!\bwhere\b).)*$/is;
 
@@ -32,6 +34,14 @@ export function isDestructiveSql(sql) {
 /** Canonical hash of a SQL statement, whitespace-collapsed and lowercased. */
 export function statementHash(sql) {
   return hashCanonical(String(sql || '').replace(/\s+/g, ' ').trim().toLowerCase());
+}
+
+/** Digest the exact canonical RLS definition without placing it in evidence. */
+export function rlsDefinitionDigest(definition) {
+  return hashCanonical({
+    version: RLS_DEFINITION_BINDING_VERSION,
+    definition,
+  });
 }
 
 export const SUPABASE_ACTION_PACK = Object.freeze([
@@ -54,7 +64,11 @@ export const SUPABASE_ACTION_PACK = Object.freeze([
     risk: 'critical', receipt_required: true, assurance_class: 'quorum',
     match: { protocol: 'supabase', tool: 'alter_policy' },
     why: 'Changes who can read/write rows. Row-Level-Security changes deserve the two-person rule.',
-    execution_binding: { required_fields: ['action_type', 'table', 'policy'] },
+    execution_binding: {
+      required_fields: [
+        'action_type', 'table', 'policy', 'rls_definition_digest', 'rls_definition_version',
+      ],
+    },
   }),
 ]);
 
@@ -62,6 +76,7 @@ const OPS = {
   'sql.destructive': {
     selector: { protocol: 'supabase', tool: 'execute_sql' },
     observed: (p) => ({ action_type: 'supabase.sql.destructive', statement_hash: statementHash(p.sql) }),
+    actuator: (p, observed) => ({ ...observed, sql: p.sql }),
     perform: (client, p) => client.query(p.sql),
   },
   'data.export': {
@@ -71,7 +86,14 @@ const OPS = {
   },
   'rls.change': {
     selector: { protocol: 'supabase', tool: 'alter_policy' },
-    observed: (p) => ({ action_type: 'supabase.rls.change', table: p.table, policy: p.policy }),
+    observed: (p) => ({
+      action_type: 'supabase.rls.change',
+      table: p.table,
+      policy: p.policy,
+      rls_definition_digest: rlsDefinitionDigest(p.definition),
+      rls_definition_version: RLS_DEFINITION_BINDING_VERSION,
+    }),
+    actuator: (p, observed) => ({ ...observed, definition: p.definition }),
     perform: (client, p) => client.alterPolicy(p.table, p.policy, p.definition),
   },
 };
@@ -96,5 +118,5 @@ export function guardSupabaseMutation(gate, client, args) {
 
 export default {
   SUPABASE_ACTION_PACK, SUPABASE_OPS, createSupabaseManifest, guardSupabaseMutation,
-  isDestructiveSql, statementHash,
+  isDestructiveSql, statementHash, rlsDefinitionDigest, RLS_DEFINITION_BINDING_VERSION,
 };
