@@ -85,6 +85,14 @@ contains('lib/mobile/runtime.js', /session:\$\{runtime\.session\.session_id\}[\s
 contains('.github/workflows/mobile-signed-release.yml', /EMILIA_ANDROID_CERTIFICATE_SHA256_HEX/, 'signed Android identity is not compared with its server pin');
 contains('.github/workflows/mobile-signed-release.yml', /MOBILE_ANDROID_SIGNING_CERT_SHA256[\s\S]*check-mobile-signing-identity\.mjs[\s\S]*AAB_CERT_SHA256/, 'APK and AAB signing identities are not cross-checked against one canonical certificate');
 contains('.github/workflows/mobile-signed-release.yml', /get-task-allow/, 'signed iOS archive is not checked for debugger entitlement');
+contains('.github/workflows/mobile-signed-release.yml', /github\.repository == 'emiliaprotocol\/emilia-protocol'[\s\S]*github\.ref == 'refs\/heads\/main'/, 'signed mobile release is not restricted to the canonical repository main branch');
+contains('.github/workflows/mobile-signed-release.yml', /actions\/checkout@[a-f0-9]+[\s\S]{0,120}ref: \$\{\{ github\.sha \}\}/, 'signed mobile release checkout is not pinned to the approved workflow commit');
+const signedReleaseWorkflow = read('.github/workflows/mobile-signed-release.yml');
+assert.equal(
+  [...signedReleaseWorkflow.matchAll(/actions\/checkout@[a-f0-9]+[\s\S]{0,120}?ref: \$\{\{ github\.sha \}\}/g)].length,
+  3,
+  'every signed mobile release checkout must use the approved workflow commit',
+);
 
 const signingCheck = resolve(root, 'scripts/check-mobile-signing-identity.mjs');
 const certificateHex = '05'.repeat(32);
