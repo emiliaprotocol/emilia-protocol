@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 package ai.emiliaprotocol.mobile
 
+import java.math.BigDecimal
 import java.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -18,9 +20,19 @@ sealed class EmiliaMobileException(message: String) : Exception(message) {
     data class MalformedChallenge(val detail: String) : EmiliaMobileException(detail)
     data object ActionMismatch : EmiliaMobileException("action mismatch")
     data object DisplayMismatch : EmiliaMobileException("display mismatch")
+    data object DecisionMismatch : EmiliaMobileException("requested decision mismatch")
     data object ContextMismatch : EmiliaMobileException("context mismatch")
     data object NonCanonicalJson : EmiliaMobileException("non-canonical JSON")
     data class Unavailable(val detail: String) : EmiliaMobileException(detail)
+}
+
+enum class EmiliaMobileDecision(val wireValue: String) {
+    APPROVED("approved"),
+    DENIED("denied");
+
+    companion object {
+        fun fromWire(value: String?): EmiliaMobileDecision? = entries.firstOrNull { it.wireValue == value }
+    }
 }
 
 @Serializable
@@ -136,12 +148,70 @@ data class EmiliaValidatedChallenge(
     val mobileBinding: JsonObject,
     val requestHash: ByteArray,
     val presentation: EmiliaMobilePresentation,
+    val decision: EmiliaMobileDecision,
 )
 
 object EmiliaMobileChallengeValidator {
+    private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
     private val json = Json { ignoreUnknownKeys = false; explicitNulls = true }
+    private val fieldName = Regex("^@?[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$")
 
-    fun validatePresentation(value: JsonElement): EmiliaMobilePresentation {
+    private fun validUnicodeScalars(value: String): Boolean {
+        var index = 0
+        while (index < value.length) {
+            val character = value[index]
+            when {
+                character.isHighSurrogate() -> {
+                    if (index + 1 >= value.length || !value[index + 1].isLowSurrogate()) return false
+                    index += 2
+                }
+                character.isLowSurrogate() -> return false
+                else -> index += 1
+            }
+        }
+        return true
+    }
+
+    private fun boundedText(value: String, maximum: Int, allowEmpty: Boolean = false): Boolean {
+        val length = value.codePointCount(0, value.length)
+        return length <= maximum && (allowEmpty || length > 0) && validUnicodeScalars(value) && value.none { character ->
+            val code = character.code
+            code <= 0x08 || code == 0x0b || code == 0x0c || code in 0x0e..0x1f || code == 0x7f
+        }
+    }
+
+    private fun materialNumber(text: String): String {
+        val integer = try {
+            BigDecimal(text).toBigIntegerExact().longValueExact()
+        } catch (_: ArithmeticException) {
+            throw EmiliaMobileException.DisplayMismatch
+        } catch (_: NumberFormatException) {
+            throw EmiliaMobileException.DisplayMismatch
+        }
+        if (integer !in -MAX_SAFE_INTEGER..MAX_SAFE_INTEGER) throw EmiliaMobileException.DisplayMismatch
+        return integer.toString()
+    }
+
+    fun projectMaterialFields(action: JsonElement): Map<String, String> {
+        val objectValue = action as? JsonObject ?: throw EmiliaMobileException.DisplayMismatch
+        if (objectValue.size !in 1..64) throw EmiliaMobileException.DisplayMismatch
+        return objectValue.mapValues { (name, value) ->
+            if (!fieldName.matches(name)) throw EmiliaMobileException.DisplayMismatch
+            val text = when (value) {
+                JsonNull -> "null"
+                is JsonPrimitive -> when {
+                    value.isString -> value.content
+                    value.content == "true" || value.content == "false" -> value.content
+                    else -> materialNumber(value.content)
+                }
+                else -> throw EmiliaMobileException.DisplayMismatch
+            }
+            if (!boundedText(text, 4_096, allowEmpty = true)) throw EmiliaMobileException.DisplayMismatch
+            text
+        }
+    }
+
+    fun validatePresentation(value: JsonElement, action: JsonElement): EmiliaMobilePresentation {
         val objectValue = value as? JsonObject ?: throw EmiliaMobileException.DisplayMismatch
         val members = setOf("@version", "title", "summary", "risk", "consequence", "material_fields")
         if (objectValue.keys != members || objectValue.string("@version") != EmiliaMobilePresentation.VERSION) {
@@ -152,24 +222,28 @@ object EmiliaMobileChallengeValidator {
         val risk = objectValue.string("risk") ?: throw EmiliaMobileException.DisplayMismatch
         val consequence = objectValue.string("consequence") ?: throw EmiliaMobileException.DisplayMismatch
         val rawFields = objectValue["material_fields"] as? JsonObject ?: throw EmiliaMobileException.DisplayMismatch
-        if (title.isEmpty() || title.codePointCount(0, title.length) > 200
-            || summary.isEmpty() || summary.codePointCount(0, summary.length) > 2_000
-            || risk.isEmpty() || risk.codePointCount(0, risk.length) > 128
-            || consequence.codePointCount(0, consequence.length) > 2_000
+        if (!boundedText(title, 200)
+            || !boundedText(summary, 2_000)
+            || !boundedText(risk, 128)
+            || !boundedText(consequence, 2_000, allowEmpty = true)
             || rawFields.size !in 1..64) throw EmiliaMobileException.DisplayMismatch
-        val fieldName = Regex("^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$")
         val fields = rawFields.mapValues { (name, rawValue) ->
             val primitive = rawValue as? JsonPrimitive ?: throw EmiliaMobileException.DisplayMismatch
             if (!fieldName.matches(name) || !primitive.isString
-                || primitive.content.codePointCount(0, primitive.content.length) > 4_096) {
+                || !boundedText(primitive.content, 4_096, allowEmpty = true)) {
                 throw EmiliaMobileException.DisplayMismatch
             }
             primitive.content
         }
+        if (fields != projectMaterialFields(action)) throw EmiliaMobileException.DisplayMismatch
         return EmiliaMobilePresentation(title, summary, risk, consequence, fields)
     }
 
-    fun decodeAndValidate(data: ByteArray, now: Instant = Instant.now()): EmiliaValidatedChallenge {
+    fun decodeAndValidate(
+        data: ByteArray,
+        now: Instant = Instant.now(),
+        requestedDecision: EmiliaMobileDecision? = null,
+    ): EmiliaValidatedChallenge {
         val challenge = try { json.decodeFromString<EmiliaMobileChallenge>(data.toString(Charsets.UTF_8)) }
         catch (_: Exception) { throw EmiliaMobileException.MalformedChallenge("challenge JSON could not be decoded") }
         if (challenge.version != "AE-CHALLENGE-v1"
@@ -185,11 +259,16 @@ object EmiliaMobileChallengeValidator {
             throw EmiliaMobileException.MalformedChallenge("challenge is outside its validity window")
         }
         if (EmiliaCanonicalJson.digest(challenge.action) != challenge.actionHash) throw EmiliaMobileException.ActionMismatch
-        val presentation = validatePresentation(challenge.presentation)
+        val presentation = validatePresentation(challenge.presentation, challenge.action)
         val context = challenge.authorizationContext as? JsonObject ?: throw EmiliaMobileException.ContextMismatch
         if (context.string("action_hash") != challenge.actionHash
             || context.string("display_hash") != EmiliaCanonicalJson.digest(challenge.presentation)
             || context.string("nonce") != challenge.nonce) throw EmiliaMobileException.ContextMismatch
+        val decision = EmiliaMobileDecision.fromWire(context.string("decision"))
+            ?: throw EmiliaMobileException.ContextMismatch
+        if (requestedDecision != null && requestedDecision != decision) {
+            throw EmiliaMobileException.DecisionMismatch
+        }
         val mobileBinding = context["mobile_binding"] as? JsonObject ?: throw EmiliaMobileException.ContextMismatch
         if (mobileBinding.string("profile_hash") != challenge.profileHash) throw EmiliaMobileException.ContextMismatch
         if (EmiliaCanonicalJson.sha256(challenge.authorizationContext).base64Url() != challenge.webauthn.challenge) {
@@ -218,7 +297,7 @@ object EmiliaMobileChallengeValidator {
         if (challenge.attestation.binding != expectedBinding) throw EmiliaMobileException.ContextMismatch
         val requestHash = EmiliaCanonicalJson.sha256(challenge.attestation.binding)
         if (requestHash.base64Url() != challenge.attestation.requestHash) throw EmiliaMobileException.ContextMismatch
-        return EmiliaValidatedChallenge(challenge, context, mobileBinding, requestHash, presentation)
+        return EmiliaValidatedChallenge(challenge, context, mobileBinding, requestHash, presentation, decision)
     }
 }
 
@@ -229,16 +308,18 @@ class EmiliaMobileCeremonyCoordinator(
     private val appId: String,
     private val deviceKeyId: String,
 ) {
-    suspend fun perform(challengeData: ByteArray, now: Instant = Instant.now()): EmiliaMobileCeremonyResponse {
-        val validated = EmiliaMobileChallengeValidator.decodeAndValidate(challengeData, now)
+    suspend fun perform(
+        challengeData: ByteArray,
+        requestedDecision: EmiliaMobileDecision,
+        now: Instant = Instant.now(),
+    ): EmiliaMobileCeremonyResponse {
+        val validated = EmiliaMobileChallengeValidator.decodeAndValidate(challengeData, now, requestedDecision)
         val challenge = validated.challenge
         if (validated.mobileBinding.string("platform") != platform
             || validated.mobileBinding.string("app_id") != appId
             || validated.mobileBinding.string("device_key_id") != deviceKeyId
             || validated.mobileBinding.string("attestation_key_id") != integrity.attestationKeyId
             || challenge.attestation.format != integrity.format) throw EmiliaMobileException.ContextMismatch
-        val decision = validated.context.requireString("decision")
-        if (decision != "approved" && decision != "denied") throw EmiliaMobileException.ContextMismatch
         val credentialIds = challenge.webauthn.credentialIds.map { it.base64UrlBytes() }
         val assertion = passkeys.assertion(
             challenge.webauthn.rpId,
@@ -255,7 +336,7 @@ class EmiliaMobileCeremonyCoordinator(
             deviceKeyId = deviceKeyId,
             credentialId = assertion.credentialId.base64Url(),
             attestationKeyId = integrity.attestationKeyId,
-            decision = decision,
+            decision = requestedDecision.wireValue,
             displayHash = validated.context.requireString("display_hash"),
             signoff = EmiliaMobileCeremonyResponse.Signoff(
                 context = challenge.authorizationContext,

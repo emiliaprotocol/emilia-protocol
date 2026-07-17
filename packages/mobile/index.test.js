@@ -98,6 +98,7 @@ function fixture({
       risk: 'high',
       consequence: 'Future benefit payments will be sent to the new destination.',
       material_fields: {
+        action_type: 'benefit.payment_destination_change',
         case_id: 'case-9482',
         destination_last4: '4401',
         effective_date: '2026-07-15',
@@ -350,7 +351,7 @@ test('roundtrips standard Base64 App Attest key IDs in the signed challenge cont
   assert.equal((await verifyMobileCeremony({ ...item, now: NOW })).valid, true);
 });
 
-test('refuses unknown or nested presentation fields before they can be signed unseen', async () => {
+test('challenge creation and verification refuse incomplete, changed, extra, or nested material fields', async () => {
   const item = fixture();
   const args = {
     action: item.challenge.action,
@@ -370,18 +371,43 @@ test('refuses unknown or nested presentation fields before they can be signed un
     ...args,
     presentation: { ...item.challenge.presentation, hidden_detail: 'not rendered' },
   }), /presentation/);
+
+  const { destination_last4: _omitted, ...omittedFields } = item.challenge.presentation.material_fields;
   assert.throws(() => createMobileChallenge({
     ...args,
     presentation: {
       ...item.challenge.presentation,
-      material_fields: { ...item.challenge.presentation.material_fields, hidden: { nested: true } },
+      material_fields: omittedFields,
     },
-  }), /presentation/);
+  }), /exactly cover/);
+  assert.throws(() => createMobileChallenge({
+    ...args,
+    presentation: {
+      ...item.challenge.presentation,
+      material_fields: { ...item.challenge.presentation.material_fields, destination_last4: '9999' },
+    },
+  }), /exactly cover/);
+  assert.throws(() => createMobileChallenge({
+    ...args,
+    action: { ...item.challenge.action, service_fee_minor: 4500 },
+    presentation: item.challenge.presentation,
+  }), /exactly cover/);
+  assert.throws(() => createMobileChallenge({
+    ...args,
+    action: { ...item.challenge.action, window: { not_before: '2026-07-16T20:00:00.000Z' } },
+    presentation: {
+      ...item.challenge.presentation,
+      material_fields: { ...item.challenge.presentation.material_fields, window: '2026-07-16T20:00:00.000Z' },
+    },
+  }), /flat objects/);
 
-  item.challenge.presentation.hidden_detail = 'not rendered';
+  item.challenge.action.service_fee_minor = 4500;
+  item.challenge.action_hash = hashCanonical(item.challenge.action);
+  item.challenge.authorization_context.action_hash = item.challenge.action_hash;
+  rebindAttestation(item.challenge);
   const result = await verifyMobileCeremony({ ...item, now: NOW });
   assert.equal(result.valid, false);
-  assert.equal(result.verdict, 'refuse_malformed');
+  assert.equal(result.verdict, 'refuse_display_mismatch');
 });
 
 test('hostile malformed input never throws', async () => {

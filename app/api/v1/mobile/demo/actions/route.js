@@ -9,7 +9,9 @@ import { mobileJson, mobileProblem } from '@/lib/mobile/response.js';
 import { logger } from '@/lib/logger.js';
 import { checkRateLimit } from '@/lib/rate-limit.js';
 import { requirePermission } from '@/lib/cloud/authorize.js';
+import { projectMobileAction } from '@/packages/mobile/presentation.js';
 import {
+  buildCurtailmentControlledAction,
   buildCurtailmentPresentation,
   createCurtailmentAction,
 } from '@/lib/grace/mobile-grid.js';
@@ -17,12 +19,20 @@ import {
 const MAX_BODY_BYTES = 16 * 1024;
 const MEMBERS = new Set(['approver_id', 'scenario']);
 
+function controlledPresentation(action, details) {
+  return {
+    '@version': 'EP-MOBILE-PRESENTATION-v1',
+    ...details,
+    material_fields: projectMobileAction(action),
+  };
+}
+
 function scenario(name, actionReference, approverId) {
   const common = { action_id: actionReference, requested_by: 'ep:agent:operations-copilot' };
   if (name === 'grid') {
     const earliestStart = new Date(Date.now() + 15 * 60_000).toISOString();
     const latestEnd = new Date(Date.parse(earliestStart) + 90 * 60_000).toISOString();
-    const action = createCurtailmentAction({
+    const sourceAction = createCurtailmentAction({
       actionId: actionReference,
       facility: 'facility:us-west-dc-17',
       targetDeltaKw: '18000',
@@ -33,9 +43,10 @@ function scenario(name, actionReference, approverId) {
       envelopeId: 'grace:envelope:demo-summer-2026',
       requestedBy: common.requested_by,
     });
+    const action = buildCurtailmentControlledAction(sourceAction);
     return {
       action,
-      presentation: buildCurtailmentPresentation(action),
+      presentation: buildCurtailmentPresentation(sourceAction),
       policy: {
         policy_id: 'emilia.demo.grid.v1',
         max_reduction_kw: '20000',
@@ -46,55 +57,43 @@ function scenario(name, actionReference, approverId) {
     };
   }
   if (name === 'healthcare') {
+    const action = {
+      '@type': 'pharmacy.coverage.override',
+      ...common,
+      case_id: 'rx-case-7F41',
+      medication_class: 'specialty-biologic',
+      coverage_days: 30,
+      plan_cost_minor: 1845000,
+      currency: 'USD',
+    };
     return {
-      action: {
-        '@type': 'pharmacy.coverage.override',
-        ...common,
-        case_id: 'rx-case-7F41',
-        medication_class: 'specialty-biologic',
-        coverage_days: 30,
-        plan_cost_minor: 1845000,
-        currency: 'USD',
-      },
-      presentation: {
+      action,
+      presentation: controlledPresentation(action, {
         title: 'Approve coverage override',
         summary: 'A payer agent recommends a 30-day specialty-medication override after automated review.',
         risk: 'patient access and financial',
-        material_fields: {
-          case: 'RX-7F41',
-          therapy: 'Specialty biologic',
-          coverage: '30 days',
-          plan_exposure: '$18,450.00',
-          basis: 'Documented continuity-of-care exception',
-        },
         consequence: 'Approval authorizes only this pseudonymous case and coverage window.',
-      },
+      }),
       policy: { policy_id: 'emilia.demo.payer.v1', max_coverage_days: 30, human_approval: 'class_a' },
     };
   }
+  const action = {
+    '@type': 'treasury.disbursement.release',
+    ...common,
+    amount_minor: 25000000,
+    currency: 'USD',
+    beneficiary_id: 'vendor:grid-restoration-42',
+    destination_fingerprint: 'US-account-1842',
+    purpose: 'Emergency grid-restoration equipment',
+  };
   return {
-    action: {
-      '@type': 'treasury.disbursement.release',
-      ...common,
-      amount_minor: 25000000,
-      currency: 'USD',
-      beneficiary_id: 'vendor:grid-restoration-42',
-      destination_fingerprint: 'US••••1842',
-      purpose: 'Emergency grid-restoration equipment',
-    },
-    presentation: {
+    action,
+    presentation: controlledPresentation(action, {
       title: 'Release $250,000',
       summary: 'An autonomous treasury agent is ready to release an emergency vendor payment.',
       risk: 'high-value financial',
-      material_fields: {
-        amount: '$250,000.00',
-        beneficiary: 'Grid Restoration Services',
-        destination: 'Account ending 1842',
-        purpose: 'Emergency grid-restoration equipment',
-        requested_by: 'Operations Copilot',
-      },
       consequence: 'Approval permits one exact release. Any change to amount, beneficiary, or destination requires a new ceremony.',
-    },
+    }),
     policy: { policy_id: 'emilia.demo.treasury.v1', max_amount_minor: 50000000, human_approval: 'class_a' },
   };
 }

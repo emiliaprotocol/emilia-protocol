@@ -237,7 +237,8 @@ describe('native pairing, inbox, and terminal session routes', () => {
     expect(inserted.entity_ref).toBe('entity-1');
     expect(inserted.action.action_type).toBe('grid.curtailment');
     expect(inserted.action.target_delta_kw).toBe('18000');
-    expect(inserted.presentation.material_fields.reduction).toBe('18 MW');
+    expect(inserted.presentation.material_fields.target_delta_kw).toBe('18000');
+    expect(inserted.presentation.title).toBe('Reduce load by 18 MW');
     expect(mocks.checkRateLimit).toHaveBeenCalledWith('entity-1', 'protocol_write');
 
     process.env.MOBILE_DEMO_ENABLED = 'false';
@@ -265,7 +266,8 @@ describe('native pairing, inbox, and terminal session routes', () => {
     const created = mocks.createGraceMobileActionGroup.mock.calls[0][1];
     expect(created.action.action_type).toBe('grid.curtailment');
     expect(created.action.target_delta_kw).toBe('30000');
-    expect(created.presentation.material_fields.reduction).toBe('30 MW');
+    expect(created.presentation.material_fields.target_delta_kw).toBe('30000');
+    expect(created.presentation.title).toBe('Reduce load by 30 MW');
     expect(created.policy).toMatchObject({
       human_approval: 'class_a',
       required_approvals: 2,

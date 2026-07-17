@@ -15,6 +15,25 @@
       "minimum": -9007199254740991,
       "maximum": 9007199254740991
     },
+    "materialActionScalar": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "$ref": "#/$defs/safeInteger" },
+        { "type": "string", "maxLength": 4096 }
+      ]
+    },
+    "materialFieldName": {
+      "type": "string",
+      "pattern": "^@?[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$"
+    },
+    "controlledAction": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 64,
+      "propertyNames": { "$ref": "#/$defs/materialFieldName" },
+      "additionalProperties": { "$ref": "#/$defs/materialActionScalar" }
+    },
     "canonicalInstant": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
@@ -56,7 +75,8 @@
           "type": "object",
           "minProperties": 1,
           "maxProperties": 64,
-          "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$" },
+          "description": "Closed material projection. A conforming implementation requires exactly the action's keys and each scalar's deterministic lossless textual form before issuing or signing a challenge.",
+          "propertyNames": { "$ref": "#/$defs/materialFieldName" },
           "additionalProperties": { "type": "string", "maxLength": 4096 }
         }
       }
@@ -237,7 +257,7 @@
         "challenge_profile": { "const": "EP-MOBILE-CHALLENGE-v1" },
         "challenge_id": { "$ref": "#/$defs/identifier" },
         "nonce": { "$ref": "#/$defs/identifier" },
-        "action": { "$ref": "#/$defs/jsonObject" },
+        "action": { "$ref": "#/$defs/controlledAction" },
         "action_hash": { "$ref": "#/$defs/hash" },
         "profile_hash": { "$ref": "#/$defs/hash" },
         "authorization_context": { "$ref": "#/$defs/authorizationContext" },

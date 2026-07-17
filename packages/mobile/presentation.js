@@ -10,10 +10,24 @@ const PRESENTATION_MEMBERS = new Set([
   'consequence',
   'material_fields',
 ]);
-const FIELD_NAME = /^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$/;
+const FIELD_NAME = /^@?[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$/;
 
 function record(value) {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function validUnicodeScalars(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function boundedText(value, maximum, { empty = false } = {}) {
@@ -21,7 +35,37 @@ function boundedText(value, maximum, { empty = false } = {}) {
   const length = [...value].length;
   return length <= maximum
     && (empty || length > 0)
+    && validUnicodeScalars(value)
     && !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value);
+}
+
+function compareFieldNames([left], [right]) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function materialText(value) {
+  if (typeof value === 'string') {
+    if (!boundedText(value, 4_096, { empty: true })) {
+      throw new TypeError('mobile action strings must be bounded display text');
+    }
+    return value;
+  }
+  if (Number.isSafeInteger(value)) return String(value);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (value === null) return 'null';
+  throw new TypeError('mobile actions must be flat objects of strings, safe integers, booleans, or null');
+}
+
+export function projectMobileAction(action) {
+  if (!record(action)) throw new TypeError('mobile action must be an object');
+  const fields = Object.entries(action);
+  if (fields.length < 1 || fields.length > 64
+      || fields.some(([name]) => !FIELD_NAME.test(name))) {
+    throw new TypeError('mobile action must contain 1 to 64 controlled fields');
+  }
+  return Object.fromEntries(fields
+    .map(([name, value]) => [name, materialText(value)])
+    .sort(compareFieldNames));
 }
 
 export function normalizeMobilePresentation(value, { allowUnversioned = false } = {}) {
@@ -48,8 +92,28 @@ export function normalizeMobilePresentation(value, { allowUnversioned = false } 
     summary: value.summary,
     risk: value.risk,
     consequence: value.consequence,
-    material_fields: Object.fromEntries(fields.sort(([left], [right]) => left.localeCompare(right))),
+    material_fields: Object.fromEntries(fields.sort(compareFieldNames)),
   };
+}
+
+export function normalizeControlledMobilePresentation(action, value, options = {}) {
+  const normalized = normalizeMobilePresentation(value, options);
+  const expected = projectMobileAction(action);
+  const names = Object.keys(expected);
+  if (Object.keys(normalized.material_fields).length !== names.length
+      || names.some((name) => normalized.material_fields[name] !== expected[name])) {
+    throw new TypeError('mobile presentation does not exactly cover the controlled action');
+  }
+  return normalized;
+}
+
+export function validControlledMobilePresentation(action, value) {
+  try {
+    normalizeControlledMobilePresentation(action, value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function validMobilePresentation(value) {
@@ -63,6 +127,9 @@ export function validMobilePresentation(value) {
 
 export default {
   MOBILE_PRESENTATION_VERSION,
+  projectMobileAction,
   normalizeMobilePresentation,
+  normalizeControlledMobilePresentation,
   validMobilePresentation,
+  validControlledMobilePresentation,
 };

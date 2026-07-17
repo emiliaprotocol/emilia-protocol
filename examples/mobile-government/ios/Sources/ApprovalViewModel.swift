@@ -16,7 +16,7 @@ final class ApprovalViewModel: ObservableObject {
     enum Stage: Equatable {
         case idle
         case loading(String)
-        case review(String)
+        case review(EmiliaMobileDecision)
         case complete(Completion)
         case failed(String)
     }
@@ -37,7 +37,7 @@ final class ApprovalViewModel: ObservableObject {
 
     private let sessionStore = SecureSessionStore()
     private var sessionExpiresAt = ""
-    private var pendingDecision: String?
+    private var pendingDecision: EmiliaMobileDecision?
     private var didBootstrap = false
 
     var isConnected: Bool { accessToken?.isEmpty == false }
@@ -111,7 +111,10 @@ final class ApprovalViewModel: ObservableObject {
 
     private var validatedPresentation: EmiliaMobilePresentation? {
         guard let challenge else { return nil }
-        return try? EmiliaMobileChallengeValidator.validatePresentation(challenge.presentation)
+        return try? EmiliaMobileChallengeValidator.validatePresentation(
+            challenge.presentation,
+            for: challenge.action
+        )
     }
 
     func bootstrap() async {
@@ -245,7 +248,7 @@ final class ApprovalViewModel: ObservableObject {
         stage = .idle
     }
 
-    func begin(decision: String) async {
+    func begin(decision: EmiliaMobileDecision) async {
         guard !screenCaptureDetected, !UIScreen.main.isCaptured else {
             blockCapturedScreen()
             return
@@ -264,13 +267,14 @@ final class ApprovalViewModel: ObservableObject {
             let issuedChallenge = try await configuredAPI().issueChallenge(
                 requestID: selectedAction.actionReference,
                 approverID: approverID,
-                decision: decision,
+                decision: decision.rawValue,
                 profileID: profileID,
                 appID: appID,
                 deviceKeyID: deviceKeyID
             )
             _ = try EmiliaMobileChallengeValidator.decodeAndValidate(
-                JSONEncoder().encode(issuedChallenge)
+                JSONEncoder().encode(issuedChallenge),
+                requestedDecision: decision
             )
             challenge = issuedChallenge
             pendingDecision = decision
@@ -286,7 +290,7 @@ final class ApprovalViewModel: ObservableObject {
             return
         }
         guard let challenge, let pendingDecision else { return }
-        stage = .loading(pendingDecision == "approved" ? "Waiting for passkey" : "Signing the refusal")
+        stage = .loading(pendingDecision == .approved ? "Waiting for passkey" : "Signing the refusal")
         do {
             let coordinator = EmiliaMobileCeremonyCoordinator(
                 passkeys: EmiliaApplePasskeyProvider { Self.presentationWindow() },
@@ -294,14 +298,20 @@ final class ApprovalViewModel: ObservableObject {
                 appID: appID,
                 deviceKeyID: deviceKeyID
             )
-            let ceremony = try await coordinator.perform(challengeData: JSONEncoder().encode(challenge))
+            let ceremony = try await coordinator.perform(
+                challengeData: JSONEncoder().encode(challenge),
+                requestedDecision: pendingDecision
+            )
             guard !screenCaptureDetected, !UIScreen.main.isCaptured else {
                 blockCapturedScreen()
                 return
             }
             let result = try await configuredAPI().verify(challenge: challenge, response: ceremony)
             guard result.valid else { throw APIError.refused(result.reason ?? result.verdict) }
-            let approved = pendingDecision == "approved"
+            guard result.decision == pendingDecision.rawValue else {
+                throw APIError.refused("decision_mismatch")
+            }
+            let approved = pendingDecision == .approved
             stage = .complete(.init(
                 title: approved ? "Approval sealed" : "Denial sealed",
                 verdict: result.verdict,

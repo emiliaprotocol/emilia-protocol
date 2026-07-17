@@ -10,6 +10,7 @@ import { APPROVER_ID_PATTERN } from '@/lib/webauthn.js';
 import { mobileJson, mobileProblem } from '@/lib/mobile/response.js';
 import { createGraceMobileActionGroup } from '@/lib/mobile/store.js';
 import {
+  buildCurtailmentControlledAction,
   buildCurtailmentPresentation,
   createCurtailmentAction,
   graceDigest,
@@ -75,6 +76,7 @@ export async function POST(request) {
     } catch {
       return mobileProblem(400, 'invalid_curtailment_action', 'GRACE action fields are invalid or outside the canonical profile');
     }
+    const controlledAction = buildCurtailmentControlledAction(action);
     const presentation = buildCurtailmentPresentation(action);
     const policy = {
       policy_id: 'ep:grace:mobile-curtailment:v1',
@@ -92,7 +94,7 @@ export async function POST(request) {
       assignments,
       entityRef: authEntityId(auth),
       initiatorId: body.initiator_id,
-      action,
+      action: controlledAction,
       presentation,
       policy,
       policyId: policy.policy_id,
@@ -100,7 +102,8 @@ export async function POST(request) {
     });
     return mobileJson({
       action_id: action.action_id,
-      action_hash: graceDigest(action),
+      action_hash: graceDigest(controlledAction),
+      source_action_hash: graceDigest(action),
       required_approvals: body.required_approvals,
       assignments,
       expires_at: action.expires_at,

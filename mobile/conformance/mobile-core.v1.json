@@ -37,6 +37,163 @@
       "sha256": "b7b2401ddca2165824e98c61890c0aaec470258d3119dd265d02be9438bf47e6"
     }
   ],
+  "presentation_mapping": [
+    {
+      "id": "legitimate_scalar_projection",
+      "action": {
+        "@type": "treasury.disbursement.release",
+        "account_code": "001",
+        "amount_minor": 25000000,
+        "currency": "USD",
+        "expedited": true,
+        "memo": null
+      },
+      "material_fields": {
+        "@type": "treasury.disbursement.release",
+        "account_code": "001",
+        "amount_minor": "25000000",
+        "currency": "USD",
+        "expedited": "true",
+        "memo": "null"
+      },
+      "expect": "accept"
+    },
+    {
+      "id": "omitted_material_field",
+      "action": {
+        "action_type": "benefit.payment_destination_change",
+        "case_id": "case-9482",
+        "destination_last4": "4401"
+      },
+      "material_fields": {
+        "action_type": "benefit.payment_destination_change",
+        "case_id": "case-9482"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "changed_material_field",
+      "action": {
+        "action_type": "treasury.disbursement.release",
+        "amount_minor": 25000000
+      },
+      "material_fields": {
+        "action_type": "treasury.disbursement.release",
+        "amount_minor": "2500000"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "extra_consequential_action_field",
+      "action": {
+        "action_type": "treasury.disbursement.release",
+        "amount_minor": 25000000,
+        "service_fee_minor": 4500
+      },
+      "material_fields": {
+        "action_type": "treasury.disbursement.release",
+        "amount_minor": "25000000"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "extra_presentation_field",
+      "action": {
+        "action_type": "benefit.payment_destination_change",
+        "case_id": "case-9482"
+      },
+      "material_fields": {
+        "action_type": "benefit.payment_destination_change",
+        "case_id": "case-9482",
+        "hidden_limit": "5000"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "nested_object_requires_future_profile",
+      "action": {
+        "action_type": "grid.curtailment",
+        "window": {
+          "not_before": "2026-07-16T20:00:00.000Z",
+          "not_after": "2026-07-16T21:30:00.000Z"
+        }
+      },
+      "material_fields": {
+        "action_type": "grid.curtailment",
+        "window": "{\"not_after\":\"2026-07-16T21:30:00.000Z\",\"not_before\":\"2026-07-16T20:00:00.000Z\"}"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "nested_array_requires_future_profile",
+      "action": {
+        "action_type": "access.grant",
+        "scopes": [
+          "read",
+          "write"
+        ]
+      },
+      "material_fields": {
+        "action_type": "access.grant",
+        "scopes": "[\"read\",\"write\"]"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "fractional_number_is_not_a_v1_scalar",
+      "action": {
+        "action_type": "treasury.disbursement.release",
+        "amount_major": 1.5
+      },
+      "material_fields": {
+        "action_type": "treasury.disbursement.release",
+        "amount_major": "1.5"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "unsafe_integer_is_not_a_v1_scalar",
+      "action": {
+        "action_type": "treasury.disbursement.release",
+        "amount_minor": 9007199254740992
+      },
+      "material_fields": {
+        "action_type": "treasury.disbursement.release",
+        "amount_minor": "9007199254740992"
+      },
+      "expect": "reject"
+    },
+    {
+      "id": "non_bmp_4096_scalar_boundary",
+      "action": {
+        "action_type": "text.review"
+      },
+      "material_fields": {
+        "action_type": "text.review"
+      },
+      "repeat_scalar": {
+        "field": "note",
+        "code_point": 128512,
+        "count": 4096
+      },
+      "expect": "accept"
+    },
+    {
+      "id": "non_bmp_4097_scalar_overflow",
+      "action": {
+        "action_type": "text.review"
+      },
+      "material_fields": {
+        "action_type": "text.review"
+      },
+      "repeat_scalar": {
+        "field": "note",
+        "code_point": 128512,
+        "count": 4097
+      },
+      "expect": "reject"
+    }
+  ],
   "hostile_contract": [
     {
       "id": "action_substitution",
@@ -101,9 +258,39 @@
     {
       "id": "duplicate_or_oversized_http_body",
       "expect": "refuse_malformed"
+    },
+    {
+      "id": "local_decision_inversion",
+      "expect": "refuse_decision_mismatch"
+    },
+    {
+      "id": "incomplete_or_changed_material_projection",
+      "expect": "refuse_display_mismatch"
+    },
+    {
+      "id": "nested_mobile_action_without_mapping_profile",
+      "expect": "refuse_malformed"
     }
   ],
   "vectors": [
+    {
+      "id": "accept_closed_mobile_presentation_scalar_parity",
+      "expect": { "valid": true },
+      "execution": {
+        "runner": "node-test",
+        "file": "packages/mobile/presentation.test.js",
+        "title": "projects every flat scalar action field losslessly across the shared vectors"
+      }
+    },
+    {
+      "id": "reject_closed_mobile_presentation_drift",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "node-test",
+        "file": "packages/mobile/presentation.test.js",
+        "title": "refuses omitted, changed, extra, and nested material fields across the shared vectors"
+      }
+    },
     {
       "id": "accept_ios_and_android_class_a",
       "expect": { "valid": true },

@@ -42,6 +42,7 @@ class MobileCeremonyTest {
             put("risk", "high")
             put("consequence", "Future benefit payments will be sent to the new destination.")
             put("material_fields", buildJsonObject {
+                put("action_type", "benefit.payment_destination_change")
                 put("case_id", "case-9482")
                 put("destination_last4", "4401")
             })
@@ -176,6 +177,45 @@ class MobileCeremonyTest {
     }
 
     @Test
+    fun controlledPresentationMatchesSharedMappingVectors() {
+        val vectorFile = File(requireNotNull(System.getProperty("user.dir")))
+            .resolve("../../mobile/conformance/mobile-core.v1.json")
+            .canonicalFile
+        val vectors = Json.parseToJsonElement(vectorFile.readText()).jsonObject
+            .getValue("presentation_mapping").jsonArray
+        vectors.forEach { element ->
+            val vector = element.jsonObject
+            val id = vector.getValue("id").jsonPrimitive.content
+            val expectedAccept = vector.getValue("expect").jsonPrimitive.content == "accept"
+            var action = vector.getValue("action").jsonObject
+            var fields = vector.getValue("material_fields").jsonObject
+            vector["repeat_scalar"]?.jsonObject?.let { repeated ->
+                val field = repeated.getValue("field").jsonPrimitive.content
+                val codePoint = repeated.getValue("code_point").jsonPrimitive.content.toInt()
+                val count = repeated.getValue("count").jsonPrimitive.content.toInt()
+                val value = String(Character.toChars(codePoint)).repeat(count)
+                action = JsonObject(action + (field to JsonPrimitive(value)))
+                fields = JsonObject(fields + (field to JsonPrimitive(value)))
+            }
+            val presentation = buildJsonObject {
+                put("@version", EmiliaMobilePresentation.VERSION)
+                put("title", "Controlled action")
+                put("summary", "Review every exact raw field.")
+                put("risk", "consequential")
+                put("consequence", "The selected decision applies only to these exact values.")
+                put("material_fields", fields)
+            }
+            val result = runCatching {
+                EmiliaMobileChallengeValidator.validatePresentation(presentation, action)
+            }
+            assertEquals(id, expectedAccept, result.isSuccess)
+            if (expectedAccept) {
+                assertEquals(id, fields.mapValues { it.value.jsonPrimitive.content }, result.getOrThrow().materialFields)
+            }
+        }
+    }
+
+    @Test
     fun validatesAndBuildsPortableCeremonyResponse() = runTest {
         val item = fixture()
         val passkeys = EmiliaPasskeyAssertionProvider { rpId, challenge, allowed ->
@@ -206,13 +246,33 @@ class MobileCeremonyTest {
             appId = "gov.example.android.approvals",
             deviceKeyId = "ep:key:mobile-android-1",
         )
-        val response = coordinator.perform(item.data, now)
+        val response = coordinator.perform(item.data, EmiliaMobileDecision.APPROVED, now)
         assertEquals("EP-MOBILE-CEREMONY-v1", response.version)
         assertEquals("approved", response.decision)
         assertEquals(credentialId.base64Url(), response.credentialId)
         assertEquals("play-integrity-standard", response.attestation.format)
         assertEquals(androidKeyId, response.attestationKeyId)
         assertEquals("device-key-signature".toByteArray().base64Url(), response.attestation.deviceKeySignature)
+    }
+
+    @Test
+    fun refusesApproveVersusDenyInversionBeforeSigning() {
+        val item = fixture()
+        assertThrows(EmiliaMobileException.DecisionMismatch::class.java) {
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                item.data,
+                now,
+                EmiliaMobileDecision.DENIED,
+            )
+        }
+    }
+
+    @Test
+    fun sampleRequiresVerifiedDecisionMatchBeforeSealedStatus() {
+        val source = File(requireNotNull(System.getProperty("user.dir")))
+            .resolve("sample/src/main/kotlin/ai/emiliaprotocol/approver/MainActivity.kt")
+            .readText()
+        assertEquals(true, source.contains("result.decision != decision.wireValue"))
     }
 
     @Test

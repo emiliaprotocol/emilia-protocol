@@ -13,6 +13,7 @@ import {
   GRACE_METER_VERSION,
   actionStateCapsuleId,
   buildActionStateCapsule,
+  buildCurtailmentControlledAction,
   buildCurtailmentPresentation,
   createCurtailmentAction,
   executeGraceCurtailment,
@@ -102,7 +103,7 @@ function mobileApprover({
   const credentialId = crypto.randomBytes(32).toString('base64url');
   const appId = 'ai.emiliaprotocol.approver';
   const context = buildMobileAuthorizationContext({
-    actionHash: graceDigest(signedAction),
+    actionHash: graceDigest(buildCurtailmentControlledAction(signedAction)),
     policyId: signedPolicy.policy_id,
     policyHash: graceDigest(signedPolicy),
     initiatorId: initiator,
@@ -246,7 +247,9 @@ describe('GRACE mobile action contract', () => {
     expect(validateCurtailmentAction(action)).toEqual({ valid: true, errors: [] });
     expect(action.action_type).toBe('grid.curtailment');
     expect(action.target_delta_kw).toBe('18000');
-    expect(presentation.material_fields.reduction).toBe('18 MW');
+    expect(presentation.material_fields.target_delta_kw).toBe('18000');
+    expect(presentation.material_fields.window_not_before).toBe(action.window.not_before);
+    expect(presentation.title).toBe('Reduce load by 18 MW');
     expect(() => createCurtailmentAction({ ...action, actionId: undefined })).toThrow();
   });
 

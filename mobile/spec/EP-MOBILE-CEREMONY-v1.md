@@ -77,11 +77,47 @@ The native client MUST first recompute the action, presentation, context, and
 attestation-binding digests. It MUST refuse a mismatch before invoking a
 passkey or integrity provider.
 
-That check binds the signed ceremony to the exact `presentation` object carried
-by the challenge. It does not establish that the presentation is a faithful
-semantic rendering of the action or that the device displayed those bytes
-honestly. This profile does not implement or claim the deterministic rendering
-defined by [PIP-010](../../PIPs/PIP-010-wysiwys-execution-integrity.md).
+The native ceremony API MUST require the local requested decision as a typed
+input. Before invoking a passkey or integrity provider, the client MUST compare
+that value to the decision in the validated authorization context. The same
+local value MUST select the displayed confirmation control and populate the
+ceremony response. An `approved` challenge reached through a local Deny control,
+or a `denied` challenge reached through a local Approve control, MUST be refused.
+
+### 4.1 Closed material projection
+
+`EP-MOBILE-PRESENTATION-v1` uses an enforceable closed mapping rather than a
+producer assertion that a summary is complete. This version has no independently
+pinned, action-specific materiality schema, so every top-level member of
+`action` is material. A conforming client MUST enforce all of the following:
+
+1. `action` is a flat object containing between one and 64 members. Each member
+   name satisfies the schema's `materialFieldName` rule and each value is a
+   string, safe integer, boolean, or `null`. Objects, arrays, non-integer numbers,
+   and integers outside the interoperable safe-integer range are refused. A
+   future profile is required before any nested mapping can be accepted.
+2. `presentation.material_fields` contains exactly the same member names as
+   `action`, including structural names such as `@type` and `action_type`. There
+   is no metadata exclusion list and no producer-selected subset.
+3. Each presentation value is the action value's deterministic lossless text:
+   strings unchanged, integers as base-10 with no leading zeroes, booleans as
+   `true` or `false`, and `null` as `null`. Each text value is at most 4096 Unicode
+   scalar values and contains no disallowed control character.
+4. The client displays every controlled member in the confirmation surface.
+   `title`, `summary`, `risk`, and `consequence` are supplemental prose and MUST
+   NOT replace, rename, or suppress controlled members.
+
+Challenge creation and native validation MUST refuse when a controlled member is
+omitted, renamed, added only to one side, changed from the required textual
+form, nested, or exceeds the bounded rendering contract. Consequently, adding a
+consequential action member without adding its exact visible projection is a
+refusal, not a silently hidden field.
+
+These checks establish that the client accepted a complete, lossless projection of
+the exact action bytes. They do not prove that an honest display showed those
+values or that the approver perceived or understood them. This profile does not
+implement or claim the proof of perception that is outside
+[PIP-010](../../PIPs/PIP-010-wysiwys-execution-integrity.md).
 
 The passkey assertion MUST require user verification. The iOS client uses
 AuthenticationServices and App Attest. The Android client uses Credential
@@ -127,7 +163,7 @@ This profile does not prove:
 - a person's civil identity or comprehension;
 - that the approver perceived the exact bound presentation, or that a
   compromised client rendered the same presentation it signed;
-- semantic equivalence between the bound presentation and the protected action;
+- the semantic truth of supplemental title, summary, risk, or consequence prose;
 - the wisdom, legality, or safety of the action;
 - physical execution or outcome;
 - global non-replay across independent consumption domains; or

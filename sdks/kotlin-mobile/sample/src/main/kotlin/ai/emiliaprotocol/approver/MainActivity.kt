@@ -6,6 +6,7 @@ import ai.emiliaprotocol.mobile.EmiliaAndroidPasskeyRegistrationProvider
 import ai.emiliaprotocol.mobile.EmiliaMobileCeremonyCoordinator
 import ai.emiliaprotocol.mobile.EmiliaMobileChallenge
 import ai.emiliaprotocol.mobile.EmiliaMobileChallengeValidator
+import ai.emiliaprotocol.mobile.EmiliaMobileDecision
 import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentCoordinator
 import ai.emiliaprotocol.mobile.EmiliaPlayIntegrityEnrollmentProvider
 import ai.emiliaprotocol.mobile.EmiliaPlayIntegrityProvider
@@ -44,6 +45,12 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+internal val JsonElement.decision: String
+    get() = ((this as? JsonObject)?.get("decision") as? JsonPrimitive)
+        ?.takeIf { it.isString }
+        ?.content
+        ?: throw MobileApiException.Refused("decision_mismatch")
+
 class MainActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = true }
@@ -52,7 +59,7 @@ class MainActivity : Activity() {
     private var actions: List<InboxAction> = emptyList()
     private var selectedAction: InboxAction? = null
     private var challenge: EmiliaMobileChallenge? = null
-    private var pendingDecision: String? = null
+    private var pendingDecision: EmiliaMobileDecision? = null
     private var busyMessage: String? = null
     private var notice: String? = null
     private var noticeIsError = false
@@ -223,8 +230,8 @@ class MainActivity : Activity() {
             addView(fieldRow(humanize(name), display(value)), matchWrap(top = 10))
         }
         addView(label("Expires ${shortTime(action.expiresAt)}", 13f, MUTED), matchWrap(top = 14))
-        addView(primaryButton("Approve with passkey") { beginDecision("approved") }, matchWrap(top = 20))
-        addView(dangerButton("Deny and sign refusal") { beginDecision("denied") }, matchWrap(top = 10))
+        addView(primaryButton("Approve with passkey") { beginDecision(EmiliaMobileDecision.APPROVED) }, matchWrap(top = 20))
+        addView(dangerButton("Deny and sign refusal") { beginDecision(EmiliaMobileDecision.DENIED) }, matchWrap(top = 10))
     }
 
     private fun progressCard(message: String): View = LinearLayout(this).apply {
@@ -306,7 +313,7 @@ class MainActivity : Activity() {
         notice = null
     }
 
-    private fun beginDecision(decision: String) = runBusy(
+    private fun beginDecision(decision: EmiliaMobileDecision) = runBusy(
         "Binding the exact action",
         onSuccess = { challenge?.let { showChallengeConfirmation(it, decision) } },
     ) {
@@ -316,19 +323,22 @@ class MainActivity : Activity() {
         val issued = api().issueChallenge(
             action.actionReference,
             current.approverId,
-            decision,
+            decision.wireValue,
             current.profileId,
             packageName,
             deviceKey,
         )
-        EmiliaMobileChallengeValidator.decodeAndValidate(json.encodeToString(issued).toByteArray(Charsets.UTF_8))
+        EmiliaMobileChallengeValidator.decodeAndValidate(
+            json.encodeToString(issued).toByteArray(Charsets.UTF_8),
+            requestedDecision = decision,
+        )
         challenge = issued
         pendingDecision = decision
     }
 
-    private fun showChallengeConfirmation(value: EmiliaMobileChallenge, decision: String) {
+    private fun showChallengeConfirmation(value: EmiliaMobileChallenge, decision: EmiliaMobileDecision) {
         val presentation = try {
-            EmiliaMobileChallengeValidator.validatePresentation(value.presentation)
+            EmiliaMobileChallengeValidator.validatePresentation(value.presentation, value.action)
         } catch (_: Exception) {
             challenge = null
             pendingDecision = null
@@ -354,13 +364,16 @@ class MainActivity : Activity() {
                 challenge = null
                 pendingDecision = null
             }
-            .setPositiveButton(if (decision == "approved") "Approve" else "Deny") { _, _ -> performCeremony() }
+            .setPositiveButton(if (decision == EmiliaMobileDecision.APPROVED) "Approve" else "Deny") { _, _ ->
+                performCeremony(decision)
+            }
             .show()
     }
 
-    private fun performCeremony() = runBusy(
-        if (pendingDecision == "approved") "Waiting for passkey" else "Signing the refusal",
+    private fun performCeremony(decision: EmiliaMobileDecision) = runBusy(
+        if (decision == EmiliaMobileDecision.APPROVED) "Waiting for passkey" else "Signing the refusal",
     ) {
+        if (pendingDecision != decision) throw MobileApiException.Refused("decision_mismatch")
         val current = requireNotNull(session)
         val issued = requireNotNull(challenge)
         val integrity = EmiliaPlayIntegrityProvider.prepare(
@@ -376,15 +389,18 @@ class MainActivity : Activity() {
             appId = packageName,
             deviceKeyId = requireNotNull(current.deviceKeyId),
         )
-        val response = coordinator.perform(json.encodeToString(issued).toByteArray(Charsets.UTF_8))
+        val response = coordinator.perform(
+            json.encodeToString(issued).toByteArray(Charsets.UTF_8),
+            decision,
+        )
         val result = api().verify(issued, response)
         if (!result.valid) throw MobileApiException.Refused(result.reason ?: result.verdict)
-        val decided = pendingDecision
+        if (result.decision != decision.wireValue) throw MobileApiException.Refused("decision_mismatch")
         selectedAction = null
         challenge = null
         pendingDecision = null
         actions = api().inbox()
-        showNotice(if (decided == "approved") "Approval sealed. The action is eligible for release." else "Denial sealed. The action remains refused.")
+        showNotice(if (decision == EmiliaMobileDecision.APPROVED) "Approval sealed. The action is eligible for release." else "Denial sealed. The action remains refused.")
     }
 
     private fun disconnect() {

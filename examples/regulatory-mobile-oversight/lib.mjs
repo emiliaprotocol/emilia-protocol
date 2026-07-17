@@ -16,6 +16,7 @@ import {
   mobileProfileHash,
   verifyMobileExecutionRecord,
 } from '../../packages/mobile/index.js';
+import { projectMobileAction } from '../../packages/mobile/presentation.js';
 import {
   createAtomicEvidenceLog,
   createMemoryAtomicEvidenceBackend,
@@ -123,10 +124,8 @@ function makeSyntheticAction() {
     valid_until: '2026-08-16T00:00:00.000Z',
     units_approved: 2,
     organization_id: 'health-plan-synthetic',
-    target: {
-      system: 'utilization-review.synthetic.example',
-      resource: 'prior-auth/PA-SYNTHETIC-0001',
-    },
+    target_system: 'utilization-review.synthetic.example',
+    target_resource: 'prior-auth/PA-SYNTHETIC-0001',
     initiator: 'ep:agent:synthetic-review-assistant',
     policy_id: POLICY_ID,
     requested_at: '2026-07-15T15:59:30.000Z',
@@ -145,19 +144,12 @@ function buildSyntheticSystemOfRecord() {
     disposition: 'approval',
   };
   const presentation = {
+    '@version': 'EP-MOBILE-PRESENTATION-v1',
     title: 'Synthetic prior-authorization approval',
     summary: 'Review the material fields before approving this synthetic case.',
-    synthetic_data: true,
-    action_id: computed.caid,
-    material_fields: {
-      authorization_number: action.authorization_number,
-      patient_ref: action.patient_ref,
-      service_code: action.service_code,
-      diagnosis_code: action.diagnosis_code,
-      valid_from: action.valid_from,
-      valid_until: action.valid_until,
-      units_approved: action.units_approved,
-    },
+    risk: 'regulated healthcare authorization',
+    consequence: 'Approving permits the synthetic service authorization to proceed.',
+    material_fields: projectMobileAction(action),
   };
   const record = {
     action_reference: ACTION_REFERENCE,

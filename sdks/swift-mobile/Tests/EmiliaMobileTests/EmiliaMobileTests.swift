@@ -123,6 +123,7 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
         "risk": .string("high"),
         "consequence": .string("Future benefit payments will be sent to the new destination."),
         "material_fields": .object([
+            "action_type": .string("benefit.payment_destination_change"),
             "case_id": .string("case-9482"),
             "destination_last4": .string("4401"),
         ]),
@@ -218,6 +219,67 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
     }
 }
 
+@Test func controlledPresentationMatchesSharedMappingVectors() throws {
+    let repository = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let data = try Data(contentsOf: repository.appending(path: "mobile/conformance/mobile-core.v1.json"))
+    let root = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let vectors = try #require(root["presentation_mapping"] as? [[String: Any]])
+
+    for vector in vectors {
+        let id = try #require(vector["id"] as? String)
+        let expectedAccept = try #require(vector["expect"] as? String) == "accept"
+        var action = try #require(vector["action"] as? [String: Any])
+        var materialFields = try #require(vector["material_fields"] as? [String: Any])
+        if let repeated = vector["repeat_scalar"] as? [String: Any] {
+            let field = try #require(repeated["field"] as? String)
+            let codePoint = try #require(repeated["code_point"] as? Int)
+            let count = try #require(repeated["count"] as? Int)
+            let scalar = try #require(UnicodeScalar(codePoint))
+            let value = String(repeating: String(scalar), count: count)
+            action[field] = value
+            materialFields[field] = value
+        }
+
+        var accepted = false
+        do {
+            let actionData = try JSONSerialization.data(withJSONObject: action)
+            let actionValue = try JSONDecoder().decode(EmiliaJSONValue.self, from: actionData)
+            let expectedFields = try #require(materialFields as? [String: String])
+            let presentation: EmiliaJSONValue = .object([
+                "@version": .string(EmiliaMobilePresentation.version),
+                "title": .string("Controlled action"),
+                "summary": .string("Review every exact raw field."),
+                "risk": .string("consequential"),
+                "consequence": .string("The selected decision applies only to these exact values."),
+                "material_fields": .object(expectedFields.mapValues(EmiliaJSONValue.string)),
+            ])
+            let validated = try EmiliaMobileChallengeValidator.validatePresentation(
+                presentation,
+                for: actionValue
+            )
+            accepted = true
+            #expect(validated.materialFields == expectedFields, Comment(rawValue: id))
+        } catch {
+            accepted = false
+        }
+        #expect(accepted == expectedAccept, Comment(rawValue: id))
+    }
+}
+
+@Test func projectorRefusesAnUnsafeDirectInteger() {
+    #expect(throws: EmiliaMobileError.displayMismatch) {
+        try EmiliaMobileChallengeValidator.projectMaterialFields(from: .object([
+            "action_type": .string("treasury.disbursement.release"),
+            "amount_minor": .integer(9_007_199_254_740_992),
+        ]))
+    }
+}
+
 @Test func validatesAndBuildsThePortableCeremonyResponse() async throws {
     let credentialID = Data("credential-1".utf8)
     let coordinator = EmiliaMobileCeremonyCoordinator(
@@ -226,13 +288,40 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
         appID: "gov.example.ios.approvals",
         deviceKeyID: "ep:key:mobile-ios-1"
     )
-    let response = try await coordinator.perform(challengeData: challengeData(), now: fixedNow)
+    let response = try await coordinator.perform(
+        challengeData: challengeData(),
+        requestedDecision: .approved,
+        now: fixedNow
+    )
     #expect(response.version == "EP-MOBILE-CEREMONY-v1")
     #expect(response.decision == "approved")
     #expect(response.credentialID == credentialID.emiliaBase64URL)
     #expect(response.attestation.format == "apple-app-attest")
     #expect(response.attestationKeyID == appAttestKeyID)
     #expect(response.attestation.deviceKeySignature == nil)
+}
+
+@Test func refusesApproveVersusDenyInversionBeforeSigning() throws {
+    #expect(throws: EmiliaMobileError.decisionMismatch) {
+        try EmiliaMobileChallengeValidator.decodeAndValidate(
+            challengeData(),
+            requestedDecision: .denied,
+            now: fixedNow
+        )
+    }
+}
+
+@Test func sampleRequiresVerifiedDecisionMatchBeforeSealedStatus() throws {
+    let repository = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+    let source = try String(contentsOf: repository.appending(
+        path: "examples/mobile-government/ios/Sources/ApprovalViewModel.swift"
+    ), encoding: .utf8)
+    #expect(source.contains("guard result.decision == pendingDecision.rawValue"))
 }
 
 @Test func refusesMutatedActionAndAttestationBinding() throws {

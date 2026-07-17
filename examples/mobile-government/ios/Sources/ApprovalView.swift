@@ -277,13 +277,13 @@ struct ApprovalView: View {
                     Task { await model.confirm() }
                 } label: {
                     Label(
-                        decision == "approved" ? "Approve with passkey" : "Sign denial with passkey",
-                        systemImage: decision == "approved" ? "checkmark.shield.fill" : "xmark.shield.fill"
+                        decision == .approved ? "Approve with passkey" : "Sign denial with passkey",
+                        systemImage: decision == .approved ? "checkmark.shield.fill" : "xmark.shield.fill"
                     )
                     .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(decision == "approved" ? Brand.ink : Brand.red)
+                .tint(decision == .approved ? Brand.ink : Brand.red)
                 .accessibilityIdentifier("decision.confirm")
                 Button("Cancel", role: .cancel) { model.cancelReview() }
                     .frame(minHeight: 44)
@@ -291,7 +291,7 @@ struct ApprovalView: View {
         } else {
             VStack(spacing: 10) {
                 Button {
-                    Task { await model.begin(decision: "approved") }
+                    Task { await model.begin(decision: .approved) }
                 } label: {
                     Label("Approve exact action", systemImage: "checkmark.shield.fill")
                         .frame(maxWidth: .infinity, minHeight: 52)
@@ -299,7 +299,7 @@ struct ApprovalView: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("decision.approve")
                 Button(role: .destructive) {
-                    Task { await model.begin(decision: "denied") }
+                    Task { await model.begin(decision: .denied) }
                 } label: {
                     Label("Deny", systemImage: "xmark.shield")
                         .frame(maxWidth: .infinity, minHeight: 48)

@@ -11,6 +11,9 @@ import { canonicalize, isCanonicalizable } from '../../packages/verify/index.js'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const vectors = JSON.parse(fs.readFileSync(path.join(ROOT, 'mobile/conformance/mobile-core.v1.json'), 'utf8'));
 if (vectors['@version'] !== 'EP-MOBILE-CONFORMANCE-v1') throw new Error('unsupported mobile vector version');
+if (!Array.isArray(vectors.presentation_mapping) || vectors.presentation_mapping.length === 0) {
+  throw new Error('mobile presentation mapping vectors are required');
+}
 
 const supportedPorts = new Set(['javascript', 'swift', 'kotlin']);
 const selectedPorts = (process.env.MOBILE_CONFORMANCE_PORTS || 'javascript,swift,kotlin')
@@ -38,6 +41,7 @@ if (selected.has('javascript')) {
     'packages/mobile/government.test.js',
     'packages/mobile/http.test.js',
     'packages/mobile/index.test.js',
+    'packages/mobile/presentation.test.js',
     'packages/mobile/strict-json.test.js',
   ], { cwd: ROOT, env, stdio: 'inherit' });
 }
@@ -50,4 +54,4 @@ if (selected.has('kotlin')) {
   });
 }
 
-console.log(`EP MOBILE CONFORMANCE: PASS (${vectors.canonicalization.length} byte vectors; ${vectors.hostile_contract.length} hostile contracts; ${selectedPorts.join(' + ')})`);
+console.log(`EP MOBILE CONFORMANCE: PASS (${vectors.canonicalization.length} byte vectors; ${vectors.presentation_mapping.length} presentation vectors; ${vectors.hostile_contract.length} hostile contracts; ${selectedPorts.join(' + ')})`);

@@ -1,5 +1,8 @@
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+/** Numbers are accepted at runtime only when they are safe integers. */
+export type MobileControlledScalar = string | number | boolean | null;
+export type MobileControlledAction = Record<string, MobileControlledScalar>;
 export type MobilePlatform = 'ios' | 'android';
 export type MobileDecision = 'approved' | 'denied';
 
@@ -49,7 +52,7 @@ export interface MobileChallenge {
   challenge_profile: 'EP-MOBILE-CHALLENGE-v1';
   challenge_id: string;
   nonce: string;
-  action: Record<string, JsonValue>;
+  action: MobileControlledAction;
   action_hash: string;
   profile_hash: string;
   authorization_context: Record<string, JsonValue>;
@@ -166,7 +169,7 @@ export function createMobileRelianceProfile(input: {
 export function buildMobileAuthorizationContext(input: Record<string, unknown>): Record<string, JsonValue>;
 export function buildMobileAttestationBinding(challenge: MobileChallenge): Record<string, JsonValue>;
 export function createMobileChallenge(input: {
-  action: Record<string, JsonValue>;
+  action: MobileControlledAction;
   policy?: JsonValue;
   policyId?: string | null;
   initiatorId: string;
@@ -236,10 +239,17 @@ export function buildMobileAndroidKeyBinding(input: {
   publicKeySpki: string;
 }): Record<string, JsonValue>;
 export function normalizeMobilePresentation(
-  value: Record<string, JsonValue>,
+  value: unknown,
+  options?: { allowUnversioned?: boolean },
+): MobilePresentation;
+export function projectMobileAction(action: MobileControlledAction): Record<string, string>;
+export function normalizeControlledMobilePresentation(
+  action: MobileControlledAction,
+  value: unknown,
   options?: { allowUnversioned?: boolean },
 ): MobilePresentation;
 export function validMobilePresentation(value: unknown): boolean;
+export function validControlledMobilePresentation(action: unknown, value: unknown): boolean;
 export function createMobileEnrollmentService(input: {
   challengeStore: {
     durable?: boolean;

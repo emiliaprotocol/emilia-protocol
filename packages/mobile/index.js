@@ -18,7 +18,10 @@ import { createMobileHttpHandler } from './http.js';
 import { strictJsonGate } from './strict-json.js';
 import {
   MOBILE_PRESENTATION_VERSION,
+  normalizeControlledMobilePresentation,
   normalizeMobilePresentation,
+  projectMobileAction,
+  validControlledMobilePresentation,
   validMobilePresentation,
 } from './presentation.js';
 import {
@@ -40,7 +43,14 @@ export const MOBILE_PROFILE_VERSION = 'EP-MOBILE-RELIANCE-PROFILE-v1';
 export const MOBILE_ATTESTATION_BINDING_VERSION = 'EP-MOBILE-ATTESTATION-BINDING-v1';
 export const MOBILE_ACK_VERSION = 'EP-MOBILE-ACK-v1';
 export const MOBILE_EXECUTION_RECORD_VERSION = 'EP-MOBILE-EXECUTION-RECORD-v1';
-export { MOBILE_PRESENTATION_VERSION, normalizeMobilePresentation, validMobilePresentation };
+export {
+  MOBILE_PRESENTATION_VERSION,
+  normalizeControlledMobilePresentation,
+  normalizeMobilePresentation,
+  projectMobileAction,
+  validControlledMobilePresentation,
+  validMobilePresentation,
+};
 
 const MOBILE_CHECK_NAMES = Object.freeze([
   'profile',
@@ -470,7 +480,7 @@ export function createMobileChallenge({
   if (!validId(challengeId) || !validId(nonce)) throw new TypeError('challengeId and nonce are malformed');
 
   const computedActionHash = actionHash(action);
-  const normalizedPresentation = normalizeMobilePresentation(presentation);
+  const normalizedPresentation = normalizeControlledMobilePresentation(action, presentation);
   const computedDisplayHash = displayHash(normalizedPresentation);
   const computedPolicyHash = policy === null ? null : hashCanonical(policy);
   const authorizationContext = buildMobileAuthorizationContext({
@@ -658,7 +668,7 @@ export async function verifyMobileCeremony({
       && normalizeHash(context.action_hash) === normalizeHash(challenge.action_hash);
     if (!checks.action) return refused('refuse_action_mismatch', 'action bytes do not match the signed action hash', checks);
 
-    checks.presentation = isRecord(challenge.presentation)
+    checks.presentation = validControlledMobilePresentation(challenge.action, challenge.presentation)
       && normalizeHash(displayHash(challenge.presentation)) === normalizeHash(context.display_hash)
       && response.display_hash === context.display_hash;
     if (!checks.presentation) return refused('refuse_display_mismatch', 'presentation bytes do not match the signed display hash', checks);
@@ -1129,7 +1139,10 @@ export default {
   hashCanonical,
   mobileProfileHash,
   createMobileRelianceProfile,
+  projectMobileAction,
+  normalizeControlledMobilePresentation,
   normalizeMobilePresentation,
+  validControlledMobilePresentation,
   validMobilePresentation,
   buildMobileAuthorizationContext,
   buildMobileAttestationBinding,

@@ -6,10 +6,16 @@ public enum EmiliaMobileError: Error, Equatable {
     case malformedChallenge(String)
     case actionMismatch
     case displayMismatch
+    case decisionMismatch
     case contextMismatch
     case unsupportedPlatform
     case nonCanonicalJSON
     case unavailable(String)
+}
+
+public enum EmiliaMobileDecision: String, Sendable, Codable, Equatable {
+    case approved
+    case denied
 }
 
 public struct EmiliaWebAuthnRequest: Sendable, Codable, Equatable {
@@ -174,10 +180,53 @@ public struct EmiliaValidatedChallenge: Sendable {
     public let mobileBinding: [String: EmiliaJSONValue]
     public let requestHash: Data
     public let presentation: EmiliaMobilePresentation
+    public let decision: EmiliaMobileDecision
 }
 
 public enum EmiliaMobileChallengeValidator {
-    public static func validatePresentation(_ value: EmiliaJSONValue) throws -> EmiliaMobilePresentation {
+    private static func boundedText(_ value: String, maximum: Int, allowEmpty: Bool = false) -> Bool {
+        let scalars = value.unicodeScalars
+        guard scalars.count <= maximum, allowEmpty || !scalars.isEmpty else { return false }
+        return scalars.allSatisfy { scalar in
+            let code = scalar.value
+            return !(code <= 0x08 || code == 0x0b || code == 0x0c
+                || (0x0e...0x1f).contains(code) || code == 0x7f)
+        }
+    }
+
+    public static func projectMaterialFields(from action: EmiliaJSONValue) throws -> [String: String] {
+        guard let object = action.objectValue, (1...64).contains(object.count) else {
+            throw EmiliaMobileError.displayMismatch
+        }
+        var fields: [String: String] = [:]
+        for (name, value) in object {
+            guard name.range(
+                of: #"^@?[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$"#,
+                options: .regularExpression
+            ) != nil else { throw EmiliaMobileError.displayMismatch }
+            let text: String
+            switch value {
+            case .string(let value): text = value
+            case .integer(let value):
+                guard (-EmiliaCanonicalJSON.maximumSafeInteger...EmiliaCanonicalJSON.maximumSafeInteger).contains(value)
+                else { throw EmiliaMobileError.displayMismatch }
+                text = String(value)
+            case .bool(let value): text = value ? "true" : "false"
+            case .null: text = "null"
+            case .array, .object: throw EmiliaMobileError.displayMismatch
+            }
+            guard boundedText(text, maximum: 4_096, allowEmpty: true) else {
+                throw EmiliaMobileError.displayMismatch
+            }
+            fields[name] = text
+        }
+        return fields
+    }
+
+    public static func validatePresentation(
+        _ value: EmiliaJSONValue,
+        for action: EmiliaJSONValue
+    ) throws -> EmiliaMobilePresentation {
         let members: Set<String> = ["@version", "title", "summary", "risk", "consequence", "material_fields"]
         guard let object = value.objectValue,
               Set(object.keys) == members,
@@ -186,25 +235,32 @@ public enum EmiliaMobileChallengeValidator {
               let summary = object["summary"]?.stringValue,
               let risk = object["risk"]?.stringValue,
               let consequence = object["consequence"]?.stringValue,
-              !title.isEmpty, title.unicodeScalars.count <= 200,
-              !summary.isEmpty, summary.unicodeScalars.count <= 2_000,
-              !risk.isEmpty, risk.unicodeScalars.count <= 128,
-              consequence.unicodeScalars.count <= 2_000,
+              boundedText(title, maximum: 200),
+              boundedText(summary, maximum: 2_000),
+              boundedText(risk, maximum: 128),
+              boundedText(consequence, maximum: 2_000, allowEmpty: true),
               let rawFields = object["material_fields"]?.objectValue,
               (1...64).contains(rawFields.count)
         else { throw EmiliaMobileError.displayMismatch }
         var fields: [String: String] = [:]
         for (name, rawValue) in rawFields {
-            guard name.range(of: #"^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$"#, options: .regularExpression) != nil,
+            guard name.range(of: #"^@?[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$"#, options: .regularExpression) != nil,
                   let field = rawValue.stringValue,
-                  field.unicodeScalars.count <= 4_096
+                  boundedText(field, maximum: 4_096, allowEmpty: true)
             else { throw EmiliaMobileError.displayMismatch }
             fields[name] = field
+        }
+        guard fields == (try projectMaterialFields(from: action)) else {
+            throw EmiliaMobileError.displayMismatch
         }
         return .init(title: title, summary: summary, risk: risk, consequence: consequence, materialFields: fields)
     }
 
-    public static func decodeAndValidate(_ data: Data, now: Date = Date()) throws -> EmiliaValidatedChallenge {
+    public static func decodeAndValidate(
+        _ data: Data,
+        requestedDecision: EmiliaMobileDecision? = nil,
+        now: Date = Date()
+    ) throws -> EmiliaValidatedChallenge {
         let decoder = JSONDecoder()
         let challenge: EmiliaMobileChallenge
         do { challenge = try decoder.decode(EmiliaMobileChallenge.self, from: data) }
@@ -227,7 +283,7 @@ public enum EmiliaMobileChallengeValidator {
         guard try EmiliaCanonicalJSON.digest(challenge.action) == challenge.actionHash else {
             throw EmiliaMobileError.actionMismatch
         }
-        let presentation = try validatePresentation(challenge.presentation)
+        let presentation = try validatePresentation(challenge.presentation, for: challenge.action)
         let presentationDigest = try EmiliaCanonicalJSON.digest(challenge.presentation)
         guard let context = challenge.authorizationContext.objectValue,
               context["action_hash"]?.stringValue == challenge.actionHash,
@@ -236,6 +292,12 @@ public enum EmiliaMobileChallengeValidator {
               let mobileBinding = context["mobile_binding"]?.objectValue,
               mobileBinding["profile_hash"]?.stringValue == challenge.profileHash
         else { throw EmiliaMobileError.contextMismatch }
+        guard let decisionValue = context["decision"]?.stringValue,
+              let decision = EmiliaMobileDecision(rawValue: decisionValue)
+        else { throw EmiliaMobileError.contextMismatch }
+        if let requestedDecision, requestedDecision != decision {
+            throw EmiliaMobileError.decisionMismatch
+        }
 
         let contextChallenge = try EmiliaCanonicalJSON.sha256(challenge.authorizationContext).emiliaBase64URL
         guard contextChallenge == challenge.webauthn.challenge else { throw EmiliaMobileError.contextMismatch }
@@ -269,7 +331,8 @@ public enum EmiliaMobileChallengeValidator {
             context: context,
             mobileBinding: mobileBinding,
             requestHash: requestHash,
-            presentation: presentation
+            presentation: presentation,
+            decision: decision
         )
     }
 }
@@ -295,8 +358,16 @@ public actor EmiliaMobileCeremonyCoordinator {
         self.deviceKeyID = deviceKeyID
     }
 
-    public func perform(challengeData: Data, now: Date = Date()) async throws -> EmiliaMobileCeremonyResponse {
-        let validated = try EmiliaMobileChallengeValidator.decodeAndValidate(challengeData, now: now)
+    public func perform(
+        challengeData: Data,
+        requestedDecision: EmiliaMobileDecision,
+        now: Date = Date()
+    ) async throws -> EmiliaMobileCeremonyResponse {
+        let validated = try EmiliaMobileChallengeValidator.decodeAndValidate(
+            challengeData,
+            requestedDecision: requestedDecision,
+            now: now
+        )
         let challenge = validated.challenge
         guard platform == validated.mobileBinding["platform"]?.stringValue,
               appID == validated.mobileBinding["app_id"]?.stringValue,
@@ -304,9 +375,7 @@ public actor EmiliaMobileCeremonyCoordinator {
               integrity.attestationKeyID == validated.mobileBinding["attestation_key_id"]?.stringValue,
               integrity.format == challenge.attestation.format
         else { throw EmiliaMobileError.contextMismatch }
-        guard let decision = validated.context["decision"]?.stringValue,
-              ["approved", "denied"].contains(decision),
-              let displayHash = validated.context["display_hash"]?.stringValue
+        guard let displayHash = validated.context["display_hash"]?.stringValue
         else { throw EmiliaMobileError.contextMismatch }
 
         let credentialIDs = try challenge.webauthn.credentialIDs.map { value -> Data in
@@ -336,7 +405,7 @@ public actor EmiliaMobileCeremonyCoordinator {
             deviceKeyID: deviceKeyID,
             credentialID: assertion.credentialID.emiliaBase64URL,
             attestationKeyID: integrity.attestationKeyID,
-            decision: decision,
+            decision: requestedDecision.rawValue,
             displayHash: displayHash,
             signoff: .init(
                 context: challenge.authorizationContext,
