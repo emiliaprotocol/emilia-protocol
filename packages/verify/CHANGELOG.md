@@ -3,6 +3,17 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.10.1 (2026-07-16)
+
+### Security (please upgrade)
+
+- A validly signed denial remains portable decision evidence but can no longer
+  contribute an approver identity, assurance class, authority subject, signed
+  action material, or quorum member toward authorization or reliance.
+- JavaScript, Python, and Go now share a refusal vector proving that a signed
+  denial cannot verify as authorization. The reliance kernel separately tests
+  mixed approved/denied receipts and a valid device-signed denied quorum member.
+
 ## 3.10.0 (2026-07-15)
 
 ### Security (please upgrade)

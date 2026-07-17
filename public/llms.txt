@@ -2,7 +2,7 @@
 
 > EMILIA is an open evidence architecture and enforcement toolkit for consequential agent actions: native artifacts verify under native rules, CAID matches material actions, AEC evaluates relying-party evidence requirements, and executors retain the authorization decision.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-17T03:42:17.804Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-17T03:47:37.462Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 

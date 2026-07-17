@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-17T03:42:17.804Z",
+  "evidence_snapshot_at": "2026-07-17T03:47:37.462Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "ec66905e663afcb7b7b272717bb2a94264a36200e3d652dbe8c300e5c280a1bb",
+    "input_digest_sha256": "17b2dc7cbf02e18a26c717473c6279d5b8768c71776b678e2e86857159641d49",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "745e1f7f121929da92be2d91656b3be3632fab79ec251008724e05d87288166f",
+        "sha256": "e9481158610ff4343288e9e50f82b529bb2168f7a13d9b9a2fc507aee87d434b",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "78ad7dee200d6392a441642bade1cd08d35d9d49873ee0b7a247352e40aa6515",
+        "sha256": "37776c60692294275a9df1f5f3b7bf2f0d3047c823f2a83c798bc62bdb94226e",
         "bytes": 5622
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "8e8f66e96ef45e2f08540058cf26cde5b13feb6b9647ef1a0f42d1c9378d718d",
+        "sha256": "b5037d6b989486ca338b01b6cc7ca3d0d356dc7001229e79e3b040c76633fe90",
         "bytes": 162165
       },
       {
@@ -152,7 +152,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "10f9b43d58fda94865ecb61a50e2931c57b650ebfee059c92b2e88e3b83eb40d",
+      "manifest_sha256": "5b374fd62c97a16baa762eccea529576af84e2041470ea0dffa50b4d3cf9f6d9",
       "vector_bundle_sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
     },
     "formal": {
