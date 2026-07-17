@@ -17,7 +17,14 @@ for command in docker psql; do
 done
 
 cleanup() {
+  local status=$?
+  trap - EXIT
+  if [[ "$status" -ne 0 ]] && docker inspect "$container" >/dev/null 2>&1; then
+    echo 'Postgres test container logs follow:' >&2
+    docker logs "$container" >&2 || true
+  fi
   docker rm -f "$container" >/dev/null 2>&1 || true
+  exit "$status"
 }
 trap cleanup EXIT
 
@@ -28,21 +35,13 @@ docker run --detach --rm \
   --publish 127.0.0.1::5432 \
   "$postgres_image" >/dev/null
 
-ready=false
-for _ in $(seq 1 60); do
-  if docker exec "$container" pg_isready --username postgres --dbname "$database" >/dev/null 2>&1; then
-    ready=true
+for _ in $(seq 1 50); do
+  host_port="$(docker port "$container" 5432/tcp | awk -F: 'NR == 1 { print $NF }')"
+  if [[ -n "$host_port" ]]; then
     break
   fi
-  sleep 1
+  sleep 0.2
 done
-if [[ "$ready" != true ]]; then
-  echo 'Postgres test container did not become ready' >&2
-  docker logs "$container" >&2 || true
-  exit 1
-fi
-
-host_port="$(docker port "$container" 5432/tcp | awk -F: 'NR == 1 { print $NF }')"
 if [[ -z "$host_port" ]]; then
   echo 'could not determine the Postgres test port' >&2
   exit 1
@@ -61,6 +60,28 @@ psql_as() {
     --no-psqlrc \
     "$@"
 }
+
+# The image's init-only postmaster can briefly satisfy an in-container
+# pg_isready before it hands off to the final TCP server.
+ready=false
+ready_streak=0
+for _ in $(seq 1 60); do
+  if psql_as postgres "$admin_password" \
+      --quiet --tuples-only --no-align --command='SELECT 1' >/dev/null 2>&1; then
+    ready_streak=$((ready_streak + 1))
+    if [[ "$ready_streak" -ge 2 ]]; then
+      ready=true
+      break
+    fi
+  else
+    ready_streak=0
+  fi
+  sleep 1
+done
+if [[ "$ready" != true ]]; then
+  echo 'Postgres test container did not become stably reachable over its published TCP port' >&2
+  exit 1
+fi
 
 psql_as postgres "$admin_password" >/dev/null <<'SQL'
 CREATE ROLE gate_migrator
