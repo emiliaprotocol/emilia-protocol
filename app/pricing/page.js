@@ -20,7 +20,7 @@ const C = ({ children, style }) => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );
 
-// EP Cloud "Subscribe" activates the moment a payment link is set in env
+// Gate Cloud "Subscribe" activates the moment a payment link is set in env
 // (see docs/STRIPE_SETUP.md). Until then the CTA falls back to early-access.
 const CLOUD_CHECKOUT = process.env.NEXT_PUBLIC_STRIPE_CLOUD_TEAM || '';
 

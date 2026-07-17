@@ -117,7 +117,7 @@ export default function sitemap() {
   //   /investors  — page is `noindex`; listing it in the sitemap is a
   //                 contradictory crawl signal that ends up in GSC's
   //                 "Excluded by noindex tag" bucket. The noindex stays.
-  //   /cloud      — this URL renders the gated EP Cloud dashboard
+  //   /cloud      — this URL renders the gated EMILIA Gate Cloud dashboard
   //                 (sidebar + signed-in chrome), not a marketing surface.
   //                 The marketing page is /product/cloud. Keeping /cloud
   //                 in the sitemap leads Google to a thin, gated UI and

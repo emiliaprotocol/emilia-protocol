@@ -73,7 +73,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 |-------------|-------------------|
 | 14(1): Human oversight measures | **EP Accountable Signoff**: named human must explicitly assume responsibility before high-risk action proceeds. Not optional — policy-enforced. |
 | 14(2): Understanding AI system capabilities | EP Eye SHADOW mode: logs what enforcement would have done, enabling human review without blocking. |
-| 14(3)(a): Monitor operations | EP Cloud dashboard: real-time handshake monitoring, signoff queue, event explorer. |
+| 14(3)(a): Monitor operations | EMILIA Gate Cloud dashboard: real-time handshake monitoring, signoff queue, event explorer. |
 | 14(3)(b): Remain aware of automation bias | EP delegation judgment scoring measures how well humans oversee their AI agents. Poor delegation scores surface accountability gaps. |
 | 14(4)(a): Correctly interpret output | EP Trust Decisions are structured, not opaque. Decision + reasons + evidence + policy + appeal path in every response. |
 | 14(4)(b): Decide not to use the system | EP supports manual override: Signoff denial, Handshake revocation, Commit revocation — all with audit trail. |
@@ -96,7 +96,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 | Requirement | EP Implementation |
 |-------------|-------------------|
 | 26(1): Use in accordance with instructions | EP policy engine enforces usage boundaries. Actions outside policy scope are rejected by Handshake verification. |
-| 26(5): Impact assessments for high-risk systems | EP Cloud compliance dashboard provides audit-ready exports, trust score histories, and dispute resolution records. |
+| 26(5): Impact assessments for high-risk systems | EMILIA Gate Cloud compliance dashboard provides audit-ready exports, trust score histories, and dispute resolution records. |
 
 ---
 

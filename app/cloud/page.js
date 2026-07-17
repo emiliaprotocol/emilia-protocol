@@ -17,8 +17,8 @@ const s = {
 };
 
 export const metadata = {
-  title: 'EP Cloud — Managed Trust Control Plane',
-  description: 'Managed policy registry, signoff orchestration, event explorer, audit exports, and tenant management above the open EP protocol.',
+  title: 'EMILIA Gate Cloud — Managed Control Plane',
+  description: 'Managed policy, approval orchestration, evidence operations, and tenant management for EMILIA Gate deployments.',
 };
 
 export default function CloudPage() {
@@ -26,11 +26,12 @@ export default function CloudPage() {
     <div style={s.page}>
       <div style={s.container}>
 
-        <div style={s.eyebrow}>EP Cloud</div>
-        <h1 style={s.h1}>The managed control plane<br />above the open protocol</h1>
+        <div style={s.eyebrow}>EMILIA Gate Cloud</div>
+        <h1 style={s.h1}>Managed operations<br />around the consequence boundary</h1>
         <p style={s.sub}>
-          The EP protocol is open. EP Cloud is the recurring revenue product layer that makes it operational:
-          managed policy, verification, signoff orchestration, monitoring, evidence tooling, and tenant management.
+          EMILIA Protocol stays open. Gate Cloud operates policy, approval orchestration,
+          monitoring, evidence tooling, and tenant management around the customer&rsquo;s
+          enforcement adapter.
         </p>
 
         <div style={s.grid}>
@@ -52,7 +53,7 @@ export default function CloudPage() {
           <div style={s.card}>
             <div style={s.label}>Audit</div>
             <div style={s.cardTitle}>Audit exports</div>
-            <div style={s.cardBody}>SOX-grade evidence packets. Per-action decision records, policy snapshots, signoff traces, and reconstruction-ready exports.</div>
+            <div style={s.cardBody}>Scoped evidence packages with per-action decision records, policy snapshots, signoff traces, and reconstruction-ready exports.</div>
           </div>
           <div style={s.card}>
             <div style={s.label}>Tenants</div>
@@ -71,8 +72,8 @@ export default function CloudPage() {
         <div style={s.section}>
           <h2 style={s.h2}>Open protocol. Commercial control plane.</h2>
           <p style={s.body}>
-            EP is a three-layer system. The protocol is open and forkable. The runtime is self-hostable.
-            The cloud control plane is the managed product layer where recurring revenue lives.
+            The Protocol is open and forkable. Gate can be self-hosted. Gate Cloud is the managed
+            operations layer customers pay for when they do not want to run the control plane.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 20 }}>
             <div style={{ padding: 16, border: '1px solid rgba(34,197,94,0.15)', borderRadius: 8, textAlign: 'center' }}>

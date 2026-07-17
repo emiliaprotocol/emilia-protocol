@@ -17,7 +17,7 @@ Brand colors: `#0C0A09` ink, `#B08D35` gold (signature accent), `#0B1220` navy, 
 **EP Signoff product logo.** Checkmark inside a shield. Green check, blue shield outline. Represents human accountability, approval authority, and final sign-off.
 
 ### `ep-cloud.svg` (200x60)
-**EP Cloud product logo.** Minimalist cloud outline with a geometric lock inside. Blue cloud, green lock. Represents managed infrastructure and secure deployment.
+**EMILIA Gate Cloud product logo.** Minimalist cloud outline with a geometric lock inside. Blue cloud, green lock. Represents managed Gate operations and private deployment.
 
 ### `ep-stack.svg` (300x200)
 **Full stack diagram.** Three-layer vertical visualization: Eye (warns) -> Handshake (verifies) -> Signoff (owns). Uses IBM Plex Mono for labels. Works as a standalone explanatory diagram.

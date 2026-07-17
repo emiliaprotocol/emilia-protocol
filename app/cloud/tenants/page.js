@@ -73,7 +73,7 @@ export default function TenantsPage() {
       <div style={s.container}>
         <div style={s.eyebrow}>Cloud / Tenants</div>
         <h1 style={s.h1}>Tenant Management</h1>
-        <p style={s.subtitle}>View and manage organizations using your EP Cloud deployment.</p>
+        <p style={s.subtitle}>View and manage organizations using your EMILIA Gate Cloud deployment.</p>
 
         {error && <div style={s.error}>{error}</div>}
 

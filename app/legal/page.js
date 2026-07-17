@@ -15,7 +15,7 @@ const DOCS = [
   },
   {
     title: 'Terms of Service',
-    desc: 'Use of the Apache-2.0 reference runtime, the hosted EP Cloud service, the SDKs, and the documentation site.',
+    desc: 'Use of the Apache-2.0 reference runtime, the hosted EMILIA Gate Cloud service, the SDKs, and the documentation site.',
     href: '/legal/terms',
     accent: color.gold,
   },

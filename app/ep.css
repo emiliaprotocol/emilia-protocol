@@ -553,9 +553,7 @@
     line-height: 1.45;
   }
   .ep-home-calm-detail {
-    margin-top: 12px;
-    font-size: 15px;
-    line-height: 1.58;
+    display: none;
   }
   .ep-home-calm-actions {
     margin-top: 24px;

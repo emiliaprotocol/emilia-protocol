@@ -31,10 +31,10 @@ const SECURITY_CLAIMS = String(proofStats.securityCase?.claims || 0);
 const CONFORMANCE_VECTORS = String(proofStats.conformance?.vectors || 0);
 
 const PROBLEMS = [
-  { num: '01', title: 'The vendor wire that passed',     body: 'A payment destination changed inside a valid session, approved through the normal process, to a vendor whose bank details quietly moved. Business email compromise — not a hack.' },
-  { num: '02', title: 'The beneficiary swap',            body: 'A remittance beneficiary was updated through approved channels. The system saw a legitimate change and let the money go.' },
-  { num: '03', title: 'The production credential',       body: 'An infrastructure credential was rotated and a deploy was pushed without action-bound authorization. Every access was valid; the blast radius was not.' },
-  { num: '04', title: 'The agent that executed',         body: 'An AI agent with broad tool access ran a high-risk, irreversible action. No human assumed responsibility for that specific operation.' },
+  { num: '01', title: 'A vendor destination changes',     body: 'The session and operator can both be valid while the beneficiary details are wrong. Authentication does not establish that this exact destination was authorized.' },
+  { num: '02', title: 'A beneficiary is replaced',        body: 'A legitimate account-change workflow can still route funds to the wrong party when the material fields are not bound to a fresh approval.' },
+  { num: '03', title: 'A production credential rotates', body: 'Valid infrastructure access can authorize a broad class of operations without recording who accepted the exact deploy, scope, and consequence.' },
+  { num: '04', title: 'An agent invokes a dangerous tool', body: 'A capable agent can hold valid access and still execute a consequential action for which no accountable human accepted responsibility.' },
 ];
 
 const SURFACES = [
@@ -55,18 +55,18 @@ const STACK_LAYERS = [
     accent: color.gold,
   },
   {
-    label: 'Decide',
-    title: 'Approver Apps',
-    body: 'The iOS, Android, and embeddable SDK ceremony that shows the exact material action and captures a device-bound human decision.',
-    href: '/product/accountable-signoff',
-    accent: color.green,
-  },
-  {
     label: 'Prove',
     title: 'EMILIA Protocol',
     body: 'The open formats, verifier, vectors, and interoperability substrate. Verification remains reproducible without an EMILIA service.',
     href: '/protocol',
     accent: color.blue,
+  },
+  {
+    label: 'Decide',
+    title: 'Approver Apps',
+    body: 'The iOS, Android, and embeddable SDK ceremony that shows the exact material action and captures a device-bound human decision.',
+    href: '/product/accountable-signoff',
+    accent: color.green,
   },
   {
     label: 'Re-perform',
@@ -83,8 +83,8 @@ const STACK_LAYERS = [
 const HOW_IT_WORKS = [
   { step: '01', accent: color.green, label: 'Observe',  body: 'Start in observe mode: see which configured actions would require stronger approval — payments, overrides, vendor changes, autonomous AI actions — without blocking them.' },
   { step: '02', accent: color.blue,  label: 'Verify',   body: 'EMILIA Gate sits between approval and execution. Before a high-risk write reaches the system of record, it binds verified actor identity, authority chain, policy-pinned action context, and a one-time nonce.' },
-  { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a named, accountable human signs off on the exact action — on their own device, bound to the exact action hash. Self-approval fails by construction. For the highest-stakes actions, a multi-party quorum — the two-person rule, in order, each human bound to the exact action — is enforced before execution.' },
-  { step: '04', accent: color.t2,    label: 'Seal',     body: 'Signed, Merkle-anchored authorization evidence is produced for offline verification under the relying party’s pinned inputs with `npm install @emilia-protocol/verify`.' },
+  { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a named, accountable human signs off on the exact action — on their own device, bound to the exact action hash. Profiles can require initiator exclusion and an ordered, distinct-human quorum before execution.' },
+  { step: '04', accent: color.t2,    label: 'Seal',     body: 'Signed, portable authorization evidence is produced for offline verification under the relying party’s pinned inputs with `npm install @emilia-protocol/verify`; deployments can add transparency anchoring when required.' },
 ];
 
 // Eight bindings — the mechanical reasons a high-risk action can't be faked or
@@ -93,9 +93,9 @@ const BINDINGS = [
   { n: '01', accent: color.green, label: 'Reject before mutation',   body: 'Consume must succeed before the write runs. An unauthorized action is stopped, not logged after the fact.' },
   { n: '02', accent: color.blue,  label: 'Exact-action binding',     body: 'The receipt binds the action hash, and (with the experimental display-attestation profile) a hash of the rendered context — narrowing the “signed the wrong thing” gap between the bytes signed and what the approver saw.' },
   { n: '03', accent: color.gold,  label: 'Policy binding',           body: 'The receipt binds the policy content that was in force, not just a policy name or version label.' },
-  { n: '04', accent: color.green, label: 'Authority binding',        body: 'Holding a credential is separate from holding permission to approve. The authority registry proves the signer was allowed to.' },
+  { n: '04', accent: color.green, label: 'Authority binding',        body: 'Holding a credential is separate from holding permission to approve. Gate evaluates the signer against the relying party’s pinned authority sources and scope.' },
   { n: '05', accent: color.blue,  label: 'Class-A enforcement',      body: 'High-risk actions require a passkey / WebAuthn device signoff — or stronger. Weaker assurance fails closed.' },
-  { n: '06', accent: color.gold,  label: 'Execution attestation',    body: 'After approval, an attestation proves what actually ran — and flags drift between the approved and executed action.' },
+  { n: '06', accent: color.gold,  label: 'Execution attestation',    body: 'After approval, the executor can attest what it reports running. The verifier detects drift from the approved action without treating that statement as proof of physical truth.' },
   { n: '07', accent: color.green, label: 'Strict offline verifier',  body: 'Outside parties verify pinned keys, RP identity, and policy hash without trusting EMILIA’s server. npm install @emilia-protocol/verify.' },
   { n: '08', accent: color.blue,  label: 'SDK wrapper',              body: 'Developers adopt the invariant directly around a dangerous write with requireReceipt(...) — no rebuild of the call site.' },
 ];
@@ -489,7 +489,7 @@ export default function HomePage() {
             <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.72, marginTop: 20 }}>
               If an agent or system changes money, permissions, code, records, or regulated state through an
               EMILIA-integrated path, it is either rejected before mutation or it produces an offline-verifiable
-              receipt proving the exact action, policy, authority, signoff strength, and execution binding.
+              receipt binding the exact action, policy, authority, signoff strength, and the executor&rsquo;s execution statement.
               Each line below names the attack it closes.
             </p>
           </motion.div>

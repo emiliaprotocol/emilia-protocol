@@ -1,4 +1,4 @@
-# EP Cloud / Enterprise / Vertical Packs: Commercial Brief
+# EMILIA Gate Cloud / Enterprise / Vertical Packs: Commercial Brief
 
 ## What's new (June 2026)
 - **18 suites / 251 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
@@ -17,7 +17,7 @@ Emilia Protocol is open source, forkable, and has no vendor lock-in.
 The protocol is the foundation. The commercial products build operational
 infrastructure on top of it.
 
-## EP Cloud
+## EMILIA Gate Cloud
 
 Managed infrastructure for organizations that adopt the open protocol.
 
@@ -33,7 +33,7 @@ Managed infrastructure for organizations that adopt the open protocol.
 **Revenue model:** Recurring infrastructure subscription. Priced per tenant
 and per action volume.
 
-## EP Enterprise
+## EMILIA Gate Enterprise
 
 For organizations requiring private deployment and regulatory controls.
 

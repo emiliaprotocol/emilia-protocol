@@ -521,14 +521,14 @@ Create a principal-agent delegation.
 
 ## 6. Cloud Control Plane (authenticated)
 
-> All cloud routes require an EP Cloud API key:
+> All cloud routes require an EMILIA Gate Cloud API key:
 > `Authorization: Bearer ep_cloud_...`
 
 ### POST /api/cloud/signoff/escalate
 
 Escalate a pending signoff for review.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 ---
 
@@ -536,7 +536,7 @@ Escalate a pending signoff for review.
 
 Send a signoff notification to the relevant parties.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 ---
 
@@ -544,7 +544,7 @@ Send a signoff notification to the relevant parties.
 
 List all pending signoffs.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Array of pending signoff records.
 
@@ -554,7 +554,7 @@ List all pending signoffs.
 
 Retrieve the signoff processing queue.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Ordered queue of signoff items awaiting action.
 
@@ -564,7 +564,7 @@ Retrieve the signoff processing queue.
 
 Dashboard statistics for signoff operations.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Aggregated signoff metrics (counts, latency, status breakdown).
 
@@ -574,7 +574,7 @@ Dashboard statistics for signoff operations.
 
 Analytics time series for signoff activity.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Time-bucketed signoff analytics data.
 
@@ -584,7 +584,7 @@ Analytics time series for signoff activity.
 
 Search protocol events with filters.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Query parameters**: Supports filtering by event type, entity, date range, and free-text search.
 
@@ -596,7 +596,7 @@ Search protocol events with filters.
 
 Retrieve the full event timeline for a specific handshake.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Chronological array of events associated with the handshake.
 
@@ -606,7 +606,7 @@ Retrieve the full event timeline for a specific handshake.
 
 Export an evidence package for compliance or review.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Downloadable evidence bundle (events, commits, handshakes).
 
@@ -616,7 +616,7 @@ Export an evidence package for compliance or review.
 
 Generate a compliance report.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Structured compliance report with policy adherence summary.
 
@@ -626,7 +626,7 @@ Generate a compliance report.
 
 Check event integrity across the audit trail.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Integrity check result with hash verification status.
 
@@ -636,7 +636,7 @@ Check event integrity across the audit trail.
 
 Simulate a policy against historical or hypothetical data.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Request body**: Simulation parameters (entity set, time range, threshold overrides).
 
@@ -648,7 +648,7 @@ Simulate a policy against historical or hypothetical data.
 
 Initiate a staged rollout of a policy version.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Request body**: Rollout configuration (percentage, target groups, schedule).
 
@@ -660,7 +660,7 @@ Initiate a staged rollout of a policy version.
 
 List version history for a policy.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Response** (200): Array of policy versions with timestamps and change summaries.
 
@@ -670,7 +670,7 @@ List version history for a policy.
 
 Compare two versions of a policy.
 
-**Auth**: EP Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key required.
 
 **Query parameters**: `from` and `to` version identifiers.
 

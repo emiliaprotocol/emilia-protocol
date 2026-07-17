@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 /**
  * POST /api/checkout
  *
- * Creates a Stripe Checkout Session for an EP Cloud plan and returns its URL.
+ * Creates a Stripe Checkout Session for an EMILIA Gate Cloud plan and returns its URL.
  *
  * The secret key and Price IDs are read from server-side env — never from the
  * client, never hardcoded. Run `scripts/stripe-setup.mjs` (with your own

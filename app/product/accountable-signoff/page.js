@@ -28,11 +28,11 @@ export default function AccountableSignoffPage() {
   }
 
   const METHODS = [
-    { title: 'Passkey', body: 'FIDO2/WebAuthn credential bound to device hardware. Phishing-resistant, biometric-gated. The strongest available consumer-grade signoff method.' },
-    { title: 'Secure App', body: 'Reserved signoff channel in the protocol (secure_app): a dedicated mobile app rendering the exact action context on-device. Roadmap — today the device-bound path is WebAuthn (Face ID / Touch ID / passkey).' },
-    { title: 'Platform Authenticator', body: 'OS-level biometric or PIN challenge (Touch ID, Windows Hello, Android biometric). Uses the platform\'s trusted execution environment for key operations.' },
-    { title: 'Out-of-band', body: 'Signoff delivered through a separate channel from the requesting session. SMS, email, or push notification with action-bound one-time code. Weakest method, used only where stronger methods are unavailable.' },
-    { title: 'Dual Signoff', body: 'Two named principals must independently attest to the same action before execution proceeds. Each signoff is cryptographically bound to the exact action parameters. Used for the highest-risk operations.' },
+    { title: 'iOS reference app', body: 'A buildable SwiftUI client renders the closed exact-action presentation, uses a passkey for user verification, and binds Apple App Attest evidence to the same ceremony. Public distribution remains release-gated.' },
+    { title: 'Android reference app', body: 'A buildable Kotlin client uses Credential Manager, a non-exportable Android Keystore key, and Google Play Integrity under a server-pinned package and signing certificate. Public distribution remains release-gated.' },
+    { title: 'Passkey ceremony', body: 'The Class-A signoff uses WebAuthn/passkeys with user presence and user verification. The mobile layer composes with this established primitive instead of inventing new cryptography.' },
+    { title: 'Embeddable SDKs', body: 'Swift and Kotlin libraries let an organization embed the same ceremony into its own branded, self-hosted application while keeping its own trust roots and execution boundary.' },
+    { title: 'Distinct-human quorum', body: 'A profile can require multiple enrolled approvers, initiator exclusion, ordering, and separate device-bound ceremonies over the same exact action before Gate permits execution.' },
   ];
 
   const WHEN_REQUIRED = [
@@ -43,10 +43,10 @@ export default function AccountableSignoffPage() {
   ];
 
   const WHY_IT_MATTERS = [
-    { context: 'Government', icon: 'IG', detail: 'Inspector General and GAO auditors receive action-level evidence chains with named human accountability. Every signoff produces an immutable record binding the authorizer to the exact action.' },
-    { context: 'Treasury', icon: 'SOX', detail: 'SOX-grade evidence for payment authorization. Named signoff records satisfy segregation-of-duties requirements and provide tamper-evident audit trails for financial controls.' },
-    { context: 'Enterprise', icon: 'PAM', detail: 'Privilege escalation prevention. No administrative action executes without a named human signing off on the exact operation. Eliminates blanket session-based approvals.' },
-    { context: 'Agent Execution', icon: 'AI', detail: 'Human responsibility chain for AI agent actions. When an agent requests a high-risk operation, a named human must explicitly accept responsibility before the agent can proceed.' },
+    { context: 'Government', icon: 'IG', detail: 'Action-level evidence can show which enrolled approver completed the ceremony, over which exact action, under which pinned profile. The agency and its auditor decide what conclusion that record supports.' },
+    { context: 'Treasury', icon: 'SOX', detail: 'Named, action-bound signoff and distinct-human quorum can support segregation-of-duties control testing without claiming that a cryptographic record alone establishes compliance.' },
+    { context: 'Enterprise', icon: 'PAM', detail: 'At a fully mediated privileged-operation boundary, Gate can require an enrolled human decision before a configured administrative action executes.' },
+    { context: 'Agent Execution', icon: 'AI', detail: 'When an agent requests a protected operation, the app gives the accountable human a separate exact-action decision surface before Gate permits the integrated executor to proceed.' },
   ];
 
   return (
@@ -55,20 +55,24 @@ export default function AccountableSignoffPage() {
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={styles.eyebrowBlue}>Product / Accountable Signoff</div>
-        <h1 style={styles.h1}>Accountable Signoff</h1>
+        <div style={styles.eyebrowBlue}>EMILIA Approver Apps</div>
+        <h1 style={styles.h1}>The human decision edge of EMILIA Gate</h1>
         <p style={{ ...styles.body, maxWidth: 640 }}>
-          When policy requires human ownership, EP requires a named responsible human to explicitly assume responsibility for the exact action before execution.
+          Gate creates the exact-action challenge. The app shows the material fields on a
+          separate device, captures an approve or deny decision, and returns
+          device-bound evidence for Gate to verify and consume.
         </p>
-        <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
+        <a href="#pilot" className="ep-cta" style={cta.primary}>Pilot the Approver apps</a>
       </section>
 
       {/* Not MFA */}
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
-          <h2 style={styles.h2}>Not MFA. Not human-in-the-loop. Named human accountability.</h2>
+          <h2 style={styles.h2}>Identity starts the ceremony. It does not authorize the action.</h2>
           <p style={styles.body}>
-            Multi-factor authentication proves identity. Human-in-the-loop confirms a step happened. Neither binds a named human to a specific action with cryptographic evidence.
+            Authentication establishes control of an enrolled credential. The Approver ceremony
+            adds the exact action, the relying party&rsquo;s challenge and profile, a fresh decision,
+            and evidence that Gate can verify before execution.
           </p>
           <div style={grid.stack}>
             <div className="ep-card-hover" style={styles.card}>
@@ -81,7 +85,7 @@ export default function AccountableSignoffPage() {
             </div>
             <div className="ep-card-accent" style={{ ...styles.card, border: `1px solid ${color.border}` }}>
               <div style={{ ...styles.cardTitle, color: color.green }}>Accountable Signoff</div>
-              <div style={styles.cardBody}>A named human reviews the exact action parameters and explicitly assumes responsibility. The signoff is cryptographically bound to the <span style={styles.mono}>action</span>, the <span style={styles.mono}>principal</span>, the <span style={styles.mono}>policy</span>, and the <span style={styles.mono}>timestamp</span>. It is one-time consumable and replay-resistant.</div>
+              <div style={styles.cardBody}>An enrolled approver receives a relying-party-created presentation and makes a fresh decision. The response binds the <span style={styles.mono}>action</span>, the <span style={styles.mono}>credential</span>, the <span style={styles.mono}>profile</span>, and the <span style={styles.mono}>challenge</span>. Gate consumes an accepted ceremony once at the protected executor.</div>
             </div>
           </div>
         </div>
@@ -90,12 +94,12 @@ export default function AccountableSignoffPage() {
       {/* How it works */}
       <section style={styles.section}>
         <h2 style={styles.h2}>How it works</h2>
-        <p style={styles.body}>Three steps. No ambiguity about who authorized what.</p>
+        <p style={styles.body}>Three steps across the app and the enforcement boundary.</p>
         <div style={{ display: 'grid', gap: 20 }}>
           {[
-            { step: '01', label: 'Challenge', detail: 'The system presents the exact action context to the named principal: what will happen, to what, with what parameters. The challenge is cryptographically bound to the action.' },
-            { step: '02', label: 'Attest', detail: 'The named principal reviews the action context and explicitly attests. The attestation binds their identity to the exact action parameters using their chosen signoff method (passkey, secure app, platform authenticator).' },
-            { step: '03', label: 'Consume', detail: 'The attestation is consumed exactly once. The action executes. The signoff record is immutable. The attestation cannot be replayed for a different action, a different amount, or a different target.' },
+            { step: '01', label: 'Challenge', detail: 'Gate resolves the action and presentation from the protected system, selects the pinned profile, and registers a fresh body-bound challenge. The phone does not author its own action or trust policy.' },
+            { step: '02', label: 'Decide', detail: 'The app renders the closed material-field presentation, then binds the approver’s decision, passkey assertion, and supported app or device integrity evidence to the same request.' },
+            { step: '03', label: 'Consume', detail: 'Gate verifies the ceremony under relying-party-pinned inputs and atomically consumes an accepted challenge before the integrated executor mutates state. Refusals remain evidence and never authorize an effect.' },
           ].map((s2, i) => (
             <div key={i} style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
               <div style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: color.green, flexShrink: 0, lineHeight: 1, minWidth: 44 }}>{s2.step}</div>
@@ -112,7 +116,12 @@ export default function AccountableSignoffPage() {
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
           <h2 style={styles.h2}>Signoff methods</h2>
-          <p style={styles.body}>EP supports multiple attestation methods. Policy determines which methods are acceptable for each action risk class.</p>
+          <p style={styles.body}>Open reference clients and SDKs capture the decision. The relying party still chooses the acceptable apps, keys, integrity services, and assurance floor.</p>
+          <p style={styles.body}>
+            The ceremony establishes that a pinned enrolled key completed a verified response over
+            exact bytes. It does not prove perception, comprehension, legal sufficiency, or that a
+            compromised device displayed honest pixels.
+          </p>
           <div style={grid.stack}>
             {METHODS.map((m, i) => (
               <div key={i} className="ep-card-hover" style={styles.card}>
@@ -142,7 +151,7 @@ export default function AccountableSignoffPage() {
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
           <h2 style={styles.h2}>Why it matters</h2>
-          <p style={styles.body}>Different environments need accountable signoff for different reasons. The mechanism is the same. The evidence it produces satisfies each context.</p>
+          <p style={styles.body}>Different environments need accountable signoff for different reasons. The mechanism is the same; each organization decides what control or legal conclusion the evidence supports.</p>
           <div style={grid.auto(280)}>
             {WHY_IT_MATTERS.map((w, i) => (
               <div key={i} className="ep-card-hover" style={styles.card}>
@@ -159,7 +168,7 @@ export default function AccountableSignoffPage() {
 
       {/* Pilot form */}
       <section id="pilot" style={styles.section}>
-        <h2 style={styles.h2}>Request Pilot</h2>
+        <h2 style={styles.h2}>Pilot the Approver apps</h2>
         {submitted ? (
           <div style={{ ...styles.card, textAlign: 'center', padding: 40 }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
@@ -189,7 +198,7 @@ export default function AccountableSignoffPage() {
             </div>
             {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
             <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
-              {submitting ? 'Submitting...' : 'Request Pilot'}
+              {submitting ? 'Submitting...' : 'Request an Approver pilot'}
             </button>
           </div>
         )}
