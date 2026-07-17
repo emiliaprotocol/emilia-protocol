@@ -9,6 +9,7 @@ import {
   validateCredentialRotationGuideText,
   validateGoTagWorkflowText,
   validateNpmLockData,
+  validatePypiDirect,
   validateReusableNpmWorkflowText,
   validateReusablePypiWorkflowText,
 } from '../scripts/check-release-chain.mjs';
@@ -76,6 +77,16 @@ describe('release-chain coverage', () => {
     const workflow = readFileSync('.github/workflows/_publish-pypi-package.yml', 'utf8');
     const weakened = workflow.replace('cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"', 'true # comparison removed');
     expect(() => validateReusablePypiWorkflowText(weakened)).toThrow(/REGISTRY_WHEEL/);
+  });
+
+  it('requires the protected environment on the job that receives the PyPI OIDC token', () => {
+    const workflow = readFileSync('.github/workflows/publish-crewai.yml', 'utf8');
+    expect(validatePypiDirect(workflow, 'publish-crewai.yml')).toBe(true);
+    const detached = workflow.replace(
+      '    environment: registry-publishing-approval',
+      '    # environment: registry-publishing-approval',
+    );
+    expect(() => validatePypiDirect(detached, 'publish-crewai.yml')).toThrow(/protected approval environment/);
   });
 
   it('refuses a reusable publisher with its post-registry byte comparison removed', () => {

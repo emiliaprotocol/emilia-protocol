@@ -21,17 +21,10 @@ permissions:
   attestations: write
 
 jobs:
-  approval:
-    runs-on: ubuntu-latest
-    environment: registry-publishing-approval
-    permissions: {}
-    steps:
-      - run: echo "Owner approved registry publication."
-
   publish:
-    needs: approval
     name: Publish ep-verify
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
     concurrency:
       group: registry-publish-pypi-ep-verify
       cancel-in-progress: false

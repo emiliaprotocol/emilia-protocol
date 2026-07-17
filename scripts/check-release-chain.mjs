@@ -106,8 +106,18 @@ function validateManualPublisher(text, label, { direct }) {
     'release_tag:',
     'confirmation:',
     'environment: registry-publishing-approval',
-    'needs: approval',
   ], label);
+  const workflow = YAML.parse(text);
+  const publish = workflow?.jobs?.publish;
+  const approval = workflow?.jobs?.approval;
+  const dependencies = Array.isArray(publish?.needs) ? publish.needs : [publish?.needs];
+  const publishIsProtected = publish?.environment === 'registry-publishing-approval';
+  const approvalIsProtected = dependencies.includes('approval')
+    && approval?.environment === 'registry-publishing-approval'
+    && Object.keys(approval?.permissions ?? {}).length === 0;
+  if (!publishIsProtected && !approvalIsProtected) {
+    throw new Error(`${label} does not bind publication to the protected approval environment`);
+  }
   if (direct) {
     requireText(text, [
       'ref: ${{ inputs.release_tag }}',
@@ -295,7 +305,7 @@ function validateNpmDirect(text, label) {
   forbidCredentialInjection(text, label);
 }
 
-function validatePypiDirect(text, label) {
+export function validatePypiDirect(text, label) {
   requireText(text, [
     'npm run security-case:emit',
     'npm run conformance:manifest',
@@ -310,6 +320,7 @@ function validatePypiDirect(text, label) {
   ], label);
   validateManualPublisher(text, label, { direct: true });
   forbidCredentialInjection(text, label);
+  return true;
 }
 
 function exactInput(text, key, value) {
