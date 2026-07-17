@@ -2,13 +2,13 @@
 
 > EMILIA is an open evidence architecture and enforcement toolkit for consequential agent actions: native artifacts verify under native rules, CAID matches material actions, AEC evaluates relying-party evidence requirements, and executors retain the authorization decision.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-17T02:15:13.138Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-17T03:42:17.804Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 
-EMILIA is implemented security infrastructure, not architecture-only: 5,901 automated tests across 303 files; 22 executable security claims over 104 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces.
+EMILIA is implemented security infrastructure, not architecture-only: 5,908 automated tests across 303 files; 22 executable security claims over 104 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces.
 
-Interoperability evidence: 18 conformance suites and 250 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
+Interoperability evidence: 18 conformance suites and 251 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
 ## Canonical Context
 
