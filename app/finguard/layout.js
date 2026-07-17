@@ -1,14 +1,12 @@
 export const metadata = {
-  title: 'FinGuard — Wire Fraud + Bank-Change + AI-Voice Defense',
+  title: 'FinGuard — EMILIA Gate Financial Profile',
   description:
-    'Pre-execution authorization for wire transfers, vendor-bank changes, and payment '
-    + 'release. Stops BEC and AI-voice-cloned fraud before the action executes.',
+    'A financial solution profile for EMILIA Gate, applying action-bound evidence to configured treasury, beneficiary-change, and payment-release workflows.',
   alternates: { canonical: '/finguard' },
   openGraph: {
-    title: 'EMILIA FinGuard',
+    title: 'FinGuard — EMILIA Gate Financial Profile',
     description:
-      'Vendor-bank-change, beneficiary-swap, and AI-voice fraud — ' +
-      'blocked before the action executes.',
+      'Apply Gate policy and authorization-evidence requirements at configured financial action boundaries.',
     url: 'https://www.emiliaprotocol.ai/finguard',
     type: 'article',
   },

@@ -128,10 +128,10 @@ const MODES = [
 export default function GovGuardPage() {
   return (
     <>
-      <SiteNav activePage="GovGuard" />
+      <SiteNav activePage="Solutions" />
       <main style={styles.page}>
         <section style={{ ...styles.sectionWide, paddingTop: 80, paddingBottom: 56 }}>
-          <div style={styles.eyebrow}>EMILIA GOVGUARD</div>
+          <div style={styles.eyebrow}>EMILIA Gate solution profile &middot; Government</div>
           <h1 style={{ ...styles.h1Large, maxWidth: 880 }}>
             Pre-payment control for government fraud.
           </h1>
@@ -143,10 +143,9 @@ export default function GovGuardPage() {
             money or regulated state moves.
           </p>
           <p style={{ ...styles.body, maxWidth: 740, marginTop: 8 }}>
-            For treasurers, controllers, program-integrity teams, and Inspectors
-            General: your logs prove it to you. The receipt proves it to everyone else -
-            auditors, insurers, regulators, and courts - without trusting your logs,
-            your vendor, or EMILIA.
+            For treasurers, controllers, program-integrity teams, and Inspectors General:
+            the receipt gives an outside reviewer a portable record they can check under
+            their own trust inputs, instead of relying only on the operator&rsquo;s logs or EMILIA.
           </p>
           <p style={{ ...styles.body, maxWidth: 740, marginTop: 8, fontSize: 15, color: color.t2 }}>
             The <a href="https://www.gao.gov/products/gao-24-105833" style={{ color: color.t1, textDecoration: 'underline' }}>Government Accountability Office estimated in 2024</a> that federal

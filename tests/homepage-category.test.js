@@ -10,7 +10,7 @@ function read(relPath) {
 
 describe('homepage category contract', () => {
   it('leads with the Consequence Firewall product and keeps technical proof in a restrained band', () => {
-    const page = read('app/page.js');
+    const page = read('app/HomePageClient.js');
     const layout = read('app/layout.js');
     const css = read('app/ep.css');
 
@@ -19,7 +19,7 @@ describe('homepage category contract', () => {
     expect(layout).toContain('AI agent firewall');
     expect(page).toContain('EMILIA Gate <span>· The Consequence Firewall</span>');
     expect(page).toContain('Before a machine changes the world, make it prove the action was authorized.');
-    expect(page).toContain('No valid receipt, no movement of money, code, permissions, data, energy, or physical state.');
+    expect(page).toContain('On a fully mediated protected path: no valid receipt, no movement of money, code,');
     expect(css).toContain('hero-human-machine-shoreline-v1.webp');
     expect(page).toContain('Proof, not promises');
     expect(page).toContain('IETF Internet-Drafts');
@@ -35,7 +35,7 @@ describe('homepage category contract', () => {
   it('binds public proof counts to generated repo evidence instead of stale literals', () => {
     const proofStats = JSON.parse(read('lib/proof-stats.json'));
     const securityCase = JSON.parse(read('security/security-case.json'));
-    const page = read('app/page.js');
+    const page = read('app/HomePageClient.js');
     const proofBlock = read('components/ProofBlock.js');
 
     expect(proofStats.tests.total).toBeGreaterThan(4500);

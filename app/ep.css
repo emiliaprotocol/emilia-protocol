@@ -686,6 +686,97 @@
   }
 }
 
+/* ─── Assurance artifact index ───────────────────────────── */
+@media (max-width: 640px) {
+  .ep-pricing-assurance-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ep-pricing-table > div {
+    min-width: 680px;
+  }
+
+  .ep-docs-system-row {
+    grid-template-columns: 1fr auto !important;
+    gap: 8px 16px !important;
+  }
+
+  .ep-docs-system-row > strong {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ep-docs-system-row > span:nth-of-type(1) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ep-docs-system-row > span:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ep-home-stack-row {
+    grid-template-columns: 1fr auto !important;
+    gap: 8px 16px !important;
+  }
+
+  .ep-home-stack-row > span:nth-of-type(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ep-home-stack-row > strong {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ep-home-stack-row > span:nth-of-type(2) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .ep-home-stack-row > span:nth-of-type(3) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ep-assurance-artifact-row {
+    grid-template-columns: 1fr auto !important;
+    gap: 8px 16px !important;
+  }
+
+  .ep-assurance-artifact-row > span {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ep-assurance-artifact-row > svg {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ep-gate-stack-row {
+    grid-template-columns: 1fr auto !important;
+    gap: 8px 16px !important;
+  }
+
+  .ep-gate-stack-row > strong {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ep-gate-stack-row > span:nth-of-type(1) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ep-gate-stack-row > span:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
 /* ─── Reduced Motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .ep-card-hover,

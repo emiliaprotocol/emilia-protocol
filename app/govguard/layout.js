@@ -1,15 +1,12 @@
 export const metadata = {
-  title: 'GovGuard - Pre-Payment Control for Government Fraud',
+  title: 'GovGuard — EMILIA Gate Government Profile',
   description:
-    'Run a government fraud-control fire drill for vendor payment destinations, '
-    + 'disbursement releases, benefit routing, provider enrollment, and eligibility '
-    + 'overrides. Start in observe mode; nothing is blocked.',
+    'A government solution profile for EMILIA Gate, covering configured disbursement, benefit-routing, enrollment, and override actions. Start in observe mode.',
   alternates: { canonical: '/govguard' },
   openGraph: {
-    title: 'EMILIA GovGuard',
+    title: 'GovGuard — EMILIA Gate Government Profile',
     description:
-      'Pre-payment control and authorization receipts for government fraud workflows. '
-      + 'Observe one workflow, prove which actions would have required named signoff.',
+      'Apply Gate policy and authorization-evidence requirements to configured public-sector workflows.',
     url: 'https://www.emiliaprotocol.ai/govguard',
     type: 'article',
   },
@@ -26,7 +23,7 @@ export const metadata = {
     'Medicaid fraud',
     'caseworker override control',
     'government AI controls',
-    'NIST AI RMF compliance',
+    'NIST AI RMF evidence',
     'IG GAO evidence',
   ],
 };

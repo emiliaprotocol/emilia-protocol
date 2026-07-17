@@ -41,12 +41,12 @@ const SCENARIOS = [
 export default function FinGuardPage() {
   return (
     <>
-      <SiteNav activePage="FinGuard" />
+      <SiteNav activePage="Solutions" />
       <main style={styles.page}>
         {/* Hero */}
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA FINGUARD · FIN-00X</div>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA Gate solution profile &middot; Financial operations</div>
             <h1 style={{ ...styles.h1, marginTop: 16 }}>Pre-execution trust for treasury & payment ops.</h1>
             <p style={{ ...styles.lead, maxWidth: 720, marginTop: 16 }}>
               FinGuard binds beneficiary changes, vendor remittance updates, and payout
