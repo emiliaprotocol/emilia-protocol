@@ -164,6 +164,7 @@ const SAFE_HOSTS = new Set([
   "research.gov",
   "darpa.mil",
   "nist.gov",
+  "europa.eu", // official European Union sources, including digital-strategy.ec.europa.eu
   // Energy / grid reference bodies (cited for macro stats in the GRACE docs)
   "iea.org",
   "nerc.com",
