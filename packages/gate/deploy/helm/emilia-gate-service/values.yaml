@@ -58,9 +58,10 @@ secrets:
 migrations:
   enabled: true
   postgres:
-    # Optional migration-role Secret. Empty reuses secrets.postgres.
+    # Required, distinct migration-role Secret. Reuse of secrets.postgres is
+    # refused so the long-lived runtime credential never gains DDL authority.
     existingSecret: ""
-    # Empty reuses secrets.postgres.key.
+    # Required key containing the migration-role connection URL.
     key: ""
   command:
     - node

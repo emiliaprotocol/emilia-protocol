@@ -7,6 +7,42 @@
 {{- $name := default .Chart.Name .Values.nameOverride }}
 {{- $fullname := default (printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-") .Values.fullnameOverride }}
 {{- $manifestConfigMap := default $fullname .Values.manifest.existingConfigMap }}
+{{- $consumption := .Values.sharedState.consumption }}
+{{- $evidence := .Values.sharedState.evidence }}
+{{- $consumptionAny := or (ne $consumption.envName "") (ne $consumption.existingSecret "") (ne $consumption.secretKey "") }}
+{{- $evidenceAny := or (ne $evidence.envName "") (ne $evidence.existingSecret "") (ne $evidence.secretKey "") }}
+{{- $consumptionConfigured := and (ne $consumption.envName "") (ne $consumption.existingSecret "") (ne $consumption.secretKey "") }}
+{{- $evidenceConfigured := and (ne $evidence.envName "") (ne $evidence.existingSecret "") (ne $evidence.secretKey "") }}
+{{- $reservedEnv := list "NODE_ENV" "EP_GATE_PORT" "EP_GATE_LOG_LEVEL" "EP_GATE_EVIDENCE_STRICT" "EP_GATE_MANIFEST_PATH" "EP_GATE_METRICS_ENABLED" "EP_GATE_ISSUER_KEYS" }}
+{{- if and $consumptionAny (not $consumptionConfigured) }}
+{{- fail "sharedState.consumption requires envName, existingSecret, and secretKey together" }}
+{{- end }}
+{{- if and $evidenceAny (not $evidenceConfigured) }}
+{{- fail "sharedState.evidence requires envName, existingSecret, and secretKey together" }}
+{{- end }}
+{{- if and $consumptionConfigured (not (regexMatch "^[A-Za-z_][A-Za-z0-9_]*$" $consumption.envName)) }}
+{{- fail "sharedState.consumption.envName must be a valid environment variable name" }}
+{{- end }}
+{{- if and $evidenceConfigured (not (regexMatch "^[A-Za-z_][A-Za-z0-9_]*$" $evidence.envName)) }}
+{{- fail "sharedState.evidence.envName must be a valid environment variable name" }}
+{{- end }}
+{{- if and $consumptionConfigured (has $consumption.envName $reservedEnv) }}
+{{- fail "sharedState.consumption.envName must not override a chart-managed environment variable" }}
+{{- end }}
+{{- if and $evidenceConfigured (has $evidence.envName $reservedEnv) }}
+{{- fail "sharedState.evidence.envName must not override a chart-managed environment variable" }}
+{{- end }}
+{{- if and $consumptionConfigured $evidenceConfigured (eq $consumption.envName $evidence.envName) }}
+{{- fail "sharedState.consumption.envName and sharedState.evidence.envName must be distinct" }}
+{{- end }}
+{{- range $extra := .Values.gate.extraEnv }}
+{{- if or (has $extra.name $reservedEnv) (and $consumptionConfigured (eq $extra.name $consumption.envName)) (and $evidenceConfigured (eq $extra.name $evidence.envName)) }}
+{{- fail (printf "gate.extraEnv name %s duplicates a chart-managed or shared-state environment variable" $extra.name) }}
+{{- end }}
+{{- end }}
+{{- if and (gt (int .Values.replicaCount) 1) (not (and $consumptionConfigured $evidenceConfigured)) }}
+{{- fail "deprecated emilia-gate refuses replicaCount > 1 without complete Secret-backed sharedState.consumption and sharedState.evidence references; prefer emilia-gate-service" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,6 +57,8 @@ metadata:
     helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version }}
     emiliaprotocol.ai/chart-contract: EP-GATE-HELM-v1
     emiliaprotocol.ai/maturity: experimental
+    emiliaprotocol.ai/deprecated: "true"
+    emiliaprotocol.ai/replacement: emilia-gate-service
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -86,6 +124,22 @@ spec:
                 secretKeyRef:
                   name: {{ required "issuerKeys.existingSecret is required. This chart NEVER renders key material — create the Secret out-of-band (see README.md) and set issuerKeys.existingSecret to its name." .Values.issuerKeys.existingSecret }}
                   key: {{ .Values.issuerKeys.secretKey }}
+            {{- if $consumptionConfigured }}
+            - name: {{ $consumption.envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $consumption.existingSecret }}
+                  key: {{ $consumption.secretKey }}
+                  optional: false
+            {{- end }}
+            {{- if $evidenceConfigured }}
+            - name: {{ $evidence.envName }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $evidence.existingSecret }}
+                  key: {{ $evidence.secretKey }}
+                  optional: false
+            {{- end }}
             {{- with .Values.gate.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

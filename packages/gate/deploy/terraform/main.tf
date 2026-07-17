@@ -35,6 +35,8 @@ locals {
     "app.kubernetes.io/part-of"         = "emilia-protocol"
     "emiliaprotocol.ai/module-contract" = local.module_version
     "emiliaprotocol.ai/maturity"        = "experimental"
+    "emiliaprotocol.ai/deprecated"      = "true"
+    "emiliaprotocol.ai/replacement"     = "emilia-gate-service"
   }, var.extra_labels)
 
   selector_labels = {
@@ -45,6 +47,34 @@ locals {
   # Same paths as the Helm chart's container contract.
   manifest_mount_dir = "/etc/emilia-gate"
   manifest_file      = "action-risk-manifest.json"
+
+  secret_env_references = concat(
+    var.shared_consumption_backend == null ? [] : [var.shared_consumption_backend],
+    var.shared_evidence_backend == null ? [] : [var.shared_evidence_backend],
+    var.github_token_secret_name == null ? [] : [{
+      env_name    = var.github_token_env_name
+      secret_name = var.github_token_secret_name
+      secret_key  = var.github_token_secret_key
+    }],
+    [for env_name, reference in var.secret_env : {
+      env_name    = env_name
+      secret_name = reference.secret_name
+      secret_key  = reference.secret_key
+    }],
+  )
+  configurable_env_names = concat(
+    [for reference in local.secret_env_references : reference.env_name],
+    keys(var.extra_env),
+  )
+  reserved_env_names = toset([
+    "NODE_ENV",
+    "EP_GATE_PORT",
+    "EP_GATE_LOG_LEVEL",
+    "EP_GATE_EVIDENCE_STRICT",
+    "EP_GATE_MANIFEST_PATH",
+    "EP_GATE_METRICS_ENABLED",
+    "EP_GATE_ISSUER_KEYS",
+  ])
 }
 
 # The policy the gate enforces. Plain ConfigMap: the manifest is deny-by-default
@@ -157,6 +187,20 @@ resource "kubernetes_deployment_v1" "gate" {
           }
 
           dynamic "env" {
+            for_each = { for index, reference in local.secret_env_references : tostring(index) => reference }
+            content {
+              name = env.value.env_name
+              value_from {
+                secret_key_ref {
+                  name     = env.value.secret_name
+                  key      = env.value.secret_key
+                  optional = false
+                }
+              }
+            }
+          }
+
+          dynamic "env" {
             for_each = var.extra_env
             content {
               name  = env.key
@@ -231,6 +275,21 @@ resource "kubernetes_deployment_v1" "gate" {
           empty_dir {}
         }
       }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.replicas == 1 || (var.shared_consumption_backend != null && var.shared_evidence_backend != null)
+      error_message = "The deprecated legacy module refuses replicas > 1 without both shared_consumption_backend and shared_evidence_backend Secret references. Prefer terraform/service."
+    }
+    precondition {
+      condition     = length(distinct(local.configurable_env_names)) == length(local.configurable_env_names)
+      error_message = "Secret-backed and literal environment variables must not use duplicate names."
+    }
+    precondition {
+      condition     = length(setintersection(toset(local.configurable_env_names), local.reserved_env_names)) == 0
+      error_message = "secret_env and extra_env must not override module-managed environment variables."
     }
   }
 }

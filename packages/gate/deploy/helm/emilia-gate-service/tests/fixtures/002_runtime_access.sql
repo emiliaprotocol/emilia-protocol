@@ -24,3 +24,9 @@ GRANT SELECT, INSERT, UPDATE ON TABLE ep_gate_actions TO gate_runtime;
 REVOKE DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLE ep_gate_actions FROM gate_runtime;
 
 GRANT emilia_gate_evidence_runtime TO gate_runtime;
+SELECT emilia_gate_evidence.grant_runtime_scope(
+  'gate_runtime',
+  'gate-e2e-tenant',
+  'gate-e2e-service',
+  'gate-e2e'
+);

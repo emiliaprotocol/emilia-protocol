@@ -13,7 +13,10 @@
 #      capabilities, no service-account token). Loosen deliberately, not
 #      accidentally.
 
-replicaCount: 2
+# This deprecated chart uses in-memory state unless a BYOC image consumes both
+# Secret-backed shared-state references below. One replica is the only safe
+# default. Prefer the emilia-gate-service chart for production deployments.
+replicaCount: 1
 
 image:
   # BYOC: build and push your own image of the gate service; there is no
@@ -42,6 +45,19 @@ gate:
   # Extra environment variables appended verbatim to the container (list of
   # EnvVar objects — supports valueFrom for your own Secret/ConfigMap refs).
   extraEnv: []
+
+# Legacy multi-replica guard. These references are rendered as environment
+# variables for a BYOC image that implements the corresponding durable adapters.
+# Setting replicaCount > 1 is refused unless BOTH references are complete.
+sharedState:
+  consumption:
+    envName: ""
+    existingSecret: ""
+    secretKey: ""
+  evidence:
+    envName: ""
+    existingSecret: ""
+    secretKey: ""
 
 # ---------------------------------------------------------------------------
 # Issuer keys — REQUIRED, referenced, never rendered.

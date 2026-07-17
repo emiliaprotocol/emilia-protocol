@@ -30,8 +30,43 @@ locals {
     var.siem_egress_cidrs,
   ))
 
-  migration_postgres_secret_name = coalesce(var.migration_postgres_secret_name, var.postgres_secret_name)
-  migration_postgres_secret_key  = coalesce(var.migration_postgres_secret_key, var.postgres_secret_key)
+  migration_postgres_secret_name = var.migration_postgres_secret_name == null ? "" : var.migration_postgres_secret_name
+  migration_postgres_secret_key  = var.migration_postgres_secret_key == null ? "" : var.migration_postgres_secret_key
+  migration_credentials_valid = try(
+    trimspace(var.migration_postgres_secret_name) != ""
+    && trimspace(var.migration_postgres_secret_key) != ""
+    && var.migration_postgres_secret_name != var.postgres_secret_name,
+    false,
+  )
+
+  runtime_secret_env = concat(
+    var.github_token_secret_name == null ? [] : [{
+      env_name    = var.github_token_env_name
+      secret_name = var.github_token_secret_name
+      secret_key  = var.github_token_secret_key
+    }],
+    [for env_name, reference in var.secret_env : {
+      env_name    = env_name
+      secret_name = reference.secret_name
+      secret_key  = reference.secret_key
+    }],
+  )
+  configurable_env_names = concat(
+    [for reference in local.runtime_secret_env : reference.env_name],
+    keys(var.extra_env),
+  )
+  reserved_env_names = toset([
+    "NODE_ENV",
+    "HOST",
+    "PORT",
+    "EMILIA_GATE_CONFIG",
+    "EP_GATE_PORT",
+    "EP_GATE_LOG_LEVEL",
+    var.postgres_env_name,
+    var.api_token_env_name,
+    var.kms_env_name,
+    var.issuer_roots_env_name,
+  ])
 }
 
 resource "kubernetes_service_account_v1" "gate" {
@@ -333,17 +368,17 @@ resource "kubernetes_job_v1" "migration" {
           secret {
             secret_name  = var.configuration_secret_name
             optional     = false
-            default_mode = 288
+            default_mode = "0440"
 
             items {
               key  = var.configuration_secret_key
               path = var.configuration_secret_key
-              mode = 288
+              mode = "0440"
             }
             items {
               key  = var.migration_script_secret_key
               path = var.migration_script_secret_key
-              mode = 288
+              mode = "0440"
             }
           }
         }
@@ -361,6 +396,13 @@ resource "kubernetes_job_v1" "migration" {
   timeouts {
     create = "15m"
     update = "15m"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = local.migration_credentials_valid
+      error_message = "migration_enabled requires a non-empty migration_postgres_secret_name/key, and the migration Secret must differ from postgres_secret_name. Runtime credential fallback is refused."
+    }
   }
 }
 
@@ -498,6 +540,20 @@ resource "kubernetes_deployment_v1" "gate" {
           }
 
           dynamic "env" {
+            for_each = { for index, reference in local.runtime_secret_env : tostring(index) => reference }
+            content {
+              name = env.value.env_name
+              value_from {
+                secret_key_ref {
+                  name     = env.value.secret_name
+                  key      = env.value.secret_key
+                  optional = false
+                }
+              }
+            }
+          }
+
+          dynamic "env" {
             for_each = var.extra_env
             content {
               name  = env.key
@@ -573,12 +629,12 @@ resource "kubernetes_deployment_v1" "gate" {
           secret {
             secret_name  = var.configuration_secret_name
             optional     = false
-            default_mode = 288
+            default_mode = "0440"
 
             items {
               key  = var.configuration_secret_key
               path = var.configuration_secret_key
-              mode = 288
+              mode = "0440"
             }
           }
         }
@@ -610,6 +666,17 @@ resource "kubernetes_deployment_v1" "gate" {
   }
 
   depends_on = [kubernetes_job_v1.migration]
+
+  lifecycle {
+    precondition {
+      condition     = length(distinct(local.configurable_env_names)) == length(local.configurable_env_names)
+      error_message = "github_token_secret_name, secret_env, and extra_env must not define duplicate environment variable names."
+    }
+    precondition {
+      condition     = length(setintersection(toset(local.configurable_env_names), local.reserved_env_names)) == 0
+      error_message = "secret_env and extra_env must not override module-managed environment variables."
+    }
+  }
 }
 
 resource "kubernetes_service_v1" "gate" {

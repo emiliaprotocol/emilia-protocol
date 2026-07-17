@@ -36,6 +36,19 @@ log unless a replacement independently satisfies the same atomic append,
 readback, fork-detection, and least-privilege contract. Consumption and action
 status still require operator-reviewed durable adapters and migrations.
 
+The same migration provides a durable network-witness checkpoint primitive for
+an adapter shaped as `advance(streamId, sequence, statementDigest)`. It stores
+the latest sequence and signed-statement digest per tenant/gate/stream and
+atomically returns `statement_replay`, `sequence_rollback`, or
+`sequence_equivocation` when advancement is refused. It is a monotonic
+checkpoint, not a complete archive of signed witness statements.
+
+The old `packages/gate/deploy/helm/emilia-gate` chart and
+`packages/gate/deploy/terraform` module are deprecated compatibility paths.
+They default to one replica and refuse more than one unless both shared durable
+consumption and evidence backends are explicitly wired through existing Secret
+references. Prefer the `emilia-gate-service` deployment assets.
+
 The service listens on `HOST`/`PORT`; the assets set `0.0.0.0:8080`. Its health
 API is `GET /v1/health`. The route returns 200 only when the operator-supplied
 readiness function proves the durable consumption, evidence, and action-state
@@ -79,20 +92,26 @@ names and key names, never secret values.
 | `emilia-gate-configuration` | `gate.config.mjs` | service | Operator production adapter and trust wiring |
 | `emilia-gate-configuration` | `migrate.mjs` | migration Job | Idempotent forward schema migration |
 | `emilia-gate-postgres` | `database-url` | service | Least-privilege runtime Postgres URL |
-| `emilia-gate-postgres-migrate` | `database-url` | migration Job | Optional DDL-capable migration URL |
+| `emilia-gate-postgres-migrate` | `database-url` | migration Job | Required, distinct DDL-capable migration URL |
 | `emilia-gate-api-token` | `api-token` | service | Bearer token required before action lookup or execution |
+| `emilia-gate-github` | `token` | optional GitHub connector | Fine-grained GitHub token referenced through Helm/Terraform Secret-backed env wiring |
 | `emilia-gate-kms` | `kms-key-id` | optional service extension | Only when an operator config adds a KMS-backed capability; Gate verification itself holds no signing key |
 | `emilia-gate-issuer-roots` | `issuer-roots.json` | service | Pinned issuer/approver trust material |
 
-Use a runtime database role that can read/write only the Gate tables. Give DDL
-privileges to a separate migration role and set the migration-specific Secret.
+Use a runtime database login that can read/write only the Gate tables. Give DDL
+privileges to a separate migration login and set the mandatory migration
+Secret. Both Helm and Terraform reject a missing migration Secret and reject
+the runtime Secret name; neither silently falls back. They cannot compare
+Secret contents, so the operator must ensure the two Secrets contain genuinely
+different database credentials.
 Require TLS with hostname and CA verification for managed Postgres. Do not put
 database passwords, private signing keys, GitHub tokens, or cloud credentials
 inside `gate.config.mjs`.
 
 The service action also needs a GitHub credential or a custom connector that
 mints one. Reference a separate existing Secret through `runtime.extraEnv` in
-Helm or equivalent caller-owned wiring in Terraform. A fine-grained credential
+Helm or `github_token_secret_name` in Terraform. Generic Terraform Secret-backed
+environment variables belong in `secret_env`, not `extra_env`. A fine-grained credential
 must be limited to the intended organization/repositories and the minimum
 Administration permission needed by the GitHub deletion API. Never reuse a
 personal broad-scope token.
@@ -180,6 +199,10 @@ before this release's regular NetworkPolicy exists; apply a namespace-level
 default-deny baseline before installing. Existing release policies cover later
 upgrades.
 
+The hook refuses to render unless `migrations.postgres.existingSecret` and
+`migrations.postgres.key` are set. The migration Secret name must differ from
+`secrets.postgres.existingSecret`.
+
 The default is two replicas, rolling updates with `maxUnavailable: 0`, a PDB
 with `minAvailable: 1`, resource requests/limits, and host-level topology
 spreading. Use multiple nodes and zones; a PDB cannot create capacity or protect
@@ -190,7 +213,10 @@ against simultaneous involuntary failures.
 Use `packages/gate/deploy/terraform/service` from a root module that configures
 the Kubernetes provider. Required inputs include namespace, full BYOC image
 reference, configuration Secret name, and the Postgres/KMS/issuer-root Secret
-names. Set `migration_postgres_secret_name` for the DDL role.
+names. Set `migration_postgres_secret_name` and
+`migration_postgres_secret_key` for the distinct DDL role. Use
+`github_token_secret_name` for GitHub and `secret_env` for other existing
+Secret references; the module never accepts their values.
 
 The Terraform migration Job name hashes the image, command, and
 `migration_revision`. Terraform waits for that Job before creating/updating the
@@ -202,6 +228,66 @@ Validate without a cluster:
 ```bash
 packages/gate/deploy/terraform/service/tests/validate.sh
 ```
+
+## PostgreSQL runtime isolation
+
+`001-runtime.sql` creates the non-login capability role
+`emilia_gate_evidence_runtime`, but capability membership alone grants no row
+scope. Create a distinct non-superuser, non-`BYPASSRLS` login for each intended
+tenant/gate boundary, grant capability membership, and bind exact streams as
+the migration owner:
+
+```sql
+GRANT emilia_gate_evidence_runtime TO gate_tenant_a;
+SELECT emilia_gate_evidence.grant_runtime_scope(
+  'gate_tenant_a', 'tenant-a', 'gate-a', 'evidence-stream-a'
+);
+SELECT emilia_gate_evidence.grant_network_witness_scope(
+  'gate_tenant_a',
+  'tenant-a',
+  'gate-a',
+  decode('7769746e6573733a656467652d3100636170747572653a696e67726573732d61', 'hex')
+);
+```
+
+Network-witness stream IDs contain an embedded NUL separator. PostgreSQL text
+cannot represent that byte, so the witness SQL contract uses `BYTEA`. The JS
+adapter must pass `Buffer.from(streamId, "utf8")` as the stream-key parameter;
+the example hex decodes the exact UTF-8 bytes for
+`witness:edge-1\0capture:ingress-a` without delimiter loss.
+
+The evidence `heads`, `records`, and `network_witness_checkpoints` tables have
+RLS enabled and forced. Runtime `SELECT` policies call a security-definer scope
+check bound to `session_user`, so `SET ROLE` cannot select another login's rows.
+`append_record(...)` and `advance_network_witness_checkpoint(...)` repeat that
+`session_user` authorization before any write. Runtime logins receive `SELECT`
+and function execution only; direct table writes and access to
+`runtime_scope_grants` and `network_witness_scope_grants` are revoked.
+
+Do not multiplex mutually distrusting tenants through one database login. A
+login sees every exact scope granted to that login. Revoke a stream with
+`revoke_runtime_scope(...)` and `revoke_network_witness_scope(...)`, rotate the
+login credential, and terminate active sessions when removing access.
+
+The network-witness function returns one row with `accepted` and `reason`:
+
+| Condition | Result |
+| --- | --- |
+| First checkpoint or a higher sequence | `accepted=true`, `reason=null` |
+| Same sequence and digest | `accepted=false`, `statement_replay` |
+| Lower sequence | `accepted=false`, `sequence_rollback` |
+| Same sequence and different digest | `accepted=false`, `sequence_equivocation` |
+
+Run the deterministic contract check and the real two-login PostgreSQL test:
+
+```bash
+packages/gate/deploy/sql/tests/contract-check.sh
+packages/gate/deploy/sql/tests/runtime-isolation.sh
+```
+
+The live test starts an ephemeral Postgres container and proves forced RLS,
+cross-login append/advance refusal, scope revocation, and concurrent
+same-sequence witness serialization across two database sessions.
 
 ## Network policy and egress
 
@@ -278,7 +364,7 @@ docker compose -f docker-compose.gate-e2e.yml down --volumes
 
 Compose runs the repository's canonical Postgres evidence migration and
 backend under a migration owner, then connects the service as a separate
-least-privilege runtime role. Its consumption/action schema and adapter wiring
+least-privilege runtime login bound to the fixture's exact evidence scope. Its consumption/action schema and adapter wiring
 remain E2E fixtures, not a promised production schema. The operator's reviewed config/migration
 modules remain authoritative.
 
@@ -292,9 +378,12 @@ evidence head are security state, not disposable cache.
 2. Take periodic logical backups with `pg_dump --format=custom --no-owner
    --no-acl` using a dedicated read-only backup role.
 3. Back up every table owned by the operator adapter as one consistent database
-   point: permanent consumption, evidence records/head, action status, and the
-   migration ledger. Never back up only the evidence rows without their head or
-   only actions without consumption state.
+   point: permanent consumption, evidence records/head, network-witness
+   checkpoints, action status, evidence and witness runtime scope grants, and
+   the migration ledger.
+   Never back up only the evidence rows without their head, only witness
+   checkpoints without the signed witness-statement archive, or only actions
+   without consumption state.
 4. Record database engine version, migration revision, image digest, config
    artifact digest, issuer-root version, and KMS key identifier with each
    backup. Do not export private KMS key material.
@@ -306,6 +395,14 @@ evidence head are security state, not disposable cache.
 
 Use provider-native snapshots/PITR for low RPO. A logical backup is valuable for
 portability and inspection but is not a substitute for continuous recovery.
+
+`network_witness_checkpoints` preserves only the latest accepted sequence and
+digest for each stream. It does not prove that earlier observations existed or
+retain their signatures. Preserve signed witness statements in an immutable
+archive and pin externally trusted checkpoints where rollback detection must
+survive database loss. A restored checkpoint can be older than a statement
+accepted after the recovery point; do not treat first-seen post-restore sequence
+numbers as self-authenticating history.
 
 ## Restore runbook
 
@@ -322,7 +419,8 @@ a replay window. Treat restore as a security incident, not just database work.
 4. Before reopening, invalidate every receipt that could have been consumed in
    the lost interval, or advance an operator-pinned acceptance epoch so those
    receipts cannot authorize again. If that cannot be proven, remain closed.
-5. Verify schema constraints, migration ledger, evidence head/sequence, action
+5. Verify schema constraints, migration ledger, evidence head/sequence,
+   network-witness checkpoints against the immutable statement archive, action
    records, and permanent consumption rows with operator tooling. `/v1/health`
    alone is not a restore check.
 6. Point a new Postgres Secret version at the restored database. Run the current
@@ -392,7 +490,11 @@ These checks require no Kubernetes cluster:
 
 ```bash
 packages/gate/deploy/helm/emilia-gate-service/tests/render-check.sh
+packages/gate/deploy/helm/emilia-gate/tests/render-check.sh
 packages/gate/deploy/terraform/service/tests/validate.sh
+packages/gate/deploy/terraform/tests/validate.sh
+packages/gate/deploy/sql/tests/contract-check.sh
+packages/gate/deploy/sql/tests/runtime-isolation.sh
 docker compose -f docker-compose.gate-e2e.yml config --quiet
 npm --prefix apps/gate-service test
 ```

@@ -44,7 +44,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "emilia-gate-service.migrationPostgresSecret" . }}
-                  key: {{ default .Values.secrets.postgres.key .Values.migrations.postgres.key }}
+                  key: {{ include "emilia-gate-service.migrationPostgresKey" . }}
                   optional: false
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}

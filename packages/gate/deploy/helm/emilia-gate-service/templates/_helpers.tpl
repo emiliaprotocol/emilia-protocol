@@ -51,7 +51,16 @@ app.kubernetes.io/component: service
 {{- end -}}
 
 {{- define "emilia-gate-service.migrationPostgresSecret" -}}
-{{- default (include "emilia-gate-service.postgresSecret" .) .Values.migrations.postgres.existingSecret -}}
+{{- $runtimeSecret := include "emilia-gate-service.postgresSecret" . -}}
+{{- $migrationSecret := required "migrations.postgres.existingSecret is required when migrations.enabled=true; migration credentials never fall back to the runtime Secret" .Values.migrations.postgres.existingSecret -}}
+{{- if eq $migrationSecret $runtimeSecret -}}
+{{- fail "migrations.postgres.existingSecret must name a Secret distinct from secrets.postgres.existingSecret" -}}
+{{- end -}}
+{{- $migrationSecret -}}
+{{- end -}}
+
+{{- define "emilia-gate-service.migrationPostgresKey" -}}
+{{- required "migrations.postgres.key is required when migrations.enabled=true" .Values.migrations.postgres.key -}}
 {{- end -}}
 
 {{- define "emilia-gate-service.configurationSecret" -}}

@@ -19,6 +19,8 @@ values=(
   --set-string image.digest="$digest"
   --set-string configuration.existingSecret=gate-configuration
   --set-string secrets.postgres.existingSecret=gate-postgres
+  --set-string migrations.postgres.existingSecret=gate-postgres-migrate
+  --set-string migrations.postgres.key=database-url
   --set-string secrets.apiToken.existingSecret=gate-api-token
   --set-string secrets.kms.existingSecret=gate-kms
   --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots
@@ -48,6 +50,7 @@ assert_rendered "allowPrivilegeEscalation: false"
 assert_rendered "automountServiceAccountToken: false"
 assert_rendered "registry.example.test/security/emilia-gate-service@$digest"
 assert_rendered "name: gate-postgres"
+assert_rendered "name: gate-postgres-migrate"
 assert_rendered "name: gate-api-token"
 assert_rendered "name: gate-kms"
 assert_rendered "name: gate-issuer-roots"
@@ -72,11 +75,50 @@ if "$helm_bin" template missing-required "$chart_dir" >/dev/null 2>&1; then
   exit 1
 fi
 
+if "$helm_bin" template missing-migration-secret "$chart_dir" --namespace gate-system \
+  --set-string image.repository=registry.example.test/security/emilia-gate-service \
+  --set-string image.digest="$digest" \
+  --set-string configuration.existingSecret=gate-configuration \
+  --set-string secrets.postgres.existingSecret=gate-postgres \
+  --set-string secrets.apiToken.existingSecret=gate-api-token \
+  --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots >/dev/null 2>&1; then
+  echo "chart unexpectedly reused the runtime Postgres Secret for migrations" >&2
+  exit 1
+fi
+
+if "$helm_bin" template equal-migration-secret "$chart_dir" --namespace gate-system \
+  --set-string image.repository=registry.example.test/security/emilia-gate-service \
+  --set-string image.digest="$digest" \
+  --set-string configuration.existingSecret=gate-configuration \
+  --set-string secrets.postgres.existingSecret=gate-postgres \
+  --set-string migrations.postgres.existingSecret=gate-postgres \
+  --set-string migrations.postgres.key=database-url \
+  --set-string secrets.apiToken.existingSecret=gate-api-token \
+  --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots >/dev/null 2>&1; then
+  echo "chart unexpectedly accepted the runtime Postgres Secret for migrations" >&2
+  exit 1
+fi
+
+migrations_disabled="$($helm_bin template migrations-disabled "$chart_dir" --namespace gate-system \
+  --set-string image.repository=registry.example.test/security/emilia-gate-service \
+  --set-string image.digest="$digest" \
+  --set-string configuration.existingSecret=gate-configuration \
+  --set-string secrets.postgres.existingSecret=gate-postgres \
+  --set-string secrets.apiToken.existingSecret=gate-api-token \
+  --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots \
+  --set migrations.enabled=false)"
+if grep -Fq 'kind: Job' <<<"$migrations_disabled"; then
+  echo "chart rendered a migration Job while migrations were disabled" >&2
+  exit 1
+fi
+
 without_kms="$($helm_bin template no-kms "$chart_dir" --namespace gate-system \
   --set-string image.repository=registry.example.test/security/emilia-gate-service \
   --set-string image.digest="$digest" \
   --set-string configuration.existingSecret=gate-configuration \
   --set-string secrets.postgres.existingSecret=gate-postgres \
+  --set-string migrations.postgres.existingSecret=gate-postgres-migrate \
+  --set-string migrations.postgres.key=database-url \
   --set-string secrets.apiToken.existingSecret=gate-api-token \
   --set-string secrets.issuerRoots.existingSecret=gate-issuer-roots)"
 if grep -Fq -- "EP_KMS_KEY_ID" <<<"$without_kms"; then

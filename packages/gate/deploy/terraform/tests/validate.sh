@@ -21,4 +21,4 @@ TF_DATA_DIR="$tmp_dir/.terraform" "$terraform_bin" -chdir="$tmp_dir" init \
 TF_DATA_DIR="$tmp_dir/.terraform" "$terraform_bin" -chdir="$tmp_dir" validate
 TF_DATA_DIR="$tmp_dir/.terraform" "$terraform_bin" -chdir="$tmp_dir" test
 
-echo "Terraform formatting, provider-schema, and validation-contract tests passed"
+echo "Legacy Terraform formatting, schema, and scaling validation passed"

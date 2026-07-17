@@ -15,6 +15,7 @@ description: >-
   Reference chart, experimental, BYOC. Issuer keys are referenced from an
   existing Secret and are never rendered by this chart.
 type: application
+deprecated: true
 # Chart version (the packaging), independent of the gate's app version.
 version: 0.1.0
 # Version of @emilia-protocol/gate this chart tracks; used as the default
@@ -35,5 +36,6 @@ annotations:
   emiliaprotocol.ai/chart-contract: EP-GATE-HELM-v1
   emiliaprotocol.ai/maturity: experimental
   emiliaprotocol.ai/deployment-model: byoc
+  emiliaprotocol.ai/replacement: emilia-gate-service
   artifacthub.io/prerelease: "true"
   artifacthub.io/license: Apache-2.0

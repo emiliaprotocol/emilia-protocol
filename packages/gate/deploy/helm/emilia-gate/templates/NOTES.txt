@@ -6,8 +6,9 @@ EMILIA Gate — Trusted Action Firewall (chart {{ .Chart.Name }}-{{ .Chart.Versi
   Image:     {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
   Replicas:  {{ .Values.replicaCount }}
 
-STATUS: reference chart — EXPERIMENTAL, BYOC. Review the rendered manifests
-before trusting production traffic to them.
+STATUS: DEPRECATED reference chart — EXPERIMENTAL, BYOC. Prefer the
+emilia-gate-service chart. Review the rendered manifests before trusting
+production traffic to them.
 
 1. Issuer keys (already enforced at render time — this release referenced the
    existing Secret "{{ .Values.issuerKeys.existingSecret }}", key

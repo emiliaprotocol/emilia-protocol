@@ -1,7 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # EMILIA Gate — reference Helm chart (`emilia-gate`)
 
-**Contract:** `EP-GATE-HELM-v1` · **Status: reference chart, experimental, BYOC.**
+**Contract:** `EP-GATE-HELM-v1` · **Status: deprecated, experimental, BYOC.**
+
+This legacy chart is retained only for compatibility. It can use per-process
+in-memory consumption and evidence state. New deployments should use
+`emilia-gate-service`, whose runtime refuses missing durable adapters.
 
 A reference Kubernetes deployment of the [EMILIA Gate](../../README.md) — the
 Trusted Action Firewall. Deny-by-default enforcement for consequential machine
@@ -36,6 +40,9 @@ public image yet — build and push your own image of the gate service.
    `capabilities: drop [ALL]`, `seccompProfile: RuntimeDefault`,
    `automountServiceAccountToken: false`. Loosen deliberately via values, not
    accidentally.
+4. **Single replica by default**: `replicaCount` defaults to `1`. Rendering more
+   than one replica fails unless both shared consumption and evidence backends
+   are wired through complete Secret-backed `sharedState` references.
 
 ## Quick start
 
@@ -82,7 +89,8 @@ Secrets/ConfigMaps there rather than inlining values.
 
 | Value | Default | Meaning |
 | ----- | ------- | ------- |
-| `replicaCount` | `2` | Gate replicas. NOTE: replay defense across replicas needs a shared consumption store (see `createDurableConsumptionStore` in `packages/gate/store.js`); configure the backend via `gate.extraEnv`. |
+| `replicaCount` | `1` | Legacy Gate replicas. Values above one are refused without both Secret-backed shared-state references. |
+| `sharedState.consumption` / `sharedState.evidence` | empty | Each requires `envName`, `existingSecret`, and `secretKey`; both are mandatory above one replica. |
 | `image.repository` / `image.tag` | `ghcr.io/emilia-protocol/gate` / chart `appVersion` | BYOC image. |
 | `issuerKeys.existingSecret` | — **required** | Name of your pre-created Secret with pinned issuer keys. |
 | `issuerKeys.secretKey` | `issuer-keys.json` | Key inside that Secret. |
@@ -96,10 +104,10 @@ Secrets/ConfigMaps there rather than inlining values.
 
 - **Experimental.** Not battle-tested; `helm lint`-clean is not a security
   review. Read the rendered output (`helm template`) before applying.
-- The default in-memory consumption store and evidence sink are per-pod. For
-  fleets (`replicaCount > 1`) wire a shared/durable backend or replayed
-  receipts on another pod are only caught by receipt freshness, not
-  consumption.
+- The default in-memory consumption store and evidence sink are per-pod. The
+  chart now refuses fleets unless both shared backend Secret references are
+  complete. That render-time check proves wiring exists, not that a custom
+  legacy image correctly implements the adapters; prefer `emilia-gate-service`.
 - The ServiceMonitor is a **stub**: no TLS/auth on the scrape endpoint —
   adapt it to your monitoring stack.
 - No Ingress/NetworkPolicy/HPA templates on purpose: the gate is an internal

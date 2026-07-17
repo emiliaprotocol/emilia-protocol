@@ -10,14 +10,15 @@ The chart intentionally refuses to render with its default values. Supply:
 - `configuration.existingSecret` containing `gate.config.mjs` and
   `migrate.mjs`;
 - `secrets.postgres.existingSecret` with the database URL key;
+- `migrations.postgres.existingSecret` with a distinct DDL-capable login URL;
 - `secrets.apiToken.existingSecret` with the Gate action-API bearer token;
 - optionally, `secrets.kms.existingSecret` when the operator config uses a KMS-backed extension;
 - `secrets.issuerRoots.existingSecret` with the pinned issuer-root set.
 
 The chart never renders a Kubernetes `Secret`. Secret names and keys are wired
 with non-optional references. The migration hook receives the operator config
-and Postgres reference; set `migrations.postgres.existingSecret` to give it a
- separate DDL-capable role. The service receives the config and runtime
+and a mandatory Postgres reference distinct from the runtime Secret. The
+service receives the config and runtime
 references. The config module must satisfy the durable store contracts in
 `apps/gate-service/README.md`. The chart does not substitute an in-memory
 adapter or invent a persistence schema on the operator's behalf.
@@ -32,6 +33,8 @@ helm upgrade --install emilia-gate \
   --set-string image.digest=sha256:REPLACE_WITH_IMAGE_DIGEST \
   --set-string configuration.existingSecret=emilia-gate-configuration \
   --set-string secrets.postgres.existingSecret=emilia-gate-postgres \
+  --set-string migrations.postgres.existingSecret=emilia-gate-postgres-migrate \
+  --set-string migrations.postgres.key=database-url \
   --set-string secrets.apiToken.existingSecret=emilia-gate-api-token \
   --set-string secrets.issuerRoots.existingSecret=emilia-gate-issuer-roots \
   --atomic --wait
@@ -42,6 +45,10 @@ Deployment. It is bounded by an active deadline and runs non-root with a
 read-only root filesystem. The Deployment defaults to two replicas,
 `maxUnavailable: 0`, a one-pod PDB, resource requests/limits, startup/liveness/
 readiness probes, and a writable memory/scratch volume only at `/tmp`.
+Rendering fails if migrations are enabled without a migration Secret, or if
+that Secret name equals the runtime Postgres Secret. Helm cannot compare Secret
+contents; provision different database login credentials in the two Secrets
+and verify the runtime login has no DDL privileges.
 
 ## Network policy
 

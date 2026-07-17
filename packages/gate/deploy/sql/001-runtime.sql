@@ -2,9 +2,10 @@
 -- EMILIA Gate Postgres evidence runtime (EP-GATE-PG-EVIDENCE-v1).
 --
 -- Run this migration as a non-runtime owner with CREATE EXTENSION, CREATEROLE,
--- and CREATE privileges. Grant emilia_gate_evidence_runtime to the login used
--- by Gate after installation. The runtime role can read evidence and execute
--- the append function, but cannot mutate either table directly.
+-- and CREATE privileges. Grant emilia_gate_evidence_runtime to each login used
+-- by Gate, then bind each login to exact evidence and binary witness stream
+-- scopes with grant_runtime_scope() and grant_network_witness_scope(). Runtime
+-- reads are RLS-filtered and each write function authorizes session_user.
 
 BEGIN;
 
@@ -19,8 +20,24 @@ BEGIN
 END
 $role$;
 
-ALTER ROLE emilia_gate_evidence_runtime
-  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION;
+DO $role_safety$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM pg_catalog.pg_roles
+      WHERE rolname = 'emilia_gate_evidence_runtime'
+        AND (
+          rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole
+          OR rolreplication OR rolbypassrls
+        )
+  ) THEN
+    RAISE EXCEPTION 'emilia_gate_evidence_runtime has unsafe privileged attributes'
+      USING ERRCODE = '42501';
+  END IF;
+END
+$role_safety$;
+
+ALTER ROLE emilia_gate_evidence_runtime NOLOGIN NOINHERIT;
 
 CREATE SCHEMA IF NOT EXISTS emilia_gate_evidence;
 REVOKE ALL ON SCHEMA emilia_gate_evidence FROM PUBLIC;
@@ -66,11 +83,42 @@ CREATE TABLE IF NOT EXISTS emilia_gate_evidence.records (
   CONSTRAINT evidence_record_hash_match CHECK (record ->> 'hash' = hash)
 );
 
+CREATE TABLE IF NOT EXISTS emilia_gate_evidence.runtime_scope_grants (
+  login_role NAME NOT NULL,
+  tenant_id  TEXT NOT NULL CHECK (char_length(tenant_id) BETWEEN 1 AND 256),
+  gate_id    TEXT NOT NULL CHECK (char_length(gate_id) BETWEEN 1 AND 256),
+  stream_id  TEXT NOT NULL CHECK (char_length(stream_id) BETWEEN 1 AND 256),
+  granted_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (login_role, tenant_id, gate_id, stream_id)
+);
+
+CREATE TABLE IF NOT EXISTS emilia_gate_evidence.network_witness_scope_grants (
+  login_role NAME NOT NULL,
+  tenant_id  TEXT NOT NULL CHECK (char_length(tenant_id) BETWEEN 1 AND 256),
+  gate_id    TEXT NOT NULL CHECK (char_length(gate_id) BETWEEN 1 AND 256),
+  stream_key BYTEA NOT NULL CHECK (octet_length(stream_key) BETWEEN 1 AND 1024),
+  granted_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (login_role, tenant_id, gate_id, stream_key)
+);
+
+CREATE TABLE IF NOT EXISTS emilia_gate_evidence.network_witness_checkpoints (
+  tenant_id        TEXT NOT NULL CHECK (char_length(tenant_id) BETWEEN 1 AND 256),
+  gate_id          TEXT NOT NULL CHECK (char_length(gate_id) BETWEEN 1 AND 256),
+  stream_key       BYTEA NOT NULL CHECK (octet_length(stream_key) BETWEEN 1 AND 1024),
+  sequence         BIGINT NOT NULL CHECK (sequence BETWEEN 0 AND 9007199254740991),
+  statement_digest TEXT NOT NULL CHECK (statement_digest ~ '^sha256:[0-9a-f]{64}$'),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (tenant_id, gate_id, stream_key)
+);
+
 -- Re-running the migration cannot leave the runtime role as an object owner;
 -- ownership bypasses ordinary table ACLs in Postgres.
 ALTER SCHEMA emilia_gate_evidence OWNER TO CURRENT_USER;
 ALTER TABLE emilia_gate_evidence.heads OWNER TO CURRENT_USER;
 ALTER TABLE emilia_gate_evidence.records OWNER TO CURRENT_USER;
+ALTER TABLE emilia_gate_evidence.runtime_scope_grants OWNER TO CURRENT_USER;
+ALTER TABLE emilia_gate_evidence.network_witness_scope_grants OWNER TO CURRENT_USER;
+ALTER TABLE emilia_gate_evidence.network_witness_checkpoints OWNER TO CURRENT_USER;
 
 CREATE OR REPLACE FUNCTION emilia_gate_evidence.reject_record_mutation()
 RETURNS trigger
@@ -89,6 +137,310 @@ DROP TRIGGER IF EXISTS evidence_records_are_immutable ON emilia_gate_evidence.re
 CREATE TRIGGER evidence_records_are_immutable
   BEFORE UPDATE OR DELETE OR TRUNCATE ON emilia_gate_evidence.records
   FOR EACH STATEMENT EXECUTE FUNCTION emilia_gate_evidence.reject_record_mutation();
+
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.runtime_scope_authorized(
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_stream_id TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+      FROM emilia_gate_evidence.runtime_scope_grants AS g
+      JOIN pg_catalog.pg_roles AS r ON r.rolname = g.login_role
+      WHERE g.login_role = session_user
+        AND g.tenant_id = p_tenant_id
+        AND g.gate_id = p_gate_id
+        AND g.stream_id = p_stream_id
+        AND r.rolcanlogin
+        AND NOT r.rolsuper
+        AND NOT r.rolbypassrls
+        AND pg_catalog.pg_has_role(
+          session_user,
+          'emilia_gate_evidence_runtime',
+          'MEMBER'
+        )
+  )
+$function$;
+
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.grant_runtime_scope(
+  p_login_role NAME,
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_stream_id TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+DECLARE
+  v_role pg_catalog.pg_roles%ROWTYPE;
+BEGIN
+  IF p_tenant_id IS NULL OR char_length(p_tenant_id) NOT BETWEEN 1 AND 256
+     OR p_gate_id IS NULL OR char_length(p_gate_id) NOT BETWEEN 1 AND 256
+     OR p_stream_id IS NULL OR char_length(p_stream_id) NOT BETWEEN 1 AND 256 THEN
+    RAISE EXCEPTION 'invalid EMILIA evidence scope' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_role
+    FROM pg_catalog.pg_roles
+    WHERE rolname = p_login_role;
+  IF NOT FOUND OR NOT v_role.rolcanlogin THEN
+    RAISE EXCEPTION 'EMILIA evidence scope requires an existing login role'
+      USING ERRCODE = '22023';
+  END IF;
+  IF v_role.rolsuper OR v_role.rolbypassrls THEN
+    RAISE EXCEPTION 'EMILIA runtime login must not bypass row security'
+      USING ERRCODE = '42501';
+  END IF;
+  IF NOT pg_catalog.pg_has_role(
+    p_login_role,
+    'emilia_gate_evidence_runtime',
+    'MEMBER'
+  ) THEN
+    RAISE EXCEPTION 'EMILIA runtime login must be a member of emilia_gate_evidence_runtime'
+      USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO emilia_gate_evidence.runtime_scope_grants (
+    login_role, tenant_id, gate_id, stream_id
+  ) VALUES (
+    p_login_role, p_tenant_id, p_gate_id, p_stream_id
+  ) ON CONFLICT DO NOTHING;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.revoke_runtime_scope(
+  p_login_role NAME,
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_stream_id TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+  WITH deleted AS (
+    DELETE FROM emilia_gate_evidence.runtime_scope_grants
+      WHERE login_role = p_login_role
+        AND tenant_id = p_tenant_id
+        AND gate_id = p_gate_id
+        AND stream_id = p_stream_id
+      RETURNING 1
+  )
+  SELECT EXISTS (SELECT 1 FROM deleted)
+$function$;
+
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.network_witness_scope_authorized(
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_stream_key BYTEA
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+      FROM emilia_gate_evidence.network_witness_scope_grants AS g
+      JOIN pg_catalog.pg_roles AS r ON r.rolname = g.login_role
+      WHERE g.login_role = session_user
+        AND g.tenant_id = p_tenant_id
+        AND g.gate_id = p_gate_id
+        AND g.stream_key = p_stream_key
+        AND r.rolcanlogin
+        AND NOT r.rolsuper
+        AND NOT r.rolbypassrls
+        AND pg_catalog.pg_has_role(
+          session_user,
+          'emilia_gate_evidence_runtime',
+          'MEMBER'
+        )
+  )
+$function$;
+
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.grant_network_witness_scope(
+  p_login_role NAME,
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_stream_key BYTEA
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+DECLARE
+  v_role pg_catalog.pg_roles%ROWTYPE;
+BEGIN
+  IF p_tenant_id IS NULL OR char_length(p_tenant_id) NOT BETWEEN 1 AND 256
+     OR p_gate_id IS NULL OR char_length(p_gate_id) NOT BETWEEN 1 AND 256
+     OR p_stream_key IS NULL OR octet_length(p_stream_key) NOT BETWEEN 1 AND 1024 THEN
+    RAISE EXCEPTION 'invalid EMILIA network-witness scope' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_role
+    FROM pg_catalog.pg_roles
+    WHERE rolname = p_login_role;
+  IF NOT FOUND OR NOT v_role.rolcanlogin THEN
+    RAISE EXCEPTION 'EMILIA network-witness scope requires an existing login role'
+      USING ERRCODE = '22023';
+  END IF;
+  IF v_role.rolsuper OR v_role.rolbypassrls THEN
+    RAISE EXCEPTION 'EMILIA runtime login must not bypass row security'
+      USING ERRCODE = '42501';
+  END IF;
+  IF NOT pg_catalog.pg_has_role(
+    p_login_role,
+    'emilia_gate_evidence_runtime',
+    'MEMBER'
+  ) THEN
+    RAISE EXCEPTION 'EMILIA runtime login must be a member of emilia_gate_evidence_runtime'
+      USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO emilia_gate_evidence.network_witness_scope_grants (
+    login_role, tenant_id, gate_id, stream_key
+  ) VALUES (
+    p_login_role, p_tenant_id, p_gate_id, p_stream_key
+  ) ON CONFLICT DO NOTHING;
+END
+$function$;
+
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.revoke_network_witness_scope(
+  p_login_role NAME,
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_stream_key BYTEA
+)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+  WITH deleted AS (
+    DELETE FROM emilia_gate_evidence.network_witness_scope_grants
+      WHERE login_role = p_login_role
+        AND tenant_id = p_tenant_id
+        AND gate_id = p_gate_id
+        AND stream_key = p_stream_key
+      RETURNING 1
+  )
+  SELECT EXISTS (SELECT 1 FROM deleted)
+$function$;
+
+CREATE OR REPLACE FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(
+  p_tenant_id TEXT,
+  p_gate_id TEXT,
+  p_stream_key BYTEA,
+  p_sequence BIGINT,
+  p_statement_digest TEXT
+)
+RETURNS TABLE (accepted BOOLEAN, reason TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, pg_temp
+AS $function$
+DECLARE
+  v_current_digest TEXT;
+  v_current_sequence BIGINT;
+  v_inserted INTEGER;
+BEGIN
+  IF p_tenant_id IS NULL OR char_length(p_tenant_id) NOT BETWEEN 1 AND 256
+     OR p_gate_id IS NULL OR char_length(p_gate_id) NOT BETWEEN 1 AND 256
+     OR p_stream_key IS NULL OR octet_length(p_stream_key) NOT BETWEEN 1 AND 1024 THEN
+    RAISE EXCEPTION 'invalid EMILIA network-witness scope' USING ERRCODE = '22023';
+  END IF;
+  IF NOT emilia_gate_evidence.network_witness_scope_authorized(
+    p_tenant_id,
+    p_gate_id,
+    p_stream_key
+  ) THEN
+    RAISE EXCEPTION 'EMILIA network-witness scope is not authorized for session login %', session_user
+      USING ERRCODE = '42501';
+  END IF;
+  IF p_sequence IS NULL OR p_sequence < 0 OR p_sequence > 9007199254740991 THEN
+    RAISE EXCEPTION 'invalid EMILIA network-witness sequence' USING ERRCODE = '22003';
+  END IF;
+  IF p_statement_digest IS NULL
+     OR p_statement_digest !~ '^sha256:[0-9a-f]{64}$' THEN
+    RAISE EXCEPTION 'invalid EMILIA network-witness statement digest'
+      USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO emilia_gate_evidence.network_witness_checkpoints (
+    tenant_id, gate_id, stream_key, sequence, statement_digest
+  ) VALUES (
+    p_tenant_id, p_gate_id, p_stream_key, p_sequence, p_statement_digest
+  ) ON CONFLICT (tenant_id, gate_id, stream_key) DO NOTHING;
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
+  IF v_inserted = 1 THEN
+    RETURN QUERY SELECT TRUE, NULL::TEXT;
+    RETURN;
+  END IF;
+
+  SELECT checkpoint.sequence, checkpoint.statement_digest
+    INTO STRICT v_current_sequence, v_current_digest
+    FROM emilia_gate_evidence.network_witness_checkpoints AS checkpoint
+    WHERE checkpoint.tenant_id = p_tenant_id
+      AND checkpoint.gate_id = p_gate_id
+      AND checkpoint.stream_key = p_stream_key
+    FOR UPDATE;
+
+  IF p_sequence < v_current_sequence THEN
+    RETURN QUERY SELECT FALSE, 'sequence_rollback'::TEXT;
+    RETURN;
+  END IF;
+  IF p_sequence = v_current_sequence THEN
+    IF p_statement_digest = v_current_digest THEN
+      RETURN QUERY SELECT FALSE, 'statement_replay'::TEXT;
+    ELSE
+      RETURN QUERY SELECT FALSE, 'sequence_equivocation'::TEXT;
+    END IF;
+    RETURN;
+  END IF;
+
+  UPDATE emilia_gate_evidence.network_witness_checkpoints
+    SET sequence = p_sequence,
+        statement_digest = p_statement_digest,
+        updated_at = clock_timestamp()
+    WHERE tenant_id = p_tenant_id
+      AND gate_id = p_gate_id
+      AND stream_key = p_stream_key
+      AND sequence = v_current_sequence
+      AND statement_digest = v_current_digest;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'EMILIA network-witness checkpoint fence was lost'
+      USING ERRCODE = '40001';
+  END IF;
+
+  RETURN QUERY SELECT TRUE, NULL::TEXT;
+END
+$function$;
+
+ALTER FUNCTION emilia_gate_evidence.runtime_scope_authorized(TEXT, TEXT, TEXT)
+  OWNER TO CURRENT_USER;
+ALTER FUNCTION emilia_gate_evidence.grant_runtime_scope(NAME, TEXT, TEXT, TEXT)
+  OWNER TO CURRENT_USER;
+ALTER FUNCTION emilia_gate_evidence.revoke_runtime_scope(NAME, TEXT, TEXT, TEXT)
+  OWNER TO CURRENT_USER;
+ALTER FUNCTION emilia_gate_evidence.network_witness_scope_authorized(TEXT, TEXT, BYTEA)
+  OWNER TO CURRENT_USER;
+ALTER FUNCTION emilia_gate_evidence.grant_network_witness_scope(NAME, TEXT, TEXT, BYTEA)
+  OWNER TO CURRENT_USER;
+ALTER FUNCTION emilia_gate_evidence.revoke_network_witness_scope(NAME, TEXT, TEXT, BYTEA)
+  OWNER TO CURRENT_USER;
+ALTER FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(TEXT, TEXT, BYTEA, BIGINT, TEXT)
+  OWNER TO CURRENT_USER;
 
 CREATE OR REPLACE FUNCTION emilia_gate_evidence.append_record(
   p_tenant_id TEXT,
@@ -117,6 +469,14 @@ BEGIN
      OR p_gate_id IS NULL OR char_length(p_gate_id) NOT BETWEEN 1 AND 256
      OR p_stream_id IS NULL OR char_length(p_stream_id) NOT BETWEEN 1 AND 256 THEN
     RAISE EXCEPTION 'invalid EMILIA evidence scope' USING ERRCODE = '22023';
+  END IF;
+  IF NOT emilia_gate_evidence.runtime_scope_authorized(
+    p_tenant_id,
+    p_gate_id,
+    p_stream_id
+  ) THEN
+    RAISE EXCEPTION 'EMILIA evidence scope is not authorized for session login %', session_user
+      USING ERRCODE = '42501';
   END IF;
   IF p_expected_head_hash IS NOT NULL AND p_expected_head_hash !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'invalid expected EMILIA evidence head' USING ERRCODE = '22023';
@@ -200,23 +560,123 @@ $function$;
 ALTER FUNCTION emilia_gate_evidence.append_record(TEXT, TEXT, TEXT, TEXT, JSONB, TEXT)
   OWNER TO CURRENT_USER;
 
-REVOKE ALL ON TABLE emilia_gate_evidence.records, emilia_gate_evidence.heads FROM PUBLIC;
+ALTER TABLE emilia_gate_evidence.heads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE emilia_gate_evidence.heads FORCE ROW LEVEL SECURITY;
+ALTER TABLE emilia_gate_evidence.records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE emilia_gate_evidence.records FORCE ROW LEVEL SECURITY;
+ALTER TABLE emilia_gate_evidence.network_witness_checkpoints ENABLE ROW LEVEL SECURITY;
+ALTER TABLE emilia_gate_evidence.network_witness_checkpoints FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS evidence_heads_runtime_read ON emilia_gate_evidence.heads;
+CREATE POLICY evidence_heads_runtime_read
+  ON emilia_gate_evidence.heads
+  FOR SELECT
+  TO emilia_gate_evidence_runtime
+  USING (emilia_gate_evidence.runtime_scope_authorized(tenant_id, gate_id, stream_id));
+
+DROP POLICY IF EXISTS evidence_records_runtime_read ON emilia_gate_evidence.records;
+CREATE POLICY evidence_records_runtime_read
+  ON emilia_gate_evidence.records
+  FOR SELECT
+  TO emilia_gate_evidence_runtime
+  USING (emilia_gate_evidence.runtime_scope_authorized(tenant_id, gate_id, stream_id));
+
+DROP POLICY IF EXISTS network_witness_runtime_read
+  ON emilia_gate_evidence.network_witness_checkpoints;
+CREATE POLICY network_witness_runtime_read
+  ON emilia_gate_evidence.network_witness_checkpoints
+  FOR SELECT
+  TO emilia_gate_evidence_runtime
+  USING (emilia_gate_evidence.network_witness_scope_authorized(tenant_id, gate_id, stream_key));
+
+-- FORCE RLS applies to the table owner too. Give only the current migration
+-- owner an all-rows policy so SECURITY DEFINER append can perform its fenced
+-- write after validating session_user. Re-runs replace stale owner policies.
+DROP POLICY IF EXISTS evidence_heads_owner_all ON emilia_gate_evidence.heads;
+DROP POLICY IF EXISTS evidence_records_owner_all ON emilia_gate_evidence.records;
+DROP POLICY IF EXISTS network_witness_owner_all
+  ON emilia_gate_evidence.network_witness_checkpoints;
+DO $policies$
+BEGIN
+  EXECUTE format(
+    'CREATE POLICY evidence_heads_owner_all ON emilia_gate_evidence.heads FOR ALL TO %I USING (true) WITH CHECK (true)',
+    current_user
+  );
+  EXECUTE format(
+    'CREATE POLICY evidence_records_owner_all ON emilia_gate_evidence.records FOR ALL TO %I USING (true) WITH CHECK (true)',
+    current_user
+  );
+  EXECUTE format(
+    'CREATE POLICY network_witness_owner_all ON emilia_gate_evidence.network_witness_checkpoints FOR ALL TO %I USING (true) WITH CHECK (true)',
+    current_user
+  );
+END
+$policies$;
+
+REVOKE ALL ON TABLE
+  emilia_gate_evidence.records,
+  emilia_gate_evidence.heads,
+  emilia_gate_evidence.runtime_scope_grants,
+  emilia_gate_evidence.network_witness_scope_grants,
+  emilia_gate_evidence.network_witness_checkpoints
+  FROM PUBLIC;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
   ON emilia_gate_evidence.records, emilia_gate_evidence.heads
   FROM emilia_gate_evidence_runtime;
+REVOKE ALL ON TABLE emilia_gate_evidence.runtime_scope_grants
+  FROM emilia_gate_evidence_runtime;
+REVOKE ALL ON TABLE emilia_gate_evidence.network_witness_scope_grants
+  FROM emilia_gate_evidence_runtime;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+  ON emilia_gate_evidence.network_witness_checkpoints
+  FROM emilia_gate_evidence_runtime;
 GRANT SELECT ON emilia_gate_evidence.records, emilia_gate_evidence.heads
+  TO emilia_gate_evidence_runtime;
+GRANT SELECT ON emilia_gate_evidence.network_witness_checkpoints
   TO emilia_gate_evidence_runtime;
 
 REVOKE ALL ON FUNCTION emilia_gate_evidence.reject_record_mutation() FROM PUBLIC;
 REVOKE ALL ON FUNCTION emilia_gate_evidence.reject_record_mutation()
   FROM emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.runtime_scope_authorized(TEXT, TEXT, TEXT)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+GRANT EXECUTE ON FUNCTION emilia_gate_evidence.runtime_scope_authorized(TEXT, TEXT, TEXT)
+  TO emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.grant_runtime_scope(NAME, TEXT, TEXT, TEXT)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.revoke_runtime_scope(NAME, TEXT, TEXT, TEXT)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.network_witness_scope_authorized(TEXT, TEXT, BYTEA)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+GRANT EXECUTE ON FUNCTION emilia_gate_evidence.network_witness_scope_authorized(TEXT, TEXT, BYTEA)
+  TO emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.grant_network_witness_scope(NAME, TEXT, TEXT, BYTEA)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.revoke_network_witness_scope(NAME, TEXT, TEXT, BYTEA)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+REVOKE ALL ON FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(TEXT, TEXT, BYTEA, BIGINT, TEXT)
+  FROM PUBLIC, emilia_gate_evidence_runtime;
+GRANT EXECUTE ON FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(TEXT, TEXT, BYTEA, BIGINT, TEXT)
+  TO emilia_gate_evidence_runtime;
 REVOKE ALL ON FUNCTION emilia_gate_evidence.append_record(TEXT, TEXT, TEXT, TEXT, JSONB, TEXT)
   FROM PUBLIC, emilia_gate_evidence_runtime;
 GRANT EXECUTE ON FUNCTION emilia_gate_evidence.append_record(TEXT, TEXT, TEXT, TEXT, JSONB, TEXT)
   TO emilia_gate_evidence_runtime;
 
 COMMENT ON FUNCTION emilia_gate_evidence.append_record(TEXT, TEXT, TEXT, TEXT, JSONB, TEXT)
-  IS 'Atomically compare-and-append canonical EMILIA evidence under a scoped head row lock.';
+  IS 'Authorize session_user, then atomically compare-and-append canonical EMILIA evidence under a scoped head row lock.';
+COMMENT ON FUNCTION emilia_gate_evidence.grant_runtime_scope(NAME, TEXT, TEXT, TEXT)
+  IS 'Bind one non-bypass runtime login to one exact tenant/gate/stream evidence scope.';
+COMMENT ON FUNCTION emilia_gate_evidence.grant_network_witness_scope(NAME, TEXT, TEXT, BYTEA)
+  IS 'Bind one non-bypass runtime login to one exact tenant/gate/binary witness stream scope.';
+COMMENT ON TABLE emilia_gate_evidence.runtime_scope_grants
+  IS 'Owner-managed bindings from runtime login roles to exact textual evidence scopes.';
+COMMENT ON TABLE emilia_gate_evidence.network_witness_scope_grants
+  IS 'Owner-managed bindings from runtime login roles to exact binary network-witness stream keys.';
+COMMENT ON FUNCTION emilia_gate_evidence.advance_network_witness_checkpoint(TEXT, TEXT, BYTEA, BIGINT, TEXT)
+  IS 'Atomically advance a scoped witness checkpoint or distinguish replay, rollback, and same-sequence equivocation.';
+COMMENT ON TABLE emilia_gate_evidence.network_witness_checkpoints
+  IS 'Latest tenant/gate/stream network-witness sequence and statement digest; a checkpoint, not complete observation history.';
 COMMENT ON TABLE emilia_gate_evidence.records
   IS 'Immutable tenant/gate/stream-scoped EMILIA evidence records.';
 

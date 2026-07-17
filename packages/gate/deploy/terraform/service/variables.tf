@@ -130,14 +130,14 @@ variable "postgres_env_name" {
 }
 
 variable "migration_postgres_secret_name" {
-  description = "Optional existing Secret for a DDL-capable migration role. Null reuses postgres_secret_name."
+  description = "Existing Secret for a DDL-capable migration login. Required when migration_enabled is true and must differ from postgres_secret_name."
   type        = string
   default     = null
   nullable    = true
 }
 
 variable "migration_postgres_secret_key" {
-  description = "Optional key in migration_postgres_secret_name containing the migration URL. Null reuses postgres_secret_key."
+  description = "Key in migration_postgres_secret_name containing the migration URL. Required when migration_enabled is true."
   type        = string
   default     = null
   nullable    = true
@@ -209,6 +209,59 @@ variable "issuer_roots_env_name" {
   description = "Runtime environment variable populated from the issuer-roots Secret."
   type        = string
   default     = "EP_GATE_ISSUER_ROOTS"
+}
+
+variable "github_token_secret_name" {
+  description = "Optional existing Secret containing a GitHub token. Only the Secret reference enters Terraform state."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.github_token_secret_name == null ? true : can(regex("^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$", var.github_token_secret_name))
+    error_message = "github_token_secret_name must be null or a Kubernetes Secret name."
+  }
+}
+
+variable "github_token_secret_key" {
+  description = "Key in github_token_secret_name containing the GitHub token."
+  type        = string
+  default     = "token"
+
+  validation {
+    condition     = trimspace(var.github_token_secret_key) != ""
+    error_message = "github_token_secret_key must be non-empty."
+  }
+}
+
+variable "github_token_env_name" {
+  description = "Runtime environment variable populated from github_token_secret_name."
+  type        = string
+  default     = "GITHUB_TOKEN"
+
+  validation {
+    condition     = can(regex("^[A-Za-z_][A-Za-z0-9_]*$", var.github_token_env_name))
+    error_message = "github_token_env_name must be a valid environment variable name."
+  }
+}
+
+variable "secret_env" {
+  description = "Additional runtime environment variables populated from existing Kubernetes Secrets. Values are references only; secret bytes never enter this module."
+  type = map(object({
+    secret_name = string
+    secret_key  = string
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for env_name, reference in var.secret_env :
+      can(regex("^[A-Za-z_][A-Za-z0-9_]*$", env_name))
+      && trimspace(reference.secret_name) != ""
+      && trimspace(reference.secret_key) != ""
+    ])
+    error_message = "secret_env keys must be environment variable names and each Secret name/key must be non-empty."
+  }
 }
 
 variable "extra_env" {
