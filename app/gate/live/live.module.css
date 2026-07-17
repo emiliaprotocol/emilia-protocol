@@ -16,6 +16,7 @@
   padding: 52px clamp(18px, 4vw, 64px) 88px;
   font-family: var(--font-sans, "Inter", system-ui, sans-serif);
 }
+.page, .page * { box-sizing: border-box; }
 
 .header,
 .profileBar,

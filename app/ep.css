@@ -524,6 +524,12 @@
   }
 }
 
+@media (max-width: 380px) {
+  .ep-nav-actions .ep-cta-secondary {
+    display: none !important;
+  }
+}
+
 @media (max-width: 560px) {
   .ep-home-calm-hero {
     min-height: 0;
