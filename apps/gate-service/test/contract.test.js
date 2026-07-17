@@ -40,3 +40,34 @@ test('OpenAPI contract covers every service route and critical fail-closed seman
     assert.deepEqual(operation.security, [{ bearerAuth: [] }], `${path} must require bearer auth`);
   }
 });
+
+test('deployment probes use the service live and ready contracts', async () => {
+  const [compose, helmValues, terraform] = await Promise.all([
+    fs.readFile(new URL('../../../docker-compose.gate-e2e.yml', import.meta.url), 'utf8'),
+    fs.readFile(new URL('../../../packages/gate/deploy/helm/emilia-gate-service/values.yaml', import.meta.url), 'utf8'),
+    fs.readFile(new URL('../../../packages/gate/deploy/terraform/service/main.tf', import.meta.url), 'utf8'),
+  ]);
+
+  for (const deployment of [compose, helmValues, terraform]) {
+    assert.doesNotMatch(deployment, /\/v1\/health/, 'deployment must not probe an undefined route');
+  }
+  assert.match(compose, /\/v1\/ready/);
+  assert.equal((helmValues.match(/path: \/v1\/live/g) ?? []).length, 2);
+  assert.equal((helmValues.match(/path: \/v1\/ready/g) ?? []).length, 1);
+  assert.equal((terraform.match(/path = "\/v1\/live"/g) ?? []).length, 2);
+  assert.equal((terraform.match(/path = "\/v1\/ready"/g) ?? []).length, 1);
+});
+
+test('service package, chart, and OpenAPI share one release identity', async () => {
+  const [packageDocument, chart, openapiDocument] = await Promise.all([
+    fs.readFile(new URL('../package.json', import.meta.url), 'utf8').then(JSON.parse),
+    fs.readFile(new URL('../../../packages/gate/deploy/helm/emilia-gate-service/Chart.yaml', import.meta.url), 'utf8'),
+    fs.readFile(new URL('../openapi.json', import.meta.url), 'utf8').then(JSON.parse),
+  ]);
+  const chartVersion = chart.match(/^version: (\S+)$/m)?.[1];
+  const appVersion = chart.match(/^appVersion: "(\S+)"$/m)?.[1];
+
+  assert.equal(chartVersion, packageDocument.version);
+  assert.equal(appVersion, packageDocument.version);
+  assert.equal(openapiDocument.info.version, packageDocument.version);
+});

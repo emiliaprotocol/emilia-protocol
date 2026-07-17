@@ -79,17 +79,17 @@ migrations:
 
 probes:
   startup:
-    path: /v1/health
+    path: /v1/live
     periodSeconds: 2
     timeoutSeconds: 2
     failureThreshold: 30
   liveness:
-    path: /v1/health
+    path: /v1/live
     periodSeconds: 10
     timeoutSeconds: 2
     failureThreshold: 3
   readiness:
-    path: /v1/health
+    path: /v1/ready
     periodSeconds: 5
     timeoutSeconds: 2
     failureThreshold: 3

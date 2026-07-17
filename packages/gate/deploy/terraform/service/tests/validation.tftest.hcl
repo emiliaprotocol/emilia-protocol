@@ -48,6 +48,15 @@ run "valid_distinct_migration_and_secret_env" {
     ])
     error_message = "Migration Job must use the distinct migration Secret."
   }
+
+  assert {
+    condition = (
+      kubernetes_deployment_v1.gate.spec[0].template[0].spec[0].container[0].startup_probe[0].http_get[0].path == "/v1/live"
+      && kubernetes_deployment_v1.gate.spec[0].template[0].spec[0].container[0].liveness_probe[0].http_get[0].path == "/v1/live"
+      && kubernetes_deployment_v1.gate.spec[0].template[0].spec[0].container[0].readiness_probe[0].http_get[0].path == "/v1/ready"
+    )
+    error_message = "Gate probes must use the service live and ready routes."
+  }
 }
 
 run "reject_missing_migration_secret" {

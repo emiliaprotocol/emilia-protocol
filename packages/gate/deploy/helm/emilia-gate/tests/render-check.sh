@@ -3,7 +3,10 @@ set -euo pipefail
 
 chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 helm_bin="${HELM_BIN:-helm}"
-issuer_args=(--set-string issuerKeys.existingSecret=gate-issuer-keys)
+issuer_args=(
+  --set-string issuerKeys.existingSecret=gate-issuer-keys
+  --set-string image.repository=registry.example.test/security/emilia-gate
+)
 
 if ! command -v "$helm_bin" >/dev/null 2>&1; then
   echo "helm is required (or set HELM_BIN)" >&2

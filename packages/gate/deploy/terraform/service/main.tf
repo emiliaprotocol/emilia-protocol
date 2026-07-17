@@ -563,7 +563,7 @@ resource "kubernetes_deployment_v1" "gate" {
 
           startup_probe {
             http_get {
-              path = "/v1/health"
+              path = "/v1/live"
               port = "http"
             }
             period_seconds    = 2
@@ -573,7 +573,7 @@ resource "kubernetes_deployment_v1" "gate" {
 
           liveness_probe {
             http_get {
-              path = "/v1/health"
+              path = "/v1/live"
               port = "http"
             }
             period_seconds    = 10
@@ -583,7 +583,7 @@ resource "kubernetes_deployment_v1" "gate" {
 
           readiness_probe {
             http_get {
-              path = "/v1/health"
+              path = "/v1/ready"
               port = "http"
             }
             period_seconds    = 5

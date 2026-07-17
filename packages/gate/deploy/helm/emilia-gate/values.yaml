@@ -21,7 +21,7 @@ replicaCount: 1
 image:
   # BYOC: build and push your own image of the gate service; there is no
   # official public image while the chart is experimental.
-  repository: ghcr.io/emilia-protocol/gate
+  repository: ""
   # Defaults to the chart's appVersion when empty.
   tag: ""
   pullPolicy: IfNotPresent

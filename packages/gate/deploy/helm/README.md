@@ -91,7 +91,7 @@ Secrets/ConfigMaps there rather than inlining values.
 | ----- | ------- | ------- |
 | `replicaCount` | `1` | Legacy Gate replicas. Values above one are refused without both Secret-backed shared-state references. |
 | `sharedState.consumption` / `sharedState.evidence` | empty | Each requires `envName`, `existingSecret`, and `secretKey`; both are mandatory above one replica. |
-| `image.repository` / `image.tag` | `ghcr.io/emilia-protocol/gate` / chart `appVersion` | BYOC image. |
+| `image.repository` / `image.tag` | — **required** / chart `appVersion` | Operator-built BYOC image; no official public image is implied. |
 | `issuerKeys.existingSecret` | — **required** | Name of your pre-created Secret with pinned issuer keys. |
 | `issuerKeys.secretKey` | `issuer-keys.json` | Key inside that Secret. |
 | `manifest.inline` | subset of default packs | Action-risk manifest rendered to the ConfigMap. Replace with your org's manifest. |
