@@ -780,7 +780,7 @@ export async function verifyMobileCeremony({
       checks.attestation = true;
     }
 
-    return {
+    const verified = {
       valid: true,
       verdict: 'verified',
       decision: context.decision,
@@ -790,8 +790,9 @@ export async function verifyMobileCeremony({
       sign_count: parseSignCount(response.signoff),
       approver_id: context.approver,
       device_key_id: binding.device_key_id,
-      class_a: toClassASignoff(response),
     };
+    if (context.decision === 'approved') verified.class_a = toClassASignoff(response);
+    return verified;
   } catch (error) {
     return malformed(error instanceof Error ? error.message : 'malformed mobile ceremony', checks);
   }

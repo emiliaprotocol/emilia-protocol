@@ -256,6 +256,21 @@ test('step 3 — an unknown approver_key_id fails (no pinned key)', () => {
   assert.equal(r.checks.signoff_signatures, false);
 });
 
+test('a signed denied receipt remains valid decision evidence but cannot authorize reliance', () => {
+  const receipt = buildReceipt({
+    ctx1: { decision: 'denied' },
+    ctx2: { decision: 'denied' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+
+  assert.equal(r.checks.context_commitments, true);
+  assert.equal(r.checks.signoff_signatures, true);
+  assert.equal(r.checks.windows, true);
+  assert.equal(r.checks.sod, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /signed denial.*does not authorize/);
+});
+
 // ── step 4: separation of duties ─────────────────────────────────────────────
 
 test('step 4 — the initiator appearing as an approver fails SoD', () => {

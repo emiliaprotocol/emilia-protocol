@@ -210,6 +210,7 @@ test('signed denial is a terminal evidence outcome, not relabeled approval', asy
   const result = await verifyMobileCeremony({ ...item, now: NOW });
   assert.equal(result.valid, true);
   assert.equal(result.decision, 'denied');
+  assert.equal(Object.hasOwn(result, 'class_a'), false);
 
   item.response.decision = 'approved';
   const relabeled = await verifyMobileCeremony({ ...item, now: NOW });

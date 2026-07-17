@@ -1130,7 +1130,8 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   checks.context_commitments = commitmentsOk;
 
   // ── Step 3: per signoff — signature over the context hash vs approver key ─
-  const validApprovals = []; // { approver, signedAt, ctx }
+  const validSignoffs = []; // cryptographically valid signed decisions, including denials
+  const validApprovals = []; // validSignoffs whose signed decision authorizes the action
   let signaturesOk = signoffs.length > 0;
   for (const s of signoffs) {
     const digestHex = hexOf(s.context_hash);
@@ -1185,7 +1186,19 @@ export function verifyTrustReceipt(receipt, opts = {}) {
       errors.push(`signoff by ${ctx.approver} does not verify`);
       continue;
     }
-    validApprovals.push({ approver: ctx.approver, signedAt: s.signed_at, ctx });
+    const verifiedSignoff = { approver: ctx.approver, signedAt: s.signed_at, ctx };
+    validSignoffs.push(verifiedSignoff);
+    // Pre-decision Authorization Contexts remain compatible as implicit
+    // approvals. Once a decision is present, only the typed `approved` outcome
+    // can satisfy authorization; a valid signature over `denied` remains useful
+    // decision evidence but cannot be counted as an approval.
+    if (ctx.decision === undefined || ctx.decision === 'approved') {
+      validApprovals.push(verifiedSignoff);
+    } else if (ctx.decision === 'denied') {
+      errors.push(`signed denial by ${ctx.approver} does not authorize the action`);
+    } else {
+      errors.push(`signed decision by ${ctx.approver} is not a recognized approval outcome`);
+    }
   }
   checks.signoff_signatures = signaturesOk;
 
@@ -1475,8 +1488,8 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   }
 
   // ── Step 6: temporal windows ──────────────────────────────────────────────
-  let windowsOk = validApprovals.length > 0;
-  for (const a of validApprovals) {
+  let windowsOk = validSignoffs.length > 0;
+  for (const a of validSignoffs) {
     if (!withinWindow(a.signedAt, a.ctx.issued_at, a.ctx.expires_at)) {
       windowsOk = false;
       errors.push(`signed_at for ${a.approver} falls outside [issued_at, expires_at]`);
