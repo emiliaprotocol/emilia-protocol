@@ -229,6 +229,66 @@ test('a sequence-equivocating witness rejected by ingestion cannot satisfy cover
   assert.equal(report.complete, false);
 });
 
+test('accepted witness evidence is invalidated by a later conflict for the same evidence key', async () => {
+  const k = keys();
+  const conflicting = signNetworkWitnessStatement({
+    witness_id: surface.witness.witness_id,
+    capture_point_id: surface.witness.capture_point_id,
+    sequence: k.witnessStatement.observation.sequence,
+    observed_at: '2026-07-16T19:59:45.000Z',
+    event: surface.witness.event,
+    direction: 'egress',
+    action_digest: ACTION,
+    config_digest: CONFIG,
+  }, k.witnessPrivateKey);
+
+  const report = await evaluateGateCoverage({
+    inventory,
+    deployments: [{ profile: deploymentProfile, evidence: {} }],
+    probes: [k.firstProbe],
+    witnesses: [k.witnessStatement, conflicting],
+  }, options(k));
+
+  assert.equal(report.surfaces[0].witness_verified, false);
+  assert.equal(report.surfaces[0].witness_acceptance_reason, 'sequence_equivocation');
+  assert.equal(report.surfaces[0].complete, false);
+  assert.equal(report.complete, false);
+});
+
+test('witness conflict order cannot change coverage acceptance', async (t) => {
+  const k = keys();
+  const conflictingEvent = signNetworkWitnessStatement({
+    witness_id: surface.witness.witness_id,
+    capture_point_id: surface.witness.capture_point_id,
+    sequence: k.witnessStatement.observation.sequence,
+    observed_at: '2026-07-16T19:59:45.000Z',
+    event: 'response_observed',
+    direction: 'egress',
+    action_digest: ACTION,
+    config_digest: CONFIG,
+  }, k.witnessPrivateKey);
+  const permutations = [
+    ['matching observation first', [k.witnessStatement, conflictingEvent]],
+    ['matching observation second', [conflictingEvent, k.witnessStatement]],
+  ];
+
+  for (const [name, witnesses] of permutations) {
+    await t.test(name, async () => {
+      const report = await evaluateGateCoverage({
+        inventory,
+        deployments: [{ profile: deploymentProfile, evidence: {} }],
+        probes: [k.firstProbe],
+        witnesses,
+      }, options(k));
+
+      assert.equal(report.surfaces[0].witness_verified, false);
+      assert.equal(report.surfaces[0].witness_acceptance_reason, 'sequence_equivocation');
+      assert.equal(report.surfaces[0].complete, false);
+      assert.equal(report.complete, false);
+    });
+  }
+});
+
 test('coverage can reuse a durable RP-trusted acceptance but not a presenter-supplied lookalike', async () => {
   const k = keys();
   const memory = createMemoryWitnessSequenceStore();

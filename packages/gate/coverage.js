@@ -327,10 +327,17 @@ function snapshotEvidenceList(items) {
   return snapshots;
 }
 
-function witnessEvidenceKey(result) {
+function witnessCoverageKey(result) {
   if (!string(result?.witness_id) || !string(result?.capture_point_id)
       || !NETWORK_WITNESS_EVENTS.includes(result?.event) || !digest(result?.action_digest)) return null;
   return `${result.witness_id}\0${result.capture_point_id}\0${result.event}\0${result.action_digest}`;
+}
+
+function witnessEvidenceKey(result) {
+  if (!string(result?.witness_id) || !string(result?.capture_point_id)
+      || !Number.isSafeInteger(result?.sequence) || result.sequence < 0
+      || !digest(result?.action_digest)) return null;
+  return `${result.witness_id}\0${result.capture_point_id}\0${result.sequence}\0${result.action_digest}`;
 }
 
 /**
@@ -495,15 +502,65 @@ export async function evaluateGateCoverage(input = {}, options = {}) {
 
   const witnessResults = new Map();
   const witnessRefusals = new Map();
+  const acceptedWitnessEvidence = new Map();
+  const equivocatedWitnessEvidence = new Map();
   const trustedByDigest = new Map();
+  const indexWitnessAcceptance = (coverageKey, evidenceKey, result) => {
+    let bucket = witnessResults.get(coverageKey);
+    if (!bucket) {
+      bucket = new Map();
+      witnessResults.set(coverageKey, bucket);
+    }
+    bucket.set(evidenceKey, result);
+  };
+  const recordWitnessRefusal = (coverageKey, result) => {
+    const previous = witnessRefusals.get(coverageKey);
+    if (!previous || result.reason === 'sequence_equivocation') {
+      witnessRefusals.set(coverageKey, result);
+    }
+  };
+  const removeWitnessAcceptance = (evidenceKey) => {
+    const previous = acceptedWitnessEvidence.get(evidenceKey) ?? null;
+    if (!previous) return null;
+    acceptedWitnessEvidence.delete(evidenceKey);
+    const coverageKey = witnessCoverageKey(previous);
+    const bucket = witnessResults.get(coverageKey);
+    bucket?.delete(evidenceKey);
+    if (bucket?.size === 0) witnessResults.delete(coverageKey);
+    return previous;
+  };
+  const recordWitnessEquivocation = (result, evidenceKey, coverageKey) => {
+    const previous = removeWitnessAcceptance(evidenceKey);
+    equivocatedWitnessEvidence.set(evidenceKey, result);
+    recordWitnessRefusal(coverageKey, result);
+    const previousCoverageKey = witnessCoverageKey(previous);
+    if (previousCoverageKey) {
+      recordWitnessRefusal(previousCoverageKey, result);
+    }
+  };
   const recordWitnessResult = (result) => {
-    const key = witnessEvidenceKey(result);
-    if (!key) return;
+    const coverageKey = witnessCoverageKey(result);
+    const evidenceKey = witnessEvidenceKey(result);
+    if (!coverageKey || !evidenceKey) return;
+    if (result.reason === 'sequence_equivocation') {
+      recordWitnessEquivocation(result, evidenceKey, coverageKey);
+      return;
+    }
     if (result.accepted === true) {
-      witnessResults.set(key, result);
-      witnessRefusals.delete(key);
-    } else if (!witnessResults.has(key) && string(result.reason)) {
-      witnessRefusals.set(key, result);
+      const equivocation = equivocatedWitnessEvidence.get(evidenceKey);
+      if (equivocation) {
+        recordWitnessRefusal(coverageKey, equivocation);
+        return;
+      }
+      const previous = acceptedWitnessEvidence.get(evidenceKey);
+      if (previous && previous.statement_digest !== result.statement_digest) {
+        recordWitnessEquivocation({ ...result, accepted: false, reason: 'sequence_equivocation' }, evidenceKey, coverageKey);
+        return;
+      }
+      acceptedWitnessEvidence.set(evidenceKey, result);
+      indexWitnessAcceptance(coverageKey, evidenceKey, result);
+    } else if (string(result.reason)) {
+      recordWitnessRefusal(coverageKey, result);
     }
   };
   for (const acceptance of trustedWitnessAcceptances) {
@@ -554,7 +611,8 @@ export async function evaluateGateCoverage(input = {}, options = {}) {
     let witnessRefusal = null;
     if (surface.witness) {
       const key = `${surface.witness.witness_id}\0${surface.witness.capture_point_id}\0${surface.witness.event}\0${surface.probe_action_digest}`;
-      witness = witnessResults.get(key) ?? null;
+      const accepted = witnessResults.get(key);
+      witness = accepted?.values().next().value ?? null;
       witnessRefusal = witnessRefusals.get(key) ?? null;
     }
 
