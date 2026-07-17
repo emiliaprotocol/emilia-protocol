@@ -90,7 +90,7 @@ function signA(digestHex, options) {
   return webauthnForDigest(approverA.privateKey, digestHex, options);
 }
 
-function buildQuorum(actionHash) {
+function buildQuorum(actionHash, { decisions = [] } = {}) {
   const first = p256();
   const second = p256();
   const contexts = [
@@ -98,11 +98,13 @@ function buildQuorum(actionHash) {
       ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: actionHash,
       policy_hash: 'sha256:77ab1234', nonce: 'q-1', approver: 'ep:approver:quorum-one',
       initiator: 'ep:entity:agent-recon-7', issued_at: '2026-06-09T17:24:00Z', expires_at: '2026-06-09T17:36:00Z',
+      ...(decisions[0] === undefined ? {} : { decision: decisions[0] }),
     },
     {
       ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: actionHash,
       policy_hash: 'sha256:77ab1234', nonce: 'q-2', approver: 'ep:approver:quorum-two',
       initiator: 'ep:entity:agent-recon-7', issued_at: '2026-06-09T17:25:00Z', expires_at: '2026-06-09T17:36:00Z',
+      ...(decisions[1] === undefined ? {} : { decision: decisions[1] }),
     },
   ];
   const member = (role, context, key) => ({
@@ -126,8 +128,8 @@ function buildQuorum(actionHash) {
   };
 }
 
-function pinQuorum(input, opts) {
-  const quorum = buildQuorum(input.receipt.action_hash);
+function pinQuorum(input, opts, options) {
+  const quorum = buildQuorum(input.receipt.action_hash, options);
   input.relying_party_profile.quorum_policy = structuredClone(quorum.policy);
   quorum.members.forEach((member, index) => {
     opts.approverKeys[`ep:key:quorum#${index + 1}`] = {
@@ -933,6 +935,19 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     expect(r.verdict).toBe('rely');
     expect(r.checks.assurance).toBe('quorum');
     expect(r.checks.authority).toMatchObject({ subject: 'ep:approver:quorum-one', bound_to: 'quorum' });
+  });
+
+  it('does not count a validly signed denial toward quorum', () => {
+    const { input, opts } = assemble('none');
+    input.quorum = pinQuorum(input, opts, { decisions: ['approved', 'denied'] });
+    input.relying_party_profile.required_assurance = 'quorum';
+
+    const r = evaluateReliance(input, opts);
+    expect(r).toMatchObject({
+      verdict: 'do_not_rely_quorum_unsatisfied',
+      rely: false,
+      checks: { assurance: false, authority: null },
+    });
   });
 
   it('uses a valid quorum as the class_a_or_quorum fallback for a Class-B receipt', () => {
