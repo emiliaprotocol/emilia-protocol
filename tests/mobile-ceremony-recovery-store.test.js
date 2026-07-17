@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   lookupMobileCeremonyResult,
-  MOBILE_DENIAL_EVIDENCE_VERSION,
 } from '@/lib/mobile/store.js';
 import { canonicalEvidenceJson } from '@/packages/gate/evidence.js';
 
@@ -51,31 +50,20 @@ function committedRows(decision = 'approved') {
     },
   };
   const contextHash = hashCanonical(context);
-  const decisionEvidence = decision === 'approved'
-    ? {
-      context,
-      signoff: {
-        context_hash: contextHash,
-        key_class: 'A',
-        approver_key_id: SESSION.deviceKeyId,
-        signed_at: context.issued_at,
-        webauthn: {
-          authenticator_data: 'YXV0aC1kYXRh',
-          client_data_json: 'Y2xpZW50LWRhdGE',
-          signature: 'c2lnbmF0dXJl',
-        },
-      },
-    }
-    : {
-      '@version': MOBILE_DENIAL_EVIDENCE_VERSION,
-      challenge_id: CHALLENGE_ID,
-      action_hash: ACTION_HASH,
-      profile_hash: PROFILE_HASH,
-      decision: 'denied',
-      approver_id: SESSION.approverId,
-      device_key_id: SESSION.deviceKeyId,
+  const decisionEvidence = {
+    context,
+    signoff: {
       context_hash: contextHash,
-    };
+      key_class: 'A',
+      approver_key_id: SESSION.deviceKeyId,
+      signed_at: context.issued_at,
+      webauthn: {
+        authenticator_data: 'YXV0aC1kYXRh',
+        client_data_json: 'Y2xpZW50LWRhdGE',
+        signature: 'c2lnbmF0dXJl',
+      },
+    },
+  };
   const entry = {
     event_type: 'mobile.ceremony.decision',
     challenge_id: CHALLENGE_ID,
@@ -87,6 +75,7 @@ function committedRows(decision = 'approved') {
     device_key_id: SESSION.deviceKeyId,
     context_hash: contextHash,
     session_id: SESSION.sessionId,
+    decision_evidence: structuredClone(decisionEvidence),
   };
   const body = {
     seq: 4,
@@ -118,7 +107,7 @@ function committedRows(decision = 'approved') {
       status: decision,
       decision_challenge_id: CHALLENGE_ID,
       decision_verdict: 'verified',
-      decision_evidence: decisionEvidence,
+      decision_evidence: structuredClone(decisionEvidence),
       decided_at: '2026-07-16T20:01:00.000Z',
     }],
     mobile_evidence_records: [{ entity_ref: SESSION.entityRef, record }],
@@ -155,7 +144,8 @@ function database(rows) {
 
 describe('mobile ceremony committed-result lookup', () => {
   it('recovers the exact verified result only from a matching atomic commit', async () => {
-    const db = database(committedRows());
+    const rows = committedRows();
+    const db = database(rows);
     await expect(lookupMobileCeremonyResult(db, {
       ...SESSION,
       challengeId: CHALLENGE_ID,
@@ -165,6 +155,8 @@ describe('mobile ceremony committed-result lookup', () => {
       decision: 'approved',
       reason: null,
       context_hash: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+      decision_evidence: rows.mobile_actions[0].decision_evidence,
+      class_a: rows.mobile_actions[0].decision_evidence,
     });
     expect(db.queries.map(({ table }) => table)).toEqual([
       'mobile_action_challenges',
@@ -179,7 +171,7 @@ describe('mobile ceremony committed-result lookup', () => {
     ]));
   });
 
-  it('recovers a committed denial as typed denial evidence without class_a approval evidence', async () => {
+  it('recovers the original signed denial envelope without class_a authorization evidence', async () => {
     const rows = committedRows('denied');
     const result = await lookupMobileCeremonyResult(database(rows), {
       ...SESSION,
@@ -190,11 +182,12 @@ describe('mobile ceremony committed-result lookup', () => {
       verdict: 'verified',
       decision: 'denied',
       reason: null,
-      context_hash: rows.mobile_actions[0].decision_evidence.context_hash,
-      denial_evidence: rows.mobile_actions[0].decision_evidence,
+      context_hash: rows.mobile_actions[0].decision_evidence.signoff.context_hash,
+      decision_evidence: rows.mobile_actions[0].decision_evidence,
     });
     expect(Object.hasOwn(result, 'class_a')).toBe(false);
-    expect(Object.hasOwn(result.denial_evidence, 'signoff')).toBe(false);
+    expect(Object.hasOwn(result, 'authorization')).toBe(false);
+    expect(result.decision_evidence.signoff.webauthn.signature).toBe('c2lnbmF0dXJl');
   });
 
   it.each([
@@ -210,14 +203,27 @@ describe('mobile ceremony committed-result lookup', () => {
     expect(db.from).toHaveBeenCalledTimes(1);
   });
 
-  it('closes malformed decision evidence and a stale commit timestamp', async () => {
-    const malformedRows = committedRows();
-    malformedRows.mobile_actions[0].decision_evidence.signoff.context_hash = `sha256:${'f'.repeat(64)}`;
-    await expect(lookupMobileCeremonyResult(database(malformedRows), {
-      ...SESSION,
-      challengeId: CHALLENGE_ID,
-    })).resolves.toBeNull();
+  it.each(['approved', 'denied'])('refuses altered %s context and signoff bytes', async (decision) => {
+    const mutations = [
+      ['decision', (evidence) => { evidence.context.decision = decision === 'approved' ? 'denied' : 'approved'; }],
+      ['approver', (evidence) => { evidence.context.approver = 'ep:approver:attacker'; }],
+      ['device', (evidence) => { evidence.context.mobile_binding.device_key_id = 'ep:key:mobile-attacker'; }],
+      ['profile', (evidence) => { evidence.context.mobile_binding.profile_hash = `sha256:${'f'.repeat(64)}`; }],
+      ['action', (evidence) => { evidence.context.action_hash = `sha256:${'e'.repeat(64)}`; }],
+      ['context hash', (evidence) => { evidence.signoff.context_hash = `sha256:${'f'.repeat(64)}`; }],
+      ['WebAuthn signature', (evidence) => { evidence.signoff.webauthn.signature = 'dGFtcGVyZWQ'; }],
+    ];
+    for (const [label, mutate] of mutations) {
+      const rows = committedRows(decision);
+      mutate(rows.mobile_actions[0].decision_evidence);
+      await expect(lookupMobileCeremonyResult(database(rows), {
+        ...SESSION,
+        challengeId: CHALLENGE_ID,
+      }), label).resolves.toBeNull();
+    }
+  });
 
+  it('closes a stale commit timestamp', async () => {
     const staleRows = committedRows();
     staleRows.mobile_actions[0].decided_at = '2026-07-16T20:06:00.000Z';
     staleRows.mobile_action_challenges[0].consumed_at = '2026-07-16T20:06:00.000Z';

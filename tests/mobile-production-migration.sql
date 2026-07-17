@@ -50,15 +50,19 @@ declare
   atomic_body text;
   atomic_hash text;
   atomic_record jsonb;
+  approval_evidence jsonb;
   denial_body text;
   denial_hash text;
   denial_record jsonb;
+  denial_evidence jsonb;
   approval_guard_body text;
   approval_guard_hash text;
   approval_guard_record jsonb;
+  approval_guard_evidence jsonb;
   revoked_body text;
   revoked_hash text;
   revoked_record jsonb;
+  revoked_evidence jsonb;
   committed jsonb;
   state_added boolean;
   state_added_again boolean;
@@ -325,28 +329,51 @@ begin
     'sha256:' || repeat('a', 64), 'approved', now() + interval '5 minutes'
   ) is not true then raise exception 'action challenge registration failed'; end if;
 
-  atomic_body := '{"action_hash":"sha256:' || repeat('a', 64)
-    || '","approver_id":"approver-1","challenge_id":"challenge-0001","context_hash":"sha256:'
-    || repeat('c', 64)
-    || '","decision":"approved","device_key_id":"device-1","event_type":"mobile.ceremony.decision","prev_hash":"'
-    || evidence_hash
-    || '","profile_hash":"sha256:' || repeat('b', 64)
-    || '","record_id":"mar_00000000000000000000000000000002","seq":1,"session_id":"00000000-0000-0000-0000-000000000001","verdict":"verified"}';
+  approval_evidence := jsonb_build_object(
+    'context', jsonb_build_object(
+      'action_hash', 'sha256:' || repeat('a', 64),
+      'decision', 'approved',
+      'approver', 'approver-1',
+      'issued_at', '2026-07-16T20:00:00.000Z',
+      'mobile_binding', jsonb_build_object(
+        'profile_hash', 'sha256:' || repeat('b', 64),
+        'device_key_id', 'device-1'
+      )
+    ),
+    'signoff', jsonb_build_object(
+      'key_class', 'A',
+      'approver_key_id', 'device-1',
+      'context_hash', 'sha256:' || repeat('c', 64),
+      'signed_at', '2026-07-16T20:00:00.000Z',
+      'webauthn', jsonb_build_object(
+        'authenticator_data', 'YQ', 'client_data_json', 'Yg', 'signature', 'Yw'
+      )
+    )
+  );
+  atomic_record := jsonb_build_object(
+    'action_hash', 'sha256:' || repeat('a', 64),
+    'approver_id', 'approver-1',
+    'challenge_id', 'challenge-0001',
+    'context_hash', 'sha256:' || repeat('c', 64),
+    'decision', 'approved',
+    'decision_evidence', approval_evidence,
+    'device_key_id', 'device-1',
+    'event_type', 'mobile.ceremony.decision',
+    'prev_hash', evidence_hash,
+    'profile_hash', 'sha256:' || repeat('b', 64),
+    'record_id', 'mar_00000000000000000000000000000002',
+    'seq', 1,
+    'session_id', '00000000-0000-0000-0000-000000000001',
+    'verdict', 'verified'
+  );
+  atomic_body := atomic_record::text;
   atomic_hash := encode(digest(convert_to(atomic_body, 'UTF8'), 'sha256'), 'hex');
-  atomic_record := atomic_body::jsonb || jsonb_build_object('hash', atomic_hash);
+  atomic_record := atomic_record || jsonb_build_object('hash', atomic_hash);
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0001', 'sha256:' || repeat('a', 64),
     'approved', 'verified',
-    jsonb_build_object(
-      'context', jsonb_build_object(
-        'action_hash', 'sha256:' || repeat('a', 64),
-        'decision', 'approved', 'approver', 'approver-1'
-      ),
-      'signoff', jsonb_build_object(
-        'key_class', 'A', 'context_hash', 'sha256:' || repeat('c', 64)
-      )
-    ),
+    approval_evidence,
     evidence_hash, atomic_record, atomic_body
   ) into committed;
   if committed ->> 'ok' <> 'true' then raise exception 'atomic action/evidence commit failed: %', committed; end if;
@@ -368,29 +395,51 @@ begin
     'sha256:' || repeat('4', 64), 'denied', now() + interval '5 minutes'
   ) is not true then raise exception 'denial challenge registration failed'; end if;
 
-  denial_body := '{"action_hash":"sha256:' || repeat('4', 64)
-    || '","approver_id":"approver-1","challenge_id":"challenge-0004","context_hash":"sha256:'
-    || repeat('5', 64)
-    || '","decision":"denied","device_key_id":"device-1","event_type":"mobile.ceremony.decision","prev_hash":"'
-    || atomic_hash
-    || '","profile_hash":"sha256:' || repeat('b', 64)
-    || '","record_id":"mar_00000000000000000000000000000005","seq":2,"session_id":"00000000-0000-0000-0000-000000000001","verdict":"verified"}';
+  denial_evidence := jsonb_build_object(
+    'context', jsonb_build_object(
+      'action_hash', 'sha256:' || repeat('4', 64),
+      'decision', 'denied',
+      'approver', 'approver-1',
+      'issued_at', '2026-07-16T20:00:00.000Z',
+      'mobile_binding', jsonb_build_object(
+        'profile_hash', 'sha256:' || repeat('b', 64),
+        'device_key_id', 'device-1'
+      )
+    ),
+    'signoff', jsonb_build_object(
+      'key_class', 'A',
+      'approver_key_id', 'device-1',
+      'context_hash', 'sha256:' || repeat('5', 64),
+      'signed_at', '2026-07-16T20:00:00.000Z',
+      'webauthn', jsonb_build_object(
+        'authenticator_data', 'YQ', 'client_data_json', 'Yg', 'signature', 'Yw'
+      )
+    )
+  );
+  denial_record := jsonb_build_object(
+    'action_hash', 'sha256:' || repeat('4', 64),
+    'approver_id', 'approver-1',
+    'challenge_id', 'challenge-0004',
+    'context_hash', 'sha256:' || repeat('5', 64),
+    'decision', 'denied',
+    'decision_evidence', denial_evidence,
+    'device_key_id', 'device-1',
+    'event_type', 'mobile.ceremony.decision',
+    'prev_hash', atomic_hash,
+    'profile_hash', 'sha256:' || repeat('b', 64),
+    'record_id', 'mar_00000000000000000000000000000005',
+    'seq', 2,
+    'session_id', '00000000-0000-0000-0000-000000000001',
+    'verdict', 'verified'
+  );
+  denial_body := denial_record::text;
   denial_hash := encode(digest(convert_to(denial_body, 'UTF8'), 'sha256'), 'hex');
-  denial_record := denial_body::jsonb || jsonb_build_object('hash', denial_hash);
+  denial_record := denial_record || jsonb_build_object('hash', denial_hash);
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0004', 'sha256:' || repeat('4', 64),
     'denied', 'verified',
-    jsonb_build_object(
-      '@version', 'EP-MOBILE-DENIAL-EVIDENCE-v1',
-      'challenge_id', 'challenge-0004',
-      'action_hash', 'sha256:' || repeat('4', 64),
-      'profile_hash', 'sha256:' || repeat('b', 64),
-      'decision', 'denied',
-      'approver_id', 'approver-1',
-      'device_key_id', 'device-1',
-      'context_hash', 'sha256:' || repeat('5', 64)
-    ),
+    denial_evidence,
     atomic_hash, denial_record, denial_body
   ) into committed;
   if committed ->> 'ok' <> 'true' then
@@ -405,9 +454,10 @@ begin
     where action.entity_ref = 'entity-mobile-contract'
       and action.action_reference = 'action-0004'
       and action.status = 'denied'
-      and action.decision_evidence ->> '@version' = 'EP-MOBILE-DENIAL-EVIDENCE-v1'
+      and action.decision_evidence -> 'context' ->> 'decision' = 'denied'
+      and action.decision_evidence -> 'signoff' ->> 'key_class' = 'A'
+      and action.decision_evidence -> 'signoff' -> 'webauthn' ->> 'signature' = 'Yw'
       and not (action.decision_evidence ? 'class_a')
-      and not (action.decision_evidence ? 'signoff')
       and challenge.challenge_id = 'challenge-0004'
       and challenge.consumed_at is not null
       and action.decided_at = challenge.consumed_at
@@ -418,30 +468,51 @@ begin
     'action-0002', 'approver-1', 'challenge-0002',
     'sha256:' || repeat('d', 64), 'approved', now() + interval '5 minutes'
   ) is not true then raise exception 'rollback challenge registration failed'; end if;
-  approval_guard_body := '{"action_hash":"sha256:' || repeat('d', 64)
-    || '","approver_id":"approver-1","challenge_id":"challenge-0002","context_hash":"sha256:'
-    || repeat('0', 64)
-    || '","decision":"approved","device_key_id":"device-1","event_type":"mobile.ceremony.decision","prev_hash":"'
-    || denial_hash
-    || '","profile_hash":"sha256:' || repeat('b', 64)
-    || '","record_id":"mar_00000000000000000000000000000003","seq":3,"session_id":"00000000-0000-0000-0000-000000000001","verdict":"verified"}';
+  approval_guard_evidence := jsonb_build_object(
+    'context', jsonb_build_object(
+      'action_hash', 'sha256:' || repeat('d', 64),
+      'decision', 'denied',
+      'approver', 'approver-1',
+      'issued_at', '2026-07-16T20:00:00.000Z',
+      'mobile_binding', jsonb_build_object(
+        'profile_hash', 'sha256:' || repeat('b', 64),
+        'device_key_id', 'device-1'
+      )
+    ),
+    'signoff', jsonb_build_object(
+      'key_class', 'A',
+      'approver_key_id', 'device-1',
+      'context_hash', 'sha256:' || repeat('0', 64),
+      'signed_at', '2026-07-16T20:00:00.000Z',
+      'webauthn', jsonb_build_object(
+        'authenticator_data', 'YQ', 'client_data_json', 'Yg', 'signature', 'Yw'
+      )
+    )
+  );
+  approval_guard_record := jsonb_build_object(
+    'action_hash', 'sha256:' || repeat('d', 64),
+    'approver_id', 'approver-1',
+    'challenge_id', 'challenge-0002',
+    'context_hash', 'sha256:' || repeat('0', 64),
+    'decision', 'approved',
+    'decision_evidence', approval_guard_evidence,
+    'device_key_id', 'device-1',
+    'event_type', 'mobile.ceremony.decision',
+    'prev_hash', denial_hash,
+    'profile_hash', 'sha256:' || repeat('b', 64),
+    'record_id', 'mar_00000000000000000000000000000003',
+    'seq', 3,
+    'session_id', '00000000-0000-0000-0000-000000000001',
+    'verdict', 'verified'
+  );
+  approval_guard_body := approval_guard_record::text;
   approval_guard_hash := encode(digest(convert_to(approval_guard_body, 'UTF8'), 'sha256'), 'hex');
-  approval_guard_record := approval_guard_body::jsonb
-    || jsonb_build_object('hash', approval_guard_hash);
+  approval_guard_record := approval_guard_record || jsonb_build_object('hash', approval_guard_hash);
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0002', 'sha256:' || repeat('d', 64),
     'approved', 'verified',
-    jsonb_build_object(
-      '@version', 'EP-MOBILE-DENIAL-EVIDENCE-v1',
-      'challenge_id', 'challenge-0002',
-      'action_hash', 'sha256:' || repeat('d', 64),
-      'profile_hash', 'sha256:' || repeat('b', 64),
-      'decision', 'denied',
-      'approver_id', 'approver-1',
-      'device_key_id', 'device-1',
-      'context_hash', 'sha256:' || repeat('0', 64)
-    ),
+    approval_guard_evidence,
     denial_hash, approval_guard_record, approval_guard_body
   ) into committed;
   if committed ->> 'reason' <> 'malformed' then
@@ -479,28 +550,51 @@ begin
       and status <> 'revoked'
   ) then raise exception 'credential remained active'; end if;
 
-  revoked_body := '{"action_hash":"sha256:' || repeat('e', 64)
-    || '","approver_id":"approver-1","challenge_id":"challenge-0003","context_hash":"sha256:'
-    || repeat('f', 64)
-    || '","decision":"approved","device_key_id":"device-1","event_type":"mobile.ceremony.decision","prev_hash":"'
-    || atomic_hash
-    || '","profile_hash":"sha256:' || repeat('b', 64)
-    || '","record_id":"mar_00000000000000000000000000000004","seq":2,"session_id":"00000000-0000-0000-0000-000000000001","verdict":"verified"}';
+  revoked_evidence := jsonb_build_object(
+    'context', jsonb_build_object(
+      'action_hash', 'sha256:' || repeat('e', 64),
+      'decision', 'approved',
+      'approver', 'approver-1',
+      'issued_at', '2026-07-16T20:00:00.000Z',
+      'mobile_binding', jsonb_build_object(
+        'profile_hash', 'sha256:' || repeat('b', 64),
+        'device_key_id', 'device-1'
+      )
+    ),
+    'signoff', jsonb_build_object(
+      'key_class', 'A',
+      'approver_key_id', 'device-1',
+      'context_hash', 'sha256:' || repeat('f', 64),
+      'signed_at', '2026-07-16T20:00:00.000Z',
+      'webauthn', jsonb_build_object(
+        'authenticator_data', 'YQ', 'client_data_json', 'Yg', 'signature', 'Yw'
+      )
+    )
+  );
+  revoked_record := jsonb_build_object(
+    'action_hash', 'sha256:' || repeat('e', 64),
+    'approver_id', 'approver-1',
+    'challenge_id', 'challenge-0003',
+    'context_hash', 'sha256:' || repeat('f', 64),
+    'decision', 'approved',
+    'decision_evidence', revoked_evidence,
+    'device_key_id', 'device-1',
+    'event_type', 'mobile.ceremony.decision',
+    'prev_hash', atomic_hash,
+    'profile_hash', 'sha256:' || repeat('b', 64),
+    'record_id', 'mar_00000000000000000000000000000004',
+    'seq', 2,
+    'session_id', '00000000-0000-0000-0000-000000000001',
+    'verdict', 'verified'
+  );
+  revoked_body := revoked_record::text;
   revoked_hash := encode(digest(convert_to(revoked_body, 'UTF8'), 'sha256'), 'hex');
-  revoked_record := revoked_body::jsonb || jsonb_build_object('hash', revoked_hash);
+  revoked_record := revoked_record || jsonb_build_object('hash', revoked_hash);
   select commit_mobile_action_decision(
     'entity-mobile-contract', '00000000-0000-0000-0000-000000000001',
     'challenge-0003', 'sha256:' || repeat('e', 64),
     'approved', 'verified',
-    jsonb_build_object(
-      'context', jsonb_build_object(
-        'action_hash', 'sha256:' || repeat('e', 64),
-        'decision', 'approved', 'approver', 'approver-1'
-      ),
-      'signoff', jsonb_build_object(
-        'key_class', 'A', 'context_hash', 'sha256:' || repeat('f', 64)
-      )
-    ),
+    revoked_evidence,
     atomic_hash, revoked_record, revoked_body
   ) into committed;
   if committed ->> 'reason' <> 'session_inactive' then

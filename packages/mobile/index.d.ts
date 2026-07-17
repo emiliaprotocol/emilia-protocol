@@ -96,6 +96,21 @@ export interface MobileCeremonyResponse {
   attestation: { format: string; token: string; device_key_signature?: string };
 }
 
+export interface MobileDecisionEvidence {
+  context: Record<string, JsonValue>;
+  signoff: {
+    context_hash: string;
+    key_class: 'A';
+    approver_key_id: string;
+    signed_at: string;
+    webauthn: {
+      authenticator_data: string;
+      client_data_json: string;
+      signature: string;
+    };
+  };
+}
+
 export interface MobileVerificationResult {
   valid: boolean;
   verdict: string;
@@ -106,7 +121,8 @@ export interface MobileVerificationResult {
   sign_count?: number | null;
   approver_id?: string;
   device_key_id?: string;
-  class_a?: Record<string, JsonValue>;
+  decision_evidence?: MobileDecisionEvidence;
+  class_a?: MobileDecisionEvidence;
   audit_record?: unknown;
 }
 
@@ -192,7 +208,7 @@ export function verifyMobileCeremony(input: {
   now: string;
   attestationVerifier: MobileAttestationVerifier;
 }): Promise<MobileVerificationResult>;
-export function toClassASignoff(response: MobileCeremonyResponse): Record<string, JsonValue>;
+export function toClassASignoff(response: MobileCeremonyResponse): MobileDecisionEvidence;
 
 export interface MobileCeremonyService {
   issue(input: Parameters<typeof createMobileChallenge>[0]): Promise<{ ok: boolean; verdict: string; challenge: MobileChallenge | null }>;

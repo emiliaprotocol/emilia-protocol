@@ -14,6 +14,7 @@ import {
   createMobileRelianceProfile,
   hashCanonical,
   mobileProfileHash,
+  toClassASignoff,
   verifyMobileAck,
   verifyMobileCeremony,
   verifyMobileExecutionRecord,
@@ -191,6 +192,8 @@ test('verifies iOS and Android ceremonies as the same Class-A evidence shape', a
     assert.equal(result.valid, true);
     assert.equal(result.verdict, 'verified');
     assert.equal(result.decision, 'approved');
+    assert.deepEqual(result.decision_evidence, result.class_a);
+    assert.notEqual(result.decision_evidence, result.class_a);
     assert.equal(result.class_a.signoff.key_class, 'A');
     assert.equal(result.class_a.context.mobile_binding.platform, platform);
     assert.deepEqual(Object.values(result.checks), Array(Object.keys(result.checks).length).fill(true));
@@ -210,7 +213,11 @@ test('signed denial is a terminal evidence outcome, not relabeled approval', asy
   const result = await verifyMobileCeremony({ ...item, now: NOW });
   assert.equal(result.valid, true);
   assert.equal(result.decision, 'denied');
+  assert.deepEqual(result.decision_evidence.context, item.challenge.authorization_context);
+  assert.deepEqual(result.decision_evidence.signoff.webauthn, item.response.signoff.webauthn);
+  assert.equal(result.decision_evidence.signoff.key_class, 'A');
   assert.equal(Object.hasOwn(result, 'class_a'), false);
+  assert.throws(() => toClassASignoff(item.response), /approved decision/);
 
   item.response.decision = 'approved';
   const relabeled = await verifyMobileCeremony({ ...item, now: NOW });

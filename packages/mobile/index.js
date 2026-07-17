@@ -790,17 +790,24 @@ export async function verifyMobileCeremony({
       sign_count: parseSignCount(response.signoff),
       approver_id: context.approver,
       device_key_id: binding.device_key_id,
+      decision_evidence: toDecisionEvidence(response),
     };
-    if (context.decision === 'approved') verified.class_a = toClassASignoff(response);
+    if (context.decision === 'approved') {
+      verified.class_a = structuredClone(verified.decision_evidence);
+    }
     return verified;
   } catch (error) {
     return malformed(error instanceof Error ? error.message : 'malformed mobile ceremony', checks);
   }
 }
 
-export function toClassASignoff(response) {
+function toDecisionEvidence(response) {
   if (!isRecord(response?.signoff?.context) || !isRecord(response.signoff.webauthn)) {
     throw new TypeError('verified mobile response with signoff is required');
+  }
+  if (!['approved', 'denied'].includes(response.signoff.context.decision)
+      || response.decision !== response.signoff.context.decision) {
+    throw new TypeError('verified mobile response decision must match its signed context');
   }
   const context = structuredClone(response.signoff.context);
   const digest = hashCanonicalBytes(context);
@@ -814,6 +821,14 @@ export function toClassASignoff(response) {
       webauthn: structuredClone(response.signoff.webauthn),
     },
   };
+}
+
+export function toClassASignoff(response) {
+  const evidence = toDecisionEvidence(response);
+  if (evidence.context.decision !== 'approved') {
+    throw new TypeError('Class-A authorization evidence requires an approved decision');
+  }
+  return evidence;
 }
 
 function decisionRecord(challenge, result) {

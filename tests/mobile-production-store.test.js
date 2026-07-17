@@ -19,7 +19,6 @@ import {
   createPairing,
   exchangePairing,
   listMobileActions,
-  MOBILE_DENIAL_EVIDENCE_VERSION,
   registerMobileActionChallenge,
   resolveMobileAction,
   revokeMobileSession,
@@ -27,6 +26,7 @@ import {
 } from '@/lib/mobile/store.js';
 import { mobileSessionAuthorizes } from '@/lib/mobile/runtime.js';
 import { verifyEvidenceRecord } from '@/packages/gate/evidence.js';
+import { hashCanonical } from '@/packages/mobile/index.js';
 
 const RELEASE_CERTIFICATE_HEX = '05'.repeat(32);
 const PRESENTATION = Object.freeze({
@@ -37,6 +37,68 @@ const PRESENTATION = Object.freeze({
   consequence: 'Funds will be transferred to the approved destination.',
   material_fields: Object.freeze({ amount: '$125,000' }),
 });
+
+function signedDecisionEvidence({
+  decision = 'approved',
+  actionHash = `sha256:${'a'.repeat(64)}`,
+  profileHash = `sha256:${'b'.repeat(64)}`,
+  approverId = 'approver-1',
+  deviceKeyId = 'device-1',
+} = {}) {
+  const context = {
+    ep_version: '1.0',
+    context_type: 'ep.signoff.v1',
+    action_hash: actionHash,
+    policy_id: 'policy-1',
+    policy_hash: null,
+    initiator: 'agent-1',
+    approver: approverId,
+    approver_index: 1,
+    required_approvals: 1,
+    nonce: 'sig_0123456789abcdef0123456789abcdef',
+    issued_at: '2026-07-16T20:00:00.000Z',
+    expires_at: '2026-07-16T20:05:00.000Z',
+    decision,
+    display_hash: `sha256:${'d'.repeat(64)}`,
+    mobile_binding: {
+      profile: 'EP-MOBILE-CHALLENGE-v1',
+      profile_hash: profileHash,
+      platform: 'ios',
+      app_id: 'ai.emiliaprotocol.approver',
+      device_key_id: deviceKeyId,
+      credential_id: 'Y3JlZGVudGlhbC0x',
+      attestation_key_id: 'apple-key-1',
+    },
+  };
+  return {
+    context,
+    signoff: {
+      context_hash: hashCanonical(context),
+      key_class: 'A',
+      approver_key_id: deviceKeyId,
+      signed_at: context.issued_at,
+      webauthn: {
+        authenticator_data: 'YXV0aC1kYXRh',
+        client_data_json: 'Y2xpZW50LWRhdGE',
+        signature: 'c2lnbmF0dXJl',
+      },
+    },
+  };
+}
+
+function decisionAuditEntry(evidence, challengeId = 'challenge-0001') {
+  return {
+    event_type: 'mobile.ceremony.decision',
+    challenge_id: challengeId,
+    action_hash: evidence.context.action_hash,
+    profile_hash: evidence.context.mobile_binding.profile_hash,
+    verdict: 'verified',
+    decision: evidence.context.decision,
+    approver_id: evidence.context.approver,
+    device_key_id: evidence.context.mobile_binding.device_key_id,
+    context_hash: evidence.signoff.context_hash,
+  };
+}
 
 function chain(result) {
   const value = {};
@@ -370,6 +432,7 @@ describe('durable mobile storage adapters', () => {
       decision: 'approved',
       expiresAt: '2026-07-15T01:00:00.000Z',
     })).toBe(true);
+    const decisionEvidence = signedDecisionEvidence();
     const committed = await commitMobileActionDecision(supabase, {
       entityRef: 'entity-1',
       sessionId: 'session-1',
@@ -377,21 +440,8 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
-      decisionEvidence: {
-        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
-        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
-      },
-      auditEntry: {
-        event_type: 'mobile.ceremony.decision',
-        challenge_id: 'challenge-0001',
-        action_hash: `sha256:${'a'.repeat(64)}`,
-        profile_hash: `sha256:${'b'.repeat(64)}`,
-        verdict: 'verified',
-        decision: 'approved',
-        approver_id: 'approver-1',
-        device_key_id: 'device-1',
-        context_hash: `sha256:${'c'.repeat(64)}`,
-      },
+      decisionEvidence,
+      auditEntry: decisionAuditEntry(decisionEvidence),
     });
     expect(committed).toMatchObject({ committed: true, audit_record: persisted });
     expect(persisted.session_id).toBe('session-1');
@@ -407,6 +457,7 @@ describe('durable mobile storage adapters', () => {
     from
       .mockReturnValueOnce(chain({ data: null, error: null }))
       .mockImplementationOnce(() => chain({ data: { record: persisted }, error: null }));
+    const decisionEvidence = signedDecisionEvidence();
     const result = await commitMobileActionDecision({ from, rpc }, {
       entityRef: 'entity-1',
       sessionId: 'session-1',
@@ -414,26 +465,13 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
-      decisionEvidence: {
-        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
-        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
-      },
-      auditEntry: {
-        event_type: 'mobile.ceremony.decision',
-        challenge_id: 'challenge-0001',
-        action_hash: `sha256:${'a'.repeat(64)}`,
-        profile_hash: `sha256:${'b'.repeat(64)}`,
-        verdict: 'verified',
-        decision: 'approved',
-        approver_id: 'approver-1',
-        device_key_id: 'device-1',
-        context_hash: `sha256:${'c'.repeat(64)}`,
-      },
+      decisionEvidence,
+      auditEntry: decisionAuditEntry(decisionEvidence),
     });
     expect(result).toMatchObject({ committed: true, audit_record: persisted });
   });
 
-  it('commits typed denial evidence while refusing it for an approval', async () => {
+  it('commits full signed denial evidence while refusing it for an approval', async () => {
     let persisted = null;
     rpc.mockImplementationOnce(async (name, args) => {
       expect(name).toBe('commit_mobile_action_decision');
@@ -443,32 +481,13 @@ describe('durable mobile storage adapters', () => {
     from
       .mockReturnValueOnce(chain({ data: null, error: null }))
       .mockImplementationOnce(() => chain({ data: { record: persisted }, error: null }));
-    const denialEvidence = {
-      '@version': MOBILE_DENIAL_EVIDENCE_VERSION,
-      challenge_id: 'challenge-denied-1',
-      action_hash: `sha256:${'a'.repeat(64)}`,
-      profile_hash: `sha256:${'b'.repeat(64)}`,
-      decision: 'denied',
-      approver_id: 'approver-1',
-      device_key_id: 'device-1',
-      context_hash: `sha256:${'c'.repeat(64)}`,
-    };
-    const auditEntry = {
-      event_type: 'mobile.ceremony.decision',
-      challenge_id: denialEvidence.challenge_id,
-      action_hash: denialEvidence.action_hash,
-      profile_hash: denialEvidence.profile_hash,
-      verdict: 'verified',
-      decision: 'denied',
-      approver_id: denialEvidence.approver_id,
-      device_key_id: denialEvidence.device_key_id,
-      context_hash: denialEvidence.context_hash,
-    };
+    const denialEvidence = signedDecisionEvidence({ decision: 'denied' });
+    const auditEntry = decisionAuditEntry(denialEvidence, 'challenge-denied-1');
     const input = {
       entityRef: 'entity-1',
       sessionId: 'session-1',
-      challengeId: denialEvidence.challenge_id,
-      actionHash: denialEvidence.action_hash,
+      challengeId: auditEntry.challenge_id,
+      actionHash: denialEvidence.context.action_hash,
       decision: 'denied',
       verdict: 'verified',
       decisionEvidence: denialEvidence,
@@ -480,6 +499,7 @@ describe('durable mobile storage adapters', () => {
     expect(rpc).toHaveBeenCalledWith('commit_mobile_action_decision', expect.objectContaining({
       p_decision: 'denied',
       p_decision_evidence: denialEvidence,
+      p_record: expect.objectContaining({ decision_evidence: denialEvidence }),
     }));
 
     await expect(commitMobileActionDecision({ from, rpc }, {
@@ -497,6 +517,7 @@ describe('durable mobile storage adapters', () => {
     from
       .mockReturnValueOnce(chain({ data: null, error: null }))
       .mockReturnValueOnce(chain({ data: null, error: null }));
+    const decisionEvidence = signedDecisionEvidence();
     const result = await commitMobileActionDecision({ from, rpc }, {
       entityRef: 'entity-1',
       sessionId: 'session-1',
@@ -504,21 +525,8 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
-      decisionEvidence: {
-        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
-        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
-      },
-      auditEntry: {
-        event_type: 'mobile.ceremony.decision',
-        challenge_id: 'challenge-0001',
-        action_hash: `sha256:${'a'.repeat(64)}`,
-        profile_hash: `sha256:${'b'.repeat(64)}`,
-        verdict: 'verified',
-        decision: 'approved',
-        approver_id: 'approver-1',
-        device_key_id: 'device-1',
-        context_hash: `sha256:${'c'.repeat(64)}`,
-      },
+      decisionEvidence,
+      auditEntry: decisionAuditEntry(decisionEvidence),
     });
     expect(result).toBe(false);
     expect(rpc).toHaveBeenCalledTimes(2);
@@ -527,6 +535,7 @@ describe('durable mobile storage adapters', () => {
   it('refuses an otherwise valid terminal decision after its bound session is revoked', async () => {
     rpc.mockResolvedValueOnce({ data: { ok: false, reason: 'session_inactive' }, error: null });
     from.mockReturnValueOnce(chain({ data: null, error: null }));
+    const decisionEvidence = signedDecisionEvidence();
     const result = await commitMobileActionDecision({ from, rpc }, {
       entityRef: 'entity-1',
       sessionId: 'session-1',
@@ -534,21 +543,8 @@ describe('durable mobile storage adapters', () => {
       actionHash: `sha256:${'a'.repeat(64)}`,
       decision: 'approved',
       verdict: 'verified',
-      decisionEvidence: {
-        context: { action_hash: `sha256:${'a'.repeat(64)}`, decision: 'approved', approver: 'approver-1' },
-        signoff: { key_class: 'A', context_hash: `sha256:${'c'.repeat(64)}` },
-      },
-      auditEntry: {
-        event_type: 'mobile.ceremony.decision',
-        challenge_id: 'challenge-0001',
-        action_hash: `sha256:${'a'.repeat(64)}`,
-        profile_hash: `sha256:${'b'.repeat(64)}`,
-        verdict: 'verified',
-        decision: 'approved',
-        approver_id: 'approver-1',
-        device_key_id: 'device-1',
-        context_hash: `sha256:${'c'.repeat(64)}`,
-      },
+      decisionEvidence,
+      auditEntry: decisionAuditEntry(decisionEvidence),
     });
     expect(result).toBe(false);
     expect(rpc).toHaveBeenCalledWith('commit_mobile_action_decision', expect.objectContaining({
