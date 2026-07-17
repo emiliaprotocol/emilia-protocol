@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -21,6 +22,8 @@ contains('examples/mobile-government/ios/Sources/PrivacyInfo.xcprivacy', /NSPriv
 contains('examples/mobile-government/ios/Sources/SecureSessionStore.swift', /kSecAttrAccessibleWhenUnlockedThisDeviceOnly/, 'session secret is not device-only Keychain data');
 contains('examples/mobile-government/ios/Sources/ApprovalViewModel.swift', /UIScreen\.main\.isCaptured/, 'screen-capture refusal is missing');
 contains('examples/mobile-government/ios/Sources/ApprovalView.swift', /scenePhase != \.active \|\| model\.screenCaptureDetected/, 'protected iOS content is not hidden from inactive/captured surfaces');
+contains('examples/mobile-government/ios/Sources/ApprovalView.swift', /reviewRisk[\s\S]*reviewSummary[\s\S]*presentationVersion[\s\S]*materialFields[\s\S]*consequence/, 'iOS review does not render the complete versioned presentation');
+contains('examples/mobile-government/ios/Sources/ApprovalViewModel.swift', /validatePresentation\(challenge\.presentation\)/, 'iOS signs without first closing the presentation schema');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /NoRedirectSessionDelegate/, 'iOS redirects are not refused');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /maximumResponseBytes = 1_048_576/, 'iOS response ceiling is missing');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /https:\/\/www\.emiliaprotocol\.ai\/api\//, 'iOS production API identity is not pinned');
@@ -33,6 +36,8 @@ contains('sdks/kotlin-mobile/sample/build.gradle.kts', /EMILIA_RELEASE_BUILD_NUM
 contains('sdks/kotlin-mobile/sample/src/main/AndroidManifest.xml', /android:allowBackup="false"/, 'Android backup must remain disabled');
 contains('sdks/kotlin-mobile/sample/src/main/AndroidManifest.xml', /android:usesCleartextTraffic="false"/, 'cleartext traffic must remain disabled');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MainActivity.kt', /WindowManager\.LayoutParams\.FLAG_SECURE/, 'production screen-capture defense is missing');
+contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MainActivity.kt', /decodeAndValidate[\s\S]*validatePresentation\(value\.presentation\)/, 'Android signs without first closing the presentation schema');
+contains('sdks/kotlin-mobile/src/main/kotlin/ai/emiliaprotocol/mobile/AndroidProviders.kt', /SHA256withECDSA[\s\S]*KeyPairGenerator\.getInstance\(KeyProperties\.KEY_ALGORITHM_EC, ANDROID_KEY_STORE\)/, 'Android ceremony proof is not backed by a non-exportable Keystore signing key');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/SecureSessionStore.kt', /AndroidKeyStore/, 'session secret is not Android Keystore protected');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /PRODUCTION_BASE_URL = "https:\/\/www\.emiliaprotocol\.ai\/api\/"/, 'Android production API identity is not pinned');
 
@@ -44,10 +49,14 @@ contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /a
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /create or replace function append_mobile_evidence_record/, 'portable evidence atomic append is missing');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on function append_mobile_evidence_record\(text, text, jsonb, text\) from anon, authenticated, public/, 'portable evidence RPC is publicly executable');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /create or replace function commit_mobile_action_decision\([\s\S]*p_canonical_body text[\s\S]*returns jsonb/, 'action and evidence are not committed through the atomic RPC');
+contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /p_decision_evidence jsonb/, 'terminal decision RPC does not accept portable decision evidence');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /insert into mobile_evidence_records\([\s\S]*return jsonb_build_object\('ok', true\)/, 'terminal action transaction does not append portable evidence');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on function commit_mobile_action_decision\(text, uuid, text, text, text, text, text, jsonb, text, timestamptz\)/, 'atomic action/evidence RPC is publicly executable');
-contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /session_id uuid not null references mobile_sessions[\s\S]*p_record ->> 'session_id' <> p_session_id::text[\s\S]*reason', 'session_inactive'/, 'terminal decisions are not transactionally bound to an active mobile session');
+contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on function commit_mobile_action_decision\(text, uuid, text, text, text, text, jsonb, text, jsonb, text, timestamptz\)/, 'atomic action/evidence RPC is publicly executable');
+contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /mobile_presentation_is_valid[\s\S]*EP-MOBILE-PRESENTATION-v1[\s\S]*jsonb_typeof\(field\.value\) <> 'string'/, 'database presentation schema is not closed against unseen nested fields');
+contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /insert into mobile_counters\(counter_key, counter_value\)[\s\S]*p_enrollment ->> 'sign_count'/, 'registration counter baseline is not seeded in the enrollment transaction');
+contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /session_id uuid not null references mobile_sessions[\s\S]*p_record ->> 'session_id' is distinct from p_session_id::text[\s\S]*reason', 'session_inactive'/, 'terminal decisions are not transactionally bound to an active mobile session');
 contains('scripts/check-mobile-production.mjs', /service role cannot mutate mobile trust tables directly[\s\S]*p_session_id: nonexistentSessionId/, 'production readiness does not test the read-only service role and session-bound terminal RPC');
+contains('scripts/check-mobile-production.mjs', /mobile_presentation_is_valid[\s\S]*p_decision_evidence:/, 'production readiness is stale relative to the current mobile RPC and presentation schema');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on mobile_kv_state,[\s\S]*from anon, authenticated/, 'public database grants were not revoked');
 for (const rpc of [
   'mobile_state_add_if_absent',
@@ -74,7 +83,18 @@ for (const path of [
 contains('lib/rate-limit.js', /mobile_runtime_ip[\s\S]*mobile_write/, 'mobile runtime throttles are missing');
 contains('lib/mobile/runtime.js', /session:\$\{runtime\.session\.session_id\}[\s\S]*mobile_write/, 'paired ceremonies are not session-rate-limited');
 contains('.github/workflows/mobile-signed-release.yml', /EMILIA_ANDROID_CERTIFICATE_SHA256_HEX/, 'signed Android identity is not compared with its server pin');
+contains('.github/workflows/mobile-signed-release.yml', /MOBILE_ANDROID_SIGNING_CERT_SHA256[\s\S]*check-mobile-signing-identity\.mjs[\s\S]*AAB_CERT_SHA256/, 'APK and AAB signing identities are not cross-checked against one canonical certificate');
 contains('.github/workflows/mobile-signed-release.yml', /get-task-allow/, 'signed iOS archive is not checked for debugger entitlement');
+
+const signingCheck = resolve(root, 'scripts/check-mobile-signing-identity.mjs');
+const certificateHex = '05'.repeat(32);
+const certificateFingerprint = certificateHex.toUpperCase().match(/../g).join(':');
+execFileSync(process.execPath, [signingCheck, certificateHex, certificateFingerprint, 'fixture'], { stdio: 'pipe' });
+assert.throws(
+  () => execFileSync(process.execPath, [signingCheck, certificateHex, '06'.repeat(32), 'fixture'], { stdio: 'pipe' }),
+  /Command failed/,
+  'signing identity mismatch must fail the release check',
+);
 
 for (const path of [
   'examples/mobile-government/README.md',

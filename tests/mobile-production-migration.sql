@@ -8,6 +8,12 @@ insert into mobile_sessions(
   '00000000-0000-0000-0000-000000000001', repeat('a', 64), 'entity-mobile-contract',
   'approver-1', 'profile-1', 'android', 'ai.emiliaprotocol.approver', now() + interval '1 day'
 );
+insert into mobile_sessions(
+  session_id, token_hash, entity_ref, approver_id, profile_id, platform, app_id, expires_at
+) values (
+  '00000000-0000-0000-0000-000000000002', repeat('d', 64), 'entity-mobile-contract',
+  'approver-1', 'profile-1', 'android', 'ai.emiliaprotocol.approver', now() + interval '1 day'
+);
 
 insert into mobile_actions(
   action_reference, entity_ref, approver_id, initiator_id, action, presentation,
@@ -15,20 +21,22 @@ insert into mobile_actions(
 ) values
   (
     'action-0001', 'entity-mobile-contract', 'approver-1', 'agent-1',
-    '{"kind":"release"}', '{"title":"Release"}', '{}', 'policy-1', now() + interval '1 day'
+    '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the pending item.","risk":"high","consequence":"The protected release will execute.","material_fields":{"item":"action-0001"}}', '{}', 'policy-1', now() + interval '1 day'
   ),
   (
     'action-0002', 'entity-mobile-contract', 'approver-1', 'agent-1',
-    '{"kind":"release"}', '{"title":"Release"}', '{}', 'policy-1', now() + interval '1 day'
+    '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the pending item.","risk":"high","consequence":"The protected release will execute.","material_fields":{"item":"action-0002"}}', '{}', 'policy-1', now() + interval '1 day'
   ),
   (
     'action-0003', 'entity-mobile-contract', 'approver-1', 'agent-1',
-    '{"kind":"release"}', '{"title":"Release"}', '{}', 'policy-1', now() + interval '1 day'
+    '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the pending item.","risk":"high","consequence":"The protected release will execute.","material_fields":{"item":"action-0003"}}', '{}', 'policy-1', now() + interval '1 day'
   );
 
 do $$
 declare
   enrolled boolean;
+  second_device_enrolled boolean;
+  malformed_enrolled boolean;
   revoked boolean;
   revoked_again boolean;
   appended boolean;
@@ -97,12 +105,12 @@ begin
 
   select create_mobile_demo_action(
     'mobact_' || repeat('3', 32), 'entity-mobile-contract', 'approver-1', 'agent-1',
-    '{"kind":"release"}', '{"title":"Release"}', '{"policy_id":"policy-demo"}',
+    '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the demo item.","risk":"high","consequence":"The protected release will execute.","material_fields":{"item":"demo"}}', '{"policy_id":"policy-demo"}',
     'policy-demo', now() + interval '1 day'
   ) into demo_created;
   select create_mobile_demo_action(
     'mobact_' || repeat('3', 32), 'entity-mobile-contract', 'approver-1', 'agent-1',
-    '{"kind":"release"}', '{"title":"Release"}', '{"policy_id":"policy-demo"}',
+    '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the demo item.","risk":"high","consequence":"The protected release will execute.","material_fields":{"item":"demo"}}', '{"policy_id":"policy-demo"}',
     'policy-demo', now() + interval '1 day'
   ) into demo_created_again;
   if demo_created is not true or demo_created_again is not false then
@@ -110,7 +118,7 @@ begin
   end if;
   if create_mobile_demo_action(
     'mobact_' || repeat('4', 32), 'entity-mobile-contract', 'approver-1', 'agent-1',
-    '{"kind":"release"}', '{"title":"Release"}', '{"policy_id":"weaker-policy"}',
+    '{"kind":"release"}', '{"@version":"EP-MOBILE-PRESENTATION-v1","title":"Release","summary":"Release the demo item.","risk":"high","consequence":"The protected release will execute.","material_fields":{"item":"demo"}}', '{"policy_id":"weaker-policy"}',
     'policy-demo', now() + interval '1 day'
   ) is not false then
     raise exception 'policy-id substitution was accepted';
@@ -140,7 +148,14 @@ begin
       'envelope_id', 'grace:envelope:contract-1',
       'requested_by', 'ep:agent:grid'
     ),
-    jsonb_build_object('title', 'Reduce load'),
+    jsonb_build_object(
+      '@version', 'EP-MOBILE-PRESENTATION-v1',
+      'title', 'Reduce load',
+      'summary', 'Reduce facility load for the requested grid interval.',
+      'risk', 'critical',
+      'consequence', 'Facility power use will be curtailed during the interval.',
+      'material_fields', jsonb_build_object('reduction', '30 MW')
+    ),
     jsonb_build_object(
       'policy_id', 'ep:grace:contract:v1',
       'action_family', 'grid.curtailment',
@@ -175,7 +190,14 @@ begin
       'envelope_id', 'grace:envelope:contract-1',
       'requested_by', 'ep:agent:grid'
     ),
-    jsonb_build_object('title', 'Reduce load'),
+    jsonb_build_object(
+      '@version', 'EP-MOBILE-PRESENTATION-v1',
+      'title', 'Reduce load',
+      'summary', 'Reduce facility load for the requested grid interval.',
+      'risk', 'critical',
+      'consequence', 'Facility power use will be curtailed during the interval.',
+      'material_fields', jsonb_build_object('reduction', '30 MW')
+    ),
     jsonb_build_object(
       'policy_id', 'ep:grace:contract:v1',
       'action_family', 'grid.curtailment',
@@ -197,23 +219,78 @@ begin
     'entity-mobile-contract',
     '00000000-0000-0000-0000-000000000001',
     jsonb_build_object(
-      'device_key_id', 'ep:key:device-00000001',
+      'device_key_id', 'ep:key:mobile-device-0000000000000001',
       'credential_id', 'credential-0001',
       'public_key_spki', repeat('p', 64),
       'approver_id', 'approver-1',
       'platform', 'android',
       'app_id', 'ai.emiliaprotocol.approver',
-      'attestation_key_id', 'play-integrity:key-1',
-      'platform_public_key', '',
+      'attestation_key_id', 'android-keystore:sha256:' || repeat('A', 43),
+      'platform_public_key', repeat('p', 120),
       'status', 'active',
-      'valid_from', now(),
-      'valid_to', now() + interval '30 days',
-      'sign_count', 0,
+      'valid_from', to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'valid_to', to_char((now() + interval '30 days') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'sign_count', 7,
       'attestation_format', 'play-integrity'
     ),
     jsonb_build_object('event_type', 'mobile.enrolled')
   ) into enrolled;
   if enrolled is not true then raise exception 'enrollment failed'; end if;
+  if (select counter_value from mobile_counters
+      where counter_key = 'mobile:webauthn:ep:key:mobile-device-0000000000000001') <> 7 then
+    raise exception 'registration sign_count baseline was not seeded atomically';
+  end if;
+  if advance_mobile_counter('mobile:webauthn:ep:key:mobile-device-0000000000000001', 7) is not false
+     or advance_mobile_counter('mobile:webauthn:ep:key:mobile-device-0000000000000001', 6) is not false
+     or advance_mobile_counter('mobile:webauthn:ep:key:mobile-device-0000000000000001', 8) is not true then
+    raise exception 'first assertion did not have to advance the registration baseline';
+  end if;
+  select enroll_mobile_device(
+    'entity-mobile-contract',
+    '00000000-0000-0000-0000-000000000002',
+    jsonb_build_object(
+      'device_key_id', 'ep:key:mobile-device-0000000000000002',
+      'credential_id', 'credential-0002',
+      'public_key_spki', repeat('q', 64),
+      'approver_id', 'approver-1',
+      'platform', 'android',
+      'app_id', 'ai.emiliaprotocol.approver',
+      'attestation_key_id', 'android-keystore:sha256:' || repeat('A', 43),
+      'platform_public_key', repeat('q', 120),
+      'status', 'active',
+      'valid_from', to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'valid_to', to_char((now() + interval '30 days') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'sign_count', 0,
+      'attestation_format', 'play-integrity-standard'
+    ),
+    jsonb_build_object('event_type', 'mobile.enrolled')
+  ) into second_device_enrolled;
+  if second_device_enrolled is not false then
+    raise exception 'a second enrollment reused the active Android device key';
+  end if;
+  select enroll_mobile_device(
+    'entity-mobile-contract',
+    '00000000-0000-0000-0000-000000000002',
+    jsonb_build_object(
+      'device_key_id', 'ep:key:mobile-device-0000000000000003',
+      'credential_id', 'credential-0003',
+      'public_key_spki', repeat('r', 64),
+      'approver_id', 'approver-1',
+      'platform', 'android',
+      'app_id', 'ai.emiliaprotocol.approver',
+      'attestation_key_id', 'android-keystore:sha256:' || repeat('B', 43),
+      'platform_public_key', repeat('r', 120),
+      'status', 'active',
+      'valid_from', 'not-a-date',
+      'valid_to', to_char((now() + interval '30 days') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'sign_count', repeat('9', 100),
+      'attestation_format', 'play-integrity-standard'
+    ),
+    jsonb_build_object('event_type', 'mobile.enrolled')
+  ) into malformed_enrolled;
+  if malformed_enrolled is not false then
+    raise exception 'malformed enrollment was accepted';
+  end if;
 
   evidence_body := '{"event_type":"mobile.ceremony.decision","prev_hash":"genesis","record_id":"mar_00000000000000000000000000000001","seq":0}';
   evidence_hash := encode(digest(convert_to(evidence_body, 'UTF8'), 'sha256'), 'hex');
@@ -332,7 +409,7 @@ begin
   if exists (
     select 1 from mobile_enrollments
     where entity_ref = 'entity-mobile-contract'
-      and device_key_id = 'ep:key:device-00000001'
+      and device_key_id = 'ep:key:mobile-device-0000000000000001'
       and status <> 'revoked'
   ) then raise exception 'credential remained active'; end if;
 

@@ -65,10 +65,11 @@ public struct EmiliaAppleAppAttestProvider: EmiliaPlatformIntegrityProvider, Sen
         self.attestationKeyID = attestationKeyID
     }
 
-    public func assertion(requestHash: Data) async throws -> Data {
+    public func assertion(requestHash: Data) async throws -> EmiliaPlatformIntegrityAssertion {
         let service = DCAppAttestService.shared
         guard service.isSupported else { throw EmiliaMobileError.unavailable("Apple App Attest is not supported") }
-        return try await service.generateAssertion(attestationKeyID, clientDataHash: requestHash)
+        let token = try await service.generateAssertion(attestationKeyID, clientDataHash: requestHash)
+        return .init(token: token)
     }
 }
 
@@ -142,7 +143,8 @@ public struct EmiliaAppleAppAttestEnrollmentProvider: EmiliaPlatformEnrollmentPr
         return EmiliaPlatformEnrollment(
             format: "apple-app-attest-enrollment",
             attestationKeyID: keyID,
-            token: attestation
+            token: attestation,
+            requestHash: requestHash
         )
     }
 }

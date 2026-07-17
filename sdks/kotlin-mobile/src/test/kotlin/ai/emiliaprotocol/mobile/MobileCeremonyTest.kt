@@ -8,6 +8,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -21,6 +22,7 @@ import org.junit.Test
 class MobileCeremonyTest {
     private val now = Instant.parse("2026-07-14T19:02:00.000Z")
     private val credentialId = "credential-android-1".toByteArray()
+    private val androidKeyId = "android-keystore:sha256:${"A".repeat(43)}"
 
     private data class Fixture(
         val challenge: EmiliaMobileChallenge,
@@ -34,7 +36,11 @@ class MobileCeremonyTest {
             put("destination_last4", "4401")
         }
         val presentation = buildJsonObject {
+            put("@version", EmiliaMobilePresentation.VERSION)
             put("title", "Payment destination change")
+            put("summary", "Change benefit payment destination for case 9482")
+            put("risk", "high")
+            put("consequence", "Future benefit payments will be sent to the new destination.")
             put("material_fields", buildJsonObject {
                 put("case_id", "case-9482")
                 put("destination_last4", "4401")
@@ -65,7 +71,7 @@ class MobileCeremonyTest {
                 put("app_id", "gov.example.android.approvals")
                 put("device_key_id", "ep:key:mobile-android-1")
                 put("credential_id", credentialId.base64Url())
-                put("attestation_key_id", "play-integrity:gov.example.android.approvals")
+                put("attestation_key_id", androidKeyId)
             })
         }
         val challengeId = "mob_0123456789abcdef"
@@ -80,7 +86,7 @@ class MobileCeremonyTest {
             put("platform", "android")
             put("app_id", "gov.example.android.approvals")
             put("device_key_id", "ep:key:mobile-android-1")
-            put("attestation_key_id", "play-integrity:gov.example.android.approvals")
+            put("attestation_key_id", androidKeyId)
         }
         val challenge = transform(EmiliaMobileChallenge(
             version = "AE-CHALLENGE-v1",
@@ -185,10 +191,13 @@ class MobileCeremonyTest {
         }
         val integrity = object : EmiliaPlatformIntegrityProvider {
             override val format = "play-integrity-standard"
-            override val attestationKeyId = "play-integrity:gov.example.android.approvals"
-            override suspend fun assertion(requestHash: ByteArray): ByteArray {
+            override val attestationKeyId = androidKeyId
+            override suspend fun assertion(requestHash: ByteArray): EmiliaPlatformIntegrityAssertion {
                 assertEquals(32, requestHash.size)
-                return "play-integrity-token".toByteArray()
+                return EmiliaPlatformIntegrityAssertion(
+                    token = "play-integrity-token".toByteArray(),
+                    deviceKeySignature = "device-key-signature".toByteArray(),
+                )
             }
         }
         val coordinator = EmiliaMobileCeremonyCoordinator(
@@ -202,6 +211,8 @@ class MobileCeremonyTest {
         assertEquals("approved", response.decision)
         assertEquals(credentialId.base64Url(), response.credentialId)
         assertEquals("play-integrity-standard", response.attestation.format)
+        assertEquals(androidKeyId, response.attestationKeyId)
+        assertEquals("device-key-signature".toByteArray().base64Url(), response.attestation.deviceKeySignature)
     }
 
     @Test
@@ -228,6 +239,31 @@ class MobileCeremonyTest {
     }
 
     @Test
+    fun refusesUnknownAndNestedPresentationFieldsBeforeSigning() {
+        val unknown = fixture { original ->
+            original.copy(presentation = JsonObject(
+                original.presentation.jsonObject + ("hidden_detail" to JsonPrimitive("not rendered"))
+            ))
+        }
+        assertThrows(EmiliaMobileException.DisplayMismatch::class.java) {
+            EmiliaMobileChallengeValidator.decodeAndValidate(unknown.data, now)
+        }
+
+        val nested = fixture { original ->
+            val presentation = original.presentation.jsonObject
+            val fields = presentation.getValue("material_fields").jsonObject
+            original.copy(presentation = JsonObject(
+                presentation + ("material_fields" to JsonObject(
+                    fields + ("hidden" to buildJsonObject { put("nested", true) })
+                ))
+            ))
+        }
+        assertThrows(EmiliaMobileException.DisplayMismatch::class.java) {
+            EmiliaMobileChallengeValidator.decodeAndValidate(nested.data, now)
+        }
+    }
+
+    @Test
     fun enrollmentBindsPasskeyAndPlayIntegrityToTheSameRequest() = runTest {
         val passkeys = EmiliaPasskeyRegistrationProvider { rpId, challenge, userId, _, _ ->
             assertEquals("approve.example.gov", rpId)
@@ -247,8 +283,9 @@ class MobileCeremonyTest {
             assertEquals(32, requestHash.size)
             EmiliaPlatformEnrollment(
                 format = "play-integrity-standard",
-                attestationKeyId = "play-integrity:production",
+                attestationKeyId = androidKeyId,
                 token = "integrity-token".toByteArray(),
+                requestHash = requestHash,
             )
         }
         val coordinator = EmiliaMobileEnrollmentCoordinator(
@@ -262,6 +299,7 @@ class MobileCeremonyTest {
         )
         assertEquals("EP-MOBILE-ENROLLMENT-v1", response.version)
         assertEquals("2027-07-14T19:00:00.000Z", response.requestedValidTo)
-        assertEquals("play-integrity:production", response.attestationKeyId)
+        assertEquals(androidKeyId, response.attestationKeyId)
+        assertEquals(response.platformRequestHash, response.platformAttestation.requestHash)
     }
 }

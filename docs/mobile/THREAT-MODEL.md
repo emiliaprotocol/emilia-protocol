@@ -19,8 +19,11 @@ recorded durably.
 | Bare P-256 signature replaces a passkey ceremony | Class-A WebAuthn verification with UP and UV |
 | Client asserts its own integrity status | Independent App Attest or Play Integrity verifier |
 | Platform token is replayed across actions | Exact attestation request hash |
+| Android passkey is synced or replayed from a second device | Play-bound non-exportable Keystore public key plus a required per-ceremony key signature |
 | Concurrent or later ceremony replay | Atomic body-bound challenge consumption |
-| Authenticator or App Attest counter rolls back | Durable monotonic counter stores |
+| First authenticator assertion repeats or falls below its registration counter | Registration `sign_count` is atomically seeded as the durable counter baseline |
+| Later authenticator or App Attest counter rolls back | Durable monotonic counter stores |
+| Presenter hides unknown or nested display data | Closed versioned presentation schema and native pre-sign validation of every accepted field |
 | Storage or evidence log is unavailable | Closed refusal, never fallback |
 | Caller supplies a weaker profile | Profile selected by the server from the challenge hash |
 | Caller self-asserts another approver's identity | Mandatory agency authorization at ceremony issuance, verification, and both enrollment phases |
@@ -34,7 +37,8 @@ recorded durably.
 - Platform attestation services and their verification roots behave within the
   relying party's stated trust model.
 - The system-of-record adapter constructs the correct action and presentation.
-- The client renders the bound presentation honestly. A fully compromised
+- The reference clients render every accepted field in the closed presentation
+  schema. A fully compromised
   client can display one thing while signing and attesting another. Presentation
   hashing detects byte substitution, not dishonest pixels or semantic mismatch
   between the action and its presentation. This profile does not implement or

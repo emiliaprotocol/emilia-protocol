@@ -76,11 +76,34 @@ public struct EmiliaPlatformEnrollment: Sendable, Equatable {
     public let format: String
     public let attestationKeyID: String
     public let token: Data
+    public let requestHash: Data
+    public let deviceKey: EmiliaAndroidDeviceKeyProof?
 
-    public init(format: String, attestationKeyID: String, token: Data) {
+    public init(
+        format: String,
+        attestationKeyID: String,
+        token: Data,
+        requestHash: Data,
+        deviceKey: EmiliaAndroidDeviceKeyProof? = nil
+    ) {
         self.format = format
         self.attestationKeyID = attestationKeyID
         self.token = token
+        self.requestHash = requestHash
+        self.deviceKey = deviceKey
+    }
+}
+
+public struct EmiliaAndroidDeviceKeyProof: Sendable, Codable, Equatable {
+    public let algorithm: String
+    public let keyID: String
+    public let publicKeySPKI: String
+    public let signature: String
+
+    enum CodingKeys: String, CodingKey {
+        case algorithm, signature
+        case keyID = "key_id"
+        case publicKeySPKI = "public_key_spki"
     }
 }
 
@@ -125,6 +148,14 @@ public struct EmiliaMobileEnrollmentResponse: Sendable, Codable, Equatable {
     public struct PlatformAttestation: Sendable, Codable, Equatable {
         public let format: String
         public let token: String
+        public let requestHash: String
+        public let deviceKey: EmiliaAndroidDeviceKeyProof?
+
+        enum CodingKeys: String, CodingKey {
+            case format, token
+            case requestHash = "request_hash"
+            case deviceKey = "device_key"
+        }
     }
 
     enum CodingKeys: String, CodingKey {
@@ -230,7 +261,9 @@ public actor EmiliaMobileEnrollmentCoordinator {
             ),
             platformAttestation: .init(
                 format: integrity.format,
-                token: integrity.token.emiliaBase64URL
+                token: integrity.token.emiliaBase64URL,
+                requestHash: integrity.requestHash.emiliaBase64URL,
+                deviceKey: integrity.deviceKey
             )
         )
     }

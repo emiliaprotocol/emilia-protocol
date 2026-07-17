@@ -30,8 +30,8 @@ Changing one without the others intentionally causes refusal.
    mobile migration is the only pending production change.
 2. Apply `supabase/migrations/20260715180000_mobile_production_platform.sql` to
    the production project through the normal reviewed migration path.
-3. Configure the production environment values documented in `.env.example`,
-   including both store signing pins, Apple environment, Play cloud project,
+3. Configure the production environment values documented for the deployment,
+   including the canonical Android signing certificate, Apple environment, Play cloud project,
    API-key material, and production rate-limit storage.
 4. Deploy the web app so the AASA and Digital Asset Links documents are served
    directly from `www.emiliaprotocol.ai` over HTTPS without a redirect.
@@ -62,9 +62,13 @@ Changing one without the others intentionally causes refusal.
 3. Put the cloud project number, signing keystore values, and final signing
    digest in the protected release environment and production server config.
    The workflow expects `EMILIA_ANDROID_CERTIFICATE_SHA256_HEX` to be the
-   lowercase or uppercase hexadecimal digest printed by `apksigner`; the API
-   uses the corresponding base64url digest in
-   `MOBILE_ANDROID_CERTIFICATE_DIGESTS`.
+   hexadecimal digest printed by `apksigner`. Set
+   `MOBILE_ANDROID_SIGNING_CERT_SHA256` from that same final identity. The
+   server normalizes it into the APK WebAuthn origin, Play certificate digest,
+   and Digital Asset Links fingerprint, and refuses any legacy pin that does
+   not match. The web deployment's
+   `MOBILE_ANDROID_ASSETLINKS_CERT_SHA256` must be the derived colon-delimited
+   fingerprint; production readiness compares the live document exactly.
 4. Complete Data safety, app access instructions, content rating, target
    audience, privacy URL, screenshots, icon, and closed-testing requirements.
 
@@ -123,8 +127,8 @@ Required protected secrets are:
 - Android: `EMILIA_ANDROID_KEYSTORE_BASE64`,
   `EMILIA_ANDROID_KEYSTORE_PASSWORD`, `EMILIA_ANDROID_KEY_ALIAS`,
   `EMILIA_ANDROID_KEY_PASSWORD`, `EMILIA_ANDROID_CERTIFICATE_SHA256_HEX`, and
-  `EMILIA_PLAY_CLOUD_PROJECT_NUMBER`, plus
-  `MOBILE_ANDROID_APK_KEY_HASHES`, `MOBILE_ANDROID_CERTIFICATE_DIGESTS`,
+  `EMILIA_PLAY_CLOUD_PROJECT_NUMBER`, plus the production
+  `MOBILE_ANDROID_SIGNING_CERT_SHA256`, its derived
   `MOBILE_ANDROID_ASSETLINKS_CERT_SHA256`, and
   `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
 - Apple: `EMILIA_IOS_CERTIFICATE_P12_BASE64`,
@@ -138,6 +142,10 @@ package, signing-certificate digest, minimum SDK, target SDK, and non-debuggable
 state. The iOS job checks the exact application identifier, production App
 Attest environment, associated domain, version, build, and absence of
 `get-task-allow`.
+
+No Apple certificate, provisioning profile, Android keystore, Play service
+account, or cloud-project credential is generated or substituted by this
+repository. Missing account-owned material remains a hard release gate.
 
 The server-side mobile verifier is a separate npm artifact named
 `@emilia-protocol/mobile`. Its owner-gated workflow accepts only a matching

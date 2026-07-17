@@ -50,6 +50,16 @@ data class EmiliaPlatformEnrollment(
     val format: String,
     val attestationKeyId: String,
     val token: ByteArray,
+    val requestHash: ByteArray,
+    val deviceKey: EmiliaAndroidDeviceKeyProof? = null,
+)
+
+@Serializable
+data class EmiliaAndroidDeviceKeyProof(
+    val algorithm: String,
+    @SerialName("key_id") val keyId: String,
+    @SerialName("public_key_spki") val publicKeySpki: String,
+    val signature: String,
 )
 
 fun interface EmiliaPlatformEnrollmentProvider {
@@ -70,7 +80,12 @@ data class EmiliaMobileEnrollmentResponse(
     @SerialName("platform_attestation") val platformAttestation: PlatformAttestation,
 ) {
     @Serializable
-    data class PlatformAttestation(val format: String, val token: String)
+    data class PlatformAttestation(
+        val format: String,
+        val token: String,
+        @SerialName("request_hash") val requestHash: String,
+        @SerialName("device_key") val deviceKey: EmiliaAndroidDeviceKeyProof? = null,
+    )
 }
 
 class EmiliaMobileEnrollmentCoordinator(
@@ -137,6 +152,8 @@ class EmiliaMobileEnrollmentCoordinator(
             platformAttestation = EmiliaMobileEnrollmentResponse.PlatformAttestation(
                 integrity.format,
                 integrity.token.base64Url(),
+                integrity.requestHash.base64Url(),
+                integrity.deviceKey,
             ),
         )
     }

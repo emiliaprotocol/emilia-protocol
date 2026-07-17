@@ -146,7 +146,7 @@ describe('mobile production runtime composition', () => {
     mocks.createMobileEnrollmentDirectory.mockReturnValue({
       active: mocks.directoryActive,
       enrollAtomically: vi.fn(),
-      appAttestKey: vi.fn(),
+      platformKey: vi.fn(),
       durable: true,
     });
     mocks.directoryActive.mockResolvedValue([]);
@@ -230,7 +230,14 @@ describe('mobile production runtime composition', () => {
     const farExpiry = new Date(Date.now() + 3_600_000).toISOString();
     mocks.resolveMobileAction.mockResolvedValue({
       action: { '@type': 'treasury.disbursement.release' },
-      presentation: { title: 'Release funds' },
+      presentation: {
+        '@version': 'EP-MOBILE-PRESENTATION-v1',
+        title: 'Release funds',
+        summary: 'Release the pending treasury disbursement.',
+        risk: 'high',
+        consequence: 'Funds will be transferred to the approved destination.',
+        material_fields: { amount: '$125,000' },
+      },
       policy: { human_approval: 'class_a' },
       policy_id: 'policy-1',
       initiator_id: 'ep:agent:treasury',

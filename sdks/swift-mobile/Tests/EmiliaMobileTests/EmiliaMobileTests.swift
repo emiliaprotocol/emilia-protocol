@@ -4,6 +4,7 @@ import Testing
 @testable import EmiliaMobile
 
 private let fixedNow = ISO8601DateFormatter().date(from: "2026-07-14T19:02:00Z")!
+private let appAttestKeyID = "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eH/8="
 
 private struct SharedVectors: Decodable {
     struct Vector: Decodable {
@@ -31,10 +32,10 @@ private struct MockPasskey: EmiliaPasskeyAssertionProvider {
 
 private struct MockIntegrity: EmiliaPlatformIntegrityProvider {
     let format = "apple-app-attest"
-    let attestationKeyID = "attest_key_1"
-    func assertion(requestHash: Data) async throws -> Data {
+    let attestationKeyID = appAttestKeyID
+    func assertion(requestHash: Data) async throws -> EmiliaPlatformIntegrityAssertion {
         #expect(requestHash.count == 32)
-        return Data("app-attest-token".utf8)
+        return EmiliaPlatformIntegrityAssertion(token: Data("app-attest-token".utf8))
     }
 }
 
@@ -62,8 +63,9 @@ private struct MockPlatformEnrollment: EmiliaPlatformEnrollmentProvider {
         #expect(requestHash.count == 32)
         return EmiliaPlatformEnrollment(
             format: "apple-app-attest-enrollment",
-            attestationKeyID: "appattest_enrolled_key_1",
-            token: Data("app-attest-enrollment".utf8)
+            attestationKeyID: appAttestKeyID,
+            token: Data("app-attest-enrollment".utf8),
+            requestHash: requestHash
         )
     }
 }
@@ -115,7 +117,11 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
         "destination_last4": .string("4401"),
     ])
     let presentation: EmiliaJSONValue = .object([
+        "@version": .string("EP-MOBILE-PRESENTATION-v1"),
         "title": .string("Payment destination change"),
+        "summary": .string("Change benefit payment destination for case 9482"),
+        "risk": .string("high"),
+        "consequence": .string("Future benefit payments will be sent to the new destination."),
         "material_fields": .object([
             "case_id": .string("case-9482"),
             "destination_last4": .string("4401"),
@@ -147,7 +153,7 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
             "app_id": .string("gov.example.ios.approvals"),
             "device_key_id": .string("ep:key:mobile-ios-1"),
             "credential_id": .string(credentialID),
-            "attestation_key_id": .string("attest_key_1"),
+            "attestation_key_id": .string(appAttestKeyID),
         ]),
     ])
     let challengeID = "mob_0123456789abcdef"
@@ -162,7 +168,7 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
         "platform": .string("ios"),
         "app_id": .string("gov.example.ios.approvals"),
         "device_key_id": .string("ep:key:mobile-ios-1"),
-        "attestation_key_id": .string("attest_key_1"),
+        "attestation_key_id": .string(appAttestKeyID),
     ])
     var challenge = EmiliaMobileChallenge(
         version: "AE-CHALLENGE-v1",
@@ -225,6 +231,8 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
     #expect(response.decision == "approved")
     #expect(response.credentialID == credentialID.emiliaBase64URL)
     #expect(response.attestation.format == "apple-app-attest")
+    #expect(response.attestationKeyID == appAttestKeyID)
+    #expect(response.attestation.deviceKeySignature == nil)
 }
 
 @Test func refusesMutatedActionAndAttestationBinding() throws {
@@ -250,6 +258,29 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
     }
 }
 
+@Test func refusesUnknownAndNestedPresentationFieldsBeforeSigning() throws {
+    let original = try challengeData()
+    var unknownObject = try #require(try JSONSerialization.jsonObject(with: original) as? [String: Any])
+    var unknownPresentation = try #require(unknownObject["presentation"] as? [String: Any])
+    unknownPresentation["hidden_detail"] = "not rendered"
+    unknownObject["presentation"] = unknownPresentation
+    let unknown = try JSONSerialization.data(withJSONObject: unknownObject)
+    #expect(throws: EmiliaMobileError.displayMismatch) {
+        try EmiliaMobileChallengeValidator.decodeAndValidate(unknown, now: fixedNow)
+    }
+
+    var nestedObject = try #require(try JSONSerialization.jsonObject(with: original) as? [String: Any])
+    var nestedPresentation = try #require(nestedObject["presentation"] as? [String: Any])
+    var materialFields = try #require(nestedPresentation["material_fields"] as? [String: Any])
+    materialFields["hidden"] = ["nested": true]
+    nestedPresentation["material_fields"] = materialFields
+    nestedObject["presentation"] = nestedPresentation
+    let nested = try JSONSerialization.data(withJSONObject: nestedObject)
+    #expect(throws: EmiliaMobileError.displayMismatch) {
+        try EmiliaMobileChallengeValidator.decodeAndValidate(nested, now: fixedNow)
+    }
+}
+
 @Test func enrollmentBindsPasskeyAndAppAttestToTheSameRequest() async throws {
     let coordinator = EmiliaMobileEnrollmentCoordinator(
         passkeys: MockRegistration(),
@@ -262,5 +293,6 @@ private func challengeData(mutate: ((inout EmiliaMobileChallenge) -> Void)? = ni
     )
     #expect(response.version == "EP-MOBILE-ENROLLMENT-v1")
     #expect(response.passkeyRegistration.type == "public-key")
-    #expect(response.attestationKeyID == "appattest_enrolled_key_1")
+    #expect(response.attestationKeyID == appAttestKeyID)
+    #expect(response.platformAttestation.requestHash == response.platformRequestHash)
 }

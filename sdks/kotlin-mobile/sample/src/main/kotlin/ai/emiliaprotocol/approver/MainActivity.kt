@@ -5,6 +5,7 @@ import ai.emiliaprotocol.mobile.EmiliaAndroidPasskeyProvider
 import ai.emiliaprotocol.mobile.EmiliaAndroidPasskeyRegistrationProvider
 import ai.emiliaprotocol.mobile.EmiliaMobileCeremonyCoordinator
 import ai.emiliaprotocol.mobile.EmiliaMobileChallenge
+import ai.emiliaprotocol.mobile.EmiliaMobileChallengeValidator
 import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentCoordinator
 import ai.emiliaprotocol.mobile.EmiliaPlayIntegrityEnrollmentProvider
 import ai.emiliaprotocol.mobile.EmiliaPlayIntegrityProvider
@@ -273,7 +274,6 @@ class MainActivity : Activity() {
             val integrity = EmiliaPlayIntegrityProvider.prepare(
                 applicationContext,
                 BuildConfig.PLAY_CLOUD_PROJECT_NUMBER,
-                BuildConfig.PLAY_ATTESTATION_KEY_ID,
             )
             val coordinator = EmiliaMobileEnrollmentCoordinator(
                 passkeys = EmiliaAndroidPasskeyRegistrationProvider(this@MainActivity),
@@ -313,7 +313,7 @@ class MainActivity : Activity() {
         val current = requireNotNull(session)
         val action = requireNotNull(selectedAction)
         val deviceKey = current.deviceKeyId ?: throw MobileApiException.Refused("device_not_enrolled")
-        challenge = api().issueChallenge(
+        val issued = api().issueChallenge(
             action.actionReference,
             current.approverId,
             decision,
@@ -321,23 +321,34 @@ class MainActivity : Activity() {
             packageName,
             deviceKey,
         )
+        EmiliaMobileChallengeValidator.decodeAndValidate(json.encodeToString(issued).toByteArray(Charsets.UTF_8))
+        challenge = issued
         pendingDecision = decision
     }
 
     private fun showChallengeConfirmation(value: EmiliaMobileChallenge, decision: String) {
-        val presentation = value.presentation as? JsonObject ?: JsonObject(emptyMap())
+        val presentation = try {
+            EmiliaMobileChallengeValidator.validatePresentation(value.presentation)
+        } catch (_: Exception) {
+            challenge = null
+            pendingDecision = null
+            showNotice("The signed presentation is not supported by this app. Nothing was authorized.", true)
+            render()
+            return
+        }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(4), 0, dp(4), 0)
-            addView(label(presentation.string("summary") ?: "Review the exact action before deciding.", 15f, MUTED), matchWrap())
-            presentation["consequence"]?.let { addView(label(display(it), 14f, DANGER, Typeface.BOLD), matchWrap(top = 10)) }
-            val fields = presentation["material_fields"] as? JsonObject ?: JsonObject(emptyMap())
-            fields.entries.sortedBy { it.key }.forEach { (name, field) ->
-                addView(fieldRow(humanize(name), display(field)), matchWrap(top = 10))
+            addView(label(presentation.risk.uppercase(Locale.US), 11f, DANGER, Typeface.BOLD), matchWrap())
+            addView(label(presentation.summary, 15f, MUTED), matchWrap(top = 8))
+            addView(label(presentation.consequence, 14f, DANGER, Typeface.BOLD), matchWrap(top = 10))
+            presentation.materialFields.entries.sortedBy { it.key }.forEach { (name, field) ->
+                addView(fieldRow(humanize(name), field), matchWrap(top = 10))
             }
+            addView(label("EP-MOBILE-PRESENTATION-v1", 11f, MUTED), matchWrap(top = 12))
         }
         AlertDialog.Builder(this)
-            .setTitle(if (decision == "approved") "Approve exact action" else "Sign this denial")
+            .setTitle(presentation.title)
             .setView(ScrollView(this).apply { addView(content) })
             .setNegativeButton("Cancel") { _, _ ->
                 challenge = null
@@ -355,8 +366,10 @@ class MainActivity : Activity() {
         val integrity = EmiliaPlayIntegrityProvider.prepare(
             applicationContext,
             BuildConfig.PLAY_CLOUD_PROJECT_NUMBER,
-            requireNotNull(current.attestationKeyId),
         )
+        if (integrity.attestationKeyId != requireNotNull(current.attestationKeyId)) {
+            throw MobileApiException.Refused("device_key_mismatch")
+        }
         val coordinator = EmiliaMobileCeremonyCoordinator(
             passkeys = EmiliaAndroidPasskeyProvider(this@MainActivity),
             integrity = integrity,

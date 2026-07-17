@@ -42,6 +42,25 @@
     "jsonObject": {
       "type": "object"
     },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["@version", "title", "summary", "risk", "consequence", "material_fields"],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-PRESENTATION-v1" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "risk": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "consequence": { "type": "string", "maxLength": 2000 },
+        "material_fields": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 64,
+          "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$" },
+          "additionalProperties": { "type": "string", "maxLength": 4096 }
+        }
+      }
+    },
     "mobileBinding": {
       "type": "object",
       "additionalProperties": false,
@@ -120,7 +139,8 @@
         "attestation_key_id",
         "status",
         "valid_from",
-        "valid_to"
+        "valid_to",
+        "sign_count"
       ],
       "properties": {
         "device_key_id": { "$ref": "#/$defs/identifier" },
@@ -132,7 +152,8 @@
         "attestation_key_id": { "$ref": "#/$defs/attestationKeyId" },
         "status": { "enum": ["active", "revoked"] },
         "valid_from": { "$ref": "#/$defs/canonicalInstant" },
-        "valid_to": { "$ref": "#/$defs/canonicalInstant" }
+        "valid_to": { "$ref": "#/$defs/canonicalInstant" },
+        "sign_count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
       }
     },
     "profile": {
@@ -182,7 +203,7 @@
             "hardware_backed_required": { "type": "boolean" },
             "strong_integrity_required": { "type": "boolean" },
             "max_challenge_age_ms": { "type": "integer", "minimum": 10000, "maximum": 900000 },
-            "counter_policy": { "enum": ["ignore", "monotonic_if_nonzero"] }
+            "counter_policy": { "enum": ["ignore", "monotonic_if_nonzero", "registration_baseline"] }
           }
         },
         "enrollments": {
@@ -232,7 +253,7 @@
             "timeout_ms": { "type": "integer", "minimum": 1, "maximum": 900000 }
           }
         },
-        "presentation": { "$ref": "#/$defs/jsonObject" },
+        "presentation": { "$ref": "#/$defs/presentation" },
         "issued_at": { "$ref": "#/$defs/canonicalInstant" },
         "expires_at": { "$ref": "#/$defs/canonicalInstant" },
         "attestation": {
@@ -300,10 +321,18 @@
           "required": ["format", "token"],
           "properties": {
             "format": { "enum": ["apple-app-attest", "play-integrity-standard"] },
-            "token": { "$ref": "#/$defs/base64url" }
+            "token": { "$ref": "#/$defs/base64url" },
+            "device_key_signature": { "$ref": "#/$defs/base64url" }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "platform": { "const": "android" } } },
+          "then": { "properties": { "attestation": { "required": ["format", "token", "device_key_signature"] } } },
+          "else": { "properties": { "attestation": { "not": { "required": ["device_key_signature"] } } } }
+        }
+      ]
     },
     "acknowledgement": {
       "type": "object",

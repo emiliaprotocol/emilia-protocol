@@ -48,9 +48,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          MOBILE_ANDROID_APK_KEY_HASHES: ${{ secrets.MOBILE_ANDROID_APK_KEY_HASHES }}
-          MOBILE_ANDROID_CERTIFICATE_DIGESTS: ${{ secrets.MOBILE_ANDROID_CERTIFICATE_DIGESTS }}
-          MOBILE_ANDROID_ASSETLINKS_CERT_SHA256: ${{ secrets.MOBILE_ANDROID_ASSETLINKS_CERT_SHA256 }}
+          MOBILE_ANDROID_SIGNING_CERT_SHA256: ${{ secrets.EMILIA_ANDROID_CERTIFICATE_SHA256_HEX }}
         run: npm ci --ignore-scripts && npm run mobile:production-readiness
 
   android:
@@ -88,18 +86,20 @@ jobs:
         run: ./gradlew :sample:assembleRelease :sample:bundleRelease --no-daemon
       - name: Red-team signed Android artifacts
         env:
-          EXPECTED_CERT_SHA256_HEX: ${{ secrets.EMILIA_ANDROID_CERTIFICATE_SHA256_HEX }}
+          MOBILE_ANDROID_SIGNING_CERT_SHA256: ${{ secrets.EMILIA_ANDROID_CERTIFICATE_SHA256_HEX }}
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_BUILD_NUMBER: ${{ inputs.build_number }}
         run: |
           APK=$(find sdks/kotlin-mobile/sample/build/outputs/apk/release -name '*.apk' -print -quit)
           AAB=$(find sdks/kotlin-mobile/sample/build/outputs/bundle/release -name '*.aab' -print -quit)
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          test -n "$APK" -a -n "$AAB" -a -n "$EXPECTED_CERT_SHA256_HEX"
+          test -n "$APK" -a -n "$AAB" -a -n "$MOBILE_ANDROID_SIGNING_CERT_SHA256"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee android-signature.txt
           ACTUAL_CERT_SHA256_HEX=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-signature.txt | tr '[:upper:]' '[:lower:]')
-          test "$ACTUAL_CERT_SHA256_HEX" = "$(printf '%s' "$EXPECTED_CERT_SHA256_HEX" | tr '[:upper:]' '[:lower:]')"
+          node scripts/check-mobile-signing-identity.mjs "$MOBILE_ANDROID_SIGNING_CERT_SHA256" "$ACTUAL_CERT_SHA256_HEX" APK
           jarsigner -verify -strict -verbose "$AAB"
+          AAB_CERT_SHA256=$(keytool -printcert -jarfile "$AAB" | sed -n 's/^[[:space:]]*SHA256: //p' | head -1)
+          node scripts/check-mobile-signing-identity.mjs "$MOBILE_ANDROID_SIGNING_CERT_SHA256" "$AAB_CERT_SHA256" AAB
           "$BUILD_TOOLS/aapt" dump badging "$APK" | tee android-package.txt
           grep -F "package: name='ai.emiliaprotocol.approver' versionCode='$RELEASE_BUILD_NUMBER' versionName='$RELEASE_VERSION'" android-package.txt
           grep -F "sdkVersion:'33'" android-package.txt

@@ -17,8 +17,15 @@ import { createGovernmentMobileController } from './government.js';
 import { createMobileHttpHandler } from './http.js';
 import { strictJsonGate } from './strict-json.js';
 import {
+  MOBILE_PRESENTATION_VERSION,
+  normalizeMobilePresentation,
+  validMobilePresentation,
+} from './presentation.js';
+import {
+  buildMobileAndroidKeyBinding,
   buildMobileEnrollmentBinding,
   createMobileEnrollmentService,
+  MOBILE_ANDROID_KEY_BINDING_VERSION,
   MOBILE_ENROLLMENT_CHALLENGE_VERSION,
   MOBILE_ENROLLMENT_VERSION,
 } from './enrollment.js';
@@ -33,6 +40,7 @@ export const MOBILE_PROFILE_VERSION = 'EP-MOBILE-RELIANCE-PROFILE-v1';
 export const MOBILE_ATTESTATION_BINDING_VERSION = 'EP-MOBILE-ATTESTATION-BINDING-v1';
 export const MOBILE_ACK_VERSION = 'EP-MOBILE-ACK-v1';
 export const MOBILE_EXECUTION_RECORD_VERSION = 'EP-MOBILE-EXECUTION-RECORD-v1';
+export { MOBILE_PRESENTATION_VERSION, normalizeMobilePresentation, validMobilePresentation };
 
 const MOBILE_CHECK_NAMES = Object.freeze([
   'profile',
@@ -52,8 +60,10 @@ export { createPlayIntegrityAttestationVerifier, createAppleAppAttestVerifier };
 export { createGovernmentMobileController };
 export { createMobileHttpHandler };
 export {
+  buildMobileAndroidKeyBinding,
   buildMobileEnrollmentBinding,
   createMobileEnrollmentService,
+  MOBILE_ANDROID_KEY_BINDING_VERSION,
   MOBILE_ENROLLMENT_CHALLENGE_VERSION,
   MOBILE_ENROLLMENT_VERSION,
 };
@@ -114,7 +124,7 @@ const RESPONSE_MEMBERS = new Set([
 ]);
 const SIGNOFF_MEMBERS = new Set(['context', 'webauthn']);
 const WEBAUTHN_ASSERTION_MEMBERS = new Set(['authenticator_data', 'client_data_json', 'signature']);
-const RESPONSE_ATTESTATION_MEMBERS = new Set(['format', 'token']);
+const RESPONSE_ATTESTATION_MEMBERS = new Set(['format', 'token', 'device_key_signature']);
 
 function isRecord(value) {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -222,6 +232,7 @@ function normalizeEnrollment(enrollment) {
     status: enrollment.status || 'active',
     valid_from: enrollment.valid_from,
     valid_to: enrollment.valid_to,
+    sign_count: enrollment.sign_count ?? 0,
   };
   if (!validId(normalized.device_key_id)
       || !validB64u(normalized.credential_id, 2048)
@@ -233,7 +244,8 @@ function normalizeEnrollment(enrollment) {
       || !['active', 'revoked'].includes(normalized.status)
       || parseInstant(normalized.valid_from) === null
       || parseInstant(normalized.valid_to) === null
-      || parseInstant(normalized.valid_from) >= parseInstant(normalized.valid_to)) {
+      || parseInstant(normalized.valid_from) >= parseInstant(normalized.valid_to)
+      || !Number.isSafeInteger(normalized.sign_count) || normalized.sign_count < 0) {
     throw new TypeError('mobile enrollment is malformed');
   }
   return normalized;
@@ -249,7 +261,7 @@ export function createMobileRelianceProfile({
   hardwareBackedRequired = true,
   strongIntegrityRequired = true,
   maxChallengeAgeMs = 300_000,
-  counterPolicy = 'monotonic_if_nonzero',
+  counterPolicy = 'registration_baseline',
 } = {}) {
   if (!validId(profileId) || typeof rpId !== 'string' || !rpId || rpId.length > 253) {
     throw new TypeError('profileId and rpId are required');
@@ -271,7 +283,7 @@ export function createMobileRelianceProfile({
   if (!Number.isSafeInteger(maxChallengeAgeMs) || maxChallengeAgeMs < 10_000 || maxChallengeAgeMs > 900_000) {
     throw new TypeError('maxChallengeAgeMs must be an integer from 10000 to 900000');
   }
-  if (!['ignore', 'monotonic_if_nonzero'].includes(counterPolicy)) {
+  if (!['ignore', 'monotonic_if_nonzero', 'registration_baseline'].includes(counterPolicy)) {
     throw new TypeError('unsupported counterPolicy');
   }
   const normalizedEnrollments = enrollments.map(normalizeEnrollment)
@@ -374,7 +386,7 @@ export function buildMobileAuthorizationContext({
       || !['approved', 'denied'].includes(decision) || !validHash(displayHash)
       || !validHash(profileHash) || !['ios', 'android'].includes(platform)
       || !validId(appId) || !validId(deviceKeyId) || !validB64u(credentialId, 2048)
-      || !validId(attestationKeyId)) {
+      || !validAttestationKeyId(attestationKeyId)) {
     throw new TypeError('mobile authorization context input is malformed');
   }
   return {
@@ -458,7 +470,8 @@ export function createMobileChallenge({
   if (!validId(challengeId) || !validId(nonce)) throw new TypeError('challengeId and nonce are malformed');
 
   const computedActionHash = actionHash(action);
-  const computedDisplayHash = displayHash(presentation);
+  const normalizedPresentation = normalizeMobilePresentation(presentation);
+  const computedDisplayHash = displayHash(normalizedPresentation);
   const computedPolicyHash = policy === null ? null : hashCanonical(policy);
   const authorizationContext = buildMobileAuthorizationContext({
     actionHash: computedActionHash,
@@ -497,7 +510,7 @@ export function createMobileChallenge({
       user_verification: 'required',
       timeout_ms: expires - issued,
     },
-    presentation,
+    presentation: normalizedPresentation,
     issued_at: issuedAt,
     expires_at: expiresAt,
   };
@@ -564,14 +577,17 @@ function validContextShape(context) {
 function validChallengeShape(challenge) {
   return exactMembers(challenge, CHALLENGE_MEMBERS)
     && exactMembers(challenge.webauthn, WEBAUTHN_REQUEST_MEMBERS)
-    && exactMembers(challenge.attestation, CHALLENGE_ATTESTATION_MEMBERS);
+    && exactMembers(challenge.attestation, CHALLENGE_ATTESTATION_MEMBERS)
+    && validMobilePresentation(challenge.presentation);
 }
 
 function validResponseShape(response) {
   return exactMembers(response, RESPONSE_MEMBERS)
     && exactMembers(response.signoff, SIGNOFF_MEMBERS)
     && exactMembers(response.signoff?.webauthn, WEBAUTHN_ASSERTION_MEMBERS)
-    && exactMembers(response.attestation, RESPONSE_ATTESTATION_MEMBERS);
+    && exactMembers(response.attestation, RESPONSE_ATTESTATION_MEMBERS)
+    && typeof response.attestation?.format === 'string'
+    && typeof response.attestation?.token === 'string';
 }
 
 function profileEnrollmentValidAt(enrollment, instant) {
@@ -608,8 +624,10 @@ export async function verifyMobileCeremony({
   };
   try {
     assertProfile(profile);
-    checks.profile = validChallengeShape(challenge)
-      && challenge['@version'] === 'AE-CHALLENGE-v1'
+    if (!validChallengeShape(challenge)) {
+      return malformed('mobile challenge shape or presentation is malformed', checks);
+    }
+    checks.profile = challenge['@version'] === 'AE-CHALLENGE-v1'
       && challenge.challenge_profile === MOBILE_CHALLENGE_VERSION
       && normalizeHash(challenge.profile_hash) === normalizeHash(profile.profile_hash);
     if (!checks.profile) return refused('refuse_profile_mismatch', 'challenge does not name the pinned profile', checks);
@@ -716,6 +734,10 @@ export async function verifyMobileCeremony({
     if (response.attestation.format !== challenge.attestation.format) {
       return refused('refuse_attestation', 'response attestation format does not match the challenge', checks);
     }
+    if ((binding.platform === 'android' && !validB64u(response.attestation.device_key_signature, 256))
+        || (binding.platform === 'ios' && own(response.attestation, 'device_key_signature'))) {
+      return refused('refuse_attestation', 'device-key ceremony signature does not match the enrolled platform', checks);
+    }
     if (profile.requirements.attestation_required && typeof attestationVerifier !== 'function') {
       return refused('refuse_attestation_missing', 'no pinned platform attestation verifier was supplied', checks);
     }
@@ -729,6 +751,7 @@ export async function verifyMobileCeremony({
           expected_binding: expectedBinding,
           expected_app_id: binding.app_id,
           expected_attestation_key_id: binding.attestation_key_id,
+          device_key_signature: response.attestation.device_key_signature,
           platform: binding.platform,
         });
       } catch {
@@ -739,6 +762,7 @@ export async function verifyMobileCeremony({
         && attested.app_id === binding.app_id
         && attested.attestation_key_id === binding.attestation_key_id
         && attested.platform === binding.platform
+        && (binding.platform !== 'android' || attested.device_key_verified === true)
         && (!profile.requirements.hardware_backed_required || attested.hardware_backed === true)
         && (!profile.requirements.strong_integrity_required || attested.strong_integrity === true));
       if (!checks.attestation) return refused('refuse_attestation', 'platform attestation did not satisfy the pinned profile', checks);
@@ -870,10 +894,22 @@ export function createMobileCeremonyService({
         return recordOrRefuse(challenge, result);
       }
 
-      if (profile.requirements.counter_policy === 'monotonic_if_nonzero'
-          && Number.isSafeInteger(result.sign_count) && result.sign_count > 0) {
+      const counterRequired = profile.requirements.counter_policy === 'registration_baseline'
+        || (profile.requirements.counter_policy === 'monotonic_if_nonzero'
+          && Number.isSafeInteger(result.sign_count) && result.sign_count > 0);
+      if (counterRequired) {
+        if (!Number.isSafeInteger(result.sign_count) || result.sign_count < 0) {
+          result = refused('refuse_counter_rollback', 'authenticator counter is missing or malformed', result.checks);
+          return recordOrRefuse(challenge, result);
+        }
+        const registrationBaseline = enrollmentFor(profile, result.device_key_id)?.sign_count;
+        if (profile.requirements.counter_policy === 'registration_baseline'
+            && (!Number.isSafeInteger(registrationBaseline) || result.sign_count <= registrationBaseline)) {
+          result = refused('refuse_counter_rollback', 'authenticator counter did not advance its registration baseline', result.checks);
+          return recordOrRefuse(challenge, result);
+        }
         if (typeof counterStore?.advance !== 'function') {
-          result = refused('refuse_store_unavailable', 'counter store is required for non-zero authenticator counters', result.checks);
+          result = refused('refuse_store_unavailable', 'counter store is required by the pinned authenticator policy', result.checks);
           return recordOrRefuse(challenge, result);
         }
         try {
@@ -1088,10 +1124,13 @@ export default {
   MOBILE_ATTESTATION_BINDING_VERSION,
   MOBILE_ACK_VERSION,
   MOBILE_EXECUTION_RECORD_VERSION,
+  MOBILE_PRESENTATION_VERSION,
   MOBILE_VERDICTS,
   hashCanonical,
   mobileProfileHash,
   createMobileRelianceProfile,
+  normalizeMobilePresentation,
+  validMobilePresentation,
   buildMobileAuthorizationContext,
   buildMobileAttestationBinding,
   createMobileChallenge,
@@ -1107,7 +1146,9 @@ export default {
   createGovernmentMobileController,
   createMobileHttpHandler,
   buildMobileEnrollmentBinding,
+  buildMobileAndroidKeyBinding,
   createMobileEnrollmentService,
+  MOBILE_ANDROID_KEY_BINDING_VERSION,
   MOBILE_ENROLLMENT_CHALLENGE_VERSION,
   MOBILE_ENROLLMENT_VERSION,
 };

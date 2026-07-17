@@ -15,6 +15,16 @@ export interface MobileEnrollment {
   status?: 'active' | 'revoked';
   valid_from: string;
   valid_to: string;
+  sign_count: number;
+}
+
+export interface MobilePresentation {
+  '@version': 'EP-MOBILE-PRESENTATION-v1';
+  title: string;
+  summary: string;
+  risk: string;
+  consequence: string;
+  material_fields: Record<string, string>;
 }
 
 export interface MobileRelianceProfile {
@@ -29,7 +39,7 @@ export interface MobileRelianceProfile {
     hardware_backed_required: boolean;
     strong_integrity_required: boolean;
     max_challenge_age_ms: number;
-    counter_policy: 'ignore' | 'monotonic_if_nonzero';
+    counter_policy: 'ignore' | 'monotonic_if_nonzero' | 'registration_baseline';
   };
   enrollments: MobileEnrollment[];
 }
@@ -50,7 +60,7 @@ export interface MobileChallenge {
     user_verification: 'required';
     timeout_ms: number;
   };
-  presentation: Record<string, JsonValue>;
+  presentation: MobilePresentation;
   attestation: {
     required: boolean;
     format: 'apple-app-attest' | 'play-integrity-standard';
@@ -80,7 +90,7 @@ export interface MobileCeremonyResponse {
       signature: string;
     };
   };
-  attestation: { format: string; token: string };
+  attestation: { format: string; token: string; device_key_signature?: string };
 }
 
 export interface MobileVerificationResult {
@@ -123,6 +133,7 @@ export type MobileAttestationVerifier = (input: {
   expected_binding: Record<string, JsonValue>;
   expected_app_id: string;
   expected_attestation_key_id: string;
+  device_key_signature?: string;
   platform: MobilePlatform;
 }) => Promise<MobileAttestationResult> | MobileAttestationResult;
 
@@ -132,6 +143,8 @@ export const MOBILE_PROFILE_VERSION: 'EP-MOBILE-RELIANCE-PROFILE-v1';
 export const MOBILE_ATTESTATION_BINDING_VERSION: 'EP-MOBILE-ATTESTATION-BINDING-v1';
 export const MOBILE_ACK_VERSION: 'EP-MOBILE-ACK-v1';
 export const MOBILE_EXECUTION_RECORD_VERSION: 'EP-MOBILE-EXECUTION-RECORD-v1';
+export const MOBILE_PRESENTATION_VERSION: 'EP-MOBILE-PRESENTATION-v1';
+export const MOBILE_ANDROID_KEY_BINDING_VERSION: 'EP-MOBILE-ANDROID-KEY-BINDING-v1';
 export const MOBILE_ENROLLMENT_CHALLENGE_VERSION: 'EP-MOBILE-ENROLLMENT-CHALLENGE-v1';
 export const MOBILE_ENROLLMENT_VERSION: 'EP-MOBILE-ENROLLMENT-v1';
 export const MOBILE_VERDICTS: readonly string[];
@@ -148,7 +161,7 @@ export function createMobileRelianceProfile(input: {
   hardwareBackedRequired?: boolean;
   strongIntegrityRequired?: boolean;
   maxChallengeAgeMs?: number;
-  counterPolicy?: 'ignore' | 'monotonic_if_nonzero';
+  counterPolicy?: 'ignore' | 'monotonic_if_nonzero' | 'registration_baseline';
 }): MobileRelianceProfile;
 export function buildMobileAuthorizationContext(input: Record<string, unknown>): Record<string, JsonValue>;
 export function buildMobileAttestationBinding(challenge: MobileChallenge): Record<string, JsonValue>;
@@ -159,7 +172,7 @@ export function createMobileChallenge(input: {
   initiatorId: string;
   approverId: string;
   decision: MobileDecision;
-  presentation: Record<string, JsonValue>;
+  presentation: MobilePresentation;
   platform: MobilePlatform;
   appId: string;
   deviceKeyId: string;
@@ -201,7 +214,6 @@ export function createPlayIntegrityAttestationVerifier(input: {
   decodeToken(token: string): Promise<Record<string, unknown>>;
   packageName: string;
   certificateDigests: string[];
-  attestationKeyId: string;
   requireLicensed?: boolean;
   requireStrongIntegrity?: boolean;
   requireNoCaptureOrControl?: boolean;
@@ -218,6 +230,16 @@ export function createAppleAppAttestVerifier(input: {
 }): MobileAttestationVerifier;
 
 export function buildMobileEnrollmentBinding(challenge: Record<string, unknown>): Record<string, JsonValue>;
+export function buildMobileAndroidKeyBinding(input: {
+  challengeRequestHash: string;
+  keyId: string;
+  publicKeySpki: string;
+}): Record<string, JsonValue>;
+export function normalizeMobilePresentation(
+  value: Record<string, JsonValue>,
+  options?: { allowUnversioned?: boolean },
+): MobilePresentation;
+export function validMobilePresentation(value: unknown): boolean;
 export function createMobileEnrollmentService(input: {
   challengeStore: {
     durable?: boolean;

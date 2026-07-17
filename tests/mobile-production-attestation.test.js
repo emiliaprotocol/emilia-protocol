@@ -29,6 +29,8 @@ const {
   verifyMobilePasskeyRegistration,
 } = await import('@/lib/mobile/attestation.js');
 
+const PLAY_CERTIFICATE = Buffer.alloc(32, 5).toString('base64url');
+
 function appleAuthenticatorData({ category = 4, bundleVersion = '1', includeSignals = true } = {}) {
   const header = Buffer.alloc(37);
   header[32] = includeSignals ? 0x80 : 0x00;
@@ -51,7 +53,7 @@ function coseP256() {
   ]));
 }
 
-function playPayload(requestHash, certificate = 'cert-pinned') {
+function playPayload(requestHash, certificate = PLAY_CERTIFICATE) {
   return {
     requestDetails: {
       requestPackageName: 'ai.emiliaprotocol.approver',
@@ -127,9 +129,8 @@ describe('mobile production attestation adapters', () => {
 
   it('pins every Android Play verdict during enrollment', async () => {
     const config = {
-      androidCertificateDigests: ['cert-pinned'],
+      androidCertificateDigests: [PLAY_CERTIFICATE],
       androidPackageName: 'ai.emiliaprotocol.approver',
-      playAttestationKeyId: 'play-integrity:production',
       iosBundleId: 'ai.emiliaprotocol.approver',
       appleTeamId: '5M2Z48UQQY',
       appleEnvironment: 'production',
@@ -141,6 +142,7 @@ describe('mobile production attestation adapters', () => {
       androidRequirePlayProtect: true,
     };
     const requestHash = 'a'.repeat(43);
+    const androidKeyId = `android-keystore:sha256:${'b'.repeat(43)}`;
     const verify = createPlatformEnrollmentVerifier({
       config,
       playDecoder: async () => playPayload(requestHash),
@@ -151,7 +153,7 @@ describe('mobile production attestation adapters', () => {
       token: Buffer.from('opaque').toString('base64url'),
       expected_request_hash: requestHash,
       expected_app_id: config.androidPackageName,
-      expected_attestation_key_id: config.playAttestationKeyId,
+      expected_attestation_key_id: androidKeyId,
     });
     expect(accepted.valid).toBe(true);
     expect(accepted.strong_integrity).toBe(true);
@@ -165,7 +167,7 @@ describe('mobile production attestation adapters', () => {
       token: Buffer.from('opaque').toString('base64url'),
       expected_request_hash: requestHash,
       expected_app_id: config.androidPackageName,
-      expected_attestation_key_id: config.playAttestationKeyId,
+      expected_attestation_key_id: androidKeyId,
     });
     expect(refused.valid).toBe(false);
   });
@@ -178,7 +180,6 @@ describe('mobile production attestation adapters', () => {
     const config = {
       androidCertificateDigests: [],
       androidPackageName: 'ai.emiliaprotocol.approver',
-      playAttestationKeyId: 'play-integrity:production',
       iosBundleId: 'ai.emiliaprotocol.approver',
       appleTeamId: '5M2Z48UQQY',
       appleEnvironment: 'production',
@@ -220,7 +221,7 @@ describe('mobile production attestation adapters', () => {
   it('loads the enrolled App Attest key, verifies the assertion, and advances its counter', async () => {
     mocks.verifyAssertion.mockReturnValue({ signCount: 7 });
     const directory = {
-      appAttestKey: vi.fn(async () => ({
+      platformKey: vi.fn(async () => ({
         platform_public_key: '-----BEGIN PUBLIC KEY-----\nkey\n-----END PUBLIC KEY-----',
         app_id: 'ai.emiliaprotocol.approver',
         status: 'active',
@@ -232,7 +233,6 @@ describe('mobile production attestation adapters', () => {
     const config = {
       androidCertificateDigests: [],
       androidPackageName: 'ai.emiliaprotocol.approver',
-      playAttestationKeyId: 'play-integrity:production',
       iosBundleId: 'ai.emiliaprotocol.approver',
       appleTeamId: '5M2Z48UQQY',
       appleEnvironment: 'production',
@@ -267,6 +267,59 @@ describe('mobile production attestation adapters', () => {
       teamIdentifier: config.appleTeamId,
       signCount: 0,
     }));
+  });
+
+  it('requires the enrolled Android Keystore key signature on every Play-backed ceremony', async () => {
+    const enrolledKey = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    const secondDevice = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    const publicKeySpki = enrolledKey.publicKey.export({ type: 'spki', format: 'der' });
+    const keyId = `android-keystore:sha256:${crypto.createHash('sha256').update(publicKeySpki).digest('base64url')}`;
+    const requestHash = Buffer.alloc(32, 3);
+    const config = {
+      androidCertificateDigests: [PLAY_CERTIFICATE],
+      androidPackageName: 'ai.emiliaprotocol.approver',
+      iosBundleId: 'ai.emiliaprotocol.approver',
+      appleTeamId: '5M2Z48UQQY',
+      appleEnvironment: 'production',
+      appleAllowedValidationCategories: [2, 4],
+      appleAllowedBundleVersions: ['1'],
+      appleRequireRuntimeSignals: false,
+      androidAllowedVersionCodes: [1],
+      androidMinimumSdkVersion: 33,
+      androidRequirePlayProtect: true,
+    };
+    const enrollment = {
+      platform_public_key: publicKeySpki.toString('base64url'),
+      app_id: config.androidPackageName,
+      status: 'active',
+      valid_from: '2026-01-01T00:00:00.000Z',
+      valid_to: '2099-01-01T00:00:00.000Z',
+    };
+    const directory = { platformKey: vi.fn(async () => enrollment) };
+    const verifier = createProductionAttestationVerifier({
+      config,
+      directory,
+      counterStore: { advance: vi.fn(async () => true) },
+      playDecoder: async () => playPayload(requestHash.toString('base64url')),
+    });
+    const input = {
+      platform: 'android',
+      format: 'play-integrity-standard',
+      token: Buffer.from('opaque-play-token').toString('base64url'),
+      expected_request_hash: requestHash.toString('base64url'),
+      expected_app_id: config.androidPackageName,
+      expected_attestation_key_id: keyId,
+      device_key_signature: crypto.sign('sha256', requestHash, enrolledKey.privateKey).toString('base64url'),
+    };
+    await expect(verifier(input)).resolves.toMatchObject({ valid: true, device_key_verified: true });
+    expect(directory.platformKey).toHaveBeenCalledWith(keyId, 'android');
+
+    const substituted = {
+      ...input,
+      device_key_signature: crypto.sign('sha256', requestHash, secondDevice.privateKey).toString('base64url'),
+    };
+    await expect(verifier(substituted)).resolves.toEqual({ valid: false });
+    await expect(verifier({ ...input, device_key_signature: undefined })).resolves.toEqual({ valid: false });
   });
 
   it('enforces Apple certificate validity and signed runtime distribution signals', () => {
@@ -492,7 +545,6 @@ describe('mobile production attestation adapters', () => {
     const base = {
       androidCertificateDigests: [],
       androidPackageName: 'ai.emiliaprotocol.approver',
-      playAttestationKeyId: 'play-integrity:production',
       iosBundleId: 'ai.emiliaprotocol.approver',
       appleTeamId: '5M2Z48UQQY',
       appleEnvironment: 'production',
@@ -549,7 +601,6 @@ describe('mobile production attestation adapters', () => {
     const base = {
       androidCertificateDigests: [],
       androidPackageName: 'ai.emiliaprotocol.approver',
-      playAttestationKeyId: 'play-integrity:production',
       iosBundleId: 'ai.emiliaprotocol.approver',
       appleTeamId: '5M2Z48UQQY',
       appleEnvironment: 'production',
@@ -575,7 +626,7 @@ describe('mobile production attestation adapters', () => {
     };
     const make = (enrollment) => createProductionAttestationVerifier({
       config: base,
-      directory: { appAttestKey: vi.fn(async () => enrollment) },
+      directory: { platformKey: vi.fn(async () => enrollment) },
       counterStore: { advance: vi.fn(async () => true) },
       playDecoder: async () => ({}),
       inspectAppleAssertion: () => ({ authenticatorData: appleAuthenticatorData() }),
@@ -596,7 +647,7 @@ describe('mobile production attestation adapters', () => {
     mocks.verifyAssertion.mockReturnValueOnce({ signCount: 1 });
     const invalidSignals = createProductionAttestationVerifier({
       config: base,
-      directory: { appAttestKey: vi.fn(async () => active) },
+      directory: { platformKey: vi.fn(async () => active) },
       counterStore: { advance: vi.fn(async () => true) },
       playDecoder: async () => ({}),
       inspectAppleAssertion: () => ({ authenticatorData: appleAuthenticatorData({ includeSignals: false }) }),

@@ -3,6 +3,8 @@ package ai.emiliaprotocol.mobile
 
 import android.app.Activity
 import android.content.Context
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import androidx.credentials.CredentialManager
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
@@ -11,6 +13,12 @@ import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PublicKeyCredential
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.security.Signature
+import java.security.spec.ECGenParameterSpec
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -101,11 +109,12 @@ class EmiliaAndroidPasskeyRegistrationProvider(
 
 class EmiliaPlayIntegrityProvider private constructor(
     private val tokenProvider: StandardIntegrityManager.StandardIntegrityTokenProvider,
-    override val attestationKeyId: String,
+    internal val deviceKey: EmiliaAndroidDeviceKey,
 ) : EmiliaPlatformIntegrityProvider {
     override val format: String = "play-integrity-standard"
+    override val attestationKeyId: String get() = deviceKey.keyId
 
-    override suspend fun assertion(requestHash: ByteArray): ByteArray = suspendCancellableCoroutine { continuation ->
+    internal suspend fun integrityToken(requestHash: ByteArray): ByteArray = suspendCancellableCoroutine { continuation ->
         require(requestHash.size == 32) { "Play Integrity request hash must be SHA-256" }
         tokenProvider.request(
             StandardIntegrityManager.StandardIntegrityTokenRequest.builder()
@@ -118,21 +127,25 @@ class EmiliaPlayIntegrityProvider private constructor(
         }
     }
 
+    override suspend fun assertion(requestHash: ByteArray) = EmiliaPlatformIntegrityAssertion(
+        token = integrityToken(requestHash),
+        deviceKeySignature = deviceKey.sign(requestHash),
+    )
+
     companion object {
         suspend fun prepare(
             context: Context,
             cloudProjectNumber: Long,
-            attestationKeyId: String,
+            deviceKey: EmiliaAndroidDeviceKey = EmiliaAndroidDeviceKey(),
         ): EmiliaPlayIntegrityProvider = suspendCancellableCoroutine { continuation ->
             require(cloudProjectNumber > 0) { "Play Integrity cloud project number must be configured" }
-            require(attestationKeyId.isNotBlank()) { "Play Integrity key identifier must be configured" }
             val manager = IntegrityManagerFactory.createStandard(context.applicationContext)
             manager.prepareIntegrityToken(
                 StandardIntegrityManager.PrepareIntegrityTokenRequest.builder()
                     .setCloudProjectNumber(cloudProjectNumber)
                     .build()
             ).addOnSuccessListener { provider ->
-                if (continuation.isActive) continuation.resume(EmiliaPlayIntegrityProvider(provider, attestationKeyId))
+                if (continuation.isActive) continuation.resume(EmiliaPlayIntegrityProvider(provider, deviceKey))
             }.addOnFailureListener { error ->
                 if (continuation.isActive) continuation.resumeWithException(error)
             }
@@ -140,12 +153,68 @@ class EmiliaPlayIntegrityProvider private constructor(
     }
 }
 
+class EmiliaAndroidDeviceKey(
+    private val alias: String = DEFAULT_ALIAS,
+) {
+    private val keyPair: KeyPair by lazy { loadOrCreate() }
+
+    val publicKeySpki: ByteArray get() = keyPair.public.encoded.copyOf()
+    val keyId: String get() = "android-keystore:sha256:${MessageDigest.getInstance("SHA-256").digest(publicKeySpki).base64Url()}"
+
+    fun sign(value: ByteArray): ByteArray = Signature.getInstance("SHA256withECDSA").run {
+        initSign(keyPair.private)
+        update(value)
+        sign()
+    }
+
+    private fun loadOrCreate(): KeyPair {
+        val store = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+        val privateKey = store.getKey(alias, null)
+        val certificate = store.getCertificate(alias)
+        if (privateKey != null && certificate != null) return KeyPair(certificate.publicKey, privateKey as java.security.PrivateKey)
+
+        val generator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, ANDROID_KEY_STORE)
+        generator.initialize(
+            KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
+                .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+                .setDigests(KeyProperties.DIGEST_SHA256)
+                .setUserAuthenticationRequired(false)
+                .build(),
+        )
+        return generator.generateKeyPair()
+    }
+
+    companion object {
+        const val DEFAULT_ALIAS = "ai.emiliaprotocol.mobile.device-key.v1"
+        private const val ANDROID_KEY_STORE = "AndroidKeyStore"
+    }
+}
+
 class EmiliaPlayIntegrityEnrollmentProvider(
-    private val integrity: EmiliaPlatformIntegrityProvider,
+    private val integrity: EmiliaPlayIntegrityProvider,
 ) : EmiliaPlatformEnrollmentProvider {
-    override suspend fun enrollment(requestHash: ByteArray) = EmiliaPlatformEnrollment(
-        format = "play-integrity-standard",
-        attestationKeyId = integrity.attestationKeyId,
-        token = integrity.assertion(requestHash),
-    )
+    override suspend fun enrollment(requestHash: ByteArray): EmiliaPlatformEnrollment {
+        require(requestHash.size == 32) { "Enrollment challenge request hash must be SHA-256" }
+        val key = integrity.deviceKey
+        val binding = buildJsonObject {
+            put("@version", "EP-MOBILE-ANDROID-KEY-BINDING-v1")
+            put("challenge_request_hash", requestHash.base64Url())
+            put("algorithm", "ES256")
+            put("key_id", key.keyId)
+            put("public_key_spki", key.publicKeySpki.base64Url())
+        }
+        val playRequestHash = EmiliaCanonicalJson.sha256(binding)
+        return EmiliaPlatformEnrollment(
+            format = "play-integrity-standard",
+            attestationKeyId = key.keyId,
+            token = integrity.integrityToken(playRequestHash),
+            requestHash = playRequestHash,
+            deviceKey = EmiliaAndroidDeviceKeyProof(
+                algorithm = "ES256",
+                keyId = key.keyId,
+                publicKeySpki = key.publicKeySpki.base64Url(),
+                signature = key.sign(EmiliaCanonicalJson.encode(binding)).base64Url(),
+            ),
+        )
+    }
 }

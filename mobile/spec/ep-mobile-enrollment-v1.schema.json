@@ -23,6 +23,17 @@
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
     },
+    "androidDeviceKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "public_key_spki", "signature"],
+      "properties": {
+        "algorithm": { "const": "ES256" },
+        "key_id": { "type": "string", "pattern": "^android-keystore:sha256:[A-Za-z0-9_-]{43}$" },
+        "public_key_spki": { "$ref": "#/$defs/base64url" },
+        "signature": { "$ref": "#/$defs/base64url" }
+      }
+    },
     "challenge": {
       "type": "object",
       "additionalProperties": false,
@@ -107,13 +118,22 @@
         "platform_attestation": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["format", "token"],
+          "required": ["format", "token", "request_hash"],
           "properties": {
             "format": { "type": "string", "minLength": 1 },
-            "token": { "$ref": "#/$defs/base64url" }
+            "token": { "$ref": "#/$defs/base64url" },
+            "request_hash": { "$ref": "#/$defs/base64url" },
+            "device_key": { "$ref": "#/$defs/androidDeviceKey" }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "platform": { "const": "android" } } },
+          "then": { "properties": { "platform_attestation": { "required": ["format", "token", "request_hash", "device_key"] } } },
+          "else": { "properties": { "platform_attestation": { "not": { "required": ["device_key"] } } } }
+        }
+      ]
     }
   }
 }

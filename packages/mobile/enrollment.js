@@ -7,14 +7,27 @@ const { canonicalize, isCanonicalizable } = verifier;
 
 export const MOBILE_ENROLLMENT_CHALLENGE_VERSION = 'EP-MOBILE-ENROLLMENT-CHALLENGE-v1';
 export const MOBILE_ENROLLMENT_VERSION = 'EP-MOBILE-ENROLLMENT-v1';
+export const MOBILE_ANDROID_KEY_BINDING_VERSION = 'EP-MOBILE-ANDROID-KEY-BINDING-v1';
 
 const ID = /^[A-Za-z0-9:_.@-]{3,256}$/;
 const ATTESTATION_KEY_ID = /^[A-Za-z0-9:._+/=-]{3,512}$/;
 const ANDROID_APK_ORIGIN = /^android:apk-key-hash:[A-Za-z0-9_-]{43}$/;
 const B64U = /^[A-Za-z0-9_-]+$/;
+const ANDROID_KEY_ID = /^android-keystore:sha256:[A-Za-z0-9_-]{43}$/;
+const ENROLLMENT_RESPONSE_MEMBERS = new Set([
+  '@version', 'enrollment_id', 'approver_id', 'platform', 'app_id',
+  'platform_request_hash', 'attestation_key_id', 'requested_valid_to',
+  'passkey_registration', 'platform_attestation',
+]);
+const PLATFORM_ATTESTATION_MEMBERS = new Set(['format', 'token', 'request_hash', 'device_key']);
+const ANDROID_DEVICE_KEY_MEMBERS = new Set(['algorithm', 'key_id', 'public_key_spki', 'signature']);
 
 function record(value) {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function exactMembers(value, allowed) {
+  return record(value) && Object.keys(value).every((key) => allowed.has(key));
 }
 
 function instant(value) {
@@ -82,6 +95,52 @@ export function buildMobileEnrollmentBinding(challenge) {
     issued_at: challenge.issued_at,
     expires_at: challenge.expires_at,
   };
+}
+
+export function buildMobileAndroidKeyBinding({ challengeRequestHash, keyId, publicKeySpki } = {}) {
+  if (!boundedBase64url(challengeRequestHash, 32) || Buffer.from(challengeRequestHash, 'base64url').length !== 32
+      || !ANDROID_KEY_ID.test(keyId || '') || !isP256Spki(publicKeySpki)) {
+    throw new TypeError('Android enrollment device key binding is malformed');
+  }
+  return {
+    '@version': MOBILE_ANDROID_KEY_BINDING_VERSION,
+    challenge_request_hash: challengeRequestHash,
+    algorithm: 'ES256',
+    key_id: keyId,
+    public_key_spki: publicKeySpki,
+  };
+}
+
+function verifyAndroidDeviceKey(challenge, response) {
+  const deviceKey = response.platform_attestation?.device_key;
+  if (!exactMembers(deviceKey, ANDROID_DEVICE_KEY_MEMBERS)
+      || deviceKey.algorithm !== 'ES256'
+      || deviceKey.key_id !== response.attestation_key_id
+      || !ANDROID_KEY_ID.test(deviceKey.key_id || '')
+      || !isP256Spki(deviceKey.public_key_spki)
+      || !boundedBase64url(deviceKey.signature, 256)) return null;
+  try {
+    const publicKeyBytes = Buffer.from(deviceKey.public_key_spki, 'base64url');
+    const derivedKeyId = `android-keystore:sha256:${crypto.createHash('sha256').update(publicKeyBytes).digest('base64url')}`;
+    if (derivedKeyId !== deviceKey.key_id) return null;
+    const binding = buildMobileAndroidKeyBinding({
+      challengeRequestHash: challenge.platform_request_hash,
+      keyId: deviceKey.key_id,
+      publicKeySpki: deviceKey.public_key_spki,
+    });
+    const requestHash = hash(binding);
+    if (response.platform_attestation.request_hash !== requestHash) return null;
+    const key = crypto.createPublicKey({ key: publicKeyBytes, format: 'der', type: 'spki' });
+    const valid = crypto.verify(
+      'sha256',
+      Buffer.from(canonicalize(binding), 'utf8'),
+      key,
+      Buffer.from(deviceKey.signature, 'base64url'),
+    );
+    return valid ? { binding, requestHash, publicKeySpki: deviceKey.public_key_spki } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -203,7 +262,8 @@ export function createMobileEnrollmentService({
     async complete({ challenge, response, caller = null } = {}) {
       if (!record(challenge) || challenge['@version'] !== 'AE-CHALLENGE-v1'
           || challenge.challenge_profile !== MOBILE_ENROLLMENT_CHALLENGE_VERSION
-          || !record(response) || response['@version'] !== MOBILE_ENROLLMENT_VERSION
+          || !exactMembers(response, ENROLLMENT_RESPONSE_MEMBERS)
+          || response['@version'] !== MOBILE_ENROLLMENT_VERSION
           || response.enrollment_id !== challenge.enrollment_id
           || response.approver_id !== challenge.approver_id
           || response.platform !== challenge.platform
@@ -211,7 +271,10 @@ export function createMobileEnrollmentService({
           || response.platform_request_hash !== challenge.platform_request_hash
           || response.requested_valid_to !== challenge.enrollment_valid_to
           || !record(response.passkey_registration)
-          || !record(response.platform_attestation)
+          || !exactMembers(response.platform_attestation, PLATFORM_ATTESTATION_MEMBERS)
+          || typeof response.platform_attestation.format !== 'string'
+          || !boundedBase64url(response.platform_attestation.token, 128 * 1024)
+          || !boundedBase64url(response.platform_attestation.request_hash, 32)
           || !ATTESTATION_KEY_ID.test(response.attestation_key_id || '')) {
         return failure('refuse_malformed', 'enrollment response does not match the challenge');
       }
@@ -239,6 +302,16 @@ export function createMobileEnrollmentService({
         return failure('refuse_action_mismatch', 'enrollment binding was changed');
       }
 
+      const androidKey = challenge.platform === 'android'
+        ? verifyAndroidDeviceKey(challenge, response)
+        : null;
+      if ((challenge.platform === 'android' && androidKey === null)
+          || (challenge.platform === 'ios'
+            && (response.platform_attestation.device_key !== undefined
+              || response.platform_attestation.request_hash !== challenge.platform_request_hash))) {
+        return failure('refuse_attestation', 'platform enrollment device-key binding is invalid');
+      }
+
       let passkey;
       let platform;
       try {
@@ -253,8 +326,8 @@ export function createMobileEnrollmentService({
         platform = await verifyPlatformEnrollment({
           format: response.platform_attestation.format,
           token: response.platform_attestation.token,
-          expected_request_hash: challenge.platform_request_hash,
-          expected_binding: buildMobileEnrollmentBinding(challenge),
+          expected_request_hash: androidKey?.requestHash ?? challenge.platform_request_hash,
+          expected_binding: androidKey?.binding ?? buildMobileEnrollmentBinding(challenge),
           expected_app_id: challenge.app_id,
           expected_attestation_key_id: response.attestation_key_id,
           platform: challenge.platform,
@@ -267,7 +340,8 @@ export function createMobileEnrollmentService({
           || !Number.isSafeInteger(passkey.sign_count) || passkey.sign_count < 0) {
         return failure('refuse_webauthn', 'passkey registration did not satisfy the pinned profile');
       }
-      if (platform?.valid !== true || platform.request_hash !== challenge.platform_request_hash
+      const expectedPlatformRequestHash = androidKey?.requestHash ?? challenge.platform_request_hash;
+      if (platform?.valid !== true || platform.request_hash !== expectedPlatformRequestHash
           || platform.app_id !== challenge.app_id || platform.platform !== challenge.platform
           || platform.attestation_key_id !== response.attestation_key_id
           || platform.hardware_backed !== true || platform.strong_integrity !== true
@@ -276,7 +350,9 @@ export function createMobileEnrollmentService({
               || platform.platform_public_key.length < 64
               || platform.platform_public_key.length > 8192
               || !platform.platform_public_key.includes('BEGIN PUBLIC KEY')))
-          || (challenge.platform === 'android' && platform.platform_public_key != null)) {
+          || (challenge.platform === 'android'
+            && platform.platform_public_key != null
+            && platform.platform_public_key !== androidKey.publicKeySpki)) {
         return failure('refuse_attestation', 'platform enrollment did not satisfy the pinned profile');
       }
 
@@ -301,9 +377,9 @@ export function createMobileEnrollmentService({
         valid_to: challenge.enrollment_valid_to,
         sign_count: passkey.sign_count,
         attestation_format: passkey.attestation_format || null,
-        platform_public_key: typeof platform.platform_public_key === 'string'
-          ? platform.platform_public_key
-          : null,
+        platform_public_key: challenge.platform === 'android'
+          ? androidKey.publicKeySpki
+          : platform.platform_public_key,
       };
       if (instant(enrollment.valid_from) === null || instant(enrollment.valid_to) === null
           || instant(enrollment.valid_to) <= instant(enrollment.valid_from)) {
@@ -333,6 +409,8 @@ export function createMobileEnrollmentService({
 export default {
   MOBILE_ENROLLMENT_CHALLENGE_VERSION,
   MOBILE_ENROLLMENT_VERSION,
+  MOBILE_ANDROID_KEY_BINDING_VERSION,
   buildMobileEnrollmentBinding,
+  buildMobileAndroidKeyBinding,
   createMobileEnrollmentService,
 };

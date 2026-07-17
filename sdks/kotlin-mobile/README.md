@@ -7,7 +7,6 @@ passkeys and Play Integrity Standard requests.
 val integrity = EmiliaPlayIntegrityProvider.prepare(
     context = applicationContext,
     cloudProjectNumber = cloudProjectNumber,
-    attestationKeyId = enrolledAttestationKeyId,
 )
 val coordinator = EmiliaMobileCeremonyCoordinator(
     passkeys = EmiliaAndroidPasskeyProvider(activity),
@@ -21,6 +20,12 @@ val response = coordinator.perform(challengeBytes)
 The server must call Google's decode endpoint and pin package name, signing
 certificate digest, licensing policy, request hash, freshness, and required
 device-integrity labels. The client cannot self-assert those results.
+
+The provider creates one P-256 signing key in `AndroidKeyStore`; its private key
+is non-exportable. Enrollment sends the public SPKI and key ID inside the Play
+Integrity request hash and signs that canonical binding. Every later ceremony
+signs its exact request hash with the same key. The server verifies both proofs,
+so restoring or syncing only the passkey onto another device is insufficient.
 
 Run:
 

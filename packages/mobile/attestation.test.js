@@ -6,6 +6,8 @@ import { createAppleAppAttestVerifier, createPlayIntegrityAttestationVerifier } 
 
 const NOW = 1784070000000;
 const REQUEST_HASH = Buffer.alloc(32, 7).toString('base64url');
+const CERTIFICATE_DIGEST = Buffer.alloc(32, 5).toString('base64');
+const ANDROID_KEY_ID = `android-keystore:sha256:${Buffer.alloc(32, 9).toString('base64url')}`;
 const wrapped = (value) => Buffer.from(value, 'utf8').toString('base64url');
 
 function playPayload(overrides = {}) {
@@ -19,7 +21,7 @@ function playPayload(overrides = {}) {
     appIntegrity: {
       appRecognitionVerdict: 'PLAY_RECOGNIZED',
       packageName: 'gov.example.android.approvals',
-      certificateSha256Digest: ['release-cert-sha256'],
+      certificateSha256Digest: [CERTIFICATE_DIGEST],
       versionCode: '42',
     },
     deviceIntegrity: {
@@ -38,8 +40,7 @@ function playVerifier(payload, options = {}) {
   return createPlayIntegrityAttestationVerifier({
     decodeToken: async (token) => token === 'opaque-play-token' ? payload : null,
     packageName: 'gov.example.android.approvals',
-    certificateDigests: ['release-cert-sha256'],
-    attestationKeyId: 'play-integrity:gov.example.android.approvals',
+    certificateDigests: [CERTIFICATE_DIGEST],
     allowedVersionCodes: [42],
     minimumSdkVersion: 33,
     requirePlayProtect: true,
@@ -53,7 +54,7 @@ const playRequest = {
   token: wrapped('opaque-play-token'),
   expected_request_hash: REQUEST_HASH,
   expected_app_id: 'gov.example.android.approvals',
-  expected_attestation_key_id: 'play-integrity:gov.example.android.approvals',
+  expected_attestation_key_id: ANDROID_KEY_ID,
   platform: 'android',
 };
 

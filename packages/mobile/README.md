@@ -24,7 +24,6 @@ import {
   createMobileHttpHandler,
   createMobileCeremonyService,
   createMobileRelianceProfile,
-  createPlayIntegrityAttestationVerifier,
 } from '@emilia-protocol/mobile';
 
 const profile = createMobileRelianceProfile({
@@ -35,18 +34,11 @@ const profile = createMobileRelianceProfile({
   enrollments: await enrollmentDirectory.activeMobileEnrollments(),
 });
 
-const attestationVerifier = createPlayIntegrityAttestationVerifier({
-  decodeToken: (token) => googlePlayIntegrity.decodeIntegrityToken(token),
-  packageName: 'gov.example.approvals',
-  certificateDigests: process.env.PINNED_ANDROID_CERT_DIGESTS.split(','),
-  attestationKeyId: 'play-integrity:production',
-});
-
 const service = createMobileCeremonyService({
   challengeStore: durableChallengeStore,
   auditLog: strictEvidenceLog,
   counterStore: authenticatorCounterStore,
-  attestationVerifier,
+  attestationVerifier: productionMobileAttestationVerifier,
 });
 
 export const controller = createGovernmentMobileController({
@@ -95,6 +87,15 @@ display identity from the agency directory rather than the mobile request.
 
 The included memory backends and simulated attestation callbacks are test tools,
 not production configurations.
+
+On Android, the production attestation adapter must load the enrolled P-256
+Android Keystore public key, derive and match its
+`android-keystore:sha256:<base64url>` identifier, verify
+`device_key_signature` over the exact ceremony request hash, and only then
+accept Play Integrity evidence for the pinned package and signing certificate.
+Play Integrity alone is not a device-key verifier. The same key-binding proof
+is mandatory during enrollment, which prevents a synced passkey from being
+substituted onto another device.
 
 The execution record is an operator attestation. It does not turn Apple/Google
 platform evidence, storage durability, one-time consumption, or physical effect

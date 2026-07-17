@@ -57,6 +57,16 @@ data class EmiliaMobileChallenge(
     @SerialName("expires_at") val expiresAt: String,
 )
 
+data class EmiliaMobilePresentation(
+    val title: String,
+    val summary: String,
+    val risk: String,
+    val consequence: String,
+    val materialFields: Map<String, String>,
+) {
+    companion object { const val VERSION = "EP-MOBILE-PRESENTATION-v1" }
+}
+
 data class EmiliaPasskeyAssertion(
     val credentialId: ByteArray,
     val authenticatorData: ByteArray,
@@ -79,8 +89,13 @@ fun interface EmiliaPasskeyAssertionProvider {
 interface EmiliaPlatformIntegrityProvider {
     val format: String
     val attestationKeyId: String
-    suspend fun assertion(requestHash: ByteArray): ByteArray
+    suspend fun assertion(requestHash: ByteArray): EmiliaPlatformIntegrityAssertion
 }
+
+data class EmiliaPlatformIntegrityAssertion(
+    val token: ByteArray,
+    val deviceKeySignature: ByteArray? = null,
+)
 
 @Serializable
 data class EmiliaMobileCeremonyResponse(
@@ -108,7 +123,11 @@ data class EmiliaMobileCeremonyResponse(
     )
 
     @Serializable
-    data class Attestation(val format: String, val token: String)
+    data class Attestation(
+        val format: String,
+        val token: String,
+        @SerialName("device_key_signature") val deviceKeySignature: String? = null,
+    )
 }
 
 data class EmiliaValidatedChallenge(
@@ -116,10 +135,39 @@ data class EmiliaValidatedChallenge(
     val context: JsonObject,
     val mobileBinding: JsonObject,
     val requestHash: ByteArray,
+    val presentation: EmiliaMobilePresentation,
 )
 
 object EmiliaMobileChallengeValidator {
     private val json = Json { ignoreUnknownKeys = false; explicitNulls = true }
+
+    fun validatePresentation(value: JsonElement): EmiliaMobilePresentation {
+        val objectValue = value as? JsonObject ?: throw EmiliaMobileException.DisplayMismatch
+        val members = setOf("@version", "title", "summary", "risk", "consequence", "material_fields")
+        if (objectValue.keys != members || objectValue.string("@version") != EmiliaMobilePresentation.VERSION) {
+            throw EmiliaMobileException.DisplayMismatch
+        }
+        val title = objectValue.string("title") ?: throw EmiliaMobileException.DisplayMismatch
+        val summary = objectValue.string("summary") ?: throw EmiliaMobileException.DisplayMismatch
+        val risk = objectValue.string("risk") ?: throw EmiliaMobileException.DisplayMismatch
+        val consequence = objectValue.string("consequence") ?: throw EmiliaMobileException.DisplayMismatch
+        val rawFields = objectValue["material_fields"] as? JsonObject ?: throw EmiliaMobileException.DisplayMismatch
+        if (title.isEmpty() || title.codePointCount(0, title.length) > 200
+            || summary.isEmpty() || summary.codePointCount(0, summary.length) > 2_000
+            || risk.isEmpty() || risk.codePointCount(0, risk.length) > 128
+            || consequence.codePointCount(0, consequence.length) > 2_000
+            || rawFields.size !in 1..64) throw EmiliaMobileException.DisplayMismatch
+        val fieldName = Regex("^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$")
+        val fields = rawFields.mapValues { (name, rawValue) ->
+            val primitive = rawValue as? JsonPrimitive ?: throw EmiliaMobileException.DisplayMismatch
+            if (!fieldName.matches(name) || !primitive.isString
+                || primitive.content.codePointCount(0, primitive.content.length) > 4_096) {
+                throw EmiliaMobileException.DisplayMismatch
+            }
+            primitive.content
+        }
+        return EmiliaMobilePresentation(title, summary, risk, consequence, fields)
+    }
 
     fun decodeAndValidate(data: ByteArray, now: Instant = Instant.now()): EmiliaValidatedChallenge {
         val challenge = try { json.decodeFromString<EmiliaMobileChallenge>(data.toString(Charsets.UTF_8)) }
@@ -137,6 +185,7 @@ object EmiliaMobileChallengeValidator {
             throw EmiliaMobileException.MalformedChallenge("challenge is outside its validity window")
         }
         if (EmiliaCanonicalJson.digest(challenge.action) != challenge.actionHash) throw EmiliaMobileException.ActionMismatch
+        val presentation = validatePresentation(challenge.presentation)
         val context = challenge.authorizationContext as? JsonObject ?: throw EmiliaMobileException.ContextMismatch
         if (context.string("action_hash") != challenge.actionHash
             || context.string("display_hash") != EmiliaCanonicalJson.digest(challenge.presentation)
@@ -169,7 +218,7 @@ object EmiliaMobileChallengeValidator {
         if (challenge.attestation.binding != expectedBinding) throw EmiliaMobileException.ContextMismatch
         val requestHash = EmiliaCanonicalJson.sha256(challenge.attestation.binding)
         if (requestHash.base64Url() != challenge.attestation.requestHash) throw EmiliaMobileException.ContextMismatch
-        return EmiliaValidatedChallenge(challenge, context, mobileBinding, requestHash)
+        return EmiliaValidatedChallenge(challenge, context, mobileBinding, requestHash, presentation)
     }
 }
 
@@ -197,7 +246,7 @@ class EmiliaMobileCeremonyCoordinator(
             credentialIds,
         )
         if (credentialIds.none { it.contentEquals(assertion.credentialId) }) throw EmiliaMobileException.ContextMismatch
-        val integrityToken = integrity.assertion(validated.requestHash)
+        val integrityAssertion = integrity.assertion(validated.requestHash)
         return EmiliaMobileCeremonyResponse(
             challengeId = challenge.challengeId,
             nonce = challenge.nonce,
@@ -216,7 +265,11 @@ class EmiliaMobileCeremonyCoordinator(
                     signature = assertion.signature.base64Url(),
                 ),
             ),
-            attestation = EmiliaMobileCeremonyResponse.Attestation(integrity.format, integrityToken.base64Url()),
+            attestation = EmiliaMobileCeremonyResponse.Attestation(
+                integrity.format,
+                integrityAssertion.token.base64Url(),
+                integrityAssertion.deviceKeySignature?.base64Url(),
+            ),
         )
     }
 

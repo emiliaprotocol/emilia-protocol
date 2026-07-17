@@ -3,6 +3,47 @@
 
 create extension if not exists pgcrypto;
 
+create or replace function mobile_presentation_is_valid(p_value jsonb)
+returns boolean
+language sql
+immutable
+set search_path = public, pg_temp
+as $$
+  select coalesce(
+    jsonb_typeof(p_value) = 'object'
+    and p_value ->> '@version' = 'EP-MOBILE-PRESENTATION-v1'
+    and p_value ?& array['@version', 'title', 'summary', 'risk', 'consequence', 'material_fields']
+    and p_value - array['@version', 'title', 'summary', 'risk', 'consequence', 'material_fields'] = '{}'::jsonb
+    and jsonb_typeof(p_value -> 'title') = 'string'
+    and char_length(p_value ->> 'title') between 1 and 200
+    and jsonb_typeof(p_value -> 'summary') = 'string'
+    and char_length(p_value ->> 'summary') between 1 and 2000
+    and jsonb_typeof(p_value -> 'risk') = 'string'
+    and char_length(p_value ->> 'risk') between 1 and 128
+    and jsonb_typeof(p_value -> 'consequence') = 'string'
+    and char_length(p_value ->> 'consequence') between 0 and 2000
+    and jsonb_typeof(p_value -> 'material_fields') = 'object'
+    and (
+      select count(*)
+      from jsonb_each(
+        case when jsonb_typeof(p_value -> 'material_fields') = 'object'
+          then p_value -> 'material_fields' else '{}'::jsonb end
+      )
+    ) between 1 and 64
+    and not exists (
+      select 1
+      from jsonb_each(
+        case when jsonb_typeof(p_value -> 'material_fields') = 'object'
+          then p_value -> 'material_fields' else '{}'::jsonb end
+      ) field(name, value)
+      where field.name !~ '^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$'
+         or jsonb_typeof(field.value) <> 'string'
+         or char_length(field.value #>> '{}') > 4096
+    ),
+    false
+  );
+$$;
+
 create table if not exists mobile_kv_state (
   state_key text primary key check (char_length(state_key) between 16 and 512),
   state_value text not null check (char_length(state_value) between 1 and 512),
@@ -65,14 +106,21 @@ create table if not exists mobile_enrollments (
   updated_at timestamptz not null default now(),
   constraint mobile_enrollments_validity check (valid_to > valid_from),
   constraint mobile_enrollments_entity_device_unique unique (entity_ref, device_key_id),
-  constraint mobile_enrollments_apple_key check (
-    platform <> 'ios' or (platform_public_key is not null and char_length(platform_public_key) >= 64)
+  constraint mobile_enrollments_platform_key check (
+    (platform = 'ios' and platform_public_key like '%BEGIN PUBLIC KEY%'
+      and char_length(platform_public_key) between 64 and 8192)
+    or (platform = 'android' and platform_public_key ~ '^[A-Za-z0-9_-]+$'
+      and char_length(platform_public_key) between 80 and 8192)
   )
 );
 
-create unique index if not exists mobile_enrollments_active_attestation_key_idx
-  on mobile_enrollments (platform, app_id, attestation_key_id)
-  where status = 'active';
+drop index if exists mobile_enrollments_active_attestation_key_idx;
+create unique index if not exists mobile_enrollments_active_apple_attest_key_idx
+  on mobile_enrollments (app_id, attestation_key_id)
+  where platform = 'ios' and status = 'active';
+create unique index if not exists mobile_enrollments_active_android_device_key_idx
+  on mobile_enrollments (attestation_key_id)
+  where platform = 'android' and status = 'active';
 
 alter table mobile_sessions
   add constraint mobile_sessions_device_key_fk
@@ -128,7 +176,8 @@ create table if not exists mobile_actions (
   approver_id text not null check (char_length(approver_id) between 3 and 128),
   initiator_id text not null check (char_length(initiator_id) between 3 and 256),
   action jsonb not null check (jsonb_typeof(action) = 'object'),
-  presentation jsonb not null check (jsonb_typeof(presentation) = 'object'),
+  presentation jsonb not null constraint mobile_actions_presentation_v1
+    check (mobile_presentation_is_valid(presentation)),
   policy jsonb,
   policy_id text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'denied', 'expired', 'cancelled')),
@@ -343,7 +392,7 @@ begin
      or p_action is null
      or jsonb_typeof(p_action) <> 'object'
      or p_presentation is null
-     or jsonb_typeof(p_presentation) <> 'object'
+     or not mobile_presentation_is_valid(p_presentation)
      or p_policy is null
      or jsonb_typeof(p_policy) <> 'object'
      or p_policy_id is null
@@ -418,7 +467,7 @@ begin
        'baseline_method_hash', 'control_mode', 'envelope_id', 'requested_by'
      ] <> '{}'::jsonb
      or p_presentation is null
-     or jsonb_typeof(p_presentation) <> 'object'
+     or not mobile_presentation_is_valid(p_presentation)
      or p_policy is null
      or jsonb_typeof(p_policy) <> 'object'
      or p_policy_id is null
@@ -703,6 +752,30 @@ begin
      or pairing_session.app_id <> p_enrollment->>'app_id' then
     return false;
   end if;
+  if p_enrollment is null
+     or jsonb_typeof(p_enrollment) <> 'object'
+     or coalesce(p_enrollment ->> 'device_key_id', '') !~ '^ep:key:mobile-[A-Za-z0-9_-]{20,128}$'
+     or coalesce(p_enrollment ->> 'credential_id', '') !~ '^[A-Za-z0-9_-]+$'
+     or char_length(coalesce(p_enrollment ->> 'credential_id', '')) not between 8 and 4096
+     or coalesce(p_enrollment ->> 'public_key_spki', '') !~ '^[A-Za-z0-9_-]+$'
+     or char_length(coalesce(p_enrollment ->> 'public_key_spki', '')) not between 32 and 8192
+     or coalesce(p_enrollment ->> 'status', '') <> 'active'
+     or coalesce(p_enrollment ->> 'sign_count', '') !~ '^(0|[1-9][0-9]*)$'
+     or char_length(coalesce(p_enrollment ->> 'sign_count', '')) > 16
+     or (p_enrollment ->> 'sign_count')::numeric > 9007199254740991
+     or coalesce(p_enrollment ->> 'valid_from', '') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+     or coalesce(p_enrollment ->> 'valid_to', '') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+     or (p_enrollment ->> 'platform' = 'android' and (
+       coalesce(p_enrollment ->> 'attestation_key_id', '') !~ '^android-keystore:sha256:[A-Za-z0-9_-]{43}$'
+       or coalesce(p_enrollment ->> 'platform_public_key', '') !~ '^[A-Za-z0-9_-]+$'
+       or char_length(coalesce(p_enrollment ->> 'platform_public_key', '')) not between 80 and 8192
+     ))
+     or (p_enrollment ->> 'platform' = 'ios' and (
+       coalesce(p_enrollment ->> 'attestation_key_id', '') !~ '^[A-Za-z0-9+/_=-]{3,512}$'
+       or coalesce(p_enrollment ->> 'platform_public_key', '') not like '%BEGIN PUBLIC KEY%'
+     )) then
+    return false;
+  end if;
 
   insert into mobile_enrollments (
     device_key_id, entity_ref, credential_id, public_key_spki, approver_id,
@@ -717,6 +790,11 @@ begin
     (p_enrollment->>'valid_to')::timestamptz, (p_enrollment->>'sign_count')::bigint,
     nullif(p_enrollment->>'attestation_format', '')
   );
+  insert into mobile_counters(counter_key, counter_value)
+  values (
+    'mobile:webauthn:' || (p_enrollment ->> 'device_key_id'),
+    (p_enrollment ->> 'sign_count')::bigint
+  );
   update mobile_sessions
   set device_key_id = p_enrollment->>'device_key_id',
       last_used_at = now()
@@ -727,7 +805,9 @@ begin
   end if;
   perform * from append_mobile_audit_event(p_entity_ref, p_event);
   return true;
-exception when unique_violation or check_violation or foreign_key_violation or invalid_text_representation then
+exception when unique_violation or check_violation or foreign_key_violation or not_null_violation
+  or invalid_text_representation or numeric_value_out_of_range
+  or invalid_datetime_format or datetime_field_overflow then
   return false;
 end;
 $$;
@@ -1009,6 +1089,7 @@ revoke all on mobile_kv_state, mobile_pairings, mobile_sessions, mobile_enrollme
   mobile_counters, mobile_audit_records, mobile_evidence_records, mobile_actions, mobile_action_challenges
   from anon, authenticated, public;
 revoke all on function mobile_state_add_if_absent(text, text) from anon, authenticated, public;
+revoke all on function mobile_presentation_is_valid(jsonb) from anon, authenticated, public;
 revoke all on function mobile_state_compare_and_set(text, text, text, timestamptz) from anon, authenticated, public;
 revoke all on function create_mobile_pairing(text, text, text, text, jsonb, timestamptz, timestamptz, timestamptz)
   from anon, authenticated, public;
@@ -1034,6 +1115,7 @@ revoke insert, update, delete, truncate, references, trigger on mobile_kv_state,
 grant select on mobile_kv_state, mobile_pairings, mobile_sessions,
   mobile_enrollments, mobile_counters, mobile_audit_records, mobile_evidence_records, mobile_actions,
   mobile_action_challenges to service_role;
+grant execute on function mobile_presentation_is_valid(jsonb) to service_role;
 revoke all on sequence mobile_audit_records_sequence_id_seq from service_role;
 revoke all on sequence mobile_evidence_records_sequence_id_seq from service_role;
 grant execute on function mobile_state_add_if_absent(text, text) to service_role;

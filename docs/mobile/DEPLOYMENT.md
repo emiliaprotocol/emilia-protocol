@@ -65,6 +65,21 @@ The endpoint rejects unknown members, including caller-supplied `action`,
 challenge and presents the challenge's own `presentation` before the final
 passkey prompt.
 
+`presentation` is the closed `EP-MOBILE-PRESENTATION-v1` object. It contains
+only `title`, `summary`, `risk`, `consequence`, and flat string-valued
+`material_fields`; every field is rendered by both reference apps. Unknown,
+nested, unversioned, or oversized values are refused before platform or passkey
+signing. This is a faithful review surface contract, not a claim that a
+compromised operating system displayed honest pixels or that the user perceived
+them.
+
+Android enrollment also creates a non-exportable P-256 `AndroidKeyStore` key.
+Play Integrity covers the canonical enrollment binding containing that public
+key, and each ceremony requires a signature from the same key. A synced or
+restored passkey without the enrolled device key therefore refuses. iOS retains
+the separate active App Attest key uniqueness rule and accepts Apple's standard
+Base64 key identifiers without rewriting them.
+
 Ceremony request:
 
 ```json

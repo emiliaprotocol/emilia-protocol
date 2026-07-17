@@ -215,7 +215,7 @@ struct ApprovalView: View {
                 }
                 .buttonStyle(.plain)
                 HStack {
-                    RiskLabel(text: model.selectedAction?.risk ?? "consequential")
+                    RiskLabel(text: model.reviewRisk)
                     Spacer()
                     if model.isReferenceDemo {
                         Text("DEMO")
@@ -233,6 +233,12 @@ struct ApprovalView: View {
                     Text(model.reviewSummary)
                         .font(.body)
                         .foregroundStyle(.secondary)
+                }
+                if let version = model.presentationVersion {
+                    Text(version)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Presentation format \(version)")
                 }
                 Divider()
                 VStack(spacing: 0) {

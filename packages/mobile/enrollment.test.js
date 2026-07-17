@@ -3,13 +3,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 
-import { createMobileEnrollmentService, MOBILE_ENROLLMENT_VERSION } from './enrollment.js';
+import { canonicalize } from '../verify/index.js';
+import {
+  buildMobileAndroidKeyBinding,
+  createMobileEnrollmentService,
+  MOBILE_ENROLLMENT_VERSION,
+} from './enrollment.js';
 import { createDurableChallengeStore } from '../gate/challenge-store.js';
 import { createMemoryBackend } from '../gate/store.js';
 
 const ISSUED = '2026-07-14T19:00:00.000Z';
 const VERIFYING = '2026-07-14T19:02:00.000Z';
 const CALLER = Object.freeze({ subject: 'agency-user-42' });
+
+function p256() {
+  const pair = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  return {
+    ...pair,
+    spki: pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+  };
+}
 
 function challengeStore() {
   const backend = createMemoryBackend();
@@ -19,7 +32,7 @@ function challengeStore() {
 
 function service(overrides = {}) {
   let now = ISSUED;
-  const passkey = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const passkey = p256();
   const directory = {
     durable: true,
     rows: [],
@@ -33,8 +46,8 @@ function service(overrides = {}) {
       valid: true,
       algorithm: 'ES256',
       credential_id: crypto.randomBytes(32).toString('base64url'),
-      public_key_spki: passkey.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
-      sign_count: 0,
+      public_key_spki: passkey.spki,
+      sign_count: 7,
       attestation_format: 'packed',
     }),
     verifyPlatformEnrollment: async (request) => ({
@@ -83,7 +96,45 @@ function response(challenge) {
     attestation_key_id: 'appattest_enrolled_key_1',
     requested_valid_to: challenge.enrollment_valid_to,
     passkey_registration: { id: 'browser-produced-public-key-credential' },
-    platform_attestation: { format: 'apple-app-attest-enrollment', token: 'opaque-token' },
+    platform_attestation: {
+      format: 'apple-app-attest-enrollment',
+      token: 'opaque-token',
+      request_hash: challenge.platform_request_hash,
+    },
+  };
+}
+
+function androidResponse(challenge, deviceKey = p256()) {
+  const keyId = `android-keystore:sha256:${crypto.createHash('sha256')
+    .update(Buffer.from(deviceKey.spki, 'base64url')).digest('base64url')}`;
+  const binding = buildMobileAndroidKeyBinding({
+    challengeRequestHash: challenge.platform_request_hash,
+    keyId,
+    publicKeySpki: deviceKey.spki,
+  });
+  const requestHash = crypto.createHash('sha256').update(canonicalize(binding), 'utf8').digest('base64url');
+  return {
+    '@version': MOBILE_ENROLLMENT_VERSION,
+    enrollment_id: challenge.enrollment_id,
+    approver_id: challenge.approver_id,
+    platform: challenge.platform,
+    app_id: challenge.app_id,
+    platform_request_hash: challenge.platform_request_hash,
+    attestation_key_id: keyId,
+    requested_valid_to: challenge.enrollment_valid_to,
+    passkey_registration: { id: 'android-public-key-credential' },
+    platform_attestation: {
+      format: 'play-integrity-standard',
+      token: 'opaque-token',
+      request_hash: requestHash,
+      device_key: {
+        algorithm: 'ES256',
+        key_id: keyId,
+        public_key_spki: deviceKey.spki,
+        signature: crypto.sign('sha256', Buffer.from(canonicalize(binding), 'utf8'), deviceKey.privateKey)
+          .toString('base64url'),
+      },
+    },
   };
 }
 
@@ -97,6 +148,7 @@ test('enrolls only after both independently verified registration rows and atomi
   assert.equal(item.directory.rows.length, 1);
   assert.equal(item.directory.rows[0].event.device_key_id, result.enrollment.device_key_id);
   assert.match(result.enrollment.platform_public_key, /BEGIN PUBLIC KEY/);
+  assert.equal(result.enrollment.sign_count, 7);
 });
 
 test('refuses enrollment binding, WebAuthn, platform, replay, and storage failures', async () => {
@@ -208,6 +260,16 @@ test('accepts native Android origins and standard Apple App Attest key identifie
     caller: CALLER,
   });
   assert.equal(androidIssue.ok, true);
+  android.verifying();
+  const androidKey = p256();
+  const androidCompleted = await android.value.complete({
+    caller: CALLER,
+    challenge: androidIssue.challenge,
+    response: androidResponse(androidIssue.challenge, androidKey),
+  });
+  assert.equal(androidCompleted.ok, true);
+  assert.equal(androidCompleted.enrollment.platform_public_key, androidKey.spki);
+  assert.match(androidCompleted.enrollment.attestation_key_id, /^android-keystore:sha256:/);
   assert.equal((await android.value.issue({
     approverId: 'ep:approver:case-supervisor',
     platform: 'android',
@@ -226,4 +288,40 @@ test('accepts native Android origins and standard Apple App Attest key identifie
   const completed = await apple.value.complete({ caller: CALLER, challenge: appleChallenge, response: appleResponse });
   assert.equal(completed.ok, true);
   assert.equal(completed.enrollment.attestation_key_id, appleResponse.attestation_key_id);
+});
+
+test('refuses a synced-passkey enrollment substituted onto a second Android device', async () => {
+  const item = service();
+  const issuedResult = await item.value.issue({
+    approverId: 'ep:approver:case-supervisor',
+    platform: 'android',
+    appId: 'ai.emiliaprotocol.approver',
+    rpId: 'www.emiliaprotocol.ai',
+    origin: `android:apk-key-hash:${'a'.repeat(43)}`,
+    userName: 'case-supervisor@example.gov',
+    displayName: 'Case Supervisor',
+    caller: CALLER,
+  });
+  item.verifying();
+  const enrolledDevice = p256();
+  const secondDevice = p256();
+  const substituted = androidResponse(issuedResult.challenge, enrolledDevice);
+  const binding = buildMobileAndroidKeyBinding({
+    challengeRequestHash: issuedResult.challenge.platform_request_hash,
+    keyId: substituted.attestation_key_id,
+    publicKeySpki: enrolledDevice.spki,
+  });
+  substituted.platform_attestation.device_key.signature = crypto.sign(
+    'sha256',
+    Buffer.from(canonicalize(binding), 'utf8'),
+    secondDevice.privateKey,
+  ).toString('base64url');
+  const result = await item.value.complete({
+    caller: CALLER,
+    challenge: issuedResult.challenge,
+    response: substituted,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.verdict, 'refuse_attestation');
+  assert.equal(item.directory.rows.length, 0);
 });

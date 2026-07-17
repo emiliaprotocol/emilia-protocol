@@ -40,7 +40,6 @@ android {
         versionCode = releaseVersionCode
         versionName = releaseVersionName
         buildConfigField("String", "API_BASE_URL", quoted("https://www.emiliaprotocol.ai/api/"))
-        buildConfigField("String", "PLAY_ATTESTATION_KEY_ID", quoted("play-integrity:production"))
         buildConfigField("long", "PLAY_CLOUD_PROJECT_NUMBER", "${playCloudProject}L")
     }
 

@@ -39,7 +39,6 @@ if (selected.has('javascript')) {
     'packages/mobile/http.test.js',
     'packages/mobile/index.test.js',
     'packages/mobile/strict-json.test.js',
-    'examples/regulatory-mobile-oversight/demo.test.mjs',
   ], { cwd: ROOT, env, stdio: 'inherit' });
 }
 if (selected.has('swift')) {

@@ -24,6 +24,19 @@ function parsePositiveInteger(value) {
   return Number.isSafeInteger(number) && number > 0 ? number : null;
 }
 
+function certificateDigestBytes(value) {
+  if (typeof value !== 'string' || !value) return null;
+  try {
+    const normalized = value.replaceAll(':', '');
+    if (/^[0-9a-fA-F]{64}$/.test(normalized)) return Buffer.from(normalized, 'hex');
+    if (!/^[A-Za-z0-9+/_-]{43}={0,2}$/.test(value)) return null;
+    const bytes = Buffer.from(value.replaceAll('-', '+').replaceAll('_', '/'), 'base64');
+    return bytes.length === 32 ? bytes : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Adapt the official Google decodeIntegrityToken response into the closed
  * result consumed by verifyMobileCeremony. `decodeToken` owns OAuth and the
@@ -33,7 +46,6 @@ export function createPlayIntegrityAttestationVerifier({
   decodeToken,
   packageName,
   certificateDigests,
-  attestationKeyId,
   requireLicensed = true,
   requireStrongIntegrity = true,
   requireNoCaptureOrControl = false,
@@ -46,10 +58,9 @@ export function createPlayIntegrityAttestationVerifier({
   if (typeof decodeToken !== 'function') throw new TypeError('decodeToken must be a function');
   if (typeof packageName !== 'string' || !packageName) throw new TypeError('packageName is required');
   if (!Array.isArray(certificateDigests) || certificateDigests.length === 0
-      || certificateDigests.some((digest) => typeof digest !== 'string' || !digest)) {
+      || certificateDigests.some((digest) => certificateDigestBytes(digest) === null)) {
     throw new TypeError('at least one pinned certificate digest is required');
   }
-  if (typeof attestationKeyId !== 'string' || !attestationKeyId) throw new TypeError('attestationKeyId is required');
   if (!Array.isArray(allowedVersionCodes)
       || allowedVersionCodes.some((version) => parsePositiveInteger(version) === null)) {
     throw new TypeError('allowedVersionCodes must contain positive integer app versions');
@@ -61,7 +72,7 @@ export function createPlayIntegrityAttestationVerifier({
     throw new TypeError('maxTokenAgeMs must be a positive integer no greater than 600000');
   }
   if (typeof clock !== 'function') throw new TypeError('clock must be a function');
-  const pinnedCertificates = new Set(certificateDigests);
+  const pinnedCertificates = certificateDigests.map(certificateDigestBytes);
   const pinnedVersions = new Set(allowedVersionCodes.map((version) => parsePositiveInteger(version)));
 
   return async function verifyPlayIntegrity({
@@ -74,7 +85,10 @@ export function createPlayIntegrityAttestationVerifier({
   } = {}) {
     try {
       if (format !== 'play-integrity-standard' || platform !== 'android'
-          || expectedAppId !== packageName || expectedAttestationKeyId !== attestationKeyId) return { valid: false };
+          || expectedAppId !== packageName
+          || !/^android-keystore:sha256:[A-Za-z0-9_-]{43}$/.test(expectedAttestationKeyId || '')) {
+        return { valid: false };
+      }
       const encodedToken = unwrapOpaqueToken(token).toString('utf8');
       const payload = await decodeToken(encodedToken);
       if (!isRecord(payload)) return { valid: false };
@@ -89,7 +103,10 @@ export function createPlayIntegrityAttestationVerifier({
       const fresh = tokenMillis !== null && Number.isSafeInteger(now)
         && tokenMillis <= now && now - tokenMillis <= maxTokenAgeMs;
       const certificates = Array.isArray(app.certificateSha256Digest) ? app.certificateSha256Digest : [];
-      const certificatePinned = certificates.some((digest) => pinnedCertificates.has(digest));
+      const certificatePinned = certificates.some((digest) => {
+        const candidate = certificateDigestBytes(digest);
+        return candidate !== null && pinnedCertificates.some((pin) => pin.equals(candidate));
+      });
       const labels = Array.isArray(device.deviceRecognitionVerdict) ? device.deviceRecognitionVerdict : [];
       const meetsDevice = labels.includes('MEETS_DEVICE_INTEGRITY');
       const meetsStrong = labels.includes('MEETS_STRONG_INTEGRITY');
@@ -120,7 +137,7 @@ export function createPlayIntegrityAttestationVerifier({
         valid: protectedEnvironment,
         request_hash: request.requestHash,
         app_id: packageName,
-        attestation_key_id: attestationKeyId,
+        attestation_key_id: expectedAttestationKeyId,
         platform: 'android',
         hardware_backed: meetsStrong,
         strong_integrity: meetsStrong,

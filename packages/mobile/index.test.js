@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 
 import {
   MOBILE_CEREMONY_VERSION,
+  MOBILE_PRESENTATION_VERSION,
   buildMobileAttestationBinding,
   createMobileAck,
   createMobileChallenge,
@@ -42,6 +43,8 @@ function fixture({
   origin = ORIGIN,
   clientDataFactory = null,
   key = p256(),
+  deviceKey = p256(),
+  registrationSignCount = 0,
   challengeId = `mob_${crypto.randomBytes(8).toString('hex')}`,
   nonce = `sig_${crypto.randomBytes(16).toString('hex')}`,
   approverIndex = 1,
@@ -49,7 +52,9 @@ function fixture({
 } = {}) {
   const credentialId = crypto.randomBytes(32).toString('base64url');
   const deviceKeyId = `ep:key:mobile-${platform}-${crypto.randomBytes(4).toString('hex')}`;
-  const attestationKeyId = `attest_${crypto.randomBytes(12).toString('base64url')}`;
+  const attestationKeyId = platform === 'android'
+    ? `android-keystore:sha256:${crypto.createHash('sha256').update(Buffer.from(deviceKey.spki, 'base64url')).digest('base64url')}`
+    : 'AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eH/8=';
   const profile = createMobileRelianceProfile({
     profileId: 'gov.high-assurance.mobile.v1',
     rpId: RP_ID,
@@ -69,6 +74,7 @@ function fixture({
       status: 'active',
       valid_from: '2026-01-01T00:00:00.000Z',
       valid_to: '2027-01-01T00:00:00.000Z',
+      sign_count: registrationSignCount,
     }],
   });
   const challenge = createMobileChallenge({
@@ -86,8 +92,11 @@ function fixture({
     requiredApprovals,
     decision,
     presentation: {
+      '@version': MOBILE_PRESENTATION_VERSION,
       title: 'Payment destination change',
       summary: 'Change benefit payment destination for case 9482',
+      risk: 'high',
+      consequence: 'Future benefit payments will be sent to the new destination.',
       material_fields: {
         case_id: 'case-9482',
         destination_last4: '4401',
@@ -144,6 +153,13 @@ function fixture({
     attestation: {
       format: challenge.attestation.format,
       token: Buffer.from(`verified-${platform}-attestation`).toString('base64url'),
+      ...(platform === 'android' ? {
+        device_key_signature: crypto.sign(
+          'sha256',
+          Buffer.from(challenge.attestation.request_hash, 'base64url'),
+          deviceKey.privateKey,
+        ).toString('base64url'),
+      } : {}),
     },
   };
   const attestationVerifier = async (request) => ({
@@ -154,8 +170,9 @@ function fixture({
     platform: request.platform,
     hardware_backed: true,
     strong_integrity: true,
+    device_key_verified: request.platform === 'android',
   });
-  return { profile, challenge, response, attestationVerifier, key, deviceKeyId };
+  return { profile, challenge, response, attestationVerifier, key, deviceKey, deviceKeyId };
 }
 
 function rebindAttestation(challenge) {
@@ -309,6 +326,64 @@ test('attestation is independently verified and client status labels carry no we
   assert.equal((await verifyMobileCeremony({ ...formatSwap, now: NOW })).verdict, 'refuse_attestation');
 });
 
+test('refuses Android ceremony substitution without verified enrolled device-key proof', async () => {
+  const item = fixture({ platform: 'android' });
+  const secondDevice = p256();
+  item.response.attestation.device_key_signature = crypto.sign(
+    'sha256',
+    Buffer.from(item.challenge.attestation.request_hash, 'base64url'),
+    secondDevice.privateKey,
+  ).toString('base64url');
+  const result = await verifyMobileCeremony({
+    ...item,
+    now: NOW,
+    attestationVerifier: async () => ({ valid: false }),
+  });
+  assert.equal(result.valid, false);
+  assert.equal(result.verdict, 'refuse_attestation');
+});
+
+test('roundtrips standard Base64 App Attest key IDs in the signed challenge context', async () => {
+  const item = fixture({ platform: 'ios' });
+  assert.match(item.challenge.authorization_context.mobile_binding.attestation_key_id, /[+/=]/);
+  assert.equal(item.response.attestation_key_id, item.profile.enrollments[0].attestation_key_id);
+  assert.equal((await verifyMobileCeremony({ ...item, now: NOW })).valid, true);
+});
+
+test('refuses unknown or nested presentation fields before they can be signed unseen', async () => {
+  const item = fixture();
+  const args = {
+    action: item.challenge.action,
+    policy: { id: 'gov-benefits-high-risk-v1', human_approval: true },
+    policyId: 'gov-benefits-high-risk-v1',
+    initiatorId: 'ep:agent:benefits-assistant',
+    approverId: 'ep:approver:case-supervisor',
+    decision: 'approved',
+    platform: 'ios',
+    appId: 'gov.example.ios.approvals',
+    deviceKeyId: item.deviceKeyId,
+    profile: item.profile,
+    issuedAt: '2026-07-14T19:00:00.000Z',
+    expiresAt: '2026-07-14T19:05:00.000Z',
+  };
+  assert.throws(() => createMobileChallenge({
+    ...args,
+    presentation: { ...item.challenge.presentation, hidden_detail: 'not rendered' },
+  }), /presentation/);
+  assert.throws(() => createMobileChallenge({
+    ...args,
+    presentation: {
+      ...item.challenge.presentation,
+      material_fields: { ...item.challenge.presentation.material_fields, hidden: { nested: true } },
+    },
+  }), /presentation/);
+
+  item.challenge.presentation.hidden_detail = 'not rendered';
+  const result = await verifyMobileCeremony({ ...item, now: NOW });
+  assert.equal(result.valid, false);
+  assert.equal(result.verdict, 'refuse_malformed');
+});
+
 test('hostile malformed input never throws', async () => {
   for (const value of [null, 7, [], {}, { '@version': MOBILE_CEREMONY_VERSION }]) {
     const result = await verifyMobileCeremony({ challenge: value, response: value, profile: value, now: NOW });
@@ -333,8 +408,8 @@ function durableAuditLog() {
   });
 }
 
-function monotonicCounterStore() {
-  const counters = new Map();
+function monotonicCounterStore(initial = []) {
+  const counters = new Map(initial);
   return {
     async advance(key, value) {
       const previous = counters.get(key) || 0;
@@ -417,8 +492,32 @@ test('service fails closed on store, audit, and counter failures', async () => {
   assert.equal((await counterRollback.verifyAndConsume(item)).verdict, 'refuse_counter_rollback');
 });
 
+test('registration sign_count is the durable baseline and the first assertion must advance it', async () => {
+  for (const counter of [7, 6]) {
+    const item = fixture({ counter, registrationSignCount: 7 });
+    const service = createMobileCeremonyService({
+      challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+      auditLog: durableAuditLog(),
+      attestationVerifier: item.attestationVerifier,
+      counterStore: monotonicCounterStore(),
+      clock: () => NOW,
+    });
+    assert.equal((await service.verifyAndConsume(item)).verdict, 'refuse_counter_rollback');
+  }
+
+  const advanced = fixture({ counter: 8, registrationSignCount: 7 });
+  const service = createMobileCeremonyService({
+    challengeStore: { durable: true, async register() { return true; }, async consume() { return true; } },
+    auditLog: durableAuditLog(),
+    attestationVerifier: advanced.attestationVerifier,
+    counterStore: monotonicCounterStore(),
+    clock: () => NOW,
+  });
+  assert.equal((await service.verifyAndConsume(advanced)).valid, true);
+});
+
 test('service commits the protected action exactly once before reporting verified', async () => {
-  const item = fixture({ counter: 0 });
+  const item = fixture({ counter: 1 });
   let committed = 0;
   const committedEvidence = durableAuditLog();
   const service = createMobileCeremonyService({
@@ -492,7 +591,7 @@ test('signed acknowledgement is independently verifiable and tamper evident', as
 });
 
 test('execution record requires a consumed, audited result and binds the runtime record', async () => {
-  const item = fixture({ counter: 0 });
+  const item = fixture({ counter: 1 });
   const service = createMobileCeremonyService({
     challengeStore: durableChallengeStore(),
     auditLog: durableAuditLog(),

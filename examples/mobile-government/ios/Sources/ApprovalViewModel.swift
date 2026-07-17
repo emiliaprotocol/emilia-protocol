@@ -77,28 +77,41 @@ final class ApprovalViewModel: ObservableObject {
     }
 
     var reviewTitle: String {
-        challenge?.presentation.objectValue?["title"]?.stringValue
+        validatedPresentation?.title
             ?? selectedAction?.title
             ?? "Review required"
     }
 
     var reviewSummary: String {
-        challenge?.presentation.objectValue?["summary"]?.stringValue
+        validatedPresentation?.summary
             ?? selectedAction?.summary
             ?? "Review the material fields before deciding."
     }
 
     var consequence: String {
-        challenge?.presentation.objectValue?["consequence"]?.stringValue ?? ""
+        validatedPresentation?.consequence ?? ""
+    }
+
+    var reviewRisk: String {
+        validatedPresentation?.risk ?? selectedAction?.risk ?? "consequential"
+    }
+
+    var presentationVersion: String? {
+        validatedPresentation == nil ? nil : EmiliaMobilePresentation.version
     }
 
     var materialFields: [(String, String)] {
-        if let fields = challenge?.presentation.objectValue?["material_fields"]?.objectValue {
-            return fields.keys.sorted().map { (label($0), display(fields[$0])) }
+        if let fields = validatedPresentation?.materialFields {
+            return fields.keys.sorted().map { (label($0), fields[$0] ?? "") }
         }
         return (selectedAction?.materialFields ?? [:]).keys.sorted().map {
             (label($0), selectedAction?.materialFields[$0] ?? "")
         }
+    }
+
+    private var validatedPresentation: EmiliaMobilePresentation? {
+        guard let challenge else { return nil }
+        return try? EmiliaMobileChallengeValidator.validatePresentation(challenge.presentation)
     }
 
     func bootstrap() async {
@@ -248,7 +261,7 @@ final class ApprovalViewModel: ObservableObject {
 #endif
         stage = .loading("Binding the exact action")
         do {
-            challenge = try await configuredAPI().issueChallenge(
+            let issuedChallenge = try await configuredAPI().issueChallenge(
                 requestID: selectedAction.actionReference,
                 approverID: approverID,
                 decision: decision,
@@ -256,6 +269,10 @@ final class ApprovalViewModel: ObservableObject {
                 appID: appID,
                 deviceKeyID: deviceKeyID
             )
+            _ = try EmiliaMobileChallengeValidator.decodeAndValidate(
+                JSONEncoder().encode(issuedChallenge)
+            )
+            challenge = issuedChallenge
             pendingDecision = decision
             stage = .review(decision)
         } catch {
@@ -385,17 +402,6 @@ final class ApprovalViewModel: ObservableObject {
               let url = URL(string: raw), url.scheme == "https"
         else { throw APIError.transport }
         return url
-    }
-
-    private func display(_ value: EmiliaJSONValue?) -> String {
-        guard let value else { return "" }
-        switch value {
-        case .string(let text): return text
-        case .integer(let number): return String(number)
-        case .bool(let flag): return flag ? "Yes" : "No"
-        case .null: return "None"
-        case .array, .object: return "Structured value"
-        }
     }
 
     private func label(_ value: String) -> String {

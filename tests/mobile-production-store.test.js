@@ -5,6 +5,7 @@ import {
   MOBILE_ANDROID_DEBUG_KEY_HASH,
   getMobileConfig,
   mobileAndroidOrigin,
+  normalizeAndroidSigningCertificate,
 } from '@/lib/mobile/config.js';
 import {
   authenticateMobileToken,
@@ -25,6 +26,16 @@ import {
 } from '@/lib/mobile/store.js';
 import { mobileSessionAuthorizes } from '@/lib/mobile/runtime.js';
 import { verifyEvidenceRecord } from '@/packages/gate/evidence.js';
+
+const RELEASE_CERTIFICATE_HEX = '05'.repeat(32);
+const PRESENTATION = Object.freeze({
+  '@version': 'EP-MOBILE-PRESENTATION-v1',
+  title: 'Release funds',
+  summary: 'Release the pending treasury disbursement.',
+  risk: 'high',
+  consequence: 'Funds will be transferred to the approved destination.',
+  material_fields: Object.freeze({ amount: '$125,000' }),
+});
 
 function chain(result) {
   const value = {};
@@ -49,10 +60,33 @@ describe('mobile production configuration', () => {
   });
 
   it('does not silently trust a debug Android identity in production', () => {
-    const config = getMobileConfig({ env: {}, production: true });
-    expect(config.androidOrigins).toEqual([]);
-    expect(config.androidConfigured).toBe(false);
-    expect(config.appleEnvironment).toBe('production');
+    expect(() => getMobileConfig({ env: {}, production: true })).toThrow(/MOBILE_ANDROID_SIGNING_CERT_SHA256/);
+  });
+
+  it('derives every Android trust surface from one normalized signing certificate', () => {
+    const normalized = normalizeAndroidSigningCertificate(RELEASE_CERTIFICATE_HEX);
+    const config = getMobileConfig({
+      env: { MOBILE_ANDROID_SIGNING_CERT_SHA256: normalized.assetLinks },
+      production: true,
+    });
+    expect(config.androidSigningCertificateSha256Hex).toBe(normalized.hex);
+    expect(config.androidKeyHashes).toEqual([normalized.base64url]);
+    expect(config.androidCertificateDigests).toEqual([normalized.base64url]);
+    expect(config.androidOrigins).toEqual([mobileAndroidOrigin(normalized.base64url)]);
+    expect(config.androidAssetLinksFingerprints).toEqual([normalized.assetLinks]);
+    for (const legacyName of [
+      'MOBILE_ANDROID_APK_KEY_HASHES',
+      'MOBILE_ANDROID_CERTIFICATE_DIGESTS',
+      'MOBILE_ANDROID_ASSETLINKS_CERT_SHA256',
+    ]) {
+      expect(() => getMobileConfig({
+        env: {
+          MOBILE_ANDROID_SIGNING_CERT_SHA256: RELEASE_CERTIFICATE_HEX,
+          [legacyName]: '06'.repeat(32),
+        },
+        production: true,
+      })).toThrow(/does not match/);
+    }
   });
 
   it('rejects malformed platform pins', () => {
@@ -60,8 +94,8 @@ describe('mobile production configuration', () => {
     expect(() => mobileAndroidOrigin('short')).toThrow(/APK key hash/);
     expect(() => getMobileConfig({ env: { MOBILE_APPLE_TEAM_ID: 'bad' } })).toThrow(/Team ID/);
     expect(() => getMobileConfig({ env: { MOBILE_IOS_ORIGIN: 'http://example.com' } })).toThrow(/HTTPS/);
-    expect(() => getMobileConfig({ env: { MOBILE_ANDROID_APK_KEY_HASHES: 'bad' } })).toThrow(/invalid SHA-256/);
-    expect(() => getMobileConfig({ env: { MOBILE_ANDROID_CERTIFICATE_DIGESTS: '!' } })).toThrow(/invalid Play/);
+    expect(() => getMobileConfig({ env: { MOBILE_ANDROID_APK_KEY_HASHES: 'bad' } })).toThrow(/MOBILE_ANDROID_APK_KEY_HASHES/);
+    expect(() => getMobileConfig({ env: { MOBILE_ANDROID_CERTIFICATE_DIGESTS: '!' } })).toThrow(/MOBILE_ANDROID_CERTIFICATE_DIGESTS/);
     expect(() => getMobileConfig({ env: { MOBILE_IOS_BUNDLE_ID: 'not-a-bundle' } })).toThrow(/reverse-domain/);
     expect(() => getMobileConfig({ env: { MOBILE_RP_ID: 'HTTPS://EXAMPLE.COM' } })).toThrow(/lowercase DNS/);
     expect(() => getMobileConfig({ env: { MOBILE_IOS_ORIGIN: 'https://www.emiliaprotocol.ai/path' } })).toThrow(/HTTPS origin/);
@@ -77,6 +111,7 @@ describe('mobile production configuration', () => {
   it('parses explicit boolean and version-list policy without weakening pins', () => {
     const strict = getMobileConfig({
       env: {
+        MOBILE_ANDROID_SIGNING_CERT_SHA256: RELEASE_CERTIFICATE_HEX,
         MOBILE_APPLE_REQUIRE_RUNTIME_SIGNALS: 'true',
         MOBILE_ANDROID_REQUIRE_PLAY_PROTECT: 'false',
         MOBILE_ANDROID_ALLOWED_VERSION_CODES: '1,2,2',
@@ -92,6 +127,7 @@ describe('mobile production configuration', () => {
   it('retains mandatory app-version and validation-category pins when an environment value is blank', () => {
     const config = getMobileConfig({
       env: {
+        MOBILE_ANDROID_SIGNING_CERT_SHA256: RELEASE_CERTIFICATE_HEX,
         MOBILE_ANDROID_ALLOWED_VERSION_CODES: '',
         MOBILE_APPLE_ALLOWED_VALIDATION_CATEGORIES: '',
       },
@@ -222,14 +258,14 @@ describe('durable mobile storage adapters', () => {
     }));
   });
 
-  it('loads only active enrollments and preserves the App Attest public key', async () => {
+  it('loads only active enrollments and preserves each platform public key', async () => {
     const active = chain({ data: [{ device_key_id: 'device-1' }], error: null });
     const apple = chain({ data: { platform_public_key: 'pem', status: 'active' }, error: null });
     from.mockReturnValueOnce(active).mockReturnValueOnce(apple);
     rpc.mockResolvedValueOnce({ data: true, error: null });
     const directory = createMobileEnrollmentDirectory({ from, rpc }, 'entity-1', 'session-1');
     expect(await directory.active()).toEqual([{ device_key_id: 'device-1' }]);
-    expect((await directory.appAttestKey('apple-key')).platform_public_key).toBe('pem');
+    expect((await directory.platformKey('apple-key', 'ios')).platform_public_key).toBe('pem');
     expect(await directory.enrollAtomically({ enrollment: {}, event: {} })).toBe(true);
     expect(rpc).toHaveBeenCalledWith('enroll_mobile_device', expect.objectContaining({ p_session_id: 'session-1' }));
   });
@@ -464,9 +500,9 @@ describe('durable mobile storage adapters', () => {
   });
 
   it('reads and creates only entity-scoped action inbox records', async () => {
-    const listed = chain({ data: [{ action_reference: 'action-1' }], error: null });
-    const resolved = chain({ data: { action_reference: 'action-1', status: 'pending', expires_at: '2999-01-01T00:00:00.000Z' }, error: null });
-    const expired = chain({ data: { action_reference: 'action-1', status: 'approved', expires_at: '2999-01-01T00:00:00.000Z' }, error: null });
+    const listed = chain({ data: [{ action_reference: 'action-1', presentation: PRESENTATION }], error: null });
+    const resolved = chain({ data: { action_reference: 'action-1', presentation: PRESENTATION, status: 'pending', expires_at: '2999-01-01T00:00:00.000Z' }, error: null });
+    const expired = chain({ data: { action_reference: 'action-1', presentation: PRESENTATION, status: 'approved', expires_at: '2999-01-01T00:00:00.000Z' }, error: null });
     from.mockReturnValueOnce(listed).mockReturnValueOnce(resolved).mockReturnValueOnce(expired);
     rpc.mockResolvedValueOnce({ data: true, error: null });
     const supabase = { from, rpc };
@@ -479,7 +515,7 @@ describe('durable mobile storage adapters', () => {
       approver_id: 'approver-1',
       initiator_id: 'agent-1',
       action: { kind: 'release' },
-      presentation: { title: 'Release' },
+      presentation: PRESENTATION,
       policy: { policy_id: 'policy-1' },
       policy_id: 'policy-1',
       expires_at: '2999-01-01T00:00:00.000Z',
@@ -502,7 +538,12 @@ describe('durable mobile storage adapters', () => {
       entityRef: 'entity-1',
       initiatorId: 'ep:agent:grid',
       action: { '@version': 'EP-GRACE-CURTAILMENT-ACTION-v1', action_type: 'grid.curtailment' },
-      presentation: { title: 'Reduce load' },
+      presentation: {
+        ...PRESENTATION,
+        title: 'Reduce load',
+        summary: 'Reduce facility load for the requested grid interval.',
+        consequence: 'Facility power use will be curtailed during the interval.',
+      },
       policy: {
         policy_id: 'ep:grace:v1',
         required_approvals: 2,
