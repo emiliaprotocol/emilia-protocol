@@ -23,11 +23,12 @@ contains('examples/mobile-government/ios/Sources/SecureSessionStore.swift', /kSe
 contains('examples/mobile-government/ios/Sources/ApprovalViewModel.swift', /UIScreen\.main\.isCaptured/, 'screen-capture refusal is missing');
 contains('examples/mobile-government/ios/Sources/ApprovalView.swift', /scenePhase != \.active \|\| model\.screenCaptureDetected/, 'protected iOS content is not hidden from inactive/captured surfaces');
 contains('examples/mobile-government/ios/Sources/ApprovalView.swift', /reviewRisk[\s\S]*reviewSummary[\s\S]*presentationVersion[\s\S]*materialFields[\s\S]*consequence/, 'iOS review does not render the complete versioned presentation');
-contains('examples/mobile-government/ios/Sources/ApprovalViewModel.swift', /validatePresentation\(challenge\.presentation\)/, 'iOS signs without first closing the presentation schema');
+contains('examples/mobile-government/ios/Sources/ApprovalViewModel.swift', /validatePresentation\(\s*challenge\.presentation,\s*for:\s*challenge\.action\s*\)/, 'iOS signs without first closing the presentation schema against the exact action');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /NoRedirectSessionDelegate/, 'iOS redirects are not refused');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /maximumResponseBytes = 1_048_576/, 'iOS response ceiling is missing');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /https:\/\/www\.emiliaprotocol\.ai\/api\//, 'iOS production API identity is not pinned');
-contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /catch APIError\.transport[\s\S]{0,400}recoverCeremonyResult\(challengeID: challenge\.challengeID\)/, 'iOS does not recover a possibly committed ceremony after a lost POST response');
+contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /expectedDecision: challenge\.authorizationContext\.decision[\s\S]*result\.decision == expectedDecision/, 'iOS ceremony recovery is not bound to the reviewed decision');
+contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /catch APIError\.transport[\s\S]{0,500}recoverCeremonyResult\([\s\S]{0,160}challengeID: challenge\.challengeID/, 'iOS does not recover a possibly committed ceremony after a lost POST response');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*outcomeUnknown/, 'iOS does not close an unresolved recovery lookup as outcome unknown');
 assert.doesNotMatch(read('examples/mobile-government/ios/Sources/MobileAPI.swift'), /Nothing was authorized/, 'iOS makes an unsafe non-commit claim after transport failure');
 
@@ -39,11 +40,12 @@ contains('sdks/kotlin-mobile/sample/build.gradle.kts', /EMILIA_RELEASE_BUILD_NUM
 contains('sdks/kotlin-mobile/sample/src/main/AndroidManifest.xml', /android:allowBackup="false"/, 'Android backup must remain disabled');
 contains('sdks/kotlin-mobile/sample/src/main/AndroidManifest.xml', /android:usesCleartextTraffic="false"/, 'cleartext traffic must remain disabled');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MainActivity.kt', /WindowManager\.LayoutParams\.FLAG_SECURE/, 'production screen-capture defense is missing');
-contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MainActivity.kt', /decodeAndValidate[\s\S]*validatePresentation\(value\.presentation\)/, 'Android signs without first closing the presentation schema');
+contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MainActivity.kt', /decodeAndValidate[\s\S]*validatePresentation\(value\.presentation,\s*value\.action\)/, 'Android signs without first closing the presentation schema against the exact action');
 contains('sdks/kotlin-mobile/src/main/kotlin/ai/emiliaprotocol/mobile/AndroidProviders.kt', /SHA256withECDSA[\s\S]*KeyPairGenerator\.getInstance\(KeyProperties\.KEY_ALGORITHM_EC, ANDROID_KEY_STORE\)/, 'Android ceremony proof is not backed by a non-exportable Keystore signing key');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/SecureSessionStore.kt', /AndroidKeyStore/, 'session secret is not Android Keystore protected');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /PRODUCTION_BASE_URL = "https:\/\/www\.emiliaprotocol\.ai\/api\/"/, 'Android production API identity is not pinned');
-contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /catch \(_:\s*MobileApiException\.Transport\)[\s\S]{0,400}recoverCeremonyResult\(challenge\.challengeId\)/, 'Android does not recover a possibly committed ceremony after a lost POST response');
+contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /challenge\.authorizationContext\.decision[\s\S]*result\.decision != expectedDecision/, 'Android ceremony recovery is not bound to the reviewed decision');
+contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /catch \(_:\s*MobileApiException\.Transport\)[\s\S]{0,400}recoverCeremonyResult\(challenge\.challengeId,[\s\S]{0,80}challenge\.authorizationContext\.decision/, 'Android does not recover a possibly committed ceremony after a lost POST response');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*OutcomeUnknown/, 'Android does not close an unresolved recovery lookup as outcome unknown');
 assert.doesNotMatch(read('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt'), /Nothing was authorized/, 'Android makes an unsafe non-commit claim after transport failure');
 

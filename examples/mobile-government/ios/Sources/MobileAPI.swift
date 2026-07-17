@@ -175,7 +175,10 @@ struct MobileAPI: Sendable {
         do {
             return try await post("v1/mobile/ceremonies", Request(challenge: challenge, response: response))
         } catch APIError.transport {
-            return try await recoverCeremonyResult(challengeID: challenge.challengeID)
+            return try await recoverCeremonyResult(
+                challengeID: challenge.challengeID,
+                expectedDecision: challenge.authorizationContext.decision
+            )
         }
     }
 
@@ -217,7 +220,10 @@ struct MobileAPI: Sendable {
         return try await execute(request)
     }
 
-    private func recoverCeremonyResult(challengeID: String) async throws -> VerificationResponse {
+    private func recoverCeremonyResult(
+        challengeID: String,
+        expectedDecision: String
+    ) async throws -> VerificationResponse {
         guard challengeID.range(
             of: #"^[A-Za-z0-9:_.@-]{8,256}$"#,
             options: .regularExpression
@@ -229,9 +235,12 @@ struct MobileAPI: Sendable {
                   let result = recovery.result,
                   result.valid,
                   result.verdict == "verified",
-                  ["approved", "denied"].contains(result.decision ?? ""),
+                  result.decision == expectedDecision,
                   result.reason == nil,
-                  result.contextHash?.hasPrefix("sha256:") == true
+                  result.contextHash?.range(
+                    of: #"^sha256:[0-9a-f]{64}$"#,
+                    options: .regularExpression
+                  ) != nil
             else { throw APIError.outcomeUnknown }
             return result
         } catch is CancellationError {

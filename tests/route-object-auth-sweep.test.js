@@ -52,6 +52,7 @@ const AUTHZ_SIGNALS = [
   'denyChallenge',           // signoff/deny.js: actor === accountable_actor_ref
   'revokeChallenge',         // signoff/revoke.js: actor-bound
   'revokeAttestation',       // signoff/revoke.js: actor-bound
+  'authenticateMobileToken', // mobile/store.js: active session plus entity, approver, app, and device scope
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally

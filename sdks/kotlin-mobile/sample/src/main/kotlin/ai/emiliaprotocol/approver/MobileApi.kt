@@ -178,7 +178,7 @@ class MobileApi(
         return try {
             post("v1/mobile/ceremonies", body)
         } catch (_: MobileApiException.Transport) {
-            recoverCeremonyResult(challenge.challengeId)
+            recoverCeremonyResult(challenge.challengeId, challenge.authorizationContext.decision)
         }
     }
 
@@ -190,15 +190,16 @@ class MobileApi(
 
     private suspend inline fun <reified T> get(path: String): T = request("GET", path, null, true)
 
-    private suspend fun recoverCeremonyResult(challengeId: String): CeremonyResult {
+    private suspend fun recoverCeremonyResult(challengeId: String, expectedDecision: String): CeremonyResult {
         return try {
             val encodedChallengeId = URLEncoder.encode(challengeId, StandardCharsets.UTF_8).replace("+", "%20")
             val recovery = get<CeremonyRecovery>("v1/mobile/ceremonies/$encodedChallengeId")
             val result = recovery.result
             if (!recovery.committed || recovery.outcome != "committed" || result == null
                 || !result.valid || result.verdict != "verified"
-                || result.decision !in setOf("approved", "denied")
-                || result.reason != null || result.contextHash?.startsWith("sha256:") != true
+                || result.decision != expectedDecision
+                || result.reason != null
+                || result.contextHash?.matches(Regex("^sha256:[0-9a-f]{64}$")) != true
             ) throw MobileApiException.OutcomeUnknown
             result
         } catch (error: CancellationException) {
