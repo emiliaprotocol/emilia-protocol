@@ -3,7 +3,7 @@ set -euo pipefail
 
 test_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 migration="$(cd "$test_dir/.." && pwd)/001-runtime.sql"
-postgres_image="${POSTGRES_IMAGE:-postgres:17-alpine}"
+postgres_image="${POSTGRES_IMAGE:-postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193}"
 container="emilia-gate-isolation-$RANDOM-$$"
 admin_password='gate-isolation-admin'
 database='gate_isolation'

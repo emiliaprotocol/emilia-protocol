@@ -18,7 +18,10 @@ export default {
     // of scope; signed-material extraction and strict time parsing do not.
     'packages/gate/store.js:58-66',
     'packages/gate/store.js:67-152',
-    'packages/gate/index.js:353-371',
+    // Keep this range anchored to createGate's durable-store admission and the
+    // first relying-party-pinned inputs to check(). It moved when business
+    // authorization validation was added above createGate.
+    'packages/gate/index.js:602-638',
     'packages/gate/breakglass.js:193-195',
     'packages/gate/breakglass.js:205-216',
     'packages/gate/breakglass.js:288-288',
@@ -52,8 +55,7 @@ export default {
     'tests/audit-regression.test.js',
   ],
   thresholds: {
-    // Ratcheted over the full ranges above: 90.42% total / 90.90% covered.
-    // CI may improve it, but may never silently fall below the 90% floor.
+    // CI may improve this score, but may never silently fall below the 90% floor.
     high: 95,
     low: 90,
     break: 90,

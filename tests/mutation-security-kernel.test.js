@@ -7,6 +7,7 @@ import {
   createMemoryBackend,
   isSecureConsumptionStore,
 } from '../packages/gate/store.js';
+import { createGate, hashCanonical } from '../packages/gate/index.js';
 import {
   __relianceSecurityInternals,
   RELIANCE_PROFILE_VERSION,
@@ -255,6 +256,75 @@ describe('mutation oracles for the replay kernel', () => {
     expect(await backend.addIfAbsent('release', 'reserved:v2:replacement-owner-token')).toBe(true);
     await expect(store.release('release')).rejects.toThrow(/ownership was lost/);
     expect(await backend.get('release')).toBe('reserved:v2:replacement-owner-token');
+  });
+});
+
+describe('mutation oracles for Gate admission inputs', () => {
+  const manifest = {
+    '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
+    actions: [{
+      id: 'release',
+      action_type: 'payment.release',
+      receipt_required: true,
+      risk: 'critical',
+      assurance_class: 'class_a',
+      match: { protocol: 'mcp', tool: 'release_payment' },
+    }],
+  };
+
+  it('pins the manifest action and tier over presenter selector aliases', async () => {
+    const observed = { amount_usd: 25000, beneficiary: 'approved' };
+    const gate = createGate({ manifest, allowEphemeralStore: true });
+    const result = await gate.check({
+      selector: {
+        protocol: 'mcp',
+        tool: 'release_payment',
+        action_type: 'presenter.decoy',
+        action: 'presenter.fallback',
+        assurance_class: 'software',
+      },
+      observedAction: observed,
+    });
+
+    expect(result).toMatchObject({
+      allow: false,
+      status: 428,
+      reason: 'receipt_required',
+      action: 'payment.release',
+    });
+    expect(result.challenge.required).toMatchObject({
+      action: 'payment.release',
+      assurance_class: 'class_a',
+    });
+    expect(result.evidence).toMatchObject({
+      action: 'payment.release',
+      required_tier: 'class_a',
+      observed_action_hash: hashCanonical(observed),
+    });
+  });
+
+  it('uses the documented selector fallbacks only without a pinned manifest requirement', async () => {
+    const gate = createGate({ allowEphemeralStore: true });
+    const explicit = await gate.check({
+      selector: { action_type: 'cloud.delete', action: 'decoy', assurance_class: 'quorum' },
+      observedAction: { resource: 'repo:critical' },
+    });
+    expect(explicit.action).toBe('cloud.delete');
+    expect(explicit.challenge.required.assurance_class).toBe('quorum');
+    expect(explicit.evidence.observed_action_hash).toBe(hashCanonical({ resource: 'repo:critical' }));
+
+    const fallback = await gate.check({ selector: { action: 'cloud.rotate' } });
+    expect(fallback.action).toBe('cloud.rotate');
+    expect(fallback.challenge.required.assurance_class).toBe('software');
+    expect(fallback.evidence.observed_action_hash).toBe(null);
+  });
+
+  it('uses the relying party evidence logger rather than silently creating another log', async () => {
+    const record = vi.fn(async (entry) => ({ ...structuredClone(entry), logger: 'pinned' }));
+    const gate = createGate({ allowEphemeralStore: true, log: { record } });
+    const result = await gate.check({ selector: { action_type: 'cloud.delete' } });
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(result.evidence.logger).toBe('pinned');
   });
 });
 

@@ -62,8 +62,8 @@ request action → 428 challenge → human/quorum signs exact action → verify
 
 The two halves both ship in `@emilia-protocol/gate`: `check()` does the pre-execution authorization
 (challenge → verify, deny-by-default); `recordExecution()` emits the **execution receipt** — proof,
-bound to the exact authorization decision, that the action actually ran (maps onto the EP Commit /
-SCITT seal). `guard()` runs the whole loop around any function. This is what lets EP-aware systems
+bound to the exact authorization decision, that the action actually ran (maps onto EP execution
+evidence and a SCITT seal). `guard()` runs the whole loop around any function. This is what lets EP-aware systems
 prefer each other: they can challenge, verify, and emit — machines that speak receipts.
 
 ## It's deployed by the defender (this is the key framing)
@@ -83,6 +83,9 @@ certs).
 | **Unified gate core: assurance tiers + one-time consumption + evidence log + `check`/`middleware`/`guard`** | **`@emilia-protocol/gate`** | **built and hardened; covered by the package, mutation, and release suites** |
 | **BYOC Gate service: complete mediation for GitHub repository deletion** | **`apps/gate-service`** | **built; exact system-of-record binding, replay refusal, indeterminate outcomes, and authenticated access** |
 | **Durable replay + evidence state** | **Postgres consumption and atomic evidence backends** | **built; ownership-fenced consumption, tenant/gate scoping, fork detection, and database immutability controls** |
+| **Attested Gate + coverage inventory** | **Pinned deployment verifier + signed active probes + five-state coverage kernel** | **built; `gated` requires both fresh attestation and a verified 428 canary; a passive observer is `witness_only`** |
+| **Independent network witness** | **Signed, privacy-minimized observation profile with durable sequence ingestion** | **built; pinned sensor/capture/config, action binding, freshness, replay/rollback/equivocation refusal; explicitly not enforcement** |
+| **Control plane + settlement eligibility** | **Coverage, evidence joins, outcome verification, metering, and closed settlement verdicts** | **built reference kernel and operator view; managed operation and real partner adapters remain deployment work** |
 | MCP gateway | `@emilia-protocol/mcp-guard` | shipped |
 | Framework and actuator adapters | GitHub, Stripe, AWS, Supabase, OpenAI, LangChain, MCP | adapter libraries built; GitHub has the deployable reference service |
 | Offline verifiers (JS/Python/Go) | `@emilia-protocol/verify`, `python-verify`, `go-verify` | shipped |
@@ -102,16 +105,17 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 3. **Cloud** — GitHub, Vercel, AWS/IAM, Kubernetes, Terraform, Supabase, Stripe. *(GitHub BYOC service + GitHub/Stripe/AWS/Supabase adapters built; additional complete-mediation services follow)*
 4. **Robots** — a local daemon/sidecar at the actuator boundary, before motion/tool/door/vehicle commands; simulated first, then real hardware. *(build)*
 5. **EP-Gated conformance badge** — earned, not asserted: missing receipt refused · valid runs · replay refused · forged refused. *(EG-1 reference harness built; public certification program remains future work)*
-6. **Attested Gate** — prove the gate is actually installed and running via device/workload attestation (compose WIMSE/SPIFFE). Crucial for robots and air-gapped/critical equipment. *(build)*
+6. **Attested Gate** — a relying-party-pinned attestation verifier checks workload/image/config/policy measurements, while a separately pinned active probe proves the declared route returns 428. *(built reference kernel; production attestation-provider credentials are deployment inputs)*
+7. **Network witness** — a TAP, packet broker, or service observer signs privacy-minimized action-bound observations. It remains an evidence plane and can never establish enforcement by itself. *(built vendor-neutral profile and replay-safe ingestion)*
 
 ## Build order (for the managed product)
 
 1. **BYOC consequence firewall** — deploy the GitHub reference service with customer-owned keys and Postgres state. *(built)*
 2. **MCP and HTTP entry points** — one enforcement contract across agent tools and ordinary APIs. *(core built; product packaging next)*
 3. **Native approval capture** — controlled material-field display plus platform attestation. *(reference apps built; signing/release hardening remains)*
-4. **Policy and coverage inventory** — show which consequential actions are gated, unknown, or uncovered. *(next commercial surface)*
-5. **Evidence operations** — searchable export, retention, fork alerts, and insurer/auditor packages over the durable evidence backend. *(backend built; managed operations next)*
-6. **Managed fleet** — directory integrations, rollout, drift detection, continuous conformance, and warranty. *(commercial expansion)*
+4. **Policy and coverage inventory** — show each declared surface as `gated`, `witness_only`, `ungated`, `stale`, or `unknown`; only fresh attestation plus an active refusal probe earns `gated`. *(built reference kernel and UI)*
+5. **Evidence operations** — searchable export, retention, fork alerts, insurer/auditor packages, network-witness ingestion, and evidence-complete settlement decisions. *(kernels built; managed operation next)*
+6. **Managed fleet** — directory integrations, rollout, drift detection, continuous conformance, partner hardware adapters, risk pricing, and a separately contracted warranty. *(commercial expansion)*
 
 ## Standards
 
@@ -127,6 +131,11 @@ it. What it does: make legitimate infrastructure refuse unreceipted consequentia
 and let clouds/rails/regulators/insurers *require* the receipt — so bad actors get shut out of the
 rails that adopt it. Necessary, not sufficient. That is how a standard wins: first it protects the
 careful, then it becomes a procurement requirement, then unprotected systems look reckless.
+
+A network TAP or packet broker does not change that boundary. It can provide a separately pinned,
+signed observation row, but a passive observer cannot block an action. The control plane therefore
+reports an observed surface without active enforcement proof as `witness_only` and refuses any
+settlement profile that requires a gated route.
 
 ## Where it sits in the roadmap
 

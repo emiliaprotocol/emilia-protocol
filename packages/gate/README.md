@@ -59,6 +59,48 @@ if (!out.ok) throw out.body; // 428 Receipt Required
 console.log(out.packet.verdict); // "rely"
 ```
 
+## Three-plane deployment
+
+High-consequence infrastructure separates three jobs instead of asking one
+vendor or appliance to prove its own work:
+
+1. **Enforcement plane** — an executor-side Gate returns 428 and does not call
+   the actuator until the pinned authorization profile is satisfied.
+2. **Witness plane** — an independently pinned TAP, packet broker, or sensor
+   signs privacy-minimized observations. Observation never establishes that an
+   action was authorized, blocked, executed, or physically completed.
+3. **Control plane** — a relying party pins the coverage inventory and
+   settlement profile, joins signed evidence by exact action digest, reports
+   `gated`, `witness_only`, `ungated`, `stale`, or `unknown`, and meters only
+   protected actions.
+
+```js
+import { evaluateGateControlPlane } from '@emilia-protocol/gate/control-plane';
+
+const report = await evaluateGateControlPlane({
+  coverage: { deployments, probes, witnesses }, // presenter evidence only
+  settlements: [{ bundle }],
+}, {
+  coverageInventory,       // relying-party pinned
+  settlementProfile,       // relying-party pinned
+  expectedProbeNonces,     // current RP challenges, keyed by surface
+  attestationVerifiers,
+  pinnedProbes,
+  pinnedWitnesses,
+  witnessSequenceStore,     // durable atomic stream checkpoint store
+  verifyAuthorization,
+  verifyExecution,
+  verifyOutcome,
+});
+```
+
+The reference demonstration is `node examples/gate-control-plane/demo.mjs`.
+It shows a complete view becoming `witness_only` and settlement-ineligible when
+the Gate is removed while the network witness remains healthy.
+Witness-dependent production decisions fail closed unless `witnessSequenceStore`
+is durable or the relying party supplies a previously accepted durable witness
+result through the explicit trusted-acceptance option.
+
 ## Default action packs
 
 `createTrustedActionFirewall()` ships with high-risk defaults. These are category-based, not just
@@ -102,15 +144,15 @@ const gate = createGate({ manifest, trustedKeys: [ISSUER_PUBKEY_B64U], store: sh
 ## Framework adapters
 
 ```js
-// 1) Express / Connect middleware
-app.post(
-  '/payments',
-  gate.middleware({
+// 1) Express / Connect route wrapper. The handler is the effect callback;
+// Gate owns reservation, execution, consumption, and evidence as one lifecycle.
+app.post('/payments', gate.route(
+  async (req, res) => res.json(await releasePayment(req.paymentFromSystemOfRecord)),
+  {
     selector: { protocol: 'http', method: 'POST', path: '/payments' },
     observedAction: (req) => req.paymentFromSystemOfRecord,
-  }),
-  handler,
-);
+  },
+));
 
 // 2) Wrap any function
 const release = gate.guard(reallyRelease, {
@@ -125,6 +167,11 @@ const release = gate.guard(reallyRelease, {
   }),
 });
 ```
+
+`gate.middleware()` is intentionally deprecated and always refuses: middleware
+cannot prove that code after `next()` executed, so consuming a one-time receipt
+there would create an authorization-without-effect ambiguity. Use
+`gate.route()`, `gate.guard()`, or `gate.run()` for mutations.
 
 ## MCP drop-in
 
@@ -223,7 +270,7 @@ into a crisp claim: *"this PR makes `delete_row` earn EG-1."*
 ## What it adds over a bare verifier
 
 `@emilia-protocol/require-receipt` already does manifest matching, offline verification, and the 428
-challenge. The Gate composes that and adds the three things a firewall needs:
+challenge. The Gate composes that and adds the lifecycle controls a firewall needs:
 
 - **Assurance tiers** — `software` < `class_a` (device signoff) < `quorum` (m-of-n). A `critical`
   action can demand `class_a` or `quorum`; a lower-assurance receipt is refused (`assurance_too_low`).
@@ -244,6 +291,9 @@ challenge. The Gate composes that and adds the three things a firewall needs:
   closes "approved harmless X, executed dangerous Y."
 - **Reliance packet** — `gate.reliancePacket()` turns the decision, execution receipt, field binding,
   and evidence head into the compact artifact an auditor, insurer, or investigator can review.
+- **Independent coverage evidence** — deployment attestation plus a separately pinned active probe
+  can establish a declared surface as `gated`; a passive network witness alone is always
+  `witness_only`. Inventory completeness remains an explicit relying-party assumption.
 
 ## Production custody
 

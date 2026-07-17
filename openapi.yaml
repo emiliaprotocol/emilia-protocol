@@ -4839,6 +4839,52 @@ paths:
         '400': { description: Unknown reference profile }
         '429': { description: Public reference-run rate exceeded }
         '503': { description: Gate reference scenario unavailable }
+
+  /api/v1/gate/control-plane-scenario:
+    get:
+      tags: [EMILIA Gate]
+      operationId: runGateControlPlaneScenario
+      summary: Run the public three-plane Gate control-plane scenario
+      description: |
+        Composes a synthetic executor-side Gate, an independently pinned network
+        observation, coverage evidence, and an evidence-eligibility decision. The
+        witness-only mode demonstrates the fail-closed boundary: observing traffic
+        does not establish that the action was mediated. All keys, effects, and
+        measurements are reference-only and make no production-system claim.
+      security: []
+      parameters:
+        - in: query
+          name: mode
+          required: false
+          schema:
+            type: string
+            enum: [complete, witness_only]
+            default: complete
+      responses:
+        '200':
+          description: Three-plane reference result with coverage and evidence eligibility
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, reference_only, physical_claim, mode, action, action_digest, planes, hashes, limitations]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  reference_only: { type: boolean, enum: [true] }
+                  physical_claim: { type: boolean, enum: [false] }
+                  mode: { type: string, enum: [complete, witness_only] }
+                  generated_at: { type: string, format: date-time }
+                  action: { type: object }
+                  action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  planes: { type: object }
+                  hashes: { type: object }
+                  limitations:
+                    type: array
+                    items: { type: string }
+        '400': { description: Unknown control-plane reference mode }
+        '429': { description: Public reference-run rate exceeded }
+        '503': { description: Control-plane reference scenario unavailable }
 components:
   securitySchemes:
     BearerAuth:

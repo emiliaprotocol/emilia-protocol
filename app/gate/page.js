@@ -31,7 +31,8 @@ const SURFACES = [
   { type: 'FRAMEWORKS', label: 'Agent runtimes', body: 'OpenAI, LangChain, CrewAI, AutoGen — guard tool calls in one wrap().', status: 'Shipped' },
   { type: 'CLOUD', label: 'Infra & platforms', body: 'System-of-record adapters shipped for GitHub, Stripe, Supabase/Postgres, AWS, Kubernetes, Terraform, GCP, Vercel, Cloudflare, Linear, Jira, and Salesforce.', status: 'Shipped' },
   { type: 'ROBOTS', label: 'Actuator sidecar', body: 'A local daemon before motion/tool commands. Pre-authorize a bounded envelope; verify each act offline.', status: 'Reference' },
-  { type: 'ATTESTED', label: 'Attested gate', body: 'Prove the gate is actually installed and running via device/workload attestation. Crucial for robots.', status: 'Roadmap' },
+  { type: 'ATTESTED', label: 'Attested gate', body: 'Pinned device/workload attestation plus an independent active refusal probe proves the declared surface is actually mediated.', status: 'Built' },
+  { type: 'WITNESS', label: 'Network witness', body: 'Pinned TAP or packet-broker observations compose as independent evidence without being mistaken for enforcement.', status: 'Built' },
 ];
 
 const TIERS = [
@@ -124,6 +125,7 @@ export default function GatePage() {
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="/gate/live" style={cta.primary}>Open live Gate</a>
+              <a href="/gate/control-plane" style={cta.secondary}>Open control plane</a>
               <a href="#loop" style={cta.secondary}>How it works</a>
               <a href="#surfaces" style={cta.secondary}>Where it runs</a>
               <a href="/try/receipt-required" style={cta.secondary}>Try to break it</a>
@@ -258,7 +260,7 @@ export default function GatePage() {
                 <div key={s.type} style={{ ...styles.card, padding: 24 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1 }}>{s.type}</div>
-                    <div style={{ fontFamily: font.mono, fontSize: 10, color: s.status === 'Shipped' ? color.green : color.t2, letterSpacing: 1, textTransform: 'uppercase' }}>{s.status}</div>
+                    <div style={{ fontFamily: font.mono, fontSize: 10, color: ['Shipped', 'Built'].includes(s.status) ? color.green : color.t2, letterSpacing: 1, textTransform: 'uppercase' }}>{s.status}</div>
                   </div>
                   <div style={{ ...styles.h3, fontSize: 17, marginTop: 8 }}>{s.label}</div>
                   <div style={{ ...styles.body, fontSize: 14, marginTop: 10, color: color.t2 }}>{s.body}</div>
