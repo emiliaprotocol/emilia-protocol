@@ -289,6 +289,32 @@ test('witness conflict order cannot change coverage acceptance', async (t) => {
   }
 });
 
+test('same-sequence equivocation invalidates the prior action even when the action digest changes', async () => {
+  const k = keys();
+  const conflictingAction = signNetworkWitnessStatement({
+    witness_id: surface.witness.witness_id,
+    capture_point_id: surface.witness.capture_point_id,
+    sequence: k.witnessStatement.observation.sequence,
+    observed_at: '2026-07-16T19:59:45.000Z',
+    event: surface.witness.event,
+    direction: 'egress',
+    action_digest: `sha256:${'44'.repeat(32)}`,
+    config_digest: CONFIG,
+  }, k.witnessPrivateKey);
+
+  const report = await evaluateGateCoverage({
+    inventory,
+    deployments: [{ profile: deploymentProfile, evidence: {} }],
+    probes: [k.firstProbe],
+    witnesses: [k.witnessStatement, conflictingAction],
+  }, options(k));
+
+  assert.equal(report.surfaces[0].witness_verified, false);
+  assert.equal(report.surfaces[0].witness_acceptance_reason, 'sequence_equivocation');
+  assert.equal(report.surfaces[0].complete, false);
+  assert.equal(report.complete, false);
+});
+
 test('coverage can reuse a durable RP-trusted acceptance but not a presenter-supplied lookalike', async () => {
   const k = keys();
   const memory = createMemoryWitnessSequenceStore();

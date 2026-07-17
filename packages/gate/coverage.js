@@ -335,9 +335,8 @@ function witnessCoverageKey(result) {
 
 function witnessEvidenceKey(result) {
   if (!string(result?.witness_id) || !string(result?.capture_point_id)
-      || !Number.isSafeInteger(result?.sequence) || result.sequence < 0
-      || !digest(result?.action_digest)) return null;
-  return `${result.witness_id}\0${result.capture_point_id}\0${result.sequence}\0${result.action_digest}`;
+      || !Number.isSafeInteger(result?.sequence) || result.sequence < 0) return null;
+  return `${result.witness_id}\0${result.capture_point_id}\0${result.sequence}`;
 }
 
 /**
