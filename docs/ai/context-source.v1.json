@@ -232,6 +232,7 @@
       "sources": [
         ".agents/product-marketing-context.md",
         "docs/strategy/PRODUCT-MESSAGE-ARCHITECTURE.md",
+        "docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md",
         "docs/CAPABILITY-MAP.md",
         "AI_CONTEXT.md",
         "README.md",
@@ -372,6 +373,10 @@
     {
       "command": "npx vitest run tests/assurance-package.test.js",
       "purpose": "execute Assurance Plane package, drift, determinism, null-conclusion, and control-mapping tests"
+    },
+    {
+      "command": "node examples/reliance/ey-continuous-assurance.mjs",
+      "purpose": "run the synthetic payer re-performance example: eight admissible decisions, two honest refusals, and one isolated runtime-to-evidence drift finding"
     },
     {
       "command": "node packages/gate/ep-assure.mjs <input.json> --strict",

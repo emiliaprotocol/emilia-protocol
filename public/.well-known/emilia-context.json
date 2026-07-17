@@ -3,12 +3,12 @@
   "evidence_snapshot_at": "2026-07-17T15:46:06.833Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "140e2de256bf1a0e5cc5f348d5340eb1d390e961aed2111e018bbee70652f9c5",
+    "input_digest_sha256": "65e05add39bd0dac8534f5c09980626acf3383538bd6b68f4293d965e88ac533",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "a3a82deefbb39e644d5b847baddc850aecd24ab43cc7526582a1f2ee25a9c6e4",
-        "bytes": 29442
+        "sha256": "aa3849a1da949281d16762e3a4d7fe2542c2d56fc5e280c9bf61f1eaca391844",
+        "bytes": 29743
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -2401,6 +2401,7 @@
       "sources": [
         ".agents/product-marketing-context.md",
         "docs/strategy/PRODUCT-MESSAGE-ARCHITECTURE.md",
+        "docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md",
         "docs/CAPABILITY-MAP.md",
         "AI_CONTEXT.md",
         "README.md",
@@ -2859,6 +2860,10 @@
     {
       "command": "npx vitest run tests/assurance-package.test.js",
       "purpose": "execute Assurance Plane package, drift, determinism, null-conclusion, and control-mapping tests"
+    },
+    {
+      "command": "node examples/reliance/ey-continuous-assurance.mjs",
+      "purpose": "run the synthetic payer re-performance example: eight admissible decisions, two honest refusals, and one isolated runtime-to-evidence drift finding"
     },
     {
       "command": "node packages/gate/ep-assure.mjs <input.json> --strict",
