@@ -43,7 +43,7 @@
       "minLength": 1
     },
     "constraints": {
-      "description": "Optional additional bounds on the grant, e.g. an amount ceiling. Values MUST be within the EP canonicalization profile (strings, safe integers, booleans, null, arrays, nested objects). Non-integer quantities (money) MUST be STRING-encoded (e.g. { \"amount_ceiling\": \"500000\" }) so the canonical bytes are byte-identical across JS/Python/Go, exactly as EP encodes amounts elsewhere. Interpreted by the deployment; hashed into grant_hash and signed.",
+      "description": "Optional additional bounds on the grant, e.g. an amount ceiling. Values MUST be within the EP canonicalization profile (strings, safe integers, booleans, null, arrays, nested objects). Non-integer quantities (money) MUST be STRING-encoded (e.g. { \"amount_ceiling\": \"500000\" }) so the canonical bytes are byte-identical across JS/Python/Go, exactly as EP encodes amounts elsewhere. Constraints are hashed into grant_hash and signed. Verification of a grant with non-empty constraints requires a relying-party-supplied, fail-closed constraint evaluator; the reference verifier refuses when that evaluator is absent, throws, or does not return the boolean true.",
       "type": "object"
     },
     "issued_at": {
@@ -62,7 +62,7 @@
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "signature": {
-      "description": "The PRINCIPAL's device-bound Ed25519 signature over the canonical grant bytes (the SAME body grant_hash covers: this grant with grant_hash and signature excluded), base64url, verified with crypto.verify(null, bodyBytes, key) against the pinned principal key (base64url SPKI DER), exactly as EP verifies Ed25519 elsewhere. An unpinned or self-asserted key confers nothing (fail closed).",
+      "description": "An Ed25519 signature over the canonical grant bytes (the SAME body grant_hash covers: this grant with grant_hash and signature excluded), base64url, verified with crypto.verify(null, bodyBytes, key) against the relying-party-pinned grant key (base64url SPKI DER), exactly as EP verifies Ed25519 elsewhere. This field alone does not establish device binding, human presence, or the key-to-principal enrollment. An unpinned or self-asserted key confers nothing (fail closed).",
       "type": "string",
       "minLength": 1
     }

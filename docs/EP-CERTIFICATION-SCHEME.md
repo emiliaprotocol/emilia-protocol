@@ -67,7 +67,7 @@ spend that already flows rather than asking a buyer to fund a new line.
 |---|---|---|
 | SOC 2 (Security / Processing Integrity) | a control in the RCM ([Auditor Control Catalog](AUDITOR-CONTROL-CATALOG.md)) whose design is "high-risk actions are gated by an offline-verifiable human-authorization receipt" | the assessor's conformance record is the evidence that the verifier the control relies on actually behaves as claimed |
 | ISO/IEC 42001 (AI management system) | a control objective for human oversight of high-risk automated actions | machine-checkable evidence that the oversight artifact is real and re-verifiable, not asserted |
-| EU AI Act Article 14 (human oversight) | the technical measure a provider points to for effective oversight of high-risk AI | an independently verifiable per-action artifact, which is exactly what "effective" oversight has otherwise lacked |
+| EU AI Act Article 14 (human oversight) | one technical measure a provider may include in its human-oversight design | an independently verifiable per-action authorization artifact; not a complete Article 14 assessment |
 | NIST AI RMF (MEASURE / MANAGE) | mapped subcategories ([NIST-AI-RMF-MAPPING](compliance/NIST-AI-RMF-MAPPING.md)) | the conformance record turns a mapped claim into a tested one |
 
 The auditor still tests the deployment; the mark only removes the question of whether the

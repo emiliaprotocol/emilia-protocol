@@ -1,15 +1,15 @@
 export const metadata = {
-  title: 'EU AI Act High-Risk Deadline Moved to Dec 2, 2027 — Obligations Unchanged',
+  title: 'EU AI Act Annex III Rules Apply from Dec 2, 2027 — Evidence Readiness',
   description:
-    'The Digital Omnibus (May 7, 2026, adoption pending) defers Annex III high-risk obligations '
-    + 'to December 2, 2027 — logging (Art 12) and human oversight (Art 14) requirements are unchanged. '
-    + 'EMILIA maps verified receipts to Articles 9–15.',
+    'The European Commission timeline applies Annex III high-risk rules from December 2, 2027. '
+    + 'See where EMILIA receipts provide evidence relevant to logging and human oversight, '
+    + 'and where separate controls remain necessary.',
   alternates: { canonical: '/eu-ai-act' },
   openGraph: {
-    title: 'EU AI Act: deadline deferred to Dec 2, 2027 — obligations unchanged',
+    title: 'EU AI Act: Annex III timeline and verifiable oversight evidence',
     description:
-      'Formally verified pre-execution receipts mapping directly to ' +
-      'Articles 9–15 of the EU AI Act. Apache 2.0 open protocol.',
+      'Open pre-execution receipt tooling for action-level logging and human-oversight evidence, '
+      + 'with explicit scope limits. Apache-2.0 reference implementation.',
     url: 'https://www.emiliaprotocol.ai/eu-ai-act',
     type: 'website',
   },

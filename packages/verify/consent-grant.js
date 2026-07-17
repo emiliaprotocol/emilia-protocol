@@ -15,10 +15,14 @@
  *     control_verb V on asset A until expiry E, subject to constraints C." It is
  *     issued once and holds over a window; it is revocable at any time.
  *   - The per-action RECEIPT (index.js verifyReceipt / verifyTrustReceipt) is
- *     the BINDING MOMENT: a named human's device-bound signature over the EXACT
- *     action, at the moment of consequence, before execution.
+ *     the BINDING MOMENT: a named human's signature over the EXACT action, at
+ *     the moment of consequence, before execution. Device binding is a property
+ *     of the receipt's selected ceremony profile, not of this grant module.
  *   A receipt "acts under" a grant by carrying the grant's grant_hash;
- *   verifyReceiptUnderGrant() is that composition.
+ *   verifyReceiptUnderGrant() is that composition. When a grant carries
+ *   non-empty `constraints`, composition also requires a relying-party supplied
+ *   constraints evaluator. Signed constraints are never treated as decorative
+ *   metadata.
  *
  * HONEST BOUNDARY (the same currency bound as everywhere else in this package):
  *   Neither the grant nor the receipt establishes BUSINESS correctness — that
@@ -68,10 +72,23 @@ function hexOf(h) {
 // ±hh:mm). No-timezone and date-only forms are REJECTED as ambiguous. Identical
 // to parseInstant() in index.js — the one profile JS, Python, and Go all parse
 // and reject identically (fail-closed). Returns epoch ms or NaN.
-const RFC3339_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const RFC3339_OFFSET = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 function parseInstant(value) {
-  if (typeof value !== 'string' || !RFC3339_OFFSET.test(value)) return NaN;
-  return Date.parse(value);
+  if (typeof value !== 'string') return NaN;
+  const match = value.match(RFC3339_OFFSET);
+  if (!match) return NaN;
+  const [, year, month, day, hour, minute, second, , , offsetHour, offsetMinute] = match;
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(Number(year), Number(month) - 1, Number(day));
+  calendar.setUTCHours(Number(hour), Number(minute), Number(second), 0);
+  if (calendar.toISOString().slice(0, 19) !== `${year}-${month}-${day}T${hour}:${minute}:${second}`) {
+    return NaN;
+  }
+  if (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59)) {
+    return NaN;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 function normalizeNow(now) {
@@ -158,9 +175,10 @@ function refuseGrant(reason, checks) {
  * Establishes, all fail-closed:
  *   (hash)          grant_hash binds the canonical grant body (tamper any field
  *                   — asset, control_verb, constraints, expiry — and this fails);
- *   (signature)     the principal's device-bound Ed25519 signature verifies over
- *                   the SAME canonical body, under the caller-PINNED principal key
- *                   (an unpinned / self-asserted key confers NOTHING);
+ *   (signature)     the principal's Ed25519 signature verifies over the SAME
+ *                   canonical body, under the caller-PINNED principal key. Key
+ *                   custody or hardware binding is established outside this
+ *                   verifier (an unpinned / self-asserted key confers NOTHING);
  *   (within_window) `now` is within [issued_at, expires_at], both RFC-3339 with
  *                   an explicit offset; an expired (or not-yet-valid) grant refuses.
  * If a revocation statement binding this grant_hash is supplied AND valid under
@@ -198,6 +216,12 @@ export function verifyConsentGrant(grant, pinnedPrincipalKey, opts = {}) {
   }
   if (!grant.asset || !grant.control_verb) {
     return refuseGrant('grant is missing asset or control_verb', checks);
+  }
+  if (grant.constraints !== undefined
+      && (!grant.constraints
+        || typeof grant.constraints !== 'object'
+        || Array.isArray(grant.constraints))) {
+    return refuseGrant('grant constraints must be an object when supplied', checks);
   }
 
   // (hash) grant_hash must bind the canonical grant body.
@@ -382,6 +406,12 @@ function refuseComposition(reason, checks) {
  *                         'caller_override' | 'none'): a signed reference is the
  *                         STRONG binding (covered by the receipt's signature), a
  *                         caller override is ADVISORY (as trustworthy as the caller).
+ *   (e) constraints     — when the signed grant carries one or more constraints,
+ *                         the relying party MUST supply `constraintsCover`.
+ *                         The evaluator receives the signed Action Object, the
+ *                         signed constraints, and the verified grant, and MUST
+ *                         return exactly true. Missing, throwing, or false
+ *                         evaluators refuse.
  *
  * HONESTY: the grant is STANDING authority; the binding-moment receipt is the
  * PER-ACTION authorization. Both are required and they are DIFFERENT artifacts —
@@ -396,8 +426,9 @@ function refuseComposition(reason, checks) {
  * signed Action Object, so those fields are covered by the receipt's own signature.
  *
  * Refusal reasons (distinct, fail-closed):
- *   'grant_signature_invalid' | 'grant_not_yet_valid' | 'grant_expired' | 'grant_revoked'
- *   | 'asset_mismatch' | 'verb_mismatch' | 'grant_binding_mismatch'
+ *   'grant_signature_invalid' | 'grant_constraints_invalid' | 'grant_not_yet_valid'
+ *   | 'grant_expired' | 'grant_revoked' | 'asset_mismatch' | 'verb_mismatch'
+ *   | 'grant_binding_mismatch' | 'constraint_evaluator_missing' | 'constraints_mismatch'
  *   plus structural refusals ('missing_receipt', 'missing_action',
  *   'missing_grant_reference').
  *
@@ -415,6 +446,9 @@ function refuseComposition(reason, checks) {
  *   scope predicate; default is strict equality. MUST fail closed (return false on doubt).
  * @param {(receiptVerb:any, grantVerb:any)=>boolean} [opts.verbCovers]  optional
  *   verb-coverage predicate; default is strict equality.
+ * @param {(action:object, constraints:object, grant:object)=>boolean} [opts.constraintsCover]
+ *   REQUIRED when `grant.constraints` is non-empty. It MUST return exactly true
+ *   to authorize; false, a truthy non-boolean value, or an exception refuses.
  * @returns {{ ok:boolean, checks:object, binding_strength?:string, reason?:string }}
  *   `binding_strength` (present from the grant-binding step onward) reports where
  *   the grant reference came from: 'signed_action' (strong) | 'top_level' |
@@ -426,6 +460,7 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
     asset_covered: false,
     verb_covered: false,
     grant_binding: false,
+    constraints_covered: false,
   };
 
   if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) {
@@ -447,6 +482,9 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
   if (!grantResult.valid) {
     let reason = 'grant_signature_invalid';
     if (grantResult.reason === 'grant_revoked') reason = 'grant_revoked';
+    else if (grantResult.reason === 'grant constraints must be an object when supplied') {
+      reason = 'grant_constraints_invalid';
+    }
     else if (grantResult.checks.within_window === false && grantResult.checks.hash && grantResult.checks.signature) {
       reason = (grantResult.reason && grantResult.reason.includes('not yet valid'))
         ? 'grant_not_yet_valid'
@@ -460,7 +498,11 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
   const assetCovers = typeof opts.assetCovers === 'function'
     ? opts.assetCovers
     : (a, b) => a === b;
-  checks.asset_covered = assetCovers(action.asset, grant.asset) === true;
+  try {
+    checks.asset_covered = assetCovers(action.asset, grant.asset) === true;
+  } catch {
+    checks.asset_covered = false;
+  }
   if (!checks.asset_covered) {
     return refuseComposition('asset_mismatch', checks);
   }
@@ -469,7 +511,11 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
   const verbCovers = typeof opts.verbCovers === 'function'
     ? opts.verbCovers
     : (a, b) => a === b;
-  checks.verb_covered = verbCovers(action.control_verb, grant.control_verb) === true;
+  try {
+    checks.verb_covered = verbCovers(action.control_verb, grant.control_verb) === true;
+  } catch {
+    checks.verb_covered = false;
+  }
   if (!checks.verb_covered) {
     return refuseComposition('verb_mismatch', checks);
   }
@@ -480,8 +526,8 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
   // reference is the STRONG binding (covered by the receipt's own signature),
   // while a caller override is ADVISORY (only as trustworthy as the caller).
   // binding_strength is surfaced as a top-level result field (NOT a `checks`
-  // member, so the frozen four-member checks shape is unchanged) so a relying
-  // party can distinguish a strong from an advisory binding and price it.
+  // member) so a relying party can distinguish a strong from an advisory
+  // binding and price it.
   const referenced = receiptReferencedGrantHash(receipt, opts.grantHash);
   const bindingStrength = receiptGrantBindingStrength(receipt, opts.grantHash);
   if (!referenced) {
@@ -490,6 +536,37 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
   checks.grant_binding = hexOf(referenced) !== '' && hexOf(referenced) === hexOf(grant.grant_hash);
   if (!checks.grant_binding) {
     return { ...refuseComposition('grant_binding_mismatch', checks), binding_strength: bindingStrength };
+  }
+
+  // (e) profile constraints. The generic verifier cannot safely guess the
+  // semantics of fields such as amount ceilings, jurisdictions, purposes, or
+  // media-use terms. A signed constraint therefore requires an explicit
+  // profile evaluator instead of silently becoming unenforced metadata.
+  const constraints = grant.constraints;
+  const hasConstraints = constraints
+    && typeof constraints === 'object'
+    && !Array.isArray(constraints)
+    && Object.keys(constraints).length > 0;
+  if (hasConstraints) {
+    if (typeof opts.constraintsCover !== 'function') {
+      return {
+        ...refuseComposition('constraint_evaluator_missing', checks),
+        binding_strength: bindingStrength,
+      };
+    }
+    try {
+      checks.constraints_covered = opts.constraintsCover(action, constraints, grant) === true;
+    } catch {
+      checks.constraints_covered = false;
+    }
+    if (!checks.constraints_covered) {
+      return {
+        ...refuseComposition('constraints_mismatch', checks),
+        binding_strength: bindingStrength,
+      };
+    }
+  } else {
+    checks.constraints_covered = true;
   }
 
   return { ok: true, checks, binding_strength: bindingStrength };

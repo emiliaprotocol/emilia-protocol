@@ -34,7 +34,7 @@ For each approved Irreversible Action, the Vendor shall retain and produce on re
   {
     id: 'B',
     title: 'EU AI Act — Article 14 human oversight',
-    use: 'Systems in scope of Regulation (EU) 2024/1689 Annex III (high-risk) — obligations provisionally deferred to December 2, 2027 by the Digital Omnibus (May 2026); the requirements themselves are unchanged.',
+    use: 'Systems determined to be in scope of Regulation (EU) 2024/1689 Annex III; the Commission’s current timeline applies those high-risk rules from December 2, 2027.',
     text: `For AI systems within scope of Regulation (EU) 2024/1689 (EU AI Act) Annex III, the Vendor shall implement technical measures enabling human oversight, intervention, and override consistent with Article 14, including pre-execution human approval for actions producing legal or similarly significant effects on natural persons.
 
 The Vendor shall maintain records sufficient to demonstrate such oversight consistent with Article 12 (record-keeping), in a machine-verifiable format. Upon request, the Vendor shall provide the Customer with the records and the means to verify their integrity and authenticity independently of the Vendor, including verification while offline.
@@ -53,7 +53,7 @@ Statements of policy, manual review procedures, or dashboard-based approval queu
 (d) issuance and expiry timestamps and single-use (anti-replay) semantics; and
 (e) sufficient material for the Customer to verify the receipt offline using a published, open-source verifier distributed under an OSI-approved license.
 
-Authorization receipts conforming to draft-schrock-ep-authorization-receipts (IETF, individual submission) or a successor specification satisfy this requirement in full.`,
+Authorization receipts conforming to draft-schrock-ep-authorization-receipts (IETF, individual submission) or a successor specification are one candidate technical means of meeting this evidence requirement. The Customer shall evaluate the implementation, trust anchors, retention, and deployment controls separately.`,
   },
 ];
 

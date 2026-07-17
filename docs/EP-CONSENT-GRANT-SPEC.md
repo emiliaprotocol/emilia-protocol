@@ -17,10 +17,11 @@
 The Command Authority Envelope separates two things EP had previously expressed
 through one path. Binding 3 is the **consent grant**: standing authority, scoped
 to an asset and a control verb, bounded by an expiry, revocable at any time.
-Binding 4 is the **binding moment**: a named human's device-bound signature over
-the exact action at the moment of consequence. An EP receipt is the binding
-moment, and always has been. What EP did not ship until now was one artifact that
-is exactly the standing grant, independently revocable, distinct from the receipt.
+Binding 4 is the **binding moment**: a named human's signature over the exact
+action at the moment of consequence. A selected receipt profile can additionally
+require a device-bound WebAuthn ceremony. An EP receipt is the binding moment,
+and always has been. What EP did not ship until now was one artifact that is
+exactly the standing grant, independently revocable, distinct from the receipt.
 
 The pieces existed (policy scoping, the Approver Directory's scope, admissibility
 profiles, delegation, and revocation statements), they were just not assembled
@@ -66,11 +67,12 @@ does not authorize an action the grant does not cover.
 `grant_hash` is `"sha256:"` followed by the hex SHA-256 over the JCS/RFC-8785
 canonical bytes of the grant with **both** `grant_hash` and `signature` excluded.
 It reuses the same `canonicalize()` plus SHA-256 that EP uses everywhere. The
-`signature` is the principal's device-bound Ed25519 signature over those same
-canonical bytes, verified with `crypto.verify(null, bodyBytes, key)` against the
-pinned principal key (base64url SPKI DER), exactly as EP verifies Ed25519
-elsewhere. Hash and signature cover an identical, self-consistent body: neither
-field can contain its own value.
+`signature` is the principal key's Ed25519 signature over those same canonical
+bytes, verified with `crypto.verify(null, bodyBytes, key)` against the pinned
+principal key (base64url SPKI DER), exactly as EP verifies Ed25519 elsewhere.
+The verifier establishes no hardware or device binding for this raw Ed25519 key;
+key custody and enrolment are relying-party inputs. Hash and signature cover an
+identical, self-consistent body: neither field can contain its own value.
 
 ## Verifier contract and closed refusals
 
@@ -96,8 +98,8 @@ machinery.
 
 ### Composition: a receipt acting under a grant
 
-`verifyReceiptUnderGrant(receipt, grant, { now, pinnedPrincipalKey, revocation, revokerKeys, grantHash, assetCovers, verbCovers })`
-returns `{ ok, checks: { grant, asset_covered, verb_covered, grant_binding }, reason? }`.
+`verifyReceiptUnderGrant(receipt, grant, { now, pinnedPrincipalKey, revocation, revokerKeys, grantHash, assetCovers, verbCovers, constraintsCover })`
+returns `{ ok, checks: { grant, asset_covered, verb_covered, grant_binding, constraints_covered }, reason? }`.
 It is the join between the binding moment and the standing grant. It verifies:
 
 1. the grant itself (via `verifyConsentGrant`);
@@ -106,12 +108,24 @@ It is the join between the binding moment and the standing grant. It verifies:
 3. the receipt's action control verb is covered by the grant's control_verb;
 4. the receipt is bound to `grant_hash`: it references the grant's `grant_hash`
    and that reference equals the grant's own `grant_hash`.
+5. when the grant contains non-empty `constraints`, a relying-party supplied,
+   profile-specific `constraintsCover(action, constraints, grant)` evaluator
+   returns exactly `true`.
+
+The generic verifier deliberately does not guess how an amount ceiling,
+jurisdiction, purpose, territory, or other application constraint should be
+interpreted. A constrained grant without an evaluator refuses with
+`constraint_evaluator_missing`; a false, throwing, or non-boolean evaluator
+refuses with `constraints_mismatch`. This prevents a signed constraint from
+silently becoming decorative metadata.
 
 Any mismatch refuses with a distinct reason:
 
 `grant_signature_invalid` | `grant_expired` | `grant_revoked` | `asset_mismatch`
 | `verb_mismatch` | `grant_binding_mismatch` (plus structural refusals
-`missing_receipt`, `missing_action`, `missing_grant_reference`).
+`missing_receipt`, `missing_action`, `missing_grant_reference`,
+`constraint_evaluator_missing`, `constraints_mismatch`, and
+`grant_constraints_invalid`).
 
 `verifyReceiptUnderGrant` checks the grant and the scope/binding join; it does
 NOT re-run the receipt's own end-to-end cryptography. Call

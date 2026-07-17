@@ -4,7 +4,8 @@
 
 > **What this document is.** A mechanism-neutral checklist of the evidence questions a reviewer
 > is likely to ask when assessing human oversight of a high-risk AI system under Article 14 of
-> the EU AI Act, and the properties any satisfying evidence needs — whatever tooling produced it.
+> the EU AI Act, and properties that can make the resulting evidence more decision-useful —
+> whatever tooling produced it.
 > Section 4 shows how one specific implementation (an EMILIA Gate deployment) produces each item;
 > that section is one candidate format, not a requirement of the checklist.
 >
@@ -58,14 +59,14 @@ Two consequences follow for evidence, regardless of tooling:
 
 ## 2. The checklist
 
-For each oversight duty: the **evidence question** a reviewer will ask, and the **properties any
-satisfying evidence needs** — independent of which product or process produces it.
+For each oversight duty: the **evidence question** a reviewer may ask, and the **properties that
+make evidence more decision-useful** — independent of which product or process produces it.
 
 ### 2.1 "Show me who could intervene."
 
 *Duty addressed: oversight measures exist and are assigned to natural persons.*
 
-Satisfying evidence has these properties:
+Stronger evidence has these properties:
 
 - [ ] **Named principal.** The overseer is an identified natural person (or an enumerable set of
       them), not a role name, a shared account, or "the operations team."
@@ -139,9 +140,9 @@ execution; approval logs that contain only approvals.
       one breaks verification of the rest.
 - [ ] **Independent verifiability.** A third party — auditor, market-surveillance authority,
       insurer — can check the record's integrity and the validity of the authorizations in it
-      using published formats and their own tooling, without trusting the operator's software,
-      the vendor's service, or anyone's word. Offline verifiability (no callback to the
-      operator or vendor) is the strong form of this property.
+      using published formats, their own tooling, and explicit pinned trust inputs. Offline
+      verifiability (no callback to the operator or vendor at verification time) is the strong
+      form of this property.
 - [ ] **Cryptographic rather than procedural identity for approvals.** "This principal
       authorized this action" is stronger when it rests on a signature verifiable against a key
       attributable to that principal than when it rests on a database row asserting it.
@@ -175,7 +176,7 @@ execution; approval logs that contain only approvals.
 | **Pre-execution binding** | Was the approval bound to the exact action, before it executed — and would drift have been refused? |
 | **Refusals recorded** | Do denials appear in the record with named reasons, as first-class events? |
 | **Tamper-evidence** | Would edit or deletion of any record after the fact be detectable? |
-| **Independent verifiability** | Can a third party check it with their own tooling, offline, without trusting the operator? |
+| **Independent verifiability** | Can a third party check it with its own tooling and pinned trust inputs, offline, without calling the operator? |
 | **Scope honesty** | Does the evidence itself show what was *not* covered? |
 
 ---
@@ -185,7 +186,7 @@ execution; approval logs that contain only approvals.
 *This section describes one candidate format — the `EP-GATE-ART14-PACK-v1` evidence pack emitted
 by the open-source EMILIA Gate (`packages/gate/reports/art14.js` in the EMILIA Protocol
 repository, Apache-2.0). It is included so the checklist above is falsifiable against at least
-one running mechanism, not to suggest it is the only way to satisfy it.*
+one running mechanism, not to suggest it is the only way to support an assessment.*
 
 The Gate is a deny-by-default enforcement point: a guarded consequential action executes only
 with a valid, in-scope, sufficiently assured, fresh, unused authorization receipt signed over

@@ -41,6 +41,7 @@ export default function sitemap() {
     { path: '/labs/google-cloud-reliance', priority: 0.85, changeFrequency: 'monthly' },
     { path: '/for-ai-companies',      priority: 0.9, changeFrequency: 'monthly' },
     { path: '/sovereignty',           priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/eu/declaration-to-proof', priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quickstart',            priority: 0.85, changeFrequency: 'monthly' },
     { path: '/guides/require-receipt', priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases',             priority: 0.9, changeFrequency: 'monthly' },
@@ -48,7 +49,8 @@ export default function sitemap() {
     { path: '/use-cases/financial',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/enterprise',  priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/ai-agent',    priority: 0.9,  changeFrequency: 'monthly' },
-    // Regulatory deadline landing — Annex III deferred to Dec 2, 2027 (Digital Omnibus); keep crawl priority high.
+    // Regulatory timeline landing — Commission timeline applies Annex III rules
+    // from Dec 2, 2027; keep crawl priority high while implementation work matures.
     // Bump back to 0.7 after enforcement passes (the page stays evergreen as
     // an EU AI Act compliance reference, but loses time-bound urgency).
     { path: '/eu-ai-act',             priority: 0.95, changeFrequency: 'weekly' },

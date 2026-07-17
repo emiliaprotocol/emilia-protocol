@@ -1,114 +1,127 @@
-# EP Compliance Mapping: EU Artificial Intelligence Act
+# EMILIA Evidence-Capability Mapping to the EU AI Act
 
-**Version:** 1.0  
-**Date:** 2026-04-07  
-**Protocol:** EMILIA Protocol v1.0  
-**Regulation:** EU AI Act (Regulation 2024/1689, effective August 2025)
+**Version:** 2.0
+**Date:** 2026-07-17
+**Regulation:** Regulation (EU) 2024/1689
+**Status:** Engineering crosswalk, not legal advice or a compliance determination
 
----
+## 1. Scope
 
-## Scope
+This document maps technical evidence produced by EMILIA to selected EU AI Act
+assessment questions. It does not say that deploying EMILIA satisfies an
+Article, that every action needs a receipt, or that EMILIA determines whether a
+system is high-risk.
 
-This mapping covers EP's ability to help operators satisfy obligations under the EU AI Act, with focus on **high-risk AI systems** (Title III, Chapter 2) and **general-purpose AI** (Title VIII-A). EP is not an AI system itself — it is the trust enforcement infrastructure that AI systems use to demonstrate compliance.
+The strongest fit is narrow:
 
----
+- **Article 12:** action-level logging and traceability evidence;
+- **Article 14:** evidence that a configured human-authorization or refusal
+  control operated before a specific action;
+- **Articles 9, 11, and 15:** supporting engineering evidence about the
+  authorization control itself.
 
-## Article 9 — Risk Management System
+Articles 10 and 13 require controls EMILIA does not provide.
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 9(1): Establish a risk management system | EP provides a structured, auditable trust evaluation pipeline (`protocolWrite()`) through which every high-risk action passes. System is continuous, documented, and versioned. |
-| 9(2)(a): Identify and analyze known risks | EP Eye observation layer classifies risk patterns by domain. Trust profiles track anomaly flags, negative outcome rates, and provenance quality. |
-| 9(2)(b): Estimate and evaluate risks | EP Trust Decisions produce `allow` / `allow_with_signoff` / `deny` with evidence sufficiency metrics, domain scores, and confidence levels. |
-| 9(2)(c): Evaluate risks from reasonably foreseeable misuse | EP adversarial test suite: 85 red team cases including Sybil attacks, trust farming, collusion detection, and replay attempts. |
-| 9(2)(d): Adopt risk management measures | EP four-layer enforcement: Eye → Handshake → Signoff → Commit. Each layer has independent controls, audit trails, and enforcement capabilities. |
-| 9(4): Testing to identify appropriate measures | EP: 5,000+ automated test cases across 250+ files, with all platform-applicable cases required to pass, plus TLA+ model checking, Alloy relational verification, property-based testing, and fault-schedule linearizability checks. |
-| 9(5): Testing against previously defined metrics | EP conformance test suite with deterministic fixtures, mutation testing (80%+ kill), and cross-language hash verification. |
-| 9(7): Risk management throughout AI system lifecycle | EP Trust Profiles are continuously updated. Score history tracks changes. Dispute lifecycle enables ongoing risk correction. |
+## 2. Current application timeline
 
----
+The Commission's current AI Act implementation page states:
 
-## Article 10 — Data and Data Governance
+- the Act entered into force on **1 August 2024**;
+- prohibited practices and AI-literacy duties applied from **2 February 2025**;
+- governance and general-purpose AI duties applied from **2 August 2025**;
+- transparency rules apply from **August 2026**;
+- rules for Annex III high-risk systems apply from **2 December 2027**;
+- rules for high-risk systems integrated into regulated products apply from
+  **2 August 2028**.
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 10(2): Training data quality | EP receipt provenance tiers (6 levels, 0.3x–1.0x weight) ensure trust evidence quality is tracked and weighted. |
-| 10(2)(f): Examination for possible biases | EP Sybil resistance (graph analysis, submitter credibility dampening) prevents manipulation of the trust evidence corpus. |
-| 10(3): Data governance practices | EP write guard enforces that only the canonical write layer can modify trust-bearing tables. Append-only event log. |
+Primary source:
+<https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai>.
+Classification, provider/deployer role, exceptions, and applicable duties are
+fact-specific and should be confirmed with qualified counsel.
 
----
+## 3. What the evidence establishes
 
-## Article 11 — Technical Documentation
+For an `EP-RECEIPT-v1` Trust Receipt verified against relying-party-pinned keys,
+the verifier can establish:
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 11(1): Technical documentation maintained | EP: PROTOCOL-STANDARD.md (Abstract + Core objects + Extensions), architecture docs (18 files), API documentation (8 files), formal specifications (TLA+, Alloy). |
-| 11(1): Documentation kept up to date | EP PIP process governs all protocol changes. Version-controlled documentation in git. CI enforces doc consistency. |
+1. the Action Object has not changed since it was signed;
+2. each approval context commits to that action and a stated policy digest;
+3. each signoff verifies under the pinned approver key;
+4. initiator exclusion, distinct approvers, and the declared threshold hold;
+5. the receipt is included under a signed log checkpoint;
+6. issuance, signing, and commitment fall within the declared windows.
 
----
+In strict Class-A mode, the verifier also checks the WebAuthn relying-party ID
+and user-presence/user-verification flags. The Gate can reserve and consume a
+receipt once, bind execution fields to the authorized action, and append allow
+and refuse decisions to a tamper-evident evidence log.
 
-## Article 12 — Record-Keeping (Logging)
+These properties do **not** establish:
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 12(1): Automatic recording of events | EP `protocol_events` table: append-only log of every trust-changing state transition. `handshake_events`: per-ceremony audit trail. `audit_events`: operator-level log. |
-| 12(2): Logging enables traceability | EP protocol events include: `event_id`, `aggregate_type`, `aggregate_id`, `command_type`, `parent_event_hash`, `payload_hash`, `actor_authority_id`, `idempotency_key`, `created_at`. Chain-linked for tamper detection. |
-| 12(3): Logging throughout lifetime | EP events are never deleted. Immutability enforced by database triggers and write guard. SIEM forwarder for external log aggregation. |
+- that a key was correctly enrolled to a legal identity;
+- that the person understood the display or was free from coercion;
+- that the action was wise, lawful, safe, fair, or accurate;
+- that every relevant action was routed through the Gate;
+- that retained records satisfy a deployment's full retention duties;
+- that the AI system as a whole complies with the Act.
 
----
+## 4. Article-by-article capability map
 
-## Article 13 — Transparency
+| Provision | Evidence fit | What EMILIA can contribute | What remains outside or deployment-specific |
+|---|---|---|---|
+| **Art. 9 - risk management** | Supporting | Versioned action policy digest; fail-closed refusal reasons; adversarial and fault-schedule tests for the authorization control | Risk identification, proportionality, residual-risk acceptance, lifecycle governance, and system-level testing |
+| **Art. 10 - data governance** | Outside scope | A receipt can bind a digest of a referenced dataset or assessment | Data relevance, representativeness, bias, collection practices, and data-quality governance |
+| **Art. 11 - technical documentation** | Supporting | Public implementation, schemas, vectors, security-case manifest, and explicit model assumptions | System-specific intended purpose, architecture, performance, risk, change, and conformity documentation |
+| **Art. 12 - logging** | Direct evidence fit | Signed exact-action authorization records; typed refusals; tamper-evident evidence-log chain; deterministic period reports | Log completeness, durable retention, access control, operational monitoring, and routing every relevant event through the enforcement point |
+| **Art. 13 - transparency** | Mostly outside scope | Human-inspectable action and policy references may support an explanation record | Instructions for use, system limitations, user notices, output interpretation, and disclosure duties |
+| **Art. 14 - human oversight** | Direct evidence fit | Pre-execution Class-A signoff; exact-action binding; typed refusal/interruption evidence; M-of-N distinct-signoff option; one-time consumption | Oversight design adequacy, competence, authority assignment, automation-bias controls, safe-state design, comprehension, and proportionality |
+| **Art. 15 - accuracy, robustness, cybersecurity** | Supporting | Named protocol invariants; signature and binding checks; replay and concurrency tests; fail-closed storage behavior | AI accuracy, model robustness, end-to-end cybersecurity, host compromise, supply-chain governance, and incident response |
+| **Art. 26 - deployer duties** | Supporting | Evidence export that a configured authorization control operated over a stated period | Correct use, monitoring, human resources, DPIA/fundamental-rights impact work, incident reporting, and deployer governance |
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 13(1): Sufficient transparency for interpretation | EP Trust Decisions include `reasons` array (human-readable), `policy_used`, `evidence_sufficient` flag, and `appeal_available` indicator. |
-| 13(2): Accompanying instructions for use | EP: QUICK_START_INTEGRATION.md, SDK documentation, MCP server with 36 self-describing tools. |
-| 13(3)(b)(ii): Level of accuracy and limitations | EP Trust Profiles include `confidence` level (5 tiers) and `evidence_depth`. Commitment proofs enable privacy-preserving accuracy attestation. |
+## 5. Implementation evidence
 
----
+| Property | Implementation | Re-performable evidence |
+|---|---|---|
+| Exact-action receipt verification | `packages/verify/index.js` (`verifyTrustReceipt`) | Trust Receipt test and conformance suites |
+| Class-A WebAuthn binding | `packages/verify/index.js` strict mode | RP ID, UP, UV, key-window, and policy-hash checks |
+| One-time execution | `packages/gate/store.js`, `packages/gate/index.js` | concurrency, crash, response-loss, rollback, and linearizability tests |
+| Authorized/executed field agreement | `packages/gate/execution-binding.js` | fail-closed execution-binding tests |
+| M-of-N human authorization | `packages/verify/quorum.js` | shared quorum vectors and initiator-exclusion tests |
+| Tamper-evident decision log | `packages/gate/evidence.js` | chain re-verification and strict-sink failure tests |
+| Article 14 period report | `packages/gate/reports/art14.js` | deterministic pack tests; honesty notice is mandatory |
+| Standing grant composition | `packages/verify/consent-grant.js` | grant, revocation, binding, and profile-constraint tests |
 
-## Article 14 — Human Oversight
+Current generated counts and exact model scope live in
+`lib/proof-stats.json`, `security/claims.v1.json`, and `PROOF_STATUS.md`.
+Those generated artifacts, rather than prose copied into this document, are the
+source of truth.
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 14(1): Human oversight measures | **EP Accountable Signoff**: named human must explicitly assume responsibility before high-risk action proceeds. Not optional — policy-enforced. |
-| 14(2): Understanding AI system capabilities | EP Eye SHADOW mode: logs what enforcement would have done, enabling human review without blocking. |
-| 14(3)(a): Monitor operations | EP Cloud dashboard: real-time handshake monitoring, signoff queue, event explorer. |
-| 14(3)(b): Remain aware of automation bias | EP delegation judgment scoring measures how well humans oversee their AI agents. Poor delegation scores surface accountability gaps. |
-| 14(4)(a): Correctly interpret output | EP Trust Decisions are structured, not opaque. Decision + reasons + evidence + policy + appeal path in every response. |
-| 14(4)(b): Decide not to use the system | EP supports manual override: Signoff denial, Handshake revocation, Commit revocation — all with audit trail. |
-| 14(4)(c): Override the output | EP dispute lifecycle: any entity can file a dispute against any trust decision. Human appeal endpoint requires no authentication. |
+## 6. Recommended use in an assessment
 
----
+1. Define the consequential action classes and material fields.
+2. Document which actions require one approver, Class-A user verification, or a
+   distinct-human quorum.
+3. Pin the approver directory, policy digest, relying-party ID, log key, and
+   any standing-authority or revocation inputs.
+4. Demonstrate a valid approval, a human refusal, an altered action, a replay,
+   a storage failure, and an execution-field mismatch.
+5. Export the receipts, evidence log, and `EP-GATE-ART14-PACK-v1`.
+6. Have an independent assessor reproduce verification and separately evaluate
+   whether the broader oversight measures are appropriate and proportionate.
 
-## Article 15 — Accuracy, Robustness, Cybersecurity
+## 7. Status language
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 15(1): Appropriate level of accuracy | EP provides configurable policy thresholds. Four assurance levels (low/medium/substantial/high). Domain-specific scoring. |
-| 15(3): Resilient against errors | EP: 5-mechanism replay prevention, atomic RPCs with FOR UPDATE locks, fail-closed design on all trust-bearing operations. |
-| 15(4): Cybersecurity measures | EP: RLS-hardened tables (~50), timing-safe auth, CSP with per-request nonce, HSTS, write guard, SIEM integration. Formal threat model documented. |
+Use:
 
----
+> EMILIA produces independently verifiable action-authorization and control-
+> operation evidence that can support EU AI Act Articles 12 and 14 assessments.
 
-## Article 26 — Obligations of Deployers
+Do not use:
 
-| Requirement | EP Implementation |
-|-------------|-------------------|
-| 26(1): Use in accordance with instructions | EP policy engine enforces usage boundaries. Actions outside policy scope are rejected by Handshake verification. |
-| 26(5): Impact assessments for high-risk systems | EP Cloud compliance dashboard provides audit-ready exports, trust score histories, and dispute resolution records. |
+> EMILIA is EU AI Act compliant, certifies Article 14, or fully satisfies
+> Articles 9 through 15.
 
----
-
-## Summary
-
-| Article | Coverage | Key EP Primitives |
-|---------|----------|-------------------|
-| Art. 9 (Risk Management) | Full | Eye, Trust Profile, adversarial testing, formal verification |
-| Art. 10 (Data Governance) | Full | Provenance tiers, Sybil resistance, write guard |
-| Art. 11 (Documentation) | Full | PROTOCOL-STANDARD, PIPs, architecture docs |
-| Art. 12 (Record-Keeping) | Full | protocol_events, handshake_events, audit_events, SIEM |
-| Art. 13 (Transparency) | Full | Trust Decisions with reasons, commitment proofs |
-| Art. 14 (Human Oversight) | Full | Accountable Signoff, delegation judgment, dispute lifecycle |
-| Art. 15 (Accuracy/Security) | Full | Replay prevention, RLS, atomic RPCs, CSP |
-| Art. 26 (Deployer Obligations) | Full | Policy enforcement, compliance dashboard |
+The underlying protocol documents are active **individual IETF
+Internet-Drafts**, not IETF-adopted standards or endorsements. JavaScript,
+Python, and Go are same-team ports used for cross-language consistency. External
+implementation evidence is reported separately and time-pinned.

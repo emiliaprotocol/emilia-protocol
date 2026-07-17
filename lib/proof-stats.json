@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-15T01:16:40.813Z",
+  "generatedAt": "2026-07-17T19:44:02.827Z",
   "tests": {
-    "total": 5596,
-    "files": 284,
+    "total": 5600,
+    "files": 285,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
@@ -25,7 +25,7 @@
     "status": "passed",
     "claims": 18,
     "evidenceFiles": 88,
-    "evidenceBundleSha256": "4362c0b65fd1ad6987f4bdad77dffc456da155c0752658046d540de9d3bc7f45"
+    "evidenceBundleSha256": "86baff3cd58eb7b4c4d7fda87227d468b4d52e330d5a408fe102821c9d38f44c"
   },
   "conformance": {
     "suites": 18,

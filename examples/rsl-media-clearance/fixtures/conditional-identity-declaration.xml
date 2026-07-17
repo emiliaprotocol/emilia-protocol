@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic review fixture. RSL-MEDIA 1.0 is a draft and forbids production use. -->
+<rsl xmlns="https://rslstandard.org/rsl"
+     xmlns:media="https://rslmedia.org/media">
+  <media:right
+    isrd="RSL-0000-0042-7"
+    issued="2026-07-17T14:00:00Z"
+    registry="https://registry.example"
+    registry-id="PERSON-42"
+    subject="identity"
+    status="active"
+    server="https://clearance.example/rsl">
+    <schema type="application/ld+json">
+      {"@context":"https://schema.org","@type":"Person","name":"Example Rights Holder"}
+    </schema>
+    <license>
+      <permits type="usage">media:ai-generate</permits>
+      <payment>
+        <custom>https://clearance.example/rsl</custom>
+      </payment>
+      <legal type="attestation">true</legal>
+      <legal type="contact">mailto:rights@example.test</legal>
+    </license>
+  </media:right>
+</rsl>
+

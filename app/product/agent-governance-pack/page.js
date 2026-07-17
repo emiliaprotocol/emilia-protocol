@@ -39,7 +39,7 @@ export default function AgentGovernancePackPage() {
     { title: 'Signoff thresholds per risk class', body: 'Configured during the pilot: each risk class maps to a signoff requirement — low-risk proceeds, higher classes require named-human attestation (dual control and Class-A device signoff ship today).' },
     { title: 'Tool-use control', body: 'Policy defines which tools an agent can invoke, under what conditions, and with what signoff requirements. Tool invocations outside policy are blocked before execution, not logged after the fact.' },
     { title: 'Principal-to-agent attribution', body: 'Every agent action is attributed to the human principal who authorized it. The attribution chain is cryptographically bound: principal authorized agent, agent requested action, named human signed off on exact parameters.' },
-    { title: 'EU AI Act / NIST AI RMF mapping', body: 'Pre-mapped controls for EU AI Act high-risk system requirements and NIST AI Risk Management Framework. EP trust enforcement satisfies human oversight, transparency, and accountability requirements across both frameworks.' },
+    { title: 'EU AI Act / NIST AI RMF mapping', body: 'Engineering crosswalks show where EMILIA evidence can support human-oversight, logging, and accountability assessments, and where separate controls remain necessary. The mappings are not compliance determinations.' },
   ];
 
   return (

@@ -3,9 +3,9 @@
 export const metadata = {
   title: 'European Digital Sovereignty for Accountable AI — EMILIA',
   description:
-    'EMILIA turns EU AI Act human oversight from a policy promise into an offline-verifiable '
-    + 'authorization receipt: a named human approved the exact AI action, checkable by European '
-    + 'institutions without trusting a foreign cloud or the operator that produced the log.',
+    'EMILIA provides offline-verifiable action-authorization evidence relevant to EU AI Act '
+    + 'human-oversight and logging assessments, checkable by European institutions against '
+    + 'their own pinned trust inputs.',
   alternates: { canonical: '/sovereignty' },
   openGraph: {
     title: 'European Digital Sovereignty for Accountable AI',

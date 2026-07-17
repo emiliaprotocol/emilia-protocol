@@ -1,0 +1,116 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Declaration to Proof — an exact-use human-consent reference</title>
+<style>
+  @page { size: letter; margin: 0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: #171717; background: #fff; font-family: Georgia, "Times New Roman", serif; font-size: 9.2pt; line-height: 1.38; }
+  .page { width: 8.5in; height: 11in; overflow: hidden; position: relative; }
+  header { padding: .52in .62in .38in; background: #171717; color: #fff; border-top: 8px solid #B08D35; }
+  .kicker, h2, th, .tag, .step-no, footer { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+  .kicker { font-size: 7.2pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #E7D6A1; }
+  h1 { margin: 10pt 0 7pt; font-size: 23pt; line-height: 1.04; font-weight: 500; }
+  header p { margin: 0; max-width: 52em; color: #E7E5E4; font-size: 10pt; }
+  main { padding: .28in .62in .28in; }
+  h2 { margin: 0 0 6pt; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #8A6D24; }
+  p { margin: 0; }
+  .composition { display: grid; grid-template-columns: 1fr 44px 1fr; gap: 10pt; align-items: stretch; margin-bottom: 14pt; }
+  .box { border: 1px solid #D6D3D1; padding: 11pt 12pt; }
+  .box strong { display: block; font: 700 10.5pt -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin-bottom: 4pt; }
+  .join { display: flex; align-items: center; justify-content: center; font: 700 17pt -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color: #B08D35; }
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7pt; margin: 6pt 0 14pt; }
+  .step { border-top: 3px solid #B08D35; background: #F7F6F3; padding: 9pt 9pt 8pt; min-height: 97pt; }
+  .step-no { color: #8A6D24; font-size: 7pt; font-weight: 800; }
+  .step b { display: block; margin: 5pt 0 3pt; font: 700 8.8pt -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+  .step p { font-size: 7.8pt; line-height: 1.32; color: #44403C; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4pt; }
+  th { text-align: left; padding: 4pt 7pt; background: #171717; color: #fff; font-size: 7pt; letter-spacing: .08em; text-transform: uppercase; }
+  td { padding: 4.5pt 7pt; border-bottom: 1px solid #E7E5E4; vertical-align: top; font-size: 8pt; }
+  td:nth-child(2) { width: 16%; font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-weight: 700; }
+  .allow { color: #166534; }
+  .refuse { color: #991B1B; }
+  .bottom { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14pt; margin-top: 13pt; }
+  .scope { border-left: 3px solid #B08D35; padding-left: 11pt; }
+  .scope ul { margin: 3pt 0 0; padding-left: 14pt; }
+  .scope li { margin-bottom: 2pt; font-size: 7.9pt; color: #44403C; }
+  .run { background: #171717; color: #F5F5F4; padding: 11pt 12pt; }
+  .run h2 { color: #E7D6A1; }
+  code { font: 7.5pt ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  .run p { margin-top: 6pt; color: #D6D3D1; font-size: 7.6pt; }
+  footer { position: absolute; left: .62in; right: .62in; bottom: .28in; display: flex; justify-content: space-between; gap: 18pt; padding-top: 7pt; border-top: 1px solid #D6D3D1; color: #57534E; font-size: 7pt; line-height: 1.35; }
+  footer .right { text-align: right; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="kicker">Independent compatibility reference · July 2026</div>
+    <h1>A declaration states the rule.<br>A receipt proves one exact use.</h1>
+    <p>A runnable composition of an externally evaluated RSL-MEDIA declaration, a bounded consent grant,
+    a user-verified exact-action ceremony, and an executor that consumes the authorization once.</p>
+  </header>
+  <main>
+    <section class="composition">
+      <div class="box">
+        <strong>RSL-MEDIA declaration</strong>
+        Standing terms, discovery, stable source identifier, purpose and territory conditions, and a path
+        to obtain clearance. An external evaluator determines the operative declaration.
+      </div>
+      <div class="join">+</div>
+      <div class="box">
+        <strong>EMILIA exact-use evidence</strong>
+        A signed, time-bounded grant plus a WebAuthn authorization over the material use fields. The
+        executor rechecks current declared terms, verifies its pinned keys, and admits at most one action digest.
+      </div>
+    </section>
+
+    <h2>From standing declaration to one-time execution</h2>
+    <section class="flow">
+      <div class="step"><span class="step-no">01</span><b>Discover</b><p>Resolve the declaration, ISRD, source digest, purpose, territory, and clearance endpoint.</p></div>
+      <div class="step"><span class="step-no">02</span><b>Grant</b><p>Sign the exact asset, use, purpose, territory, campaign, declaration digest, and expiry.</p></div>
+      <div class="step"><span class="step-no">03</span><b>Authorize</b><p>An enrolled approver completes user-verified WebAuthn over those material action fields.</p></div>
+      <div class="step"><span class="step-no">04</span><b>Consume</b><p>The executor rechecks the current declaration, reserves the action digest, performs once, and refuses mutation or replay.</p></div>
+    </section>
+
+    <h2>Executable acceptance contract</h2>
+    <table>
+      <tr><th>Presented condition</th><th>Result</th><th>Reason</th></tr>
+      <tr><td>Exact declared use with all pinned evidence</td><td class="allow">EXECUTE</td><td>All constraints cover the signed action; one reservation wins.</td></tr>
+      <tr><td>Same action replayed or independently re-signed</td><td class="refuse">REFUSE</td><td>The action digest is already reserved or consumed.</td></tr>
+      <tr><td>Campaign, territory, purpose, or asset changed</td><td class="refuse">REFUSE</td><td>The signed grant no longer covers the action.</td></tr>
+      <tr><td>Action changed after human authorization</td><td class="refuse">REFUSE</td><td>The WebAuthn challenge and action digest no longer match.</td></tr>
+      <tr><td>Declaration is prohibited, absent, or stale</td><td class="refuse">REFUSE</td><td>No permissive fallback is inferred.</td></tr>
+    </table>
+
+    <section class="bottom">
+      <div class="scope">
+        <h2>Exact boundary</h2>
+        <ul>
+          <li>Does not establish rights ownership or legal permission.</li>
+          <li>Does not prove the approver understood the display.</li>
+          <li>Does not assess output safety, accuracy, or quality.</li>
+          <li>Does not claim RSL-MEDIA conformance or endorsement.</li>
+          <li>Depends on a trusted external evaluator for the current declaration view.</li>
+          <li>RSL-MEDIA 1.0 is a draft that states it must not be used in production.</li>
+        </ul>
+      </div>
+      <div class="run">
+        <h2>Re-perform it offline</h2>
+        <code>node examples/rsl-media-clearance/demo.mjs</code>
+        <p>One exact use executes. Replay, an independently re-signed duplicate, action mutation,
+        changed terms, missing declaration, and stale declaration all refuse.</p>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div>Independent work by EMILIA Protocol. No partnership, endorsement, standards-body adoption,
+    legal conclusion, or production-readiness claim is implied.</div>
+    <div class="right">emiliaprotocol.ai/eu/declaration-to-proof<br>team@emiliaprotocol.ai</div>
+  </footer>
+</div>
+</body>
+</html>

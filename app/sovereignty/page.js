@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // EMILIA · European Digital Sovereignty — a public-sector / policymaker landing page.
-// Frames the authorization-receipt layer as EU AI Act Art. 14 made verifiable, held
-// in Europe, without dependence on foreign hyperscalers.
+// Frames the authorization-receipt layer as one inspectable Article 14 input that
+// European institutions can verify under trust inputs they control.
 
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
@@ -9,27 +9,27 @@ import { styles, cta, color, font } from '@/lib/tokens';
 
 const PILLARS = [
   {
-    who: 'EU AI Act Article 14, made verifiable',
-    val: 'The Act requires meaningful human oversight of high-risk AI but specifies no artifact to prove it happened. EMILIA is that artifact — a portable, tamper-evident receipt a regulator or court can check independently. It maps to Article 12 (logging) and composes with eIDAS 2.0 / the EU Digital Identity Wallet for the human signature.',
+    who: 'Article 14 evidence that can be checked',
+    val: 'The Act requires effective human oversight but does not prescribe one universal receipt format. EMILIA provides a portable, tamper-evident authorization artifact relevant to an Article 14 assessment and Article 12 logging. It can compose with European identity and trust services without replacing them.',
   },
   {
-    who: 'Sovereignty by construction',
-    val: 'Verification needs no trust in the operator and no foreign cloud. The proof is self-contained and checkable offline, on European soil, by European institutions. The software is open (Apache-2.0) and self-hostable — no dependence on, and no lock-in to, non-European hyperscalers. Europe holds the proof.',
+    who: 'Institution-held verification',
+    val: 'A European institution can verify the artifact offline using its own pinned keys and policy, without calling the operator or EMILIA at verification time. The software is open (Apache-2.0) and self-hostable; the institution retains both the evidence and its trust configuration.',
   },
   {
     who: 'A guarantee for citizens',
-    val: 'When automation touches a citizen’s benefits, records, money, or rights, EMILIA guarantees a named, accountable human stands behind that decision — accountability against opaque, unaccountable machine action. A public-interest guarantee, not a vendor feature.',
+    val: 'When automation touches a citizen’s benefits, records, money, or rights, a deployer can require action-bound authorization from an enrolled person before execution. The receipt makes that authorization inspectable; it does not guarantee the decision was correct, lawful, or adequately overseen.',
   },
   {
-    who: 'Lead the standard, don’t import it',
-    val: 'EMILIA is being contributed through open IETF Internet-Drafts, with running code and conformance tests. Europe can be an early author of the accountability standard the world will need — rather than adopting one written elsewhere.',
+    who: 'Shape the open specification',
+    val: 'EMILIA is published through individual IETF Internet-Drafts, running code, and public conformance vectors. European institutions can test and shape the technical property without depending on EMILIA as a hosted vendor.',
   },
 ];
 
 const STEPS = [
-  { n: '1', title: 'Authorize', body: 'Before an AI agent takes an irreversible action — moving funds, changing an official record, cutting a service — a named, accountable human (or a quorum) signs that exact action on their own device.' },
+  { n: '1', title: 'Authorize', body: 'Before an AI agent takes a consequential action — moving funds, changing an official record, cutting a service — an enrolled human (or a policy-required quorum) signs that exact action with an approved authenticator.' },
   { n: '2', title: 'Gate', body: 'The action is refused unless a valid, in-scope authorization is present. No receipt, no execution — fail-closed by design, with self-approval rejected (separation of duties).' },
-  { n: '3', title: 'Verify', body: 'Anyone — a regulator, an auditor, a court — can verify offline who approved what, without trusting the AI, the operator, or EMILIA itself. The proof travels with the record.' },
+  { n: '3', title: 'Verify', body: 'A regulator, auditor, or court can verify the signature and action binding offline against pinned keys, without the issuing service or EMILIA. The strength of the human attribution still depends on enrolment and key governance.' },
 ];
 
 export default function SovereigntyPage() {
@@ -46,12 +46,12 @@ export default function SovereigntyPage() {
             </h1>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
               AI agents are starting to take irreversible actions — moving money, changing official
-              records, cutting off services. EMILIA is the open layer that proves a named, accountable
-              human authorized each one, checkable by any European institution, offline, without
-              trusting the operator that produced it.
+              records, cutting off services. EMILIA is an open evidence layer for showing that an
+              enrolled approver key authorized an exact action, checkable offline by a European
+              institution without depending on the operator&apos;s live service.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 14, fontSize: 17, color: color.t1 }}>
-              It turns EU AI Act Article 14 from a principle into a verifiable artifact.{' '}
+              It gives an Article 14 assessment a verifiable action-level artifact.{' '}
               <span style={{ color: color.gold }}>Europe holds the proof, not Big Tech.</span>
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
@@ -67,14 +67,14 @@ export default function SovereigntyPage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>THE GAP</div>
             <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 820 }}>
-              Europe mandates human oversight of AI. Nothing yet proves it happened.
+              Human oversight needs evidence stronger than &quot;trust our dashboard.&quot;
             </h2>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 16 }}>
               When an autonomous system acts, the record that a named human authorized{' '}
               <em>that exact</em> action — at the right scope, currently, under the right authority —
               is today a log the operator keeps and could alter, backfill, or rubber-stamp. That
               operator is often a non-European hyperscaler. <span style={{ color: color.t1 }}>The
-              accountability exists on paper, but not as an artifact anyone independent can check.</span>
+              accountability may exist in process, but remain difficult for an independent party to check.</span>
             </p>
           </div>
         </section>
@@ -119,12 +119,13 @@ export default function SovereigntyPage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>HONEST POSTURE</div>
             <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>
-              EMILIA proves authorization — not that a decision was wise or lawful.
+              EMILIA verifies authorization evidence — not legal or human adequacy.
             </h2>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 16 }}>
-              It is a necessary, not sufficient, condition for trustworthy AI — the verifiable
-              foundation other safeguards build on. And EMILIA does not charge public institutions for
-              the core protocol: the goal is adoption of the standard, in the public interest.
+              A valid receipt establishes that a pinned key signed an exact action under a stated
+              context. It does not establish that the key was properly enrolled, the signer understood
+              the display, the action was lawful, or the full oversight design was proportionate.
+              The core formats, verifier, and reference implementation are open and self-hostable.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="mailto:team@emiliaprotocol.ai" style={cta.primary}>Request a briefing</a>

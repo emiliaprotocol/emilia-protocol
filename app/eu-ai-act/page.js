@@ -1,6 +1,6 @@
 /**
  * EU AI Act landing page.
- * SEO + procurement-officer surface for EU AI Act high-risk readiness (Annex III deferred to Dec 2, 2027 by the Digital Omnibus).
+ * SEO + procurement-officer surface for EU AI Act high-risk readiness.
  *
  * Maps EP's pre-execution receipt architecture directly to Articles 9–15
  * (the Annex III high-risk obligations, now due Dec 2, 2027). Includes a live
@@ -19,12 +19,10 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 const EASE = [0.23, 1, 0.32, 1];
 
-// Annex III high-risk obligations: originally 2026-08-02 (Article 113), then
-// provisionally deferred to 2027-12-02 by the Digital Omnibus agreement
-// (Council/Parliament/Commission, 2026-05-07; formal adoption pending, plenary
-// expected June 2026). We count down to the deferred date and say so — the
-// obligations are unchanged, only the clock moved. ISO 8601 Z anchor so the
-// countdown is identical for every visitor regardless of local time zone.
+// The Commission's current implementation timeline, following the May 7, 2026
+// political agreement on the AI omnibus, applies Annex III high-risk rules from
+// 2027-12-02 and product-integrated high-risk rules from 2028-08-02. ISO 8601 Z
+// anchor keeps the countdown identical across visitor time zones.
 const DEADLINE = new Date('2027-12-02T00:00:00Z');
 
 const reveal = (delay = 0) => ({
@@ -39,45 +37,45 @@ const ARTICLES = [
     num: 'Art. 9',
     title: 'Risk management system',
     burden: 'Continuous risk identification, evaluation, and mitigation across the AI lifecycle.',
-    ep: 'Every receipt carries the policy version that authorized it. Receipts and entity trust profiles are queryable through the Trust Explorer.',
+    ep: 'Supporting evidence: the Gate records which versioned action rule was evaluated and which failing predicate caused a refusal. It does not identify every AI-system risk or replace the deployer’s risk-management process.',
   },
   {
     num: 'Art. 10',
     title: 'Data governance and quality',
     burden: 'Training and operational data must be relevant, representative, and free of errors.',
-    ep: 'Action context is bound to receipt at sign time; tampering invalidates the cryptographic chain.',
+    ep: 'Outside the receipt layer’s scope. EMILIA can bind a digest of a referenced dataset or assessment to an action, but it does not establish data quality, representativeness, or freedom from bias.',
   },
   {
     num: 'Art. 11',
     title: 'Technical documentation',
     burden: 'Documentation kept current and available to authorities on request.',
-    ep: `TLA+ spec, Alloy facts, and ${proofStats.tests.total.toLocaleString('en-US')} automated test cases are public. Apache 2.0 — auditors read source, not vendor PDFs.`,
+    ep: `Supporting evidence: the reference implementation, security claims, model-checking scope, and ${proofStats.tests.total.toLocaleString('en-US')} automated tests are public and versioned. A deployment still needs system-specific technical documentation.`,
   },
   {
     num: 'Art. 12',
     title: 'Automatic logging',
     burden: 'Logs must enable post-incident traceability for the full operational life of the system.',
-    ep: 'Pre-execution receipt is the log. Cryptographically signed, replay-proof, queryable by actor/policy/time.',
+    ep: 'Direct evidence fit: authorization and refusal events can be retained as signed, exact-action records, with a tamper-evident evidence log. Retention, completeness, and routing every relevant event through the Gate remain deployment responsibilities.',
     primary: true,
   },
   {
     num: 'Art. 13',
     title: 'Transparency to users',
     burden: 'Users must be able to understand and use system outputs.',
-    ep: 'Every receipt is human-inspectable JSON with the policy clause that fired. No black-box decisions.',
+    ep: 'Mostly outside scope. A receipt can identify the action, policy digest, and decision evidence, but it does not make an AI system’s output understandable or satisfy user-instruction and disclosure duties.',
   },
   {
     num: 'Art. 14',
     title: 'Human oversight',
     burden: 'Natural-person oversight to prevent or minimize risks during operation.',
-    ep: 'The Signoff phase is mandatory for high-risk actions. Cryptographically bound to a real human identity at decision time.',
+    ep: 'Direct evidence fit: a deployment can require a pinned, named approver’s user-verified signature over the exact action before execution, retain typed refusals, and enforce M-of-N approval where its own policy requires it. This evidences one oversight mechanism; it is not the whole Article 14 assessment.',
     primary: true,
   },
   {
     num: 'Art. 15',
     title: 'Accuracy, robustness, cybersecurity',
     burden: 'System must be resilient to errors, faults, and unauthorized third-party alteration.',
-    ep: '26 TLA+ theorems and 35 Alloy facts prove the ceremony logic cannot be replayed or partially executed, given signature soundness.',
+    ep: 'Supporting evidence: protocol invariants, adversarial vectors, and fault-schedule tests cover named authorization and replay properties under stated assumptions. They do not prove the AI system’s accuracy, overall robustness, or cybersecurity.',
   },
 ];
 
@@ -116,12 +114,18 @@ const PARALLEL_FORCING_FUNCTIONS = [
 ];
 
 function useCountdown(target) {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState(null);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const tick = () => setNow(new Date());
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+
+  if (now === null) {
+    return { days: '--', hours: '--', minutes: '--', seconds: '--', passed: false, ready: false };
+  }
 
   const diff = Math.max(0, target.getTime() - now.getTime());
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -129,7 +133,7 @@ function useCountdown(target) {
   const minutes = Math.floor((diff / (1000 * 60)) % 60);
   const seconds = Math.floor((diff / 1000) % 60);
 
-  return { days, hours, minutes, seconds, passed: diff === 0 };
+  return { days, hours, minutes, seconds, passed: diff === 0, ready: true };
 }
 
 function CountdownBlock({ value, label }) {
@@ -165,7 +169,7 @@ function CountdownBlock({ value, label }) {
 }
 
 export default function EuAiActPage() {
-  const { days, hours, minutes, seconds, passed } = useCountdown(DEADLINE);
+  const { days, hours, minutes, seconds, passed, ready } = useCountdown(DEADLINE);
 
   return (
     <div style={styles.page}>
@@ -179,18 +183,17 @@ export default function EuAiActPage() {
           transition={{ duration: 0.6, ease: EASE }}
         >
           <div style={{ ...styles.eyebrow, color: color.gold }}>
-            EU AI Act · Annex III high-risk · provisionally deferred to Dec 2, 2027 (Digital Omnibus, May 7, 2026)
+            EU AI Act · Annex III high-risk rules · 2 December 2027
           </div>
           <h1 style={styles.h1Large}>
-            The deadline moved.<br />The obligations didn&apos;t.<br />High-risk AI still needs a receipt.
+            The timetable moved.<br />Evidence engineering still takes time.<br />Make human oversight inspectable.
           </h1>
           <p style={{ ...styles.body, maxWidth: 580, fontSize: 18, color: color.t2 }}>
-            The Digital Omnibus agreement (May 7, 2026, formal adoption pending) defers stand-alone
-            Annex III high-risk obligations from August 2, 2026 to <strong>December 2, 2027</strong>.
-            Everything the law requires is unchanged: logging, human oversight, transparency,
-            traceability — with penalties up to <strong>€35M or 7% of global turnover</strong>.
-            The extension is time to build the evidence layer properly instead of in a panic.
-            EMILIA Protocol is the formally verified, open-standard way to do that.
+            The Commission&apos;s current implementation timeline lists the rules for Annex III
+            high-risk systems from <strong>2 December 2027</strong>; product-integrated high-risk
+            systems follow on 2 August 2028. Use that time to build inspectable evidence for logging
+            and human oversight. EMILIA is open specification work and an Apache-2.0 reference
+            implementation for the action-authorization slice — not a compliance determination.
           </p>
         </motion.div>
 
@@ -212,8 +215,10 @@ export default function EuAiActPage() {
             flexWrap: 'wrap',
           }}
           aria-label={passed
-            ? 'EU AI Act Article 113 enforcement has begun.'
-            : `Countdown: ${days} days, ${hours} hours, ${minutes} minutes until EU AI Act Article 113 enforcement.`}
+            ? 'The current Commission timeline date for Annex III high-risk rules has been reached; verify the operative legal timeline.'
+            : ready
+              ? `Countdown: ${days} days, ${hours} hours, ${minutes} minutes until the Commission timeline for Annex III high-risk rules.`
+              : 'Loading the countdown to the current Commission timeline for Annex III high-risk rules.'}
         >
           {passed ? (
             <div style={{ textAlign: 'center', width: '100%' }}>
@@ -226,7 +231,7 @@ export default function EuAiActPage() {
                   letterSpacing: 1,
                 }}
               >
-                ENFORCEMENT ACTIVE
+                TIMELINE DATE REACHED
               </div>
               <div
                 style={{
@@ -237,7 +242,7 @@ export default function EuAiActPage() {
                   letterSpacing: 1,
                 }}
               >
-                Annex III high-risk obligations in force as of 2027-12-02 00:00 UTC
+                Verify the operative legal timeline before relying on this date
               </div>
             </div>
           ) : (
@@ -249,6 +254,18 @@ export default function EuAiActPage() {
             </>
           )}
         </motion.div>
+        <p style={{ ...styles.body, marginTop: 12, fontSize: 12.5, color: color.t3 }}>
+          Timeline source:{' '}
+          <a
+            href="https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: color.gold }}
+          >
+            European Commission AI Act implementation page
+          </a>
+          . Confirm the operative law and your role with qualified counsel.
+        </p>
 
         {/* CTAs */}
         <motion.div
@@ -273,10 +290,11 @@ export default function EuAiActPage() {
             <div style={styles.eyebrow}>Scope</div>
             <h2 style={styles.h2}>What &quot;high-risk&quot; covers</h2>
             <p style={styles.body}>
-              The EU AI Act defines high-risk systems by domain. If your AI agent
-              touches any of these, Article 113 obligations apply on day one of
-              enforcement (Dec 2, 2027) — regardless of whether the agent is
-              autonomous or human-assisted.
+              The EU AI Act defines high-risk systems by intended use and regulatory
+              category, not merely by whether software &quot;touches&quot; a domain. The
+              2 December 2027 date applies to Annex III systems; product-integrated
+              high-risk systems have a 2 August 2028 timeline. Confirm classification
+              and role-specific duties with qualified counsel.
             </p>
           </motion.div>
 
@@ -316,11 +334,12 @@ export default function EuAiActPage() {
       <section style={styles.section}>
         <motion.div {...reveal()}>
           <div style={styles.eyebrow}>The mapping</div>
-          <h2 style={styles.h2}>How EP satisfies Articles 9 through 15</h2>
+          <h2 style={styles.h2}>Where EMILIA contributes — and where it does not</h2>
           <p style={styles.body}>
-            Each obligation maps to a specific phase of the EMILIA ceremony.
-            The two articles most often cited in early enforcement guidance —
-            Art. 12 (logging) and Art. 14 (human oversight) — are highlighted.
+            The strongest technical fit is narrow: action-level evidence for logging
+            and human oversight. Other duties need separate controls. Art. 12 and
+            Art. 14 are highlighted because the receipt and Gate directly produce
+            evidence relevant to those assessments.
           </p>
         </motion.div>
 
@@ -403,7 +422,7 @@ export default function EuAiActPage() {
                   lineHeight: 1.55,
                 }}
               >
-                <strong style={{ color: color.t1 }}>How EP satisfies it: </strong>
+                <strong style={{ color: color.t1 }}>EMILIA contribution: </strong>
                 {art.ep}
               </div>
             </motion.div>
@@ -415,17 +434,18 @@ export default function EuAiActPage() {
       <section style={{ ...styles.section, paddingTop: 56, paddingBottom: 56 }}>
         <motion.div {...reveal()}>
           <div style={{ ...styles.eyebrow, color: color.gold }}>Article 14 Human-Oversight Kit</div>
-          <h2 style={{ ...styles.h1, fontSize: 'clamp(26px, 3.4vw, 38px)', marginBottom: 14 }}>Your 30-day path to human oversight.</h2>
+          <h2 style={{ ...styles.h1, fontSize: 'clamp(26px, 3.4vw, 38px)', marginBottom: 14 }}>A 30-day path to an inspectable authorization control.</h2>
           <p style={{ ...styles.body, maxWidth: 600 }}>
-            Article 14 asks that a human can oversee, intervene, and stop a high-risk system. EMILIA is the
-            technical implementation of that slice — and it&apos;s mostly packaging what you already have.
+            Article 14 asks that a human can oversee, intervene, and stop a high-risk system. EMILIA provides
+            one enforceable evidence mechanism for that program; it does not determine whether the complete
+            oversight design is appropriate or proportionate.
           </p>
           <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
             {[
               ['Week 1 — Inventory', 'List every irreversible action your system can take. Each becomes a canonical action.'],
-              ['Week 2 — Observe', 'Wrap them in Emilia Eye mode — log "what would have been blocked" with zero enforcement. No risk.'],
-              ['Week 3 — Enforce + sign-off', 'Turn on signoff for the high-risk classes; route approvals to your humans. Every approval mints a receipt.'],
-              ['Week 4 — Evidence', 'Export the receipt bundle — an auditor verifies it offline, no need to trust EP or you.'],
+              ['Week 2 — Observe', 'Run the Gate in observation mode and compare its proposed refusals with the deployment’s approved risk controls. Observation is not enforcement.'],
+              ['Week 3 — Enforce + sign-off', 'Turn on receipt requirements for approved action classes; route exact actions to enrolled human approvers.'],
+              ['Week 4 — Evidence', 'Export receipts and the evidence log so an assessor can verify integrity and authorization bindings independently.'],
             ].map(([t, d], i) => (
               <div key={t} style={{ display: 'grid', gridTemplateColumns: '40px 1fr', gap: 18, alignItems: 'start', background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '18px 20px' }}>
                 <div style={{ fontFamily: font.mono, fontWeight: 700, fontSize: 16, color: color.gold }}>{`0${i + 1}`}</div>
@@ -442,6 +462,9 @@ export default function EuAiActPage() {
           </p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
             {[
+              ['/briefs/emilia-declaration-to-proof.pdf', 'Declaration to proof (PDF)'],
+              ['/briefs/emilia-jtc21-human-oversight-contribution.pdf', 'JTC21 technical input (PDF)'],
+              ['/briefs/emilia-article14-evidence-checklist.pdf', 'Article 14 evidence checklist (PDF)'],
               ['/compliance/emilia-eu-ai-act-financial-services.pdf', 'Financial services mapping (PDF)'],
               ['/compliance/emilia-eu-ai-act-government.pdf', 'Government programs mapping (PDF)'],
               ['/compliance/emilia-eu-ai-act-healthcare.pdf', 'Healthcare mapping (PDF)'],
@@ -459,7 +482,7 @@ export default function EuAiActPage() {
         <div style={styles.section}>
           <motion.div {...reveal()}>
             <div style={styles.eyebrow}>Penalties</div>
-            <h2 style={styles.h2}>What non-compliance costs</h2>
+            <h2 style={styles.h2}>Why evidence quality matters</h2>
             <div
               style={{
                 display: 'grid',
@@ -488,7 +511,7 @@ export default function EuAiActPage() {
                   €35M
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginTop: 8 }}>
-                  Maximum fine — flat ceiling
+                  AI Act&apos;s highest fine tier — not the default for every infringement
                 </div>
               </div>
               <div
@@ -511,7 +534,7 @@ export default function EuAiActPage() {
                   7%
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginTop: 8 }}>
-                  Of global annual turnover — whichever is higher
+                  Highest percentage tier; applicable fine depends on the infringement
                 </div>
               </div>
               <div
@@ -534,7 +557,7 @@ export default function EuAiActPage() {
                   Dec 2, 2027
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginTop: 8 }}>
-                  Day 1 — no grace period for high-risk systems
+                  Current application date for Annex III high-risk rules
                 </div>
               </div>
             </div>
@@ -548,10 +571,10 @@ export default function EuAiActPage() {
           <div style={styles.eyebrow}>Beyond Brussels</div>
           <h2 style={styles.h2}>Parallel forcing functions</h2>
           <p style={styles.body}>
-            Even if your AI never touches an EU user, the US Executive Order and
-            three active state laws create the same pre-execution governance
-            requirement on a similar timeline. EP&apos;s NIST AI RMF mapping
-            covers the federal side directly.
+            Outside the EU, federal procurement policy and state measures create
+            related governance pressure, but they do not impose one identical
+            pre-execution requirement. EP publishes a separate NIST AI RMF mapping
+            so each deployment can assess the relevant framework on its own terms.
           </p>
         </motion.div>
 
@@ -611,11 +634,11 @@ export default function EuAiActPage() {
           <motion.div {...reveal()}>
             <div style={styles.eyebrow}>Next step</div>
             <h2 style={{ ...styles.h2, fontSize: 32, marginBottom: 16 }}>
-              Eighteen months is enough — if you start this week.
+              Evidence readiness begins before the deadline.
             </h2>
             <p style={{ ...styles.body, maxWidth: 540, margin: '0 auto 28px' }}>
-              We integrate in under a day. Apache 2.0, no vendor lock-in.
-              Reference verifiers deployed publicly; first pilot slots open.
+              Start with one consequential action and one evidence question.
+              Apache 2.0, self-hostable, with public verification code.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <a href="/contact" className="ep-cta" style={cta.primary}>

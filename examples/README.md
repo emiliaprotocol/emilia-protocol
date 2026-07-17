@@ -13,6 +13,7 @@ Each example runs offline (a local policy stub), so you see all three outcomes i
 | xAI Grok — **live** | [`grok-guard.mjs`](grok-guard.mjs) | `XAI_API_KEY=… node examples/grok-guard.mjs` |
 | Multi-handshake quorum (protocol) | [`multi-handshake/`](multi-handshake/) | `node examples/multi-handshake/compose-and-verify.mjs` |
 | Model-to-Matter frontier-science clearance | [`model-to-matter/`](model-to-matter/) | `node examples/model-to-matter/demo.mjs` |
+| RSL Media declaration-to-proof compatibility flow | [`rsl-media-clearance/`](rsl-media-clearance/) | `node examples/rsl-media-clearance/demo.mjs` |
 | Google Cloud external reliance lab | [`google-cloud-reliance/`](google-cloud-reliance/) | `node examples/google-cloud-reliance/demo.mjs` |
 
 Shared Python helper: [`emilia_guard.py`](emilia_guard.py) — `guard_action()` and the `guard`
@@ -28,9 +29,10 @@ Grok proposing an $82k wire trips `allow_with_signoff` and blocks until a named 
 a $30 refund flows freely. Point `XAI_BASE_URL` / `XAI_MODEL` at any OpenAI-compatible API
 (OpenAI, Together, …) and the accountability layer is identical.
 
-> Scope: EMILIA's 26 TLA+ theorems / 35 Alloy facts cover the policy **engine** (no
-> self-approval, no replay, money-destination + $50k+ always gated). They do **not** verify
-> Grok. This example is honest glue around a verified core.
+> Scope: EMILIA's formal models cover named properties of the policy **engine**,
+> including self-approval and replay exclusions. Current counts and exact scope
+> live in `lib/proof-stats.json` and `PROOF_STATUS.md`. They do **not** verify Grok.
+> This example is glue around the modeled core.
 
 ### What the Python guard (`grok_guard.py`) verifies — and what it does not
 

@@ -1,0 +1,141 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Verifiable Evidence for Human-Oversight Events — technical input to JTC 21 WG4</title>
+<style>
+  @page { size: letter; margin: 0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: #171717; background: #fff; font-family: Georgia, "Times New Roman", serif; font-size: 9pt; line-height: 1.38; }
+  .page { width: 8.5in; height: 11in; overflow: hidden; position: relative; padding: .46in .62in .38in; border-top: 8px solid #1D4ED8; }
+  .page + .page { page-break-before: always; }
+  .kicker, h2, h3, th, footer, .meta, .callout { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+  .kicker { font-size: 7.1pt; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: #1D4ED8; }
+  h1 { margin: 9pt 0 6pt; font-size: 21pt; line-height: 1.05; font-weight: 500; }
+  .deck { margin: 0 0 10pt; color: #44403C; font-size: 10pt; max-width: 56em; }
+  .meta { display: flex; gap: 18pt; padding: 6pt 0; border-top: 1px solid #D6D3D1; border-bottom: 1px solid #D6D3D1; color: #57534E; font-size: 7.2pt; }
+  h2 { margin: 12pt 0 5pt; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #1D4ED8; }
+  h3 { margin: 0 0 3pt; font-size: 9pt; }
+  p { margin: 0 0 6pt; }
+  .callout { margin: 8pt 0 10pt; padding: 9pt 11pt; background: #EFF6FF; border-left: 3px solid #1D4ED8; font-size: 9.2pt; }
+  table { width: 100%; border-collapse: collapse; margin-top: 5pt; }
+  th { text-align: left; padding: 4pt 7pt; border-bottom: 1.5px solid #171717; color: #57534E; font-size: 7pt; letter-spacing: .08em; text-transform: uppercase; }
+  td { padding: 4.3pt 7pt; border-bottom: 1px solid #E7E5E4; vertical-align: top; font-size: 7.9pt; line-height: 1.3; }
+  td:first-child { width: 29%; font-weight: 700; }
+  code { font: 7.2pt ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14pt; }
+  .item { padding: 6pt 0; border-top: 1px solid #D6D3D1; }
+  .item p { font-size: 8pt; color: #44403C; }
+  .number { display: inline-block; min-width: 18pt; color: #1D4ED8; font-weight: 800; }
+  ul { margin: 4pt 0 0; padding-left: 15pt; }
+  li { margin-bottom: 3pt; font-size: 8pt; }
+  .boundary { background: #F5F5F4; padding: 9pt 11pt; border-left: 3px solid #57534E; }
+  .boundary p { font-size: 7.8pt; }
+  footer { position: absolute; left: .62in; right: .62in; bottom: .25in; display: grid; grid-template-columns: 1fr 1.05in; gap: 14pt; padding-top: 6pt; border-top: 1px solid #D6D3D1; color: #57534E; font-size: 7pt; line-height: 1.35; }
+  footer .right { text-align: right; }
+</style>
+</head>
+<body>
+<section class="page">
+  <div class="kicker">Technical input to CEN-CENELEC JTC 21 WG4</div>
+  <h1>Verifiable Evidence for Human-Oversight Events</h1>
+  <p class="deck">A proposed minimum interoperable event profile for prEN 18229-1 (Logging) and
+  prEN 18229-3 (Human oversight), with fail-closed conformance tests.</p>
+  <div class="meta"><span>Author: Iman Schrock, EMILIA Protocol</span><span>Date: 17 July 2026</span><span>Status: informal technical contribution</span></div>
+
+  <h2>1. The standards question</h2>
+  <p>A system can log that “human review occurred” without preserving evidence that a specific
+  eligible person authorized, declined, amended, or rejected a specific consequential action before
+  execution. Log integrity alone does not make the underlying authorization claim independently
+  reproducible.</p>
+  <div class="callout"><strong>Proposed requirement:</strong> where a deployment relies on human
+  authorization as an oversight measure, its evidence profile should let a non-participating assessor
+  reproduce the authorization result from the retained artifact and fixed trust inputs, and should
+  refuse when required evidence is missing, substituted, stale, or replayed.</div>
+
+  <h2>2. Minimum event model</h2>
+  <table>
+    <tr><th>Element</th><th>Minimum semantic requirement</th></tr>
+    <tr><td>Event and profile version</td><td>Unambiguous type and version; unknown critical semantics refuse.</td></tr>
+    <tr><td>Exact action commitment</td><td>Digest over canonical material fields, with action type and field registry/profile identified.</td></tr>
+    <tr><td>Typed human outcome</td><td>At least <code>approved</code>, <code>declined</code>, <code>amended</code>, and <code>rejected</code>. Only approval may authorize the original action; amendment/rejection point to a successor request.</td></tr>
+    <tr><td>Principal and trust reference</td><td>Signer identifier, key identifier, role, assurance profile, and relying-party-pinned trust input. An embedded key must not establish its own authority.</td></tr>
+    <tr><td>Eligibility and separation</td><td>Initiator identity, eligible approver set or authority reference, distinct-human/key requirements, and threshold where applicable.</td></tr>
+    <tr><td>Policy and presentation context</td><td>Policy/profile digest and, where claimed, a commitment to the material display. The record must not imply proof of perception.</td></tr>
+    <tr><td>Freshness and replay controls</td><td>Challenge nonce, issuance/expiry, revocation/status reference where required, and one-time consumption semantics at the executor.</td></tr>
+    <tr><td>Execution linkage</td><td>Executor record binds the observed material effect fields to the authorized action and names unknown/partial outcomes.</td></tr>
+  </table>
+
+  <h2>3. Required separation of claims</h2>
+  <p>The evidence profile should distinguish: <strong>identity</strong> (who a key represents),
+  <strong>authority</strong> (what that principal may do), <strong>policy</strong> (what the
+  deployment requires), <strong>authorization</strong> (what was approved), <strong>execution</strong>
+  (what the executor attempted or observed), and <strong>legal reliance</strong> (what conclusion an
+  assessor may draw). No artifact should establish its own trust root merely by naming one.</p>
+
+  <footer>
+    <div>Target work items verified at jtc21.eu/working-groups/: prEN 18229-1 Logging and prEN 18229-3 Human oversight.</div>
+    <div class="right">Page 1 of 2<br>team@emiliaprotocol.ai</div>
+  </footer>
+</section>
+
+<section class="page">
+  <div class="kicker">Verifiable Evidence for Human-Oversight Events</div>
+  <h1 style="font-size:18pt;">Conformance must attack the claim, not only parse the artifact.</h1>
+
+  <h2>4. Minimum negative conformance suite</h2>
+  <div class="cols">
+    <div>
+      <div class="item"><h3><span class="number">01</span>Action substitution</h3><p>Change one material action field after approval. Verification must refuse.</p></div>
+      <div class="item"><h3><span class="number">02</span>Unpinned or embedded key</h3><p>A self-supplied valid signature must not establish identity or authority.</p></div>
+      <div class="item"><h3><span class="number">03</span>Role substitution</h3><p>A policy decision, attribution record, or possession proof must not fill the human-authorization requirement.</p></div>
+      <div class="item"><h3><span class="number">04</span>Self-approval</h3><p>Where separation of duties is required, the initiator cannot satisfy an approver seat.</p></div>
+      <div class="item"><h3><span class="number">05</span>Duplicate quorum member</h3><p>One human or key must not fill multiple distinct seats.</p></div>
+    </div>
+    <div>
+      <div class="item"><h3><span class="number">06</span>Stale or revoked authority</h3><p>Expired evidence or missing required current-status input must refuse.</p></div>
+      <div class="item"><h3><span class="number">07</span>Replay and concurrency</h3><p>At most one presentation may reserve the protected effect, including concurrent delivery.</p></div>
+      <div class="item"><h3><span class="number">08</span>Policy mismatch</h3><p>A valid signature under a different policy/profile must refuse.</p></div>
+      <div class="item"><h3><span class="number">09</span>Execution mismatch</h3><p>Observed material execution fields that differ from the authorization must refuse or surface an unknown outcome.</p></div>
+      <div class="item"><h3><span class="number">10</span>Unavailable state</h3><p>Required revocation, registry, consumption, or evidence-log state being unavailable must not create a permissive fallback.</p></div>
+    </div>
+  </div>
+
+  <h2>5. Explicit non-inference requirements</h2>
+  <div class="boundary">
+    <p>A conforming artifact may establish that a pinned key signed an exact action under a stated
+    context. It must not, without separate evidence, be represented as proof that: the key was
+    correctly enrolled to a legal identity; the person understood the display or was free from
+    coercion; the person was competent; the action was lawful, wise, safe, fair, or accurate; every
+    relevant action traversed the enforcement point; or the complete oversight design satisfies
+    Regulation (EU) 2024/1689.</p>
+  </div>
+
+  <h2>6. Why include reproducibility</h2>
+  <ul>
+    <li><strong>Interoperability:</strong> a retained event remains meaningful after the original operator or vendor is unavailable.</li>
+    <li><strong>Assurance:</strong> positive and negative vectors make the claimed security property testable across implementations.</li>
+    <li><strong>Portability:</strong> the evidence can travel across provider, deployer, auditor, insurer, and market-surveillance boundaries.</li>
+    <li><strong>Scope honesty:</strong> the standard can require the artifact to expose assumptions and exclusions rather than imply them away.</li>
+  </ul>
+
+  <h2>7. Implementability evidence and requested disposition</h2>
+  <p>EMILIA Protocol provides an Apache-2.0 reference implementation, public conformance vectors,
+  action-bound authorization receipts, WebAuthn signoff, M-of-N distinct-human verification,
+  one-time consumption, execution-field binding, typed refusals, and formal models of named core
+  properties. The protocol texts are active individual IETF Internet-Drafts, not adopted standards
+  or endorsements. This contribution does not ask JTC 21 to select EMILIA.</p>
+  <div class="callout"><strong>Requested disposition:</strong> consider a mechanism-neutral minimum
+  human-oversight event profile and a negative conformance annex spanning prEN 18229-1 and
+  prEN 18229-3. EMILIA's formats and vectors are offered only as executable input showing that the
+  proposed requirements can be implemented and independently tested.</div>
+
+  <footer>
+    <div>Engineering contribution; not legal advice, a conformity assessment, or a claim of CEN-CENELEC participation or endorsement.</div>
+    <div class="right">Page 2 of 2<br>emiliaprotocol.ai</div>
+  </footer>
+</section>
+</body>
+</html>

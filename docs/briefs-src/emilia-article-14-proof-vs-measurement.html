@@ -1,0 +1,91 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proof, not measurement — EMILIA and EU AI Act Article 14</title>
+<style>
+  @page { size: letter; margin: 0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: #171717; background: #fff; font-family: Georgia, "Times New Roman", serif; font-size: 9.1pt; line-height: 1.38; }
+  .page { width: 8.5in; height: 11in; overflow: hidden; position: relative; padding: .48in .62in .34in; border-top: 8px solid #B08D35; }
+  .kicker, h2, th, footer, .status { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+  .kicker { font-size: 7.2pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #8A6D24; }
+  h1 { margin: 10pt 0 5pt; font-size: 24pt; line-height: 1.03; font-weight: 500; }
+  .lead { margin: 0 0 12pt; font-size: 11pt; font-style: italic; color: #44403C; }
+  h2 { margin: 12pt 0 5pt; padding-top: 6pt; border-top: 1px solid #D6D3D1; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #8A6D24; }
+  p { margin: 0 0 6pt; }
+  .question { border-left: 3px solid #B08D35; padding: 4pt 0 4pt 12pt; margin: 8pt 0; font-size: 12pt; line-height: 1.25; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6pt; }
+  th { text-align: left; font-size: 7pt; letter-spacing: .08em; text-transform: uppercase; color: #57534E; border-bottom: 1.5px solid #171717; padding: 4pt 7pt; }
+  td { padding: 4.5pt 7pt; border-bottom: 1px solid #E7E5E4; vertical-align: top; font-size: 8pt; }
+  td:first-child { width: 21%; font-weight: 700; }
+  td:nth-child(2), td:nth-child(3) { width: 39.5%; }
+  .proof { color: #166534; font-weight: 700; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 15pt; margin-top: 10pt; }
+  .col { border-top: 3px solid #B08D35; padding-top: 7pt; }
+  .col b { display: block; font: 700 9pt -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; margin-bottom: 3pt; }
+  .col p { font-size: 8pt; color: #44403C; }
+  .honesty { margin-top: 11pt; padding: 10pt 12pt; background: #F5F5F4; border-left: 3px solid #57534E; }
+  .honesty strong { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+  .honesty p { font-size: 8pt; margin: 0; }
+  footer { position: absolute; left: .62in; right: .62in; bottom: .26in; display: flex; justify-content: space-between; gap: 18pt; padding-top: 7pt; border-top: 1px solid #D6D3D1; color: #57534E; font-size: 7pt; line-height: 1.35; }
+  footer .right { text-align: right; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="kicker">EU AI Act · Article 14 · Annex III timeline: 2 December 2027</div>
+  <h1>Proof, not measurement.</h1>
+  <p class="lead">A score describes an oversight process. A receipt establishes a narrower authorization fact.</p>
+
+  <h2>The assessment question</h2>
+  <p>Article 14 addresses effective human oversight, including the ability to disregard, override, reverse,
+  intervene, or stop where appropriate. EMILIA does not provide the whole oversight program. It gives one
+  configured control a durable answer to this narrower question:</p>
+  <div class="question">Did a relying-party-pinned approver key authorize this exact consequential action,
+  under the verified context, before the executor acted?</div>
+
+  <h2>The bright line</h2>
+  <table>
+    <tr><th>Property</th><th>Score, dashboard, or operator log</th><th>Authorization receipt</th></tr>
+    <tr><td>Artifact</td><td>A number or narrative about review</td><td class="proof">Signed evidence of the authorization event</td></tr>
+    <tr><td>Binding</td><td>Process or session-level indication</td><td class="proof">Exact material action fields and policy digest</td></tr>
+    <tr><td>Trust root</td><td>Usually the operator's database or service</td><td class="proof">Keys and policy inputs pinned by the relying party</td></tr>
+    <tr><td>Verification</td><td>Inspect the issuer's report</td><td class="proof">Recompute offline with published code and formats</td></tr>
+    <tr><td>Enforcement</td><td>Often advisory or post-hoc</td><td class="proof">Executor can refuse before effect</td></tr>
+    <tr><td>Tamper response</td><td>Depends on logging controls</td><td class="proof">Changed signed bytes fail verification</td></tr>
+    <tr><td>Replay</td><td>Usually outside the score</td><td class="proof">Atomic consumption can admit at most one use</td></tr>
+  </table>
+
+  <section class="cols">
+    <div class="col">
+      <b>What the evidence can establish</b>
+      <p>Signature and exact-action binding; pinned approver and policy inputs; WebAuthn RP ID, user-presence
+      and user-verification flags in Class-A mode; distinct-signoff quorum where required; one-time consumption
+      at the executor; tamper-evident retained decision records.</p>
+    </div>
+    <div class="col">
+      <b>What must remain separate</b>
+      <p>Legal identity proofing, competence, comprehension, freedom from coercion, automation-bias controls,
+      safe-state design, action correctness, complete routing through the Gate, retention adequacy, and the
+      overall Article 14 assessment.</p>
+    </div>
+  </section>
+
+  <div class="honesty">
+    <p><strong>Honest status.</strong> The formats are described in active individual IETF Internet-Drafts,
+    not adopted IETF standards. JavaScript, Python, and Go are same-team ports used for consistency checks.
+    Formal models cover named core properties, not the entire deployment. This evidence can support an
+    assessment; it cannot certify compliance.</p>
+  </div>
+
+  <footer>
+    <div>Commission timeline source: digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai<br>
+    Engineering and standards material; not legal advice or a compliance determination.</div>
+    <div class="right">emiliaprotocol.ai/proof-vs-measurement<br>team@emiliaprotocol.ai</div>
+  </footer>
+</div>
+</body>
+</html>

@@ -81,7 +81,7 @@ export default function CompareOAuthPage() {
           <li>An AI agent executes consequential actions on behalf of a human (payments, infrastructure changes, data exports, account modifications).</li>
           <li>The action is irreversible or high-cost to undo (wire transfers, benefit disbursements, production deploys, permission escalations).</li>
           <li>You need cryptographic evidence — beyond an audit log entry — that a named human approved this exact action with these exact parameters.</li>
-          <li>Compliance frameworks (NIST AI RMF, EU AI Act, SOX) require pre-execution authorization controls, not post-hoc detection.</li>
+          <li>Your deployment needs pre-execution authorization evidence for a consequential action, rather than only post-hoc detection.</li>
         </ul>
         <p className="ep-reveal" style={styles.body}>
           EP is not a replacement for OAuth. It is the layer that makes OAuth-issued sessions safe for the actions OAuth was never designed to authorize.

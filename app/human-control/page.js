@@ -54,12 +54,12 @@ const DOCTRINE = [
   {
     ref: 'DoD Directive 3000.09',
     burden: '"Appropriate levels of human judgment over the use of force" — plus auditable, traceable, governable AI.',
-    ep: 'A receipt proves a named human — or two-person quorum — authorized the exact engagement, within a defined envelope, verifiable offline by an inspector general or coalition partner without trusting the operator. (The primary U.S. defense hook.)',
+    ep: 'A receipt can establish that one or more pinned approver keys authorized the exact engagement within a defined envelope. An inspector general or coalition partner can reproduce that check offline; natural-person attribution remains an enrollment and roster claim.',
   },
   {
     ref: 'EU AI Act · Article 14',
     burden: 'Civilian high-risk AI must be "effectively overseen by natural persons" who can decide not to use it and intervene.',
-    ep: 'The receipt proves a natural person authorized the action; fail-closed enforcement is the "decide not to use it"; revocation is the stop button. (Civilian tailwind — the Act excludes exclusively military/defense systems; there, DoD 3000.09 governs.)',
+    ep: 'A receipt can establish that an enrolled approver key authorized the exact action; the Gate can refuse a covered action without valid evidence. This supports, but does not complete, an Article 14 assessment. (The Act excludes exclusively military, defense, and national-security uses.)',
   },
   {
     ref: 'NIST AI RMF',
@@ -69,7 +69,7 @@ const DOCTRINE = [
   {
     ref: 'UN CCW · LAWS',
     burden: 'The entire debate turns on demonstrating "meaningful human control."',
-    ep: 'EMILIA turns meaningful human control from doctrine into a cryptographic artifact a third party can check.',
+    ep: 'EMILIA supplies one checkable authorization artifact for that broader assessment. It does not establish the adequacy of meaningful human control by itself.',
   },
 ];
 
@@ -89,17 +89,15 @@ export default function HumanControlPage() {
             Verifiable human-authorization evidence · for autonomous action
           </div>
           <h1 style={styles.h1Large}>
-            Everyone requires a human<br />in the loop.<br />No one can prove it.
+            Human control is policy.<br />Make the authorization<br />independently checkable.
           </h1>
           <p style={{ ...styles.body, maxWidth: 600, fontSize: 18, color: color.t2 }}>
-            Doctrine and law — DoD Directive 3000.09, EU AI Act Article 14, NIST AI RMF —
-            all mandate meaningful human control over autonomous action. None of them
-            provides an artifact that <strong>proves it</strong>. Today that proof is a log
-            the operator controls: forgeable, backfillable, rubber-stampable. EMILIA Protocol
-            produces an <strong>offline-verifiable receipt</strong> that a named human
-            authorized the exact action — checkable by a third party without trusting the
-            operator. EP turns human oversight from a policy promise into a cryptographic
-            artifact — no irreversible autonomous action without a verifiable human receipt.
+            Doctrine, regulation, and risk frameworks — including DoD Directive 3000.09,
+            EU AI Act Article 14, and NIST AI RMF — all address human control from different
+            legal and operational angles. They do not prescribe one portable authorization
+            artifact. EMILIA produces an <strong>offline-verifiable receipt</strong> binding
+            a pinned approver key to the exact action. A deployment can require that evidence
+            before a covered action executes.
           </p>
         </motion.div>
 
@@ -179,7 +177,7 @@ export default function HumanControlPage() {
       <section style={{ ...styles.section, ...styles.sectionAlt, paddingTop: 56, paddingBottom: 56 }}>
         <motion.div {...reveal()}>
           <div style={styles.eyebrow}>The requirement is already written</div>
-          <h2 style={styles.h2}>Four instruments mandate it. None can prove it.</h2>
+          <h2 style={styles.h2}>Four instruments frame the need. EMILIA supplies one evidence mechanism.</h2>
         </motion.div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 24 }}>
           {DOCTRINE.map((d, i) => (
@@ -205,11 +203,11 @@ export default function HumanControlPage() {
           <motion.div {...reveal()} style={{ ...styles.card, padding: 26, borderTop: `2px solid ${color.green}` }}>
             <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: color.green, marginBottom: 12 }}>Proves</div>
             <p style={{ ...styles.body, color: color.t2, margin: 0 }}>
-              A specific, pinned human — or quorum of distinct humans — authorized this exact
-              action or bounded envelope, at a stated scope, within a validity window, under a
-              referenced authority. Given signature soundness and uncompromised signing keys,
-              the record cannot be forged, replayed, re-targeted, or repudiated, and anyone can
-              verify it offline.
+              One or more pinned approver keys authorized this exact action or bounded envelope,
+              at a stated scope, within a validity window, under a referenced policy. Given the
+              verifier&rsquo;s stated assumptions and uncompromised keys, a non-participant can
+              verify the artifact offline. Natural-person attribution is only as strong as the
+              enrollment, roster, and authenticator assurance behind those keys.
             </p>
           </motion.div>
           <motion.div {...reveal(0.08)} style={{ ...styles.card, padding: 26, borderTop: `2px solid ${color.t3}` }}>

@@ -12,24 +12,24 @@ import { styles, cta, color, font } from '@/lib/tokens';
 export const metadata = {
   title: 'Proof, not measurement — EMILIA & EU AI Act Article 14 | EMILIA',
   description:
-    'For Article 14 human oversight, a cryptographic authorization receipt proves a named human authorized the exact action — verifiable offline. An oversight score only measures how attentive the reviewer probably was. Proof vs measurement.',
+    'For Article 14 human oversight, a cryptographic authorization receipt can provide independently verifiable evidence that a pinned approver key authorized the exact action. It is one input to an oversight assessment, not compliance by itself.',
 };
 
 const ROWS = [
   ['Artifact', 'A number or narrative about the review', 'A cryptographic proof of the authorization itself'],
-  ['Evidence', 'Statistical / behavioral — an indicator', 'Mathematical — Ed25519 over RFC 8785 canonical JSON'],
-  ['What it binds', 'How attentive the reviewer probably was', 'A named human → an exact action, pre-execution'],
-  ['Outsider-verifiable?', 'Only by trusting the issuer', 'Yes — offline, with a public key. No backend, no vendor trust'],
+  ['Evidence', 'Statistical / behavioral — an indicator', 'A signature over the canonical, structured action'],
+  ['What it binds', 'How attentive the reviewer probably was', 'A pinned approver key → an exact action, pre-execution'],
+  ['Non-participant verification', 'Usually requires the operator’s records or service', 'Offline with pinned trust inputs; no issuer service at verification time'],
   ['Enforcement', 'Advisory — scores after the fact', 'Fail-closed — no receipt, no execution'],
-  ['Gameable?', 'Yes — telemetry is self-reported', 'No — a forged or altered authorization fails verification'],
+  ['Tamper response', 'Depends on the operator’s logging controls', 'A forged or altered authorization fails cryptographic verification'],
 ];
 
 const PROVIDES = [
-  ['The audit artifact a regulator can actually check', 'Deterministic verification with a public key; the receipt is the evidence, reproducible by anyone, years later.'],
-  ['Override / intervention you can prove', 'Approve, decline, or stop captured as signed, tamper-evident, per-action proof — not a log entry.'],
-  ['Enforcement, not exhortation', '428 — no receipt, no execution. Oversight that can be bypassed isn’t oversight.'],
+  ['An artifact an assessor can independently check', 'Deterministic verification with pinned public keys; the authorization binding can be reproduced without the issuer’s service.'],
+  ['Signed evidence of an override or intervention', 'Approve, decline, or stop captured as a signed, tamper-evident, per-action artifact — not only a database assertion.'],
+  ['Enforcement, not exhortation', '428 — no receipt, no execution on the routed path. A deployment must still identify and control bypass paths.'],
   ['Two-person control where stakes demand it', 'Quorum receipts (a cryptographic two-person rule) + scoped delegation with verify-time constraint enforcement.'],
-  ['Built on accepted standards', 'Ed25519 (RFC 8032), JCS (RFC 8785); expresses as JWS (RFC 7515) / COSE; loggable to a transparency service (SCITT). Open IETF Internet-Draft, Apache-2.0.'],
+  ['Built from established primitives', 'Ed25519 (RFC 8032), JCS (RFC 8785), and WebAuthn for Class-A signoff. Active individual IETF Internet-Drafts; Apache-2.0 reference code.'],
 ];
 
 export default function ProofVsMeasurementPage() {
@@ -39,7 +39,7 @@ export default function ProofVsMeasurementPage() {
       <main style={styles.page}>
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 22 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EU AI ACT · ARTICLE 14 · ANNEX III 2 AUG 2026</div>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>EU AI ACT · ARTICLE 14 · ANNEX III 2 DEC 2027</div>
             <h1 style={{ ...styles.h1, marginTop: 14 }}>Proof, not measurement.</h1>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 16, fontStyle: 'italic', color: color.t2 }}>
               Decision logs are testimony. Scores are opinion. Receipts are evidence.
@@ -47,8 +47,8 @@ export default function ProofVsMeasurementPage() {
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 16 }}>
               Article 14 requires high-risk AI systems to be under <b>effective human oversight</b> — a person must be able to
               decline an output, <b>override</b> it, and <b>stop</b> the system. When a regulator, court, or insurer later asks the
-              one question that matters — <i>&ldquo;show me that a specific authorized human approved this irreversible action before
-              it ran&rdquo;</i> — most oversight tooling can&rsquo;t answer it.
+              evidence question — <i>&ldquo;show me the authorization evidence for this exact action before it ran&rdquo;</i> — many
+              oversight systems can answer only from operator-controlled records.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
               <a href="/briefs/emilia-article-14-proof-vs-measurement.pdf" target="_blank" rel="noopener noreferrer" style={cta.primary}>Download the one-pager (PDF)</a>
@@ -61,7 +61,7 @@ export default function ProofVsMeasurementPage() {
           <div style={styles.container}>
             <h2 style={styles.h2}>What most &ldquo;oversight&rdquo; tooling actually produces</h2>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 10 }}>
-              A <b>decision log</b> — self-reported and mutable; testimony, not evidence. An <b>oversight score or dashboard</b> — a
+              A typical <b>decision log</b> — operator-controlled testimony whose evidential value depends on its controls. An <b>oversight score or dashboard</b> — a
               heuristic rating of how attentive the reviewer <i>probably</i> was, over self-reported telemetry; an opinion <i>about</i>
               the human, not a binding <i>of</i> the human to the act. A <b>&ldquo;human-in-the-loop&rdquo; toggle</b> — proof a step
               existed, not that a named person authorized <i>this</i> action. Having a human in the loop is not proof the human
@@ -74,8 +74,9 @@ export default function ProofVsMeasurementPage() {
           <div style={styles.container}>
             <h2 style={styles.h2}>The bright line: measurement vs. proof</h2>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 10 }}>
-              Evidence of oversight must do two things a score cannot: <b>bind</b> a named human to an exact action before it ran,
-              and <b>verify without trust</b> — confirmable offline, with a public key, without trusting the vendor or the log.
+              Evidence of oversight can do two things a score cannot: <b>bind</b> an enrolled approver key to an exact action before
+              it ran, and support <b>non-participant verification</b> — reproducible offline with the relying party&rsquo;s pinned trust
+              inputs, without calling the issuer&rsquo;s service.
             </p>
             <div style={{ marginTop: 12 }}>
               <div style={{ display: 'flex', gap: 14, padding: '8px 0', borderBottom: `1px solid ${color.border}` }}>
@@ -92,8 +93,9 @@ export default function ProofVsMeasurementPage() {
               ))}
             </div>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 14 }}>
-              A score tells you the oversight was <i>probably</i> real. A receipt <b>proves</b> the authorization happened — and
-              refuses to let the action run without it. The binding is load-bearing; the score is, at most, an annotation on top of it.
+              A score describes an oversight process. A valid receipt establishes a narrower fact: a pinned key authorized the
+              exact action under the verified policy context. A Gate can require that fact before execution. Identity enrolment,
+              authority, comprehension, and legal adequacy remain separate questions.
             </p>
           </div>
         </section>
@@ -119,10 +121,10 @@ export default function ProofVsMeasurementPage() {
         <section style={{ ...styles.section, paddingTop: 0 }}>
           <div style={styles.container}>
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, maxWidth: 760 }}>
-              Honest scope: a receipt is <b>necessary, not sufficient</b>. It proves a named human authorized the exact action; it
-              does not prove the decision was wise, lawful, or fully informed — and a quality signal (e.g. a third-party judgment
-              score) can sit <i>inside</i> a receipt as one more claim. EMILIA supplies the load-bearing, verifiable binding the
-              rest of an oversight program builds on. Engineering &amp; standards material, not legal advice.
+              Honest scope: a receipt is <b>necessary in some designs, never sufficient by itself</b>. It proves that the
+              pinned approver key signed the exact action under the verified context; the strength of the human attribution
+              depends on enrolment and authenticator assurance. It does not prove the decision was wise, lawful, understood,
+              or adequate under Article 14. Engineering and standards material, not legal advice.
             </p>
           </div>
         </section>

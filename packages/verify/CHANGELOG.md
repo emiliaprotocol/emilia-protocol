@@ -3,6 +3,22 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Security
+
+- **Constrained consent grants now fail closed unless their constraints are
+  evaluated.** `verifyReceiptUnderGrant()` requires a profile-specific
+  `constraintsCover(action, constraints, grant)` callback whenever a signed
+  grant contains non-empty `constraints`. Missing, throwing, false, or truthy
+  non-boolean evaluators refuse with a distinct reason. Previously the
+  composition verified the signed constraint bytes but enforced only asset and
+  verb, which could let purpose, amount, territory, or similar limits become
+  decorative metadata.
+- Consent-grant validity windows now reject impossible calendar dates and
+  invalid UTC offsets, and throwing custom asset/verb coverage predicates refuse
+  instead of escaping the verifier.
+
 ## 3.9.0 (2026-07-14)
 
 ### Added
@@ -113,8 +129,9 @@ authority issued once over a window; the receipt is the per-action authorization
 - **The object.** `{ profile: "EP-CONSENT-GRANT-v1", grant_id, principal, asset,
   control_verb, constraints?, issued_at, expires_at, grant_hash, signature }`.
   `grant_hash` is `sha256:` over the JCS/RFC-8785 canonical bytes of the grant
-  with grant_hash and signature excluded; `signature` is the principal's
-  device-bound Ed25519 signature over those same bytes. Reuses the package's
+  with grant_hash and signature excluded; `signature` is the principal key's
+  Ed25519 signature over those same bytes. The verifier does not infer device
+  or hardware binding from a raw Ed25519 key. Reuses the package's
   `canonicalize()` + SHA-256 and the `crypto.verify(null, ...)` Ed25519
   convention exactly, no new primitives.
 - **`buildConsentGrant(spec, signer)`** reference issuer (stamps grant_hash,

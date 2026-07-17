@@ -47,7 +47,7 @@ export default function AIAgentUseCasePage() {
     { title: 'Action risk classes', body: 'Every agent action is classified by risk level. Read-only operations proceed without friction. High-risk actions (payments, data modifications, external API calls) require explicit trust enforcement before execution.' },
     { title: 'Signoff thresholds by risk class', body: 'High-risk agent actions require signoff from the delegating principal or a designated authority. The signoff is bound to the exact action parameters, not a blanket tool permission.' },
     { title: 'Principal-to-agent attribution', body: 'Every agent action produces a structured evidence chain: which principal delegated, which agent executed, what exact action, under what policy, with what authority. The delegation chain is traceable and auditable.' },
-    { title: 'EU AI Act alignment', body: 'EMILIA produces the structured evidence records that high-risk AI system requirements demand: human oversight records, action-level traceability, and authority chain documentation.' },
+    { title: 'EU AI Act assessment support', body: 'EMILIA can produce structured records relevant to human-oversight and traceability assessments. It does not classify the system or establish compliance by itself.' },
   ];
 
   const ENFORCEMENT = [

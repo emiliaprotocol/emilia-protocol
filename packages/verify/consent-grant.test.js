@@ -41,7 +41,6 @@ function makeGrant(overrides = {}, signer = PRINCIPAL) {
       principal: 'ep:approver:diane_staheli',
       asset: 'ot:site-3/pump-array/valve-7',
       control_verb: 'setpoint.write',
-      constraints: { amount_ceiling: '500000' }, // non-integer quantities as STRINGS
       issued_at: '2026-07-01T00:00:00.000Z',
       expires_at: '2026-08-01T00:00:00.000Z',
       ...overrides,
@@ -121,7 +120,11 @@ test('accepts a per-action receipt acting under the grant (composition)', () => 
   });
   assert.strictEqual(r.ok, true, r.reason);
   assert.deepStrictEqual(r.checks, {
-    grant: true, asset_covered: true, verb_covered: true, grant_binding: true,
+    grant: true,
+    asset_covered: true,
+    verb_covered: true,
+    grant_binding: true,
+    constraints_covered: true,
   });
   // grant_hash is inside the signed Action Object here => STRONG binding.
   assert.strictEqual(r.binding_strength, 'signed_action');
@@ -146,6 +149,19 @@ test('rejects an expired grant (window)', () => {
   assert.strictEqual(c.reason, 'grant_expired');
 });
 
+test('rejects impossible calendar dates and invalid UTC offsets', () => {
+  for (const [issued_at, expires_at] of [
+    ['2026-02-30T00:00:00Z', '2026-03-03T00:00:00Z'],
+    ['2026-07-01T00:00:00+24:00', '2026-08-01T00:00:00Z'],
+  ]) {
+    const grant = makeGrant({ issued_at, expires_at });
+    const r = verifyConsentGrant(grant, PRINCIPAL.publicKeyB64u, { now: NOW });
+    assert.strictEqual(r.valid, false);
+    assert.strictEqual(r.checks.within_window, false);
+    assert.match(r.reason, /RFC-3339 instant/);
+  }
+});
+
 test('rejects a wrong asset (asset_mismatch)', () => {
   const grant = makeGrant();
   const receipt = makeReceipt(grant, { asset: 'ot:site-3/pump-array/valve-9' });
@@ -166,6 +182,108 @@ test('rejects a wrong control verb (verb_mismatch)', () => {
   assert.strictEqual(r.ok, false);
   assert.strictEqual(r.reason, 'verb_mismatch');
   assert.strictEqual(r.checks.verb_covered, false);
+});
+
+test('throwing custom asset or verb predicates refuse instead of escaping', () => {
+  const grant = makeGrant();
+  const receipt = makeReceipt(grant);
+  const cases = [
+    { assetCovers: () => { throw new Error('asset parser failed'); }, reason: 'asset_mismatch' },
+    { verbCovers: () => { throw new Error('verb parser failed'); }, reason: 'verb_mismatch' },
+  ];
+  for (const options of cases) {
+    const r = verifyReceiptUnderGrant(receipt, grant, {
+      now: NOW,
+      pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+      ...options,
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.reason, options.reason);
+  }
+});
+
+test('a constrained grant refuses when no profile evaluator is supplied', () => {
+  const grant = makeGrant({ constraints: { amount_ceiling: '500000' } });
+  const receipt = makeReceipt(grant, { amount: '250000' });
+  const r = verifyReceiptUnderGrant(receipt, grant, {
+    now: NOW,
+    pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+  });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.reason, 'constraint_evaluator_missing');
+  assert.strictEqual(r.checks.grant_binding, true);
+  assert.strictEqual(r.checks.constraints_covered, false);
+});
+
+test('a constrained grant composes only when the profile evaluator returns exactly true', () => {
+  const grant = makeGrant({ constraints: { amount_ceiling: '500000' } });
+  const constraintsCover = (action, constraints) => (
+    /^\d+$/.test(action.amount)
+    && /^\d+$/.test(constraints.amount_ceiling)
+    && BigInt(action.amount) <= BigInt(constraints.amount_ceiling)
+  );
+  const r = verifyReceiptUnderGrant(
+    makeReceipt(grant, { amount: '250000' }),
+    grant,
+    {
+      now: NOW,
+      pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+      constraintsCover,
+    },
+  );
+  assert.strictEqual(r.ok, true, r.reason);
+  assert.strictEqual(r.checks.constraints_covered, true);
+
+  const overLimit = verifyReceiptUnderGrant(
+    makeReceipt(grant, { amount: '500001' }),
+    grant,
+    {
+      now: NOW,
+      pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+      constraintsCover,
+    },
+  );
+  assert.strictEqual(overLimit.ok, false);
+  assert.strictEqual(overLimit.reason, 'constraints_mismatch');
+});
+
+test('a throwing or truthy non-boolean constraint evaluator refuses', () => {
+  const grant = makeGrant({ constraints: { amount_ceiling: '500000' } });
+  const receipt = makeReceipt(grant, { amount: '250000' });
+  for (const constraintsCover of [
+    () => { throw new Error('profile parser failed'); },
+    () => 'yes',
+  ]) {
+    const r = verifyReceiptUnderGrant(receipt, grant, {
+      now: NOW,
+      pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+      constraintsCover,
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.reason, 'constraints_mismatch');
+  }
+});
+
+test('malformed grant constraints fail closed before composition', () => {
+  const grant = buildConsentGrant(
+    {
+      grant_id: 'grant_bad_constraints',
+      principal: 'ep:approver:diane_staheli',
+      asset: 'ot:site-3/pump-array/valve-7',
+      control_verb: 'setpoint.write',
+      constraints: ['not', 'an', 'object'],
+      issued_at: '2026-07-01T00:00:00.000Z',
+      expires_at: '2026-08-01T00:00:00.000Z',
+    },
+    PRINCIPAL,
+  );
+  const r = verifyReceiptUnderGrant(makeReceipt(grant), grant, {
+    now: NOW,
+    pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+    constraintsCover: () => true,
+  });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.reason, 'grant_constraints_invalid');
 });
 
 test('rejects a receipt bound to a DIFFERENT grant_hash (grant_binding_mismatch)', () => {

@@ -4,25 +4,25 @@
 
 ## The problem, in one sentence
 
-AI agents are starting to take **irreversible actions** — moving money, changing official records, deploying code, cutting off services — and today there is **no verifiable proof that a named, accountable human authorized any given action.** The record that "a human was in control" is a log the operator (often a non-European hyperscaler) keeps and could alter.
+AI agents are starting to take **irreversible actions** — moving money, changing official records, deploying code, cutting off services — while many deployments still rely on operator-controlled records to show that human authorization occurred.
 
 ## What EMILIA is
 
-EMILIA is an open **authorization-receipt layer**: before an AI agent performs a consequential action, a *named, accountable human signs that exact action* on their own device. Afterwards, **anyone can verify, offline, who approved what** — without trusting the AI, the company that operates it, or EMILIA itself. *No receipt, no execution.*
+EMILIA is an open **authorization-receipt layer**: before an AI agent performs a consequential action, an enrolled approver can sign that exact action with a user-verified authenticator. Afterwards, a relying party can verify the authorization offline against its pinned trust inputs, without calling the operator or EMILIA. A deployment can enforce: *no valid receipt, no execution.*
 
 ## Why this matters for Europe — and why it is undeniable
 
-1. **It makes EU AI Act Article 14 real.** The Act *requires* meaningful human oversight of high-risk AI, but specifies **no artifact to prove it happened.** EMILIA is that artifact — a portable, tamper-evident receipt a regulator or court can check independently. It also maps to Article 12 (logging) and composes with eIDAS 2.0 / the EU Digital Identity Wallet for the human signature.
+1. **It supplies one inspectable Article 14 evidence mechanism.** The Act requires effective human oversight of high-risk AI but does not prescribe one authorization-receipt format. EMILIA provides a portable, tamper-evident record a regulator or court can check against pinned trust inputs. It is directly relevant to Article 12 logging and Article 14 oversight; it is not the complete compliance assessment.
 
-2. **It is sovereignty by construction.** Verification needs **no trust in the operator and no foreign cloud.** The proof is self-contained and checkable offline, on European soil, by European institutions. The software is open (Apache-2.0) and can be self-hosted — **no dependence on, and no lock-in to, US hyperscalers.** Europe holds the proof, not Big Tech.
+2. **It supports sovereign verification.** Verification can be performed offline on European infrastructure using the relying party's own pinned keys and policy. The software is open (Apache-2.0) and self-hostable, so checking the artifact does not require an EMILIA service or a foreign cloud.
 
-3. **It protects citizens, not just companies.** When automation touches a citizen's benefits, records, money, or rights, EMILIA guarantees a **named human stands behind that decision** — accountability against opaque, unaccountable machine action. That is a public-interest guarantee, not a vendor feature.
+3. **It gives citizens and reviewers a more portable record.** When automation touches benefits, records, money, or rights, a correctly configured deployment can require an enrolled approver before execution and preserve the resulting evidence outside the acting operator's database.
 
 4. **It is a chance for Europe to help shape the standard, not import it.** EMILIA is being contributed through open IETF Internet-Drafts, with running code and conformance tests. Europe — and Bulgaria — can be **early authors of the accountability standard** the world will need, rather than adopting one written elsewhere.
 
 ## What it is *not* (so the claim stays honest)
 
-EMILIA proves *authorization* — that the right human approved the exact action — **not** that the decision was wise or lawful. It is a **necessary, not sufficient**, condition for trustworthy AI: the verifiable foundation that other safeguards build on.
+EMILIA verifies a narrower technical fact: a pinned approver key signed the exact action under the checked policy context. The strength of the human attribution depends on enrollment and authenticator assurance. It does **not** establish that the decision was wise, lawful, understood, or sufficient for Article 14.
 
 ## The ask / the opening
 

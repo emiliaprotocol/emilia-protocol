@@ -1,7 +1,7 @@
 # Human-Control Compliance Crosswalk
 
-**How an EMILIA authorization receipt satisfies the human-oversight requirements of
-DoD Directive 3000.09, EU AI Act Article 14, and NIST AI RMF.**
+**How EMILIA authorization evidence can support assessments under DoD Directive
+3000.09, EU AI Act Article 14, and NIST AI RMF.**
 
 Scope note: EMILIA provides the **evidence** that human oversight occurred at a defined
 scope, currency, and authority. It is a *necessary, not sufficient* control — it does not
@@ -12,7 +12,7 @@ establish comprehension, lawfulness, or freedom from coercion. This crosswalk ma
 
 | 3000.09 requirement (paraphrased) | EMILIA evidence |
 |---|---|
-| "Appropriate levels of human judgment over the use of force" | Receipt proves a named human (or quorum) authorized the exact action / engagement envelope, offline-verifiable |
+| "Appropriate levels of human judgment over the use of force" | A receipt can establish that one or more pinned approver keys authorized the exact action / engagement envelope; natural-person attribution depends on enrollment and authenticator assurance |
 | Authorization by trained, authorized personnel | Class-A device-bound signoff binds the authorization to a specific enrolled approver, not a shared login |
 | Operation within a defined envelope / ROE | `authorization_scope` (effect class, target set, geofence, window) + signed ROE/policy reference; PEP fails closed outside scope |
 | Human ability to terminate engagement | Revocation + continuous evaluation; a revoked authorization fails closed |
@@ -30,10 +30,10 @@ establish comprehension, lawfulness, or freedom from coercion. This crosswalk ma
 
 | Art. 14 provision | EMILIA evidence |
 |---|---|
-| 14(1) high-risk AI "effectively overseen by natural persons" | Receipt is proof a natural person authorized the action; offline-verifiable by a regulator |
-| 14(4)(a) oversight person can understand capacities/limits & monitor | Pairs with WYSIWYS (PIP-010): the human is shown the exact canonical action they sign |
-| 14(4)(d) ability to "decide not to use" or disregard output | Fail-closed: absent a valid human-authorization receipt, the action does not execute |
-| 14(4)(e) ability to intervene/interrupt ("stop button") | Revocation + continuous evaluation halts an authorized envelope |
+| 14(1) high-risk AI "effectively overseen by natural persons" | A receipt can establish that an enrolled approver key authorized the exact action; a regulator can reproduce that check offline using the deployment's pinned trust inputs |
+| 14(4)(a) oversight person can understand capacities/limits & monitor | A controlled approval surface can display the material action fields and bind an attestation to the signature; this is evidence about the surface, not proof of comprehension |
+| 14(4)(d) ability to "decide not to use" or disregard output | A deployment can configure the Gate to refuse a covered action when required authorization evidence is absent or invalid |
+| 14(4)(e) ability to intervene/interrupt ("stop button") | Revocation plus continuous evaluation can halt future actions under an authorized envelope; deployment design determines whether and how an in-flight effect can be stopped |
 | Record-keeping / logging (Art. 12) interplay | Receipts are portable, verifiable evidence records, not operator-mutable logs |
 
 ## NIST AI RMF (1.0)
