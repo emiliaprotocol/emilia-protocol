@@ -172,12 +172,19 @@ struct MobileAPI: Sendable {
             let challenge: EmiliaMobileChallenge
             let response: EmiliaMobileCeremonyResponse
         }
+        guard let expectedDecision = challenge.authorizationContext.decision,
+              response.decision == expectedDecision
+        else {
+            throw APIError.refused("decision_mismatch")
+        }
+        let expectedContextHash = try EmiliaCanonicalJSON.digest(challenge.authorizationContext)
         do {
             return try await post("v1/mobile/ceremonies", Request(challenge: challenge, response: response))
         } catch APIError.transport {
             return try await recoverCeremonyResult(
                 challengeID: challenge.challengeID,
-                expectedDecision: challenge.authorizationContext.decision
+                expectedDecision: challenge.authorizationContext.decision ?? expectedDecision,
+                expectedContextHash: expectedContextHash
             )
         }
     }
@@ -222,7 +229,8 @@ struct MobileAPI: Sendable {
 
     private func recoverCeremonyResult(
         challengeID: String,
-        expectedDecision: String
+        expectedDecision: String,
+        expectedContextHash: String
     ) async throws -> VerificationResponse {
         guard challengeID.range(
             of: #"^[A-Za-z0-9:_.@-]{8,256}$"#,
@@ -237,10 +245,7 @@ struct MobileAPI: Sendable {
                   result.verdict == "verified",
                   result.decision == expectedDecision,
                   result.reason == nil,
-                  result.contextHash?.range(
-                    of: #"^sha256:[0-9a-f]{64}$"#,
-                    options: .regularExpression
-                  ) != nil
+                  result.contextHash == expectedContextHash
             else { throw APIError.outcomeUnknown }
             return result
         } catch is CancellationError {
@@ -294,6 +299,7 @@ struct MobileAPI: Sendable {
             guard (200..<300).contains(response.statusCode) else {
                 let problem = try? JSONDecoder().decode(ProblemResponse.self, from: data)
                 if response.statusCode == 401 { throw APIError.sessionExpired }
+                if (500..<600).contains(response.statusCode) { throw APIError.transport }
                 throw APIError.refused(problem?.detail ?? problem?.reason ?? "HTTP \(response.statusCode)")
             }
             return try JSONDecoder().decode(Response.self, from: data)
@@ -305,6 +311,10 @@ struct MobileAPI: Sendable {
             throw APIError.transport
         }
     }
+}
+
+private extension EmiliaJSONValue {
+    var decision: String? { objectValue?["decision"]?.stringValue }
 }
 
 private struct ProblemResponse: Decodable {

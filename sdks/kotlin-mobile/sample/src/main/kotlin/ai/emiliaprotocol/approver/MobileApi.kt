@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package ai.emiliaprotocol.approver
 
+import ai.emiliaprotocol.mobile.EmiliaCanonicalJson
 import ai.emiliaprotocol.mobile.EmiliaMobileCeremonyResponse
 import ai.emiliaprotocol.mobile.EmiliaMobileChallenge
 import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentChallenge
@@ -96,10 +97,17 @@ private data class RevocationResult(val revoked: Boolean)
 @Serializable
 private data class Problem(val detail: String? = null, val reason: String? = null, val verdict: String? = null)
 
-class MobileApi(
+class MobileApi internal constructor(
     rawBaseUrl: String,
-    private val accessToken: String? = null,
+    private val accessToken: String?,
+    private val connectionFactory: (URL) -> HttpsURLConnection,
 ) {
+    constructor(rawBaseUrl: String, accessToken: String? = null) : this(
+        rawBaseUrl,
+        accessToken,
+        { endpoint -> endpoint.openConnection() as HttpsURLConnection },
+    )
+
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = true }
     private val baseUrl = URL(rawBaseUrl).also {
         require(it.protocol == "https") { "The approval service must use HTTPS" }
@@ -171,6 +179,9 @@ class MobileApi(
         challenge: EmiliaMobileChallenge,
         response: EmiliaMobileCeremonyResponse,
     ): CeremonyResult {
+        val expectedDecision = challenge.authorizationContext.decision
+        if (response.decision != expectedDecision) throw MobileApiException.Refused("decision_mismatch")
+        val expectedContextHash = EmiliaCanonicalJson.digest(challenge.authorizationContext)
         val body = buildJsonObject {
             put("challenge", json.encodeToJsonElement(EmiliaMobileChallenge.serializer(), challenge))
             put("response", json.encodeToJsonElement(EmiliaMobileCeremonyResponse.serializer(), response))
@@ -178,7 +189,10 @@ class MobileApi(
         return try {
             post("v1/mobile/ceremonies", body)
         } catch (_: MobileApiException.Transport) {
-            recoverCeremonyResult(challenge.challengeId, challenge.authorizationContext.decision)
+            recoverCeremonyResult(challenge.challengeId,
+                challenge.authorizationContext.decision,
+                expectedContextHash,
+            )
         }
     }
 
@@ -190,7 +204,11 @@ class MobileApi(
 
     private suspend inline fun <reified T> get(path: String): T = request("GET", path, null, true)
 
-    private suspend fun recoverCeremonyResult(challengeId: String, expectedDecision: String): CeremonyResult {
+    private suspend fun recoverCeremonyResult(
+        challengeId: String,
+        expectedDecision: String,
+        expectedContextHash: String,
+    ): CeremonyResult {
         return try {
             val encodedChallengeId = URLEncoder.encode(challengeId, StandardCharsets.UTF_8).replace("+", "%20")
             val recovery = get<CeremonyRecovery>("v1/mobile/ceremonies/$encodedChallengeId")
@@ -199,7 +217,7 @@ class MobileApi(
                 || !result.valid || result.verdict != "verified"
                 || result.decision != expectedDecision
                 || result.reason != null
-                || result.contextHash?.matches(Regex("^sha256:[0-9a-f]{64}$")) != true
+                || result.contextHash != expectedContextHash
             ) throw MobileApiException.OutcomeUnknown
             result
         } catch (error: CancellationException) {
@@ -225,7 +243,7 @@ class MobileApi(
     ): T = withContext(Dispatchers.IO) {
         val endpoint = URL(baseUrl, path)
         check(endpoint.protocol == "https" && endpoint.host == baseUrl.host) { "Unsafe approval endpoint" }
-        val connection = endpoint.openConnection() as HttpsURLConnection
+        val connection = connectionFactory(endpoint)
         try {
             connection.requestMethod = method
             connection.instanceFollowRedirects = false
@@ -262,6 +280,7 @@ class MobileApi(
             } ?: ByteArray(0)
             if (status == 401) throw MobileApiException.SessionExpired
             if (status !in 200..299) {
+                if (status in 500..599) throw MobileApiException.Transport
                 val problem = runCatching { json.decodeFromString<Problem>(bytes.toString(Charsets.UTF_8)) }.getOrNull()
                 throw MobileApiException.Refused(problem?.detail ?: problem?.reason ?: problem?.verdict ?: "HTTP $status")
             }
