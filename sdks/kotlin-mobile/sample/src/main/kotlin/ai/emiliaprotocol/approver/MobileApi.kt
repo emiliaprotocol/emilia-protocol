@@ -7,7 +7,10 @@ import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentChallenge
 import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentResponse
 import java.io.ByteArrayOutputStream
 import java.net.URL
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import javax.net.ssl.HttpsURLConnection
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -78,6 +81,13 @@ data class CeremonyResult(
     val decision: String? = null,
     val reason: String? = null,
     @SerialName("context_hash") val contextHash: String? = null,
+)
+
+@Serializable
+private data class CeremonyRecovery(
+    val committed: Boolean,
+    val outcome: String,
+    val result: CeremonyResult? = null,
 )
 
 @Serializable
@@ -160,13 +170,17 @@ class MobileApi(
     suspend fun verify(
         challenge: EmiliaMobileChallenge,
         response: EmiliaMobileCeremonyResponse,
-    ): CeremonyResult = post(
-        "v1/mobile/ceremonies",
-        buildJsonObject {
+    ): CeremonyResult {
+        val body = buildJsonObject {
             put("challenge", json.encodeToJsonElement(EmiliaMobileChallenge.serializer(), challenge))
             put("response", json.encodeToJsonElement(EmiliaMobileCeremonyResponse.serializer(), response))
-        },
-    )
+        }
+        return try {
+            post("v1/mobile/ceremonies", body)
+        } catch (_: MobileApiException.Transport) {
+            recoverCeremonyResult(challenge.challengeId)
+        }
+    }
 
     suspend fun revokeSession() {
         if (!delete<RevocationResult>("v1/mobile/session").revoked) {
@@ -175,6 +189,24 @@ class MobileApi(
     }
 
     private suspend inline fun <reified T> get(path: String): T = request("GET", path, null, true)
+
+    private suspend fun recoverCeremonyResult(challengeId: String): CeremonyResult {
+        return try {
+            val encodedChallengeId = URLEncoder.encode(challengeId, StandardCharsets.UTF_8).replace("+", "%20")
+            val recovery = get<CeremonyRecovery>("v1/mobile/ceremonies/$encodedChallengeId")
+            val result = recovery.result
+            if (!recovery.committed || recovery.outcome != "committed" || result == null
+                || !result.valid || result.verdict != "verified"
+                || result.decision !in setOf("approved", "denied")
+                || result.reason != null || result.contextHash?.startsWith("sha256:") != true
+            ) throw MobileApiException.OutcomeUnknown
+            result
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            throw MobileApiException.OutcomeUnknown
+        }
+    }
 
     private suspend inline fun <reified T> post(
         path: String,
@@ -235,6 +267,8 @@ class MobileApi(
             json.decodeFromString<T>(bytes.toString(Charsets.UTF_8))
         } catch (error: MobileApiException) {
             throw error
+        } catch (error: CancellationException) {
+            throw error
         } catch (_: Exception) {
             throw MobileApiException.Transport
         } finally {
@@ -249,7 +283,10 @@ class MobileApi(
 }
 
 sealed class MobileApiException(message: String) : Exception(message) {
-    data object Transport : MobileApiException("The approval service is unavailable. Nothing was authorized.")
+    data object Transport : MobileApiException("The approval service is unavailable.")
+    data object OutcomeUnknown : MobileApiException(
+        "The approval outcome is unknown. Do not retry or assume it was not authorized.",
+    )
     data object SessionExpired : MobileApiException("This device connection has expired.")
     data class Refused(val detail: String) : MobileApiException("The request was refused: $detail")
 }

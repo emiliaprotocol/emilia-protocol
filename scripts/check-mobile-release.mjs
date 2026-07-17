@@ -27,6 +27,9 @@ contains('examples/mobile-government/ios/Sources/ApprovalViewModel.swift', /vali
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /NoRedirectSessionDelegate/, 'iOS redirects are not refused');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /maximumResponseBytes = 1_048_576/, 'iOS response ceiling is missing');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /https:\/\/www\.emiliaprotocol\.ai\/api\//, 'iOS production API identity is not pinned');
+contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /catch APIError\.transport[\s\S]{0,400}recoverCeremonyResult\(challengeID: challenge\.challengeID\)/, 'iOS does not recover a possibly committed ceremony after a lost POST response');
+contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*outcomeUnknown/, 'iOS does not close an unresolved recovery lookup as outcome unknown');
+assert.doesNotMatch(read('examples/mobile-government/ios/Sources/MobileAPI.swift'), /Nothing was authorized/, 'iOS makes an unsafe non-commit claim after transport failure');
 
 contains('sdks/kotlin-mobile/sample/build.gradle.kts', new RegExp(`applicationId = "${identity.replaceAll('.', '\\.')}"`), 'permanent package identity drifted');
 contains('sdks/kotlin-mobile/sample/build.gradle.kts', /minSdk = 33/, 'production sample no longer matches the server integrity floor');
@@ -40,6 +43,9 @@ contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/M
 contains('sdks/kotlin-mobile/src/main/kotlin/ai/emiliaprotocol/mobile/AndroidProviders.kt', /SHA256withECDSA[\s\S]*KeyPairGenerator\.getInstance\(KeyProperties\.KEY_ALGORITHM_EC, ANDROID_KEY_STORE\)/, 'Android ceremony proof is not backed by a non-exportable Keystore signing key');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/SecureSessionStore.kt', /AndroidKeyStore/, 'session secret is not Android Keystore protected');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /PRODUCTION_BASE_URL = "https:\/\/www\.emiliaprotocol\.ai\/api\/"/, 'Android production API identity is not pinned');
+contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /catch \(_:\s*MobileApiException\.Transport\)[\s\S]{0,400}recoverCeremonyResult\(challenge\.challengeId\)/, 'Android does not recover a possibly committed ceremony after a lost POST response');
+contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*OutcomeUnknown/, 'Android does not close an unresolved recovery lookup as outcome unknown');
+assert.doesNotMatch(read('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt'), /Nothing was authorized/, 'Android makes an unsafe non-commit claim after transport failure');
 
 contains('app/.well-known/apple-app-site-association/route.js', new RegExp(`5M2Z48UQQY\\.${identity.replaceAll('.', '\\.')}`), 'Apple association identity drifted');
 contains('app/.well-known/assetlinks.json/route.js', new RegExp(identity.replaceAll('.', '\\.')), 'Android association identity drifted');
@@ -74,6 +80,7 @@ for (const path of [
   'app/api/v1/mobile/pairings/exchange/route.js',
   'app/api/v1/mobile/inbox/route.js',
   'app/api/v1/mobile/session/route.js',
+  'app/api/v1/mobile/ceremonies/[challengeId]/route.js',
   'app/api/v1/mobile/demo/actions/route.js',
   'lib/mobile/runtime.js',
 ]) {

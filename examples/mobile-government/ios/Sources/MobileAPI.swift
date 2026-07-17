@@ -84,6 +84,12 @@ struct MobileAPI: Sendable {
         }
     }
 
+    private struct CeremonyRecoveryResponse: Decodable {
+        let committed: Bool
+        let outcome: String
+        let result: VerificationResponse?
+    }
+
     struct EnrollmentResponse: Decodable {
         struct Enrollment: Decodable {
             let deviceKeyID: String
@@ -166,7 +172,11 @@ struct MobileAPI: Sendable {
             let challenge: EmiliaMobileChallenge
             let response: EmiliaMobileCeremonyResponse
         }
-        return try await post("v1/mobile/ceremonies", Request(challenge: challenge, response: response))
+        do {
+            return try await post("v1/mobile/ceremonies", Request(challenge: challenge, response: response))
+        } catch APIError.transport {
+            return try await recoverCeremonyResult(challengeID: challenge.challengeID)
+        }
     }
 
     func issueEnrollment(approverID: String, appID: String) async throws -> EmiliaMobileEnrollmentChallenge {
@@ -205,6 +215,30 @@ struct MobileAPI: Sendable {
         request.httpMethod = "GET"
         authorize(&request)
         return try await execute(request)
+    }
+
+    private func recoverCeremonyResult(challengeID: String) async throws -> VerificationResponse {
+        guard challengeID.range(
+            of: #"^[A-Za-z0-9:_.@-]{8,256}$"#,
+            options: .regularExpression
+        ) != nil else { throw APIError.outcomeUnknown }
+        do {
+            let recovery: CeremonyRecoveryResponse = try await get("v1/mobile/ceremonies/\(challengeID)")
+            guard recovery.committed,
+                  recovery.outcome == "committed",
+                  let result = recovery.result,
+                  result.valid,
+                  result.verdict == "verified",
+                  ["approved", "denied"].contains(result.decision ?? ""),
+                  result.reason == nil,
+                  result.contextHash?.hasPrefix("sha256:") == true
+            else { throw APIError.outcomeUnknown }
+            return result
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw APIError.outcomeUnknown
+        }
     }
 
     private func post<Request: Encodable, Response: Decodable>(
@@ -271,13 +305,16 @@ private struct ProblemResponse: Decodable {
 
 enum APIError: LocalizedError {
     case transport
+    case outcomeUnknown
     case sessionExpired
     case refused(String)
 
     var errorDescription: String? {
         switch self {
         case .transport:
-            return "The approval service is unavailable. Nothing was authorized."
+            return "The approval service is unavailable."
+        case .outcomeUnknown:
+            return "The approval outcome is unknown. Do not retry or assume it was not authorized."
         case .sessionExpired:
             return "This device connection has expired. Pair it again to continue."
         case .refused(let verdict):

@@ -4584,6 +4584,35 @@ paths:
         '429': { description: Mobile request rate exceeded }
         '503': { description: Verification or durable evidence store unavailable }
 
+  /api/v1/mobile/ceremonies/{challengeId}:
+    get:
+      tags: [Mobile Approval]
+      summary: Recover a possibly committed mobile ceremony result
+      description: |
+        Idempotently checks whether the exact challenge produced a verified,
+        atomically committed decision for the authenticated tenant, session,
+        approver, app, and device. Unknown identifiers and all scope, freshness,
+        or evidence mismatches return the same closed unknown body.
+      security:
+        - MobileSessionAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9:_.@-]{8,256}$'
+      responses:
+        '200':
+          description: Committed verified result or closed unknown state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileCeremonyLookup'
+        '401': { description: Invalid mobile session }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable ceremony result lookup unavailable }
+
   /api/v1/mobile/session:
     delete:
       tags: [Mobile Approval]
@@ -4887,6 +4916,25 @@ components:
         challenge: { type: object, nullable: true }
         decision: { type: string, nullable: true }
         audit_record: { type: object, nullable: true }
+
+    MobileCeremonyLookup:
+      type: object
+      additionalProperties: false
+      required: [committed, outcome, result]
+      properties:
+        committed: { type: boolean }
+        outcome: { type: string, enum: [committed, unknown] }
+        result:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [valid, verdict, decision, reason, context_hash]
+          properties:
+            valid: { type: boolean, enum: [true] }
+            verdict: { type: string, enum: [verified] }
+            decision: { type: string, enum: [approved, denied] }
+            reason: { type: string, nullable: true }
+            context_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
 
     TrustProfileResponse:
       type: object
