@@ -34,10 +34,13 @@ function classASigner({ approverKeyId, privateKey, signedAt, crossOrigin = false
   };
 }
 
-async function mint(actionParams, { legacy = false, downgradeClassA = false, crossOrigin = false } = {}) {
+async function mint(actionParams, { legacy = false, downgradeClassA = false, crossOrigin = false, decision } = {}) {
   const action = { action_type: 'payment.release', policy_id: 'pol:test', initiator: 'ep:agent:1', params: actionParams };
   const logKp = generateEd25519KeyPair();
   const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
+  if (decision !== undefined) {
+    for (const context of contexts) context.decision = decision;
+  }
 
   // Downgrade-attack construction: the signoff is a bare Ed25519 Class-B software
   // signature (NO WebAuthn), but the verifier PINS the same key as Class-A. A
@@ -71,6 +74,12 @@ const add = (id, expectValid, trust_receipt, verification, verify_opts) =>
 
 const valid = await mint({ amount: 82000, currency: 'USD' });
 add('accept_valid_receipt', true, valid.receipt, valid.verification);
+
+{ // A denial is genuine signed decision evidence, but it is not authorization.
+  // Every cryptographic and temporal check is valid; only approval/quorum fails.
+  const m = await mint({ amount: 82000, currency: 'USD' }, { decision: 'denied' });
+  add('reject_signed_denial_as_authorization', false, m.receipt, m.verification);
+}
 
 {
   const m = await mint({ amount: 82000, currency: 'USD' }, { crossOrigin: true });

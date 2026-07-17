@@ -2,7 +2,7 @@
   "suite": "EP-TRUST-RECEIPT-v1 (§6.2)",
   "profile": "Executable §6.2 Trust Receipt vectors (real Class-A WebAuthn + Ed25519 log checkpoint + Merkle inclusion). verifyTrustReceipt(receipt, {approverKeys, logPublicKey}) must return expect.valid.",
   "vectors_version": "1.0.0",
-  "count": 13,
+  "count": 14,
   "vectors": [
     {
       "id": "accept_valid_receipt",
@@ -81,6 +81,90 @@
           }
         },
         "log_public_key": "MCowBQYDK2VwAyEA_CttDAOoWDXQ8P1KXtYJUZsZFyK98tMCxdsWNRhZriA",
+        "rp_id": "rp",
+        "allowed_origins": [
+          "https://test.emilia"
+        ]
+      }
+    },
+    {
+      "id": "reject_signed_denial_as_authorization",
+      "expect": {
+        "valid": false
+      },
+      "trust_receipt": {
+        "receipt_id": "ep:receipt:UiwMhvI3nZI",
+        "action": {
+          "action_type": "payment.release",
+          "policy_id": "pol:test",
+          "initiator": "ep:agent:1",
+          "params": {
+            "amount": 82000,
+            "currency": "USD"
+          }
+        },
+        "action_hash": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae",
+            "policy_id": "pol:test",
+            "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+            "initiator": "ep:agent:1",
+            "approver": "ep:approver:dir",
+            "approver_index": 1,
+            "required_approvals": 1,
+            "nonce": "N1FgTP0osUc12fZgHpbwtg",
+            "issued_at": "2026-06-13T11:00:00.000Z",
+            "expires_at": "2026-06-13T18:00:00.000Z",
+            "decision": "denied"
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:89267a758c4c2dfc54a124aea77d7200bc3804329fa08e26b2336ff4845ca4e2",
+            "key_class": "A",
+            "approver_key_id": "ep:key:dir#1",
+            "signed_at": "2026-06-13T11:00:00.000Z",
+            "webauthn": {
+              "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+              "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiaVNaNmRZeE1MZnhVb1NTdXAzMXlBTHc0QkRLZm9JNG1zak52OUlSY3BPSSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+              "signature": "MEYCIQD-Jh93YOFtAHip9-DvaoWey3aj7ti8ceZnh-Lo4l3wCwIhAKYH7KPqsC674H7NdN080q8CCLhGyPWtS_Jv2faqr145"
+            },
+            "signature": "MEYCIQD-Jh93YOFtAHip9-DvaoWey3aj7ti8ceZnh-Lo4l3wCwIhAKYH7KPqsC674H7NdN080q8CCLhGyPWtS_Jv2faqr145"
+          }
+        ],
+        "consumption": {
+          "nonce": "nWsRNRcwLMCbUtG_pw_lCw",
+          "state": "COMMITTED",
+          "committed_at": "2026-06-13T11:30:00.000Z"
+        },
+        "log_proof": {
+          "alg": "EP-MERKLE-v2",
+          "leaf_hash": "sha256:0b2e2c1180f1b35f6c93e43547b1ab975091b73214ebce96d94e8636ee2cf684",
+          "leaf_index": 0,
+          "inclusion_path": [],
+          "checkpoint": {
+            "tree_size": 1,
+            "root_hash": "sha256:0b2e2c1180f1b35f6c93e43547b1ab975091b73214ebce96d94e8636ee2cf684",
+            "log_key_id": "ep:log:test#1",
+            "merkle_alg": "EP-MERKLE-v2",
+            "log_signature": "tPN_7LiuQSWWkNdYbevlD2SkQ3WKKfGSUbufVzGinrptbZvdHDHOyWGe0B7zVfNDIk5q93w2SlqiOzBsx_XgAg"
+          }
+        }
+      },
+      "verification": {
+        "approver_keys": {
+          "ep:key:dir#1": {
+            "approver_id": "ep:approver:dir",
+            "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3D0iskZkJRSR0UMPJoguksH87Ec1wm-jlfL9DI9Pj0dRwa9UWbND5L41ozstSjA9AZ-t5OzbclZynBVGkK5Sbw",
+            "key_class": "A",
+            "valid_from": "2026-01-01T00:00:00Z",
+            "valid_to": "2036-01-01T00:00:00Z"
+          }
+        },
+        "log_public_key": "MCowBQYDK2VwAyEAfoX_AOqsbYg40zwEU8HTuphODoxI0SVMBQhJLkagwpE",
         "rp_id": "rp",
         "allowed_origins": [
           "https://test.emilia"

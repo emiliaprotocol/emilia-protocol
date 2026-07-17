@@ -152,6 +152,15 @@ func trustReceiptCanonicalProfileOK(receipt map[string]any) bool {
 	return true
 }
 
+func contextAuthorizes(ctx map[string]any) bool {
+	decision, present := ctx["decision"]
+	if !present {
+		return true
+	}
+	typed, ok := decision.(string)
+	return ok && typed == "approved"
+}
+
 // VerifyTrustReceipt verifies an EP §6.2 Trust Receipt offline. opts keys:
 // approverKeys (map of approver_key_id -> {approver_id,public_key,key_class,valid_from,valid_to}),
 // logPublicKey (string).
@@ -223,6 +232,7 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		approver, signedAt string
 		ctx                map[string]any
 	}
+	validSignoffs := []approval{}
 	validApprovals := []approval{}
 	signaturesOK := len(signoffs) > 0
 	for _, so := range signoffs {
@@ -279,7 +289,11 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			signaturesOK = false
 			continue
 		}
-		validApprovals = append(validApprovals, approval{getStr(ctx, "approver"), getStr(s, "signed_at"), ctx})
+		verifiedSignoff := approval{getStr(ctx, "approver"), getStr(s, "signed_at"), ctx}
+		validSignoffs = append(validSignoffs, verifiedSignoff)
+		if contextAuthorizes(ctx) {
+			validApprovals = append(validApprovals, verifiedSignoff)
+		}
 	}
 	checks["signoff_signatures"] = signaturesOK
 
@@ -398,8 +412,8 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		}
 	}
 
-	windowsOK := len(validApprovals) > 0
-	for _, a := range validApprovals {
+	windowsOK := len(validSignoffs) > 0
+	for _, a := range validSignoffs {
 		if !withinWindowGo(a.signedAt, getStr(a.ctx, "issued_at"), getStr(a.ctx, "expires_at")) {
 			windowsOK = false
 		}

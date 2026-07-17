@@ -1018,6 +1018,11 @@ def _trust_receipt_canonical_profile_error(receipt: dict) -> Optional[str]:
     return None
 
 
+def _context_authorizes(context: dict) -> bool:
+    """Legacy contexts implicitly approve; typed decisions must say approved."""
+    return "decision" not in context or context.get("decision") == "approved"
+
+
 def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
     """Offline EP §6.2 Trust Receipt verifier (I-D §6.3). Mirrors packages/verify
     verifyTrustReceipt; the PIP-007 attestation report is advisory and omitted
@@ -1073,6 +1078,7 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         commitments_ok = False
     checks["context_commitments"] = commitments_ok
 
+    valid_signoffs = []
     valid_approvals = []
     signatures_ok = len(signoffs) > 0
     for s in signoffs:
@@ -1115,7 +1121,14 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         if not sig_ok:
             signatures_ok = False
             continue
-        valid_approvals.append({"approver": ctx.get("approver"), "signed_at": s.get("signed_at"), "ctx": ctx})
+        verified_signoff = {"approver": ctx.get("approver"), "signed_at": s.get("signed_at"), "ctx": ctx}
+        valid_signoffs.append(verified_signoff)
+        if _context_authorizes(ctx):
+            valid_approvals.append(verified_signoff)
+        elif ctx.get("decision") == "denied":
+            errors.append(f"signed denial by {ctx.get('approver')} does not authorize the action")
+        else:
+            errors.append(f"signed decision by {ctx.get('approver')} is not a recognized approval outcome")
     checks["signoff_signatures"] = signatures_ok
 
     initiator = receipt["action"].get("initiator")
@@ -1183,8 +1196,8 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
                 hashlib.sha256(canonicalize(signed_cp).encode("utf-8")).digest(),
                 log_public_key)
 
-    windows_ok = len(valid_approvals) > 0
-    for a in valid_approvals:
+    windows_ok = len(valid_signoffs) > 0
+    for a in valid_signoffs:
         if not _within_window(a["signed_at"], a["ctx"].get("issued_at"), a["ctx"].get("expires_at")):
             windows_ok = False
     committed_at = (receipt.get("consumption") or {}).get("committed_at")
