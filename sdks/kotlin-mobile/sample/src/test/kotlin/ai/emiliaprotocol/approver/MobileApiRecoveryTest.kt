@@ -101,7 +101,7 @@ class MobileApiRecoveryTest {
     }
 
     private fun api(connections: StubConnections): MobileApi = MobileApi(
-        rawBaseUrl = "https://approver.test/api/",
+        rawBaseUrl = "https://www.emiliaprotocol.ai/api/",
         accessToken = "mobile-access-token",
         connectionFactory = connections,
     )
