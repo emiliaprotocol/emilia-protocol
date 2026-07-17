@@ -51,6 +51,12 @@ assert_sql "'statement_replay'::TEXT" 'witness advancement must distinguish repl
 assert_sql "'sequence_rollback'::TEXT" 'witness advancement must distinguish rollback'
 assert_sql "'sequence_equivocation'::TEXT" \
   'witness advancement must distinguish same-sequence equivocation'
+assert_sql 'equivocated[[:space:]]+BOOLEAN NOT NULL DEFAULT FALSE' \
+  'network-witness checkpoints must persist equivocation state'
+assert_sql 'SET equivocated = TRUE' \
+  'same-sequence conflicts must poison the durable witness stream'
+assert_sql 'IF v_equivocated THEN' \
+  'a poisoned witness stream must remain closed on later sequences'
 assert_sql 'ALTER TABLE emilia_gate_evidence\.network_witness_checkpoints FORCE ROW LEVEL SECURITY' \
   'network-witness checkpoint reads must force RLS'
 assert_sql "EMILIA network-witness scope is not authorized for session login %'.*session_user" \

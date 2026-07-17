@@ -317,12 +317,19 @@ export function createMemoryWitnessSequenceStore() {
     async advance(streamId, sequence, statementDigest) {
       const previous = streams.get(streamId);
       if (previous) {
+        if (previous.equivocated === true) {
+          return { accepted: false, reason: 'sequence_equivocation' };
+        }
         if (sequence < previous.sequence) return { accepted: false, reason: 'sequence_rollback' };
         if (sequence === previous.sequence) {
-          return { accepted: false, reason: previous.digest === statementDigest ? 'statement_replay' : 'sequence_equivocation' };
+          if (previous.digest === statementDigest) {
+            return { accepted: false, reason: 'statement_replay' };
+          }
+          streams.set(streamId, { ...previous, equivocated: true });
+          return { accepted: false, reason: 'sequence_equivocation' };
         }
       }
-      streams.set(streamId, { sequence, digest: statementDigest });
+      streams.set(streamId, { sequence, digest: statementDigest, equivocated: false });
       return { accepted: true, reason: null };
     },
     snapshot() { return [...streams.entries()].map(([stream_id, value]) => ({ stream_id, ...value })); },

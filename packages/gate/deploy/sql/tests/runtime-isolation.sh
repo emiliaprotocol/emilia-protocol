@@ -93,6 +93,12 @@ SELECT emilia_gate_evidence.grant_network_witness_scope(
   decode('7769746e6573733a656467652d3100636170747572653a61', 'hex')
 );
 SELECT emilia_gate_evidence.grant_network_witness_scope(
+  'gate_tenant_a',
+  'tenant-a',
+  'gate-a',
+  decode('7769746e6573733a656467652d3300636170747572653a72616365', 'hex')
+);
+SELECT emilia_gate_evidence.grant_network_witness_scope(
   'gate_tenant_b',
   'tenant-b',
   'gate-b',
@@ -225,7 +231,7 @@ if [[ "$witness_first" != 'true:' \
       || "$witness_replay" != 'false:statement_replay' \
       || "$witness_rollback" != 'false:sequence_rollback' \
       || "$witness_equivocation" != 'false:sequence_equivocation' \
-      || "$witness_advance" != 'true:' ]]; then
+      || "$witness_advance" != 'false:sequence_equivocation' ]]; then
   echo "network-witness outcomes were unexpected: first=$witness_first replay=$witness_replay rollback=$witness_rollback equivocation=$witness_equivocation advance=$witness_advance" >&2
   exit 1
 fi
@@ -233,11 +239,11 @@ fi
 race_one="$(mktemp)"
 race_two="$(mktemp)"
 psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align \
-  --command="SET ROLE emilia_gate_evidence_runtime; SELECT accepted::text || ':' || coalesce(reason, '') FROM emilia_gate_evidence.advance_network_witness_checkpoint('tenant-a', 'gate-a', decode('7769746e6573733a656467652d3100636170747572653a61', 'hex'), 9, 'sha256:6666666666666666666666666666666666666666666666666666666666666666');" \
+  --command="SET ROLE emilia_gate_evidence_runtime; SELECT accepted::text || ':' || coalesce(reason, '') FROM emilia_gate_evidence.advance_network_witness_checkpoint('tenant-a', 'gate-a', decode('7769746e6573733a656467652d3300636170747572653a72616365', 'hex'), 9, 'sha256:6666666666666666666666666666666666666666666666666666666666666666');" \
   >"$race_one" &
 race_one_pid=$!
 psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align \
-  --command="SET ROLE emilia_gate_evidence_runtime; SELECT accepted::text || ':' || coalesce(reason, '') FROM emilia_gate_evidence.advance_network_witness_checkpoint('tenant-a', 'gate-a', decode('7769746e6573733a656467652d3100636170747572653a61', 'hex'), 9, 'sha256:7777777777777777777777777777777777777777777777777777777777777777');" \
+  --command="SET ROLE emilia_gate_evidence_runtime; SELECT accepted::text || ':' || coalesce(reason, '') FROM emilia_gate_evidence.advance_network_witness_checkpoint('tenant-a', 'gate-a', decode('7769746e6573733a656467652d3300636170747572653a72616365', 'hex'), 9, 'sha256:7777777777777777777777777777777777777777777777777777777777777777');" \
   >"$race_two" &
 race_two_pid=$!
 wait "$race_one_pid"
@@ -246,6 +252,21 @@ race_outcomes="$(sort "$race_one" "$race_two")"
 rm -f "$race_one" "$race_two"
 if [[ "$race_outcomes" != $'false:sequence_equivocation\ntrue:' ]]; then
   echo "concurrent witness race was not serialized atomically: $race_outcomes" >&2
+  exit 1
+fi
+
+race_poisoned="$(psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align <<'SQL'
+SET ROLE emilia_gate_evidence_runtime;
+SELECT accepted::text || ':' || coalesce(reason, '')
+FROM emilia_gate_evidence.advance_network_witness_checkpoint(
+  'tenant-a', 'gate-a',
+  decode('7769746e6573733a656467652d3300636170747572653a72616365', 'hex'), 10,
+  'sha256:8888888888888888888888888888888888888888888888888888888888888888'
+);
+SQL
+)"
+if [[ "$race_poisoned" != 'false:sequence_equivocation' ]]; then
+  echo "concurrent witness equivocation did not poison the stream: $race_poisoned" >&2
   exit 1
 fi
 
@@ -310,7 +331,7 @@ if [[ "$tenant_a_rows" != '1' || "$tenant_b_rows" != '1' || "$owner_rows" != '2'
   echo "RLS row counts were unexpected: tenant_a=$tenant_a_rows tenant_b=$tenant_b_rows owner=$owner_rows" >&2
   exit 1
 fi
-if [[ "$witness_a_rows" != '1' || "$witness_b_rows" != '1' || "$owner_witness_rows" != '2' ]]; then
+if [[ "$witness_a_rows" != '2' || "$witness_b_rows" != '1' || "$owner_witness_rows" != '3' ]]; then
   echo "witness RLS row counts were unexpected: tenant_a=$witness_a_rows tenant_b=$witness_b_rows owner=$owner_witness_rows" >&2
   exit 1
 fi
@@ -364,6 +385,12 @@ SELECT emilia_gate_evidence.revoke_network_witness_scope(
   'tenant-a',
   'gate-a',
   decode('7769746e6573733a656467652d3100636170747572653a61', 'hex')
+);
+SELECT emilia_gate_evidence.revoke_network_witness_scope(
+  'gate_tenant_a',
+  'tenant-a',
+  'gate-a',
+  decode('7769746e6573733a656467652d3300636170747572653a72616365', 'hex')
 );
 SQL
 tenant_a_after_revoke="$(psql_as gate_tenant_a 'gate-isolation-tenant-a' --quiet --tuples-only --no-align \

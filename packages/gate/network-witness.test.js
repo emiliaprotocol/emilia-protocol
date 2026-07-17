@@ -116,9 +116,19 @@ test('online ingestion refuses replay, rollback, equivocation, ephemeral product
   const equivocation = signNetworkWitnessStatement({
     witness_id: 'witness:edge-1', capture_point_id: 'capture:grid-ingress-a', sequence: 7,
     observed_at: '2026-07-16T19:59:45.000Z', event: 'response_observed', direction: 'egress',
-    action_digest: ACTION, config_digest: CONFIG,
+    action_digest: `sha256:${'44'.repeat(32)}`, config_digest: CONFIG,
   }, first.privateKey);
   assert.equal((await acceptNetworkWitnessStatement(equivocation, options)).reason, 'sequence_equivocation');
+
+  const afterEquivocation = signNetworkWitnessStatement({
+    witness_id: 'witness:edge-1', capture_point_id: 'capture:grid-ingress-a', sequence: 8,
+    observed_at: '2026-07-16T19:59:50.000Z', event: 'request_observed', direction: 'ingress',
+    action_digest: ACTION, flow_digest: FLOW, config_digest: CONFIG,
+  }, first.privateKey);
+  assert.equal(
+    (await acceptNetworkWitnessStatement(afterEquivocation, options)).reason,
+    'sequence_equivocation',
+  );
 
   assert.equal((await acceptNetworkWitnessStatement(first.statement, {
     pinnedWitnesses: [first.pin], now: NOW, sequenceStore: createMemoryWitnessSequenceStore(),

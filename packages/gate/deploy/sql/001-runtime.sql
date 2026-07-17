@@ -107,9 +107,13 @@ CREATE TABLE IF NOT EXISTS emilia_gate_evidence.network_witness_checkpoints (
   stream_key       BYTEA NOT NULL CHECK (octet_length(stream_key) BETWEEN 1 AND 1024),
   sequence         BIGINT NOT NULL CHECK (sequence BETWEEN 0 AND 9007199254740991),
   statement_digest TEXT NOT NULL CHECK (statement_digest ~ '^sha256:[0-9a-f]{64}$'),
+  equivocated      BOOLEAN NOT NULL DEFAULT FALSE,
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
   PRIMARY KEY (tenant_id, gate_id, stream_key)
 );
+
+ALTER TABLE emilia_gate_evidence.network_witness_checkpoints
+  ADD COLUMN IF NOT EXISTS equivocated BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Re-running the migration cannot leave the runtime role as an object owner;
 -- ownership bypasses ordinary table ACLs in Postgres.
@@ -353,6 +357,7 @@ AS $function$
 DECLARE
   v_current_digest TEXT;
   v_current_sequence BIGINT;
+  v_equivocated BOOLEAN;
   v_inserted INTEGER;
 BEGIN
   IF p_tenant_id IS NULL OR char_length(p_tenant_id) NOT BETWEEN 1 AND 256
@@ -388,13 +393,18 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT checkpoint.sequence, checkpoint.statement_digest
-    INTO STRICT v_current_sequence, v_current_digest
+  SELECT checkpoint.sequence, checkpoint.statement_digest, checkpoint.equivocated
+    INTO STRICT v_current_sequence, v_current_digest, v_equivocated
     FROM emilia_gate_evidence.network_witness_checkpoints AS checkpoint
     WHERE checkpoint.tenant_id = p_tenant_id
       AND checkpoint.gate_id = p_gate_id
       AND checkpoint.stream_key = p_stream_key
     FOR UPDATE;
+
+  IF v_equivocated THEN
+    RETURN QUERY SELECT FALSE, 'sequence_equivocation'::TEXT;
+    RETURN;
+  END IF;
 
   IF p_sequence < v_current_sequence THEN
     RETURN QUERY SELECT FALSE, 'sequence_rollback'::TEXT;
@@ -404,6 +414,19 @@ BEGIN
     IF p_statement_digest = v_current_digest THEN
       RETURN QUERY SELECT FALSE, 'statement_replay'::TEXT;
     ELSE
+      UPDATE emilia_gate_evidence.network_witness_checkpoints
+        SET equivocated = TRUE,
+            updated_at = clock_timestamp()
+        WHERE tenant_id = p_tenant_id
+          AND gate_id = p_gate_id
+          AND stream_key = p_stream_key
+          AND sequence = v_current_sequence
+          AND statement_digest = v_current_digest
+          AND equivocated = FALSE;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'EMILIA network-witness equivocation fence was lost'
+          USING ERRCODE = '40001';
+      END IF;
       RETURN QUERY SELECT FALSE, 'sequence_equivocation'::TEXT;
     END IF;
     RETURN;
@@ -417,7 +440,8 @@ BEGIN
       AND gate_id = p_gate_id
       AND stream_key = p_stream_key
       AND sequence = v_current_sequence
-      AND statement_digest = v_current_digest;
+      AND statement_digest = v_current_digest
+      AND equivocated = FALSE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'EMILIA network-witness checkpoint fence was lost'
       USING ERRCODE = '40001';

@@ -47,7 +47,9 @@ the profile.
 The witness proves observation by a pinned capture point. It does **not** establish authorization,
 blocking, execution, physical truth, or completeness. Online ingestion requires an atomic durable
 sequence store so replay, rollback, and same-sequence equivocation fail closed. Historical rollback
-detection starts from a relying-party-pinned stream checkpoint.
+detection starts from a relying-party-pinned stream checkpoint. A same-sequence conflict permanently
+poisons that stream; later sequence numbers remain refused until the relying party provisions a new
+witness or capture-point identity through an explicit recovery process.
 
 ### 3. Control plane
 
