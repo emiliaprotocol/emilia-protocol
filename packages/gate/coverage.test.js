@@ -346,6 +346,148 @@ test('coverage can reuse a durable RP-trusted acceptance but not a presenter-sup
   assert.equal(presented.surfaces[0].witness_verified, false);
 });
 
+test('trusted S7 coverage is invalidated by a verified conflicting S7 regardless of ingestion label', async (t) => {
+  const k = keys();
+  const s7a = signNetworkWitnessStatement({
+    witness_id: surface.witness.witness_id,
+    capture_point_id: surface.witness.capture_point_id,
+    sequence: 7,
+    observed_at: '2026-07-16T19:59:30.000Z',
+    event: surface.witness.event,
+    direction: 'ingress',
+    action_digest: ACTION,
+    config_digest: CONFIG,
+  }, k.witnessPrivateKey);
+  const s8a = signNetworkWitnessStatement({
+    witness_id: surface.witness.witness_id,
+    capture_point_id: surface.witness.capture_point_id,
+    sequence: 8,
+    observed_at: '2026-07-16T19:59:35.000Z',
+    event: surface.witness.event,
+    direction: 'ingress',
+    action_digest: ACTION,
+    config_digest: CONFIG,
+  }, k.witnessPrivateKey);
+  const s7b = signNetworkWitnessStatement({
+    witness_id: surface.witness.witness_id,
+    capture_point_id: surface.witness.capture_point_id,
+    sequence: 7,
+    observed_at: '2026-07-16T19:59:40.000Z',
+    event: surface.witness.event,
+    direction: 'egress',
+    action_digest: `sha256:${'44'.repeat(32)}`,
+    config_digest: CONFIG,
+  }, k.witnessPrivateKey);
+
+  const history = async () => {
+    const memory = createMemoryWitnessSequenceStore();
+    const store = { durable: true, advance: (...args) => memory.advance(...args) };
+    const ingestionOptions = {
+      pinnedWitnesses: k.pinnedWitnesses,
+      now: NOW,
+      sequenceStore: store,
+    };
+    const acceptance = await acceptNetworkWitnessStatement(s7a, ingestionOptions);
+    assert.equal(acceptance.accepted, true);
+    assert.equal((await acceptNetworkWitnessStatement(s8a, ingestionOptions)).accepted, true);
+    return { acceptance, ingestionOptions, store };
+  };
+  const evidence = {
+    inventory,
+    deployments: [{ profile: deploymentProfile, evidence: {} }],
+    probes: [k.firstProbe],
+  };
+
+  await t.test('sequence_rollback', async () => {
+    const { acceptance, ingestionOptions, store } = await history();
+    const conflict = await acceptNetworkWitnessStatement(s7b, ingestionOptions);
+    assert.equal(conflict.reason, 'sequence_rollback');
+    const report = await evaluateGateCoverage(evidence, {
+      ...options(k),
+      witnessSequenceStore: store,
+      trustedWitnessAcceptances: [acceptance, conflict],
+    });
+    assert.equal(report.surfaces[0].witness_verified, false);
+    assert.equal(report.surfaces[0].witness_acceptance_reason, 'sequence_equivocation');
+    assert.equal(report.surfaces[0].complete, false);
+    assert.equal(report.complete, false);
+  });
+
+  await t.test('durable_sequence_store_required', async () => {
+    const { acceptance } = await history();
+    const conflict = await acceptNetworkWitnessStatement(s7b, {
+      pinnedWitnesses: k.pinnedWitnesses,
+      now: NOW,
+    });
+    assert.equal(conflict.reason, 'durable_sequence_store_required');
+    const offlineOptions = options(k);
+    delete offlineOptions.witnessSequenceStore;
+    delete offlineOptions.allowEphemeralWitnessStore;
+    offlineOptions.trustedWitnessAcceptances = [acceptance, conflict];
+    const report = await evaluateGateCoverage(evidence, offlineOptions);
+    assert.equal(report.surfaces[0].witness_verified, false);
+    assert.equal(report.surfaces[0].witness_acceptance_reason, 'sequence_equivocation');
+    assert.equal(report.surfaces[0].complete, false);
+    assert.equal(report.complete, false);
+  });
+});
+
+test('ordinary witness rollback and replay refusals never become coverage evidence', async (t) => {
+  const k = keys();
+  const evidence = {
+    inventory,
+    deployments: [{ profile: deploymentProfile, evidence: {} }],
+    probes: [k.firstProbe],
+    witnesses: [k.witnessStatement],
+  };
+
+  await t.test('statement_replay', async () => {
+    const store = createMemoryWitnessSequenceStore();
+    assert.equal((await acceptNetworkWitnessStatement(k.witnessStatement, {
+      pinnedWitnesses: k.pinnedWitnesses,
+      now: NOW,
+      sequenceStore: store,
+      allowEphemeralStore: true,
+    })).accepted, true);
+    const report = await evaluateGateCoverage(evidence, {
+      ...options(k),
+      witnessSequenceStore: store,
+    });
+    assert.equal(report.surfaces[0].witness_verified, false);
+    assert.equal(report.surfaces[0].witness_acceptance_reason, 'statement_replay');
+    assert.equal(report.complete, false);
+  });
+
+  await t.test('sequence_rollback', async () => {
+    const store = createMemoryWitnessSequenceStore();
+    const next = signNetworkWitnessStatement({
+      witness_id: surface.witness.witness_id,
+      capture_point_id: surface.witness.capture_point_id,
+      sequence: k.witnessStatement.observation.sequence + 1,
+      observed_at: '2026-07-16T19:59:45.000Z',
+      event: surface.witness.event,
+      direction: 'ingress',
+      action_digest: ACTION,
+      config_digest: CONFIG,
+    }, k.witnessPrivateKey);
+    const ingestionOptions = {
+      pinnedWitnesses: k.pinnedWitnesses,
+      now: NOW,
+      sequenceStore: store,
+      allowEphemeralStore: true,
+    };
+    assert.equal((await acceptNetworkWitnessStatement(k.witnessStatement, ingestionOptions)).accepted, true);
+    assert.equal((await acceptNetworkWitnessStatement(next, ingestionOptions)).accepted, true);
+    const report = await evaluateGateCoverage(evidence, {
+      ...options(k),
+      witnessSequenceStore: store,
+    });
+    assert.equal(report.surfaces[0].witness_verified, false);
+    assert.equal(report.surfaces[0].witness_acceptance_reason, 'sequence_rollback');
+    assert.equal(report.complete, false);
+  });
+});
+
 test('a verified bypass wins over a simultaneous block result', async () => {
   const k = keys();
   const bypass = k.probeStatement('executed_without_receipt');

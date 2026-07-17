@@ -352,8 +352,8 @@ function acceptanceResult(verified, {
  * an untrusted bundle field into this trust channel.
  */
 export function validateTrustedNetworkWitnessAcceptance(result, options = {}) {
-  const fail = (reason, fields = {}) => ({
-    verified: false,
+  const fail = (reason, fields = {}, statementVerified = false) => ({
+    verified: statementVerified === true,
     accepted: false,
     consumed: false,
     reason,
@@ -377,19 +377,21 @@ export function validateTrustedNetworkWitnessAcceptance(result, options = {}) {
       capture_point_id: result.capture_point_id,
       sequence_store_durable: result.sequence_store_durable === true,
     };
+    const statementVerified = result.verified === true
+      && digest(common.statement_digest) && digest(common.action_digest)
+      && Number.isSafeInteger(common.sequence) && common.sequence >= 0
+      && nonEmptyString(common.witness_id) && nonEmptyString(common.capture_point_id)
+      && common.stream_id === `${common.witness_id}\0${common.capture_point_id}`
+      && NETWORK_WITNESS_EVENTS.includes(common.event)
+      && Number.isFinite(strictInstantMs(common.observed_at));
     if (result.accepted !== true || result.consumed !== true) {
       return fail(
         nonEmptyString(result.reason) ? result.reason : 'trusted_witness_acceptance_rejected',
         common,
+        statementVerified,
       );
     }
-    if (result.verified !== true || result.reason !== null
-        || !digest(common.statement_digest) || !digest(common.action_digest)
-        || !Number.isSafeInteger(common.sequence) || common.sequence < 0
-        || !nonEmptyString(common.witness_id) || !nonEmptyString(common.capture_point_id)
-        || common.stream_id !== `${common.witness_id}\0${common.capture_point_id}`
-        || !NETWORK_WITNESS_EVENTS.includes(common.event)
-        || !Number.isFinite(strictInstantMs(common.observed_at))) {
+    if (!statementVerified || result.reason !== null) {
       return fail('trusted_witness_acceptance_invalid');
     }
     if (!common.sequence_store_durable && options.allowEphemeralStore !== true) {

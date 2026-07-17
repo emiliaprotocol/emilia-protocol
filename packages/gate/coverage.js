@@ -339,6 +339,14 @@ function witnessEvidenceKey(result) {
   return `${result.witness_id}\0${result.capture_point_id}\0${result.sequence}`;
 }
 
+function verifiedWitnessPositionKey(result) {
+  if (result?.verified !== true || !digest(result?.statement_digest)
+      || !string(result?.witness_id) || !string(result?.capture_point_id)
+      || !Number.isSafeInteger(result?.sequence) || result.sequence < 0
+      || result.stream_id !== `${result.witness_id}\0${result.capture_point_id}`) return null;
+  return `${result.stream_id}\0${result.sequence}`;
+}
+
 /**
  * Evaluate coverage of a relying-party-declared inventory. Inventory
  * completeness remains an explicit external assumption and is never inferred.
@@ -503,6 +511,7 @@ export async function evaluateGateCoverage(input = {}, options = {}) {
   const witnessRefusals = new Map();
   const acceptedWitnessEvidence = new Map();
   const equivocatedWitnessEvidence = new Map();
+  const verifiedWitnessEvidence = new Map();
   const trustedByDigest = new Map();
   const indexWitnessAcceptance = (coverageKey, evidenceKey, result) => {
     let bucket = witnessResults.get(coverageKey);
@@ -528,19 +537,36 @@ export async function evaluateGateCoverage(input = {}, options = {}) {
     if (bucket?.size === 0) witnessResults.delete(coverageKey);
     return previous;
   };
-  const recordWitnessEquivocation = (result, evidenceKey, coverageKey) => {
+  const recordWitnessEquivocation = (result, evidenceKey, coverageKey, conflictingResult = null) => {
     const previous = removeWitnessAcceptance(evidenceKey);
     equivocatedWitnessEvidence.set(evidenceKey, result);
     recordWitnessRefusal(coverageKey, result);
-    const previousCoverageKey = witnessCoverageKey(previous);
-    if (previousCoverageKey) {
-      recordWitnessRefusal(previousCoverageKey, result);
+    for (const candidate of [previous, conflictingResult]) {
+      const candidateCoverageKey = witnessCoverageKey(candidate);
+      if (candidateCoverageKey) {
+        recordWitnessRefusal(candidateCoverageKey, result);
+      }
     }
   };
   const recordWitnessResult = (result) => {
     const coverageKey = witnessCoverageKey(result);
     const evidenceKey = witnessEvidenceKey(result);
     if (!coverageKey || !evidenceKey) return;
+    const verifiedPositionKey = verifiedWitnessPositionKey(result);
+    if (verifiedPositionKey) {
+      const previousVerified = verifiedWitnessEvidence.get(verifiedPositionKey);
+      if (previousVerified?.statement_digest !== undefined
+          && previousVerified.statement_digest !== result.statement_digest) {
+        recordWitnessEquivocation(
+          { ...result, accepted: false, consumed: false, reason: 'sequence_equivocation' },
+          evidenceKey,
+          coverageKey,
+          previousVerified,
+        );
+        return;
+      }
+      if (!previousVerified) verifiedWitnessEvidence.set(verifiedPositionKey, result);
+    }
     if (result.reason === 'sequence_equivocation') {
       recordWitnessEquivocation(result, evidenceKey, coverageKey);
       return;
