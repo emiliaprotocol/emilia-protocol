@@ -321,16 +321,17 @@ kubectl -n kube-system get pods --show-labels
 ## Local E2E harness
 
 `docker-compose.gate-e2e.yml` builds the local Dockerfile, initializes a local
-Postgres schema, mounts an E2E-only Postgres adapter, and starts the service as
-non-root with a read-only root filesystem. It does not use an official Gate
-image. Its GitHub connector is real, so use a deliberately invalid token when
-testing only health and never send `POST /v1/actions` against a production
-repository.
+Postgres schema, runs the production Postgres action, consumption, and evidence
+adapters against that schema, and starts the service as non-root with a
+read-only root filesystem. It does not use an official Gate image. Its GitHub
+connector is real, so use a deliberately invalid token when testing only health
+and never send `POST /v1/actions` against a production repository.
 
 Create five test-only files outside the repository, then point Compose at them.
 The issuer-roots file contains the JSON trust object shown below; the other
-four files contain one value each. File-backed Secrets preserve the read-only
-container filesystem in Docker Compose.
+four files contain one value each. The API token must contain 32 to 1024
+visible non-space characters, matching the production authenticator. File-backed
+Secrets preserve the read-only container filesystem in Docker Compose.
 
 ```bash
 export EMILIA_GATE_E2E_POSTGRES_OWNER_PASSWORD_FILE=/secure/tmp/gate-postgres-owner-password
@@ -364,10 +365,11 @@ docker compose -f docker-compose.gate-e2e.yml down --volumes
 ```
 
 Compose runs the repository's canonical Postgres evidence migration and
-backend under a migration owner, then connects the service as a separate
-least-privilege runtime login bound to the fixture's exact evidence scope. Its consumption/action schema and adapter wiring
-remain E2E fixtures, not a promised production schema. The operator's reviewed config/migration
-modules remain authoritative.
+production adapters under a migration owner, then connects the service as a
+separate least-privilege runtime login bound to the fixture's exact evidence
+scope. The fixture's consumption/action schema is not a promised production
+schema. The operator's reviewed config and migration modules remain
+authoritative.
 
 ## Backup runbook
 
