@@ -157,7 +157,16 @@ function buildRevocationStatement(target, signer) {
 }
 
 // Build a valid trust receipt. classAForCfo=false makes both signoffs Class-B.
-function buildReceipt({ classAForCfo = true, amount = '50000.00', currency = 'USD', policyHash = 'sha256:77ab1234', actionOverrides = {} } = {}) {
+function buildReceipt({
+  classAForCfo = true,
+  amount = '50000.00',
+  currency = 'USD',
+  policyHash = 'sha256:77ab1234',
+  actionOverrides = {},
+  requiredApprovals = 2,
+  controllerDecision,
+  cfoDecision,
+} = {}) {
   const baseAction = {
     ep_version: '1.0', action_type: 'wire.release',
     organization_id: 'acme',
@@ -171,11 +180,23 @@ function buildReceipt({ classAForCfo = true, amount = '50000.00', currency = 'US
   const baseCtx = {
     ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash,
     policy_id: 'ep:policy:wires-over-100k@v12', policy_hash: policyHash,
-    initiator: action.initiator, required_approvals: 2,
+    initiator: action.initiator, required_approvals: requiredApprovals,
     issued_at: '2026-06-09T17:21:05Z', expires_at: '2026-06-09T17:36:05Z',
   };
-  const ctx1 = { ...baseCtx, approver: 'ep:approver:jchen-controller', approver_index: 1, nonce: 'n-1' };
-  const ctx2 = { ...baseCtx, approver: 'ep:approver:mrios-cfo', approver_index: 2, nonce: 'n-2' };
+  const ctx1 = {
+    ...baseCtx,
+    approver: 'ep:approver:jchen-controller',
+    approver_index: 1,
+    nonce: 'n-1',
+    ...(controllerDecision === undefined ? {} : { decision: controllerDecision }),
+  };
+  const ctx2 = {
+    ...baseCtx,
+    approver: 'ep:approver:mrios-cfo',
+    approver_index: 2,
+    nonce: 'n-2',
+    ...(cfoDecision === undefined ? {} : { decision: cfoDecision }),
+  };
   const d1 = sha256hex(canonicalize(ctx1));
   const d2 = sha256hex(canonicalize(ctx2));
   const signoffs = classAForCfo
@@ -387,6 +408,34 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     const r = evaluateReliance(input, opts);
     expect(r.verdict).toBe('do_not_rely_authority_subject_mismatch');
     expect(r.rely).toBe(false);
+  });
+
+  it('does not let a signed denial supply Class-A assurance or authority identity', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({
+      requiredApprovals: 1,
+      controllerDecision: 'approved',
+      cfoDecision: 'denied',
+    });
+    input.receipt = receipt;
+    input.action.action_hash = receipt.action_hash;
+
+    const classAResult = evaluateReliance(input, opts);
+    expect(classAResult).toMatchObject({
+      verdict: 'do_not_rely_no_class_a',
+      rely: false,
+      checks: { assurance: false, authority: null },
+    });
+
+    input.relying_party_profile.required_assurance = 'signed';
+    input.relying_party_profile.required_evidence = input.relying_party_profile.required_evidence
+      .filter((type) => type !== 'class_a_or_quorum');
+    const authorityResult = evaluateReliance(input, opts);
+    expect(authorityResult).toMatchObject({
+      verdict: 'do_not_rely_authority_subject_mismatch',
+      rely: false,
+      checks: { assurance: 'signed', authority: null },
+    });
   });
 
   it('reports a missing authority proof through the exact closed refusal contract', () => {

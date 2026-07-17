@@ -182,8 +182,13 @@ function decimalMaterial(candidates) {
   return { value: present[0], ambiguous: present.some((value) => decimalEqual(value, present[0]) !== true) };
 }
 
+function isApprovalContext(context) {
+  return Boolean(context && typeof context === 'object'
+    && (context.decision === undefined || context.decision === 'approved'));
+}
+
 /** Extract authority/policy material only from bytes already covered by receipt verification. */
-function signedActionMaterial(receipt, contexts) {
+function signedActionMaterial(receipt, approvalContexts) {
   // verifyTrustReceipt has already authenticated receipt.action. Any malformed
   // material below still refuses through missing/ambiguous action fields.
   const signed = receipt.action ?? {};
@@ -196,11 +201,11 @@ function signedActionMaterial(receipt, contexts) {
   ]);
   const policy = exactMaterial([
     signed.policy_hash,
-    ...contexts.map((context) => context?.policy_hash),
+    ...approvalContexts.map((context) => context?.policy_hash),
   ]);
   const organization = exactMaterial([
     signed.organization_id,
-    ...contexts.map((context) => context?.organization_id),
+    ...approvalContexts.map((context) => context?.organization_id),
   ]);
   return {
     action_type: typeof signed.action_type === 'string' ? signed.action_type : null,
@@ -308,11 +313,32 @@ export function evaluateReliance(input = {}, opts = {}) {
 
   // Verified approvers — the human↔ceremony join. Because the receipt is valid,
   // every signoff verified; map each back to the approver of its context and the
-  // pinned class of the key that signed. This is what lets authority be bound to
-  // the human who ACTUALLY approved, not merely to some approver on the receipt.
+  // pinned class of the key that signed. Only an approval decision may enter
+  // this authorization set; signed denials remain decision evidence and never
+  // supply identity, assurance, authority, or action material.
   const approverKeys = opts.approverKeys || {};
   const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
-  const signedMaterial = signedActionMaterial(receipt, contexts);
+  // Join signoffs to contexts on NORMALIZED hex, exactly as verifyTrustReceipt
+  // does (hexOf: strip any "sha256:" prefix, lowercase). Keying on a fixed
+  // "sha256:"-prefixed form would miss a bare-hex or upper-case context_hash that
+  // the base verifier accepts, silently emptying verifiedApprovals and denying
+  // reliance on a receipt that actually verified.
+  const hexOf = (h) => String(h || '').replace(/^sha256:/i, '').toLowerCase();
+  const ctxByHash = new Map();
+  for (const c of contexts) {
+    try { ctxByHash.set(crypto.createHash('sha256').update(canonicalize(c), 'utf8').digest('hex'), c); } catch { /* skip uncanonicalizable */ }
+  }
+  const verifiedApprovals = [];
+  for (const s of (Array.isArray(receipt.signoffs) ? receipt.signoffs : [])) {
+    const ctx = ctxByHash.get(hexOf(s?.context_hash));
+    if (!ctx?.approver || !isApprovalContext(ctx)) continue;
+    verifiedApprovals.push({
+      context: ctx,
+      approver: ctx.approver,
+      key_class: approverKeys[s?.approver_key_id]?.key_class === 'A' ? 'A' : 'B',
+    });
+  }
+  const signedMaterial = signedActionMaterial(receipt, verifiedApprovals.map((approval) => approval.context));
   if (signedMaterial.ambiguous || !signedMaterial.action_type) {
     return deny('do_not_rely_unsigned', 'receipt carries missing or internally inconsistent signed action material');
   }
@@ -331,27 +357,8 @@ export function evaluateReliance(input = {}, opts = {}) {
     policy_hash: signedMaterial.policy_hash,
     action_hash: relyingActionHash,
   };
-  // Join signoffs to contexts on NORMALIZED hex, exactly as verifyTrustReceipt
-  // does (hexOf: strip any "sha256:" prefix, lowercase). Keying on a fixed
-  // "sha256:"-prefixed form would miss a bare-hex or upper-case context_hash that
-  // the base verifier accepts, silently emptying verifiedApprovers and denying
-  // reliance on a receipt that actually verified.
-  const hexOf = (h) => String(h || '').replace(/^sha256:/i, '').toLowerCase();
-  const ctxByHash = new Map();
-  for (const c of contexts) {
-    try { ctxByHash.set(crypto.createHash('sha256').update(canonicalize(c), 'utf8').digest('hex'), c); } catch { /* skip uncanonicalizable */ }
-  }
-  const verifiedApprovers = [];
-  for (const s of (Array.isArray(receipt.signoffs) ? receipt.signoffs : [])) {
-    const ctx = ctxByHash.get(hexOf(s?.context_hash));
-    if (!ctx?.approver) continue;
-    verifiedApprovers.push({
-      approver: ctx.approver,
-      key_class: approverKeys[s?.approver_key_id]?.key_class === 'A' ? 'A' : 'B',
-    });
-  }
-  const classASigners = verifiedApprovers.filter((a) => a.key_class === 'A').map((a) => a.approver);
-  const allSigners = verifiedApprovers.map((a) => a.approver);
+  const classASigners = verifiedApprovals.filter((a) => a.key_class === 'A').map((a) => a.approver);
+  const allSigners = verifiedApprovals.map((a) => a.approver);
 
   // ── 2. ISSUER TRUST — the checkpoint key must be one the RP pinned ─────────
   // A receipt without a transparency checkpoint is trusted only through the
@@ -380,8 +387,9 @@ export function evaluateReliance(input = {}, opts = {}) {
     if (quorumResult !== undefined) return quorumResult;
     const trustedPolicy = prof.quorum_policy;
     const members = Array.isArray(quorum?.members) ? quorum.members : [];
+    const approvalMembers = members.filter((member) => isApprovalContext(member?.signoff?.context));
     const pinnedEntries = Object.values(approverKeys).filter((entry) => entry && typeof entry === 'object');
-    const keysAnchored = members.length > 0 && members.every((member) => {
+    const keysAnchored = approvalMembers.length > 0 && approvalMembers.every((member) => {
       const approver = member?.signoff?.context?.approver;
       const fingerprint = spkiFingerprint(member?.approver_public_key);
       return fingerprint !== null && pinnedEntries.some((entry) => entry.approver_id === approver
@@ -390,7 +398,7 @@ export function evaluateReliance(input = {}, opts = {}) {
     });
     const policyPinned = validateQuorumPolicy(trustedPolicy).length === 0;
     const q = quorum && keysAnchored && policyPinned
-      ? verifyQuorum({ ...quorum, policy: trustedPolicy }, opts)
+      ? verifyQuorum({ ...quorum, policy: trustedPolicy, members: approvalMembers }, opts)
       : null;
     const ok = Boolean(q?.valid)
       && digestHex(quorum?.action_hash) !== null
