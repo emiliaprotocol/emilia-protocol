@@ -52,10 +52,16 @@ function base64u(bytes) {
   return Buffer.from(bytes).toString('base64url');
 }
 
+function withoutBase64Padding(value) {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 0x3d) end -= 1;
+  return value.slice(0, end);
+}
+
 function decodeBase64u(value, label) {
   if (typeof value !== 'string' || value.length === 0) throw new TypeError(`${label} must be base64url`);
   const bytes = Buffer.from(value, 'base64url');
-  if (bytes.length === 0 || base64u(bytes) !== value.replace(/=+$/, '')) throw new TypeError(`${label} is not canonical base64url`);
+  if (bytes.length === 0 || base64u(bytes) !== withoutBase64Padding(value)) throw new TypeError(`${label} is not canonical base64url`);
   return bytes;
 }
 
