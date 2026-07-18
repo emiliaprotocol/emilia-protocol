@@ -295,6 +295,96 @@ challenge. The Gate composes that and adds the lifecycle controls a firewall nee
   can establish a declared surface as `gated`; a passive network witness alone is always
   `witness_only`. Inventory completeness remains an explicit relying-party assumption.
 
+## Formal-to-runtime bridge
+
+Every Gate has an explicit runtime lifecycle monitor. It mirrors the load-bearing
+state ordering behind the formal model: authorization must precede the effect,
+consumption is one-way, and execution evidence follows the effect attempt. A
+divergence emits a bounded `SPEC_DIVERGENCE` event and moves the Gate into
+fail-closed safe mode. In safe mode, pass-through is disabled and a receipt must
+earn at least Class-A assurance before execution.
+
+```js
+import { createRuntimeMonitor, createTrustedActionFirewall } from '@emilia-protocol/gate';
+
+const monitor = createRuntimeMonitor({
+  onDivergence: (event) => siem.append(event),
+  authorizeRecovery: (request) => operatorApproval.verify(request),
+});
+const gate = createTrustedActionFirewall({ runtimeMonitor: monitor, /* ... */ });
+```
+
+Recovery is explicit and operator-authorized; it never re-authorizes a prior
+receipt. The repository's `check:runtime-bridge` gate binds each monitor
+theorem to an invariant declared in `formal/ep_handshake.cfg`, so a renamed or
+removed formal source cannot silently leave the runtime map stale. This is a
+machine-checked coverage binding, not a claim that TLA+ is automatically
+compiled into JavaScript: the formal specifications remain the source of the
+invariants and the monitor's transition table is covered by its own tests.
+
+## Capability receipts
+
+`capability-receipt.js` adds an issuer-signed capability envelope around an
+ordinary EP receipt. The envelope binds a secret preimage, an integer budget,
+currency, expiry, a signed delegation chain, and an optional `m-of-n` Shamir
+threshold. The envelope's `consumed` field is only an issuance invariant; spend
+state lives in an atomic capability store and is never trusted from the bearer
+object.
+
+```js
+import {
+  createMemoryCapabilityStore,
+  executeWithCapability,
+  mintCapabilityReceipt,
+} from '@emilia-protocol/gate/capability-receipt';
+
+const minted = mintCapabilityReceipt(baseReceipt, {
+  issuerPrivateKey,
+  budget: { amount: 1_000_000, currency: 'USD' },
+  expiry: '2026-12-31T00:00:00.000Z',
+});
+const store = createMemoryCapabilityStore(); // tests only; use Postgres in production
+store.registerCapability(minted.capabilityReceipt);
+await executeWithCapability({
+  capabilityReceipt: minted.capabilityReceipt,
+  secret: minted.secret,
+  action: { amount: 10_000, currency: 'USD' },
+  store,
+  gate,
+  executeAction: sendPayment,
+});
+```
+
+The production adapter requires a transaction callback and locks the capability
+state row before reserving budget. If the external effect throws, the reserved
+amount is committed as indeterminate; it is never silently reopened. The
+capability path is separate from the ordinary one-time receipt consumption
+path, so a signed base receipt can authorize multiple bounded spends without
+turning replay defense off.
+
+Delegation is issuer-authorized and budget-backed: `delegateCapabilityReceipt`
+atomically reserves and commits the child budget against the parent before the
+child is registered. A failed child registration is reported for
+reconciliation; it never creates spendable budget out of thin air. A holder
+cannot edit `delegation_chain` or enlarge a child because the issuer signs the
+entire envelope.
+
+## Zero-knowledge range receipts
+
+`zk-range-proof.js` provides `EP-ZK-RANGE-RECEIPT-v1`. It uses Bulletproofs over
+Ristretto255 to prove a hidden integer `v` satisfies `0 <= v <= max` without
+revealing `v` or its blinding factor. The second commitment proves the upper
+bound relation `max - v` without relying on a mutable claim. The envelope
+binds a public policy hash, predicate, base-receipt digest, issuer key, and
+nonce. The ordinary EP receipt signature must still be verified separately.
+
+The cryptographic engine is an explicit optional backend:
+`@aptos-labs/confidential-asset-bindings@1.1.2`. It is not pulled into the
+default Gate install because its WASM/mobile distribution is large. A
+deployment enabling ZK receipts must pin, audit, and pass the backend's own
+proof tests. This v1 is a genuine hidden-range proof; it is not a claim that
+the repository automatically compiles all TLA+ invariants into R1CS.
+
 ## Action Escrow
 
 Action Escrow is the Gate profile for a two-party agreement whose downstream

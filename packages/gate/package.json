@@ -59,7 +59,11 @@
     "./reports/external-verification": "./reports/external-verification.js",
     "./reports/assurance-package": "./reports/assurance-package.js",
     "./reliance-kernel": "./reliance-kernel.js",
-    "./aec-execution": "./aec-execution.js"
+    "./aec-execution": "./aec-execution.js",
+    "./runtime-monitor": "./runtime-monitor.js",
+    "./formal-runtime-map": "./formal-runtime-map.js",
+    "./capability-receipt": "./capability-receipt.js",
+    "./zk-range-proof": "./zk-range-proof.js"
   },
   "bin": {
     "ep-assure": "./ep-assure.mjs"
@@ -86,6 +90,10 @@
     "reliance-packet.js",
     "reliance-kernel.js",
     "aec-execution.js",
+    "runtime-monitor.js",
+    "formal-runtime-map.js",
+    "capability-receipt.js",
+    "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
     "key-registry.js",
@@ -154,6 +162,7 @@
     "cf1": "node cf1.mjs"
   },
   "dependencies": {
+    "@noble/curves": "2.2.0",
     "@emilia-protocol/require-receipt": "0.6.1",
     "@emilia-protocol/verify": "3.11.0"
   },

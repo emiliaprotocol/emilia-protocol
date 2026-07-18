@@ -56,6 +56,43 @@ import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 import { createDefaultActionControlManifest, findActionControl, validateActionControlManifest } from './action-control-manifest.js';
 import {
+  createRuntimeMonitor,
+  RUNTIME_MONITOR_VERSION,
+  RUNTIME_MONITOR_MODES,
+  RUNTIME_INVARIANTS,
+} from './runtime-monitor.js';
+import {
+  FORMAL_RUNTIME_BRIDGE_VERSION,
+  FORMAL_RUNTIME_SPEC,
+  FORMAL_RUNTIME_CONFIG,
+  FORMAL_RUNTIME_INVARIANT_MAP,
+} from './formal-runtime-map.js';
+import {
+  CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_STATE_VERSION,
+  CAPABILITY_SHARE_VERSION,
+  CAPABILITY_STATE_DDL,
+  CAPABILITY_SQL,
+  mintCapabilityReceipt,
+  verifyCapabilityReceipt,
+  splitCapabilitySecret,
+  reconstructCapabilitySecret,
+  createMemoryCapabilityStore,
+  createPostgresCapabilityStore,
+  executeWithCapability,
+  executeWithThreshold,
+  delegateCapabilityReceipt,
+} from './capability-receipt.js';
+import {
+  ZK_RANGE_RECEIPT_VERSION,
+  ZK_RANGE_SCHEME,
+  ZK_RANGE_BACKEND_PACKAGE,
+  deriveZkRangeBases,
+  loadBulletproofBackend,
+  mintZkRangeReceipt,
+  verifyZkRangeReceipt,
+} from './zk-range-proof.js';
+import {
   mintBreakGlassAuthorization,
   verifyBreakGlass,
   consumeBreakGlass,
@@ -117,6 +154,38 @@ export {
   BREAKGLASS_VERSION,
   BREAKGLASS_EVIDENCE_KIND,
 };
+export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS } from './runtime-monitor.js';
+export {
+  FORMAL_RUNTIME_BRIDGE_VERSION,
+  FORMAL_RUNTIME_SPEC,
+  FORMAL_RUNTIME_CONFIG,
+  FORMAL_RUNTIME_INVARIANT_MAP,
+} from './formal-runtime-map.js';
+export {
+  CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_STATE_VERSION,
+  CAPABILITY_SHARE_VERSION,
+  CAPABILITY_STATE_DDL,
+  CAPABILITY_SQL,
+  mintCapabilityReceipt,
+  verifyCapabilityReceipt,
+  splitCapabilitySecret,
+  reconstructCapabilitySecret,
+  createMemoryCapabilityStore,
+  createPostgresCapabilityStore,
+  executeWithCapability,
+  executeWithThreshold,
+  delegateCapabilityReceipt,
+} from './capability-receipt.js';
+export {
+  ZK_RANGE_RECEIPT_VERSION,
+  ZK_RANGE_SCHEME,
+  ZK_RANGE_BACKEND_PACKAGE,
+  deriveZkRangeBases,
+  loadBulletproofBackend,
+  mintZkRangeReceipt,
+  verifyZkRangeReceipt,
+} from './zk-range-proof.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
@@ -597,7 +666,7 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  *   Required whenever an admissibility profile is pinned. It must authenticate
  *   the presented packet or recompute the verdict and return the trusted block.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -644,6 +713,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null } = {}) {
     const requirement = manifest ? findActionRequirement(manifest, selector) : null;
     const action = requirement?.action_type || selector.action_type || selector.action || null;
+    const guarded = Boolean(requirement && requirement.receipt_required !== false);
+    const runtimeCycleId = runtimeMonitor?.beginCheck({
+      action,
+      receipt_id: receipt?.payload?.receipt_id ?? null,
+    });
     // Assurance tier the action requires (cryptographically checked below). For a
     // manifest-guarded action the tier MUST be declared explicitly: never fall
     // back to the weakest 'software' tier because assurance_class was omitted —
@@ -651,9 +725,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // machine-signed receipt (a fail-open). A guarded requirement with no tier
     // is a misconfiguration and fails closed just below. Only selector-only
     // checks (no manifest requirement) use the documented 'software' default.
-    const requiredTier = requirement
+    const declaredRequiredTier = requirement
       ? requirement.assurance_class
       : (selector.assurance_class || 'software');
+    const requiredTier = runtimeMonitor?.minimumAssuranceTier(declaredRequiredTier) ?? declaredRequiredTier;
     const pinnedQuorumPolicy = requirement?.quorum_policy
       || (quorumPolicies && typeof quorumPolicies === 'object' ? quorumPolicies[action] : null)
       || quorumPolicy;
@@ -668,6 +743,20 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     };
 
     async function decide(allow, status, reason, extra = {}) {
+      let runtimeExtra = {};
+      const runtimeDecision = runtimeMonitor?.recordDecision(runtimeCycleId, {
+        allow,
+        status,
+        reason,
+        guarded,
+        receipt_id: receipt?.payload?.receipt_id ?? null,
+      });
+      if (runtimeDecision && !runtimeDecision.ok) {
+        allow = false;
+        status = RECEIPT_REQUIRED_STATUS;
+        reason = runtimeDecision.reason;
+        runtimeExtra = { runtime_monitor: runtimeDecision.event };
+      }
       const entry = {
         kind: 'decision',
         at: new Date(typeof now === 'function' ? now() : now).toISOString(),
@@ -686,6 +775,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         evaluated_tenant_id: businessEvaluation.evaluated.tenant_id,
         evaluated_approvers: businessEvaluation.evaluated.approvers,
         ...extra,
+        ...runtimeExtra,
       };
       let record;
       try {
@@ -704,6 +794,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         }
       }
       const out = { allow, status, reason, action, requirement, evidence: record };
+      if (runtimeCycleId) Object.defineProperty(out, '_runtime_cycle_id', {
+        value: runtimeCycleId,
+        enumerable: false,
+      });
       if (!allow) {
         out.challenge = receiptChallenge(action, reason, {
           status: RECEIPT_REQUIRED_STATUS,
@@ -716,8 +810,17 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       return out;
     }
 
+    const runtimeSafeMode = runtimeMonitor?.getMode() !== RUNTIME_MONITOR_MODES.NORMAL;
+    const runtimePreflight = runtimeMonitor?.preflight({ hasReceipt: Boolean(receipt) });
+    if (runtimePreflight && !runtimePreflight.ok) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, runtimePreflight.reason, {
+        runtime_mode: runtimePreflight.mode,
+      });
+    }
     // Manifest present and this selector is not guarded (or explicitly not required): pass through.
-    if (manifest && (!requirement || requirement.receipt_required === false)) {
+    // A runtime safe mode disables pass-through so every action must present
+    // cryptographic signoff before the monitor permits execution again.
+    if (manifest && (!requirement || requirement.receipt_required === false) && !runtimeSafeMode) {
       return decide(true, 200, 'not_guarded');
     }
     // Guarded, but no receipt was presented.
@@ -1050,21 +1153,39 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       return { ok: false, status: authorization.status, body: authorization.challenge, authorization };
     }
     const receiptId = authorization.evidence?.receipt_id;
+    const runtimeCycleId = authorization._runtime_cycle_id;
+    if (runtimeMonitor && runtimeCycleId) {
+      const runtimeStart = runtimeMonitor.beginExecution(runtimeCycleId, authorization);
+      if (!runtimeStart.ok) {
+        const error = new Error(`EMILIA Gate runtime monitor refused execution (${runtimeStart.reason})`);
+        error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
+        throw error;
+      }
+    }
     let phase = 'reserved';
     let consumptionCommitted = false;
     try {
       phase = 'effect_attempted';
       const result = await fn(authorization);
       phase = 'effect_returned';
+      runtimeMonitor?.effectReturned(runtimeCycleId);
       if (typeof consumption.commit === 'function') await consumption.commit(receiptId);
       consumptionCommitted = true;
       phase = 'consumed';
-      if (opts.recordExecution === false) return { ok: true, result, authorization, execution: null, packet: null };
+      runtimeMonitor?.consumptionCommitted(runtimeCycleId);
+      if (opts.recordExecution === false) {
+        runtimeMonitor?.executionSkipped(runtimeCycleId);
+        return { ok: true, result, authorization, execution: null, packet: null };
+      }
       phase = 'recording_execution';
       const execution = await recordExecution({ authorization, outcome: 'executed', observedAction });
+      runtimeMonitor?.executionRecorded(runtimeCycleId);
       const packet = await reliancePacket({ authorization, execution });
       return { ok: true, result, authorization, execution, packet };
     } catch (e) {
+      if (runtimeMonitor && runtimeCycleId && (phase === 'effect_attempted' || phase === 'effect_returned')) {
+        runtimeMonitor.effectFailed(runtimeCycleId);
+      }
       // An exception after invoking fn() cannot establish that no external
       // effect occurred. Burn the approval if possible; if storage is down, the
       // ownership-fenced reservation remains and still blocks replay.
@@ -1073,6 +1194,8 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         try {
           await consumption.commit(receiptId);
           consumptionCommitted = true;
+          phase = 'consumed';
+          runtimeMonitor?.consumptionCommitted(runtimeCycleId);
         } catch (commitError) {
           consumptionError = commitError;
         }
@@ -1088,6 +1211,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             detail: { code: 'effect_attempted_outcome_unknown' },
             observedAction,
           });
+          const runtimeState = runtimeMonitor?.getState(runtimeCycleId);
+          if (runtimeState && runtimeState.complete !== true) {
+            runtimeMonitor.executionRecorded(runtimeCycleId);
+          }
         } catch (recordError) {
           if (!consumptionError) consumptionError = recordError;
         }
@@ -1293,4 +1420,32 @@ export default {
   createDefaultActionControlManifest,
   findActionControl,
   validateActionControlManifest,
+  createRuntimeMonitor,
+  RUNTIME_MONITOR_VERSION,
+  RUNTIME_MONITOR_MODES,
+  RUNTIME_INVARIANTS,
+  FORMAL_RUNTIME_BRIDGE_VERSION,
+  FORMAL_RUNTIME_SPEC,
+  FORMAL_RUNTIME_CONFIG,
+  FORMAL_RUNTIME_INVARIANT_MAP,
+  CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_STATE_VERSION,
+  CAPABILITY_SHARE_VERSION,
+  CAPABILITY_STATE_DDL,
+  CAPABILITY_SQL,
+  mintCapabilityReceipt,
+  verifyCapabilityReceipt,
+  splitCapabilitySecret,
+  reconstructCapabilitySecret,
+  createMemoryCapabilityStore,
+  createPostgresCapabilityStore,
+  executeWithCapability,
+  executeWithThreshold,
+  ZK_RANGE_RECEIPT_VERSION,
+  ZK_RANGE_SCHEME,
+  ZK_RANGE_BACKEND_PACKAGE,
+  deriveZkRangeBases,
+  loadBulletproofBackend,
+  mintZkRangeReceipt,
+  verifyZkRangeReceipt,
 };
