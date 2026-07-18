@@ -33,14 +33,15 @@ test.describe('Homepage', () => {
     await expect(page).toHaveURL(/\/protocol/);
   });
 
-  test('Protocol Properties section is visible', async ({ page }) => {
+  test('technical foundation and enforcement invariant are visible', async ({ page }) => {
     await page.goto('/');
 
-    // Homepage uses the buyer-facing Observe -> Verify -> Own -> Seal model;
-    // the receipt story is HOW_IT_WORKS step 04 ("Seal"), whose body produces a
-    // "Merkle-anchored authorization receipt".
-    const trustReceipt = page.locator('text=Merkle-anchored authorization receipt');
-    await expect(trustReceipt.first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Proof, not promises', { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText('No valid receipt, no mutation.', { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   test('footer is present', async ({ page }) => {
