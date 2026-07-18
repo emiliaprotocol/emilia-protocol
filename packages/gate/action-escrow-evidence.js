@@ -56,6 +56,7 @@ const RELEASE_KEYS = new Set([
   'provider_statement',
   'execution_record',
 ]);
+const STATE_RECORD_KEYS = new Set(['snapshot', 'statement']);
 const LIMITATIONS = Object.freeze([
   'The package does not establish contract enforceability, comprehension, voluntariness, workmanship, physical truth, or legal compliance.',
   'The package does not establish custodian licensing, solvency, or that no payment path existed outside the integrated release boundary.',
@@ -375,6 +376,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       && Array.isArray(pkg.approvals)
       && Array.isArray(pkg.milestones)
       && exactKeys(pkg.release, RELEASE_KEYS)
+      && exactKeys(pkg.state_record, STATE_RECORD_KEYS)
       && Array.isArray(pkg.amendments)
       && Array.isArray(pkg.limitations)
       && pkg.limitations.length === LIMITATIONS.length

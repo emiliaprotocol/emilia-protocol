@@ -39,7 +39,10 @@ function inputs(stage = 'released') {
       provider_statement: { token: 'released' },
       execution_record: { token: 'recorded' },
     },
-    stateRecord: { token: stage },
+    stateRecord: {
+      snapshot: { token: stage },
+      statement: { token: `signed-${stage}` },
+    },
     amendments: [],
     verificationProfile: { id: 'contractor.v1', digest: `sha256:${'44'.repeat(32)}` },
   };
