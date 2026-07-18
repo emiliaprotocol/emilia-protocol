@@ -77,6 +77,7 @@ function buildSelectMockDb(fetchResult, updateResult = { data: null, error: null
   const selectChain = makeChain(fetchResult);
   const updateChain = {
     eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue(updateResult),
     maybeSingle: vi.fn().mockResolvedValue(updateResult),

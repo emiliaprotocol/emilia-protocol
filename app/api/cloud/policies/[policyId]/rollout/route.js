@@ -45,6 +45,22 @@ export async function POST(request, { params }) {
       return epProblem(400, 'missing_rollout_params', 'Both "version" and "environment" are required');
     }
 
+    // ── Environment-scope enforcement (Sentrix HIGH finding a) ─────────────────
+    // An API key can be scoped to a single environment: tenant_api_keys.environment,
+    // surfaced as auth.environment by authenticateCloudRequest(). A key scoped to
+    // environment X MUST NOT initiate — or supersede — a rollout targeting a different
+    // environment (e.g. a staging-scoped key POSTing {environment:'production'} to flip
+    // a production rollout active). When the key carries an environment scope, the
+    // request's target environment MUST equal it. Keys with no scope (auth.environment
+    // falsy) are unrestricted here and fall through to the permission check above.
+    if (auth.environment && body.environment !== auth.environment) {
+      return epProblem(
+        403,
+        'environment_scope_mismatch',
+        `This API key is scoped to environment "${auth.environment}" and cannot roll out to "${body.environment}".`,
+      );
+    }
+
     const strategy = body.strategy || 'immediate';
     if (!['immediate', 'canary'].includes(strategy)) {
       return epProblem(400, 'invalid_strategy', 'strategy must be "immediate" or "canary"');
@@ -84,6 +100,29 @@ export async function POST(request, { params }) {
     }
 
     const now = new Date().toISOString();
+
+    // ── FAIL-CLOSED TODO: Accountable Signoff enforcement (Sentrix HIGH finding b) ──
+    // docs/architecture/ADAPTIVE_SCORING.md §8.2 ("Policy Rollout Attacks") and the
+    // pipeline diagram (step 4: "Accountable Signoff on rollout", and §7 Phase 2:
+    // "Rollout via POST /api/cloud/policies/*/rollout with Accountable Signoff")
+    // REQUIRE a verified human authorization (Accountable Signoff) before a policy
+    // rollout is activated. The two mutations immediately below — superseding the prior
+    // active rollout and inserting the new status:'active' row — ARE the activation, and
+    // they currently run with NO signoff check. The documented control is not enforced.
+    //
+    // The verification machinery exists (lib/signoff: consumeSignoff / isSignoffConsumed
+    // / requireSignoffEvent, keyed by signoff_id + bindingHash + executionRef), but the
+    // wire contract for THIS route is undefined: the request body has no documented
+    // signoff field (see the JSDoc above, docs/api/ROUTES.md, docs/api/EXAMPLES.md),
+    // policy_rollouts (migration 068) has no column to record the authorizing signoff,
+    // and there is no defined binding-hash construction for a rollout action. Enforcing
+    // here would mean inventing that format; that belongs in a dedicated change
+    // (route body + migration + binding-hash spec), not this security hotfix.
+    //
+    // TODO(security/signoff): immediately before the supersede+insert below, require a
+    // valid, approved, unconsumed Accountable Signoff bound to
+    // {policy_key, version, environment} and fail closed with
+    // epProblem(403, 'signoff_required', ...) when it is missing or invalid.
 
     // For immediate rollouts, supersede any currently active rollout for this
     // (policy_key, environment) combination. Because each version is its own
