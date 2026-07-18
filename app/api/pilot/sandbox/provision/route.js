@@ -61,6 +61,10 @@ export async function POST(request) {
         api_key_hash: keyHash,
         public_key: publicKeyB64,
         private_key_encrypted: seal(privateKeyB64),
+        // Observe-scope marker: this self-serve key runs traffic through the
+        // gate and reads its own report, but is refused at the control plane
+        // (SSO/SCIM/tenant admin). See lib/auth/observe-scope.js.
+        metadata: { pilot_sandbox: true, scope: 'observe' },
       })
       .select('id')
       .single();
@@ -75,6 +79,8 @@ export async function POST(request) {
       key_hash: keyHash,
       key_prefix: apiKey.slice(0, 16),
       label: 'Pilot sandbox key',
+      // No control-plane permissions: an observe-mode sandbox key holds none.
+      permissions: [],
     });
     if (keyError) {
       logger.error('[pilot/sandbox] api_keys insert failed:', keyError);
