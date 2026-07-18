@@ -272,7 +272,7 @@ export default function EmiliaEyePage() {
           </div>
           <div className="ep-card-lift ep-reveal ep-stagger-2" style={cardStyle(color.blue)}>
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: color.blue, marginBottom: 8 }}>Managed</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: color.t1, marginBottom: 8 }}>EP Cloud with Eye</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: color.t1, marginBottom: 8 }}>Gate Cloud with Eye</div>
             <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.65 }}>Hosted signal processing, pre-built signal class libraries, dashboard for warning triage, and direct escalation into EP Handshake and Accountable Signoff.</div>
           </div>
         </div>

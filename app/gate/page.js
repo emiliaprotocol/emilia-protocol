@@ -112,11 +112,14 @@ export default function GatePage() {
           <div style={styles.container}>
             <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GATE · THE CONSEQUENCE FIREWALL</div>
             <h1 style={{ ...styles.h1, marginTop: 16 }}>The firewall for machine action.</h1>
+            <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, marginTop: 18 }}>
+              Protocol proves. Gate prevents.
+            </p>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
-              EMILIA makes agent accountability verifiable. Before an agent changes money, code,
-              permissions, records, or regulated state, the system requires a receipt. If the
-              action runs, anyone can verify who approved exactly what, under which policy, without
-              trusting EMILIA&apos;s server.
+              EMILIA makes agent accountability independently checkable. Before an agent changes
+              money, code, permissions, records, or regulated state on a protected path, the system
+              requires a receipt. A relying party with the pinned trust inputs can later verify who
+              approved the exact action and under which policy, without trusting EMILIA&apos;s server.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 12, fontSize: 15, color: color.t2 }}>
               Not authentication, not permissions, not anomaly detection. A policy-enforcement point
@@ -146,7 +149,9 @@ export default function GatePage() {
             <p style={{ ...styles.body, maxWidth: 680, marginTop: 16 }}>
               The gate is deployed by the resource owner — the bank, the cloud API, the database, the
               robot controller, the grid. An agent that wants to act must bring a receipt the gate
-              verifies. There is no central authority to trust; verification is offline.
+              verifies. The guarantee is only as strong as that mediation: every protected path must
+              reach Gate at the actual system of record or actuator. Verification itself is open and
+              can run offline without an EMILIA service.
             </p>
           </div>
         </section>
@@ -223,11 +228,34 @@ export default function GatePage() {
           </div>
         </section>
 
+        {/* Product architecture */}
+        <section style={{ ...styles.section, background: 'rgba(245,244,240,0.45)', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
+          <div style={styles.container}>
+            <div style={styles.eyebrow}>THE COMPLETE SYSTEM</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>
+              Gate enforces. The surrounding layers keep it human, open, and reproducible.
+            </h2>
+            <div style={{ marginTop: 32, borderTop: `1px solid ${color.border}` }}>
+              {[
+                ['/product/accountable-signoff', 'Approver Apps', 'Show the exact material action and capture the device-bound human decision.'],
+                ['/protocol', 'EMILIA Protocol', 'Define the portable evidence and open verification rules beneath Gate.'],
+                ['/assurance', 'Assurance Plane', 'Re-perform the evidence, record drift, and prepare the technical handoff for an auditor or underwriter.'],
+              ].map(([href, title, body]) => (
+                <a key={title} href={href} className="ep-gate-stack-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 0.7fr) minmax(280px, 1.3fr) auto', gap: 24, alignItems: 'center', padding: '20px 0', borderBottom: `1px solid ${color.border}`, textDecoration: 'none' }}>
+                  <strong style={{ ...styles.h3, fontSize: 16 }}>{title}</strong>
+                  <span style={{ ...styles.body, fontSize: 14, color: color.t2 }}>{body}</span>
+                  <span aria-hidden style={{ color: color.gold }}>&rarr;</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* API */}
         <section style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>THE PRODUCT API</div>
-            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 780 }}>One safe path: reserve, execute, commit, prove.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 780 }}>One ordered path: reserve, execute, commit, prove.</h2>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 16 }}>
               `gate.run()` makes the ordering hard to get wrong. It reserves the receipt while the
               action is in flight, commits one-time consumption only after success, releases on
@@ -239,7 +267,7 @@ export default function GatePage() {
                 ['428 challenge', 'Missing or bad receipt never reaches the mutation.'],
                 ['Observed fields', 'Executor binds facts from the real system, not the request body.'],
                 ['Execution proof', 'The post-action record commits to the authorization decision hash.'],
-                ['Reliance packet', 'Auditor-ready verdict with checks, evidence head, and limitations.'],
+                ['Reliance packet', 'Reproducible technical record with checks, evidence head, and limitations.'],
               ].map(([title, body]) => (
                 <div key={title} style={{ borderTop: `1px solid ${color.border}`, paddingTop: 14 }}>
                   <div style={{ ...styles.h3, fontSize: 16 }}>{title}</div>
@@ -254,7 +282,7 @@ export default function GatePage() {
         <section id="surfaces" style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>WHERE IT RUNS</div>
-            <h2 style={{ ...styles.h2, marginTop: 12 }}>One gate, every actuator boundary.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12 }}>One Gate pattern, several actuator boundaries.</h2>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
               {SURFACES.map((s) => (
                 <div key={s.type} style={{ ...styles.card, padding: 24 }}>
@@ -278,9 +306,9 @@ export default function GatePage() {
               Does your integration actually enforce the gate — or are you just claiming it?
             </h2>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
-              CF-1 is the public Consequence Firewall badge. EG-1 is the runnable Gate harness
-              that earns it: point the harness at your dangerous action; if it passes all eight
-              checks, you have a binary artifact instead of a claim. It makes an open PR crisp:
+              CF-1 is a public self-description, not a certification. EG-1 is the runnable Gate
+              harness behind it: point the harness at your dangerous action; if it passes all eight
+              checks, you have a reproducible conformance record instead of a claim. It makes an open PR crisp:
               <i>“this makes <code>delete_row</code> earn EG-1 / CF-1.”</i>
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
@@ -319,12 +347,13 @@ export default function GatePage() {
               A bad actor can build an unguarded machine. EMILIA Gate makes legitimate
               infrastructure refuse unreceipted consequential actions by default — so the parties
               with leverage (clouds, payment rails, regulators, insurers) can require a receipt.
-              That is how TLS, code signing, and SOC 2 won: not by stopping every bad actor, but by
-              making serious buyers reject systems that lack the control. Necessary, not sufficient.
+              It cannot constrain a path that bypasses Gate. Complete mediation requires the resource
+              owner to place the verifier immediately before every protected mutation and to remove
+              alternate execution paths. Necessary, not sufficient.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="/verify" style={cta.primary}>Verify a receipt</a>
-              <a href="/agent-guard" style={cta.secondary}>Agent guard</a>
+              <a href="/assurance" style={cta.secondary}>Re-perform the evidence</a>
               <a href="/pilot?v=gate" style={cta.secondary}>Request pilot</a>
             </div>
           </div>

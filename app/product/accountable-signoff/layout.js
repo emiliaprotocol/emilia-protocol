@@ -1,15 +1,14 @@
 export const metadata = {
-  title: 'Accountable Signoff — Named Human Approval Bound to Action',
+  title: 'Approver Apps — Exact-Action Human Decisions',
   description:
-    'Cryptographic named-human signoff bound to the exact action context. ' +
-    'Replaces session-level approvals with action-level accountability ' +
-    'for high-risk workflows.',
+    'Open iOS, Android, Swift, and Kotlin reference clients for showing exact '
+    + 'material fields and returning device-bound human-decision evidence to EMILIA Gate.',
   alternates: { canonical: '/product/accountable-signoff' },
   openGraph: {
-    title: 'EMILIA Accountable Signoff',
+    title: 'EMILIA Approver Apps',
     description:
-      'Named human signoff cryptographically bound to the exact action ' +
-      'parameters before execution.',
+      'Gate creates the exact-action challenge. The Approver app captures the '
+      + 'device-bound human decision before protected execution.',
     url: 'https://www.emiliaprotocol.ai/product/accountable-signoff',
     type: 'article',
   },
@@ -19,6 +18,8 @@ export const metadata = {
     'AI action signoff',
     'cryptographic signoff',
     'segregation of duties AI',
+    'AI approval app',
+    'mobile human authorization',
   ],
 };
 

@@ -30,7 +30,7 @@ const FAILURES = [
 const MODEL = [
   ['Observe', 'See every irreversible action that would require stronger approval — report-only, zero blocking. The safe on-ramp.'],
   ['Verify', 'Bind identity, authority, policy, and the exact action context before execution. Allow, allow-with-signoff, or deny.'],
-  ['Own', 'When policy requires it, a named human signs off on the exact action on their own device. Self-approval fails by construction.'],
+  ['Own', 'When policy requires it, a named human signs off on the exact action on their own device. Profiles can require initiator exclusion and distinct-human quorum.'],
   ['Seal', 'Emit a portable, tamper-evident receipt anyone can verify offline — no trust in the operator, no backend call.'],
 ];
 

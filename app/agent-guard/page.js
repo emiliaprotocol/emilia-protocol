@@ -4,16 +4,14 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata = {
-  title: 'Agent Guard — One Line Between Your AI Agent and Disaster',
+  title: 'Agent Guard — EMILIA Gate for Tool Calls',
   description:
-    'Agent Guard stops an AI agent before any irreversible action — moving money, '
-    + 'deleting data, sending email — until a named human signs off. Framework-agnostic.',
+    'An EMILIA Gate solution profile for consequential agent and MCP tool calls, using action-bound evidence and explicit enforcement at the integrated executor.',
   alternates: { canonical: '/agent-guard' },
   openGraph: {
-    title: 'EMILIA Agent Guard — the kill switch and accountability layer for AI agents',
+    title: 'Agent Guard — EMILIA Gate for Tool Calls',
     description:
-      'Wrap any high-risk agent action in one call. Blocked until a named human signs off. '
-      + 'Every decision produces a cryptographically verifiable authorization receipt.',
+      'Protect configured consequential tool calls with policy, human approval, and portable authorization evidence.',
     url: 'https://www.emiliaprotocol.ai/agent-guard',
     type: 'website',
   },
@@ -93,11 +91,11 @@ const FLOW = [
   },
   {
     step: '02', accent: color.blue, label: 'Decide',
-    body: 'The formally verified policy engine returns one of three answers: allow (safe, proceed), allow-with-signoff (a named human must approve this exact action), or deny (a hard rule says no). No ambiguity, no silent pass.',
+    body: 'The configured policy returns allow, require signoff, or deny. Allow means the stated policy was satisfied; it is not a claim that the action is wise, safe, or lawful.',
   },
   {
     step: '03', accent: color.gold, label: 'Prove',
-    body: 'Every decision emits a signed, Merkle-anchored authorization receipt (formerly Trust Receipt) — who approved what, when, bound to the action hash. Auditor-grade evidence, verifiable offline with @emilia-protocol/verify. No EMILIA server required to check it.',
+    body: 'Every protected decision emits signed authorization evidence bound to the action hash. A relying party can verify it offline with @emilia-protocol/verify under explicitly pinned trust inputs.',
   },
 ];
 
@@ -134,22 +132,22 @@ const codeBox = {
 export default function AgentGuardPage() {
   return (
     <div style={{ minHeight: '100vh', background: color.bg, color: color.t1, fontFamily: font.sans }}>
-      <SiteNav activePage="Agent Guard" />
+      <SiteNav activePage="Solutions" />
 
       {/* HERO */}
       <section style={{ paddingTop: 120, paddingBottom: 80, borderBottom: `1px solid ${color.border}` }}>
         <C>
           <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 28 }}>
-            EMILIA Agent Guard
+            EMILIA Gate solution profile &middot; MCP and agent tool calls
           </div>
           <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(40px, 5.5vw, 72px)', letterSpacing: -2.5, lineHeight: 0.98, color: color.t1, margin: '0 0 28px', maxWidth: 900 }}>
             One line of code between your agent and a{' '}
             <em style={{ fontStyle: 'normal', color: color.gold }}>catastrophe.</em>
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: '0 0 40px' }}>
-            Your AI agent can move money, delete production data, send email, sign contracts. Agent
-            Guard stops every irreversible action at the pre-execution moment and requires a signed
-            human yes &mdash; or a policy that proves it&rsquo;s safe. Vendor-neutral. Works with any framework.
+            Your AI agent can move money, delete production data, send email, and sign contracts. Agent
+            Guard puts EMILIA Gate before the configured tool or executor, then requires the evidence
+            your policy names. It protects only the paths actually mediated by that integration.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/guides/require-receipt" className="ep-cta" style={cta.primary}>Add Receipt Required to MCP &rarr;</Link>
@@ -303,8 +301,8 @@ export default function AgentGuardPage() {
               Don&rsquo;t ship an agent without a kill switch.
             </h2>
             <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.7)', lineHeight: 1.7, marginBottom: 36, maxWidth: 520 }}>
-              EP Core is free and open source. Self-host the protocol, the SDK, and the MCP server today.
-              Add the hosted control plane when you need policy management and audit at scale.
+              The Protocol, verifier, vectors, SDK, and MCP packages are open. Add EMILIA Gate when you need
+              managed policy, approval routing, enforcement operations, and continuous evidence.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <Link href="/pricing" className="ep-cta" style={{ ...cta.primary, background: '#FAFAF9', color: '#1C1917' }}>See pricing</Link>

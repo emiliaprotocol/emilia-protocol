@@ -46,7 +46,7 @@ export default function EnterpriseUseCasePage() {
   const HOW_EP_HELPS = [
     { title: 'Authority chain verification', body: 'Every privileged action requires verification of the complete authority chain: which principal requested, under what role, with what delegated authority, approved by whom. The chain is cryptographically bound to the exact action.' },
     { title: 'Exact action binding', body: 'A deployment approval binds the exact artifact hash, target environment, configuration parameters, and authorizing principal. An approval for staging cannot be replayed against production.' },
-    { title: 'Accountable signoff for privileged actions', body: 'No privileged action executes without a named signoff. The signoff is bound to the exact action parameters, producing an immutable record of who authorized what, when, and under what policy.' },
+    { title: 'Accountable signoff for protected actions', body: 'Where the pinned profile requires it, Gate refuses the configured privileged action without a named signoff bound to the exact parameters. The resulting record is tamper-evident under its signed and content-addressed inputs.' },
     { title: 'Replay-resistant authorization', body: 'Each privileged action authorization is one-time consumable. Captured approvals cannot be replayed for different parameters, different environments, or different time windows.' },
   ];
 
@@ -151,9 +151,9 @@ export default function EnterpriseUseCasePage() {
         {[
           'Every privileged action requires a handshake binding the exact action parameters to the authorizing principal and authority chain',
           'Deployment approvals are bound to exact artifact hashes, target environments, and configuration states',
-          'Every configuration change produces an immutable signoff record with named accountability',
+          'Every mediated configuration change can produce a tamper-evident signoff record with named accountability',
           'Replay resistance ensures captured approvals cannot authorize different actions',
-          'Security teams receive action-level audit trails that satisfy SOC 2, ISO 27001, and internal compliance requirements',
+          'Security teams receive action-level evidence that can support SOC 2, ISO 27001, and internal control testing',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
             <span className="ep-list-bullet">+</span>

@@ -57,6 +57,12 @@ describe('Security Headers (next.config.js)', () => {
     const middlewareSrc = readFile('middleware.js');
     expect(middlewareSrc).toContain('Content-Security-Policy');
   });
+
+  it('keeps protocol package aliases exact so exported verifier subpaths resolve', () => {
+    expect(configSrc).toContain("alias['@emilia-protocol/verify$']");
+    expect(configSrc).toContain("alias['@emilia-protocol/require-receipt$']");
+    expect(configSrc).not.toContain("alias['@emilia-protocol/verify']");
+  });
 });
 
 // ---------------------------------------------------------------------------

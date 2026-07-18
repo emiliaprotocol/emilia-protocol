@@ -45,12 +45,12 @@ export default function FinancialPage() {
       </section>
 
       <section style={styles.sectionWide}>
-        <h2 style={styles.h2}>What EP proves before a financial action executes</h2>
+        <h2 style={styles.h2}>What Gate can establish before a protected financial action executes</h2>
         <ul style={styles.list}>
           <li>Actor identity -- cryptographically verified, never self-asserted</li>
           <li>Authority chain -- complete delegation path from root to acting principal</li>
           <li>Exact transaction binding -- precise operation, target, parameters, and conditions</li>
-          <li>Policy version and hash -- immutable reference to the governing policy at decision time</li>
+          <li>Policy version and hash -- content-addressed reference to the governing policy at decision time</li>
           <li>Replay resistance -- one-time nonce and strict temporal bounds</li>
           <li>One-time consumption -- each ceremony token consumed on use, no reuse</li>
           <li>Accountable signoff when required -- named human responsibility bound to the exact action</li>
@@ -59,10 +59,13 @@ export default function FinancialPage() {
 
       <section style={styles.sectionWide}>
         <div style={{ ...styles.card, borderLeft: `3px solid ${color.green}`, padding: '28px 32px' }}>
-          <h3 style={styles.h3}>Start with Emilia Eye</h3>
+          <h3 style={styles.h3}>Start with one consequence boundary</h3>
           <p style={styles.cardBody}>
-            Eye can flag beneficiary changes, payout destination changes, remittance updates, and unusual treasury approval paths, then escalate into EP Handshake or Accountable Signoff.
+            Begin in observe mode around one system-of-record action, such as a beneficiary change,
+            payment release, or remittance update. Move that path to Gate enforcement after the
+            policy, authority, and approval requirements are validated.
           </p>
+          <a href="/gate" style={{ fontFamily: font.mono, fontSize: 12, color: color.green, textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See EMILIA Gate &#8594;</a>
           <a href="/eye" style={{ fontFamily: font.mono, fontSize: 12, color: color.green, textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See Emilia Eye &#8594;</a>
         </div>
       </section>

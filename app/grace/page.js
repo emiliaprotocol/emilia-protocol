@@ -24,12 +24,12 @@ const BUYERS = [
 export default function GracePage() {
   return (
     <>
-      <SiteNav activePage="GRACE" />
+      <SiteNav activePage="Solutions" />
       <main style={styles.page}>
         {/* Hero */}
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GRACE · PROOF-OF-CURTAILMENT</div>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA Gate solution profile &middot; GRACE energy controls</div>
             <h1 style={{ ...styles.h1, marginTop: 16 }}>A verifiable demand-response rail for AI compute.</h1>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
               When the grid asks an AI datacenter to reduce load, GRACE proves who authorized it,

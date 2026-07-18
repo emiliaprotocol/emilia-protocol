@@ -7,32 +7,46 @@ import { styles, color, font, radius } from '@/lib/tokens';
 
 const USE_CASES = [
   {
-    title: 'Government Fraud Prevention',
-    desc: 'Bind identity, authority, and action context before benefit disbursement, procurement approval, or credential issuance.',
-    href: '/use-cases/government',
+    title: 'MCP and agent tool calls',
+    desc: 'Put Gate immediately before a configured consequential tool and require action-bound evidence before invocation.',
+    href: '/mcp',
     accent: color.green,
-    tag: 'Government',
+    tag: 'Developer on-ramp',
   },
   {
-    title: 'Financial Infrastructure Controls',
-    desc: 'Enforce ceremony-grade authorization on wire transfers, limit changes, account modifications, and privileged treasury actions.',
-    href: '/use-cases/financial',
+    title: 'Government workflows',
+    desc: 'Apply action and evidence profiles to configured disbursements, benefit routing, enrollment changes, and overrides.',
+    href: '/govguard',
     accent: color.blue,
-    tag: 'Financial',
+    tag: 'GovGuard profile',
   },
   {
-    title: 'Enterprise Privileged Actions',
-    desc: 'Require bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.',
-    href: '/use-cases/enterprise',
+    title: 'Financial operations',
+    desc: 'Bind beneficiary changes, payment release, and treasury actions to explicit policy and relying-party trust inputs.',
+    href: '/finguard',
     accent: color.gold,
-    tag: 'Enterprise',
+    tag: 'FinGuard profile',
   },
   {
-    title: 'AI and Agent Execution Governance',
-    desc: 'Gate autonomous agent actions behind protocol-enforced trust ceremonies before any irreversible real-world execution.',
-    href: '/use-cases/ai-agent',
+    title: 'Energy controls',
+    desc: 'Compose authorization, execution, and measurement evidence at a configured demand-response or facility-control boundary.',
+    href: '/grace',
     accent: color.blue,
-    tag: 'AI / Agent',
+    tag: 'GRACE profile',
+  },
+  {
+    title: 'Enterprise privileged actions',
+    desc: 'Require portable evidence for configured infrastructure changes, data exports, permission changes, and deployments.',
+    href: '/use-cases/enterprise',
+    accent: color.green,
+    tag: 'Enterprise profile',
+  },
+  {
+    title: 'Multi-party approval',
+    desc: 'Require distinct-human, initiator-excluded approval evidence where a consequential action needs more than one person.',
+    href: '/quorum',
+    accent: color.gold,
+    tag: 'Quorum profile',
   },
 ];
 
@@ -49,15 +63,16 @@ export default function UseCasesPage() {
 
   return (
     <div style={styles.page}>
-      <SiteNav activePage="Use Cases" />
+      <SiteNav activePage="Solutions" />
 
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 80 }}>
-        <div className="ep-tag ep-hero-badge">Control Surfaces</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Built for workflows where weak authorization causes real damage</h1>
+        <div className="ep-tag ep-hero-badge">EMILIA Gate solution profiles</div>
+        <h1 className="ep-hero-text" style={styles.h1}>One consequence firewall, adapted to the action boundary</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620, marginBottom: 48 }}>
-          EP enforces trust at the action level — not the session level. These are the domains where that distinction matters most.
+          These profiles package action schemas, policy templates, and integration guidance around Gate. They are
+          not separate products, and they protect only the paths integrated through the relevant executor.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
           {USE_CASES.map((uc, i) => (
             <a key={uc.href} href={uc.href}
               className={`ep-card-lift ep-reveal ep-stagger-${i + 1}`}

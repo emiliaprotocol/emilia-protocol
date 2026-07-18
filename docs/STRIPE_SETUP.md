@@ -1,4 +1,4 @@
-# Stripe / EP Cloud billing — setup runbook
+# Stripe / EMILIA Gate Cloud billing — setup runbook
 
 The site is wired for two billing paths. Pick one (or both). **Neither requires
 pasting a secret key into a chat or a file you commit.**
@@ -27,7 +27,7 @@ expose and need no secret key in the app.
    ```bash
    STRIPE_SECRET_KEY=sk_live_your_ROTATED_key node scripts/stripe-setup.mjs
    ```
-   It creates the EP Cloud products + prices + payment links and prints the URLs.
+   It creates the EMILIA Gate Cloud products + prices + payment links and prints the URLs.
    (Edit the `PLANS` amounts in the script first — those are your real prices.)
 
 2. Set the public link URLs in Vercel:
@@ -36,7 +36,7 @@ expose and need no secret key in the app.
    vercel env add NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS production   # https://buy.stripe.com/...
    ```
 
-3. Redeploy. The `/pricing` "EP Cloud" CTA now links straight to checkout.
+3. Redeploy. The `/pricing` "EMILIA Gate Cloud" CTA now links straight to checkout.
 
 ---
 

@@ -4,6 +4,39 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.11.0 (2026-07-17)
+
+### Added
+
+- Action Escrow modules for exact document/action binding, evidence
+  verification, a signed lifecycle state machine, durable Postgres state and
+  journal storage, licensed-custodian adapters, portable assurance packages,
+  and fail-closed release enforcement.
+- Public package exports for `action-escrow`, `action-escrow-state`,
+  `action-escrow-postgres`, `action-escrow-custodian`,
+  `action-escrow-package`, and `action-escrow-verifiers`.
+
+### Security
+
+- Release requires exact profile, party, final-document, material-term,
+  funding, milestone, action, and approval binding under relying-party-pinned
+  policy.
+- Release approvals are fresh and action-specific, release is consumed once,
+  storage failure refuses, and an ambiguous provider effect enters
+  reconciliation instead of being retried.
+- Release approvals now use the canonical `EP-RESOLUTION-v1` binding-moment
+  hash, relying-party-pinned option mapping, initiator, per-party nonce, and
+  evaluation time. The reference scenario uses real WebAuthn-shaped P-256
+  signatures rather than a resolution-like demo envelope.
+- Runtime roles cannot also act as contract parties. Provider and effect
+  references are fenced to prevent substitution across actions or sessions.
+
+### Distribution
+
+- Gate now depends on `@emilia-protocol/verify` 3.11.0 and
+  `@emilia-protocol/require-receipt` 0.6.1. All shipped imports remain within
+  declared package boundaries.
+
 ## 0.10.0 (2026-07-16)
 
 ### Added

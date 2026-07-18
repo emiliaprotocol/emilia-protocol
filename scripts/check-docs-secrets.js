@@ -158,6 +158,7 @@ const SAFE_HOSTS = new Set([
   "mozilla.org",
   "w3.org",
   "apache.org",
+  "iso.org",
   // Government / grant-program domains (referenced in archived grant/application drafts)
   "nsf.gov",
   "sam.gov",

@@ -96,7 +96,7 @@ export default function SettingsPage() {
       <div style={s.container}>
         <div style={s.eyebrow}>Cloud / Settings</div>
         <h1 style={s.h1}>Configuration</h1>
-        <p style={s.subtitle}>Manage your EP Cloud deployment settings and preferences.</p>
+        <p style={s.subtitle}>Manage your EMILIA Gate Cloud deployment settings and preferences.</p>
 
         {error && <div style={s.error}>{error}</div>}
         {saved && <div style={s.success}>Settings saved successfully.</div>}

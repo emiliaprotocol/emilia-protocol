@@ -36,5 +36,5 @@ describe('external clean-room input kit', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });

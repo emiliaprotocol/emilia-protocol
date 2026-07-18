@@ -32,13 +32,13 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
-    template: '%s | EMILIA Protocol',
+    default: 'EMILIA Gate — Consequence Firewall for AI Agents',
+    template: '%s | EMILIA',
   },
   description:
-    `The open consequence firewall for secure agent actions, backed by ${PROOF_SUMMARY}. `
-    + 'Before an AI agent acts irreversibly, EMILIA requires verifiable, exact-action authorization.',
-  applicationName: 'EMILIA Protocol',
+    'EMILIA Gate blocks consequential AI-agent actions until exact-action authority verifies. '
+    + 'EMILIA Protocol keeps the proof open, portable, and independently reproducible.',
+  applicationName: 'EMILIA Gate',
   keywords: [
     'AI agent authorization',
     'AI agent firewall',
@@ -51,41 +51,37 @@ export const metadata = {
     'verifiable AI authorization',
     'AI agent governance',
     'agent action binding',
-    'NIST AI RMF',
-    'EU AI Act compliance',
+    'MCP tool authorization',
+    'AI agent human approval',
     'cryptographic AI controls',
     'formal verification AI',
     'AI agent fraud prevention',
-    'autonomous agent safety',
   ],
   authors: [{ name: 'EMILIA Protocol', url: 'https://www.emiliaprotocol.ai' }],
   creator: 'EMILIA Protocol',
   publisher: 'EMILIA Protocol',
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
     siteName: 'EMILIA Protocol',
-    title: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
+    title: 'EMILIA Gate — The Consequence Firewall for AI Agents',
     description:
-      `No valid authorization receipt, no irreversible execution. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
+      `Protocol proves. Gate prevents. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
     images: [
       {
         url: '/og-sequence.jpg',
         width: 1200,
         height: 630,
-        alt: 'EMILIA — automated control for AI agents: high-risk actions are AUTHORIZED only with a named human authorizer, otherwise DENIED',
+        alt: 'EMILIA Gate evaluates configured consequential actions against policy and authorization evidence before execution',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
+    title: 'EMILIA Gate — The Consequence Firewall for AI Agents',
     description:
-      `No valid receipt, no irreversible agent action. ${PROOF_SUMMARY}.`,
+      `Protocol proves. Gate prevents. ${PROOF_SUMMARY}.`,
     images: ['/og-sequence.jpg'],
   },
   robots: {
@@ -119,8 +115,8 @@ const ORGANIZATION_JSONLD = {
   url: 'https://www.emiliaprotocol.ai',
   logo: 'https://www.emiliaprotocol.ai/logo.png',
   description:
-    'Open protocol and Apache-2.0 reference runtime for secure agent actions: ' +
-    'a consequence firewall that requires verifiable pre-action authorization.',
+    'EMILIA builds the commercial Gate enforcement product on the open EMILIA Protocol proof substrate. '
+    + 'Protocol verification remains Apache-2.0 and independently reproducible.',
   foundingDate: '2026-06-03',
   sameAs: [
     'https://github.com/emiliaprotocol',
@@ -136,7 +132,7 @@ const ORGANIZATION_JSONLD = {
 const WEBSITE_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'EMILIA Protocol',
+  name: 'EMILIA',
   url: 'https://www.emiliaprotocol.ai',
   potentialAction: {
     '@type': 'SearchAction',
@@ -146,64 +142,6 @@ const WEBSITE_JSONLD = {
     },
     'query-input': 'required name=search_term_string',
   },
-};
-
-// EP itself as a SoftwareApplication. Search engines surface this in the
-// "Software" knowledge panel and AI search engines (Google AI Overviews,
-// Perplexity, ChatGPT browsing) cite it when summarizing what EP is.
-const SOFTWARE_APPLICATION_JSONLD = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: 'EMILIA Protocol',
-  applicationCategory: 'SecurityApplication',
-  applicationSubCategory: 'Consequence Firewall for AI Agents',
-  operatingSystem: 'Cross-platform (Node.js, Python, Go; Cloud)',
-  description:
-    'Open protocol and Apache-2.0 reference runtime for secure agent actions. ' +
-    'EMILIA acts as a consequence firewall: it cryptographically binds actor ' +
-    `identity, authority, policy, and action context before irreversible execution. Current evidence: ${PROOF_SUMMARY}.`,
-  url: 'https://www.emiliaprotocol.ai',
-  downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/sdk',
-  softwareVersion: '1.0',
-  releaseNotes: 'https://github.com/emiliaprotocol/emilia-protocol/blob/main/CHANGELOG.md',
-  codeRepository: 'https://github.com/emiliaprotocol/emilia-protocol',
-  softwareHelp: 'https://www.emiliaprotocol.ai/proof',
-  license: 'https://www.apache.org/licenses/LICENSE-2.0',
-  author: { '@type': 'Organization', name: 'EMILIA Protocol' },
-  offers: {
-    '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'USD',
-    availability: 'https://schema.org/InStock',
-  },
-  featureList: [
-    'Named human signoff with device-held WebAuthn keys (Face ID / passkey)',
-    'Pre-action authorization for AI agents',
-    `Machine-verifiable security case (${proofStats.securityCase.claims} executable claims, ${proofStats.securityCase.evidenceFiles} hashed evidence files)`,
-    `Composed Tamarin Dolev-Yao model (${proofStats.tamarin.verifiedObligations} verified obligations; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants produce attack traces)`,
-    `Formal state and relational models (${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions)`,
-    `Cross-language conformance (${proofStats.conformance.vectors} vectors across same-team JS, Python, and Go reference ports)`,
-    `Externally authored Rust verifier tested over ${proofStats.externalImplementation.vectors} vectors and ${proofStats.externalImplementation.hostilityCases} hostility cases`,
-    'Cryptographic action binding (Ed25519 + Merkle)',
-    'Self-verifying trust receipts (offline verifiable)',
-    'NIST AI RMF and EU AI Act compliance mappings',
-    'MCP server with 36 trust tools (17 core by default)',
-    'LangChain, CrewAI, and AutoGen integrations',
-    'Offline receipt verification in JavaScript, Python, and Go',
-    'TypeScript and Python SDKs',
-  ],
-  subjectOf: [
-    {
-      '@type': 'TechArticle',
-      name: 'EMILIA Protocol Engineering Evidence',
-      url: 'https://www.emiliaprotocol.ai/proof',
-    },
-    {
-      '@type': 'Dataset',
-      name: 'EMILIA Machine-Verifiable Security Case',
-      url: 'https://www.emiliaprotocol.ai/.well-known/emilia-context.json',
-    },
-  ],
 };
 
 // Reading headers() forces dynamic rendering per request.
@@ -239,13 +177,6 @@ export default async function RootLayout({ children }) {
           suppressHydrationWarning
           // Site-wide WebSite schema with SiteLinks Search Box action.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSONLD) }}
-          nonce={nonce}
-        />
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          // EP as a SoftwareApplication — surfaced in software knowledge panels.
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_APPLICATION_JSONLD) }}
           nonce={nonce}
         />
       </head>

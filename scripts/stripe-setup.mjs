@@ -3,7 +3,7 @@
  * EMILIA Protocol — full Stripe pricing setup.
  * @license Apache-2.0
  *
- * Creates EVERY priced product across the project (AI Trust Desk + EP Cloud) as
+ * Creates EVERY priced product across the project (AI Trust Desk + EMILIA Gate Cloud) as
  * Stripe products + prices + payment links, then writes the resulting public
  * env values to `.stripe-vars.json` (price IDs + payment links — NO secrets).
  *
@@ -55,7 +55,7 @@ if (key.startsWith('sk_live_')) console.log('⚠  LIVE key — creating real, ch
 
 // ── The full project price book ───────────────────────────────────────────────
 // amount = USD cents. interval = 'month' for recurring, null for one-time.
-// Trust Desk amounts mirror the live /trust-desk page. EDIT only the EP Cloud ones.
+// Trust Desk amounts mirror the live /trust-desk page. EDIT only the EMILIA Gate Cloud ones.
 const PRODUCTS = [
   // AI Trust Desk — fixed-scope engagements (prices already published on /trust-desk)
   { key: 'td_emergency', name: 'AI Trust Desk — Emergency Review', amount: 350000, interval: null, desc: 'Fixed-scope emergency questionnaire review.', linkEnv: 'NEXT_PUBLIC_STRIPE_EMERGENCY' },
@@ -63,9 +63,9 @@ const PRODUCTS = [
   { key: 'td_packet', name: 'AI Trust Desk — AI Trust Packet', amount: 2450000, interval: null, desc: 'Full AI Trust Packet engagement.', linkEnv: 'NEXT_PUBLIC_STRIPE_PACKET' },
   { key: 'td_retainer', name: 'AI Trust Desk — Retainer', amount: 1200000, interval: 'month', desc: 'Ongoing retainer, 3-month minimum.', linkEnv: 'NEXT_PUBLIC_STRIPE_RETAINER' },
 
-  // EP Cloud — monthly subscriptions.  ◀── EDIT THESE TWO AMOUNTS to your real prices
-  { key: 'cloud_team', name: 'EP Cloud — Team', amount: 49900, interval: 'month', desc: 'Hosted control plane: managed policies, signoff orchestration, audit exports.', priceEnv: 'STRIPE_PRICE_CLOUD_TEAM', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_TEAM' },
-  { key: 'cloud_business', name: 'EP Cloud — Business', amount: 250000, interval: 'month', desc: 'Higher limits, webhooks, multi-tenant isolation, priority support.', priceEnv: 'STRIPE_PRICE_CLOUD_BUSINESS', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS' },
+  // EMILIA Gate Cloud — monthly subscriptions.  ◀── EDIT THESE TWO AMOUNTS to your real prices
+  { key: 'cloud_team', name: 'EMILIA Gate Cloud — Team', amount: 49900, interval: 'month', desc: 'Hosted control plane: managed policies, signoff orchestration, audit exports.', priceEnv: 'STRIPE_PRICE_CLOUD_TEAM', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_TEAM' },
+  { key: 'cloud_business', name: 'EMILIA Gate Cloud — Business', amount: 250000, interval: 'month', desc: 'Higher limits, webhooks, multi-tenant isolation, priority support.', priceEnv: 'STRIPE_PRICE_CLOUD_BUSINESS', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS' },
 ];
 
 const { default: Stripe } = await import('stripe');

@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-17T15:46:06.833Z",
+  "evidence_snapshot_at": "2026-07-18T04:03:48.159Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "7fe17609b3c5bdd2e570e61f7540dc2a51f1db90e1466a1f96d6be2112c27e1b",
+    "input_digest_sha256": "889337451872434fe6482149f48234e6ea5502fe60bd797c1c7a1c5f8f12a0f2",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "f1fd5cb99fc207f3cb371af5c98f3dc3408b813e126b467da6a3588ac8ec66b0",
-        "bytes": 16828
+        "sha256": "aa3849a1da949281d16762e3a4d7fe2542c2d56fc5e280c9bf61f1eaca391844",
+        "bytes": 29743
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "b822f97b3b3bd4d0ffc63622487a1a64c580382611a335c36a09066639e7fc68",
+        "sha256": "a606d540150dcaf0e1d015172c79a643b6301277b83fe9b87a60c47a0e36e94c",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "9d1e7d290500759479bec9b38ec0314989ad2cda775990c75ee1bdb2319a7710",
+        "sha256": "1cb4606b974034ca68c59ab871a7a7072f774407643e9326b9d8e41f51f69625",
         "bytes": 5622
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "da657c4f7315930d54f303e3fedca17c98ca532983769ee105b03144cdefe9c5",
-        "bytes": 112274
+        "sha256": "f38d04831849ee0a36ed650942ed3132cda942b1c925aebd60456a8ba97b8053",
+        "bytes": 122064
       },
       {
         "path": "security/security-case.json",
-        "sha256": "bc77f576b7e5ff64e2a290a80306f0fc694bc54c6235e0c1cf4946dc2c11c33a",
-        "bytes": 179190
+        "sha256": "f0e9fd4e418342f41a3d3e2c7d7383c89cf3ffdfb384e1cf37b1bfd4e64874c9",
+        "bytes": 195355
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -69,14 +69,88 @@
     "freshness_command": "npm run check:llm-context"
   },
   "identity": {
-    "name": "EMILIA Protocol",
-    "category": "cross-domain evidence, material-action matching, and enforcement for consequential machine actions",
-    "summary": "EMILIA is an open evidence architecture and enforcement toolkit for consequential agent actions: native artifacts verify under native rules, CAID matches material actions, AEC evaluates relying-party evidence requirements, and executors retain the authorization decision.",
+    "name": "EMILIA",
+    "category": "consequence firewall for consequential machine actions",
+    "core_line": "Protocol proves. Gate prevents.",
+    "summary": "EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
+    "message_order": [
+      "Lead with EMILIA Gate and the consequential action it prevents.",
+      "Explain EMILIA Protocol as the open, customer-pinned substrate underneath Gate.",
+      "Explain EMILIA Approver when an exact-action human ceremony is required.",
+      "Explain EMILIA Assurance Plane as scoped verification and re-performance, never self-declared certification.",
+      "Use executable and formal evidence to prove the engineering.",
+      "Discuss the standards portfolio after the product, trust boundary, and non-claims are clear."
+    ],
+    "start_here": [
+      {
+        "audience": "buyer or operator",
+        "url": "https://www.emiliaprotocol.ai/gate",
+        "purpose": "understand and scope the commercial Consequence Firewall"
+      },
+      {
+        "audience": "developer",
+        "url": "https://www.emiliaprotocol.ai/mcp",
+        "purpose": "protect one privileged MCP tool call"
+      },
+      {
+        "audience": "security reviewer or assurer",
+        "url": "https://www.emiliaprotocol.ai/proof",
+        "purpose": "inspect executable, formal, conformance, and external evidence"
+      },
+      {
+        "audience": "protocol implementer",
+        "url": "https://github.com/emiliaprotocol/emilia-protocol",
+        "purpose": "inspect the open verifier, formats, vectors, and reference implementations"
+      }
+    ],
+    "commercial_product": {
+      "name": "EMILIA Gate",
+      "role": "deny-by-default enforcement at the executor or system-of-record boundary",
+      "claim_boundary": "Gate prevents only on action paths under complete mediation. It does not constrain a path that bypasses the deployed enforcement point."
+    },
+    "open_substrate": {
+      "name": "EMILIA Protocol",
+      "role": "open formats, exact-action binding, verification, conformance, and interoperability under relying-party-pinned trust",
+      "license": "Apache-2.0"
+    },
+    "human_capture": {
+      "name": "EMILIA Approver",
+      "role": "native apps and embeddable SDKs that capture a device-bound decision over the exact action",
+      "claim_boundary": "The ceremony proves the enrolled credential completed the specified platform ceremony over exact bytes; it does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome."
+    },
+    "assurance_plane": {
+      "name": "EMILIA Assurance Plane",
+      "role": "managed verification, re-performance, conformance reporting, deployment evidence, reliance packets, and evidence operations",
+      "current_scope": "EP-ASSURANCE-PACKAGE-v1, ep-assure, external-verifier signed statements, auditor workpapers, underwriter attestations, reliance packets, CF-1, and EG-1 are implemented artifacts or procedures.",
+      "claim_boundary": "EMILIA supports verification and re-performance procedures but is not an auditor, an accredited certification body, a regulator, or an insurer. The EP-CERT-v1 public certification scheme is not operating."
+    },
+    "market_entry": {
+      "free_wedge": "privileged MCP tool calls",
+      "first_paid_wedge": "payer AI-assisted adverse medical-necessity determinations",
+      "paid_wedge_safety_rule": "no valid licensed-review evidence, no adverse determination",
+      "regulatory_boundary": "Regulation may create demand for demonstrable qualified review, but no law is claimed to mandate EMILIA or cryptographic receipts."
+    },
     "repository": "https://github.com/emiliaprotocol/emilia-protocol",
     "website": "https://www.emiliaprotocol.ai",
     "license": "Apache-2.0"
   },
   "canonical_definitions": [
+    {
+      "term": "EMILIA Gate",
+      "definition": "The commercial Consequence Firewall: a deny-by-default enforcement product installed at the executor or system-of-record boundary. It verifies the relying party's evidence and policy requirements, consumes accepted authorization once, and records the result before mutation. Protocol proves. Gate prevents."
+    },
+    {
+      "term": "EMILIA Protocol",
+      "definition": "The open Apache-2.0 verification and evidence substrate underneath Gate: portable formats, exact-action binding, verification, conformance, matching, evidence requirements, and interoperability under trust anchors selected by the relying party."
+    },
+    {
+      "term": "EMILIA Approver",
+      "definition": "Native applications and embeddable SDKs that display the material action and capture a device-bound approval, decline, amendment, or rejection. The app captures the ceremony; Gate separately evaluates identity, role, license or authority scope, policy, audience, platform evidence, and action binding."
+    },
+    {
+      "term": "EMILIA Assurance Plane",
+      "definition": "The managed verification and evidence-services layer: assurance packages, independent re-performance, scoped conformance reports, deployment evidence, reliance packets, auditor workpapers, underwriter attestations, and evidence operations. It supports an authorized review procedure; it does not issue an audit opinion or accredited certification."
+    },
     {
       "term": "native verification",
       "definition": "VERIFIED means one artifact passed the cryptographic and structural verifier defined by its own specification under trust anchors selected by the relying party. Verification does not establish that the artifact fills an authorization role."
@@ -103,6 +177,30 @@
     }
   ],
   "layer_map": [
+    {
+      "layer": "commercial enforcement",
+      "question": "Can this consequential action mutate the protected system now?",
+      "ep_role": "EMILIA Gate enforces the relying party's evidence and policy requirements at the executor, refuses before mutation, consumes accepted authorization once, and records the result.",
+      "adjacent_examples": "MCP tool wrapper, API middleware, payment rail, clinical determination workflow, cloud control, physical actuator"
+    },
+    {
+      "layer": "human decision capture",
+      "question": "What exact decision did the enrolled human credential make over the material action?",
+      "ep_role": "EMILIA Approver captures a device-bound approval, decline, amendment, or rejection; relying-party directories and profiles determine whether that evidence is sufficient.",
+      "adjacent_examples": "iOS and Android reference apps, Swift and Kotlin SDKs, WebAuthn, App Attest, Play Integrity"
+    },
+    {
+      "layer": "open verification substrate",
+      "question": "Can another party verify the evidence without trusting EMILIA or the operator?",
+      "ep_role": "EMILIA Protocol supplies open formats, exact-action binding, native verification, conformance, matching, and evidence requirements under relying-party-pinned trust.",
+      "adjacent_examples": "EP receipts, CAID, AEC, conformance vectors, external implementations, adjacent native formats"
+    },
+    {
+      "layer": "assurance and re-performance",
+      "question": "Can a customer or authorized independent party reproduce what the deployment claimed?",
+      "ep_role": "EMILIA Assurance Plane packages evidence, re-performs verdicts, names drift, and emits scoped reports while leaving audit opinions and certification conclusions to authorized independent parties.",
+      "adjacent_examples": "EP-ASSURANCE-PACKAGE-v1, ep-assure, external-verifier statements, auditor workpapers, underwriter attestations, reliance packets, CF-1, EG-1"
+    },
     {
       "layer": "identity and transport",
       "question": "Who or what is present in the live channel?",
@@ -142,8 +240,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5920,
-      "files": 304,
+      "total": 6135,
+      "files": 309,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -152,7 +250,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "caf4cd1c562827e3ebcd5cb8dca1a9a466590a673d244938974872722c658ae2",
+      "manifest_sha256": "1285c269b3d58e325c2432d59a95e598761abf3cf3c8f2933b82f21b59214888",
       "vector_bundle_sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
     },
     "formal": {
@@ -172,9 +270,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 25,
-      "evidence_files": 104,
-      "evidence_bundle_sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
+      "claims": 26,
+      "evidence_files": 116,
+      "evidence_bundle_sha256": "23befb9f8e03b061e3e1e6a980439b6fffb157c5e39bcd2d438e64a0fc04ff44"
     },
     "caid": {
       "core_vectors": 48,
@@ -2239,6 +2337,144 @@
         "the Action State output is an unregistered signed statement and is not claimed as a SCITT transparency-service anchor",
         "the upstream Action State parser check is time-pinned interoperability evidence, not an independent implementation of GRACE"
       ]
+    },
+    {
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. The portable package keeps document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
+      "acceptance_roots": [
+        "relying-party-pinned document-mapping issuer, Action Escrow profile, party keys, operator state key, and custodian adapter configuration",
+        "the exact final PDF bytes and signed Document Action Binding whose closed material-term profile commits the payment action and evidence requirements",
+        "a licensed external custodian that exclusively mediates funding and release for the configured transaction and honors idempotency"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow.js",
+          "symbol": "createActionEscrowKernel",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-verifiers.js",
+          "symbol": "createActionEscrowDocumentBindingVerifier",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-custodian.js",
+          "symbol": "createActionEscrowCustodianBridge",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-package.js",
+          "symbol": "assembleActionEscrowEvidencePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-postgres.js",
+          "symbol": "createActionEscrowPostgresStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/escrow-com.js",
+          "symbol": "createEscrowComAdapter",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the Action Escrow product profile or stateful release kernel is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the Action Escrow product profile or stateful release kernel is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_action_escrow_exact_release_once",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_committed_fact_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_role_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_funded_amendment_without_unwind",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_journal_divergence",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_verifier_echo_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_expired_release_approval",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_funding_request_state_fallback",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_compensated_history_pruning",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_database_role_or_clock_rollback",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_custodian_alias_or_unfunded_release",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The complete document-to-custodian composition, five-row evidence package, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+        }
+      ],
+      "assumptions": [
+        "every release path is completely mediated by the configured licensed custodian and the custodian honors the exact provider transaction, beneficiary, amount, and idempotency contract",
+        "the relying party provisions and maintains the mapping issuer, party, operator, and provider trust roots out of band",
+        "the durable store runs under a separately provisioned non-owner role with no DELETE or TRUNCATE privilege on state and no UPDATE, DELETE, or TRUNCATE privilege on history; database-owner compromise remains outside this claim",
+        "the deployment supplies a durable fail-closed effect-reference binding store to the external custodian adapter",
+        "the external evidence verifier truthfully checks completion evidence under the requirements committed by the signed action"
+      ],
+      "exclusions": [
+        "EMILIA does not hold funds, act as an escrow agent, determine licensure, or establish legal enforceability",
+        "cryptographic evidence does not prove workmanship, physical completion, identity, comprehension, voluntariness, fairness, or absence of fraud by an authentic trusted key",
+        "the guarantee does not cover payment routes or custodian operations that bypass the integrated mediation boundary",
+        "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
+        "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
+      ]
     }
   ],
   "non_claims": [
@@ -2251,6 +2487,10 @@
     "Strict clean-room construction acceptance remains false until independent construction attestation is verified under a separately pinned attestor key.",
     "The Internet-Drafts are individual submissions unless the live IETF Datatracker says otherwise. They are not RFCs and do not imply IETF endorsement.",
     "Self-authored compliance mappings are mappings, not certifications or third-party assurance opinions.",
+    "EMILIA is not an auditor, an accredited certification body, a regulator, or an insurer. Assurance artifacts support verification and re-performance procedures; authorized independent parties reach audit, certification, regulatory, and underwriting conclusions.",
+    "EP-CERT-v1 is a scheme design. No public EMILIA certification program is operating, and CF-1 or EG-1 must not be expanded beyond the exact behavior exercised by its reproducible harness.",
+    "A managed EMILIA verification or re-performance service can issue a scoped signed result under disclosed inputs and limitations. That result is not a certification of the deployment, the organization, legal compliance, medical correctness, or business wisdom.",
+    "The payer wedge uses the safety rule 'no valid licensed-review evidence, no adverse determination.' Missing evidence must not be represented as authority to withhold medically necessary care, and no statute is claimed to mandate EMILIA or cryptographic receipts.",
     "The open protocol is intentionally reproducible; company defensibility is not a cryptographic claim.",
     "CAID and its Action-Mapping Profile do not verify native artifacts, infer general semantic equivalence, or establish authorization.",
     "EQUIVALENT_UNDER_PROFILE is valid only under the exact mapping profiles and type-definition sources pinned by the relying party; missing or lossy mappings are INDETERMINATE.",
@@ -2297,13 +2537,17 @@
     {
       "scope": "project explanation",
       "sources": [
+        ".agents/product-marketing-context.md",
+        "docs/strategy/PRODUCT-MESSAGE-ARCHITECTURE.md",
+        "docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md",
+        "docs/CAPABILITY-MAP.md",
         "AI_CONTEXT.md",
         "README.md",
         "CONFORMANCE.md",
         "SECURITY.md",
         "THREAT_MODEL.md"
       ],
-      "rule": "Use maintained narrative only after checking it against the higher-precedence evidence for the claim being made."
+      "rule": "Use the product-message architecture for order, naming, audience, and business interpretation; use the capability map and higher-precedence machine evidence before representing a capability or technical claim as shipped."
     }
   ],
   "excluded_as_current_authority": [
@@ -2634,12 +2878,68 @@
   },
   "code_entry_points": [
     {
+      "path": "packages/gate/index.js",
+      "purpose": "EMILIA Gate deny-by-default enforcement, exact-action checks, one-time consumption, execution records, and reliance packets"
+    },
+    {
+      "path": "packages/mcp-guard",
+      "purpose": "free adoption wedge: protect privileged MCP tool calls with the Gate enforcement contract"
+    },
+    {
+      "path": "lib/negotiate/evidence-challenge.js",
+      "purpose": "action-bound evidence challenge registration and evaluation"
+    },
+    {
+      "path": "packages/mobile",
+      "purpose": "EMILIA Approver server-side enrollment and Class-A ceremony service with independently verified platform evidence, atomic consumption, and signed acknowledgements"
+    },
+    {
+      "path": "sdks/swift-mobile",
+      "purpose": "EMILIA Approver Swift package for iOS passkey, App Attest enrollment and assertions, exact challenge validation, and shared canonical-byte vectors"
+    },
+    {
+      "path": "sdks/kotlin-mobile",
+      "purpose": "EMILIA Approver Android library and reference app for Credential Manager passkeys, Play Integrity, exact challenge validation, and shared canonical-byte vectors"
+    },
+    {
+      "path": "packages/gate/reports/assurance-package.js",
+      "purpose": "EP-ASSURANCE-PACKAGE-v1 bundling and independent re-performance of claimed reliance decisions"
+    },
+    {
+      "path": "packages/gate/ep-assure.mjs",
+      "purpose": "Assurance Plane CLI that re-performs an assurance package and exits non-zero on named drift"
+    },
+    {
+      "path": "packages/gate/reports/external-verification.js",
+      "purpose": "signed, scoped external-verifier statements accepted only under out-of-band pinned verifier identity and key"
+    },
+    {
+      "path": "packages/gate/reports/auditor-workpaper.js",
+      "purpose": "deterministic auditor-support workpaper with conclusions reserved for the authorized auditor"
+    },
+    {
+      "path": "packages/gate/reports/underwriter.js",
+      "purpose": "period control-operation attestation for underwriter review with explicit non-claims"
+    },
+    {
+      "path": "packages/gate/reliance-packet.js",
+      "purpose": "portable join of Gate authorization, execution, evidence, and relying-party reliance material"
+    },
+    {
+      "path": "docs/CONSEQUENCE-FIREWALL-CONFORMANCE.md",
+      "purpose": "CF-1 narrow executable category bar and its explicit exclusions"
+    },
+    {
+      "path": "docs/EP-CERTIFICATION-SCHEME.md",
+      "purpose": "future governance-dependent certification scheme design; the public certification program is not operating"
+    },
+    {
       "path": "caid",
-      "purpose": "typed material-action identity, pinned cross-format mapping, registry, and tri-language shared vectors"
+      "purpose": "EMILIA Protocol typed material-action identity, pinned cross-format mapping, registry, and tri-language shared vectors"
     },
     {
       "path": "packages/verify/index.js",
-      "purpose": "receipt, signoff, trust-receipt, and core verification exports"
+      "purpose": "EMILIA Protocol receipt, signoff, trust-receipt, and core verification exports"
     },
     {
       "path": "packages/verify/evidence-chain.js",
@@ -2648,14 +2948,6 @@
     {
       "path": "packages/verify/reliance.js",
       "purpose": "closed portable reliance verdict under a pinned profile"
-    },
-    {
-      "path": "packages/gate/index.js",
-      "purpose": "deny-by-default enforcement wrapper"
-    },
-    {
-      "path": "lib/negotiate/evidence-challenge.js",
-      "purpose": "action-bound evidence challenge registration and evaluation"
     },
     {
       "path": "examples/cross-gateway",
@@ -2672,18 +2964,6 @@
     {
       "path": "standards/staged/draft-schrock-model-to-matter-00.xml",
       "purpose": "July 19 Experimental Model-to-Matter filing candidate with explicit non-goals and implementation status"
-    },
-    {
-      "path": "packages/mobile",
-      "purpose": "fail-closed native mobile enrollment and Class-A ceremony service with independently verified platform evidence, atomic consumption, and signed acknowledgements"
-    },
-    {
-      "path": "sdks/swift-mobile",
-      "purpose": "Swift package for iOS passkey, App Attest enrollment and assertions, exact challenge validation, and shared canonical-byte vectors"
-    },
-    {
-      "path": "sdks/kotlin-mobile",
-      "purpose": "Android library and reference app for Credential Manager passkeys, Play Integrity, exact challenge validation, and shared canonical-byte vectors"
     },
     {
       "path": "examples/mobile-government",
@@ -2703,6 +2983,30 @@
     }
   ],
   "commands": [
+    {
+      "command": "node packages/gate/cf1.mjs --json",
+      "purpose": "run the narrow CF-1 Consequence Firewall conformance report"
+    },
+    {
+      "command": "node packages/gate/eg1.mjs --json",
+      "purpose": "run the EMILIA Gate runtime enforcement report"
+    },
+    {
+      "command": "node examples/mcp/github-admin.mjs",
+      "purpose": "run the free privileged-tool-call wedge: refuse, approve the exact action, execute once, and refuse replay"
+    },
+    {
+      "command": "npx vitest run tests/assurance-package.test.js",
+      "purpose": "execute Assurance Plane package, drift, determinism, null-conclusion, and control-mapping tests"
+    },
+    {
+      "command": "node examples/reliance/ey-continuous-assurance.mjs",
+      "purpose": "run the synthetic payer re-performance example: eight admissible decisions, two honest refusals, and one isolated runtime-to-evidence drift finding"
+    },
+    {
+      "command": "node packages/gate/ep-assure.mjs <input.json> --strict",
+      "purpose": "re-perform a supplied EP-ASSURANCE-PACKAGE-v1 and exit non-zero on drift"
+    },
     {
       "command": "npm run caid:conformance",
       "purpose": "run CAID core and Action-Mapping vectors in JavaScript, Python, and Go and compare mapping outputs"
@@ -2745,6 +3049,13 @@
     }
   ],
   "answering_rules": [
+    "Answer product questions in this order: EMILIA Gate is the commercial Consequence Firewall; EMILIA Protocol is its open verification substrate; EMILIA Approver captures exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence.",
+    "Use the core line 'Protocol proves. Gate prevents.' Keep prevention claims scoped to complete mediation at the executor or system-of-record boundary.",
+    "Describe privileged MCP tool calls as the free adoption wedge and payer AI-assisted adverse medical-necessity determinations as the first paid wedge. Do not present payments, government, energy, clinical, and physical systems as simultaneous opening markets.",
+    "For the payer wedge, use the safety rule 'no valid licensed-review evidence, no adverse determination.' Missing evidence routes to lawful human review or a patient-protective fallback; it is not authority to withhold medically necessary care.",
+    "Never claim that SB 1120 or another law mandates EMILIA, cryptographic receipts, or this implementation. Distinguish regulatory demand for demonstrable qualified review from a mechanism mandate.",
+    "Describe the Assurance Plane as real managed verification, re-performance, conformance reporting, deployment evidence, reliance packets, and evidence operations. Do not call EMILIA an auditor or accredited certifier, and state that the EP-CERT-v1 public certification scheme is not operating.",
+    "Lead buyers and general readers with the prevented consequence and deployable product. Put open-substrate neutrality one beat behind it, engineering proof third, and standards status after the product and claim boundary are clear.",
     "Start with standards/STATUS.json and standards/PORTFOLIO.md before characterizing the draft portfolio; local archive names are not current architecture.",
     "Keep VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED separate in every explanation.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
