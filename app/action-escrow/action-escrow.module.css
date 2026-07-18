@@ -705,6 +705,10 @@
   background: var(--ae-amber-soft);
 }
 
+.providerNotice + .providerNotice {
+  margin-top: 10px;
+}
+
 .providerNotice > div {
   min-width: 0;
 }

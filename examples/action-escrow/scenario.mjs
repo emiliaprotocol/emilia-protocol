@@ -30,15 +30,16 @@ import {
   createActionEscrowKernel,
 } from '../../packages/gate/action-escrow.js';
 import {
+  ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
   computeActionEscrowAgreementDigest,
-  createActionEscrowDocumentBindingVerifier,
+  createActionEscrowContractorDocumentBindingVerifier,
 } from '../../packages/gate/action-escrow-verifiers.js';
 import {
-  ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION,
+  ACTION_ESCROW_CONTRACTOR_EVIDENCE_PACKAGE_VERSION,
   verifyActionEscrowEvidencePackage,
 } from '../../packages/gate/action-escrow-evidence.js';
 import {
-  assembleActionEscrowEvidencePackage,
+  assembleActionEscrowContractorEvidencePackage,
 } from '../../packages/gate/action-escrow-package.js';
 import {
   createActionEscrowCustodianBridge,
@@ -50,6 +51,10 @@ import {
 } from '../../packages/gate/action-escrow-state.js';
 import { createAcrobatSignAdapter } from '../../lib/integrations/action-escrow/acrobat-sign.js';
 import { defineExternalCustodianAdapter } from '../../lib/integrations/action-escrow/licensed-custodian.js';
+import {
+  createProcoreChangeOrderAdapter,
+  verifyProcoreChangeOrderEvidence,
+} from '../../lib/integrations/action-escrow/procore-change-order.js';
 
 export const ACTION_ESCROW_VERSION = 'EP-ACTION-ESCROW-DEMO-v2';
 export const ACTION_ESCROW_ACTION = 'escrow.milestone.release';
@@ -65,12 +70,16 @@ const RESOLUTION_ORIGIN = 'https://www.emiliaprotocol.ai';
 const MAPPING_ISSUER_ID = 'demo:emilia-mapping-issuer';
 const OPERATOR_ID = 'demo:action-escrow-operator';
 const CUSTODIAN_PROVIDER_ID = 'harborline_demo';
+const PROCORE_COMPANY_ID = '42';
+const PROCORE_PROJECT_ID = '2048';
+const PROCORE_CHANGE_ORDER_ID = '9001';
 const REQUIRED_TERM_IDS = Object.freeze([
   'amendment_version',
   'completion_requirements_digest',
   'document_authorizes_payment',
   'milestone_name',
   'payee_id',
+  'project_record_snapshot_digest',
   'release.amount',
   'release.destination_id',
   'release.milestone_id',
@@ -79,9 +88,10 @@ const REQUIRED_TERM_IDS = Object.freeze([
 ]);
 
 const DEMO_BOUNDARIES = Object.freeze([
-  'The Acrobat Sign adapter and custodian adapter run against deterministic local responses. No external provider API is called.',
+  'The Procore, Acrobat Sign, and custodian adapters run against deterministic local responses. No external provider API is called.',
   'All identities, provider and license references, project facts, evidence files, and balances are fictional.',
   'The DAB signature, party signatures, Action Escrow kernel, state signature, and evidence-package verification are real.',
+  'The Procore record is source evidence only. It establishes neither agreement acceptance nor release authorization.',
   'A signed document establishes neither payment authorization nor a release approval.',
   'EMILIA does not hold or move money. Only the simulated external custodian reports funding and release state.',
   'The scenario does not judge workmanship, physical completion, legal enforceability, identity, comprehension, voluntariness, or licensing.',
@@ -270,7 +280,7 @@ function finalMaterialTerms() {
   };
 }
 
-function dabMaterialTerms(terms) {
+function dabMaterialTerms(terms, projectRecordDigest) {
   return [
     { term_id: 'amendment_version', type: 'integer', value: terms.amendment_version },
     {
@@ -291,6 +301,11 @@ function dabMaterialTerms(terms) {
     { term_id: 'release.milestone_id', type: 'identifier', value: terms.milestone.id },
     { term_id: 'milestone_name', type: 'string', value: terms.milestone.name },
     { term_id: 'payee_id', type: 'identifier', value: terms.payee.contractor_id },
+    {
+      term_id: 'project_record_snapshot_digest',
+      type: 'digest',
+      value: projectRecordDigest,
+    },
     {
       term_id: 'release.amount',
       type: 'amount',
@@ -352,6 +367,95 @@ function buildFinalDocument(terms, mapping) {
     size_bytes: bytes.length,
     sha256: sha256Bytes(bytes),
   };
+}
+
+async function fetchSimulatedProcoreEvidence() {
+  const changeOrder = {
+    id: PROCORE_CHANGE_ORDER_ID,
+    number: 'CCO-017',
+    title: 'Cabinet and countertop revision',
+    description: 'Replace cabinet package and add countertop template milestone.',
+    status: 'approved',
+    grand_total: '23000.00',
+    commitment_id: 'contract-77',
+    updated_at: '2026-07-17T15:00:00Z',
+  };
+  const lineItems = [
+    {
+      id: 'line-2',
+      position: 2,
+      description: 'Countertop template',
+      amount: '5000.00',
+      quantity: '1',
+      unit_cost: '5000.00',
+      uom: 'LS',
+      commitment_line_item_id: 'commitment-line-2',
+      prime_line_item_id: 'prime-line-2',
+      funding_rule_id: null,
+      wbs_code: {
+        id: 'wbs-line-2',
+        flat_code: '01-02',
+        description: 'Countertop template',
+      },
+    },
+    {
+      id: 'line-1',
+      position: 1,
+      description: 'Cabinet installation',
+      amount: '18000.00',
+      quantity: '1',
+      unit_cost: '18000.00',
+      uom: 'LS',
+      commitment_line_item_id: 'commitment-line-1',
+      prime_line_item_id: 'prime-line-1',
+      funding_rule_id: null,
+      wbs_code: {
+        id: 'wbs-line-1',
+        flat_code: '01-01',
+        description: 'Cabinet installation',
+      },
+    },
+  ];
+  const fakeFetch = async (url) => {
+    const requestUrl = new URL(url);
+    const payload = requestUrl.pathname.endsWith('/line_items')
+      ? { data: lineItems }
+      : changeOrder;
+    return new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        ...(requestUrl.pathname.endsWith('/line_items') ? { Total: '2' } : {}),
+      },
+    });
+  };
+  const adapter = createProcoreChangeOrderAdapter({
+    apiOrigin: 'https://api.procore.com',
+    accessToken: 'deterministic-local-demo-token',
+    companyId: PROCORE_COMPANY_ID,
+    fetch: fakeFetch,
+    clock: () => '2026-07-17T15:01:00.000Z',
+  });
+  const evidence = await adapter.fetchChangeOrderEvidence({
+    projectId: PROCORE_PROJECT_ID,
+    changeOrderId: PROCORE_CHANGE_ORDER_ID,
+    changeOrderType: 'commitment',
+    expected: {
+      status: 'approved',
+      number: 'CCO-017',
+      totalAmount: '23000.00',
+    },
+  });
+  invariant(
+    evidence.kind === 'evidence_ready',
+    'simulated Procore adapter must return a complete stable snapshot',
+  );
+  invariant(
+    evidence.evidence.authorizes_action === false
+      && evidence.evidence.establishes_acceptance === false,
+    'project source evidence must never become acceptance or release authority',
+  );
+  return evidence;
 }
 
 async function fetchSimulatedAcrobatEvidence(document) {
@@ -516,9 +620,11 @@ function releaseAction({
   materialTermsDigest,
   completionDigest,
   profileDigest,
+  projectRecordDigest,
 }) {
   return {
     action_type: ACTION_ESCROW_ACTION,
+    action_escrow_template_profile: ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
     action_escrow_profile_digest: profileDigest,
     agreement_id: terms.agreement_id,
     agreement_digest: computeActionEscrowAgreementDigest(terms.agreement_id),
@@ -533,6 +639,7 @@ function releaseAction({
     custodian_milestone_id: 'SIM-MS-03-CABINETRY',
     document_sha256: document.sha256,
     material_terms_sha256: materialTermsDigest,
+    project_record_snapshot_digest: projectRecordDigest,
     completion_evidence_sha256: completionDigest,
     amendment_version: terms.amendment_version,
   };
@@ -943,6 +1050,7 @@ function attackResult({
 function buildView({
   terms,
   mapping,
+  projectRecord,
   document,
   binding,
   documentVerification,
@@ -978,8 +1086,20 @@ function buildView({
     },
     integration_rows: [
       {
-        id: 'document',
+        id: 'project',
         number: '01',
+        label: 'Project change-order source',
+        status: projectRecord.kind === 'evidence_ready'
+          ? 'SOURCE VERIFIED'
+          : 'REFUSED',
+        pass: projectRecord.kind === 'evidence_ready',
+        detail: `Change order ${projectRecord.evidence.change_order.number}, its approved total, and ${projectRecord.evidence.line_items.length} line items were refetched twice and matched.`,
+        boundary: 'Project-system facts are source evidence only. They establish neither acceptance nor release authority.',
+        source: 'Simulated Procore read-only adapter',
+      },
+      {
+        id: 'document',
+        number: '02',
         label: 'Final document + material-term mapping',
         status: documentVerification.dab.valid ? 'VERIFIED + MATCHED' : 'REFUSED',
         pass: documentVerification.dab.valid,
@@ -989,7 +1109,7 @@ function buildView({
       },
       {
         id: 'execution',
-        number: '02',
+        number: '03',
         label: 'E-sign document execution',
         status: documentVerification.checks.simulated_provider_refetch_completed
           ? 'PROVIDER VERIFIED'
@@ -1001,7 +1121,7 @@ function buildView({
       },
       {
         id: 'agreement',
-        number: '03',
+        number: '04',
         label: 'Mutual agreement acceptance',
         status: documentVerification.checks.both_agreement_acceptances_verified
           ? '2 OF 2 ACCEPTED'
@@ -1013,7 +1133,7 @@ function buildView({
       },
       {
         id: 'approvals',
-        number: '04',
+        number: '05',
         label: 'Homeowner + contractor exact release approvals',
         status: approvalVerification.homeowner.valid && approvalVerification.contractor.valid
           ? '2 OF 2 APPROVED'
@@ -1025,7 +1145,7 @@ function buildView({
       },
       {
         id: 'custodian',
-        number: '05',
+        number: '06',
         label: 'External custodian funding + release state',
         status: releaseVerification.valid ? 'FUNDED → RELEASED' : 'REFUSED',
         pass: fundingVerification.valid && releaseVerification.valid,
@@ -1034,6 +1154,22 @@ function buildView({
         source: custodian.provider.display_name,
       },
     ],
+    project_record: {
+      provider: 'Procore',
+      mode: 'simulated_local_adapter',
+      company_id: projectRecord.evidence.company_id,
+      project_id: projectRecord.evidence.project_id,
+      change_order_id: projectRecord.evidence.change_order_id,
+      change_order_number: projectRecord.evidence.change_order.number,
+      change_order_status: projectRecord.evidence.change_order.status,
+      change_order_total: projectRecord.evidence.change_order.total_amount,
+      line_item_count: projectRecord.evidence.line_items.length,
+      snapshot_digest: projectRecord.material_source_digest,
+      observed_at: projectRecord.evidence.observed_at,
+      authorizes_action: projectRecord.evidence.authorizes_action,
+      establishes_acceptance: projectRecord.evidence.establishes_acceptance,
+      notice: 'Simulated read-only adapter only. No Procore partnership, endorsement, credential, or live API call is implied.',
+    },
     document: {
       filename: document.filename,
       size_bytes: document.size_bytes,
@@ -1138,6 +1274,11 @@ export async function runActionEscrowScenario() {
 
   const terms = finalMaterialTerms();
   const mapping = materialTermMapping(terms);
+  const projectRecord = await fetchSimulatedProcoreEvidence();
+  const projectRecordBytes = Buffer.from(
+    canonicalize(projectRecord.evidence),
+    'utf8',
+  );
   const document = buildFinalDocument(terms, mapping);
   const esignEvidence = await fetchSimulatedAcrobatEvidence(document);
   const completionManifest = completionEvidenceManifest(terms);
@@ -1145,12 +1286,13 @@ export async function runActionEscrowScenario() {
     terms,
     document,
     materialTermsDigest: sha256Canonical(
-      dabMaterialTerms(terms).sort((left, right) => (
+      dabMaterialTerms(terms, projectRecord.material_source_digest).sort((left, right) => (
         left.term_id < right.term_id ? -1 : left.term_id > right.term_id ? 1 : 0
       )),
     ),
     completionDigest: sha256Canonical(completionManifest),
     profileDigest: sha256Canonical(profile),
+    projectRecordDigest: projectRecord.material_source_digest,
   });
   const binding = signDocumentActionBinding({
     binding_id: BINDING_ID,
@@ -1159,7 +1301,7 @@ export async function runActionEscrowScenario() {
       bytes: esignEvidence.document_bytes,
       media_type: 'application/pdf',
     },
-    material_terms: dabMaterialTerms(terms),
+    material_terms: dabMaterialTerms(terms, projectRecord.material_source_digest),
     release_action_template: action,
     parties,
     required_parties: parties,
@@ -1323,27 +1465,28 @@ export async function runActionEscrowScenario() {
     providerId: CUSTODIAN_PROVIDER_ID,
     environment: 'sandbox',
   });
-  const kernelDocumentBindingVerifier = createActionEscrowDocumentBindingVerifier({
-    issuerKeys: {
-      [keys.mapping.keyId]: {
-        issuer_id: MAPPING_ISSUER_ID,
-        public_key: keys.mapping.publicKey,
+  const kernelDocumentBindingVerifier =
+    createActionEscrowContractorDocumentBindingVerifier({
+      issuerKeys: {
+        [keys.mapping.keyId]: {
+          issuer_id: MAPPING_ISSUER_ID,
+          public_key: keys.mapping.publicKey,
+        },
       },
-    },
-    resolveDocumentBytes: async (expected) => (
-      expected.agreement_id === AGREEMENT_ID
-      && expected.binding_id === BINDING_ID
-      && expected.binding_digest === dabVerification.binding_digest
-      && expected.document_digest === document.sha256
-      && expected.document_media_type === document.media_type
-      && expected.document_byte_length === document.size_bytes
-        ? Uint8Array.from(document.bytes)
-        : null
-    ),
-    allowedMediaTypes: ['application/pdf'],
-    allowedPartyRoles: ['contractor', 'homeowner'],
-    now: () => CREATED_AT,
-  });
+      resolveDocumentBytes: async (expected) => (
+        expected.agreement_id === AGREEMENT_ID
+        && expected.binding_id === BINDING_ID
+        && expected.binding_digest === dabVerification.binding_digest
+        && expected.document_digest === document.sha256
+        && expected.document_media_type === document.media_type
+        && expected.document_byte_length === document.size_bytes
+          ? Uint8Array.from(document.bytes)
+          : null
+      ),
+      allowedMediaTypes: ['application/pdf'],
+      allowedPartyRoles: ['contractor', 'homeowner'],
+      now: () => CREATED_AT,
+    });
 
   const kernel = createActionEscrowKernel({
     store: durableCasStore(),
@@ -1619,6 +1762,13 @@ export async function runActionEscrowScenario() {
     ...dabOptions,
     releaseActionTemplate: { ...action, amendment_version: 3 },
   });
+  const projectRecordAttack = verifyDocumentActionBinding(binding, {
+    ...dabOptions,
+    releaseActionTemplate: {
+      ...action,
+      project_record_snapshot_digest: `sha256:${'00'.repeat(32)}`,
+    },
+  });
 
   const attacks = [
     attackResult({
@@ -1685,6 +1835,15 @@ export async function runActionEscrowScenario() {
       detail: 'A new amendment needs a new DAB and fresh party approvals.',
     }),
     attackResult({
+      id: 'project-source',
+      title: 'Project source',
+      layer: 'document_action_binding',
+      mutation: 'The project-system change-order snapshot is swapped after binding.',
+      result: projectRecordAttack,
+      expectedReason: 'action_digest_mismatch',
+      detail: 'The source snapshot digest is inside the exact release action.',
+    }),
+    attackResult({
       id: 'replay',
       title: 'Replay',
       layer: 'action_escrow_kernel',
@@ -1694,7 +1853,7 @@ export async function runActionEscrowScenario() {
       detail: 'The durable released state closes the second call before the custodian.',
     }),
   ];
-  invariant(attacks.length === 8, 'attack bench must contain eight mutations');
+  invariant(attacks.length === 9, 'attack bench must contain nine mutations');
   invariant(
     attacks.every((attack) => attack.refused && attack.reason === attack.expected_reason),
     `every attack must refuse as expected: ${JSON.stringify(attacks)}`,
@@ -1795,7 +1954,7 @@ export async function runActionEscrowScenario() {
     privateKey: keys.operator.privateKey,
   });
 
-  const evidencePackage = assembleActionEscrowEvidencePackage({
+  const evidencePackage = assembleActionEscrowContractorEvidencePackage({
     kernelRecord: releaseResult.record,
     finalPdfBytes: document.bytes,
     documentFileName: document.filename,
@@ -1813,12 +1972,17 @@ export async function runActionEscrowScenario() {
       id: profile.profile_id,
       digest: releaseResult.record.profile_digest,
     },
+    projectRecordBytes,
+    projectRecordFileName:
+      'action-escrow-AGR-KITCHEN-2048-CCO-017-project-record.json',
+    projectRecordProvider: 'procore',
+    projectRecordSnapshotDigest: projectRecord.material_source_digest,
   }, {
     now: FIXED_NOW_MS,
   });
   invariant(
-    evidencePackage.version === ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION,
-    'download must use the shipped Action Escrow evidence-package profile',
+    evidencePackage.version === ACTION_ESCROW_CONTRACTOR_EVIDENCE_PACKAGE_VERSION,
+    'download must use the contractor Action Escrow evidence-package profile',
   );
 
   const verifyPackagedState = createActionEscrowStatePackageVerifier({
@@ -1831,8 +1995,9 @@ export async function runActionEscrowScenario() {
     now: CREATED_AT,
     minimumRevision: releaseResult.record.revision,
   });
-  const packageVerification = await verifyActionEscrowEvidencePackage(evidencePackage, {
+  const packageVerificationOptions = {
     documentBytes: document.bytes,
+    projectRecordBytes,
     expectedAgreementId: AGREEMENT_ID,
     now: CREATED_AT,
     verifyBinding: async (artifact, expected) => {
@@ -1842,9 +2007,32 @@ export async function runActionEscrowScenario() {
         documentBytes: document.bytes,
       });
       return result.document_digest === expected.expectedDocumentDigest
-        ? result
+        ? {
+          ...result,
+          project_record_snapshot_digest:
+            artifact?.release_action?.template?.project_record_snapshot_digest,
+        }
         : { ...result, valid: false, reason: 'document_digest_mismatch' };
     },
+    verifyProjectRecord: async (record, expected) => (
+      expected.provider === 'procore'
+        ? verifyProcoreChangeOrderEvidence(record, {
+          snapshotDigest: expected.snapshotDigest,
+          apiOrigin: 'https://api.procore.com',
+          companyId: PROCORE_COMPANY_ID,
+          projectId: PROCORE_PROJECT_ID,
+          changeOrderType: 'commitment',
+          changeOrderId: PROCORE_CHANGE_ORDER_ID,
+        })
+        : {
+          valid: false,
+          reason: 'project_record_provider_mismatch',
+          provider: null,
+          snapshot_digest: null,
+          authorizes_action: false,
+          establishes_acceptance: false,
+        }
+    ),
     verifyProfile: async (packagedProfile, expected) => ({
       valid: packagedProfile?.id === profile.profile_id
         && packagedProfile?.digest === releaseResult.record.profile_digest,
@@ -1989,10 +2177,64 @@ export async function runActionEscrowScenario() {
         state: 'released',
       };
     },
-  });
+  };
+  const packageVerification = await verifyActionEscrowEvidencePackage(
+    evidencePackage,
+    packageVerificationOptions,
+  );
   invariant(
     packageVerification.valid,
     `portable evidence package must verify (${packageVerification.reason})`,
+  );
+  const mutatedProjectRecordBytes = Buffer.from(canonicalize({
+    ...projectRecord.evidence,
+    change_order: {
+      ...projectRecord.evidence.change_order,
+      total_amount: '1.00',
+    },
+  }), 'utf8');
+  const projectRecordPackageAttack = await verifyActionEscrowEvidencePackage(
+    evidencePackage,
+    {
+      ...packageVerificationOptions,
+      projectRecordBytes: mutatedProjectRecordBytes,
+    },
+  );
+  invariant(
+    !projectRecordPackageAttack.valid
+      && projectRecordPackageAttack.reason === 'project_record_bytes_mismatch',
+    'portable package must refuse substituted project-record bytes',
+  );
+  const contextMutatedRecord = clone(projectRecord.evidence);
+  contextMutatedRecord.project_id = 'project:attacker-substitution';
+  const contextMutatedBytes = Buffer.from(
+    canonicalize(contextMutatedRecord),
+    'utf8',
+  );
+  const contextMutatedPackage = clone(evidencePackage);
+  contextMutatedPackage.project_record.digest =
+    sha256Bytes(contextMutatedBytes);
+  contextMutatedPackage.project_record.byte_length =
+    contextMutatedBytes.length;
+  const {
+    package_digest: _oldContextPackageDigest,
+    ...contextMutatedPackageScope
+  } = contextMutatedPackage;
+  contextMutatedPackage.package_digest =
+    sha256Canonical(contextMutatedPackageScope);
+  const projectContextPackageAttack =
+    await verifyActionEscrowEvidencePackage(
+      contextMutatedPackage,
+      {
+        ...packageVerificationOptions,
+        projectRecordBytes: contextMutatedBytes,
+      },
+    );
+  invariant(
+    !projectContextPackageAttack.valid
+      && projectContextPackageAttack.reason
+        === 'project_record_verification_failed',
+    'portable package must refuse project-source context relabeling',
   );
 
   const documentAcceptanceVerification = {
@@ -2032,6 +2274,7 @@ export async function runActionEscrowScenario() {
   const view = buildView({
     terms,
     mapping,
+    projectRecord,
     document,
     binding,
     documentVerification,
@@ -2060,6 +2303,9 @@ export async function runActionEscrowScenario() {
     view,
     bundle: evidencePackage,
     bundleVerification: packageVerification,
+    bundleProjectRecordAttack: projectRecordPackageAttack,
+    bundleProjectContextAttack: projectContextPackageAttack,
+    projectRecordEvidence: projectRecord,
     pdf: {
       filename: document.filename,
       media_type: document.media_type,

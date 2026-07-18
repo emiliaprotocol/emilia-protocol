@@ -14,6 +14,13 @@ const USE_CASES = [
     tag: 'Developer on-ramp',
   },
   {
+    title: 'Construction draw control',
+    desc: 'Bind project-system change orders, final signed documents, separate exact-release approvals, and licensed-custodian execution into one one-time draw.',
+    href: '/action-escrow',
+    accent: color.gold,
+    tag: 'Action Escrow demo',
+  },
+  {
     title: 'Government workflows',
     desc: 'Apply action and evidence profiles to configured disbursements, benefit routing, enrollment changes, and overrides.',
     href: '/govguard',
@@ -75,7 +82,7 @@ export default function UseCasesPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
           {USE_CASES.map((uc, i) => (
             <a key={uc.href} href={uc.href}
-              className={`ep-card-lift ep-reveal ep-stagger-${i + 1}`}
+              className={`ep-card-lift ep-reveal ep-stagger-${Math.min(i + 1, 6)}`}
               style={{
                 border: `1px solid ${color.border}`,
                 borderTop: `2px solid ${uc.accent}`,

@@ -2,17 +2,28 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  ACTION_ESCROW_CONTRACTOR_EVIDENCE_PACKAGE_VERSION,
   ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION,
   buildActionEscrowEvidencePackage,
   parseActionEscrowEvidencePackage,
   verifyActionEscrowEvidencePackage,
 } from './action-escrow-evidence.js';
+import {
+  ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
+} from './action-escrow-verifiers.js';
+import { hashCanonical } from './execution-binding.js';
 
 const NOW = '2026-07-17T12:00:00.000Z';
 const PDF = Buffer.from('%PDF-1.7\nfinal contractor agreement\n%%EOF', 'utf8');
 const BINDING_DIGEST = `sha256:${'11'.repeat(32)}`;
 const ACTION_DIGEST = `sha256:${'22'.repeat(32)}`;
 const PROFILE_DIGEST = `sha256:${'55'.repeat(32)}`;
+const PROJECT_RECORD_SNAPSHOT_DIGEST = `sha256:${'66'.repeat(32)}`;
+const PROJECT_RECORD = Buffer.from(JSON.stringify({
+  provider: 'procore',
+  change_order: { id: 'change-order-3' },
+  line_items: [{ id: 'line-item-1', amount: '18400.00' }],
+}), 'utf8');
 
 function inputs(stage = 'released') {
   return {
@@ -161,6 +172,48 @@ async function verify(pkg, extra = {}) {
   });
 }
 
+function contractorInputs(stage = 'released') {
+  const source = inputs(stage);
+  source.binding.release_action = {
+    template: {
+      action_escrow_template_profile: ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
+      project_record_snapshot_digest: PROJECT_RECORD_SNAPSHOT_DIGEST,
+    },
+  };
+  source.projectRecordBytes = PROJECT_RECORD;
+  source.projectRecordFileName = 'procore-change-order-3.json';
+  source.projectRecordProvider = 'procore';
+  source.projectRecordSnapshotDigest = PROJECT_RECORD_SNAPSHOT_DIGEST;
+  return source;
+}
+
+function contractorVerifiers(overrides = {}) {
+  return verifiers({
+    verifyBinding: async (_binding, context) => ({
+      valid: true,
+      agreement_id: context.expectedAgreementId,
+      document_digest: context.expectedDocumentDigest,
+      binding_digest: BINDING_DIGEST,
+      action_digest: ACTION_DIGEST,
+      supersedes_digest: null,
+      project_record_snapshot_digest: PROJECT_RECORD_SNAPSHOT_DIGEST,
+      required_parties: [
+        { party_id: 'homeowner-1', role: 'customer' },
+        { party_id: 'contractor-1', role: 'contractor' },
+      ],
+    }),
+    verifyProjectRecord: async (_record, context) => ({
+      valid: true,
+      reason: 'verified',
+      authorizes_action: false,
+      establishes_acceptance: false,
+      provider: context.provider,
+      snapshot_digest: context.snapshotDigest,
+    }),
+    ...overrides,
+  });
+}
+
 test('released package re-performs every trust boundary', async () => {
   const pkg = buildActionEscrowEvidencePackage(inputs(), { now: NOW });
   assert.equal(pkg.version, ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION);
@@ -168,6 +221,115 @@ test('released package re-performs every trust boundary', async () => {
   assert.equal(result.valid, true);
   assert.equal(result.reason, 'verified');
   assert.deepEqual(Object.values(result.checks), Array(Object.keys(result.checks).length).fill(true));
+});
+
+test('contractor package re-performs the bound project sidecar and refuses profile confusion', async (t) => {
+  const source = contractorInputs();
+  const pkg = buildActionEscrowEvidencePackage(source, { now: NOW });
+  assert.equal(pkg.version, ACTION_ESCROW_CONTRACTOR_EVIDENCE_PACKAGE_VERSION);
+
+  const verified = await verifyActionEscrowEvidencePackage(pkg, {
+    documentBytes: PDF,
+    projectRecordBytes: PROJECT_RECORD,
+    expectedAgreementId: 'agreement-kitchen-001',
+    now: NOW,
+    ...contractorVerifiers(),
+  });
+  assert.equal(verified.valid, true);
+  assert.equal(
+    verified.project_record_snapshot_digest,
+    PROJECT_RECORD_SNAPSHOT_DIGEST,
+  );
+
+  await t.test('missing project bytes', async () => {
+    const result = await verifyActionEscrowEvidencePackage(pkg, {
+      documentBytes: PDF,
+      expectedAgreementId: 'agreement-kitchen-001',
+      now: NOW,
+      ...contractorVerifiers(),
+    });
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'project_record_bytes_mismatch');
+  });
+
+  await t.test('mutated project bytes', async () => {
+    const result = await verifyActionEscrowEvidencePackage(pkg, {
+      documentBytes: PDF,
+      projectRecordBytes: Buffer.from('{"provider":"attacker"}', 'utf8'),
+      expectedAgreementId: 'agreement-kitchen-001',
+      now: NOW,
+      ...contractorVerifiers(),
+    });
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'project_record_bytes_mismatch');
+  });
+
+  await t.test('missing project verifier', async () => {
+    const verifiersWithoutProject = contractorVerifiers();
+    delete verifiersWithoutProject.verifyProjectRecord;
+    const result = await verifyActionEscrowEvidencePackage(pkg, {
+      documentBytes: PDF,
+      projectRecordBytes: PROJECT_RECORD,
+      expectedAgreementId: 'agreement-kitchen-001',
+      now: NOW,
+      ...verifiersWithoutProject,
+    });
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'project_record_verification_failed');
+    assert.equal(result.project_record_reason, 'verifier_required');
+  });
+
+  await t.test('project source cannot claim approval authority', async () => {
+    const result = await verifyActionEscrowEvidencePackage(pkg, {
+      documentBytes: PDF,
+      projectRecordBytes: PROJECT_RECORD,
+      expectedAgreementId: 'agreement-kitchen-001',
+      now: NOW,
+      ...contractorVerifiers({
+        verifyProjectRecord: async (_record, context) => ({
+          valid: true,
+          authorizes_action: true,
+          establishes_acceptance: false,
+          provider: context.provider,
+          snapshot_digest: context.snapshotDigest,
+        }),
+      }),
+    });
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'project_record_verification_failed');
+  });
+
+  await t.test('contractor binding cannot ride in a legacy package envelope', async () => {
+    const legacy = structuredClone(pkg);
+    delete legacy.binding.release_action.template.action_escrow_template_profile;
+    legacy.version = ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION;
+    delete legacy.project_record;
+    const { package_digest: _oldDigest, ...scope } = legacy;
+    legacy.package_digest = `sha256:${hashCanonical(scope)}`;
+    const result = await verifyActionEscrowEvidencePackage(legacy, {
+      documentBytes: PDF,
+      expectedAgreementId: 'agreement-kitchen-001',
+      now: NOW,
+      ...contractorVerifiers(),
+    });
+    assert.equal(result.valid, false);
+    assert.equal(result.reason, 'evidence_profile_mismatch');
+  });
+
+  await t.test('unmarked preview bindings remain confined to the contractor package', async () => {
+    const unmarked = structuredClone(pkg);
+    delete unmarked.binding.release_action.template.action_escrow_template_profile;
+    const { package_digest: _oldDigest, ...scope } = unmarked;
+    unmarked.package_digest = `sha256:${hashCanonical(scope)}`;
+    const result = await verifyActionEscrowEvidencePackage(unmarked, {
+      documentBytes: PDF,
+      projectRecordBytes: PROJECT_RECORD,
+      expectedAgreementId: 'agreement-kitchen-001',
+      now: NOW,
+      ...contractorVerifiers(),
+    });
+    assert.equal(result.valid, true, result.reason);
+  });
 });
 
 test('builder snapshots caller objects before hashing', async () => {

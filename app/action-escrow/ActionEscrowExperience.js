@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BadgeCheck,
   Banknote,
+  Building2,
   Check,
   CheckCircle2,
   ClipboardCheck,
@@ -28,6 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './action-escrow.module.css';
 
 const ROW_ICONS = {
+  project: Building2,
   document: FileCheck2,
   approvals: UsersRound,
   custodian: Banknote,
@@ -131,7 +133,8 @@ export default function ActionEscrowExperience({ data }) {
             </p>
             <p className={styles.heroBoundary}>
               This reference run uses real signatures, the shipped DAB verifier, and the Action
-              Escrow kernel. E-sign and custody provider adapters are simulated. No real money moves.
+              Escrow kernel. Project-system, e-sign, and custody provider adapters are simulated.
+              No real money moves.
             </p>
             <div className={styles.heroActions}>
               <a className={styles.primaryButton} href="/action-escrow/evidence-bundle">
@@ -168,7 +171,7 @@ export default function ActionEscrowExperience({ data }) {
           <div className={styles.sectionHeader}>
             <div>
               <span className={styles.eyebrow}>Release clearance</span>
-              <h2>Five evidence rows. No role substitution.</h2>
+              <h2>Six evidence rows. No role substitution.</h2>
             </div>
             <button type="button" className={styles.replayButton} onClick={replayChecks} disabled={running}>
               <RefreshCw aria-hidden="true" size={17} className={running ? styles.spin : undefined} />
@@ -249,6 +252,16 @@ export default function ActionEscrowExperience({ data }) {
                 <div><span>DAB binding SHA-256</span><code>{short(data.document.mapping_sha256, 16, 12)}</code></div>
               </div>
               <div className={styles.providerNotice}>
+                <Building2 aria-hidden="true" size={18} />
+                <div>
+                  <strong>{data.project_record.provider} source adapter</strong>
+                  <span>
+                    {data.project_record.change_order_number} · {data.project_record.line_item_count}
+                    {' '}line items · {data.project_record.notice}
+                  </span>
+                </div>
+              </div>
+              <div className={styles.providerNotice}>
                 <BadgeCheck aria-hidden="true" size={18} />
                 <div>
                   <strong>{data.document.signing_provider.name} adapter</strong>
@@ -280,6 +293,7 @@ export default function ActionEscrowExperience({ data }) {
               <div><dt>Destination</dt><dd>{data.project.destination_id}</dd></div>
               <div><dt>Final document</dt><dd>{short(data.release.action.document_sha256)}</dd></div>
               <div><dt>Material terms</dt><dd>{short(data.release.action.material_terms_sha256)}</dd></div>
+              <div><dt>Project source</dt><dd>{short(data.release.action.project_record_snapshot_digest)}</dd></div>
               <div><dt>Milestone evidence</dt><dd>{short(data.release.action.completion_evidence_sha256)}</dd></div>
               <div><dt>Amendment version</dt><dd>{data.release.action.amendment_version}</dd></div>
               <div><dt>Custodian transaction</dt><dd>{data.release.action.custodian_transaction_id}</dd></div>
@@ -449,8 +463,8 @@ export default function ActionEscrowExperience({ data }) {
               <p>
                 The shipped evidence-package manifest keeps document execution, agreement
                 acceptances, exact release approvals, funding, completion evidence, custodian
-                release, and signed durable state distinct. The final PDF travels beside it and is
-                joined by its byte digest.
+                release, and signed durable state distinct. The final PDF and project source record
+                travel beside it; both are joined by digests inside the exact release action.
               </p>
               <div className={styles.bundleChecks}>
                 <span><Check aria-hidden="true" size={15} /> Homeowner copy</span>
@@ -466,6 +480,10 @@ export default function ActionEscrowExperience({ data }) {
               <a className={styles.secondaryButtonLight} href="/action-escrow/final-agreement?download=1">
                 <Download aria-hidden="true" size={18} />
                 Download final PDF
+              </a>
+              <a className={styles.secondaryButtonLight} href="/action-escrow/project-record">
+                <Building2 aria-hidden="true" size={18} />
+                Download project record
               </a>
               <code>{short(data.bundle.digest, 16, 12)}</code>
             </div>

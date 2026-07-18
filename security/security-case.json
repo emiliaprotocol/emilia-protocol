@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb",
+  "evidence_bundle_sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93",
   "claim_count": 26,
-  "evidence_file_count": 116,
+  "evidence_file_count": 121,
   "execution": {
     "required": true,
     "status": "passed",
@@ -125,6 +125,16 @@
       },
       {
         "runner": "node-test",
+        "file": "examples/action-escrow/scenario.test.mjs",
+        "titles": [
+          "keeps document, exact-action approvals, and external custody visibly separate",
+          "refuses project-source context relabeling even after package rehash",
+          "uses the shipped DAB, Action Escrow kernel, and portable evidence package"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
         "titles": [
           "action and presentation substitution both refuse offline",
@@ -149,6 +159,7 @@
         "file": "packages/gate/action-escrow-evidence.test.js",
         "titles": [
           "component verifiers must echo the exact agreement, binding, and action they checked",
+          "contractor package re-performs the bound project sidecar and refuses profile confusion",
           "document execution, agreement acceptance, and release approval are non-substitutable rows"
         ],
         "result": "passed"
@@ -168,6 +179,14 @@
           "health refuses owner or destructive runtime privileges",
           "history verification refuses mutation, gaps, and digest substitution",
           "normal reads refuse truncated, reordered, or state-divergent journals"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/action-escrow-verifiers.test.js",
+        "titles": [
+          "the contractor profile requires a project source digest bound to its signed term"
         ],
         "result": "passed"
       },
@@ -328,6 +347,15 @@
         "file": "tests/action-escrow-escrow-com.test.js",
         "titles": [
           "refuses milestone acceptance until every schedule is secured and funded"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/action-escrow-procore.test.js",
+        "titles": [
+          "binds every source coordinate and refuses provenance relabeling",
+          "double-fetches an exact read-only snapshot and marks it non-authoritative"
         ],
         "result": "passed"
       },
@@ -522,9 +550,9 @@
     "gate-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/gate",
-      "version": "0.11.0",
-      "filename": "emilia-protocol-gate-0.11.0.tgz",
-      "sha256": "d5887a3bb9aa51adb7d150447088006f81d55ea281a3a370b95a60da7cb613b7",
+      "version": "0.12.0",
+      "filename": "emilia-protocol-gate-0.12.0.tgz",
+      "sha256": "f92be7d8ece10cce69ee04556eb0860a3f5333833af3910a6de3a579721d90e9",
       "file_count": 103
     },
     "mobile-sdk": {
@@ -538,8 +566,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb",
-      "file_count": 116
+      "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93",
+      "file_count": 121
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -702,7 +730,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -965,7 +993,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -1073,7 +1101,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -1192,7 +1220,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -1314,7 +1342,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -1458,7 +1486,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -1604,7 +1632,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -1763,7 +1791,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -1872,7 +1900,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2000,11 +2028,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "d5887a3bb9aa51adb7d150447088006f81d55ea281a3a370b95a60da7cb613b7"
+          "sha256": "f92be7d8ece10cce69ee04556eb0860a3f5333833af3910a6de3a579721d90e9"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2107,11 +2135,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "d5887a3bb9aa51adb7d150447088006f81d55ea281a3a370b95a60da7cb613b7"
+          "sha256": "f92be7d8ece10cce69ee04556eb0860a3f5333833af3910a6de3a579721d90e9"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2231,11 +2259,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "d5887a3bb9aa51adb7d150447088006f81d55ea281a3a370b95a60da7cb613b7"
+          "sha256": "f92be7d8ece10cce69ee04556eb0860a3f5333833af3910a6de3a579721d90e9"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2360,11 +2388,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "d5887a3bb9aa51adb7d150447088006f81d55ea281a3a370b95a60da7cb613b7"
+          "sha256": "f92be7d8ece10cce69ee04556eb0860a3f5333833af3910a6de3a579721d90e9"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2534,11 +2562,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "d5887a3bb9aa51adb7d150447088006f81d55ea281a3a370b95a60da7cb613b7"
+          "sha256": "f92be7d8ece10cce69ee04556eb0860a3f5333833af3910a6de3a579721d90e9"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2672,7 +2700,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2788,7 +2816,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -2922,7 +2950,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -3139,7 +3167,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -3349,7 +3377,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -3540,7 +3568,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -3824,7 +3852,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -4003,7 +4031,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -4153,7 +4181,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -4272,7 +4300,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
@@ -4443,16 +4471,17 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     },
     {
       "claim_id": "action-escrow-releases-one-exact-milestone-once",
-      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. The portable package keeps document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
+      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. When a project-system source is supplied, its complete stable snapshot digest binds the provider origin, company, project, record type and identifier, normalized payload, observation time, and non-authoritative claim boundary as a signed typed material term inside that exact action. The portable package keeps project source, document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
       "acceptance_roots": [
         "relying-party-pinned document-mapping issuer, Action Escrow profile, party keys, operator state key, and custodian adapter configuration",
         "the exact final PDF bytes and signed Document Action Binding whose closed material-term profile commits the payment action and evidence requirements",
+        "when configured, an authenticated complete project-system snapshot whose digest is independently mapped into the signed release action",
         "a licensed external custodian that exclusively mediates funding and release for the configured transaction and honors idempotency"
       ],
       "enforcement_path": [
@@ -4465,7 +4494,7 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-verifiers.js",
-          "symbol": "createActionEscrowDocumentBindingVerifier",
+          "symbol": "createActionEscrowContractorDocumentBindingVerifier",
           "exported": true
         },
         {
@@ -4477,7 +4506,13 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-package.js",
-          "symbol": "assembleActionEscrowEvidencePackage",
+          "symbol": "assembleActionEscrowContractorEvidencePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-evidence.js",
+          "symbol": "verifyActionEscrowEvidencePackage",
           "exported": true
         },
         {
@@ -4491,6 +4526,18 @@
           "file": "lib/integrations/action-escrow/escrow-com.js",
           "symbol": "createEscrowComAdapter",
           "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "createProcoreChangeOrderAdapter",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "verifyProcoreChangeOrderEvidence",
+          "exported": true
         }
       ],
       "implementations": [
@@ -4502,7 +4549,7 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-verifiers.js",
-          "export": "createActionEscrowDocumentBindingVerifier"
+          "export": "createActionEscrowContractorDocumentBindingVerifier"
         },
         {
           "language": "javascript",
@@ -4512,7 +4559,12 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-package.js",
-          "export": "assembleActionEscrowEvidencePackage"
+          "export": "assembleActionEscrowContractorEvidencePackage"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-evidence.js",
+          "export": "verifyActionEscrowEvidencePackage"
         },
         {
           "language": "javascript",
@@ -4523,6 +4575,16 @@
           "language": "javascript",
           "file": "lib/integrations/action-escrow/escrow-com.js",
           "export": "createEscrowComAdapter"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "export": "createProcoreChangeOrderAdapter"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "export": "verifyProcoreChangeOrderEvidence"
         }
       ],
       "language_coverage": {
@@ -4627,6 +4689,38 @@
           "expect": {
             "valid": false
           }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_action_escrow_project_source_snapshot",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_sidecar_bytes_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_context_relabeling",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
         }
       ],
       "tests": [
@@ -4691,6 +4785,11 @@
           "runner": "node-test"
         },
         {
+          "file": "packages/gate/action-escrow-evidence.test.js",
+          "title": "contractor package re-performs the bound project sidecar and refuses profile confusion",
+          "runner": "node-test"
+        },
+        {
           "file": "packages/gate/action-escrow-postgres.test.js",
           "title": "health refuses owner or destructive runtime privileges",
           "runner": "node-test"
@@ -4699,12 +4798,42 @@
           "file": "tests/action-escrow-escrow-com.test.js",
           "title": "refuses milestone acceptance until every schedule is secured and funded",
           "runner": "vitest"
+        },
+        {
+          "file": "tests/action-escrow-procore.test.js",
+          "title": "double-fetches an exact read-only snapshot and marks it non-authoritative",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/action-escrow-procore.test.js",
+          "title": "binds every source coordinate and refuses provenance relabeling",
+          "runner": "vitest"
+        },
+        {
+          "file": "packages/gate/action-escrow-verifiers.test.js",
+          "title": "the contractor profile requires a project source digest bound to its signed term",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/action-escrow/scenario.test.mjs",
+          "title": "keeps document, exact-action approvals, and external custody visibly separate",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/action-escrow/scenario.test.mjs",
+          "title": "uses the shipped DAB, Action Escrow kernel, and portable evidence package",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/action-escrow/scenario.test.mjs",
+          "title": "refuses project-source context relabeling even after package rehash",
+          "runner": "node-test"
         }
       ],
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "The complete document-to-custodian composition, five-row evidence package, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+          "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
         }
       ],
       "assumptions": [
@@ -4712,12 +4841,14 @@
         "the relying party provisions and maintains the mapping issuer, party, operator, and provider trust roots out of band",
         "the durable store runs under a separately provisioned non-owner role with no DELETE or TRUNCATE privilege on state and no UPDATE, DELETE, or TRUNCATE privilege on history; database-owner compromise remains outside this claim",
         "the deployment supplies a durable fail-closed effect-reference binding store to the external custodian adapter",
+        "the configured project-system API and OAuth credentials resolve the intended company, project, and change-order namespace",
         "the external evidence verifier truthfully checks completion evidence under the requirements committed by the signed action"
       ],
       "exclusions": [
         "EMILIA does not hold funds, act as an escrow agent, determine licensure, or establish legal enforceability",
         "cryptographic evidence does not prove workmanship, physical completion, identity, comprehension, voluntariness, fairness, or absence of fraud by an authentic trusted key",
         "the guarantee does not cover payment routes or custodian operations that bypass the integrated mediation boundary",
+        "a project-system record is source evidence only and does not prove party acceptance, human approval, legal enforceability, or physical completion",
         "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
         "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
       ],
@@ -4728,11 +4859,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "d5887a3bb9aa51adb7d150447088006f81d55ea281a3a370b95a60da7cb613b7"
+          "sha256": "f92be7d8ece10cce69ee04556eb0860a3f5333833af3910a6de3a579721d90e9"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+          "sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
         }
       ]
     }
@@ -4819,6 +4950,10 @@
       "sha256": "095d50eb2199451344628fffe6e391cdad2718ad647a9dc952712eabefdecf51"
     },
     {
+      "path": "examples/action-escrow/scenario.test.mjs",
+      "sha256": "a1b6bf14e0e877d13131b2e814f8774dac3907faf6a90d257f7024f617dd445d"
+    },
+    {
       "path": "examples/grace/live-control-room.mjs",
       "sha256": "02901677973dd36f29b828369ba6c120bcd8c4e59738ce68e2a0a253aa0cb2b1"
     },
@@ -4867,6 +5002,10 @@
       "sha256": "ab403d6d896ca5bf85c7d633de91e613d7174fb40d16add15e7570d8c43314ef"
     },
     {
+      "path": "lib/integrations/action-escrow/procore-change-order.js",
+      "sha256": "b62670c292197333b0ec3bfe44097d9ca0b0453d0447ca368022acc7168a3e49"
+    },
+    {
       "path": "lib/ncpdp/privacy.js",
       "sha256": "6ac93d6b25ff72985bae8ca65eaddbab2545cf634cb7d832a410c32d9870dc2b"
     },
@@ -4888,19 +5027,23 @@
     },
     {
       "path": "packages/gate/action-escrow-custodian.js",
-      "sha256": "a7f90cc0bfbcca6439ef67df61b8f6caf7ef3b971941933fba6a1b12c86553a5"
+      "sha256": "93ed1c33bdc75008a6a8d9daf8cf9b917a1b1eafbecbf7059ea90a6099cb9aa7"
     },
     {
       "path": "packages/gate/action-escrow-custodian.test.js",
       "sha256": "ffe14876c09da9b8f485936de041ccd30e7954fb8bab4fa060e0340ab7f4c6e8"
     },
     {
+      "path": "packages/gate/action-escrow-evidence.js",
+      "sha256": "ae34334fa7a1ca3019c1bf0f6032780179afd5c3db584d617ffecc10ec0dce18"
+    },
+    {
       "path": "packages/gate/action-escrow-evidence.test.js",
-      "sha256": "8c988733a46d690e7074d5a97de6fd6650bc6aaaad23059736e6c0e7126e1493"
+      "sha256": "4e253fdbea1317273d48a13785eed06c542c282b7c13233a403ff481ae90e96e"
     },
     {
       "path": "packages/gate/action-escrow-package.js",
-      "sha256": "9362066f2f37f174d8c88fb0ac7cce3dc59311f86ecc816cecaec3f2c517b5e1"
+      "sha256": "6affd35d36ba3238cc1637909d6d0bdedfe9bf895753314b4f46fed8b99f6b2b"
     },
     {
       "path": "packages/gate/action-escrow-package.test.js",
@@ -4916,11 +5059,15 @@
     },
     {
       "path": "packages/gate/action-escrow-verifiers.js",
-      "sha256": "e01107efc42fe5fd8368b45cbbcc547ed86a2dc2af7f6eab79681633882c5f27"
+      "sha256": "3a9dc303bd3b0ffaaff29d4d4ee622952770f31d3c18c4a5b5362003d8487c46"
+    },
+    {
+      "path": "packages/gate/action-escrow-verifiers.test.js",
+      "sha256": "bffc64cb8fdba6dfbef033c7eed57a8ecc74679448214e1a74dcb9dff9001d67"
     },
     {
       "path": "packages/gate/action-escrow.js",
-      "sha256": "2e127bc5df17978a44cad2743772ab73752caba28b0673aa070dd3a55901cb9e"
+      "sha256": "92736bf04862187c8aabf51545b041800b90f9f189e83bcc72f794fbb5743054"
     },
     {
       "path": "packages/gate/action-escrow.test.js",
@@ -5128,15 +5275,19 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "f38d04831849ee0a36ed650942ed3132cda942b1c925aebd60456a8ba97b8053"
+      "sha256": "1e4d9ac569ad5d1752428bf1994c2485ea85ff2ba2d9a2fba62e1ff06db5a4f8"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "e67c7a2d8a45dd36a0ca4494198948b45f1055b958481fb25fd71a7a8ee19a27"
+      "sha256": "2c04142fb159e5ceca7cbf7d7cdd358da1c42d084767ff76a6782742a70555c0"
     },
     {
       "path": "tests/action-escrow-escrow-com.test.js",
       "sha256": "d1f7c408136b2dc025c0e4a7a5007c1e01cb97d6ceeb091a26cc421129cfe12a"
+    },
+    {
+      "path": "tests/action-escrow-procore.test.js",
+      "sha256": "f183ea0bf761a89815bb248446fbc827a10037b936801900bb91cc3b03a530ea"
     },
     {
       "path": "tests/aec-execution-gate.test.js",

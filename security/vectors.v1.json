@@ -246,6 +246,26 @@
       "id": "reject_action_escrow_custodian_alias_or_unfunded_release",
       "expect": { "valid": false },
       "execution": { "runner": "vitest", "file": "tests/action-escrow-escrow-com.test.js", "title": "refuses milestone acceptance until every schedule is secured and funded" }
+    },
+    {
+      "id": "accept_action_escrow_project_source_snapshot",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "examples/action-escrow/scenario.test.mjs", "title": "keeps document, exact-action approvals, and external custody visibly separate" }
+    },
+    {
+      "id": "reject_action_escrow_project_source_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow-verifiers.test.js", "title": "the contractor profile requires a project source digest bound to its signed term" }
+    },
+    {
+      "id": "reject_action_escrow_project_sidecar_bytes_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "examples/action-escrow/scenario.test.mjs", "title": "uses the shipped DAB, Action Escrow kernel, and portable evidence package" }
+    },
+    {
+      "id": "reject_action_escrow_project_source_context_relabeling",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "examples/action-escrow/scenario.test.mjs", "title": "refuses project-source context relabeling even after package rehash" }
     }
   ]
 }

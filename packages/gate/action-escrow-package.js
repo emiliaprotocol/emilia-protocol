@@ -23,6 +23,7 @@ import {
   ACTION_ESCROW_STATE_STATEMENT_VERSION,
 } from './action-escrow-state.js';
 import {
+  ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
   computeActionEscrowAgreementDigest,
   validateActionEscrowReleaseTemplate,
 } from './action-escrow-verifiers.js';
@@ -49,7 +50,18 @@ const INPUT_KEYS = new Set([
   'operatorStateStatement',
   'verificationProfile',
 ]);
+const CONTRACTOR_INPUT_KEYS = new Set([
+  ...INPUT_KEYS,
+  'projectRecordBytes',
+  'projectRecordFileName',
+  'projectRecordProvider',
+  'projectRecordSnapshotDigest',
+]);
 const OPTION_KEYS = new Set(['now', 'maxDocumentBytes']);
+const CONTRACTOR_OPTION_KEYS = new Set([
+  ...OPTION_KEYS,
+  'maxProjectRecordBytes',
+]);
 const RECORD_KEYS = new Set([
   '@version',
   'escrow_key',
@@ -696,6 +708,12 @@ function validateBindingContainer(container, record, {
   const computedBindingDigest = computeDocumentActionBindingDigest(binding);
   const computedActionDigest = computeReleaseActionDigest(binding.release_action?.template);
   const bindingDocumentDigest = binding.document?.digest;
+  const currentContractorProfile =
+    binding.release_action?.template?.action_escrow_template_profile
+      === ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION;
+  const projectRecordBound = validDigest(
+    binding.release_action?.template?.project_record_snapshot_digest,
+  );
   const releaseActionTemplate = validateActionEscrowReleaseTemplate(
     binding.release_action?.template,
     {
@@ -705,6 +723,7 @@ function validateBindingContainer(container, record, {
       milestoneId: record.milestone_id,
       documentDigest: bindingDocumentDigest,
       materialTerms: binding.material_terms,
+      contractorProjectSource: currentContractorProfile,
     },
   );
   const requiredVerification = new Set(BINDING_VERIFICATION_KEYS);
@@ -749,7 +768,10 @@ function validateBindingContainer(container, record, {
   return {
     agreementId: binding.agreement_id,
     binding,
+    contractorProjectSource: projectRecordBound,
     documentDigest: bindingDocumentDigest,
+    projectRecordSnapshotDigest:
+      releaseActionTemplate.project_record_snapshot_digest ?? null,
   };
 }
 
@@ -1575,11 +1597,19 @@ function evaluationInstant(value) {
  * kernel record and the external artifacts the kernel deliberately does not
  * retain. Invalid local assembly input throws before a package is produced.
  */
-export function assembleActionEscrowEvidencePackage(input = {}, options = {}) {
-  if (!exactKeys(input, INPUT_KEYS)) {
+function assembleEvidencePackage(
+  input,
+  options,
+  { contractorProjectSource },
+) {
+  const inputKeys = contractorProjectSource ? CONTRACTOR_INPUT_KEYS : INPUT_KEYS;
+  const optionKeys = contractorProjectSource
+    ? CONTRACTOR_OPTION_KEYS
+    : OPTION_KEYS;
+  if (!exactKeys(input, inputKeys)) {
     fail('caller overrides are not accepted; use the closed assembler input');
   }
-  if (!exactKeys(options, OPTION_KEYS, new Set())) {
+  if (!exactKeys(options, optionKeys, new Set())) {
     fail('caller overrides are not accepted in assembler options');
   }
   const maxDocumentBytes = options.maxDocumentBytes ?? DEFAULT_MAX_DOCUMENT_BYTES;
@@ -1617,6 +1647,16 @@ export function assembleActionEscrowEvidencePackage(input = {}, options = {}) {
     documentDigest,
     documentLength: bytes.length,
   });
+  if (binding.contractorProjectSource !== contractorProjectSource) {
+    fail(contractorProjectSource
+      ? 'contractor evidence package requires the contractor binding profile'
+      : 'contractor binding requires the contractor evidence-package assembler');
+  }
+  if (contractorProjectSource
+    && input.projectRecordSnapshotDigest
+      !== binding.projectRecordSnapshotDigest) {
+    fail('project-record snapshot digest does not match the document binding');
+  }
   const lifecycle = validateLifecycle(record);
   const execution = validateDocumentExecution(
     documentExecution,
@@ -1654,9 +1694,35 @@ export function assembleActionEscrowEvidencePackage(input = {}, options = {}) {
     },
     amendments: supersessions.amendments,
     verificationProfile,
+    ...(contractorProjectSource
+      ? {
+        projectRecordBytes: input.projectRecordBytes,
+        projectRecordFileName: input.projectRecordFileName,
+        projectRecordProvider: input.projectRecordProvider,
+        projectRecordSnapshotDigest: input.projectRecordSnapshotDigest,
+      }
+      : {}),
   }, {
     now: assembledAt,
     maxDocumentBytes,
+    ...(contractorProjectSource
+      ? { maxProjectRecordBytes: options.maxProjectRecordBytes }
+      : {}),
+  });
+}
+
+export function assembleActionEscrowEvidencePackage(input = {}, options = {}) {
+  return assembleEvidencePackage(input, options, {
+    contractorProjectSource: false,
+  });
+}
+
+export function assembleActionEscrowContractorEvidencePackage(
+  input = {},
+  options = {},
+) {
+  return assembleEvidencePackage(input, options, {
+    contractorProjectSource: true,
   });
 }
 
@@ -1664,6 +1730,7 @@ export const buildActionEscrowEvidencePackageFromKernel =
   assembleActionEscrowEvidencePackage;
 
 export default {
+  assembleActionEscrowContractorEvidencePackage,
   assembleActionEscrowEvidencePackage,
   buildActionEscrowEvidencePackageFromKernel,
 };

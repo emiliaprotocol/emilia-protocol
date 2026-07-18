@@ -6,7 +6,10 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize, hashCanonical } from './execution-binding.js';
-import { validateActionEscrowReleaseTemplate } from './action-escrow-verifiers.js';
+import {
+  ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
+  validateActionEscrowReleaseTemplate,
+} from './action-escrow-verifiers.js';
 
 export const ACTION_ESCROW_CUSTODIAN_OBSERVATION_VERSION =
   'EP-ACTION-ESCROW-CUSTODIAN-OBSERVATION-v1';
@@ -87,6 +90,9 @@ function normalizeKernelRequest(value, adapter) {
         agreementDigest: value.agreement_digest,
         milestoneId: value.milestone_id,
         documentDigest: value.document_digest,
+        contractorProjectSource:
+          value.release_action_template.action_escrow_template_profile
+            === ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
       },
     );
     if (!template

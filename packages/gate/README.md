@@ -315,6 +315,19 @@ adjudicate disputes, or make an agreement legally enforceable. An ambiguous
 provider outcome enters reconciliation and is never retried as though nothing
 happened.
 
+Construction and contractor integrations use the explicit
+`EP-ACTION-ESCROW-CONTRACTOR-TEMPLATE-v1` profile. Build its DAB verifier with
+`createActionEscrowContractorDocumentBindingVerifier()` and its portable
+six-row package with `assembleActionEscrowContractorEvidencePackage()`. The
+package carries the exact project-system sidecar bytes beside the PDF and
+re-performs both under relying-party-owned verifiers. A project record is
+source evidence only: it cannot fill agreement-acceptance, release-approval,
+or custodian-effect rows. The legacy template and package APIs refuse the
+contractor profile instead of silently ignoring its project-source binding.
+Unmarked project-bound artifacts from the unreleased `0.11.1` preview remain
+verifiable only through the contractor package path, including its exact
+sidecar and relying-party-owned project-source verifier.
+
 ## Production custody
 
 The three things a serious buyer (CISO, auditor, insurer) asks after the demo:
