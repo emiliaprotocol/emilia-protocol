@@ -58,18 +58,36 @@ const RELEASE_LOCK_SERVICE_RPCS = [
   'release_lock_participant_evidence',
 ];
 
+// These tables are reached through server-side/service-role paths only. RLS is
+// necessary but not sufficient: a table ACL is a separate Data API gate, so
+// the live contract checks both controls.
+const SERVICE_ONLY_TABLES = [
+  'api_keys',
+  'tenant_api_keys',
+  'sso_connections',
+  'webhook_endpoints',
+  'scim_provisioning_tokens',
+  'scim_users',
+  'scim_groups',
+  'saml_consumed_assertions',
+  'revoked_commit_keys',
+  'revoked_sessions',
+  'session_cutoffs',
+];
+
 export const contract = {
   // Tables that MUST exist. Missing => hard FAIL.
   requiredTables: [
-    'api_keys', 'entities', 'receipts', 'score_history', 'needs', 'waitlist',
+    'entities', 'receipts', 'score_history', 'needs', 'waitlist',
     'anchor_batches', 'merkle_batches', 'disputes', 'delegations', 'principals',
     'handshakes', 'handshake_bindings', 'handshake_consumptions', 'handshake_events',
     'handshake_parties', 'handshake_policies', 'handshake_presentations', 'handshake_results',
     'signoff_challenges', 'signoff_attestations', 'signoff_consumptions', 'signoff_events',
     'approver_credentials', 'protocol_events', 'security_events', 'tenants', 'tenant_members',
-    'tenant_api_keys', 'tenant_environments', 'operator_applications', 'policy_rollouts',
+    'tenant_environments', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'zk_proofs',
-    'authorities', 'commits', 'revoked_commit_keys', 'consumed_gate_refs',
+    'authorities', 'commits', 'consumed_gate_refs',
+    ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
   ],
 
@@ -118,39 +136,53 @@ export const contract = {
     release_lock_effects: ['effect_id', 'lock_id', 'version', 'effect_reference',
       'status', 'reservation_expires_at', 'reservation_attempts', 'claim_attempts',
       'effect_contract_digest', 'retryable', 'provider_result'],
+    scim_provisioning_tokens: ['tenant_id', 'token_hash', 'token_prefix', 'revoked_at'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
   rlsRequired: [
-    'api_keys', 'entities', 'receipts', 'score_history', 'needs', 'waitlist',
+    'entities', 'receipts', 'score_history', 'needs', 'waitlist',
     'anchor_batches', 'disputes', 'handshakes', 'signoff_challenges', 'signoff_attestations',
-    'tenants', 'tenant_api_keys', 'operator_applications', 'policy_rollouts',
+    'tenants', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities', 'commits',
-    'revoked_commit_keys', 'consumed_gate_refs',
+    'consumed_gate_refs',
+    ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
   ],
 
   // No anon/authenticated/PUBLIC may have a SELECT (or ALL) policy on these.
   // (mig 113: api_keys + waitlist were anon-readable.) authorities = permission root.
   noAnonRead: [
-    'api_keys', 'waitlist', 'tenant_api_keys', 'authorities', 'commits',
-    'revoked_commit_keys', 'consumed_gate_refs',
+    'waitlist', 'authorities', 'commits', 'consumed_gate_refs',
+    ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
   ],
+
+  // Table ACLs are checked independently of RLS policies. These tables are
+  // server-only, so anon/authenticated/PUBLIC must have no direct read/write
+  // privilege even if a bootstrap or restore recreates a permissive grant.
+  tableGrantsNoPublic: [
+    ...SERVICE_ONLY_TABLES,
+    ...RELEASE_LOCK_TABLES,
+  ],
+
+  // Release Lock is deliberately RPC-only; service_role may execute the
+  // narrowly-granted SECURITY DEFINER functions but must not query the tables.
+  tableGrantsNoServiceRoleDirect: [...RELEASE_LOCK_TABLES],
 
   // Column-level least-privilege on secret material. RLS gates ROWS; a column
   // GRANT is a SEPARATE gate. (2026-07 sweep: anon+authenticated held column
   // SELECT/INSERT/UPDATE on entities.private_key_encrypted — a Supabase bootstrap
   // default, NOT in any migration, so a migration scan can't see it.) These
   // (table, column) pairs MUST NOT be grantable by anon/authenticated; only
-  // service_role/postgres. Revoked in migration 126; enforced statically against
-  // the migration set by tests/schema-secret-grant-guard.test.js. LIVE
-  // enforcement (catching a Supabase bootstrap re-grant after a project reset)
-  // is a follow-up: extend gov_schema_contract_introspect() to surface anon/
-  // authenticated column_grants, then assert them here like noAnonRead.
+  // service_role/postgres. Revoked in migrations 126/127/129 and enforced
+  // statically by tests/schema-secret-grant-guard.test.js. Live enforcement
+  // catches a Supabase/bootstrap re-grant after a project reset through the
+  // normalized column_grants field added by the Fortress introspection migration.
   // Full secret-bearing column set across ALL tables (live-swept 2026-07-02:
   // private_key|api_key_hash|secret|encrypted|seed|password|signing_key|key_hash).
-  // Column SELECT/INSERT/UPDATE revoked from anon+authenticated in migration 127;
+  // Column SELECT/INSERT/UPDATE revoked from anon+authenticated in migrations
+  // 127/129;
   // table-level write grants on the pure-infra tables revoked in migration 128.
   sensitiveColumnsNoPublicGrant: {
     entities: ['private_key_encrypted', 'api_key_hash'],
@@ -158,16 +190,25 @@ export const contract = {
     tenant_api_keys: ['key_hash'],
     sso_connections: ['oidc_client_secret'],
     webhook_endpoints: ['secret'],
+    scim_provisioning_tokens: ['token_hash'],
   },
 
   // No anon/authenticated/PUBLIC may have a write policy (INSERT/UPDATE/DELETE/ALL)
   // on these. (mig 113: these were anon-writable via mis-scoped USING(true).)
   noAnonWrite: [
-    'api_keys', 'entities', 'receipts', 'score_history', 'needs', 'anchor_batches',
-    'signoff_challenges', 'signoff_attestations', 'handshakes', 'tenants', 'tenant_api_keys',
+    'entities', 'receipts', 'score_history', 'needs', 'anchor_batches',
+    'signoff_challenges', 'signoff_attestations', 'handshakes', 'tenants',
     'operator_applications', 'policy_rollouts', 'authorities',
-    'revoked_commit_keys', 'consumed_gate_refs',
+    'consumed_gate_refs',
+    ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
+  ],
+
+  // These four replay/revocation tables intentionally expose a service_role
+  // policy for the existing guarded-client paths. The other service-only
+  // tables either rely on service_role's bypass or are RPC-only.
+  serviceRolePoliciesRequired: [
+    'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions', 'session_cutoffs',
   ],
 
   // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
