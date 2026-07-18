@@ -1,4 +1,5 @@
 -- SPDX-License-Identifier: Apache-2.0
+-- Migration version: 20260718083723
 --
 -- Release Lock has two independently consumed exact-action rounds:
 --   1. CO_ACCEPTED records acceptance of a retained change order. It can never

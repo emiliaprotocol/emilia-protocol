@@ -4892,6 +4892,7 @@ paths:
 
   /api/v1/release-locks:
     post:
+      operationId: createReleaseLock
       tags: [Release Lock]
       summary: Create a two-round change-order Release Lock
       description: |
@@ -4909,15 +4910,16 @@ paths:
             schema:
               $ref: '#/components/schemas/ReleaseLockCreateRequest'
       responses:
-        '201': { description: Release Lock created and invitations delivered }
-        '400': { description: Malformed, non-canonical, or incomplete lock }
-        '401': { description: Organization authentication required }
-        '403': { description: Contractor entity or organization mismatch }
-        '422': { description: Authoritative document evidence refused }
-        '503': { description: Storage, document, or delivery provider unavailable }
+        '201': { description: 'Release Lock created and invitations delivered' }
+        '400': { description: 'Malformed, non-canonical, or incomplete lock' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '422': { description: 'Authoritative document evidence refused' }
+        '503': { description: 'Storage, document, or delivery provider unavailable' }
 
   /api/v1/release-locks/invitations/exchange:
     post:
+      operationId: exchangeReleaseLockInvitation
       tags: [Release Lock]
       summary: Exchange one exact participant invitation
       description: |
@@ -4947,13 +4949,14 @@ paths:
             Set-Cookie:
               schema: { type: string }
               description: Dynamic per-lock HttpOnly, Secure, SameSite=Strict session cookie
-        '401': { description: Invitation invalid }
-        '403': { description: Origin, invitation lock, or role mismatch }
-        '409': { description: Invitation already exchanged or no longer active }
-        '410': { description: Invitation expired }
+        '401': { description: 'Invitation invalid' }
+        '403': { description: 'Origin, invitation lock, or role mismatch' }
+        '409': { description: 'Invitation already exchanged or no longer active' }
+        '410': { description: 'Invitation expired' }
 
   /api/v1/release-locks/pairings/exchange:
     post:
+      operationId: exchangeReleaseLockPairing
       tags: [Release Lock]
       summary: Exchange a one-time Action Mirror phone pairing
       description: |
@@ -4984,13 +4987,14 @@ paths:
             Set-Cookie:
               schema: { type: string }
               description: Dynamic per-lock HttpOnly, Secure, SameSite=Strict session cookie
-        '401': { description: Pairing invalid }
-        '403': { description: Pairing lock, role, or round mismatch }
-        '409': { description: Pairing already exchanged }
-        '410': { description: Pairing expired }
+        '401': { description: 'Pairing invalid' }
+        '403': { description: 'Pairing lock, role, or round mismatch' }
+        '409': { description: 'Pairing already exchanged' }
+        '410': { description: 'Pairing expired' }
 
   /api/v1/release-locks/{lockId}/view:
     get:
+      operationId: getReleaseLockParticipantView
       tags: [Release Lock]
       summary: Retrieve the participant-scoped canonical lock view
       security:
@@ -4998,13 +5002,14 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ReleaseLockId'
       responses:
-        '200': { description: Canonical actions, decisions, and effect state for this lock }
-        '401': { description: Session invalid or expired }
-        '403': { description: Session is scoped to a different lock }
-        '404': { description: Release Lock not found }
+        '200': { description: 'Canonical actions, decisions, and effect state for this lock' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session is scoped to a different lock' }
+        '404': { description: 'Release Lock not found' }
 
   /api/v1/release-locks/{lockId}/evidence:
     get:
+      operationId: getReleaseLockEvidence
       tags: [Release Lock]
       summary: Export the organization-scoped portable evidence bundle
       security:
@@ -5012,12 +5017,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ReleaseLockId'
       responses:
-        '200': { description: Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs }
-        '401': { description: Organization authentication required }
-        '404': { description: Release Lock not found in the authenticated organization }
+        '200': { description: 'Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs' }
+        '401': { description: 'Organization authentication required' }
+        '404': { description: 'Release Lock not found in the authenticated organization' }
 
   /api/v1/release-locks/{lockId}/participant-evidence:
     get:
+      operationId: getReleaseLockParticipantEvidence
       tags: [Release Lock]
       summary: Export the same portable bundle from a participant session
       security:
@@ -5025,12 +5031,13 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ReleaseLockId'
       responses:
-        '200': { description: Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs }
-        '401': { description: Session invalid or expired }
-        '403': { description: Session is scoped to a different lock }
+        '200': { description: 'Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session is scoped to a different lock' }
 
   /api/v1/release-locks/{lockId}/registration/options:
     post:
+      operationId: createReleaseLockRegistrationOptions
       tags: [Release Lock]
       summary: Begin role-scoped passkey enrollment
       description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
@@ -5040,13 +5047,14 @@ paths:
         - $ref: '#/components/parameters/ReleaseLockId'
         - $ref: '#/components/parameters/ReleaseLockOrigin'
       responses:
-        '201': { description: WebAuthn registration options bound to this lock, role, and contact }
-        '401': { description: Session invalid or expired }
-        '403': { description: Origin or session scope refused }
-        '409': { description: Credential already enrolled for this role }
+        '201': { description: 'WebAuthn registration options bound to this lock, role, and contact' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin or session scope refused' }
+        '409': { description: 'Credential already enrolled for this role' }
 
   /api/v1/release-locks/{lockId}/registration/verify:
     post:
+      operationId: verifyReleaseLockRegistration
       tags: [Release Lock]
       summary: Verify and store one role-scoped passkey credential
       description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
@@ -5067,14 +5075,15 @@ paths:
                 challenge_id: { type: string, format: uuid }
                 attestation: { type: object, description: WebAuthn RegistrationResponseJSON }
       responses:
-        '201': { description: Credential enrolled for the exact lock, role, and contact }
-        '400': { description: WebAuthn attestation refused }
-        '401': { description: Session invalid or expired }
-        '403': { description: Origin or session scope refused }
-        '409': { description: Challenge replayed or credential reused }
+        '201': { description: 'Credential enrolled for the exact lock, role, and contact' }
+        '400': { description: 'WebAuthn attestation refused' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin or session scope refused' }
+        '409': { description: 'Challenge replayed or credential reused' }
 
   /api/v1/release-locks/{lockId}/rounds/{round}/action-check/options:
     post:
+      operationId: createReleaseLockActionCheck
       tags: [Release Lock]
       summary: Begin a fresh exact-action approval check
       description: |
@@ -5089,13 +5098,14 @@ paths:
         - $ref: '#/components/parameters/ReleaseLockRound'
         - $ref: '#/components/parameters/ReleaseLockOrigin'
       responses:
-        '201': { description: Fresh Action Check and WebAuthn options }
-        '401': { description: Session invalid or expired }
-        '403': { description: Session role or round scope mismatch }
-        '409': { description: Round unavailable, complete, or already approved }
+        '201': { description: 'Fresh Action Check and WebAuthn options' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session role or round scope mismatch' }
+        '409': { description: 'Round unavailable, complete, or already approved' }
 
   /api/v1/release-locks/{lockId}/rounds/{round}/approvals:
     post:
+      operationId: approveReleaseLockRound
       tags: [Release Lock]
       summary: Record one exact, passkey-backed round approval
       description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
@@ -5126,15 +5136,16 @@ paths:
                       option_id: { type: string }
                 assertion: { type: object, description: WebAuthn AuthenticationResponseJSON }
       responses:
-        '200': { description: Approval recorded; a complete draw round may reserve one effect }
-        '400': { description: Assertion or Action Check malformed }
-        '403': { description: Origin, session, credential, role, or round scope mismatch }
-        '409': { description: Binding mismatch, replay, or round already complete }
-        '422': { description: One or more exact-term answers are incorrect }
-        '503': { description: Custodian result unavailable or ambiguous }
+        '200': { description: 'Approval recorded; a complete draw round may reserve one effect' }
+        '400': { description: 'Assertion or Action Check malformed' }
+        '403': { description: 'Origin, session, credential, role, or round scope mismatch' }
+        '409': { description: 'Binding mismatch, replay, or round already complete' }
+        '422': { description: 'One or more exact-term answers are incorrect' }
+        '503': { description: 'Custodian result unavailable or ambiguous' }
 
   /api/v1/release-locks/{lockId}/rounds/{round}/pairings:
     post:
+      operationId: createReleaseLockRoundPairing
       tags: [Release Lock]
       summary: Create a one-time Action Mirror pairing for this participant round
       description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
@@ -5145,13 +5156,14 @@ paths:
         - $ref: '#/components/parameters/ReleaseLockRound'
         - $ref: '#/components/parameters/ReleaseLockOrigin'
       responses:
-        '201': { description: Five-minute pairing capability scoped to one lock, role, and round }
-        '401': { description: Session invalid or expired }
-        '403': { description: Origin, session lock, or round scope mismatch }
-        '409': { description: Round unavailable or already complete }
+        '201': { description: 'Five-minute pairing capability scoped to one lock, role, and round' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin, session lock, or round scope mismatch' }
+        '409': { description: 'Round unavailable or already complete' }
 
   /api/v1/release-locks/{lockId}/draw-release:
     post:
+      operationId: stageReleaseLockDraw
       tags: [Release Lock]
       summary: Stage the exact post-milestone draw and custodian instruction
       description: Requires write permission and payee-bound lien-waiver evidence for every exact payee.
@@ -5166,15 +5178,16 @@ paths:
             schema:
               $ref: '#/components/schemas/ReleaseLockDrawRequest'
       responses:
-        '201': { description: DRAW_RELEASE staged for the accepted change-order version }
-        '401': { description: Organization authentication required }
-        '403': { description: Contractor entity or organization mismatch }
-        '409': { description: CO not accepted, version stale, or draw already staged }
-        '422': { description: Authoritative milestone evidence refused }
-        '503': { description: Evidence provider unavailable or ambiguous }
+        '201': { description: 'DRAW_RELEASE staged for the accepted change-order version' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '409': { description: 'CO not accepted, version stale, or draw already staged' }
+        '422': { description: 'Authoritative milestone evidence refused' }
+        '503': { description: 'Evidence provider unavailable or ambiguous' }
 
   /api/v1/release-locks/{lockId}/amendments:
     post:
+      operationId: amendReleaseLock
       tags: [Release Lock]
       summary: Replace the retained change order and invalidate both prior rounds
       description: Requires write permission. Any amendment revokes unexchanged pairings and resets both approval rounds.
@@ -5189,14 +5202,15 @@ paths:
             schema:
               $ref: '#/components/schemas/ReleaseLockAmendRequest'
       responses:
-        '201': { description: New immutable version created; both rounds reset }
-        '401': { description: Organization authentication required }
-        '403': { description: Contractor entity or organization mismatch }
-        '409': { description: Version stale, identical amendment, or effect already in progress }
-        '422': { description: Authoritative replacement document refused }
+        '201': { description: 'New immutable version created; both rounds reset' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '409': { description: 'Version stale, identical amendment, or effect already in progress' }
+        '422': { description: 'Authoritative replacement document refused' }
 
   /api/internal/release-lock/reconcile:
     post:
+      operationId: reconcileReleaseLockEffect
       tags: [Release Lock]
       summary: Reconcile an ambiguous custodian result
       description: Named full-operator endpoint; shared cron credentials and lower-privilege named roles are refused.
@@ -5213,11 +5227,11 @@ paths:
               properties:
                 effect_reference: { type: string }
       responses:
-        '200': { description: Authoritative custodian state recorded }
-        '401': { description: Named operator authentication required }
-        '403': { description: Named operator lacks release_lock.reconcile permission }
-        '409': { description: Effect is not ambiguous or provider binding mismatched }
-        '503': { description: Authoritative reconciliation unavailable }
+        '200': { description: 'Authoritative custodian state recorded' }
+        '401': { description: 'Named operator authentication required' }
+        '403': { description: 'Named operator lacks release_lock.reconcile permission' }
+        '409': { description: 'Effect is not ambiguous or provider binding mismatched' }
+        '503': { description: 'Authoritative reconciliation unavailable' }
 components:
   securitySchemes:
     BearerAuth:
