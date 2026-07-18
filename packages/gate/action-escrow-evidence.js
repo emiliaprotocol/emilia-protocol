@@ -215,8 +215,6 @@ function stageRequiresFunding(stage) {
     'milestone_submitted',
     'release_reserved',
     'released',
-    'disputed',
-    'amendment_pending',
     'completed',
     'release_indeterminate',
   ].includes(stage);
@@ -227,8 +225,6 @@ function stageRequiresMilestone(stage) {
     'milestone_submitted',
     'release_reserved',
     'released',
-    'disputed',
-    'amendment_pending',
     'completed',
     'release_indeterminate',
   ].includes(stage);
@@ -339,10 +335,12 @@ async function callVerifier(verifier, value, context) {
 export async function verifyActionEscrowEvidencePackage(pkg, {
   documentBytes: rawDocumentBytes,
   verifyBinding,
+  verifyProfile,
   verifyApproval,
   verifyFunding,
   verifyMilestone,
   verifyRelease,
+  verifyAmendment,
   verifyState,
   expectedAgreementId,
   now,
@@ -354,6 +352,8 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
     time: false,
     document: false,
     binding: false,
+    profile: false,
+    amendments: false,
     state: false,
     approvals: false,
     funding: false,
@@ -414,6 +414,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       && bindingResult.document_digest === pkg.document.digest
       && HASH.test(bindingResult.binding_digest)
       && HASH.test(bindingResult.action_digest)
+      && (bindingResult.supersedes_digest === null || HASH.test(bindingResult.supersedes_digest))
       && requiredParties !== null;
     if (!checks.binding) {
       return resultFailure('binding_verification_failed', checks, {
@@ -421,17 +422,70 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       });
     }
 
+    const profileResult = await callVerifier(verifyProfile, pkg.verification_profile, {
+      agreementId: pkg.agreement_id,
+      bindingDigest: bindingResult.binding_digest,
+      actionDigest: bindingResult.action_digest,
+    });
+    checks.profile = profileResult.valid === true && HASH.test(profileResult.profile_digest);
+    if (!checks.profile) {
+      return resultFailure('verification_profile_failed', checks, {
+        profile_reason: profileResult.reason ?? null,
+      });
+    }
+
+    const amendmentResults = [];
+    let amendmentsValid = true;
+    let expectedNextBinding = bindingResult.binding_digest;
+    for (let index = pkg.amendments.length - 1; index >= 0; index -= 1) {
+      const result = await callVerifier(verifyAmendment, pkg.amendments[index], {
+        agreementId: pkg.agreement_id,
+        expectedNextBindingDigest: expectedNextBinding,
+        profileDigest: profileResult.profile_digest,
+      });
+      amendmentResults.unshift(result);
+      if (result.valid !== true
+        || !HASH.test(result.amendment_digest)
+        || !HASH.test(result.previous_binding_digest)
+        || result.next_binding_digest !== expectedNextBinding) {
+        amendmentsValid = false;
+        break;
+      }
+      expectedNextBinding = result.previous_binding_digest;
+    }
+    if (bindingResult.supersedes_digest === null) {
+      amendmentsValid = amendmentsValid && pkg.amendments.length === 0;
+    } else {
+      const finalAmendment = amendmentResults.at(-1);
+      amendmentsValid = amendmentsValid
+        && pkg.amendments.length > 0
+        && finalAmendment?.previous_binding_digest === bindingResult.supersedes_digest
+        && finalAmendment?.next_binding_digest === bindingResult.binding_digest;
+    }
+    checks.amendments = amendmentsValid;
+    if (!checks.amendments) {
+      return resultFailure('amendment_chain_verification_failed', checks);
+    }
+    const amendmentDigests = amendmentResults.map((result) => result.amendment_digest);
+
     const stateResult = await callVerifier(verifyState, pkg.state_record, {
       agreementId: pkg.agreement_id,
       bindingDigest: bindingResult.binding_digest,
       actionDigest: bindingResult.action_digest,
+      profileDigest: profileResult.profile_digest,
+      amendmentDigests,
       stage: pkg.stage,
     });
     checks.state = stateResult.valid === true
       && stateResult.agreement_id === pkg.agreement_id
       && stateResult.binding_digest === bindingResult.binding_digest
       && stateResult.action_digest === bindingResult.action_digest
-      && stateResult.state === pkg.stage;
+      && stateResult.profile_digest === profileResult.profile_digest
+      && stateResult.state === pkg.stage
+      && Number.isSafeInteger(stateResult.revision) && stateResult.revision >= 0
+      && Array.isArray(stateResult.amendment_digests)
+      && stateResult.amendment_digests.length === amendmentDigests.length
+      && stateResult.amendment_digests.every((digest, index) => digest === amendmentDigests[index]);
     if (!checks.state) {
       return resultFailure('state_record_verification_failed', checks, {
         state_reason: stateResult.reason ?? null,
@@ -565,6 +619,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       agreement_id: pkg.agreement_id,
       binding_digest: bindingResult.binding_digest,
       action_digest: bindingResult.action_digest,
+      profile_digest: profileResult.profile_digest,
       required_parties: requiredParties,
     };
   } catch {

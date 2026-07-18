@@ -12,6 +12,7 @@ const NOW = '2026-07-17T12:00:00.000Z';
 const PDF = Buffer.from('%PDF-1.7\nfinal contractor agreement\n%%EOF', 'utf8');
 const BINDING_DIGEST = `sha256:${'11'.repeat(32)}`;
 const ACTION_DIGEST = `sha256:${'22'.repeat(32)}`;
+const PROFILE_DIGEST = `sha256:${'55'.repeat(32)}`;
 
 function inputs(stage = 'released') {
   return {
@@ -52,17 +53,25 @@ function verifiers(overrides = {}) {
       document_digest: context.expectedDocumentDigest,
       binding_digest: BINDING_DIGEST,
       action_digest: ACTION_DIGEST,
+      supersedes_digest: null,
       required_parties: [
         { party_id: 'homeowner-1', role: 'customer' },
         { party_id: 'contractor-1', role: 'contractor' },
       ],
+    }),
+    verifyProfile: async () => ({
+      valid: true,
+      profile_digest: PROFILE_DIGEST,
     }),
     verifyState: async (_state, context) => ({
       valid: true,
       agreement_id: context.agreementId,
       binding_digest: context.bindingDigest,
       action_digest: context.actionDigest,
+      profile_digest: context.profileDigest,
       state: context.stage,
+      revision: 0,
+      amendment_digests: context.amendmentDigests,
     }),
     verifyApproval: async (resolution, context) => ({
       valid: resolution?.token?.endsWith('-ok') === true,
@@ -84,6 +93,7 @@ function verifiers(overrides = {}) {
       milestone_id: milestone.milestone_id,
       binding_digest: context.bindingDigest,
     }),
+    verifyAmendment: async () => ({ valid: false, reason: 'unexpected_amendment' }),
     verifyRelease: async (_release, context) => ({
       valid: true,
       agreement_id: context.agreementId,
@@ -171,9 +181,10 @@ test('missing, duplicate, extra, and wrong-role approvals are refused', async (t
   }
 });
 
-test('binding, state, funding, milestone, and release substitutions each fail closed', async (t) => {
+test('binding, profile, state, funding, milestone, and release substitutions each fail closed', async (t) => {
   const cases = [
     ['binding', { verifyBinding: async () => ({ valid: false, reason: 'wrong_document' }) }, 'binding_verification_failed'],
+    ['profile', { verifyProfile: async () => ({ valid: false, reason: 'profile_unpinned' }) }, 'verification_profile_failed'],
     ['state', { verifyState: async () => ({ valid: false, reason: 'stale_revision' }) }, 'state_record_verification_failed'],
     ['funding', { verifyFunding: async () => ({ valid: false, reason: 'not_funded' }) }, 'funding_statement_verification_failed'],
     ['milestone', { verifyMilestone: async () => ({ valid: false, reason: 'wrong_milestone' }) }, 'milestone_verification_failed'],
@@ -187,6 +198,72 @@ test('binding, state, funding, milestone, and release substitutions each fail cl
       assert.equal(result.reason, reason);
     });
   }
+});
+
+test('verified amendment chain must terminate at the current binding and match state', async () => {
+  const source = inputs('effective');
+  source.fundingStatement = null;
+  source.milestones = [];
+  source.release = null;
+  source.amendments = [{ amendment_id: 'amendment-1' }];
+  const pkg = buildActionEscrowEvidencePackage(source, { now: NOW });
+  const previous = `sha256:${'66'.repeat(32)}`;
+  const amendmentDigest = `sha256:${'77'.repeat(32)}`;
+
+  const result = await verify(pkg, {
+    verifyBinding: async (_binding, context) => ({
+      valid: true,
+      agreement_id: context.expectedAgreementId,
+      document_digest: context.expectedDocumentDigest,
+      binding_digest: BINDING_DIGEST,
+      action_digest: ACTION_DIGEST,
+      supersedes_digest: previous,
+      required_parties: [
+        { party_id: 'homeowner-1', role: 'customer' },
+        { party_id: 'contractor-1', role: 'contractor' },
+      ],
+    }),
+    verifyAmendment: async (_amendment, context) => ({
+      valid: true,
+      amendment_digest: amendmentDigest,
+      previous_binding_digest: previous,
+      next_binding_digest: context.expectedNextBindingDigest,
+    }),
+    verifyState: async (_state, context) => ({
+      valid: true,
+      agreement_id: context.agreementId,
+      binding_digest: context.bindingDigest,
+      action_digest: context.actionDigest,
+      profile_digest: context.profileDigest,
+      state: context.stage,
+      revision: 1,
+      amendment_digests: context.amendmentDigests,
+    }),
+  });
+  assert.equal(result.valid, true);
+
+  const broken = await verify(pkg, {
+    verifyBinding: async (_binding, context) => ({
+      valid: true,
+      agreement_id: context.expectedAgreementId,
+      document_digest: context.expectedDocumentDigest,
+      binding_digest: BINDING_DIGEST,
+      action_digest: ACTION_DIGEST,
+      supersedes_digest: previous,
+      required_parties: [
+        { party_id: 'homeowner-1', role: 'customer' },
+        { party_id: 'contractor-1', role: 'contractor' },
+      ],
+    }),
+    verifyAmendment: async () => ({
+      valid: true,
+      amendment_digest: amendmentDigest,
+      previous_binding_digest: previous,
+      next_binding_digest: `sha256:${'88'.repeat(32)}`,
+    }),
+  });
+  assert.equal(broken.valid, false);
+  assert.equal(broken.reason, 'amendment_chain_verification_failed');
 });
 
 test('indeterminate release remains a distinct verified state', async () => {
