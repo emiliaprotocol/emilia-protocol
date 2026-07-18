@@ -102,7 +102,14 @@ export async function buildReliancePacket({
     && decisionHash
     && execution.authorizes_decision === decisionHash,
   );
-  const bindingCheck = binding || decision?.evidence?.execution_binding || decision?.execution_binding || null;
+  // Prefer the binding carried by the execution proof. Authorization-time
+  // binding alone is not enough: an executor could otherwise attest a
+  // different mutation and still receive a rely verdict.
+  const bindingCheck = execution?.execution_binding
+    || binding
+    || decision?.evidence?.execution_binding
+    || decision?.execution_binding
+    || null;
   const allowed = decision?.allow === true;
   const evidenceOk = evidenceCheck.ok === true;
   const bindingOk = bindingCheck ? bindingCheck.ok === true : true;

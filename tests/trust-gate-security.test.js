@@ -98,7 +98,12 @@ beforeEach(() => {
     profile: { behavioral: { dispute_rate: 0 } },
     establishment: { established: true },
   });
-  mocks.verifyDelegation.mockResolvedValue({ valid: true, action_permitted: true });
+  mocks.verifyDelegation.mockResolvedValue({
+    valid: true,
+    action_permitted: true,
+    agent_entity_id: 'caller-1',
+    principal_id: 'agent-1',
+  });
   mocks.authorizeHandshakeVerify.mockResolvedValue(undefined);
   mocks.consumeHandshake.mockResolvedValue({ id: 'consumption-1' });
   mocks.getGuardedClient.mockReturnValue(readClient());
@@ -112,7 +117,7 @@ describe('POST /api/trust/gate security boundary', () => {
   it('refuses when commit issuance fails instead of returning an unbacked allow', async () => {
     mocks.protocolWrite.mockRejectedValue(new Error('database unavailable'));
 
-    const response = await POST(request({ entity_id: 'agent-1', action: 'transact' }));
+    const response = await POST(request({ entity_id: 'caller-1', action: 'transact' }));
     const body = await response.json();
 
     expect(body.decision).toBe('deny');
@@ -122,7 +127,7 @@ describe('POST /api/trust/gate security boundary', () => {
 
   it('refuses unknown policy labels instead of silently using standard', async () => {
     const response = await POST(request({
-      entity_id: 'agent-1',
+      entity_id: 'caller-1',
       action: 'transact',
       policy: 'looks-strict-but-is-not',
     }));
@@ -162,7 +167,7 @@ describe('POST /api/trust/gate security boundary', () => {
       decision: 'review',
     });
 
-    const response = await POST(request({ entity_id: 'agent-1', action: 'transact' }));
+    const response = await POST(request({ entity_id: 'caller-1', action: 'transact' }));
     const body = await response.json();
 
     expect(body.decision).toBe('deny');
@@ -178,7 +183,7 @@ describe('POST /api/trust/gate security boundary', () => {
     mocks.authorizeHandshakeVerify.mockRejectedValue(new Error('not a verifier'));
 
     const response = await POST(request({
-      entity_id: 'agent-1',
+      entity_id: 'caller-1',
       action: 'transact',
       handshake_id: verifiedHandshake.handshake_id,
     }));
@@ -201,7 +206,7 @@ describe('POST /api/trust/gate security boundary', () => {
     }));
 
     const response = await POST(request({
-      entity_id: 'agent-1',
+      entity_id: 'caller-1',
       action: 'transact',
       handshake_id: verifiedHandshake.handshake_id,
     }));
@@ -219,7 +224,7 @@ describe('POST /api/trust/gate security boundary', () => {
     }));
 
     const response = await POST(request({
-      entity_id: 'agent-1',
+      entity_id: 'caller-1',
       action: 'transact',
       handshake_id: verifiedHandshake.handshake_id,
     }));
@@ -247,7 +252,7 @@ describe('POST /api/trust/gate security boundary', () => {
       .mockRejectedValueOnce(new Error('ALREADY_CONSUMED'));
 
     const makeRequest = () => POST(request({
-      entity_id: 'agent-1',
+      entity_id: 'caller-1',
       action: 'transact',
       handshake_id: verifiedHandshake.handshake_id,
     }));

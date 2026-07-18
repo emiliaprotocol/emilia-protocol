@@ -152,10 +152,12 @@ describe('government-launch red-team regressions', () => {
     const res = await SandboxProvision.POST(jsonReq({ org: 'County Benefits Office', vertical: 'gov' }));
     const body = await res.json();
     const entityInsert = calls.inserts.find((c) => c.table === 'entities').payload;
+    const keyInsert = calls.inserts.find((c) => c.table === 'api_keys').payload;
 
     expect(res.status).toBe(201);
     expect(entityInsert.organization_id).toBe(body.sandbox_id);
     expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
+    expect(keyInsert.permissions).toEqual([]);
     expect(body.try_now.curl).toContain(`"organization_id":"${body.sandbox_id}"`);
   });
 

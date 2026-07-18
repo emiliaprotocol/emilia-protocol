@@ -425,6 +425,31 @@ test('reliance packet ties allow decision, execution attestation, field binding,
   assert.equal(packet.checks.find((c) => c.id === 'evidence_log_intact').ok, true);
 });
 
+test('reliance refuses when execution proof observes a different material action', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createTrustedActionFirewall(gateOpts({ trustedKeys: [pub] }));
+  const selector = { protocol: 'mcp', tool: 'release_payment' };
+  const authorizedAction = {
+    action_type: 'payment.release',
+    amount_usd: 40000,
+    currency: 'USD',
+    payment_instruction_id: 'pi_binding_probe',
+    beneficiary_account_hash: 'bene_binding_probe',
+  };
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff', extra: authorizedAction });
+  const authorization = await g.check({ selector, receipt: r, observedAction: authorizedAction });
+  const execution = await g.recordExecution({
+    authorization,
+    observedAction: { ...authorizedAction, amount_usd: 999999 },
+    outcome: 'executed',
+  });
+  const packet = await g.reliancePacket({ authorization, execution });
+
+  assert.equal(execution.execution_binding.execution_binding_match, false);
+  assert.equal(packet.verdict, 'do_not_rely');
+  assert.equal(packet.checks.find((c) => c.id === 'execution_fields_bound').ok, false);
+});
+
 // =============================================================================
 // DoD AUDIT: the credited tier MUST be cryptographically verified, not inferred
 // from self-asserted payload content. These prove the deeper hole is closed.

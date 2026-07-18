@@ -12,6 +12,7 @@ import { logger } from '@/lib/logger.js';
 import { generateScimToken, hashScimToken } from '@/lib/scim/auth';
 import { readEpJson } from '@/lib/http/route-body';
 import { refuseObserveScope } from '@/lib/auth/observe-scope';
+import { hasApiPermission } from '@/lib/auth-permissions.js';
 
 const BASE = 'https://www.emiliaprotocol.ai';
 const MAX_BODY_BYTES = 32 * 1024;
@@ -20,6 +21,9 @@ export async function POST(request) {
   const auth = await authenticateRequest(request);
   if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
   { const denied = refuseObserveScope(auth, epProblem); if (denied) return denied; }
+  if (!hasApiPermission(auth, 'scim.manage')) {
+    return epProblem(403, 'insufficient_permissions', 'SCIM token management requires scim.manage or admin permission');
+  }
   const tenantId = authEntityId(auth);
   // Confirmed tenant -> protocol-org mapping (#6): the SCIM token provisions into
   // the minting entity's organization. Approvers enroll under this same org, so
@@ -70,6 +74,9 @@ export async function GET(request) {
   const auth = await authenticateRequest(request);
   if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
   { const denied = refuseObserveScope(auth, epProblem); if (denied) return denied; }
+  if (!hasApiPermission(auth, 'scim.manage')) {
+    return epProblem(403, 'insufficient_permissions', 'SCIM token management requires scim.manage or admin permission');
+  }
   const tenantId = authEntityId(auth);
   const supabase = getGuardedClient();
 

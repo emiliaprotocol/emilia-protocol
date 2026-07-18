@@ -221,6 +221,8 @@ export const contract = {
     'admin_begin_key_rotation', 'admin_complete_key_rotation',
     'consume_gate_ref_atomic', 'revoke_commit_key_atomic',
     'gov_schema_contract_introspect',
+    'complete_webauthn_registration_atomic',
+    'consume_trust_desk_bootstrap_atomic',
     ...RELEASE_LOCK_SERVICE_RPCS,
   ],
 

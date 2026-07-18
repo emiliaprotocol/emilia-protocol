@@ -3,6 +3,7 @@ import { authenticateRequest, generateApiKey, hashApiKey } from '@/lib/supabase'
 import { authEntityDbId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { hasApiPermission } from '@/lib/auth-permissions.js';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -23,6 +24,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) {
       return epProblem(auth.status, auth.code, auth.error);
+    }
+    if (!hasApiPermission(auth, 'keys.rotate')) {
+      return epProblem(403, 'insufficient_permissions', 'Key rotation requires keys.rotate or admin permission');
     }
 
     // ── Derive old key hash from the request header ──────────────────

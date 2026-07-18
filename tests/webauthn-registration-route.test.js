@@ -47,7 +47,7 @@ function authed(entity, permissions = ['approver.enroll']) {
 }
 
 function makeClient({ challenges = [] } = {}) {
-  const calls = { inserts: [], selects: [], updates: [] };
+  const calls = { inserts: [], selects: [], updates: [], rpcs: [] };
   function builder(table) {
     const state = { table, eq: {}, is: {} };
     const b = {
@@ -72,7 +72,16 @@ function makeClient({ challenges = [] } = {}) {
     };
     return b;
   }
-  return { client: { from: (table) => builder(table) }, calls };
+  return {
+    client: {
+      from: (table) => builder(table),
+      rpc: vi.fn(async (name, params) => {
+        calls.rpcs.push({ name, params });
+        return { data: { credential_id: params.p_credential.credential_id, consumed: true }, error: null };
+      }),
+    },
+    calls,
+  };
 }
 
 describe('WebAuthn registration route org binding red-team regressions', () => {
@@ -189,9 +198,13 @@ describe('WebAuthn registration route org binding red-team regressions', () => {
       organization_id: 'org_acme',
       approver_id: 'cfo@acme.example',
     });
-    expect(verifyCalls.inserts[0]).toMatchObject({
-      table: 'approver_credentials',
-      payload: { organization_id: 'org_acme', approver_id: 'cfo@acme.example', credential_id: 'cred_acme' },
+    expect(verifyCalls.rpcs[0]).toMatchObject({
+      name: 'complete_webauthn_registration_atomic',
+      params: {
+        p_organization_id: 'org_acme',
+        p_approver_id: 'cfo@acme.example',
+        p_credential: { credential_id: 'cred_acme' },
+      },
     });
   });
 });

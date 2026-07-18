@@ -546,6 +546,36 @@ describe('challengeContinuity', () => {
 
     expect(result.challenge).toEqual(challenge);
   });
+
+  it('fails closed when ownership lookup is unavailable', async () => {
+    const claim = makeClaim();
+    let callCount = 0;
+    mockSupabase.from.mockImplementation((table) => {
+      callCount++;
+      if (callCount === 1) {
+        const chain = makeChain({ data: claim, error: null });
+        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
+        return chain;
+      }
+      if (callCount === 2) {
+        const chain = makeChain({ data: null, error: null, count: 0 });
+        chain.in = vi.fn().mockReturnThis();
+        return chain;
+      }
+      const chain = makeChain({ data: null, error: { message: 'ownership lookup timeout' } });
+      return chain;
+    });
+
+    const result = await challengeContinuity({
+      continuity_id: claim.continuity_id,
+      challenger_type: 'operator',
+      challenger_id: 'owned-delegate',
+      reason: 'evidence of fraud',
+    });
+
+    expect(result.status).toBe(503);
+    expect(result.error).toContain('ownership');
+  });
 });
 
 // ── resolveContinuity ─────────────────────────────────────────────────────────

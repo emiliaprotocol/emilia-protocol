@@ -48,8 +48,16 @@ export async function POST(request, { params }) {
       }
     }
 
+    // The human named by an attestation is a security identity, not display
+    // metadata. Do not let an authenticated actor submit an attestation for a
+    // different humanEntityRef and launder that identity into the audit trail.
+    const actor = authEntityActor(auth);
+    if (!actor?.entity_id || body.humanEntityRef !== actor.entity_id) {
+      return epProblem(403, 'attestation_identity_mismatch', 'humanEntityRef must match the authenticated actor');
+    }
+
     const result = await createAttestation({
-      actor: authEntityActor(auth),
+      actor,
       challengeId,
       ...data,
     });

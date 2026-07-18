@@ -53,3 +53,27 @@ describe('Trust Desk XLSX extractor parser budget', () => {
     );
   });
 });
+
+describe('Trust Desk DOCX extractor parser budget', () => {
+  it('rejects a ZIP entry whose advertised expansion exceeds the budget', async () => {
+    // Minimal ZIP central directory with a 4 GiB uncompressed entry. The
+    // preflight must reject before mammoth receives the archive.
+    const centralOffset = 0;
+    const centralSize = 46;
+    const eocdOffset = centralSize;
+    const buf = Buffer.alloc(centralSize + 22);
+    buf.writeUInt32LE(0x02014b50, 0);
+    buf.writeUInt32LE(0xffffffff, 24);
+    buf.writeUInt32LE(1, 20);
+    buf.writeUInt32LE(1, 42);
+    buf.writeUInt32LE(0x06054b50, eocdOffset);
+    buf.writeUInt16LE(1, eocdOffset + 8);
+    buf.writeUInt16LE(1, eocdOffset + 10);
+    buf.writeUInt32LE(centralSize, eocdOffset + 12);
+    buf.writeUInt32LE(centralOffset, eocdOffset + 16);
+
+    await expect(extractQuestions({ content: buf, filename: 'bomb.docx' })).rejects.toThrow(
+      ExtractionUnsupportedError,
+    );
+  });
+});

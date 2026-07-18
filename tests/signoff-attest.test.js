@@ -137,6 +137,15 @@ describe('createAttestation — authorization and state guards', () => {
       .rejects.toMatchObject({ code: 'SIGNOFF_ACTOR_MISMATCH', status: 403 });
   });
 
+  it('rejects an attestation identity that differs from the authenticated actor', async () => {
+    const supabase = makeMockSupabase({ challenge: validChallenge() });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(createAttestation(validParams({ humanEntityRef: 'entity-bob' })))
+      .rejects.toMatchObject({ code: 'SIGNOFF_HUMAN_ENTITY_MISMATCH', status: 403 });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
   it('throws SIGNOFF_HANDSHAKE_MISMATCH when explicit handshakeId does not match challenge', async () => {
     const supabase = makeMockSupabase({ challenge: validChallenge({ handshake_id: 'hs-REAL' }) });
     mockGetServiceClient.mockReturnValue(supabase);

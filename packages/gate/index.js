@@ -125,6 +125,36 @@ function safeCanonicalHash(value) {
 }
 
 /**
+ * Re-check the material execution fields at the proof-recording boundary.
+ * Authorization-time binding proves what was observed before the effect; this
+ * second check proves the execution record carries the same observation. A
+ * reliance packet must not be able to reuse an earlier green binding after the
+ * executor reports different system-of-record values.
+ */
+function bindExecutionProof({ authorization, observedAction, binding }) {
+  if (!binding?.required) return binding;
+  const requirement = authorization?.requirement || {
+    execution_binding: { required_fields: binding.required_fields || [] },
+  };
+  const replay = verifyExecutionBinding({
+    requirement,
+    receipt: { payload: { claim: observedAction || {} } },
+    observedAction,
+  });
+  const matchesAuthorization = replay.ok
+    && typeof binding.observed_hash === 'string'
+    && replay.observed_hash === binding.observed_hash;
+  return {
+    ...binding,
+    execution_observed_hash: replay.observed_hash,
+    execution_mismatched_fields: replay.mismatched_fields || [],
+    execution_missing_observed_fields: replay.missing_observed_fields || [],
+    execution_binding_match: matchesAuthorization,
+    ok: binding.ok === true && matchesAuthorization,
+  };
+}
+
+/**
  * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.
  * This helper does NOT authenticate the block or establish evaluator provenance.
  * An execution gate must first verify a signature over the packet or recompute
@@ -982,6 +1012,15 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
    */
   async function recordExecution({ authorization, outcome = 'executed', detail, observedAction = null, executionBinding = null } = {}) {
     const auth = authorization?.evidence || authorization || {};
+    const authorizationBinding = authorization?.evidence?.execution_binding
+      || authorization?.execution_binding
+      || executionBinding
+      || null;
+    const boundExecution = bindExecutionProof({
+      authorization,
+      observedAction,
+      binding: authorizationBinding,
+    });
     return evidence.record({
       kind: 'execution',
       at: new Date(typeof now === 'function' ? now() : now).toISOString(),
@@ -990,7 +1029,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       receipt_id: auth.receipt_id ?? null,
       outcome, // 'executed' | 'failed'
       observed_action_hash: observedAction ? safeCanonicalHash(observedAction) : null,
-      execution_binding: executionBinding || authorization?.evidence?.execution_binding || authorization?.execution_binding || null,
+      execution_binding: boundExecution,
       ...(detail !== undefined ? { detail } : {}),
     });
   }
@@ -1111,7 +1150,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       execution,
       evidence,
       manifest,
-      binding,
+      binding: binding || execution?.execution_binding || null,
       admissibility: adm,
     });
   }
