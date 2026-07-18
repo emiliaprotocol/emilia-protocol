@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION,
   buildActionEscrowEvidencePackage,
+  parseActionEscrowEvidencePackage,
   verifyActionEscrowEvidencePackage,
 } from './action-escrow-evidence.js';
 
@@ -229,4 +230,15 @@ test('hostile values and throwing verifiers return typed refusal, never throw', 
   assert.equal(result.valid, false);
   assert.equal(result.reason, 'binding_verification_failed');
   assert.doesNotMatch(JSON.stringify(result), /secret provider body/);
+});
+
+test('raw parser refuses duplicate members, invalid Unicode, and oversized input', () => {
+  assert.deepEqual(parseActionEscrowEvidencePackage('{"stage":"released","stage":"draft"}'), {
+    ok: false,
+    reason: 'duplicate object member name',
+    value: null,
+  });
+  assert.equal(parseActionEscrowEvidencePackage('{"x":"\\ud800"}').reason, 'unpaired high surrogate escape');
+  assert.equal(parseActionEscrowEvidencePackage('{"x":"12345"}', { maxBytes: 4 }).reason, 'package_exceeds_size_limit');
+  assert.equal(parseActionEscrowEvidencePackage(JSON.stringify({ version: 'test' })).ok, true);
 });

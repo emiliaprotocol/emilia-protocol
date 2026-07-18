@@ -10,6 +10,7 @@
  */
 import crypto from 'node:crypto';
 import { hashCanonical } from './execution-binding.js';
+import { strictJsonGate } from './strict-json.js';
 
 export const ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION = 'EP-ACTION-ESCROW-EVIDENCE-PACKAGE-v1';
 export const ACTION_ESCROW_EVIDENCE_STAGES = Object.freeze([
@@ -62,6 +63,7 @@ const LIMITATIONS = Object.freeze([
   'An indeterminate provider effect is not proof of failure and must not be retried before authoritative reconciliation.',
 ]);
 const DEFAULT_MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
+const DEFAULT_MAX_PACKAGE_BYTES = 4 * 1024 * 1024;
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -160,6 +162,28 @@ function canonicalSha256(value) {
 function digestScope(pkg) {
   const { package_digest: _digest, ...scope } = pkg;
   return scope;
+}
+
+/** Strict raw parser for security-bearing package transport. */
+export function parseActionEscrowEvidencePackage(raw, {
+  maxBytes = DEFAULT_MAX_PACKAGE_BYTES,
+} = {}) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
+    return { ok: false, reason: 'invalid_package_limit', value: null };
+  }
+  if (typeof raw !== 'string') {
+    return { ok: false, reason: 'package_must_be_json_text', value: null };
+  }
+  if (Buffer.byteLength(raw, 'utf8') > maxBytes) {
+    return { ok: false, reason: 'package_exceeds_size_limit', value: null };
+  }
+  const gated = strictJsonGate(raw);
+  if (!gated.ok) return { ok: false, reason: gated.reason, value: null };
+  try {
+    return { ok: true, reason: 'parsed', value: JSON.parse(raw) };
+  } catch {
+    return { ok: false, reason: 'invalid_json_syntax', value: null };
+  }
 }
 
 function normalizedRequiredParties(value) {
@@ -551,6 +575,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
 export default {
   ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION,
   ACTION_ESCROW_EVIDENCE_STAGES,
+  parseActionEscrowEvidencePackage,
   buildActionEscrowEvidencePackage,
   verifyActionEscrowEvidencePackage,
 };
