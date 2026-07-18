@@ -14,7 +14,6 @@ import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '@/lib/logger.js';
 import { refuseObserveScope } from '@/lib/auth/observe-scope';
 import { hasApiPermission } from '@/lib/auth-permissions.js';
-import { refuseObserveScope } from '@/lib/auth/observe-scope';
 
 const MAX_BODY_BYTES = 256 * 1024;
 
