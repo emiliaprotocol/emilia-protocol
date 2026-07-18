@@ -29,7 +29,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.6.0  ·  content-sha256:4e3320f5a4f9ef62
+//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:42876de1113c6248
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -38,8 +38,25 @@
 
 const MAX_JSON_DEPTH = 64;
 
+function hasUnpairedUtf16Surrogate(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return true;
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function strictJsonGate(raw) {
   if (typeof raw !== 'string') return { ok: false, reason: 'JSON input must be text' };
+  if (hasUnpairedUtf16Surrogate(raw)) {
+    return { ok: false, reason: 'unpaired Unicode surrogate' };
+  }
   try { JSON.parse(raw); } catch { return { ok: false, reason: 'invalid JSON syntax' }; }
   let index = 0;
   const stack = [];

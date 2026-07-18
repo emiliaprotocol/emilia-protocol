@@ -3,6 +3,15 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.11.0 (2026-07-17)
+
+### Added
+
+- `./document-action-binding`, a typed verifier for joining exact final
+  document bytes, material terms, and a consequential release action.
+- Closed `match`, `mismatch`, and `invalid` results so a malformed or
+  differently bound document cannot be mistaken for an authorized action.
+
 ## 3.10.1 (2026-07-16)
 
 ### Security (please upgrade)

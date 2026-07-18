@@ -295,6 +295,22 @@ challenge. The Gate composes that and adds the lifecycle controls a firewall nee
   can establish a declared surface as `gated`; a passive network witness alone is always
   `witness_only`. Inventory completeness remains an explicit relying-party assumption.
 
+## Action Escrow
+
+Action Escrow is the Gate profile for a two-party agreement whose downstream
+release must obey the exact final document. The customer application supplies
+the signed agreement, material terms, party acceptances, funding evidence,
+milestone evidence, and action-specific release approvals. Gate verifies and
+binds those inputs, advances a signed lifecycle, and consumes the release once.
+
+The public modules are `action-escrow`, `action-escrow-state`,
+`action-escrow-postgres`, `action-escrow-custodian`,
+`action-escrow-package`, and `action-escrow-verifiers`. A licensed external
+provider holds or moves funds; EMILIA does not take custody, inspect work,
+adjudicate disputes, or make an agreement legally enforceable. An ambiguous
+provider outcome enters reconciliation and is never retried as though nothing
+happened.
+
 ## Production custody
 
 The three things a serious buyer (CISO, auditor, insurer) asks after the demo:

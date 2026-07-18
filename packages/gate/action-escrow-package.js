@@ -29,7 +29,7 @@ import {
   computeDocumentActionBindingDigest,
   computeDocumentSha256,
   computeReleaseActionDigest,
-} from '../verify/document-action-binding.js';
+} from '@emilia-protocol/verify/document-action-binding';
 
 const HASH = /^sha256:[0-9a-f]{64}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,255}$/;

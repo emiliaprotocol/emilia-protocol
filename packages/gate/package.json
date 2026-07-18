@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -154,8 +154,8 @@
     "cf1": "node cf1.mjs"
   },
   "dependencies": {
-    "@emilia-protocol/require-receipt": "0.6.0",
-    "@emilia-protocol/verify": "3.10.1"
+    "@emilia-protocol/require-receipt": "0.6.1",
+    "@emilia-protocol/verify": "3.11.0"
   },
   "keywords": [
     "emilia",
