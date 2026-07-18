@@ -14,6 +14,50 @@
 //     anon/authenticated/PUBLIC-executable.
 //   - migration 098/114: columns/tables that drifted (journaled but absent).
 
+const RELEASE_LOCK_TABLES = [
+  'release_locks',
+  'release_lock_versions',
+  'release_lock_draw_actions',
+  'release_lock_round_acceptances',
+  'release_lock_contact_bindings',
+  'release_lock_invitations',
+  'release_lock_sessions',
+  'release_lock_pairings',
+  'release_lock_registration_challenges',
+  'release_lock_credentials',
+  'release_lock_action_challenges',
+  'release_lock_decisions',
+  'release_lock_decision_invalidations',
+  'release_lock_effects',
+];
+
+const RELEASE_LOCK_SERVICE_RPCS = [
+  'release_lock_create_pending',
+  'release_lock_activate_invitations',
+  'release_lock_cancel_pending',
+  'release_lock_exchange_invitation',
+  'release_lock_create_pairing',
+  'release_lock_exchange_pairing',
+  'release_lock_resolve_session',
+  'release_lock_begin_registration',
+  'release_lock_load_registration',
+  'release_lock_complete_registration',
+  'release_lock_action_check_context',
+  'release_lock_store_action_challenge',
+  'release_lock_load_action_challenge',
+  'release_lock_record_approval',
+  'release_lock_draw_context',
+  'release_lock_stage_draw',
+  'release_lock_amendment_context',
+  'release_lock_amend',
+  'release_lock_claim_effect_binding',
+  'release_lock_recover_effect',
+  'release_lock_record_effect_outcome',
+  'release_lock_evidence',
+  'release_lock_participant_view',
+  'release_lock_participant_evidence',
+];
+
 export const contract = {
   // Tables that MUST exist. Missing => hard FAIL.
   requiredTables: [
@@ -26,6 +70,7 @@ export const contract = {
     'tenant_api_keys', 'tenant_environments', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'zk_proofs',
     'authorities', 'commits', 'revoked_commit_keys', 'consumed_gate_refs',
+    ...RELEASE_LOCK_TABLES,
   ],
 
   // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
@@ -49,6 +94,30 @@ export const contract = {
       'entity_id', 'action_type', 'decision', 'expires_at', 'created_at'],
     revoked_commit_keys: ['kid', 'revoked_at', 'reason', 'revoked_by'],
     consumed_gate_refs: ['gate_ref', 'consumed_at', 'consumed_by_entity', 'consumed_for_action'],
+    release_locks: ['lock_id', 'organization_id', 'contractor_entity_id',
+      'current_version', 'status', 'max_expires_at'],
+    release_lock_contact_bindings: ['contact_binding_id', 'lock_id', 'role',
+      'identifier_digest', 'verification_proof_digest', 'authority_provider',
+      'authority_key_id', 'authority_reference', 'authority_assertion',
+      'authority_signature', 'authority_assertion_digest', 'authority_subject_digest',
+      'authority_contact_binding_digest',
+      'authority_expires_at'],
+    release_lock_invitations: ['invitation_id', 'lock_id', 'role',
+      'contact_binding_id', 'token_digest', 'activated_at', 'exchanged_at', 'revoked_at'],
+    release_lock_sessions: ['session_id', 'lock_id', 'role', 'contact_binding_id',
+      'token_digest', 'scope_version', 'scope_round', 'scope_action_hash',
+      'expires_at', 'revoked_at'],
+    release_lock_pairings: ['pairing_id', 'lock_id', 'version', 'role', 'round',
+      'action_hash', 'token_digest', 'expires_at', 'exchanged_at', 'revoked_at'],
+    release_lock_credentials: ['credential_id', 'lock_id', 'role',
+      'contact_binding_id', 'public_key_spki', 'sign_count', 'revoked_at'],
+    release_lock_action_challenges: ['challenge_id', 'lock_id', 'version', 'round',
+      'role', 'action_hash', 'answer_digest', 'nonce', 'expires_at', 'consumed_at'],
+    release_lock_decisions: ['decision_id', 'lock_id', 'version', 'round', 'role',
+      'action_hash', 'resolution', 'resolution_digest'],
+    release_lock_effects: ['effect_id', 'lock_id', 'version', 'effect_reference',
+      'status', 'reservation_expires_at', 'reservation_attempts', 'claim_attempts',
+      'effect_contract_digest', 'retryable', 'provider_result'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
@@ -58,6 +127,7 @@ export const contract = {
     'tenants', 'tenant_api_keys', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities', 'commits',
     'revoked_commit_keys', 'consumed_gate_refs',
+    ...RELEASE_LOCK_TABLES,
   ],
 
   // No anon/authenticated/PUBLIC may have a SELECT (or ALL) policy on these.
@@ -65,6 +135,7 @@ export const contract = {
   noAnonRead: [
     'api_keys', 'waitlist', 'tenant_api_keys', 'authorities', 'commits',
     'revoked_commit_keys', 'consumed_gate_refs',
+    ...RELEASE_LOCK_TABLES,
   ],
 
   // Column-level least-privilege on secret material. RLS gates ROWS; a column
@@ -96,6 +167,7 @@ export const contract = {
     'signoff_challenges', 'signoff_attestations', 'handshakes', 'tenants', 'tenant_api_keys',
     'operator_applications', 'policy_rollouts', 'authorities',
     'revoked_commit_keys', 'consumed_gate_refs',
+    ...RELEASE_LOCK_TABLES,
   ],
 
   // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
@@ -108,6 +180,7 @@ export const contract = {
     'admin_begin_key_rotation', 'admin_complete_key_rotation',
     'consume_gate_ref_atomic', 'revoke_commit_key_atomic',
     'gov_schema_contract_introspect',
+    ...RELEASE_LOCK_SERVICE_RPCS,
   ],
 
   // Functions that MUST exist (existence only). Includes the append-only

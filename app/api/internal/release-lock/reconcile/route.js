@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { authenticateOperator } from '@/lib/operator-auth.js';
+import { hasPermission } from '@/lib/procedural-justice.js';
 import {
   readReleaseLockJson,
   releaseLockJson,
@@ -19,6 +20,13 @@ export async function POST(request) {
         401,
         'operator_unauthorized',
         'Named operator authentication is required.',
+      );
+    }
+    if (!hasPermission(operator.role, 'release_lock.reconcile')) {
+      throw releaseLockRefusal(
+        403,
+        'operator_forbidden',
+        'This named operator role cannot reconcile Release Lock effects.',
       );
     }
     const body = await readReleaseLockJson(request);

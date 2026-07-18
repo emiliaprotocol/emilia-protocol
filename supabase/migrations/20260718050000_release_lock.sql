@@ -126,9 +126,17 @@ CREATE TABLE public.release_lock_contact_bindings (
   verified_at             TIMESTAMPTZ NOT NULL,
   verification_expires_at TIMESTAMPTZ NOT NULL,
   authority_provider      TEXT NOT NULL,
+  authority_key_id        TEXT NOT NULL,
   authority_reference     TEXT NOT NULL,
+  authority_assertion     JSONB NOT NULL CHECK (jsonb_typeof(authority_assertion) = 'object'),
+  authority_signature     TEXT NOT NULL
+    CHECK (authority_signature ~ '^[A-Za-z0-9_-]{86}$'),
+  authority_assertion_digest TEXT NOT NULL
+    CHECK (authority_assertion_digest ~ '^sha256:[0-9a-f]{64}$'),
   authority_subject_digest TEXT NOT NULL
-    CHECK (authority_subject_digest ~ '^hmac-sha256:[0-9a-f]{64}$'),
+    CHECK (authority_subject_digest ~ '^sha256:[0-9a-f]{64}$'),
+  authority_contact_binding_digest TEXT NOT NULL
+    CHECK (authority_contact_binding_digest ~ '^hmac-sha256:[0-9a-f]{64}$'),
   authority_verified_at   TIMESTAMPTZ NOT NULL,
   authority_expires_at    TIMESTAMPTZ NOT NULL,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
@@ -641,11 +649,48 @@ BEGIN
        OR (v_contact->>'verification_expires_at')::TIMESTAMPTZ <= clock_timestamp()
        OR (v_contact->>'verification_expires_at')::TIMESTAMPTZ < p_max_expires_at
        OR v_contact->>'authority_provider' IS NULL
+       OR v_contact->>'authority_key_id' IS NULL
        OR v_contact->>'authority_reference' IS NULL
-       OR v_contact->>'authority_subject_digest' !~ '^hmac-sha256:[0-9a-f]{64}$'
+       OR jsonb_typeof(v_contact->'authority_assertion') IS DISTINCT FROM 'object'
+       OR v_contact->>'authority_signature' !~ '^[A-Za-z0-9_-]{86}$'
+       OR v_contact->>'authority_assertion_digest' !~ '^sha256:[0-9a-f]{64}$'
+       OR v_contact->>'authority_subject_digest' !~ '^sha256:[0-9a-f]{64}$'
+       OR v_contact->>'authority_contact_binding_digest' !~ '^hmac-sha256:[0-9a-f]{64}$'
+       OR v_contact->>'authority_contact_binding_digest'
+         IS DISTINCT FROM v_contact->>'identifier_digest'
+       OR v_contact->'authority_assertion'->>'@version'
+         IS DISTINCT FROM 'EP-RELEASE-LOCK-AUTHORITY-ASSERTION-v1'
+       OR v_contact->'authority_assertion'->>'algorithm' IS DISTINCT FROM 'Ed25519'
+       OR v_contact->'authority_assertion'->>'provider'
+         IS DISTINCT FROM v_contact->>'authority_provider'
+       OR v_contact->'authority_assertion'->>'key_id'
+         IS DISTINCT FROM v_contact->>'authority_key_id'
+       OR v_contact->'authority_assertion'->>'reference'
+         IS DISTINCT FROM v_contact->>'authority_reference'
+       OR v_contact->'authority_assertion'->>'role'
+         IS DISTINCT FROM v_contact->>'role'
+       OR v_contact->'authority_assertion'->>'subject_digest'
+         IS DISTINCT FROM v_contact->>'authority_subject_digest'
+       OR v_contact->'authority_assertion'->>'contact_binding_digest'
+         IS DISTINCT FROM v_contact->>'identifier_digest'
+       OR NOT EXISTS (
+         SELECT 1
+         FROM jsonb_array_elements(p_co_action->'parties') AS p(value)
+         WHERE p.value->>'role' = v_contact->>'role'
+           AND p.value->>'party_id'
+             = v_contact->'authority_assertion'->>'party_id'
+           AND p.value->'authority'->'assertion'
+             = v_contact->'authority_assertion'
+           AND p.value->'authority'->>'signature'
+             = v_contact->>'authority_signature'
+       )
        OR (v_contact->>'authority_verified_at')::TIMESTAMPTZ > clock_timestamp()
        OR (v_contact->>'authority_expires_at')::TIMESTAMPTZ <= clock_timestamp()
        OR (v_contact->>'authority_expires_at')::TIMESTAMPTZ < p_max_expires_at
+       OR v_contact->'authority_assertion'->>'verified_at'
+         IS DISTINCT FROM v_contact->>'authority_verified_at'
+       OR v_contact->'authority_assertion'->>'expires_at'
+         IS DISTINCT FROM v_contact->>'authority_expires_at'
     THEN
       RAISE EXCEPTION 'RL_ARGUMENT_INVALID' USING ERRCODE = 'P0001';
     END IF;
@@ -661,8 +706,13 @@ BEGIN
       verified_at,
       verification_expires_at,
       authority_provider,
+      authority_key_id,
       authority_reference,
+      authority_assertion,
+      authority_signature,
+      authority_assertion_digest,
       authority_subject_digest,
+      authority_contact_binding_digest,
       authority_verified_at,
       authority_expires_at
     ) VALUES (
@@ -677,8 +727,13 @@ BEGIN
       (v_contact->>'verified_at')::TIMESTAMPTZ,
       (v_contact->>'verification_expires_at')::TIMESTAMPTZ,
       v_contact->>'authority_provider',
+      v_contact->>'authority_key_id',
       v_contact->>'authority_reference',
+      v_contact->'authority_assertion',
+      v_contact->>'authority_signature',
+      v_contact->>'authority_assertion_digest',
       v_contact->>'authority_subject_digest',
+      v_contact->>'authority_contact_binding_digest',
       (v_contact->>'authority_verified_at')::TIMESTAMPTZ,
       (v_contact->>'authority_expires_at')::TIMESTAMPTZ
     );
@@ -3909,8 +3964,13 @@ BEGIN
     'verified_at', c.verified_at,
     'verification_expires_at', c.verification_expires_at,
     'authority_provider', c.authority_provider,
+    'authority_key_id', c.authority_key_id,
     'authority_reference', c.authority_reference,
+    'authority_assertion', c.authority_assertion,
+    'authority_signature', c.authority_signature,
+    'authority_assertion_digest', c.authority_assertion_digest,
     'authority_subject_digest', c.authority_subject_digest,
+    'authority_contact_binding_digest', c.authority_contact_binding_digest,
     'authority_verified_at', c.authority_verified_at,
     'authority_expires_at', c.authority_expires_at,
     'external_identity_proof_required', true
