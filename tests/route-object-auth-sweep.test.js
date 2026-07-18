@@ -53,6 +53,8 @@ const AUTHZ_SIGNALS = [
   'revokeChallenge',         // signoff/revoke.js: actor-bound
   'revokeAttestation',       // signoff/revoke.js: actor-bound
   'authenticateMobileToken', // mobile/store.js: active session plus entity, approver, app, and device scope
+  'authenticateReleaseLockOrg', // Release Lock org + authenticated entity binding
+  'releaseLockSessionCookie',   // host-only strict cookie; SQL binds lock + role + contact + optional round
 ];
 
 // Reviewed public-by-design routes: intentionally unauthenticated OR intentionally

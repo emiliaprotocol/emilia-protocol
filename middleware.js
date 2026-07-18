@@ -22,6 +22,13 @@ import { siemEvent } from '@/lib/siem';
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DEFAULT_API_BODY_LIMIT_BYTES = 1024 * 1024;
 const MULTIPART_API_BODY_LIMIT_BYTES = 26 * 1024 * 1024; // 25 MB file + form overhead
+const RELEASE_LOCK_BROWSER_MUTATIONS = Object.freeze([
+  /^\/api\/v1\/release-locks\/invitations\/exchange$/,
+  /^\/api\/v1\/release-locks\/pairings\/exchange$/,
+  /^\/api\/v1\/release-locks\/[^/]+\/registration\/(?:options|verify)$/,
+  /^\/api\/v1\/release-locks\/[^/]+\/rounds\/[^/]+\/(?:approvals|pairings)$/,
+  /^\/api\/v1\/release-locks\/[^/]+\/rounds\/[^/]+\/action-check\/options$/,
+]);
 
 const ROUTE_POLICIES = {
   // Pilot-request intake (public lead form; honeypot + validation in route)
@@ -121,6 +128,22 @@ const ROUTE_POLICIES = {
   'DELETE /api/v1/mobile/session':              { rateCategory: 'mobile_runtime_ip', useAuth: false },
   'POST /api/v1/mobile/demo/actions':           { rateCategory: 'protocol_write', useAuth: true },
   'POST /api/v1/grace/curtailment/actions':      { rateCategory: 'protocol_write', useAuth: true },
+
+  // Release Lock. Organization mutations authenticate an EP API key in-route.
+  // Invitation/pairing exchanges are single-use capability authenticated.
+  // Participant ceremonies use a host-only, SameSite=Strict session cookie,
+  // then enforce lock + role + contact + optional round scope transactionally.
+  'POST /api/v1/release-locks':                                   { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/release-locks/*/amendments':                      { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/release-locks/*/draw-release':                    { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/release-locks/invitations/exchange':              { rateCategory: 'mobile_pairing', useAuth: false },
+  'POST /api/v1/release-locks/pairings/exchange':                 { rateCategory: 'mobile_pairing', useAuth: false },
+  'POST /api/v1/release-locks/*/registration/options':            { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/registration/verify':             { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/rounds/*/action-check/options':   { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/rounds/*/approvals':              { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/rounds/*/pairings':               { rateCategory: 'mobile_pairing', useAuth: false },
+  'POST /api/internal/release-lock/reconcile':                    { rateCategory: null, useAuth: false },
   // GovGuard + FinGuard demo adapters (MD §8) — thin façades over
   // /api/v1/trust-receipts pre-filled for specific workflows. Same auth +
   // rate posture as the underlying create endpoint. All implemented via
@@ -334,6 +357,24 @@ function payloadTooLarge(limit) {
   );
 }
 
+function isReleaseLockBrowserMutation(method, pathname) {
+  return method.toUpperCase() === 'POST'
+    && RELEASE_LOCK_BROWSER_MUTATIONS.some((pattern) => pattern.test(pathname));
+}
+
+function releaseLockOriginAllowed(request) {
+  const origin = request.headers.get('origin');
+  const fetchSite = request.headers.get('sec-fetch-site');
+  if (!origin || origin === 'null' || (fetchSite && fetchSite !== 'same-origin')) {
+    return false;
+  }
+  try {
+    return new URL(origin).origin === request.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Global request-body cap for mutating API routes, enforced at the edge.
  *
@@ -463,6 +504,19 @@ export async function middleware(request) {
     if (pathname === '/cloud' || pathname.startsWith('/cloud/')) {
       response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     }
+    return response;
+  }
+
+  if (isReleaseLockBrowserMutation(request.method, pathname)
+      && !releaseLockOriginAllowed(request)) {
+    const response = NextResponse.json(
+      {
+        error: 'Release Lock browser mutations require a same-origin request.',
+        code: 'release_lock_origin_denied',
+      },
+      { status: 403 },
+    );
+    response.headers.set('cache-control', 'no-store');
     return response;
   }
 

@@ -4885,6 +4885,353 @@ paths:
         '400': { description: Unknown control-plane reference mode }
         '429': { description: Public reference-run rate exceeded }
         '503': { description: Control-plane reference scenario unavailable }
+
+  # ===========================================================================
+  # Release Lock
+  # ===========================================================================
+
+  /api/v1/release-locks:
+    post:
+      operationId: createReleaseLock
+      tags: [Release Lock]
+      summary: Create a two-round change-order Release Lock
+      description: |
+        Requires write permission. Verifies the final retained document, both
+        independently verified contact bindings, and two distinct role subjects
+        under one relying-party-pinned external authority. It then delivers one
+        single-use invitation to each verified contact. Raw invitation
+        capabilities are never returned to the creating contractor.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseLockCreateRequest'
+      responses:
+        '201': { description: 'Release Lock created and invitations delivered' }
+        '400': { description: 'Malformed, non-canonical, or incomplete lock' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '422': { description: 'Authoritative document evidence refused' }
+        '503': { description: 'Storage, document, or delivery provider unavailable' }
+
+  /api/v1/release-locks/invitations/exchange:
+    post:
+      operationId: exchangeReleaseLockInvitation
+      tags: [Release Lock]
+      summary: Exchange one exact participant invitation
+      description: |
+        Browser or cookie-jar exchange. The request Origin must exactly match
+        the API origin. The response sets a strict host-only cookie named
+        `__Host-ep_release_lock_session_{lockId}`; clients must preserve that
+        exact Set-Cookie value for participant operations.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, lock_id, role]
+              properties:
+                token: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true }
+                lock_id: { $ref: '#/components/schemas/ReleaseLockId' }
+                role: { $ref: '#/components/schemas/ReleaseLockRole' }
+      responses:
+        '200':
+          description: Invitation consumed; strict host-only session cookie set
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: Dynamic per-lock HttpOnly, Secure, SameSite=Strict session cookie
+        '401': { description: 'Invitation invalid' }
+        '403': { description: 'Origin, invitation lock, or role mismatch' }
+        '409': { description: 'Invitation already exchanged or no longer active' }
+        '410': { description: 'Invitation expired' }
+
+  /api/v1/release-locks/pairings/exchange:
+    post:
+      operationId: exchangeReleaseLockPairing
+      tags: [Release Lock]
+      summary: Exchange a one-time Action Mirror phone pairing
+      description: |
+        Creates a short-lived session restricted to the pairing's exact lock,
+        participant role, contact binding, and approval round. The request
+        Origin must exactly match the API origin; the response sets the exact
+        dynamic per-lock cookie used by the Action Mirror.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, lock_id, role, round]
+              properties:
+                token: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true }
+                lock_id: { $ref: '#/components/schemas/ReleaseLockId' }
+                role: { $ref: '#/components/schemas/ReleaseLockRole' }
+                round: { $ref: '#/components/schemas/ReleaseLockRound' }
+      responses:
+        '200':
+          description: Pairing consumed; round-scoped session cookie set
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: Dynamic per-lock HttpOnly, Secure, SameSite=Strict session cookie
+        '401': { description: 'Pairing invalid' }
+        '403': { description: 'Pairing lock, role, or round mismatch' }
+        '409': { description: 'Pairing already exchanged' }
+        '410': { description: 'Pairing expired' }
+
+  /api/v1/release-locks/{lockId}/view:
+    get:
+      operationId: getReleaseLockParticipantView
+      tags: [Release Lock]
+      summary: Retrieve the participant-scoped canonical lock view
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      responses:
+        '200': { description: 'Canonical actions, decisions, and effect state for this lock' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session is scoped to a different lock' }
+        '404': { description: 'Release Lock not found' }
+
+  /api/v1/release-locks/{lockId}/evidence:
+    get:
+      operationId: getReleaseLockEvidence
+      tags: [Release Lock]
+      summary: Export the organization-scoped portable evidence bundle
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      responses:
+        '200': { description: 'Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs' }
+        '401': { description: 'Organization authentication required' }
+        '404': { description: 'Release Lock not found in the authenticated organization' }
+
+  /api/v1/release-locks/{lockId}/participant-evidence:
+    get:
+      operationId: getReleaseLockParticipantEvidence
+      tags: [Release Lock]
+      summary: Export the same portable bundle from a participant session
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      responses:
+        '200': { description: 'Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session is scoped to a different lock' }
+
+  /api/v1/release-locks/{lockId}/registration/options:
+    post:
+      operationId: createReleaseLockRegistrationOptions
+      tags: [Release Lock]
+      summary: Begin role-scoped passkey enrollment
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      responses:
+        '201': { description: 'WebAuthn registration options bound to this lock, role, and contact' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin or session scope refused' }
+        '409': { description: 'Credential already enrolled for this role' }
+
+  /api/v1/release-locks/{lockId}/registration/verify:
+    post:
+      operationId: verifyReleaseLockRegistration
+      tags: [Release Lock]
+      summary: Verify and store one role-scoped passkey credential
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [challenge_id, attestation]
+              properties:
+                challenge_id: { type: string, format: uuid }
+                attestation: { type: object, description: WebAuthn RegistrationResponseJSON }
+      responses:
+        '201': { description: 'Credential enrolled for the exact lock, role, and contact' }
+        '400': { description: 'WebAuthn attestation refused' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin or session scope refused' }
+        '409': { description: 'Challenge replayed or credential reused' }
+
+  /api/v1/release-locks/{lockId}/rounds/{round}/action-check/options:
+    post:
+      operationId: createReleaseLockActionCheck
+      tags: [Release Lock]
+      summary: Begin a fresh exact-action approval check
+      description: |
+        Returns randomized material-field questions and WebAuthn authentication
+        options committed to the exact lock version, role, round, action hash,
+        expected-answer digest, nonce, and expiry. Requires an exact same-origin
+        Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockRound'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      responses:
+        '201': { description: 'Fresh Action Check and WebAuthn options' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session role or round scope mismatch' }
+        '409': { description: 'Round unavailable, complete, or already approved' }
+
+  /api/v1/release-locks/{lockId}/rounds/{round}/approvals:
+    post:
+      operationId: approveReleaseLockRound
+      tags: [Release Lock]
+      summary: Record one exact, passkey-backed round approval
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockRound'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [challenge_id, answers, assertion]
+              properties:
+                challenge_id: { type: string, format: uuid }
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [question_id, option_id]
+                    properties:
+                      question_id: { type: string }
+                      option_id: { type: string }
+                assertion: { type: object, description: WebAuthn AuthenticationResponseJSON }
+      responses:
+        '200': { description: 'Approval recorded; a complete draw round may reserve one effect' }
+        '400': { description: 'Assertion or Action Check malformed' }
+        '403': { description: 'Origin, session, credential, role, or round scope mismatch' }
+        '409': { description: 'Binding mismatch, replay, or round already complete' }
+        '422': { description: 'One or more exact-term answers are incorrect' }
+        '503': { description: 'Custodian result unavailable or ambiguous' }
+
+  /api/v1/release-locks/{lockId}/rounds/{round}/pairings:
+    post:
+      operationId: createReleaseLockRoundPairing
+      tags: [Release Lock]
+      summary: Create a one-time Action Mirror pairing for this participant round
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockRound'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      responses:
+        '201': { description: 'Five-minute pairing capability scoped to one lock, role, and round' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin, session lock, or round scope mismatch' }
+        '409': { description: 'Round unavailable or already complete' }
+
+  /api/v1/release-locks/{lockId}/draw-release:
+    post:
+      operationId: stageReleaseLockDraw
+      tags: [Release Lock]
+      summary: Stage the exact post-milestone draw and custodian instruction
+      description: Requires write permission and payee-bound lien-waiver evidence for every exact payee.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseLockDrawRequest'
+      responses:
+        '201': { description: 'DRAW_RELEASE staged for the accepted change-order version' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '409': { description: 'CO not accepted, version stale, or draw already staged' }
+        '422': { description: 'Authoritative milestone evidence refused' }
+        '503': { description: 'Evidence provider unavailable or ambiguous' }
+
+  /api/v1/release-locks/{lockId}/amendments:
+    post:
+      operationId: amendReleaseLock
+      tags: [Release Lock]
+      summary: Replace the retained change order and invalidate both prior rounds
+      description: Requires write permission. Any amendment revokes unexchanged pairings and resets both approval rounds.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseLockAmendRequest'
+      responses:
+        '201': { description: 'New immutable version created; both rounds reset' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '409': { description: 'Version stale, identical amendment, or effect already in progress' }
+        '422': { description: 'Authoritative replacement document refused' }
+
+  /api/internal/release-lock/reconcile:
+    post:
+      operationId: reconcileReleaseLockEffect
+      tags: [Release Lock]
+      summary: Reconcile an ambiguous custodian result
+      description: Named full-operator endpoint; shared cron credentials and lower-privilege named roles are refused.
+      security:
+        - OperatorAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [effect_reference]
+              properties:
+                effect_reference: { type: string }
+      responses:
+        '200': { description: 'Authoritative custodian state recorded' }
+        '401': { description: 'Named operator authentication required' }
+        '403': { description: 'Named operator lacks release_lock.reconcile permission' }
+        '409': { description: 'Effect is not ambiguous or provider binding mismatched' }
+        '503': { description: 'Authoritative reconciliation unavailable' }
 components:
   securitySchemes:
     BearerAuth:
@@ -4899,8 +5246,260 @@ components:
       type: http
       scheme: bearer
       description: CRON_SECRET for internal/operator endpoints
+    OperatorAuth:
+      type: http
+      scheme: bearer
+      description: Five-minute ep_op_ named-operator token
+    ReleaseLockSession:
+      type: apiKey
+      in: header
+      name: Cookie
+      description: |
+        Raw Cookie header containing exactly one dynamic
+        `__Host-ep_release_lock_session_{lockId}=<token>` entry. Browsers receive
+        it as HttpOnly, Secure, SameSite=Strict from invitation or pairing
+        exchange. Non-browser clients must preserve the returned Set-Cookie;
+        the session token is never returned in a JSON body.
+
+  parameters:
+    ReleaseLockId:
+      name: lockId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ReleaseLockId'
+    ReleaseLockRound:
+      name: round
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [co-accepted, draw-release]
+    ReleaseLockOrigin:
+      name: Origin
+      in: header
+      required: true
+      description: Exact API origin required for every cookie-authenticated or capability-exchange mutation
+      schema:
+        type: string
+        format: uri
 
   schemas:
+    ReleaseLockId:
+      type: string
+      pattern: '^rlk_[a-f0-9]{32}$'
+
+    ReleaseLockRole:
+      type: string
+      enum: [contractor, customer]
+
+    ReleaseLockRound:
+      type: string
+      enum: [CO_ACCEPTED, DRAW_RELEASE]
+
+    ReleaseLockCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [change_order, lock_expires_at, invitation_expires_at, contractor_party, customer_party]
+      properties:
+        organization_id: { type: string }
+        change_order:
+          $ref: '#/components/schemas/ReleaseLockChangeOrder'
+        lock_expires_at: { type: string, format: date-time }
+        invitation_expires_at: { type: string, format: date-time }
+        contractor_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+        customer_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+
+    ReleaseLockParty:
+      type: object
+      additionalProperties: false
+      required: [party_id, display_name, contact, authority]
+      properties:
+        party_id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$' }
+        display_name: { type: string, minLength: 1, maxLength: 200 }
+        contact:
+          $ref: '#/components/schemas/ReleaseLockVerifiedContact'
+        authority:
+          $ref: '#/components/schemas/ReleaseLockAuthority'
+
+    ReleaseLockVerifiedContact:
+      type: object
+      additionalProperties: false
+      required: [channel, identifier, verification]
+      properties:
+        channel: { type: string, enum: [email, sms] }
+        identifier: { type: string, writeOnly: true }
+        verification:
+          $ref: '#/components/schemas/ReleaseLockVerificationProof'
+
+    ReleaseLockAuthority:
+      type: object
+      additionalProperties: false
+      description: |
+        Portable provider-signed role authority. Verification uses a
+        relying-party-pinned Ed25519 provider key. The provider remains
+        responsible for civil-identity proofing, subject uniqueness, and its
+        asserted binding between the subject and verified contact digest.
+      required: [assertion, signature]
+      properties:
+        assertion:
+          type: object
+          additionalProperties: false
+          required:
+            ['@version', algorithm, provider, key_id, reference, role, party_id,
+             subject_digest, contact_binding_digest, verified_at, expires_at]
+          properties:
+            '@version':
+              type: string
+              enum: [EP-RELEASE-LOCK-AUTHORITY-ASSERTION-v1]
+            algorithm: { type: string, enum: [Ed25519] }
+            provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+            key_id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$' }
+            reference: { type: string, minLength: 1, maxLength: 512 }
+            role: { $ref: '#/components/schemas/ReleaseLockRole' }
+            party_id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$' }
+            subject_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+            contact_binding_digest: { type: string, pattern: '^hmac-sha256:[0-9a-f]{64}$' }
+            verified_at: { type: string, format: date-time }
+            expires_at: { type: string, format: date-time }
+        signature:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{86}$'
+          description: Ed25519 signature over the domain-separated RFC 8785 assertion bytes
+
+    ReleaseLockVerificationProof:
+      type: object
+      additionalProperties: false
+      required: [provider, reference, verified_at, expires_at, proof]
+      properties:
+        provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+        reference: { type: string, minLength: 1, maxLength: 512 }
+        verified_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        proof: { type: string, pattern: '^hmac-sha256:[0-9a-f]{64}$', writeOnly: true }
+
+    ReleaseLockProviderDocument:
+      type: object
+      additionalProperties: false
+      required: [provider, reference, verification]
+      properties:
+        provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+        reference: { type: string, minLength: 1, maxLength: 512 }
+        verification:
+          type: object
+          description: Provider-specific verification object; credentials and tokens are forbidden
+
+    ReleaseLockChangeOrder:
+      type: object
+      additionalProperties: false
+      required: [document, scope, price_delta, currency, progress_schedule_effect, expires_at]
+      properties:
+        document:
+          $ref: '#/components/schemas/ReleaseLockProviderDocument'
+        scope: { type: object, minProperties: 1 }
+        price_delta: { type: string, pattern: '^-?(?:0|[1-9][0-9]{0,11})\.[0-9]{2}$' }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        progress_schedule_effect: { type: object, minProperties: 1 }
+        expires_at: { type: string, format: date-time }
+
+    ReleaseLockDrawRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version, draw]
+      properties:
+        organization_id: { type: string }
+        expected_version: { type: integer, minimum: 1 }
+        draw:
+          $ref: '#/components/schemas/ReleaseLockDraw'
+
+    ReleaseLockDraw:
+      type: object
+      additionalProperties: false
+      required:
+        [draw_id, amount, currency, payees, milestone, completion_evidence, lien_waivers, draw_documents, custodian, expires_at]
+      properties:
+        draw_id: { type: string, minLength: 1, maxLength: 256 }
+        amount: { type: string, pattern: '^(?:0|[1-9][0-9]{0,11})\.[0-9]{2}$' }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        payees:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ReleaseLockPayee'
+        milestone:
+          type: object
+          additionalProperties: false
+          required: [id, label]
+          properties:
+            id: { type: string }
+            label: { type: string }
+        completion_evidence:
+          $ref: '#/components/schemas/ReleaseLockProviderDocument'
+        lien_waivers:
+          type: array
+          minItems: 1
+          maxItems: 40
+          description: Must cover every exact payee; provider references cannot be reused across evidence categories.
+          items:
+            $ref: '#/components/schemas/ReleaseLockLienWaiver'
+        draw_documents:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ReleaseLockProviderDocument'
+        custodian:
+          $ref: '#/components/schemas/ReleaseLockCustodian'
+        expires_at: { type: string, format: date-time }
+
+    ReleaseLockPayee:
+      type: object
+      additionalProperties: false
+      required: [party_id, destination_id, amount]
+      properties:
+        party_id: { type: string }
+        destination_id: { type: string }
+        amount: { type: string, pattern: '^(?:0|[1-9][0-9]{0,11})\.[0-9]{2}$' }
+
+    ReleaseLockLienWaiver:
+      type: object
+      additionalProperties: false
+      required: [payee_party_id, document]
+      properties:
+        payee_party_id: { type: string }
+        document:
+          $ref: '#/components/schemas/ReleaseLockProviderDocument'
+
+    ReleaseLockCustodian:
+      type: object
+      additionalProperties: false
+      required: [provider, environment, transaction_id, milestone_id, instruction]
+      properties:
+        provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+        environment: { type: string, enum: [sandbox, production] }
+        transaction_id: { type: string }
+        milestone_id: { type: string }
+        instruction: { type: string, enum: [release_milestone] }
+
+    ReleaseLockAmendRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [expected_version, change_order, lock_expires_at, contractor_party, customer_party]
+      properties:
+        organization_id: { type: string }
+        expected_version: { type: integer, minimum: 1 }
+        change_order:
+          $ref: '#/components/schemas/ReleaseLockChangeOrder'
+        lock_expires_at: { type: string, format: date-time }
+        contractor_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+        customer_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+
     MobilePairing:
       type: object
       required: [pairing_code, profile_id, expires_at, enabled_platforms]
