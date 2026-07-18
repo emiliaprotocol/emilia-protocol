@@ -4,8 +4,25 @@
 
 export const MAX_JSON_DEPTH = 64;
 
+function hasUnpairedUtf16Surrogate(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return true;
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function strictJsonGate(raw) {
   if (typeof raw !== 'string') return { ok: false, reason: 'JSON input must be text' };
+  if (hasUnpairedUtf16Surrogate(raw)) {
+    return { ok: false, reason: 'unpaired Unicode surrogate' };
+  }
   try { JSON.parse(raw); } catch { return { ok: false, reason: 'invalid JSON syntax' }; }
   let index = 0;
   const stack = [];

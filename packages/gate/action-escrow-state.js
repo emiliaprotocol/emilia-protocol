@@ -357,6 +357,9 @@ export function createActionEscrowStatePackageVerifier({
   return async function verifyPackagedState(packaged, expected = {}) {
     if (!exactKeys(packaged, new Set(['snapshot', 'statement']))
       || !isRecord(packaged.statement?.payload)
+      || !isRecord(packaged.snapshot)
+      || packaged.statement.payload.state !== packaged.snapshot.state
+      || packaged.statement.payload.revision !== packaged.snapshot.revision
       || packaged.statement.payload.revision < minimumRevision) {
       return refuse('malformed_packaged_state', {
         structure: false,

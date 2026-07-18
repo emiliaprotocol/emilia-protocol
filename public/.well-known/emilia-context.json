@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-17T15:46:06.833Z",
+  "evidence_snapshot_at": "2026-07-18T03:12:07.828Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "65e05add39bd0dac8534f5c09980626acf3383538bd6b68f4293d965e88ac533",
+    "input_digest_sha256": "b434ef469d496f67bfdef5763dc0c8846e1ef6eba647c48ceada6c70b2f3dc75",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "b822f97b3b3bd4d0ffc63622487a1a64c580382611a335c36a09066639e7fc68",
+        "sha256": "9d67809ee3a4e43486fb48b9e9a95dd0f6d9ddeb3eb1d51f5be388ecdaf764b7",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "9d1e7d290500759479bec9b38ec0314989ad2cda775990c75ee1bdb2319a7710",
+        "sha256": "872478a0ece12faeffafa64e31623bc30f2dc20b83869263dd48e1ef2d94c3cc",
         "bytes": 5622
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "da657c4f7315930d54f303e3fedca17c98ca532983769ee105b03144cdefe9c5",
-        "bytes": 112274
+        "sha256": "f38d04831849ee0a36ed650942ed3132cda942b1c925aebd60456a8ba97b8053",
+        "bytes": 122064
       },
       {
         "path": "security/security-case.json",
-        "sha256": "bc77f576b7e5ff64e2a290a80306f0fc694bc54c6235e0c1cf4946dc2c11c33a",
-        "bytes": 179190
+        "sha256": "ab5f8c2b51b78c74cef0da9f1e51bbaaa00bc01bff83992f86b0905c0f8e81ad",
+        "bytes": 195355
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -240,8 +240,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5920,
-      "files": 304,
+      "total": 5988,
+      "files": 309,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -250,7 +250,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "caf4cd1c562827e3ebcd5cb8dca1a9a466590a673d244938974872722c658ae2",
+      "manifest_sha256": "4f236bf57ae1bfa711624391ab46bc0e35b4e7b3b386940ec3222dc39f777c8b",
       "vector_bundle_sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
     },
     "formal": {
@@ -270,9 +270,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 25,
-      "evidence_files": 104,
-      "evidence_bundle_sha256": "74d3f28eee1c94047f87a2fd05451e5f43cc80411b266784d5952bb80febd660"
+      "claims": 26,
+      "evidence_files": 116,
+      "evidence_bundle_sha256": "29b1ce0c9b9e7c2fa3963737da67aa33b3527ae710d22b3f1c4c8d36dac5b16f"
     },
     "caid": {
       "core_vectors": 48,
@@ -2336,6 +2336,144 @@
         "cryptographic meter integrity does not prove sensor truth, baseline economic correctness, grid safety, or absence of an out-of-band bypass",
         "the Action State output is an unregistered signed statement and is not claimed as a SCITT transparency-service anchor",
         "the upstream Action State parser check is time-pinned interoperability evidence, not an independent implementation of GRACE"
+      ]
+    },
+    {
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. The portable package keeps document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
+      "acceptance_roots": [
+        "relying-party-pinned document-mapping issuer, Action Escrow profile, party keys, operator state key, and custodian adapter configuration",
+        "the exact final PDF bytes and signed Document Action Binding whose closed material-term profile commits the payment action and evidence requirements",
+        "a licensed external custodian that exclusively mediates funding and release for the configured transaction and honors idempotency"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow.js",
+          "symbol": "createActionEscrowKernel",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-verifiers.js",
+          "symbol": "createActionEscrowDocumentBindingVerifier",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-custodian.js",
+          "symbol": "createActionEscrowCustodianBridge",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-package.js",
+          "symbol": "assembleActionEscrowEvidencePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-postgres.js",
+          "symbol": "createActionEscrowPostgresStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/escrow-com.js",
+          "symbol": "createEscrowComAdapter",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the Action Escrow product profile or stateful release kernel is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the Action Escrow product profile or stateful release kernel is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_action_escrow_exact_release_once",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_committed_fact_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_role_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_funded_amendment_without_unwind",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_journal_divergence",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_verifier_echo_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_expired_release_approval",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_funding_request_state_fallback",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_compensated_history_pruning",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_database_role_or_clock_rollback",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_custodian_alias_or_unfunded_release",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The complete document-to-custodian composition, five-row evidence package, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+        }
+      ],
+      "assumptions": [
+        "every release path is completely mediated by the configured licensed custodian and the custodian honors the exact provider transaction, beneficiary, amount, and idempotency contract",
+        "the relying party provisions and maintains the mapping issuer, party, operator, and provider trust roots out of band",
+        "the durable store runs under a separately provisioned non-owner role with no DELETE or TRUNCATE privilege on state and no UPDATE, DELETE, or TRUNCATE privilege on history; database-owner compromise remains outside this claim",
+        "the deployment supplies a durable fail-closed effect-reference binding store to the external custodian adapter",
+        "the external evidence verifier truthfully checks completion evidence under the requirements committed by the signed action"
+      ],
+      "exclusions": [
+        "EMILIA does not hold funds, act as an escrow agent, determine licensure, or establish legal enforceability",
+        "cryptographic evidence does not prove workmanship, physical completion, identity, comprehension, voluntariness, fairness, or absence of fraud by an authentic trusted key",
+        "the guarantee does not cover payment routes or custodian operations that bypass the integrated mediation boundary",
+        "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
+        "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
       ]
     }
   ],

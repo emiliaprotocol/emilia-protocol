@@ -81,6 +81,7 @@ function acceptanceArtifact(partyId, overrides = {}) {
   return {
     kind: 'e_sign_acceptance',
     party_id: partyId,
+    principal_key_id: `key:${partyId}`,
     agreement_digest: AGREEMENT_DIGEST,
     document_action_binding_digest: BINDING_DIGEST,
     ...overrides,
@@ -92,6 +93,7 @@ function milestoneEvidence(submitterPartyId = 'ep:principal:contractor', overrid
     kind: 'milestone_evidence',
     evidence_digest: EVIDENCE_DIGEST,
     submitter_party_id: submitterPartyId,
+    observed_at: '2026-07-17T11:59:00.000Z',
     ...overrides,
   };
 }
@@ -102,8 +104,12 @@ function resolution(partyId, overrides = {}) {
     signoff: {
       context: {
         principal: partyId,
+        principal_key_id: `key:${partyId}`,
         envelope_hash: BINDING_DIGEST,
         action_hash: RELEASE_ACTION_DIGEST,
+        nonce: `nonce:${partyId}`,
+        issued_at: '2026-07-17T12:00:00.000Z',
+        expires_at: '2026-07-17T12:05:00.000Z',
         resolution: { outcome: 'approved', selected_option: 0 },
       },
     },
@@ -126,6 +132,15 @@ function releaseStatement(providerIdempotencyKey, overrides = {}) {
     status: 'released',
     statement_digest: digest('f'),
     provider_idempotency_key: providerIdempotencyKey,
+    ...overrides,
+  };
+}
+
+function commandAuthorization(command, partyId, overrides = {}) {
+  return {
+    kind: 'state_command_authorization',
+    command,
+    party_id: partyId,
     ...overrides,
   };
 }
@@ -153,6 +168,30 @@ function defaultVerifiers() {
       return {
         valid: true,
         verification_digest: digest('1'),
+        document_digest: digest('4'),
+        agreement_id: 'agreement-kitchen-01',
+        binding_id: expected.supersedes_document_action_binding_digest === undefined
+          ? 'binding-kitchen-01'
+          : 'binding-kitchen-02',
+        release_action_template: {
+          action_type: 'escrow.milestone.release',
+          action_escrow_profile_digest: expected.profile_digest,
+          agreement_id: 'agreement-kitchen-01',
+          agreement_digest: expected.agreement_digest,
+          milestone_id: expected.milestone_id,
+          amount: '18400.00',
+          currency: 'USD',
+          destination_id: 'custody-destination-4821',
+          payee_id: 'ep:principal:contractor',
+          custodian_provider: 'licensed-custodian.test',
+          custodian_environment: 'sandbox',
+          custodian_transaction_id: 'provider-transaction-001',
+          custodian_milestone_id: 'provider-milestone-001',
+          document_sha256: digest('4'),
+          material_terms_sha256: digest('5'),
+          completion_evidence_sha256: EVIDENCE_DIGEST,
+          amendment_version: 1,
+        },
         ...verifierBindings(expected),
         ...(expected.supersedes_document_action_binding_digest === undefined
           ? {}
@@ -172,6 +211,7 @@ function defaultVerifiers() {
         valid: true,
         acceptance_digest: digest(artifact.party_id.endsWith('client') ? '2' : '3'),
         party_id: artifact.party_id,
+        principal_key_id: artifact.principal_key_id,
         ...verifierBindings(expected),
         agreement_digest: artifact.agreement_digest,
         document_action_binding_digest: artifact.document_action_binding_digest,
@@ -183,15 +223,28 @@ function defaultVerifiers() {
         valid: true,
         evidence_digest: artifact.evidence_digest,
         submitter_party_id: artifact.submitter_party_id,
+        observed_at: artifact.observed_at,
         ...verifierBindings(expected),
       };
     },
-    async verifyResolutionReceipt(artifact) {
+    async verifyResolutionReceipt(artifact, expected) {
       const outcome = artifact?.signoff?.context?.resolution?.outcome;
+      const context = artifact?.signoff?.context || {};
+      const party = expected.parties.find(({ party_id: partyId }) => (
+        partyId === context.principal
+      ));
       return {
         valid: artifact?.profile === 'EP-RESOLUTION-v1',
         authorizes_action: outcome === 'approved',
         outcome,
+        party_id: context.principal,
+        party_role: party?.role,
+        principal_key_id: context.principal_key_id,
+        nonce: context.nonce,
+        issued_at: context.issued_at,
+        expires_at: context.expires_at,
+        evidence_digest: expected.evidence_digest,
+        ...verifierBindings(expected),
       };
     },
     async verifyProviderStatement(statement, expected) {
@@ -202,11 +255,35 @@ function defaultVerifiers() {
         status: statement?.status,
         statement_digest: statement?.statement_digest,
         provider_id: expected.provider_id,
+        ...(expected.provider_transaction_id === undefined ? {} : {
+          provider_transaction_id: expected.provider_transaction_id,
+          provider_milestone_id: expected.provider_milestone_id,
+          amount: expected.amount,
+          currency: expected.currency,
+          destination_id: expected.destination_id,
+        }),
         ...verifierBindings(expected),
         ...(statement?.provider_idempotency_key === undefined
           ? {}
           : { provider_idempotency_key: statement.provider_idempotency_key }),
+        ...(expected.provider_request_digest === undefined
+          ? {}
+          : { provider_request_digest: expected.provider_request_digest }),
         ...(statement?.override_bindings || {}),
+      };
+    },
+    async verifyStateCommand(artifact, expected) {
+      return {
+        valid: artifact?.kind === 'state_command_authorization'
+          && artifact.command === expected.command
+          && artifact.party_id === expected.party_id
+          && artifact.valid !== false,
+        authorizes_command: artifact?.authorizes_command !== false,
+        command: artifact?.command,
+        party_id: artifact?.party_id,
+        details_digest: artifact?.details_digest ?? expected.details_digest,
+        command_digest: artifact?.command_digest ?? expected.command_digest,
+        ...verifierBindings(expected),
       };
     },
   };
@@ -331,9 +408,22 @@ test('runs the complete milestone lifecycle and releases exactly once', async ()
     'POST acknowledgement is never substituted for authoritative GET reconciliation',
   );
 
-  const completed = await kernel.complete(common('complete'));
+  const unsignedCompletion = await kernel.complete(common('unsigned-complete', {
+    party_id: 'ep:principal:client',
+  }));
+  assert.equal(unsignedCompletion.ok, false);
+  assert.equal(unsignedCompletion.code, 'invalid_operation_input');
+
+  const completed = await kernel.complete(common('complete', {
+    party_id: 'ep:principal:client',
+    command_authorization: commandAuthorization(
+      'complete',
+      'ep:principal:client',
+    ),
+  }));
   assert.equal(completed.ok, true);
   assertState(completed, 'completed');
+  assert.equal(completed.record.completion.meaning, 'administrative_archive_only');
 });
 
 test('mutual e-sign acceptance makes the agreement effective but never approves release', async () => {
@@ -421,6 +511,130 @@ test('joins resolutions to the exact current binding, action, and party', async 
   assert.equal(refused.code, 'resolution_party_mismatch');
 });
 
+test('release approval binds milestone evidence, freshness, and one device key per party', async () => {
+  const prepare = async (kernel) => {
+    await createAndEffectuate(kernel);
+    await kernel.requestFunding(common('fund-request'));
+    await kernel.recordFunding(common('fund-record', {
+      provider_statement: fundingStatement(),
+    }));
+    await kernel.submitMilestone(common('evidence', {
+      milestone_evidence: milestoneEvidence(),
+    }));
+  };
+
+  let setup = kernelFor({
+    async verifyResolutionReceipt(artifact, expected) {
+      const base = await defaultVerifiers().verifyResolutionReceipt(artifact, expected);
+      return { ...base, evidence_digest: digest('9') };
+    },
+  });
+  await prepare(setup.kernel);
+  let refused = await setup.kernel.approveRelease(common('wrong-evidence', {
+    party_id: 'ep:principal:client',
+    resolution: resolution('ep:principal:client'),
+  }));
+  assert.equal(refused.code, 'resolution_verification_refused');
+
+  setup = kernelFor();
+  await prepare(setup.kernel);
+  refused = await setup.kernel.approveRelease(common('approval-predates-evidence', {
+    party_id: 'ep:principal:client',
+    resolution: resolution('ep:principal:client', {
+      signoff: {
+        context: {
+          ...resolution('ep:principal:client').signoff.context,
+          issued_at: '2026-07-17T11:58:00.000Z',
+          expires_at: '2026-07-17T12:03:00.000Z',
+        },
+      },
+    }),
+  }));
+  assert.equal(refused.code, 'resolution_freshness_invalid');
+
+  assertState(await setup.kernel.approveRelease(common('client-key-seat', {
+    party_id: 'ep:principal:client',
+    resolution: resolution('ep:principal:client'),
+  })), 'milestone_submitted');
+  refused = await setup.kernel.approveRelease(common('same-key-second-seat', {
+    party_id: 'ep:principal:contractor',
+    resolution: resolution('ep:principal:contractor', {
+      signoff: {
+        context: {
+          ...resolution('ep:principal:contractor').signoff.context,
+          principal_key_id: 'key:ep:principal:client',
+        },
+      },
+    }),
+  }));
+  assert.equal(refused.code, 'resolution_key_already_counted');
+});
+
+test('signed action commitments cannot be replaced by verifier-selected funding or evidence', async () => {
+  let setup = kernelFor({
+    verifyProviderStatement: async (statement, expected) => ({
+      valid: true,
+      authenticated: true,
+      statement_type: statement.statement_type,
+      status: statement.status,
+      statement_digest: statement.statement_digest,
+      provider_id: expected.provider_id,
+      provider_transaction_id: expected.provider_transaction_id,
+      provider_milestone_id: expected.provider_milestone_id,
+      amount: '1.00',
+      currency: expected.currency,
+      destination_id: expected.destination_id,
+      ...verifierBindings(expected),
+    }),
+  });
+  await createAndEffectuate(setup.kernel);
+  await setup.kernel.requestFunding(common('bound-funding-request'));
+  let refused = await setup.kernel.recordFunding(common('wrong-funding-amount', {
+    provider_statement: fundingStatement(),
+  }));
+  assert.equal(refused.code, 'funding_statement_invalid');
+  assertState(refused, 'awaiting_funding');
+
+  setup = kernelFor({
+    verifyMilestoneEvidence: async (_artifact, expected) => ({
+      valid: true,
+      evidence_digest: digest('9'),
+      submitter_party_id: 'ep:principal:contractor',
+      observed_at: '2026-07-17T11:59:00.000Z',
+      ...verifierBindings(expected),
+    }),
+  });
+  await createAndEffectuate(setup.kernel);
+  await setup.kernel.requestFunding(common('expected-evidence-funding-request'));
+  await setup.kernel.recordFunding(common('expected-evidence-funding', {
+    provider_statement: fundingStatement(),
+  }));
+  refused = await setup.kernel.submitMilestone(common('wrong-committed-evidence', {
+    milestone_evidence: milestoneEvidence(),
+  }));
+  assert.equal(refused.code, 'milestone_evidence_invalid');
+  assertState(refused, 'funded');
+});
+
+test('one signer key cannot fill two agreement-acceptance seats', async () => {
+  const { kernel } = kernelFor();
+  await kernel.create(common('create', {
+    document_action_binding: bindingArtifact(),
+  }));
+  await kernel.beginAcceptance(common('begin'));
+  await kernel.acceptAgreement(common('accept-client', {
+    party_id: 'ep:principal:client',
+    agreement_acceptance: acceptanceArtifact('ep:principal:client'),
+  }));
+  const refused = await kernel.acceptAgreement(common('accept-contractor-same-key', {
+    party_id: 'ep:principal:contractor',
+    agreement_acceptance: acceptanceArtifact('ep:principal:contractor', {
+      principal_key_id: 'key:ep:principal:client',
+    }),
+  }));
+  assert.equal(refused.code, 'agreement_acceptance_invalid');
+});
+
 test('enforces initiator exclusion when the bound profile prohibits self-approval', async () => {
   const profile = {
     ...PROFILE,
@@ -483,6 +697,12 @@ test('provider timeout becomes release_indeterminate and requires authenticated 
   assert.equal(reconciled.ok, true);
   assert.equal(reconciled.code, 'release_reconciled_released');
   assertState(reconciled, 'released');
+  assert.equal(releaseCalls, 1);
+
+  const originalRetry = await kernel.release(common('release-timeout'));
+  assert.equal(originalRetry.ok, true);
+  assert.equal(originalRetry.code, 'release_reconciled_released');
+  assertState(originalRetry, 'released');
   assert.equal(releaseCalls, 1);
 });
 
@@ -582,13 +802,18 @@ test('concurrent release requests durably reserve once before provider invocatio
   assert.equal(releaseCalls, 1);
 });
 
-test('amendment supersedes the exact binding and invalidates old release authorization', async () => {
+test('pre-funding amendment supersedes the exact binding and invalidates the old action', async () => {
   const { kernel, provider } = kernelFor();
-  await readyForRelease(kernel);
+  await createAndEffectuate(kernel);
   const nextBinding = digest('4');
   const nextAction = digest('5');
 
   const pending = await kernel.proposeAmendment(common('propose-amendment', {
+    party_id: 'ep:principal:client',
+    command_authorization: commandAuthorization(
+      'propose_amendment',
+      'ep:principal:client',
+    ),
     next_document_action_binding_digest: nextBinding,
     next_release_action_digest: nextAction,
     next_document_action_binding: bindingArtifact({
@@ -627,6 +852,189 @@ test('amendment supersedes the exact binding and invalidates old release authori
 
   const oldBindingOperation = await kernel.requestFunding(common('old-binding-after-amendment'));
   assert.equal(oldBindingOperation.code, 'operation_binding_mismatch');
+});
+
+test('funding-request state blocks amendment and cancellation until custodian reconciliation', async () => {
+  const { kernel } = kernelFor();
+  await createAndEffectuate(kernel);
+  assertState(await kernel.requestFunding(common('funding-request-lock')), 'awaiting_funding');
+
+  const amendment = await kernel.proposeAmendment(common('amend-after-funding-request', {
+    party_id: 'ep:principal:client',
+    command_authorization: commandAuthorization(
+      'propose_amendment',
+      'ep:principal:client',
+    ),
+    next_document_action_binding_digest: digest('4'),
+    next_release_action_digest: digest('5'),
+    next_document_action_binding: bindingArtifact({
+      document_action_binding_digest: digest('4'),
+      release_action_digest: digest('5'),
+      supersedes_document_action_binding_digest: BINDING_DIGEST,
+    }),
+  }));
+  assert.equal(amendment.code, 'amendment_requires_funding_reconciliation');
+  assertState(amendment, 'awaiting_funding');
+
+  const cancellation = await kernel.cancel(common('cancel-after-funding-request', {
+    party_id: 'ep:principal:client',
+    reason: 'Funding status is unknown',
+    command_authorization: commandAuthorization('cancel', 'ep:principal:client'),
+  }));
+  assert.equal(cancellation.code, 'cancellation_requires_funding_reconciliation');
+  assertState(cancellation, 'awaiting_funding');
+});
+
+test('milestone observations from the future are refused', async () => {
+  const { kernel } = kernelFor();
+  await createAndEffectuate(kernel);
+  await kernel.requestFunding(common('future-evidence-funding-request'));
+  await kernel.recordFunding(common('future-evidence-funding-record', {
+    provider_statement: fundingStatement(),
+  }));
+
+  const refused = await kernel.submitMilestone(common('future-evidence-submit', {
+    milestone_evidence: milestoneEvidence('ep:principal:contractor', {
+      observed_at: '2026-07-17T12:00:01.000Z',
+    }),
+  }));
+  assert.equal(refused.code, 'milestone_evidence_invalid');
+  assertState(refused, 'funded');
+});
+
+test('expired approvals are refused both at admission and immediately before release', async () => {
+  let currentTime = '2026-07-17T12:00:00.000Z';
+  let setup = kernelFor({ now: () => currentTime });
+  await createAndEffectuate(setup.kernel);
+  await setup.kernel.requestFunding(common('expired-at-admission-funding-request'));
+  await setup.kernel.recordFunding(common('expired-at-admission-funding-record', {
+    provider_statement: fundingStatement(),
+  }));
+  await setup.kernel.submitMilestone(common('expired-at-admission-submit', {
+    milestone_evidence: milestoneEvidence(),
+  }));
+  currentTime = '2026-07-17T12:06:00.000Z';
+  let refused = await setup.kernel.approveRelease(common('expired-at-admission-approval', {
+    party_id: 'ep:principal:client',
+    resolution: resolution('ep:principal:client'),
+  }));
+  assert.equal(refused.code, 'resolution_freshness_invalid');
+  assertState(refused, 'milestone_submitted');
+
+  currentTime = '2026-07-17T12:00:00.000Z';
+  setup = kernelFor({ now: () => currentTime });
+  await readyForRelease(setup.kernel);
+  currentTime = '2026-07-17T12:06:00.000Z';
+  refused = await setup.kernel.release(common('expired-before-effect-release'));
+  assert.equal(refused.code, 'release_approval_expired');
+  assertState(refused, 'milestone_submitted');
+  assert.equal(setup.provider.calls.length, 0);
+});
+
+test('the kernel refuses clock regression before committing another state', async () => {
+  let currentTime = '2026-07-17T12:00:00.000Z';
+  const { kernel } = kernelFor({ now: () => currentTime });
+  await kernel.create(common('clock-create', {
+    document_action_binding: bindingArtifact(),
+  }));
+  currentTime = '2026-07-17T11:59:59.000Z';
+
+  const refused = await kernel.beginAcceptance(common('clock-regression'));
+  assert.equal(refused.code, 'clock_regression');
+  assertState(refused, 'draft');
+  assert.equal(refused.record.revision, 0);
+});
+
+test('dispute, amendment, and cancellation refuse raw party identifiers without command proof', async () => {
+  let setup = kernelFor();
+  await readyForRelease(setup.kernel);
+  let refused = await setup.kernel.openDispute(common('unsigned-dispute', {
+    party_id: 'ep:principal:client',
+    reason: 'Milestone evidence is incomplete',
+  }));
+  assert.equal(refused.code, 'invalid_operation_input');
+
+  refused = await setup.kernel.openDispute(common('cross-party-dispute', {
+    party_id: 'ep:principal:client',
+    reason: 'Milestone evidence is incomplete',
+    command_authorization: commandAuthorization(
+      'open_dispute',
+      'ep:principal:contractor',
+    ),
+  }));
+  assert.equal(refused.code, 'command_authorization_refused');
+
+  const disputed = await setup.kernel.openDispute(common('signed-dispute', {
+    party_id: 'ep:principal:client',
+    reason: 'Milestone evidence is incomplete',
+    command_authorization: commandAuthorization(
+      'open_dispute',
+      'ep:principal:client',
+    ),
+  }));
+  assertState(disputed, 'disputed');
+
+  setup = kernelFor();
+  await createAndEffectuate(setup.kernel);
+  refused = await setup.kernel.proposeAmendment(common('unsigned-amendment', {
+    party_id: 'ep:principal:client',
+    next_document_action_binding_digest: digest('4'),
+    next_release_action_digest: digest('5'),
+    next_document_action_binding: bindingArtifact({
+      document_action_binding_digest: digest('4'),
+      release_action_digest: digest('5'),
+      supersedes_document_action_binding_digest: BINDING_DIGEST,
+    }),
+  }));
+  assert.equal(refused.code, 'invalid_operation_input');
+
+  setup = kernelFor();
+  await setup.kernel.create(common('create-before-cancel', {
+    document_action_binding: bindingArtifact(),
+  }));
+  refused = await setup.kernel.cancel(common('unsigned-cancel', {
+    party_id: 'ep:principal:client',
+    reason: 'Cancel before acceptance',
+  }));
+  assert.equal(refused.code, 'invalid_operation_input');
+
+  refused = await setup.kernel.cancel(common('changed-cancel-reason', {
+    party_id: 'ep:principal:client',
+    reason: 'Cancel before acceptance',
+    command_authorization: commandAuthorization(
+      'cancel',
+      'ep:principal:client',
+      { details_digest: digest('9') },
+    ),
+  }));
+  assert.equal(refused.code, 'command_authorization_refused');
+
+  const cancelled = await setup.kernel.cancel(common('signed-cancel', {
+    party_id: 'ep:principal:client',
+    reason: 'Cancel before acceptance',
+    command_authorization: commandAuthorization(
+      'cancel',
+      'ep:principal:client',
+    ),
+  }));
+  assertState(cancelled, 'cancelled');
+
+  setup = kernelFor();
+  await createAndEffectuate(setup.kernel);
+  await setup.kernel.requestFunding(common('funding-request-before-cancel'));
+  await setup.kernel.recordFunding(common('funding-record-before-cancel', {
+    provider_statement: fundingStatement(),
+  }));
+  refused = await setup.kernel.cancel(common('funded-cancel', {
+    party_id: 'ep:principal:client',
+    reason: 'Funds must be returned',
+    command_authorization: commandAuthorization(
+      'cancel',
+      'ep:principal:client',
+    ),
+  }));
+  assert.equal(refused.code, 'cancellation_requires_custodian_unwind');
+  assertState(refused, 'funded');
 });
 
 test('provider or post-effect CAS failures return closed indeterminate outcomes without throwing', async () => {
@@ -791,7 +1199,7 @@ test('a provider release statement for another action cannot commit release', as
   assertState(result, 'release_indeterminate');
 });
 
-test('an amendment racing a reserved release freezes until GET proves no effect', async () => {
+test('an amendment cannot race funded custody without an authenticated unwind', async () => {
   let providerStarted;
   const started = new Promise((resolve) => { providerStarted = resolve; });
   let finishProvider;
@@ -820,6 +1228,11 @@ test('an amendment racing a reserved release freezes until GET proves no effect'
   const nextBinding = digest('4');
   const nextAction = digest('5');
   const amendment = await kernel.proposeAmendment(common('racing-amendment', {
+    party_id: 'ep:principal:client',
+    command_authorization: commandAuthorization(
+      'propose_amendment',
+      'ep:principal:client',
+    ),
     next_document_action_binding_digest: nextBinding,
     next_release_action_digest: nextAction,
     next_document_action_binding: bindingArtifact({
@@ -828,17 +1241,19 @@ test('an amendment racing a reserved release freezes until GET proves no effect'
       supersedes_document_action_binding_digest: BINDING_DIGEST,
     }),
   }));
-  assert.equal(amendment.outcome, 'indeterminate');
-  assertState(amendment, 'release_indeterminate');
+  assert.equal(amendment.ok, false);
+  assert.equal(amendment.code, 'amendment_requires_custodian_unwind');
+  assertState(amendment, 'release_reserved');
+  assert.notEqual(amendment.record.funding, null);
+  assert.notEqual(amendment.record.release, null);
 
   finishProvider();
   const releaseResult = await releasePromise;
   assert.equal(releaseResult.ok, false);
-  assertState(releaseResult, 'release_indeterminate');
-
-  const reconciled = await kernel.reconcileRelease(common('racing-reconcile'));
-  assert.equal(reconciled.code, 'release_reconciled_not_released');
-  assertState(reconciled, 'amendment_pending');
+  assert.equal(releaseResult.code, 'provider_release_not_released');
+  assertState(releaseResult, 'milestone_submitted');
+  assert.notEqual(releaseResult.record.funding, null);
+  assert.equal(releaseResult.record.pending_amendment, null);
 });
 
 test('generic apply closes over hostile operation selectors instead of throwing', async () => {

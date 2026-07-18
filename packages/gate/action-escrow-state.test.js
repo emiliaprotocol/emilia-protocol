@@ -253,3 +253,49 @@ test('package verifier binds an embedded snapshot without trusting package keys'
   });
   assert.equal((await staleVerifier({ snapshot: stateRecord, statement }, {})).valid, false);
 });
+
+test('package verifier refuses a signed state or revision that contradicts its snapshot', async (t) => {
+  const { key, opts } = fixture();
+  const verifyPackaged = createActionEscrowStatePackageVerifier({
+    trustedKeys: opts.trustedKeys,
+    now: NOW,
+  });
+
+  for (const [name, state, revision] of [
+    ['state', 'completed', stateRecord.revision],
+    ['revision', stateRecord.state, stateRecord.revision + 1],
+  ]) {
+    await t.test(name, async () => {
+      const statement = signActionEscrowStateStatement({
+        statementId: `state-contradiction-${name}`,
+        agreementId: opts.expectedAgreementId,
+        bindingDigest: opts.expectedBindingDigest,
+        actionDigest: opts.expectedActionDigest,
+        profileDigest: opts.expectedProfileDigest,
+        state,
+        revision,
+        amendmentDigests: opts.expectedAmendmentDigests,
+        stateRecord,
+        previousStatementDigest: opts.expectedPreviousStatementDigest,
+        occurredAt: '2026-07-17T17:59:00.000Z',
+      }, {
+        operatorId: 'operator:emilia-gate',
+        keyId: 'key:operator-1',
+        privateKey: key.privateKey,
+      });
+      const result = await verifyPackaged({
+        snapshot: stateRecord,
+        statement,
+      }, {
+        agreementId: opts.expectedAgreementId,
+        bindingDigest: opts.expectedBindingDigest,
+        actionDigest: opts.expectedActionDigest,
+        profileDigest: opts.expectedProfileDigest,
+        amendmentDigests: opts.expectedAmendmentDigests,
+        stage: state,
+      });
+      assert.equal(result.valid, false);
+      assert.equal(result.reason, 'malformed_packaged_state');
+    });
+  }
+});

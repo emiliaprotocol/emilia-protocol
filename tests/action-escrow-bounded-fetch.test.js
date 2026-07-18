@@ -172,11 +172,17 @@ describe('external custodian contract', () => {
     expect(Object.isFrozen(adapter.customer_diligence)).toBe(true);
   });
 
-  it('refuses credential-like fields in exposed diligence metadata', () => {
+  it.each([
+    ['access_token', 'token'],
+    ['private_key', 'key'],
+    ['bearer_token', 'bearer'],
+    ['session_token', 'session'],
+    ['headers', { authorization: 'secret' }],
+  ])('refuses credential-like field %s in exposed diligence metadata', (field, value) => {
     expect(() => defineExternalCustodianAdapter({
       provider: 'example-custodian',
       environment: 'sandbox',
-      customerDiligence: { access_token: 'must-not-be-exposed' },
+      customerDiligence: { nested: { [field]: value } },
       capabilities: {
         create_transaction: true,
         reconcile_transaction: true,

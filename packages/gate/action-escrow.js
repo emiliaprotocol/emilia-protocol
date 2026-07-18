@@ -7,6 +7,7 @@
  * CAS and refuses every state or external-effect ambiguity.
  */
 import { canonicalize, hashCanonical } from './execution-binding.js';
+import { validateActionEscrowReleaseTemplate } from './action-escrow-verifiers.js';
 
 export const ACTION_ESCROW_STATE_VERSION = 'EP-ACTION-ESCROW-STATE-v1';
 export const ACTION_ESCROW_OUTCOME_VERSION = 'EP-ACTION-ESCROW-OUTCOME-v1';
@@ -32,24 +33,21 @@ export const ACTION_ESCROW_TRANSITIONS = Object.freeze({
   draft: Object.freeze(['awaiting_acceptance', 'cancelled']),
   awaiting_acceptance: Object.freeze(['effective', 'cancelled']),
   effective: Object.freeze(['awaiting_funding', 'amendment_pending', 'cancelled']),
-  awaiting_funding: Object.freeze(['funded', 'amendment_pending', 'cancelled']),
-  funded: Object.freeze(['milestone_submitted', 'disputed', 'amendment_pending', 'cancelled']),
+  awaiting_funding: Object.freeze(['funded']),
+  funded: Object.freeze(['milestone_submitted', 'disputed']),
   milestone_submitted: Object.freeze([
     'release_reserved',
     'disputed',
-    'amendment_pending',
-    'cancelled',
   ]),
   release_reserved: Object.freeze(['released', 'release_indeterminate', 'milestone_submitted']),
   released: Object.freeze(['completed']),
-  disputed: Object.freeze(['amendment_pending', 'cancelled']),
+  disputed: Object.freeze([]),
   amendment_pending: Object.freeze(['effective', 'cancelled']),
   cancelled: Object.freeze([]),
   completed: Object.freeze([]),
   release_indeterminate: Object.freeze([
     'released',
     'milestone_submitted',
-    'amendment_pending',
   ]),
 });
 
@@ -101,6 +99,7 @@ const RECORD_KEYS = new Set([
   'release',
   'dispute',
   'cancellation',
+  'completion',
   'pending_amendment',
   'superseded_bindings',
   'operations',
@@ -238,6 +237,7 @@ function releaseReservationKey(context) {
     document_action_binding_digest: context.document_action_binding_digest,
     milestone_id: context.milestone_id,
     release_action_digest: context.release_action_digest,
+    profile_digest: context.profile_digest,
   })}`;
 }
 
@@ -245,8 +245,10 @@ function providerIdempotencyKey(context) {
   return `ep-ae-release:${hashCanonical({
     '@version': 'EP-ACTION-ESCROW-PROVIDER-IDEMPOTENCY-v1',
     agreement_digest: context.agreement_digest,
+    document_action_binding_digest: context.document_action_binding_digest,
     milestone_id: context.milestone_id,
     release_action_digest: context.release_action_digest,
+    profile_digest: context.profile_digest,
   })}`;
 }
 
@@ -372,6 +374,49 @@ function boundVerificationSummary(result, expected, extras = {}) {
   };
 }
 
+function bindingVerificationDetails(result, expected) {
+  try {
+    if (!boundVerificationMatches(result, expectedBindings(expected))
+      || !validDigest(result.verification_digest)
+      || !validDigest(result.document_digest)
+      || !validString(result.agreement_id, 256)
+      || !validString(result.binding_id, 256)
+      || !isPlainObject(result.release_action_template)) {
+      return null;
+    }
+    const releaseActionTemplate = validateActionEscrowReleaseTemplate(
+      result.release_action_template,
+      {
+        profileDigest: expected.profile_digest,
+        agreementId: result.agreement_id,
+        agreementDigest: expected.agreement_digest,
+        milestoneId: expected.milestone_id,
+        documentDigest: result.document_digest,
+      },
+    );
+    if (!releaseActionTemplate) return null;
+    return {
+      verification_digest: result.verification_digest,
+      document_digest: result.document_digest,
+      agreement_id: result.agreement_id,
+      binding_id: result.binding_id,
+      release_action_template: releaseActionTemplate,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storedBindingVerificationValid(container, expected) {
+  if (!isPlainObject(container)
+    || !isPlainObject(container.artifact)
+    || !isPlainObject(container.verification)
+    || container.verification.valid !== true) {
+    return false;
+  }
+  return bindingVerificationDetails(container.verification, expected) !== null;
+}
+
 function recordShapeValid(record, revision) {
   if (!exactKeys(record, RECORD_KEYS)
     || record['@version'] !== ACTION_ESCROW_STATE_VERSION
@@ -391,7 +436,7 @@ function recordShapeValid(record, revision) {
     || record.parties_digest !== canonicalDigest(record.parties)
     || record.profile_digest !== canonicalDigest(record.profile)
     || record.escrow_key !== escrowKey(record)
-    || !isPlainObject(record.document_action_binding)
+    || !storedBindingVerificationValid(record.document_action_binding, record)
     || !Array.isArray(record.agreement_acceptances)
     || !Array.isArray(record.release_approvals)
     || !Array.isArray(record.superseded_bindings)
@@ -502,15 +547,22 @@ function finalizeMutation(record, normalized, operation, code, at, mutate, resul
   return { next };
 }
 
-function providerExpected(record) {
-  return {
-    ...expectedBindings(record),
-    parties: record.parties,
-    profile: record.profile,
-    provider_id: record.profile.provider_id,
-    provider_idempotency_key: record.release?.provider_idempotency_key ?? null,
-  };
-}
+  function providerExpected(record) {
+    const template = record.document_action_binding.verification.release_action_template;
+    return {
+      ...expectedBindings(record),
+      parties: record.parties,
+      profile: record.profile,
+      provider_id: record.profile.provider_id,
+      provider_idempotency_key: record.release?.provider_idempotency_key ?? null,
+      provider_request_digest: record.release?.provider_request?.request_digest ?? null,
+      provider_transaction_id: template.custodian_transaction_id,
+      provider_milestone_id: template.custodian_milestone_id,
+      amount: template.amount,
+      currency: template.currency,
+      destination_id: template.destination_id,
+    };
+  }
 
 /**
  * Create a fail-closed Action Escrow kernel.
@@ -536,6 +588,7 @@ export function createActionEscrowKernel(options = {}) {
   let verifyMilestoneEvidence = null;
   let verifyResolutionReceipt = null;
   let verifyProviderStatement = null;
+  let verifyStateCommand = null;
   let resolveProfile = null;
   let pinnedProfiles = null;
   let now = null;
@@ -569,6 +622,7 @@ export function createActionEscrowKernel(options = {}) {
       ['verifyMilestoneEvidence', options.verifyMilestoneEvidence],
       ['verifyResolutionReceipt', options.verifyResolutionReceipt],
       ['verifyProviderStatement', options.verifyProviderStatement],
+      ['verifyStateCommand', options.verifyStateCommand],
     ];
     if (!configurationError && verifierEntries.some(([, verifier]) => typeof verifier !== 'function')) {
       configurationError = 'pinned_verifiers_required';
@@ -578,6 +632,7 @@ export function createActionEscrowKernel(options = {}) {
       verifyMilestoneEvidence = options.verifyMilestoneEvidence;
       verifyResolutionReceipt = options.verifyResolutionReceipt;
       verifyProviderStatement = options.verifyProviderStatement;
+      verifyStateCommand = options.verifyStateCommand;
     }
 
     if (!configurationError && options.profilesById !== undefined) {
@@ -642,6 +697,15 @@ export function createActionEscrowKernel(options = {}) {
     } catch {
       return null;
     }
+  }
+
+  function operationInstant(record = null) {
+    const at = instant();
+    if (!at) return { error: 'invalid_clock' };
+    if (record !== null && Date.parse(at) < Date.parse(record.updated_at)) {
+      return { error: 'clock_regression' };
+    }
+    return { at };
   }
 
   async function withProviderTimeout(task) {
@@ -734,6 +798,57 @@ export function createActionEscrowKernel(options = {}) {
     }
   }
 
+  async function verifyCommandAuthorization(
+    artifact,
+    record,
+    command,
+    partyId,
+    details,
+  ) {
+    if (!record.parties.some((party) => party.party_id === partyId)) {
+      return { error: 'command_party_invalid' };
+    }
+    const detailsDigest = canonicalDigest(details);
+    const expected = {
+      ...expectedBindings(record),
+      profile: record.profile,
+      parties: record.parties,
+      command,
+      party_id: partyId,
+      details_digest: detailsDigest,
+    };
+    expected.command_digest = canonicalDigest({
+      '@version': 'EP-ACTION-ESCROW-COMMAND-v1',
+      ...expectedBindings(record),
+      command,
+      party_id: partyId,
+      details_digest: detailsDigest,
+    });
+    const verified = await invokeVerifier(verifyStateCommand, artifact, expected);
+    if (verified.error
+      || verified.result.valid !== true
+      || verified.result.authorizes_command !== true
+      || verified.result.command !== command
+      || verified.result.party_id !== partyId
+      || verified.result.details_digest !== detailsDigest
+      || verified.result.command_digest !== expected.command_digest
+      || !boundVerificationMatches(verified.result, expectedBindings(record))) {
+      return { error: verified.error ?? 'command_authorization_refused' };
+    }
+    return {
+      artifact: verified.artifact,
+      verification: {
+        valid: true,
+        authorizes_command: true,
+        ...expectedBindings(record),
+        command,
+        party_id: partyId,
+        details_digest: detailsDigest,
+        command_digest: expected.command_digest,
+      },
+    };
+  }
+
   async function selectedProfile(normalized) {
     try {
       let selected;
@@ -803,9 +918,10 @@ export function createActionEscrowKernel(options = {}) {
           normalized.snapshot.document_action_binding,
           expected,
         );
-        if (verification.error
-          || !boundVerificationMatches(verification.result, expectedBindings(expected))
-          || !validDigest(verification.result.verification_digest)) {
+        const bindingDetails = verification.error
+          ? null
+          : bindingVerificationDetails(verification.result, expected);
+        if (!bindingDetails) {
           return outcome({
             code: verification.error ?? 'document_action_binding_invalid',
             operation,
@@ -831,7 +947,7 @@ export function createActionEscrowKernel(options = {}) {
             verification: boundVerificationSummary(
               verification.result,
               expected,
-              { verification_digest: verification.result.verification_digest },
+              bindingDetails,
             ),
           },
           agreement_acceptances: [],
@@ -841,6 +957,7 @@ export function createActionEscrowKernel(options = {}) {
           release: null,
           dispute: null,
           cancellation: null,
+          completion: null,
           pending_amendment: null,
           superseded_bindings: [],
           operations: [{
@@ -914,8 +1031,11 @@ export function createActionEscrowKernel(options = {}) {
         }
         const repeated = idempotentResult(record, normalized, operation);
         if (repeated) return repeated;
-        const at = instant();
-        if (!at) return outcome({ code: 'invalid_clock', operation, record });
+        const operationTime = operationInstant(record);
+        if (operationTime.error) {
+          return outcome({ code: operationTime.error, operation, record });
+        }
+        const { at } = operationTime;
 
         const draft = canonicalSnapshot(record);
         const decision = await transform(draft, normalized, at);
@@ -982,7 +1102,7 @@ export function createActionEscrowKernel(options = {}) {
   async function acceptAgreement(input = {}) {
     return mutate('accept_agreement', input, {
       extraAllowed: ['party_id', 'agreement_acceptance'],
-      async transform(draft, normalized) {
+      async transform(draft, normalized, at) {
         if (draft.state !== 'awaiting_acceptance') {
           return { refusal: 'invalid_state_transition' };
         }
@@ -1005,6 +1125,11 @@ export function createActionEscrowKernel(options = {}) {
         if (verified.error
           || !boundVerificationMatches(verified.result, expectedBindings(expected))
           || verified.result.party_id !== partyId
+          || !validString(verified.result.principal_key_id, 512)
+          || draft.agreement_acceptances.some(
+            (entry) => entry.verification?.principal_key_id
+              === verified.result.principal_key_id,
+          )
           || !validDigest(verified.result.acceptance_digest)) {
           return { refusal: verified.error ?? 'agreement_acceptance_invalid' };
         }
@@ -1016,6 +1141,7 @@ export function createActionEscrowKernel(options = {}) {
             expected,
             {
               party_id: partyId,
+              principal_key_id: verified.result.principal_key_id,
               acceptance_digest: verified.result.acceptance_digest,
             },
           ),
@@ -1045,15 +1171,21 @@ export function createActionEscrowKernel(options = {}) {
   async function recordFunding(input = {}) {
     return mutate('record_funding', input, {
       extraAllowed: ['provider_statement'],
-      async transform(draft, normalized) {
+      async transform(draft, normalized, at) {
         if (draft.state !== 'awaiting_funding') {
           return { refusal: 'invalid_state_transition' };
         }
+        const template = draft.document_action_binding.verification.release_action_template;
         const expected = {
           ...normalized.context,
           provider_id: draft.profile.provider_id,
           statement_type: 'funding',
           expected_status: 'funded',
+          provider_transaction_id: template.custodian_transaction_id,
+          provider_milestone_id: template.custodian_milestone_id,
+          amount: template.amount,
+          currency: template.currency,
+          destination_id: template.destination_id,
         };
         const verified = await invokeVerifier(
           verifyProviderStatement,
@@ -1066,6 +1198,11 @@ export function createActionEscrowKernel(options = {}) {
           || verified.result.provider_id !== draft.profile.provider_id
           || verified.result.statement_type !== 'funding'
           || verified.result.status !== 'funded'
+          || verified.result.provider_transaction_id !== expected.provider_transaction_id
+          || verified.result.provider_milestone_id !== expected.provider_milestone_id
+          || verified.result.amount !== expected.amount
+          || verified.result.currency !== expected.currency
+          || verified.result.destination_id !== expected.destination_id
           || !validDigest(verified.result.statement_digest)) {
           return { refusal: verified.error ?? 'funding_statement_invalid' };
         }
@@ -1079,6 +1216,11 @@ export function createActionEscrowKernel(options = {}) {
               provider_id: draft.profile.provider_id,
               statement_type: 'funding',
               status: 'funded',
+              provider_transaction_id: expected.provider_transaction_id,
+              provider_milestone_id: expected.provider_milestone_id,
+              amount: expected.amount,
+              currency: expected.currency,
+              destination_id: expected.destination_id,
               statement_digest: verified.result.statement_digest,
             },
           ),
@@ -1092,7 +1234,7 @@ export function createActionEscrowKernel(options = {}) {
   async function submitMilestone(input = {}) {
     return mutate('submit_milestone', input, {
       extraAllowed: ['milestone_evidence'],
-      async transform(draft, normalized) {
+      async transform(draft, normalized, at) {
         if (draft.state !== 'funded') {
           return { refusal: 'invalid_state_transition' };
         }
@@ -1103,10 +1245,15 @@ export function createActionEscrowKernel(options = {}) {
           expected,
         );
         const partyIds = draft.parties.map((party) => party.party_id);
+        const expectedEvidenceDigest = draft.document_action_binding
+          .verification.release_action_template.completion_evidence_sha256;
         if (verified.error
           || !boundVerificationMatches(verified.result, expectedBindings(expected))
           || !validDigest(verified.result.evidence_digest)
-          || !partyIds.includes(verified.result.submitter_party_id)) {
+          || verified.result.evidence_digest !== expectedEvidenceDigest
+          || !partyIds.includes(verified.result.submitter_party_id)
+          || !validInstant(verified.result.observed_at)
+          || Date.parse(verified.result.observed_at) > Date.parse(at)) {
           return { refusal: verified.error ?? 'milestone_evidence_invalid' };
         }
         draft.milestone_evidence = {
@@ -1117,6 +1264,7 @@ export function createActionEscrowKernel(options = {}) {
             {
               evidence_digest: verified.result.evidence_digest,
               submitter_party_id: verified.result.submitter_party_id,
+              observed_at: verified.result.observed_at,
             },
           ),
         };
@@ -1130,7 +1278,7 @@ export function createActionEscrowKernel(options = {}) {
   async function approveRelease(input = {}) {
     return mutate('approve_release', input, {
       extraAllowed: ['party_id', 'resolution'],
-      async transform(draft, normalized) {
+      async transform(draft, normalized, at) {
         if (draft.state !== 'milestone_submitted') {
           return { refusal: 'invalid_state_transition' };
         }
@@ -1138,6 +1286,7 @@ export function createActionEscrowKernel(options = {}) {
         if (!draft.profile.required_release_approver_party_ids.includes(partyId)) {
           return { refusal: 'release_approval_party_not_required' };
         }
+        const party = draft.parties.find((entry) => entry.party_id === partyId);
         if (draft.profile.prohibit_self_approval
           && partyId === draft.milestone_evidence?.verification?.submitter_party_id) {
           return { refusal: 'self_approval_refused' };
@@ -1166,6 +1315,24 @@ export function createActionEscrowKernel(options = {}) {
         if (resolutionContext.resolution?.outcome !== 'approved') {
           return { refusal: 'resolution_not_approved' };
         }
+        if (!validString(resolutionContext.principal_key_id, 512)
+          || !validString(resolutionContext.nonce, 512)
+          || !validInstant(resolutionContext.issued_at)
+          || !validInstant(resolutionContext.expires_at)
+          || Date.parse(resolutionContext.issued_at)
+            < Date.parse(draft.milestone_evidence.verification.observed_at)
+          || Date.parse(resolutionContext.issued_at) > Date.parse(at)
+          || Date.parse(resolutionContext.expires_at) <= Date.parse(at)
+          || Date.parse(resolutionContext.expires_at)
+            <= Date.parse(resolutionContext.issued_at)) {
+          return { refusal: 'resolution_freshness_invalid' };
+        }
+        if (draft.release_approvals.some(
+          (entry) => entry.verification?.principal_key_id
+            === resolutionContext.principal_key_id,
+        )) {
+          return { refusal: 'resolution_key_already_counted' };
+        }
         const expected = {
           ...normalized.context,
           party_id: partyId,
@@ -1179,7 +1346,15 @@ export function createActionEscrowKernel(options = {}) {
         if (verified.error
           || verified.result.valid !== true
           || verified.result.authorizes_action !== true
-          || verified.result.outcome !== 'approved') {
+          || verified.result.outcome !== 'approved'
+          || !boundVerificationMatches(verified.result, expectedBindings(expected))
+          || verified.result.party_id !== partyId
+          || verified.result.party_role !== party.role
+          || verified.result.principal_key_id !== resolutionContext.principal_key_id
+          || verified.result.nonce !== resolutionContext.nonce
+          || verified.result.issued_at !== resolutionContext.issued_at
+          || verified.result.expires_at !== resolutionContext.expires_at
+          || verified.result.evidence_digest !== expected.evidence_digest) {
           return { refusal: verified.error ?? 'resolution_verification_refused' };
         }
         draft.release_approvals.push({
@@ -1189,6 +1364,11 @@ export function createActionEscrowKernel(options = {}) {
             valid: true,
             authorizes_action: true,
             outcome: 'approved',
+            party_role: party.role,
+            principal_key_id: resolutionContext.principal_key_id,
+            nonce: resolutionContext.nonce,
+            issued_at: resolutionContext.issued_at,
+            expires_at: resolutionContext.expires_at,
             resolution_digest: canonicalDigest(verified.artifact),
             agreement_digest: draft.agreement_digest,
             document_action_binding_digest: draft.document_action_binding_digest,
@@ -1204,7 +1384,7 @@ export function createActionEscrowKernel(options = {}) {
     });
   }
 
-  function releasePreconditions(record) {
+  function releasePreconditions(record, at) {
     if (record.funding?.verification?.status !== 'funded') {
       return { code: 'funding_not_verified' };
     }
@@ -1221,13 +1401,26 @@ export function createActionEscrowKernel(options = {}) {
       .map((entry) => entry.party_id));
     const missing = record.profile.required_release_approver_party_ids
       .filter((partyId) => !approved.has(partyId));
-    return missing.length > 0
-      ? { code: 'release_approval_missing', details: { missing_party_ids: missing } }
+    if (missing.length > 0) {
+      return { code: 'release_approval_missing', details: { missing_party_ids: missing } };
+    }
+    const evaluationTime = Date.parse(at);
+    const stale = record.release_approvals
+      .filter((entry) => (
+        !validInstant(entry.verification?.issued_at)
+        || !validInstant(entry.verification?.expires_at)
+        || Date.parse(entry.verification.issued_at) > evaluationTime
+        || Date.parse(entry.verification.expires_at) <= evaluationTime
+      ))
+      .map((entry) => entry.party_id);
+    return stale.length > 0
+      ? { code: 'release_approval_expired', details: { party_ids: stale } }
       : null;
   }
 
   function providerRequestFor(record) {
-    return {
+    const bindingVerification = record.document_action_binding.verification;
+    const request = {
       method: 'POST',
       provider_id: record.profile.provider_id,
       agreement_digest: record.agreement_digest,
@@ -1238,8 +1431,19 @@ export function createActionEscrowKernel(options = {}) {
       parties_digest: record.parties_digest,
       profile: record.profile,
       profile_digest: record.profile_digest,
+      agreement_id: bindingVerification.agreement_id,
+      binding_id: bindingVerification.binding_id,
+      document_digest: bindingVerification.document_digest,
+      release_action_template: bindingVerification.release_action_template,
       release_key: releaseReservationKey(record),
       idempotency_key: providerIdempotencyKey(record),
+    };
+    return {
+      ...request,
+      request_digest: canonicalDigest({
+        '@version': 'EP-ACTION-ESCROW-PROVIDER-REQUEST-v1',
+        ...request,
+      }),
     };
   }
 
@@ -1273,7 +1477,13 @@ export function createActionEscrowKernel(options = {}) {
       || verified.result.statement_type !== 'release'
       || !['released', 'not_released', 'pending'].includes(verified.result.status)
       || !validDigest(verified.result.statement_digest)
-      || verified.result.provider_idempotency_key !== expected.provider_idempotency_key) {
+      || verified.result.provider_idempotency_key !== expected.provider_idempotency_key
+      || verified.result.provider_request_digest !== expected.provider_request_digest
+      || verified.result.provider_transaction_id !== expected.provider_transaction_id
+      || verified.result.provider_milestone_id !== expected.provider_milestone_id
+      || verified.result.amount !== expected.amount
+      || verified.result.currency !== expected.currency
+      || verified.result.destination_id !== expected.destination_id) {
       return { error: verified.error ?? 'provider_release_statement_invalid' };
     }
     return {
@@ -1285,6 +1495,12 @@ export function createActionEscrowKernel(options = {}) {
           authenticated: true,
           provider_id: expected.provider_id,
           provider_idempotency_key: expected.provider_idempotency_key,
+          provider_request_digest: expected.provider_request_digest,
+          provider_transaction_id: expected.provider_transaction_id,
+          provider_milestone_id: expected.provider_milestone_id,
+          amount: expected.amount,
+          currency: expected.currency,
+          destination_id: expected.destination_id,
           statement_type: 'release',
           status: verified.result.status,
           statement_digest: verified.result.statement_digest,
@@ -1378,15 +1594,16 @@ export function createActionEscrowKernel(options = {}) {
           record: current,
         });
       }
-      const at = instant();
-      if (!at) {
+      const operationTime = operationInstant(current);
+      if (operationTime.error) {
         return outcome({
           type: 'indeterminate',
-          code,
+          code: operationTime.error,
           operation,
           record: current,
         });
       }
+      const { at } = operationTime;
       const transition = internalReleaseTransition(
         current,
         'release_indeterminate',
@@ -1436,15 +1653,16 @@ export function createActionEscrowKernel(options = {}) {
 
   async function commitReleaseResult(record, providerResult, operation) {
     const status = providerResult.verification.status;
-    const at = instant();
-    if (!at) {
+    const operationTime = operationInstant(record);
+    if (operationTime.error) {
       return freezeIndeterminate(
         record,
         operation,
-        'release_effect_indeterminate',
+        operationTime.error,
         providerResult,
       );
     }
+    const { at } = operationTime;
     const targetState = status === 'released'
       ? 'released'
       : status === 'not_released'
@@ -1534,7 +1752,12 @@ export function createActionEscrowKernel(options = {}) {
         if (record.state !== 'milestone_submitted') {
           return outcome({ code: 'invalid_state_transition', operation, record });
         }
-        const precondition = releasePreconditions(record);
+        const operationTime = operationInstant(record);
+        if (operationTime.error) {
+          return outcome({ code: operationTime.error, operation, record });
+        }
+        const { at } = operationTime;
+        const precondition = releasePreconditions(record, at);
         if (precondition) {
           return outcome({
             code: precondition.code,
@@ -1543,8 +1766,6 @@ export function createActionEscrowKernel(options = {}) {
             details: precondition.details ?? null,
           });
         }
-        const at = instant();
-        if (!at) return outcome({ code: 'invalid_clock', operation, record });
         const request = providerRequestFor(record);
         const finalized = finalizeMutation(
           record,
@@ -1654,15 +1875,16 @@ export function createActionEscrowKernel(options = {}) {
             type: 'indeterminate',
           });
         }
-        const at = instant();
-        if (!at) {
+        const operationTime = operationInstant(record);
+        if (operationTime.error) {
           return outcome({
-            code: 'invalid_clock',
+            code: operationTime.error,
             operation,
             record,
             type: 'indeterminate',
           });
         }
+        const { at } = operationTime;
         const status = providerResult.verification.status;
         const targetState = status === 'released'
           ? 'released'
@@ -1685,6 +1907,12 @@ export function createActionEscrowKernel(options = {}) {
           draft.milestone_evidence = null;
           draft.release_approvals = [];
         }
+        updateReleaseOperation(
+          draft,
+          draft.release.operation_idempotency_key,
+          code,
+          targetState,
+        );
         const finalized = finalizeMutation(
           record,
           normalized,
@@ -1738,7 +1966,7 @@ export function createActionEscrowKernel(options = {}) {
 
   async function openDispute(input = {}) {
     return mutate('open_dispute', input, {
-      extraAllowed: ['party_id', 'reason'],
+      extraAllowed: ['party_id', 'reason', 'command_authorization'],
       async transform(draft, normalized, at) {
         if (!['funded', 'milestone_submitted'].includes(draft.state)) {
           return { refusal: 'invalid_state_transition' };
@@ -1748,9 +1976,18 @@ export function createActionEscrowKernel(options = {}) {
           || !validString(normalized.snapshot.reason, 2048)) {
           return { refusal: 'dispute_input_invalid' };
         }
+        const authorization = await verifyCommandAuthorization(
+          normalized.snapshot.command_authorization,
+          draft,
+          'open_dispute',
+          partyId,
+          { reason: normalized.snapshot.reason },
+        );
+        if (authorization.error) return { refusal: authorization.error };
         draft.dispute = {
           party_id: partyId,
           reason: normalized.snapshot.reason,
+          authorization,
           opened_at: at,
         };
         draft.state = 'disputed';
@@ -1762,20 +1999,22 @@ export function createActionEscrowKernel(options = {}) {
   async function proposeAmendment(input = {}) {
     return mutate('propose_amendment', input, {
       extraAllowed: [
+        'party_id',
+        'command_authorization',
         'next_document_action_binding_digest',
         'next_release_action_digest',
         'next_document_action_binding',
       ],
       async transform(draft, normalized, at) {
-        if (![
-          'effective',
-          'awaiting_funding',
-          'funded',
-          'milestone_submitted',
-          'disputed',
-          'release_reserved',
-          'release_indeterminate',
-        ].includes(draft.state)
+        if (draft.state === 'awaiting_funding') {
+          return { refusal: 'amendment_requires_funding_reconciliation' };
+        }
+        if (draft.funding !== null
+          || draft.release !== null
+          || ['funded', 'milestone_submitted', 'disputed'].includes(draft.state)) {
+          return { refusal: 'amendment_requires_custodian_unwind' };
+        }
+        if (draft.state !== 'effective'
           || draft.pending_amendment) {
           return { refusal: 'invalid_state_transition' };
         }
@@ -1787,6 +2026,18 @@ export function createActionEscrowKernel(options = {}) {
           || nextBindingDigest === draft.document_action_binding_digest) {
           return { refusal: 'amendment_binding_invalid' };
         }
+        const partyId = normalized.snapshot.party_id;
+        const authorization = await verifyCommandAuthorization(
+          normalized.snapshot.command_authorization,
+          draft,
+          'propose_amendment',
+          partyId,
+          {
+            next_document_action_binding_digest: nextBindingDigest,
+            next_release_action_digest: nextActionDigest,
+          },
+        );
+        if (authorization.error) return { refusal: authorization.error };
         const nextContext = {
           ...normalized.context,
           document_action_binding_digest: nextBindingDigest,
@@ -1799,16 +2050,16 @@ export function createActionEscrowKernel(options = {}) {
           normalized.snapshot.next_document_action_binding,
           nextContext,
         );
-        if (verified.error
-          || !boundVerificationMatches(verified.result, expectedBindings(nextContext))
+        const bindingDetails = verified.error
+          ? null
+          : bindingVerificationDetails(verified.result, nextContext);
+        if (!bindingDetails
           || verified.result.supersedes_document_action_binding_digest
             !== draft.document_action_binding_digest
-          || !validDigest(verified.result.verification_digest)) {
+        ) {
           return { refusal: verified.error ?? 'amendment_document_binding_invalid' };
         }
 
-        const releaseWasUncertain = ['release_reserved', 'release_indeterminate']
-          .includes(draft.state);
         draft.pending_amendment = {
           from_state: draft.state,
           document_action_binding_digest: nextBindingDigest,
@@ -1819,24 +2070,17 @@ export function createActionEscrowKernel(options = {}) {
               verified.result,
               nextContext,
               {
-                verification_digest: verified.result.verification_digest,
+                ...bindingDetails,
                 supersedes_document_action_binding_digest:
                   draft.document_action_binding_digest,
               },
             ),
           },
           agreement_acceptances: [],
+          proposer_party_id: partyId,
+          proposal_authorization: authorization,
           proposed_at: at,
         };
-        if (releaseWasUncertain) {
-          draft.state = 'release_indeterminate';
-          draft.release.status = 'indeterminate';
-          return {
-            code: 'amendment_deferred_for_reconciliation',
-            type: 'indeterminate',
-            ok: false,
-          };
-        }
         draft.funding = null;
         draft.milestone_evidence = null;
         draft.release_approvals = [];
@@ -1877,6 +2121,11 @@ export function createActionEscrowKernel(options = {}) {
         if (verified.error
           || !boundVerificationMatches(verified.result, expectedBindings(expected))
           || verified.result.party_id !== partyId
+          || !validString(verified.result.principal_key_id, 512)
+          || draft.pending_amendment.agreement_acceptances.some(
+            (entry) => entry.verification?.principal_key_id
+              === verified.result.principal_key_id,
+          )
           || !validDigest(verified.result.acceptance_digest)) {
           return { refusal: verified.error ?? 'amendment_acceptance_invalid' };
         }
@@ -1888,6 +2137,7 @@ export function createActionEscrowKernel(options = {}) {
             expected,
             {
               party_id: partyId,
+              principal_key_id: verified.result.principal_key_id,
               acceptance_digest: verified.result.acceptance_digest,
             },
           ),
@@ -1930,35 +2180,40 @@ export function createActionEscrowKernel(options = {}) {
 
   async function cancel(input = {}) {
     return mutate('cancel', input, {
-      extraAllowed: ['party_id', 'reason'],
-      extraRequired: [],
-      transform(draft, normalized, at) {
+      extraAllowed: ['party_id', 'reason', 'command_authorization'],
+      extraRequired: ['party_id', 'command_authorization'],
+      async transform(draft, normalized, at) {
+        if (draft.state === 'awaiting_funding') {
+          return { refusal: 'cancellation_requires_funding_reconciliation' };
+        }
+        if (draft.funding !== null || draft.release !== null) {
+          return { refusal: 'cancellation_requires_custodian_unwind' };
+        }
         if (![
           'draft',
           'awaiting_acceptance',
           'effective',
-          'awaiting_funding',
-          'funded',
-          'milestone_submitted',
-          'disputed',
           'amendment_pending',
         ].includes(draft.state)) {
           return { refusal: 'invalid_state_transition' };
-        }
-        if (normalized.snapshot.party_id !== undefined
-          && !draft.parties.some(
-            (party) => party.party_id === normalized.snapshot.party_id,
-          )) {
-          return { refusal: 'cancellation_party_invalid' };
         }
         if (normalized.snapshot.reason !== undefined
           && !validString(normalized.snapshot.reason, 2048)) {
           return { refusal: 'cancellation_reason_invalid' };
         }
+        const authorization = await verifyCommandAuthorization(
+          normalized.snapshot.command_authorization,
+          draft,
+          'cancel',
+          normalized.snapshot.party_id,
+          { reason: normalized.snapshot.reason ?? null },
+        );
+        if (authorization.error) return { refusal: authorization.error };
         draft.state = 'cancelled';
         draft.cancellation = {
-          party_id: normalized.snapshot.party_id ?? null,
+          party_id: normalized.snapshot.party_id,
           reason: normalized.snapshot.reason ?? null,
+          authorization,
           cancelled_at: at,
         };
         return { code: 'escrow_cancelled' };
@@ -1968,11 +2223,27 @@ export function createActionEscrowKernel(options = {}) {
 
   async function complete(input = {}) {
     return mutate('complete', input, {
-      transform(draft) {
+      extraAllowed: ['party_id', 'command_authorization'],
+      extraRequired: ['party_id', 'command_authorization'],
+      async transform(draft, normalized, at) {
         if (draft.state !== 'released') {
           return { refusal: 'invalid_state_transition' };
         }
+        const authorization = await verifyCommandAuthorization(
+          normalized.snapshot.command_authorization,
+          draft,
+          'complete',
+          normalized.snapshot.party_id,
+          { meaning: 'administrative_archive_only' },
+        );
+        if (authorization.error) return { refusal: authorization.error };
         draft.state = 'completed';
+        draft.completion = {
+          party_id: normalized.snapshot.party_id,
+          meaning: 'administrative_archive_only',
+          authorization,
+          completed_at: at,
+        };
         return { code: 'escrow_completed' };
       },
     });

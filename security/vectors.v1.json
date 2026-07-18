@@ -191,6 +191,61 @@
       "id": "reject_model_to_matter_without_revocation_state",
       "expect": { "valid": false },
       "execution": { "runner": "vitest", "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent" }
+    },
+    {
+      "id": "accept_action_escrow_exact_release_once",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow.test.js", "title": "runs the complete milestone lifecycle and releases exactly once" }
+    },
+    {
+      "id": "reject_action_escrow_committed_fact_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow.test.js", "title": "signed action commitments cannot be replaced by verifier-selected funding or evidence" }
+    },
+    {
+      "id": "reject_action_escrow_role_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow-evidence.test.js", "title": "document execution, agreement acceptance, and release approval are non-substitutable rows" }
+    },
+    {
+      "id": "reject_action_escrow_funded_amendment_without_unwind",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow.test.js", "title": "an amendment cannot race funded custody without an authenticated unwind" }
+    },
+    {
+      "id": "reject_action_escrow_journal_divergence",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow-postgres.test.js", "title": "normal reads refuse truncated, reordered, or state-divergent journals" }
+    },
+    {
+      "id": "reject_action_escrow_verifier_echo_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow-evidence.test.js", "title": "component verifiers must echo the exact agreement, binding, and action they checked" }
+    },
+    {
+      "id": "reject_action_escrow_expired_release_approval",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow.test.js", "title": "expired approvals are refused both at admission and immediately before release" }
+    },
+    {
+      "id": "reject_action_escrow_funding_request_state_fallback",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow.test.js", "title": "funding-request state blocks amendment and cancellation until custodian reconciliation" }
+    },
+    {
+      "id": "reject_action_escrow_compensated_history_pruning",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow-package.test.js", "title": "assembler refuses pruned operation history and regressing timestamps" }
+    },
+    {
+      "id": "reject_action_escrow_database_role_or_clock_rollback",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/action-escrow-postgres.test.js", "title": "health refuses owner or destructive runtime privileges" }
+    },
+    {
+      "id": "reject_action_escrow_custodian_alias_or_unfunded_release",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/action-escrow-escrow-com.test.js", "title": "refuses milestone acceptance until every schedule is secured and funded" }
     }
   ]
 }

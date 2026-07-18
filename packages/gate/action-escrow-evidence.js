@@ -36,7 +36,9 @@ const TOP_KEYS = new Set([
   'stage',
   'binding',
   'document',
-  'approvals',
+  'document_execution',
+  'agreement_acceptances',
+  'release_approvals',
   'funding_statement',
   'milestones',
   'release',
@@ -48,7 +50,7 @@ const TOP_KEYS = new Set([
   'package_digest',
 ]);
 const DOCUMENT_KEYS = new Set(['media_type', 'digest', 'byte_length', 'file_name']);
-const APPROVAL_KEYS = new Set(['party_id', 'role', 'resolution']);
+const PARTY_EVIDENCE_KEYS = new Set(['party_id', 'role', 'evidence']);
 const MILESTONE_KEYS = new Set(['milestone_id', 'evidence', 'resolution']);
 const RELEASE_KEYS = new Set([
   'reservation',
@@ -156,6 +158,12 @@ function sha256(bytes) {
   return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
 }
 
+function validInstant(value) {
+  if (typeof value !== 'string') return false;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
+}
+
 function canonicalSha256(value) {
   return `sha256:${hashCanonical(value)}`;
 }
@@ -206,8 +214,22 @@ function normalizedRequiredParties(value) {
   return new Set(identities).size === identities.length ? result : null;
 }
 
-function stageRequiresApprovals(stage) {
-  return !['draft', 'awaiting_acceptance', 'cancelled'].includes(stage);
+function stageRequiresExecutedAgreement(stage) {
+  return [
+    'effective',
+    'awaiting_funding',
+    'funded',
+    'milestone_submitted',
+    'release_reserved',
+    'released',
+    'disputed',
+    'completed',
+    'release_indeterminate',
+  ].includes(stage);
+}
+
+function stageRequiresReleaseApprovals(stage) {
+  return ['release_reserved', 'released', 'completed', 'release_indeterminate'].includes(stage);
 }
 
 function stageRequiresFunding(stage) {
@@ -216,6 +238,19 @@ function stageRequiresFunding(stage) {
     'milestone_submitted',
     'release_reserved',
     'released',
+    'disputed',
+    'completed',
+    'release_indeterminate',
+  ].includes(stage);
+}
+
+function stageAllowsFunding(stage) {
+  return [
+    'funded',
+    'milestone_submitted',
+    'release_reserved',
+    'released',
+    'disputed',
     'completed',
     'release_indeterminate',
   ].includes(stage);
@@ -226,6 +261,29 @@ function stageRequiresMilestone(stage) {
     'milestone_submitted',
     'release_reserved',
     'released',
+    'disputed',
+    'completed',
+    'release_indeterminate',
+  ].includes(stage);
+}
+
+function stageAllowsMilestone(stage) {
+  return [
+    'milestone_submitted',
+    'release_reserved',
+    'released',
+    'disputed',
+    'completed',
+    'release_indeterminate',
+  ].includes(stage);
+}
+
+function stageAllowsReleaseApprovals(stage) {
+  return [
+    'milestone_submitted',
+    'release_reserved',
+    'released',
+    'disputed',
     'completed',
     'release_indeterminate',
   ].includes(stage);
@@ -233,6 +291,18 @@ function stageRequiresMilestone(stage) {
 
 function stageRequiresRelease(stage) {
   return ['release_reserved', 'released', 'completed', 'release_indeterminate'].includes(stage);
+}
+
+function stageAllowsRelease(stage) {
+  return [
+    'milestone_submitted',
+    'release_reserved',
+    'released',
+    'disputed',
+    'amendment_pending',
+    'completed',
+    'release_indeterminate',
+  ].includes(stage);
 }
 
 /**
@@ -245,7 +315,9 @@ export function buildActionEscrowEvidencePackage({
   binding,
   documentBytes: rawDocumentBytes,
   documentFileName = null,
-  approvals = [],
+  documentExecution = null,
+  agreementAcceptances = [],
+  releaseApprovals = [],
   fundingStatement = null,
   milestones = [],
   release = null,
@@ -285,7 +357,9 @@ export function buildActionEscrowEvidencePackage({
       byte_length: bytes.length,
       ...(documentFileName === null ? {} : { file_name: documentFileName }),
     },
-    approvals,
+    document_execution: documentExecution,
+    agreement_acceptances: agreementAcceptances,
+    release_approvals: releaseApprovals,
     funding_statement: fundingStatement,
     milestones,
     release: release ?? {
@@ -337,7 +411,9 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
   documentBytes: rawDocumentBytes,
   verifyBinding,
   verifyProfile,
-  verifyApproval,
+  verifyDocumentExecution,
+  verifyAgreementAcceptance,
+  verifyReleaseApproval,
   verifyFunding,
   verifyMilestone,
   verifyRelease,
@@ -354,9 +430,11 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
     document: false,
     binding: false,
     profile: false,
+    document_execution: false,
+    agreement_acceptances: false,
     amendments: false,
     state: false,
-    approvals: false,
+    release_approvals: false,
     funding: false,
     milestones: false,
     release: false,
@@ -373,7 +451,9 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       && pkg.document.media_type === 'application/pdf'
       && HASH.test(pkg.document.digest)
       && Number.isSafeInteger(pkg.document.byte_length) && pkg.document.byte_length > 0
-      && Array.isArray(pkg.approvals)
+      && (pkg.document_execution === null || isRecord(pkg.document_execution))
+      && Array.isArray(pkg.agreement_acceptances)
+      && Array.isArray(pkg.release_approvals)
       && Array.isArray(pkg.milestones)
       && exactKeys(pkg.release, RELEASE_KEYS)
       && exactKeys(pkg.state_record, STATE_RECORD_KEYS)
@@ -429,11 +509,97 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       bindingDigest: bindingResult.binding_digest,
       actionDigest: bindingResult.action_digest,
     });
-    checks.profile = profileResult.valid === true && HASH.test(profileResult.profile_digest);
+    const requiredReleaseParties = normalizedRequiredParties(
+      profileResult.required_release_parties,
+    );
+    checks.profile = profileResult.valid === true
+      && profileResult.agreement_id === pkg.agreement_id
+      && profileResult.binding_digest === bindingResult.binding_digest
+      && profileResult.action_digest === bindingResult.action_digest
+      && HASH.test(profileResult.profile_digest)
+      && requiredReleaseParties !== null;
     if (!checks.profile) {
       return resultFailure('verification_profile_failed', checks, {
         profile_reason: profileResult.reason ?? null,
       });
+    }
+
+    if (pkg.document_execution !== null) {
+      const executionResult = await callVerifier(
+        verifyDocumentExecution,
+        pkg.document_execution,
+        {
+          agreementId: pkg.agreement_id,
+          bindingDigest: bindingResult.binding_digest,
+          documentDigest: pkg.document.digest,
+        },
+      );
+      checks.document_execution = executionResult.valid === true
+        && executionResult.authorizes_action === false
+        && executionResult.agreement_id === pkg.agreement_id
+        && executionResult.binding_digest === bindingResult.binding_digest
+        && executionResult.document_digest === pkg.document.digest
+        && executionResult.state === 'executed';
+    } else {
+      checks.document_execution = !stageRequiresExecutedAgreement(pkg.stage);
+    }
+    if (!checks.document_execution) {
+      return resultFailure('document_execution_verification_failed', checks);
+    }
+
+    const requiredAgreementByIdentity = new Map(
+      requiredParties.map((entry) => [`${entry.role ?? ''}\u0000${entry.party_id}`, entry]),
+    );
+    const seenAgreementParties = new Set();
+    const seenAgreementKeys = new Set();
+    let agreementAcceptancesValid = true;
+    for (const acceptance of pkg.agreement_acceptances) {
+      if (!exactKeys(acceptance, PARTY_EVIDENCE_KEYS)
+        || typeof acceptance.party_id !== 'string'
+        || typeof acceptance.role !== 'string') {
+        agreementAcceptancesValid = false;
+        break;
+      }
+      const identity = `${acceptance.role}\u0000${acceptance.party_id}`;
+      if (!requiredAgreementByIdentity.has(identity) || seenAgreementParties.has(identity)) {
+        agreementAcceptancesValid = false;
+        break;
+      }
+      const result = await callVerifier(
+        verifyAgreementAcceptance,
+        acceptance.evidence,
+        {
+          partyId: acceptance.party_id,
+          role: acceptance.role,
+          agreementId: pkg.agreement_id,
+          bindingDigest: bindingResult.binding_digest,
+          documentDigest: pkg.document.digest,
+        },
+      );
+      if (result.valid !== true
+        || result.accepts_agreement !== true
+        || result.authorizes_action !== false
+        || result.agreement_id !== pkg.agreement_id
+        || result.party_id !== acceptance.party_id
+        || result.role !== acceptance.role
+        || result.binding_digest !== bindingResult.binding_digest
+        || result.document_digest !== pkg.document.digest
+        || typeof result.principal_key_id !== 'string'
+        || result.principal_key_id.length === 0
+        || seenAgreementKeys.has(result.principal_key_id)) {
+        agreementAcceptancesValid = false;
+        break;
+      }
+      seenAgreementParties.add(identity);
+      seenAgreementKeys.add(result.principal_key_id);
+    }
+    if (stageRequiresExecutedAgreement(pkg.stage)) {
+      agreementAcceptancesValid = agreementAcceptancesValid
+        && seenAgreementParties.size === requiredAgreementByIdentity.size;
+    }
+    checks.agreement_acceptances = agreementAcceptancesValid;
+    if (!checks.agreement_acceptances) {
+      return resultFailure('agreement_acceptance_verification_failed', checks);
     }
 
     const amendmentResults = [];
@@ -494,53 +660,10 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       });
     }
 
-    const requiredByIdentity = new Map(
-      requiredParties.map((entry) => [`${entry.role ?? ''}\u0000${entry.party_id}`, entry]),
-    );
-    const seenApprovals = new Set();
-    let approvalsValid = true;
-    const approvalResults = [];
-    for (const approval of pkg.approvals) {
-      if (!exactKeys(approval, APPROVAL_KEYS)
-        || typeof approval.party_id !== 'string' || approval.party_id.length === 0
-        || typeof approval.role !== 'string' || approval.role.length === 0) {
-        approvalsValid = false;
-        break;
+    if (pkg.funding_statement !== null) {
+      if (!stageAllowsFunding(pkg.stage)) {
+        return resultFailure('unexpected_funding_statement', checks);
       }
-      const identity = `${approval.role}\u0000${approval.party_id}`;
-      if (!requiredByIdentity.has(identity) || seenApprovals.has(identity)) {
-        approvalsValid = false;
-        break;
-      }
-      seenApprovals.add(identity);
-      const result = await callVerifier(verifyApproval, approval.resolution, {
-        partyId: approval.party_id,
-        role: approval.role,
-        agreementId: pkg.agreement_id,
-        bindingDigest: bindingResult.binding_digest,
-        actionDigest: bindingResult.action_digest,
-      });
-      approvalResults.push({ party_id: approval.party_id, role: approval.role, result });
-      if (result.valid !== true
-        || result.authorizes_action !== true
-        || result.outcome !== 'approved'
-        || result.party_id !== approval.party_id
-        || result.role !== approval.role
-        || result.binding_digest !== bindingResult.binding_digest
-        || result.action_digest !== bindingResult.action_digest) {
-        approvalsValid = false;
-        break;
-      }
-    }
-    if (stageRequiresApprovals(pkg.stage)) {
-      approvalsValid = approvalsValid && seenApprovals.size === requiredByIdentity.size;
-    }
-    checks.approvals = approvalsValid;
-    if (!checks.approvals) {
-      return resultFailure('party_approval_verification_failed', checks, { approval_results: approvalResults });
-    }
-
-    if (stageRequiresFunding(pkg.stage)) {
       const fundingResult = await callVerifier(verifyFunding, pkg.funding_statement, {
         agreementId: pkg.agreement_id,
         bindingDigest: bindingResult.binding_digest,
@@ -549,6 +672,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       checks.funding = fundingResult.valid === true
         && fundingResult.agreement_id === pkg.agreement_id
         && fundingResult.binding_digest === bindingResult.binding_digest
+        && fundingResult.action_digest === bindingResult.action_digest
         && fundingResult.state === 'funded';
       if (!checks.funding) {
         return resultFailure('funding_statement_verification_failed', checks, {
@@ -556,12 +680,16 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
         });
       }
     } else {
-      checks.funding = pkg.funding_statement === null;
-      if (!checks.funding) return resultFailure('unexpected_funding_statement', checks);
+      checks.funding = !stageRequiresFunding(pkg.stage);
+      if (!checks.funding) return resultFailure('funding_statement_missing', checks);
     }
 
     let milestonesValid = true;
     const milestoneIds = new Set();
+    const milestoneEvidenceDigests = [];
+    if (pkg.milestones.length > 0 && !stageAllowsMilestone(pkg.stage)) {
+      return resultFailure('unexpected_milestone_evidence', checks);
+    }
     for (const milestone of pkg.milestones) {
       if (!exactKeys(milestone, MILESTONE_KEYS)
         || typeof milestone.milestone_id !== 'string' || milestone.milestone_id.length === 0
@@ -576,17 +704,107 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
         actionDigest: bindingResult.action_digest,
       });
       if (result.valid !== true
+        || result.agreement_id !== pkg.agreement_id
         || result.milestone_id !== milestone.milestone_id
-        || result.binding_digest !== bindingResult.binding_digest) {
+        || result.binding_digest !== bindingResult.binding_digest
+        || result.action_digest !== bindingResult.action_digest
+        || !HASH.test(result.evidence_digest)) {
         milestonesValid = false;
         break;
       }
+      milestoneEvidenceDigests.push(result.evidence_digest);
     }
     if (stageRequiresMilestone(pkg.stage)) milestonesValid = milestonesValid && milestoneIds.size > 0;
     checks.milestones = milestonesValid;
     if (!checks.milestones) return resultFailure('milestone_verification_failed', checks);
 
-    if (stageRequiresRelease(pkg.stage)) {
+    const requiredReleaseByIdentity = new Map(
+      requiredReleaseParties.map(
+        (entry) => [`${entry.role ?? ''}\u0000${entry.party_id}`, entry],
+      ),
+    );
+    const seenReleaseParties = new Set();
+    const seenReleaseKeys = new Set();
+    let releaseApprovalsValid = true;
+    if (pkg.release_approvals.length > 0 && !stageAllowsReleaseApprovals(pkg.stage)) {
+      return resultFailure('unexpected_release_approval', checks);
+    }
+    const releaseExecutionAt = pkg.release.execution_record?.at ?? null;
+    for (const [approvalIndex, approval] of pkg.release_approvals.entries()) {
+      if (!exactKeys(approval, PARTY_EVIDENCE_KEYS)
+        || typeof approval.party_id !== 'string'
+        || typeof approval.role !== 'string') {
+        releaseApprovalsValid = false;
+        break;
+      }
+      const identity = `${approval.role}\u0000${approval.party_id}`;
+      if (!requiredReleaseByIdentity.has(identity) || seenReleaseParties.has(identity)) {
+        releaseApprovalsValid = false;
+        break;
+      }
+      const result = await callVerifier(
+        verifyReleaseApproval,
+        approval.evidence,
+        {
+          partyId: approval.party_id,
+          role: approval.role,
+          agreementId: pkg.agreement_id,
+          bindingDigest: bindingResult.binding_digest,
+          actionDigest: bindingResult.action_digest,
+          milestoneEvidenceDigests,
+          approvalIndex,
+          stateRecord: pkg.state_record,
+        },
+      );
+      if (result.valid !== true
+        || result.authorizes_action !== true
+        || result.outcome !== 'approved'
+        || result.agreement_id !== pkg.agreement_id
+        || result.party_id !== approval.party_id
+        || result.role !== approval.role
+        || result.binding_digest !== bindingResult.binding_digest
+        || result.action_digest !== bindingResult.action_digest
+        || !Array.isArray(result.milestone_evidence_digests)
+        || result.milestone_evidence_digests.length !== milestoneEvidenceDigests.length
+        || result.milestone_evidence_digests.some(
+          (digest, index) => digest !== milestoneEvidenceDigests[index],
+        )
+        || typeof result.principal_key_id !== 'string'
+        || result.principal_key_id.length === 0
+        || !validInstant(result.issued_at)
+        || !validInstant(result.expires_at)
+        || !validInstant(result.admitted_at)
+        || Date.parse(result.issued_at) > Date.parse(result.admitted_at)
+        || Date.parse(result.expires_at) <= Date.parse(result.admitted_at)
+        || (
+          releaseExecutionAt !== null
+          && (
+            !validInstant(releaseExecutionAt)
+            || Date.parse(result.issued_at) > Date.parse(releaseExecutionAt)
+            || Date.parse(result.expires_at) <= Date.parse(releaseExecutionAt)
+          )
+        )
+        || seenReleaseKeys.has(result.principal_key_id)) {
+        releaseApprovalsValid = false;
+        break;
+      }
+      seenReleaseParties.add(identity);
+      seenReleaseKeys.add(result.principal_key_id);
+    }
+    if (stageRequiresReleaseApprovals(pkg.stage)) {
+      releaseApprovalsValid = releaseApprovalsValid
+        && seenReleaseParties.size === requiredReleaseByIdentity.size;
+    }
+    checks.release_approvals = releaseApprovalsValid;
+    if (!checks.release_approvals) {
+      return resultFailure('release_approval_verification_failed', checks);
+    }
+
+    const hasReleaseArtifacts = Object.values(pkg.release).some((entry) => entry !== null);
+    if (hasReleaseArtifacts) {
+      if (!stageAllowsRelease(pkg.stage)) {
+        return resultFailure('release_artifacts_not_allowed_for_stage', checks);
+      }
       const releaseResult = await callVerifier(verifyRelease, pkg.release, {
         agreementId: pkg.agreement_id,
         bindingDigest: bindingResult.binding_digest,
@@ -597,7 +815,9 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
         ? 'indeterminate'
         : pkg.stage === 'release_reserved'
           ? 'reserved'
-          : 'released';
+          : ['released', 'completed'].includes(pkg.stage)
+            ? 'released'
+            : 'not_released';
       checks.release = releaseResult.valid === true
         && releaseResult.agreement_id === pkg.agreement_id
         && releaseResult.binding_digest === bindingResult.binding_digest
@@ -609,8 +829,8 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
         });
       }
     } else {
-      checks.release = Object.values(pkg.release).every((entry) => entry === null);
-      if (!checks.release) return resultFailure('unexpected_release_artifact', checks);
+      checks.release = !stageRequiresRelease(pkg.stage);
+      if (!checks.release) return resultFailure('release_artifact_missing', checks);
     }
 
     return {
@@ -623,6 +843,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
       action_digest: bindingResult.action_digest,
       profile_digest: profileResult.profile_digest,
       required_parties: requiredParties,
+      required_release_parties: requiredReleaseParties,
     };
   } catch {
     return resultFailure('malformed_evidence_package', checks);

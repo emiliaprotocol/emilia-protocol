@@ -26,10 +26,12 @@ const profile = Object.freeze({
 
 function fakePostgres() {
   const records = new Map();
+  const events = new Map();
   let available = true;
   let loseNextResponse = false;
   return {
     records,
+    events,
     setAvailable(value) { available = value; },
     loseNextResponse() { loseNextResponse = true; },
     async query(text, params) {
@@ -39,22 +41,60 @@ function fakePostgres() {
         result = records.has(params[0])
           ? { rowCount: 1, rows: [{ ...records.get(params[0]) }] }
           : { rowCount: 0, rows: [] };
+      } else if (text === ACTION_ESCROW_STATE_SQL.history) {
+        const rows = [...(events.get(params[0]) ?? [])];
+        result = { rowCount: rows.length, rows };
       } else if (text === ACTION_ESCROW_STATE_SQL.create) {
         if (records.has(params[0])) {
           result = { rowCount: 0, rows: [] };
         } else {
-          records.set(params[0], { revision: 0, record_json: params[1] });
+          records.set(params[0], {
+            revision: 0,
+            record_json: params[1],
+            updated_at: params[2],
+          });
+          events.set(params[0], [{
+            revision: 0,
+            previous_revision: null,
+            record_json: params[1],
+            record_digest: params[3],
+            recorded_at: params[2],
+          }]);
           result = { rowCount: 1, rows: [{ revision: 0 }] };
         }
       } else if (text === ACTION_ESCROW_STATE_SQL.compareAndSwap) {
-        if (records.get(params[0])?.revision !== params[1]) {
+        if (records.get(params[0])?.revision !== params[1]
+          || records.get(params[0])?.updated_at > params[4]) {
           result = { rowCount: 0, rows: [] };
         } else {
-          records.set(params[0], { revision: params[2], record_json: params[3] });
+          records.set(params[0], {
+            revision: params[2],
+            record_json: params[3],
+            updated_at: params[4],
+          });
+          events.get(params[0]).push({
+            revision: params[2],
+            previous_revision: params[1],
+            record_json: params[3],
+            record_digest: params[5],
+            recorded_at: params[4],
+          });
           result = { rowCount: 1, rows: [{ revision: params[2] }] };
         }
       } else if (text === ACTION_ESCROW_STATE_SQL.health) {
-        result = { rowCount: 1, rows: [{ table_ready: true, can_use: true }] };
+        result = {
+          rowCount: 1,
+          rows: [{
+            table_ready: true,
+            event_table_ready: true,
+            can_use: true,
+            can_append_history: true,
+            owns_state_table: false,
+            owns_event_table: false,
+            can_destroy_state: false,
+            can_mutate_history: false,
+          }],
+        };
       } else {
         throw new Error('unexpected SQL');
       }
@@ -96,6 +136,28 @@ function kernelWith(pg) {
       return {
         valid: true,
         verification_digest: digest('d'),
+        document_digest: digest('e'),
+        agreement_id: 'agreement-postgres-01',
+        binding_id: 'binding-postgres-01',
+        release_action_template: {
+          action_type: 'escrow.milestone.release',
+          action_escrow_profile_digest: expected.profile_digest,
+          agreement_id: 'agreement-postgres-01',
+          agreement_digest: expected.agreement_digest,
+          milestone_id: expected.milestone_id,
+          amount: '18400.00',
+          currency: 'USD',
+          destination_id: 'custody-destination-4821',
+          payee_id: 'ep:principal:contractor',
+          custodian_provider: 'licensed-custodian.test',
+          custodian_environment: 'sandbox',
+          custodian_transaction_id: 'provider-transaction-001',
+          custodian_milestone_id: 'provider-milestone-001',
+          document_sha256: digest('e'),
+          material_terms_sha256: digest('f'),
+          completion_evidence_sha256: digest('6'),
+          amendment_version: 1,
+        },
         agreement_digest: expected.agreement_digest,
         document_action_binding_digest: expected.document_action_binding_digest,
         milestone_id: expected.milestone_id,
@@ -108,6 +170,7 @@ function kernelWith(pg) {
     verifyMilestoneEvidence: neverCalled,
     verifyResolutionReceipt: neverCalled,
     verifyProviderStatement: neverCalled,
+    verifyStateCommand: neverCalled,
   });
 }
 
@@ -135,6 +198,7 @@ test('the production kernel persists and races transitions through the Postgres 
   const stored = [...pg.records.values()][0];
   assert.equal(stored.revision, 1);
   assert.equal(JSON.parse(stored.record_json).state, 'awaiting_acceptance');
+  assert.equal([...pg.events.values()][0].length, 2);
 });
 
 test('a lost create acknowledgement is recovered idempotently from committed state', async () => {

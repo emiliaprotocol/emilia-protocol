@@ -31,8 +31,11 @@ const nextConfig = {
   // before it can bundle a route, so point those package names at the exact
   // in-repo implementations for the website and reference control rooms.
   webpack(config) {
-    config.resolve.alias['@emilia-protocol/require-receipt'] = path.resolve(__dirname, 'packages/require-receipt/index.js');
-    config.resolve.alias['@emilia-protocol/verify'] = path.resolve(__dirname, 'packages/verify/index.js');
+    // `$` keeps exported package subpaths (for example
+    // @emilia-protocol/verify/document-action-binding) resolvable through the
+    // package's exports map instead of appending them to index.js.
+    config.resolve.alias['@emilia-protocol/require-receipt$'] = path.resolve(__dirname, 'packages/require-receipt/index.js');
+    config.resolve.alias['@emilia-protocol/verify$'] = path.resolve(__dirname, 'packages/verify/index.js');
     return config;
   },
   // instrumentation.js is loaded automatically since Next.js 15 — the

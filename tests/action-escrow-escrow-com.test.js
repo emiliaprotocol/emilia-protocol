@@ -60,6 +60,7 @@ function providerTransaction({
   amount = '1250.00',
   accepted = false,
   disbursed = false,
+  funded = true,
 } = {}) {
   return {
     id: Number(TRANSACTION_ID),
@@ -85,9 +86,9 @@ function providerTransaction({
         beneficiary_customer: 'seller@example.com',
         due_date: DUE_DATE,
         status: {
-          secured: true,
-          payment_sent: true,
-          payment_received: true,
+          secured: funded,
+          payment_sent: funded,
+          payment_received: funded,
           disbursed_to_beneficiary: disbursed,
         },
       }],
@@ -100,12 +101,25 @@ function providerTransaction({
   };
 }
 
+function effectBindingClaims() {
+  const claims = new Map();
+  return async ({ effect_reference: effectReference, transaction_id: transactionId,
+    milestone_id: milestoneId }) => {
+    const scope = `${transactionId}\0${milestoneId}`;
+    const existing = claims.get(effectReference);
+    if (existing !== undefined) return existing === scope;
+    claims.set(effectReference, scope);
+    return true;
+  };
+}
+
 function adapter(fetchImpl, overrides = {}) {
   return createEscrowComAdapter({
     environment: 'sandbox',
     email: ACCOUNT_EMAIL,
     apiKey: API_KEY,
     fetch: fetchImpl,
+    claimEffectBinding: effectBindingClaims(),
     customerDiligence: {
       review_status: 'customer_pending',
       evidence_references: ['https://customer.example/escrow-diligence'],
@@ -164,6 +178,28 @@ describe('Escrow.com transaction creation and reconciliation', () => {
     expect(result.reconciled_after).toBe('preflight');
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl.mock.calls[0][1].method).toBe('GET');
+  });
+
+  it('refuses buyer and seller aliases that identify the same provider customer', async () => {
+    const fetchImpl = vi.fn();
+    const result = await adapter(fetchImpl).createTransaction(createRequest({
+      buyerCustomer: 'me',
+      sellerCustomer: ACCOUNT_EMAIL,
+    }));
+
+    expect(result).toMatchObject({ kind: 'refused', reason_code: 'INVALID_REQUEST' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('returns a contract-valid provider error when the create preflight is unavailable', async () => {
+    const fetchImpl = vi.fn(async () => new Response('unavailable', { status: 503 }));
+    const result = await adapter(fetchImpl).createTransaction(createRequest());
+
+    expect(result).toMatchObject({
+      kind: 'provider_error',
+      operation: 'create_transaction',
+      reason_code: 'PROVIDER_HTTP_ERROR',
+    });
   });
 
   it('refuses reuse of the stable provider reference for different terms', async () => {
@@ -277,6 +313,7 @@ describe('Escrow.com transaction creation and reconciliation', () => {
       email: ACCOUNT_EMAIL,
       apiKey: API_KEY,
       fetch: fetchImpl,
+      claimEffectBinding: effectBindingClaims(),
       customerDiligence: { review_status: 'customer_complete' },
     });
 
@@ -289,6 +326,63 @@ describe('Escrow.com transaction creation and reconciliation', () => {
 });
 
 describe('Escrow.com milestone release and disbursement limitation', () => {
+  it('refuses milestone acceptance until every schedule is secured and funded', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(providerTransaction({ funded: false })));
+    const result = await adapter(fetchImpl).releaseMilestone({
+      effectReference: RELEASE_EFFECT,
+      transactionId: TRANSACTION_ID,
+      milestoneId: MILESTONE_ID,
+    });
+
+    expect(result).toMatchObject({
+      kind: 'provider_action_required',
+      reason_code: 'FUNDING_REQUIRED',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl.mock.calls[0][1].method).toBe('GET');
+  });
+
+  it('fails closed when durable effect-reference claiming is unavailable', async () => {
+    const fetchImpl = vi.fn();
+    const result = await adapter(fetchImpl, {
+      claimEffectBinding: async () => {
+        throw new Error('store unavailable');
+      },
+    }).releaseMilestone({
+      effectReference: RELEASE_EFFECT,
+      transactionId: TRANSACTION_ID,
+      milestoneId: MILESTONE_ID,
+    });
+
+    expect(result).toMatchObject({
+      kind: 'provider_error',
+      reason_code: 'EFFECT_BINDING_STORE_UNAVAILABLE',
+    });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('refuses reuse of one effect reference for another provider milestone scope', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(providerTransaction({ accepted: true })));
+    const subject = adapter(fetchImpl);
+    const first = await subject.releaseMilestone({
+      effectReference: RELEASE_EFFECT,
+      transactionId: TRANSACTION_ID,
+      milestoneId: MILESTONE_ID,
+    });
+    const second = await subject.releaseMilestone({
+      effectReference: RELEASE_EFFECT,
+      transactionId: '7002',
+      milestoneId: MILESTONE_ID,
+    });
+
+    expect(first.kind).toBe('release_submitted');
+    expect(second).toMatchObject({
+      kind: 'refused',
+      reason_code: 'EFFECT_REFERENCE_CONFLICT',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('reconciles with GET, performs only documented milestone acceptance, then GETs again', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(jsonResponse(providerTransaction()))

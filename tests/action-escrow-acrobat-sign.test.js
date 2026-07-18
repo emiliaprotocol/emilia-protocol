@@ -7,13 +7,22 @@ import { createAcrobatSignAdapter } from '../lib/integrations/action-escrow/acro
 const API_ORIGIN = 'https://api.na1.adobesign.com';
 const OAUTH_TOKEN = 'oauth-access-token-value';
 const AGREEMENT_ID = 'CBJCHBCAABAA-example-agreement';
+const AGREEMENT_VERSION = '3AAABLblqZhA-final-version';
 const OBSERVED_AT = '2026-07-17T21:30:00.000Z';
 const PDF_BYTES = new TextEncoder().encode('%PDF-1.7\nfinal signed bytes\n%%EOF');
 
-function jsonResponse(value, status = 200, contentType = 'application/json; charset=utf-8') {
+function jsonResponse(
+  value,
+  status = 200,
+  contentType = 'application/json; charset=utf-8',
+  headers = {},
+) {
   return new Response(JSON.stringify(value), {
     status,
-    headers: { 'Content-Type': contentType },
+    headers: {
+      'Content-Type': contentType,
+      ...headers,
+    },
   });
 }
 
@@ -29,18 +38,39 @@ function agreement({
   status = 'SIGNED',
   email = 'signer@example.com',
   memberStatus = 'COMPLETED',
+  role = 'SIGNER',
+  memberInfos,
+  participantSetsInfo,
 } = {}) {
   return {
     id,
     name: 'Release authorization',
     status,
-    participantSetsInfo: [{
-      role: 'SIGNER',
+    participantSetsInfo: participantSetsInfo || [{
+      id: 'participant-set-1',
+      role,
       order: 1,
-      memberInfos: [{
+      memberInfos: memberInfos || [{
         email,
-        status: memberStatus,
+        status: 'ACTIVE',
+        extendedStatus: memberStatus,
       }],
+    }],
+  };
+}
+
+function events({
+  version = AGREEMENT_VERSION,
+  id = 'event-final-signed',
+  type = 'SIGNED',
+  date = '2026-07-17T21:29:59Z',
+} = {}) {
+  return {
+    events: [{
+      id,
+      type,
+      date,
+      versionId: version,
     }],
   };
 }
@@ -62,10 +92,14 @@ function request(overrides = {}) {
     expected: {
       agreementId: AGREEMENT_ID,
       status: 'SIGNED',
-      participants: [{
-        email: 'signer@example.com',
+      participantSets: [{
+        id: 'participant-set-1',
         role: 'SIGNER',
-        status: 'COMPLETED',
+        order: 1,
+        members: [{
+          email: 'signer@example.com',
+          status: 'COMPLETED',
+        }],
       }],
     },
     ...overrides,
@@ -91,7 +125,10 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
   it('uses the webhook only as a hint and returns provider-fetched final bytes and metadata', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(jsonResponse(agreement()))
-      .mockResolvedValueOnce(pdfResponse());
+      .mockResolvedValueOnce(jsonResponse(events()))
+      .mockResolvedValueOnce(pdfResponse())
+      .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(events()));
     const subject = adapter(fetchImpl);
 
     const result = await subject.fetchFinalEvidence(request());
@@ -105,11 +142,17 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
       api_origin: API_ORIGIN,
       agreement_id: AGREEMENT_ID,
       agreement_status: 'SIGNED',
-      participants: [{
-        email: 'signer@example.com',
+      agreement_version: AGREEMENT_VERSION,
+      agreement_events_digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+      participant_sets: [{
+        set_id: 'participant-set-1',
         role: 'SIGNER',
         order: 1,
-        member_status: 'COMPLETED',
+        members: [{
+          email: 'signer@example.com',
+          member_status: 'COMPLETED',
+        }],
+        completion_status: 'COMPLETED',
       }],
       document: {
         media_type: 'application/pdf',
@@ -122,12 +165,22 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
     expect(Object.isFrozen(result.evidence)).toBe(true);
     expect(JSON.stringify(result)).not.toContain(OAUTH_TOKEN);
 
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
     expect(fetchImpl.mock.calls[0][0]).toBe(
       `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}`,
     );
     expect(fetchImpl.mock.calls[1][0]).toBe(
-      `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}/combinedDocument`,
+      `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}/events`,
+    );
+    expect(fetchImpl.mock.calls[2][0]).toBe(
+      `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}/combinedDocument`
+        + `?versionId=${encodeURIComponent(AGREEMENT_VERSION)}`,
+    );
+    expect(fetchImpl.mock.calls[3][0]).toBe(
+      `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}`,
+    );
+    expect(fetchImpl.mock.calls[4][0]).toBe(
+      `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}/events`,
     );
     expect(fetchImpl.mock.calls[0][1]).toMatchObject({
       method: 'GET',
@@ -137,7 +190,10 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
         Authorization: `Bearer ${OAUTH_TOKEN}`,
       },
     });
-    expect(fetchImpl.mock.calls[1][1].headers.Accept).toBe('application/pdf');
+    expect(fetchImpl.mock.calls[1][1].headers.Accept).toBe('application/json');
+    expect(fetchImpl.mock.calls[2][1].headers.Accept).toBe('application/pdf');
+    expect(fetchImpl.mock.calls[3][1].headers.Accept).toBe('application/json');
+    expect(fetchImpl.mock.calls[4][1].headers.Accept).toBe('application/json');
   });
 
   it('refuses a mismatched webhook agreement hint without making a request', async () => {
@@ -190,6 +246,230 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
     expect(participantFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('fails closed on non-signers, wrong provider roles, and missing participants', async () => {
+    const nonSignerInput = request();
+    nonSignerInput.expected.participantSets[0].role = 'APPROVER';
+    const nonSignerFetch = vi.fn();
+    await expect(adapter(nonSignerFetch).fetchFinalEvidence(nonSignerInput))
+      .resolves.toMatchObject({
+        kind: 'refused',
+        reason_code: 'INVALID_EXPECTATION',
+      });
+    expect(nonSignerFetch).not.toHaveBeenCalled();
+
+    const wrongRoleFetch = vi.fn(async () => jsonResponse(agreement({
+      role: 'APPROVER',
+    })));
+    await expect(adapter(wrongRoleFetch).fetchFinalEvidence(request()))
+      .resolves.toMatchObject({
+        kind: 'mismatch',
+        reason_code: 'PARTICIPANT_MISMATCH',
+      });
+    expect(wrongRoleFetch).toHaveBeenCalledTimes(1);
+
+    const missingParticipantInput = request();
+    missingParticipantInput.expected.participantSets.push({
+      id: 'participant-set-2',
+      role: 'SIGNER',
+      order: 2,
+      members: [{
+        email: 'second@example.com',
+        status: 'COMPLETED',
+      }],
+    });
+    const missingParticipantFetch = vi.fn(async () => jsonResponse(agreement()));
+    await expect(adapter(missingParticipantFetch).fetchFinalEvidence(missingParticipantInput))
+      .resolves.toMatchObject({
+        kind: 'mismatch',
+        reason_code: 'PARTICIPANT_MISMATCH',
+      });
+    expect(missingParticipantFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires every expected signer to be completed before downloading the PDF', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(agreement({
+      memberStatus: 'ACTIVE',
+    })));
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(request());
+
+    expect(result).toMatchObject({
+      kind: 'mismatch',
+      reason_code: 'PARTICIPANT_MISMATCH',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('never treats two members of one signing group as two independent signer seats', async () => {
+    const input = request();
+    input.expected.participantSets.push({
+      id: 'participant-set-2',
+      role: 'SIGNER',
+      order: 2,
+      members: [{
+        email: 'second@example.com',
+        status: 'COMPLETED',
+      }],
+    });
+    const signingGroup = agreement({
+      participantSetsInfo: [{
+        id: 'participant-set-1',
+        role: 'SIGNER',
+        order: 1,
+        memberInfos: [
+          {
+            email: 'signer@example.com',
+            status: 'ACTIVE',
+            extendedStatus: 'COMPLETED',
+          },
+          {
+            email: 'second@example.com',
+            status: 'ACTIVE',
+            extendedStatus: 'COMPLETED',
+          },
+        ],
+      }],
+    });
+    const fetchImpl = vi.fn(async () => jsonResponse(signingGroup));
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(input);
+
+    expect(result).toMatchObject({
+      kind: 'provider_error',
+      reason_code: 'PROVIDER_RESPONSE_INVALID',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['identity', agreement({ id: 'different-agreement' })],
+    ['status', agreement({ status: 'CANCELLED' })],
+  ])('rejects an authoritative %s change around the PDF fetch', async (_field, changed) => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(events()))
+      .mockResolvedValueOnce(pdfResponse())
+      .mockResolvedValueOnce(jsonResponse(changed))
+      .mockResolvedValueOnce(jsonResponse(events()));
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(request());
+
+    expect(result).toMatchObject({
+      kind: 'mismatch',
+      reason_code: 'AGREEMENT_CHANGED_DURING_FETCH',
+    });
+    expect(result).not.toHaveProperty('evidence');
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
+  });
+
+  it('rejects an authoritative document version change around the PDF fetch', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(events()))
+      .mockResolvedValueOnce(pdfResponse())
+      .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(events({
+        id: 'event-new-version',
+        version: '3AAABLblqZhA-substituted-version',
+        date: '2026-07-17T21:30:00Z',
+      })));
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(request());
+
+    expect(result).toMatchObject({
+      kind: 'mismatch',
+      reason_code: 'AGREEMENT_CHANGED_DURING_FETCH',
+    });
+    expect(result).not.toHaveProperty('evidence');
+  });
+
+  it('rejects roster equivocation around the PDF fetch', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(events()))
+      .mockResolvedValueOnce(pdfResponse())
+      .mockResolvedValueOnce(jsonResponse(agreement({
+        email: 'substituted@example.com',
+      })))
+      .mockResolvedValueOnce(jsonResponse(events()));
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(request());
+
+    expect(result).toMatchObject({
+      kind: 'mismatch',
+      reason_code: 'AGREEMENT_CHANGED_DURING_FETCH',
+    });
+    expect(result).not.toHaveProperty('document_bytes');
+  });
+
+  it('pins the PDF fetch to the authoritative version instead of provider latest', async () => {
+    const substitutedBytes = new TextEncoder()
+      .encode('%PDF-1.7\nsubstituted latest bytes\n%%EOF');
+    const metadataUrl = `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}`;
+    const eventsUrl = `${metadataUrl}/events`;
+    const versionedPdfUrl = `${metadataUrl}/combinedDocument`
+      + `?versionId=${encodeURIComponent(AGREEMENT_VERSION)}`;
+    const fetchImpl = vi.fn(async (url) => {
+      if (url === metadataUrl) return jsonResponse(agreement());
+      if (url === eventsUrl) return jsonResponse(events());
+      return pdfResponse(url === versionedPdfUrl ? PDF_BYTES : substitutedBytes);
+    });
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(request());
+
+    expect(result.kind).toBe('evidence_ready');
+    expect(Array.from(result.document_bytes)).toEqual(Array.from(PDF_BYTES));
+    expect(fetchImpl.mock.calls[2][0]).toBe(versionedPdfUrl);
+    expect(result.evidence.document.sha256).not.toBe(
+      `sha256:${createHash('sha256').update(substitutedBytes).digest('hex')}`,
+    );
+  });
+
+  it('refuses event history without an authoritative agreement version', async () => {
+    const unversionedEvents = events();
+    delete unversionedEvents.events[0].versionId;
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(unversionedEvents));
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(request());
+
+    expect(result).toMatchObject({
+      kind: 'provider_error',
+      reason_code: 'PROVIDER_RESPONSE_INVALID',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses ETag only for metadata stability and the event version for document bytes', async () => {
+    const etag = 'D27e5290dc3a748068e42a59f4dfc6f6b1d5eaba1';
+    const metadataResponse = () => jsonResponse(
+      agreement(),
+      200,
+      'application/json; charset=utf-8',
+      { ETag: `"${etag}"` },
+    );
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(metadataResponse())
+      .mockResolvedValueOnce(jsonResponse(events()))
+      .mockResolvedValueOnce(pdfResponse())
+      .mockResolvedValueOnce(metadataResponse())
+      .mockResolvedValueOnce(jsonResponse(events()));
+
+    const result = await adapter(fetchImpl).fetchFinalEvidence(request());
+
+    expect(result).toMatchObject({
+      kind: 'evidence_ready',
+      evidence: {
+        agreement_version: AGREEMENT_VERSION,
+      },
+    });
+    expect(fetchImpl.mock.calls[2][0]).toBe(
+      `${API_ORIGIN}/api/rest/v6/agreements/${AGREEMENT_ID}/combinedDocument`
+        + `?versionId=${encodeURIComponent(AGREEMENT_VERSION)}`,
+    );
+  });
+
   it('rejects non-JSON metadata and duplicate-key provider JSON', async () => {
     const wrongTypeFetch = vi.fn(async () => jsonResponse(
       agreement(),
@@ -219,6 +499,7 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
   ])('rejects a final document with %s', async (_label, bytes, contentType) => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(events()))
       .mockResolvedValueOnce(pdfResponse(bytes, 200, contentType));
 
     const result = await adapter(fetchImpl).fetchFinalEvidence(request());
@@ -232,6 +513,7 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
   it('bounds final PDF bytes', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(jsonResponse(agreement()))
+      .mockResolvedValueOnce(jsonResponse(events()))
       .mockResolvedValueOnce(new Response('%PDF-large', {
         status: 200,
         headers: {
@@ -277,6 +559,30 @@ describe('Acrobat Sign authoritative evidence fetch', () => {
       oauthAccessToken: OAUTH_TOKEN,
       fetch: fetchImpl,
     })).toThrow(/HTTPS/);
+    for (const apiOrigin of [
+      'https://example.com',
+      'https://api.na1.adobesign.com.example.com',
+      'https://secure.na1.adobesign.com',
+      'https://api.attacker.adobesign.com',
+    ]) {
+      expect(() => createAcrobatSignAdapter({
+        apiOrigin,
+        oauthAccessToken: OAUTH_TOKEN,
+        fetch: fetchImpl,
+      })).toThrow(/Acrobat Sign/);
+    }
+    for (const apiOrigin of [
+      'https://api.adobesign.com',
+      'https://api.eu1.adobesign.com',
+      'https://api.na1.echosign.com',
+      'https://api.na1.adobesign.us',
+    ]) {
+      expect(() => createAcrobatSignAdapter({
+        apiOrigin,
+        oauthAccessToken: OAUTH_TOKEN,
+        fetch: fetchImpl,
+      })).not.toThrow();
+    }
 
     const subject = adapter(fetchImpl);
     expect(subject).not.toHaveProperty('oauthAccessToken');
