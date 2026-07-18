@@ -6,6 +6,7 @@ import {
   getOperatorRoles,
   getPinnedApproverKeys,
   getPinnedQuorumPolicies,
+  getRateLimitConfig,
 } from '../lib/env.js';
 
 const ORIGINAL = { ...process.env };
@@ -36,5 +37,12 @@ describe('security-sensitive environment JSON', () => {
   it('refuses duplicate role assignments', () => {
     process.env.EP_OPERATOR_ROLES = '{"operator-1":"reviewer","operator-1":"admin"}';
     expect(getOperatorRoles().size).toBe(0);
+  });
+
+  it('requires a durable rate limiter for sensitive production categories', () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.EP_GOV_STRICT;
+    delete process.env.EP_REQUIRE_DURABLE_RATE_LIMIT;
+    expect(getRateLimitConfig().durableRequired).toBe(true);
   });
 });
