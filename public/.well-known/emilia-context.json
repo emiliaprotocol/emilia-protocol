@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-18T20:44:56.410Z",
+  "evidence_snapshot_at": "2026-07-18T20:50:22.535Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "e5909985ecdea7fa0323f6cc11e18bee93407a0781033692879b51e5e8a20dbb",
+    "input_digest_sha256": "a3ec73112af82b9816fe6274215207ac73f8c611f1526bb7bf98bcb6f8e32a87",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "aa3849a1da949281d16762e3a4d7fe2542c2d56fc5e280c9bf61f1eaca391844",
-        "bytes": 29743
+        "sha256": "fbbe9d18a069b05f769eb38c76ffd5d13dd6f9b996b9641a21357343d995bb4a",
+        "bytes": 30809
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "b4ff7d0f81737ac0f48a7cdbfb539895da968b95e27131659df4d78c4b7883cc",
+        "sha256": "8318c961873da781b9e89fe69bed32f878603b64e5df82da62479cef03b24123",
         "bytes": 1068
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "76144c6875688f32b97f198cb990f6aabd298e6bdda85fa6af11680ebee3b551",
+        "sha256": "67dab73310a18dc3341860d465883160c2f77746434257728e625a611ad30f63",
         "bytes": 201637
       },
       {
@@ -211,7 +211,7 @@
       "layer": "delegation, capability, and policy",
       "question": "What authority, capability, or machine policy applies?",
       "ep_role": "Verifies native artifacts and keeps policy ALLOW distinct from human approval.",
-      "adjacent_examples": "DRP, OAuth, AuthZEN, AGTP, AgentROA"
+      "adjacent_examples": "DRP, OAuth, AuthZEN, ACTA signed decision receipts, AGTP, AgentROA"
     },
     {
       "layer": "material action identity and mapping",
@@ -240,8 +240,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 6370,
-      "files": 330,
+      "total": 6606,
+      "files": 341,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -272,7 +272,7 @@
       "status": "passed",
       "claims": 26,
       "evidence_files": 121,
-      "evidence_bundle_sha256": "c809c1d33a15dabdf87fd389bc4c6cea7a631d80f51db40ed5b38f54a8916c93"
+      "evidence_bundle_sha256": "0b3ec662149bdeb85fd082e04f590b34aacc58a0773f9a52a6ea3e251d830ef0"
     },
     "caid": {
       "core_vectors": 48,
@@ -2995,6 +2995,14 @@
       "purpose": "runnable cross-domain gateway labs: independent verification under each gateway's trust anchors, plus receiver-computed physical-action challenges, one-time consumption, and offline decision replay"
     },
     {
+      "path": "examples/acta-ep-join",
+      "purpose": "runnable ACTA-02 machine-policy decision plus EMILIA named-human authorization: separate role-scoped trust anchors, ACTA action_ref, CAID material-action matching, exact EP receipt reference, and stateful replay refusal"
+    },
+    {
+      "path": "examples/oaip-oversight-receipt",
+      "purpose": "offline regulator-style oversight demo: monthly clinician-approval receipts verify from signed bytes, bind a named approver, keep patient references out of the receipt, and refuse tampering or unpinned keys"
+    },
+    {
       "path": "lib/frontier/model-to-matter.js",
       "purpose": "executor-side Model-to-Matter clearance profile"
     },
@@ -3079,6 +3087,14 @@
     {
       "command": "node examples/cross-gateway/dmsc-physical-action.mjs",
       "purpose": "run the DMSC Sections 6.9 and 7.7 physical-action composition and its fail-closed cases"
+    },
+    {
+      "command": "node examples/acta-ep-join/demo.mjs",
+      "purpose": "run ACTA machine-decision plus EP human-authorization composition and its action-substitution, role-confusion, key-pinning, freshness, receipt-swap, embedded-key, and replay refusals"
+    },
+    {
+      "command": "node examples/oaip-oversight-receipt/demo.mjs",
+      "purpose": "run the offline oversight receipt report and its tamper and unpinned-approver refusals"
     },
     {
       "command": "npm run sync:llm-context",

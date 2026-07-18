@@ -143,7 +143,7 @@
       "layer": "delegation, capability, and policy",
       "question": "What authority, capability, or machine policy applies?",
       "ep_role": "Verifies native artifacts and keeps policy ALLOW distinct from human approval.",
-      "adjacent_examples": "DRP, OAuth, AuthZEN, AGTP, AgentROA"
+      "adjacent_examples": "DRP, OAuth, AuthZEN, ACTA signed decision receipts, AGTP, AgentROA"
     },
     {
       "layer": "material action identity and mapping",
@@ -329,6 +329,14 @@
       "purpose": "runnable cross-domain gateway labs: independent verification under each gateway's trust anchors, plus receiver-computed physical-action challenges, one-time consumption, and offline decision replay"
     },
     {
+      "path": "examples/acta-ep-join",
+      "purpose": "runnable ACTA-02 machine-policy decision plus EMILIA named-human authorization: separate role-scoped trust anchors, ACTA action_ref, CAID material-action matching, exact EP receipt reference, and stateful replay refusal"
+    },
+    {
+      "path": "examples/oaip-oversight-receipt",
+      "purpose": "offline regulator-style oversight demo: monthly clinician-approval receipts verify from signed bytes, bind a named approver, keep patient references out of the receipt, and refuse tampering or unpinned keys"
+    },
+    {
       "path": "lib/frontier/model-to-matter.js",
       "purpose": "executor-side Model-to-Matter clearance profile"
     },
@@ -413,6 +421,14 @@
     {
       "command": "node examples/cross-gateway/dmsc-physical-action.mjs",
       "purpose": "run the DMSC Sections 6.9 and 7.7 physical-action composition and its fail-closed cases"
+    },
+    {
+      "command": "node examples/acta-ep-join/demo.mjs",
+      "purpose": "run ACTA machine-decision plus EP human-authorization composition and its action-substitution, role-confusion, key-pinning, freshness, receipt-swap, embedded-key, and replay refusals"
+    },
+    {
+      "command": "node examples/oaip-oversight-receipt/demo.mjs",
+      "purpose": "run the offline oversight receipt report and its tamper and unpinned-approver refusals"
     },
     {
       "command": "npm run sync:llm-context",

@@ -15,8 +15,9 @@
 // proves what executed, and a verifier can detect any gap.
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
-import { canReadReceipt } from '@/lib/tenant-binding';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
+import { canMutateReceipt } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -65,10 +66,10 @@ export async function POST(request, { params }) {
 
     const created = events.find((e) => e.event_type === 'guard.trust_receipt.created');
     if (!created) return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
-    if (!canReadReceipt(auth, {
+    if (!canMutateReceipt(auth, {
       organizationId: created.after_state?.organization_id,
       creatorActorId: created.actor_id,
-    })) {
+    }, 'receipt.execute')) {
       return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
     }
 

@@ -8,14 +8,15 @@
  * engagement store.
  *
  * GATING: this surfaces customer company names and escalation reasons. Access
- * requires a valid `td_internal` cookie matching TRUST_DESK_INTERNAL_TOKEN,
- * obtained via /internal/trust-desk/auth?token=... (timing-safe, httpOnly,
- * 8h). Disabled entirely when the env token is unset. noindex always.
+ * requires a valid `td_internal` HMAC session cookie issued by the bootstrap
+ * exchange at /internal/trust-desk/auth?token=... (timing-safe, httpOnly, 8h).
+ * The URL bearer is never reused as session state. Disabled entirely when the
+ * env token is unset. noindex always.
  */
 
-import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
 import { listEngagements } from '@/lib/trust-desk/store';
+import { TRUST_DESK_SESSION_COOKIE, verifyTrustDeskSession } from '@/lib/trust-desk/auth';
 import { color, font, radius } from '@/lib/tokens';
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +52,7 @@ export default async function ReviewerDashboard() {
             <>
               Authenticate by visiting{' '}
               <code style={code}>/internal/trust-desk/auth?token=YOUR_TOKEN</code> with the value of{' '}
-              <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code>. A session cookie is set for 8 hours.
+              <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code>. A distinct reviewer session is issued for 8 hours.
             </>
           )}
         </p>
@@ -95,11 +96,8 @@ async function checkAccess() {
   const expected = process.env.TRUST_DESK_INTERNAL_TOKEN;
   if (!expected) return 'disabled';
   const jar = await cookies();
-  const token = jar.get('td_internal')?.value || '';
-  const a = Buffer.from(token);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return 'unauthorized';
-  return crypto.timingSafeEqual(a, b) ? 'ok' : 'unauthorized';
+  const session = jar.get(TRUST_DESK_SESSION_COOKIE)?.value || '';
+  return verifyTrustDeskSession(session) ? 'ok' : 'unauthorized';
 }
 
 function Section({ title, rows, emptyText }) {

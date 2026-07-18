@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityDbId, authEntityId } from '@/lib/auth-projections.js';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -33,9 +34,9 @@ export async function POST(request) {
         dispute_id: body.dispute_id,
         reason: body.reason,
         evidence: body.evidence || null,
-        appealer_id: auth.entity.id,
+        appealer_id: authEntityDbId(auth),
       },
-      actor: auth.entity,
+      actor: authEntityId(auth),
     });
 
     if (result.error) {

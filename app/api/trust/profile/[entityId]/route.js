@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { logger } from '../../../../../lib/logger.js';
 import { strictJsonGate } from '@/lib/strict-json.js';
 

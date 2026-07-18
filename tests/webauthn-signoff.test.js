@@ -16,6 +16,7 @@ import {
   contextHashBytes,
   coseToSpkiP256,
 } from '../lib/webauthn.js';
+import { canonicalize as sharedCanonicalize } from '../lib/canonical-json.js';
 import { Encoder } from 'cbor-x';
 
 const RP_ID = 'emiliaprotocol.ai';
@@ -189,6 +190,12 @@ describe('lib/webauthn helpers', () => {
     const ctx1 = { b: 2, a: 1, nested: { y: [1, 2], x: 'z' } };
     const ctx2 = { nested: { x: 'z', y: [1, 2] }, a: 1, b: 2 };
     expect(canonicalize(ctx1)).toBe(canonicalize(ctx2));
+  });
+
+  it('uses the shared canonicalizer and refuses out-of-profile values', () => {
+    const context = makeContext();
+    expect(canonicalize(context)).toBe(sharedCanonicalize(context));
+    expect(() => canonicalize({ omitted: undefined })).toThrow(/canonicalization profile/);
   });
 
   it('coseToSpkiP256 converts a COSE EC2 key and the result verifies signatures', () => {

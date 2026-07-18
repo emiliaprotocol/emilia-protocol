@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, generateApiKey, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest, generateApiKey, hashApiKey } from '@/lib/supabase';
+import { authEntityDbId } from '@/lib/auth-projections.js';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { hasApiPermission } from '@/lib/auth-permissions.js';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -22,20 +25,20 @@ export async function POST(request) {
     if (auth.error) {
       return epProblem(auth.status, auth.code, auth.error);
     }
-
-    const { entity } = auth;
+    if (!hasApiPermission(auth, 'keys.rotate')) {
+      return epProblem(403, 'insufficient_permissions', 'Key rotation requires keys.rotate or admin permission');
+    }
 
     // ── Derive old key hash from the request header ──────────────────
     const apiKey = request.headers.get('authorization').replace('Bearer ', '');
-    const { hashApiKey } = await import('@/lib/supabase');
     const oldKeyHash = hashApiKey(apiKey);
 
     // ── Generate new key ─────────────────────────────────────────────
     const { key: newKey, hash: newKeyHash, prefix } = generateApiKey();
 
-    const serviceClient = getServiceClient();
-    const { data, error: rotateError } = await serviceClient.rpc('rotate_api_key_atomic', {
-      p_entity_id: entity.id,
+    const guardedClient = getGuardedClient();
+    const { data, error: rotateError } = await guardedClient.rpc('rotate_api_key_atomic', {
+      p_entity_id: authEntityDbId(auth),
       p_old_key_hash: oldKeyHash,
       p_new_key_hash: newKeyHash,
       p_new_key_prefix: prefix,

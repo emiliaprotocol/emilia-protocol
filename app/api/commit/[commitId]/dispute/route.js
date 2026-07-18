@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { authorizeCommitAccess } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
@@ -74,7 +75,7 @@ export async function POST(request, { params }) {
     const result = await protocolWrite({
       type: COMMAND_TYPES.FILE_DISPUTE,
       input: disputeBody,
-      actor: auth.entity,
+      actor: authEntityActor(auth),
     });
 
     if (result.error) {

@@ -51,6 +51,9 @@ const mockGetServiceClient = vi.fn().mockReturnValue(mockSupabase);
 
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticateRequest(...args),
+  authEntityId: (auth) => typeof auth?.entity === 'string'
+    ? auth.entity
+    : auth?.entity?.entity_id || auth?.entity?.id || '',
   getServiceClient: (...args) => mockGetServiceClient(...args),
 }));
 
@@ -201,7 +204,7 @@ describe('POST /api/handshake (create)', () => {
     const callArgs = mockInitiateHandshake.mock.calls[0];
     expect(callArgs).toHaveLength(1);
     expect(callArgs[0]).toHaveProperty('actor');
-    expect(callArgs[0].actor).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[0].actor).toBe('test-entity-123');
     expect(callArgs[0]).toHaveProperty('mode', 'mutual');
     expect(callArgs[0]).toHaveProperty('policy_id', 'pol_abc');
     expect(callArgs[0]).toHaveProperty('parties', validBody.parties);
@@ -328,7 +331,7 @@ describe('POST /api/handshake/:id/present', () => {
     await presentPost(req, mockParams);
 
     const callArgs = mockAddPresentation.mock.calls[0];
-    expect(callArgs[3]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[3]).toBe('test-entity-123');
   });
 
   it('11. returns 400 when party_role is missing', async () => {
@@ -403,7 +406,7 @@ describe('POST /api/handshake/:id/verify', () => {
     const callArgs = mockVerifyHandshake.mock.calls[0];
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
-      actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
+      actor: 'test-entity-123',
       payload: rawPayload,
       nonce: null,
       action_hash: null,
@@ -423,7 +426,7 @@ describe('POST /api/handshake/:id/verify', () => {
     const callArgs = mockVerifyHandshake.mock.calls[0];
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
-      actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
+      actor: 'test-entity-123',
       payload: null,
       nonce: null,
       action_hash: null,
@@ -453,7 +456,7 @@ describe('GET /api/handshake (list)', () => {
 
     const callArgs = mockListHandshakes.mock.calls[0];
     // listHandshakes(filters, actor)
-    expect(callArgs[1]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[1]).toBe('test-entity-123');
   });
 
   it('17. passes filter params from query string correctly (entity_ref forced to auth entity)', async () => {
@@ -499,6 +502,6 @@ describe('POST /api/handshake/:id/revoke', () => {
     const callArgs = mockRevokeHandshake.mock.calls[0];
     expect(callArgs[0]).toBe('eph_revoke_321');
     expect(callArgs[1]).toBe('policy_violation');
-    expect(callArgs[2]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[2]).toBe('test-entity-123');
   });
 });

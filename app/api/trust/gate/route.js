@@ -8,7 +8,8 @@ import { verifyDelegation } from '@/lib/delegation';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId, authEntityActor } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { canonicalize } from '@/lib/canonical-json';
@@ -42,11 +43,20 @@ export async function POST(request) {
 
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+    const actor = authEntityActor(auth);
+    const callerEntityId = authEntityId(auth);
+    const handshakeActor = { entity_id: callerEntityId };
 
     const { entity_id, action, policy = 'standard', value_usd, delegation_id, handshake_id, resource_ref, intent_ref } = body;
 
     if (!entity_id || !action) {
       return EP_ERRORS.BAD_REQUEST('entity_id and action are required');
+    }
+    if (entity_id !== callerEntityId && !delegation_id) {
+      return NextResponse.json({
+        error: 'entity_id must match the authenticated entity unless a delegation is supplied',
+        code: 'cross_entity_authorization_required',
+      }, { status: 403 });
     }
 
     let gateBindingHash;
@@ -112,9 +122,19 @@ export async function POST(request) {
     if (delegation_id) {
       try {
         const dlg = await verifyDelegation(delegation_id, action);
-        delegationVerified = dlg.valid && (dlg.action_permitted !== false);
+        // A valid action scope alone is not enough. The authenticated caller
+        // must be the delegated agent and the requested entity must be the
+        // delegation principal; otherwise a caller can mint a commit for an
+        // unrelated entity by presenting any in-scope delegation id.
+        const delegationBindingMatches = dlg.agent_entity_id === callerEntityId
+          && dlg.principal_id === entity_id;
+        delegationVerified = dlg.valid
+          && (dlg.action_permitted !== false)
+          && delegationBindingMatches;
         if (!delegationVerified) {
-          reasons.push(dlg.reason || 'Delegation is invalid or action not in scope');
+          reasons.push(!delegationBindingMatches
+            ? 'Delegation principal/agent does not match the authenticated request'
+            : (dlg.reason || 'Delegation is invalid or action not in scope'));
         }
       } catch {
         delegationVerified = false;
@@ -212,17 +232,18 @@ export async function POST(request) {
             binding_hash: handshakeBinding.binding_hash,
             consumed_by_type: 'trust_gate',
             consumed_by_id: randomUUID(),
-            actor: auth.entity,
+            actor: handshakeActor,
             consumed_by_action: action,
           });
         }
 
         const commitResult = await protocolWrite({
           type: COMMAND_TYPES.ISSUE_COMMIT,
-          actor: auth.entity,
+          actor,
           input: {
             entity_id,
             action_type: action,
+            ...(delegation_id ? { delegation_id } : {}),
             scope: {
               policy,
               gate_binding_version: GATE_COMMIT_BINDING_VERSION,

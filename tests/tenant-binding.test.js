@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { resolveAuthorizedOrg, canReadReceipt } from '../lib/tenant-binding.js';
+import { resolveAuthorizedOrg, canReadReceipt, canMutateReceipt } from '../lib/tenant-binding.js';
 
 const bound = { entity: { entity_id: 'ent_1', organization_id: 'org_real' } };
 const unbound = { entity: { entity_id: 'ent_2' } };           // no organization_id
@@ -63,5 +63,21 @@ describe('canReadReceipt — read-side tenant scoping (IDOR)', () => {
     expect(canReadReceipt({}, receipt)).toBe(false);
     expect(canReadReceipt(bound, {})).toBe(false);                                    // bound org != undefined
     expect(canReadReceipt({ entity: { entity_id: '' } }, receipt)).toBe(false);
+  });
+});
+
+describe('canMutateReceipt — read membership is not mutation authority', () => {
+  const receipt = { organizationId: 'org_real', creatorActorId: 'ent_creator' };
+
+  it('blocks a same-org peer without an explicit receipt capability', () => {
+    const peer = { entity: { entity_id: 'ent_peer', organization_id: 'org_real' }, permissions: ['read', 'write'] };
+    expect(canMutateReceipt(peer, receipt, 'receipt.consume')).toBe(false);
+    expect(canMutateReceipt(peer, receipt, 'receipt.execute')).toBe(false);
+  });
+
+  it('allows a same-org peer with the exact mutation capability', () => {
+    const peer = { entity: { entity_id: 'ent_peer', organization_id: 'org_real' }, permissions: ['receipt.execute'] };
+    expect(canMutateReceipt(peer, receipt, 'receipt.execute')).toBe(true);
+    expect(canMutateReceipt(peer, receipt, 'receipt.consume')).toBe(false);
   });
 });

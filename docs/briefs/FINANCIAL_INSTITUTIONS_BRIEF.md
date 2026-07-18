@@ -28,11 +28,11 @@ Many of the most expensive failures in finance happen inside approved-looking wo
 | Metric | Result |
 |--------|--------|
 | **Internal security review (self-administered, see docs/security/AUDIT_METHODOLOGY.md)** | **100/100** (2026-04-02, all 10 categories at maximum) |
-| Automated test cases | 5,000+ across 250+ files; all platform-applicable cases must pass |
+| Automated test cases | 6,606 across 341 files; all platform-applicable cases must pass |
 | Formal verification | 26 TLA+ properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 22 assertions (Alloy 6.0.0, 0 counterexamples) — both enforced in CI |
 | Mutation testing | ≥80% kill threshold on protocol core (Stryker.js) |
-| Red team cases | 116 documented |
-| Security findings | 31 identified and remediated |
+| Red team cases | 85 cataloged cases |
+| Release security status | Repository security checks pass; live Strix retest and deployment validation remain open |
 | Signoff chain | Full 7-step Accountable Signoff proven end-to-end under load |
 | Load-test chains | 329 complete, zero correctness violations |
 | DB integrity | 11/11 post-load-test checks passing |

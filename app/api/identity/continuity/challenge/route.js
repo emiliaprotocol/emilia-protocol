@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { challengeContinuity } from '@/lib/ep-ix';
 import { EP_ERRORS, epDbError } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -30,7 +31,7 @@ export async function POST(request) {
     // challenge masquerading as a different challenger.
     const result = await challengeContinuity({
       ...body,
-      challenger_id: auth.entity,
+      challenger_id: authEntityId(auth),
     });
     if (result.error) {
       if ((result.status || 500) >= 500) return epDbError(result.status || 500, 'identity_continuity_challenge_failed', result.error, 'identity/continuity/challenge');

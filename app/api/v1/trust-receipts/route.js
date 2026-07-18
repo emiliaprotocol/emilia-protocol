@@ -18,7 +18,8 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
@@ -109,7 +110,7 @@ export async function POST(request) {
     // ── CRITICAL INVARIANT (per MD §2.4 + §12.2.1) ───────────────────────
     // Actor identity NEVER comes from the request body alone. The
     // authenticated context is the source of truth; body actor_id must
-    // match the auth.entity (or be absent).
+    // match the authenticated entity id (or be absent).
     const actor_id = authEntityId(auth);
     if (body.actor_id && body.actor_id !== actor_id) {
       return epProblem(

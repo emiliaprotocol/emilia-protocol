@@ -25,6 +25,7 @@
 import { NextResponse } from 'next/server';
 import { generateCommitmentProof, verifyCommitmentProof } from '@/lib/zk-proofs';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS } from '@/lib/errors';
 import { siemEvent } from '@/lib/siem';
@@ -88,10 +89,11 @@ export async function POST(request) {
 
     // 3. Authorization: an entity can only generate proofs for their own entity_id.
     //    This prevents entity A from generating proofs on behalf of entity B.
-    if (auth.entity.entity_id !== entity_id) {
+    const callerEntityId = authEntityId(auth);
+    if (callerEntityId !== entity_id) {
       return EP_ERRORS.FORBIDDEN(
         'You can only generate commitment proofs for your own entity. ' +
-        `Key belongs to: ${auth.entity.entity_id}`
+        `Key belongs to: ${callerEntityId}`
       );
     }
 

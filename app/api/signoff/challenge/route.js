@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
 import { issueChallenge } from '@/lib/signoff/challenge';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
@@ -47,7 +48,7 @@ export async function POST(request) {
     }
 
     const result = await issueChallenge({
-      actor: auth.entity,
+      actor: authEntityActor(auth),
       ...data,
     });
 

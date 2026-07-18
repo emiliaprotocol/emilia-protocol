@@ -225,6 +225,7 @@ npm run check:llm-context`}
               </pre>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
                 <a href="/.well-known/emilia-context.json" className="ep-cta" style={cta.primary}>Machine-readable evidence</a>
+                <Link href="/verify-live" className="ep-cta-secondary" style={cta.secondary}>Repository verification snapshot</Link>
                 <a href={`${REPO}/blob/main/security/security-case.json`} className="ep-cta-secondary" style={cta.secondary}>Resolved security case</a>
               </div>
             </div>

@@ -30,6 +30,7 @@ vi.mock('../lib/env.js', () => ({
     serviceRoleKey: 'test-service-key',
   }),
   getUpstashConfig: () => null,
+  getSiemConfig: () => ({ webhookUrl: null, disabled: true, isProduction: false }),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -91,7 +92,7 @@ function makeRequest(apiKey = 'ep_live_testapikey1234567890abcdef1234567890abcde
   };
 }
 
-function setupAuthSuccess(entity = VALID_ENTITY) {
+function setupAuthSuccess(entity = VALID_ENTITY, permissions = ['keys.rotate']) {
   mockRpc.mockImplementation((rpcName, params) => {
     if (rpcName === 'resolve_authenticated_actor') {
       // If the key hash has been revoked, reject
@@ -102,7 +103,7 @@ function setupAuthSuccess(entity = VALID_ENTITY) {
         });
       }
       return Promise.resolve({
-        data: { entity, permissions: { can_submit_receipts: true } },
+        data: { entity, permissions },
         error: null,
       });
     }
@@ -258,6 +259,16 @@ describe('POST /api/keys/rotate', () => {
     expect(res.status).toBe(401);
   });
 
+  it('rejects a key without the explicit rotation capability', async () => {
+    setupAuthSuccess(VALID_ENTITY, []);
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_permissions');
+    expect(mockRpc).not.toHaveBeenCalledWith('rotate_api_key_atomic', expect.anything());
+  });
+
   // ── Double rotation ────────────────────────────────────────────────────
 
   it('double rotation works (rotate twice in sequence)', async () => {
@@ -296,7 +307,7 @@ describe('POST /api/keys/rotate', () => {
     mockRpc.mockImplementation((rpcName, params) => {
       if (rpcName === 'resolve_authenticated_actor') {
         return Promise.resolve({
-          data: { entity: VALID_ENTITY, permissions: { can_submit_receipts: true } },
+          data: { entity: VALID_ENTITY, permissions: ['keys.rotate'] },
           error: null,
         });
       }
@@ -319,7 +330,7 @@ describe('POST /api/keys/rotate', () => {
     mockRpc.mockImplementation((rpcName) => {
       if (rpcName === 'resolve_authenticated_actor') {
         return Promise.resolve({
-          data: { entity: VALID_ENTITY, permissions: { can_submit_receipts: true } },
+          data: { entity: VALID_ENTITY, permissions: ['keys.rotate'] },
           error: null,
         });
       }

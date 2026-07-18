@@ -67,13 +67,13 @@ Integration is at the API layer. No changes to core banking or payment logic.
 | Metric | Value |
 |--------|-------|
 | **Internal security review (self-administered, see docs/security/AUDIT_METHODOLOGY.md)** | **100/100** (2026-04-02, all 10 categories at maximum) |
-| Automated test cases | 5,000+ across 250+ files; all platform-applicable cases must pass |
-| TLA+ safety properties verified | 20 (TLC 2.19, 413,137 states, zero errors) — CI-enforced |
-| Alloy relational assertions verified | 15 (Alloy 6.0.0, zero counterexamples) — CI-enforced |
+| Automated test cases | 6,606 across 341 files; all platform-applicable cases must pass |
+| TLA+ safety properties verified | 26 (TLC 2.19, 413,137 states, zero errors) — CI-enforced |
+| Alloy relational assertions verified | 35 facts + 22 assertions (Alloy 6.0.0, zero counterexamples) — CI-enforced |
 | Mutation testing kill rate | ≥80% on protocol core (Stryker.js) |
 | Property-based tests | 19 fast-check generative tests on protocol invariants |
-| Red team attack scenarios | 116 |
-| Security findings identified and remediated | 31 |
+| Red team attack scenarios | 85 cataloged cases |
+| Release security status | Repository security checks pass; live Strix retest and deployment validation remain open |
 | Write discipline exceptions in codebase | 0 |
 | Handshake creation p95 at 500 VUs | 87ms |
 | Staircase load test | 10 → 50 → 100 → 200 → 500 concurrent users |

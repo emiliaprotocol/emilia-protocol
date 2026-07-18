@@ -12,7 +12,8 @@
 // inside a single transaction that also checks the prior consume sentinel.
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -24,7 +25,7 @@ import { deriveSignoffUserVerification } from '@/lib/guard-signoff-uv.js';
 import { resolveGuardAuthority } from '@/lib/guard-authority.js';
 import { isTierQuorumEnforced } from '@/lib/env';
 import { countDistinctValidApprovers, requiredApprovalsForTier } from '@/lib/guard-tier.js';
-import { canReadReceipt } from '@/lib/tenant-binding.js';
+import { canMutateReceipt } from '@/lib/tenant-binding.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { resolveOrgQuorumTemplate, evaluateQuorumAgainstTemplate } from '@/lib/guard-quorum-template.js';
 
@@ -80,7 +81,10 @@ export async function POST(request, { params }) {
     // tightly scoped as read/evidence. An org-bound caller may consume only
     // its own org's receipt; an unbound transitional caller may consume only
     // its own created receipt. Mismatch => 404 to avoid receipt enumeration.
-    if (!canReadReceipt(auth, { organizationId: base.organization_id, creatorActorId: created.actor_id })) {
+    if (!canMutateReceipt(auth, {
+      organizationId: base.organization_id,
+      creatorActorId: created.actor_id,
+    }, 'receipt.consume')) {
       return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
     }
 

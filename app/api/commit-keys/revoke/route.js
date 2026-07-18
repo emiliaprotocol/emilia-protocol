@@ -13,11 +13,9 @@
 // otherwise-valid signature, so a stolen key cannot continue to sustain
 // authorizations.
 //
-// Operational runbook on suspected key compromise:
-//   1. Generate a new keypair; set EP_COMMIT_SIGNING_KEY to the new seed and add
-//      the new public key to EP_COMMIT_SIGNING_KEYS (new kid). Redeploy.
-//   2. Re-issue any still-needed authorizations (they sign under the new kid).
-//   3. POST here to revoke the OLD kid — old commits stop verifying immediately.
+// The full compromise-response procedure is kept in the private operator
+// runbook. This public route comment intentionally exposes no secret names or
+// rotation timing details.
 //
 // Body: { "kid": "<compromised-kid>", "reason"?: "<free text>" }
 

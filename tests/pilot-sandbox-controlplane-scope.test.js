@@ -1,8 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Regression for the Strix full-stack Critical (2026-07-18): a public
-// observe-mode pilot key could be pivoted into SCIM directory administration
-// and the SSO control plane. The observe-scope guard closes that pivot while
-// leaving real tenant keys untouched.
 
 import { describe, it, expect } from 'vitest';
 import { isObserveScoped, refuseObserveScope } from '../lib/auth/observe-scope.js';
@@ -10,43 +6,74 @@ import { isObserveScoped, refuseObserveScope } from '../lib/auth/observe-scope.j
 const epProblem = (status, code, detail) => ({ status, code, detail });
 
 const pilotAuth = {
-  entity: { entity_id: 'ep_entity_x', metadata: { pilot_sandbox: true, scope: 'observe' } },
+  entity: {
+    entity_id: 'ep_entity_0123456789abcdef01234567',
+    organization_id: 'ep_entity_0123456789abcdef01234567',
+    display_name: 'Pilot · Example',
+    description: 'Observe-mode pilot sandbox for Example',
+    entity_type: 'agent',
+    metadata: { pilot_sandbox: true, scope: 'observe' },
+  },
   permissions: [],
 };
-const scopeOnly = { entity: { metadata: { scope: 'observe' } } };
+
+const legacyPilotAuth = {
+  entity: {
+    entity_id: 'ep_entity_0123456789abcdef01234567',
+    organization_id: 'ep_entity_0123456789abcdef01234567',
+    display_name: 'Pilot · Legacy Example',
+    description: 'Observe-mode pilot sandbox for Legacy Example',
+    entity_type: 'agent',
+  },
+  permissions: ['read', 'write'],
+};
+
 const tenantAuth = {
-  entity: { entity_id: 'ep_entity_real', metadata: { plan: 'enterprise' } },
+  entity: {
+    entity_id: 'ep_entity_real',
+    organization_id: 'org_real',
+    owner_id: 'ep_owner_123',
+    display_name: 'Real tenant',
+    description: 'A real tenant',
+    entity_type: 'agent',
+    metadata: { plan: 'enterprise' },
+  },
   permissions: ['admin'],
 };
-const noMeta = { entity: { entity_id: 'ep_entity_bare' } };
 
 describe('observe-scope control-plane guard', () => {
-  it('flags a pilot-provisioned key as observe-scoped', () => {
+  it('flags current and legacy pilot identities', () => {
     expect(isObserveScoped(pilotAuth)).toBe(true);
-    expect(isObserveScoped(scopeOnly)).toBe(true);
+    expect(isObserveScoped(legacyPilotAuth)).toBe(true);
   });
 
-  it('does not flag a real tenant key or a key without metadata', () => {
+  it('does not flag a real tenant or an unrelated entity with a partial shape', () => {
     expect(isObserveScoped(tenantAuth)).toBe(false);
-    expect(isObserveScoped(noMeta)).toBe(false);
+    expect(isObserveScoped({ entity: { entity_id: 'ep_entity_bare' } })).toBe(false);
     expect(isObserveScoped({})).toBe(false);
     expect(isObserveScoped(null)).toBe(false);
   });
 
-  it('refuses a pilot key at the control plane with a 403 and a named reason', () => {
-    const denied = refuseObserveScope(pilotAuth, epProblem);
-    expect(denied).not.toBeNull();
-    expect(denied.status).toBe(403);
-    expect(denied.code).toBe('observe_scope_forbidden');
+  it('refuses both pilot generations with a named 403 reason', () => {
+    for (const auth of [pilotAuth, legacyPilotAuth]) {
+      expect(refuseObserveScope(auth, epProblem)).toMatchObject({
+        status: 403,
+        code: 'observe_scope_forbidden',
+      });
+    }
   });
 
-  it('lets a real tenant key through (returns null)', () => {
-    expect(refuseObserveScope(tenantAuth, epProblem)).toBeNull();
-    expect(refuseObserveScope(noMeta, epProblem)).toBeNull();
-  });
-
-  it('fails closed on a poisoned metadata type', () => {
-    expect(isObserveScoped({ entity: { metadata: 'observe' } })).toBe(false); // string, not object
+  it('fails closed on poisoned metadata and does not broaden the legacy match', () => {
+    expect(isObserveScoped({ entity: { metadata: 'observe' } })).toBe(false);
     expect(isObserveScoped({ entity: { metadata: ['observe'] } })).toBe(false);
+    expect(isObserveScoped({
+      entity: {
+        entity_id: 'ep_entity_0123456789abcdef01234567',
+        organization_id: 'org_other',
+        display_name: 'Pilot · Spoof',
+        description: 'Observe-mode pilot sandbox for Spoof',
+        entity_type: 'agent',
+      },
+    })).toBe(false);
   });
 });

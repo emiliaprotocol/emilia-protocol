@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 
 /**
  * GET /api/trust?entity_id=ep_entity_...

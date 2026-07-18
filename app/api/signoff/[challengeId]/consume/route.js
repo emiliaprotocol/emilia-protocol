@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
 import { consumeSignoff } from '@/lib/signoff/consume';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -32,7 +33,7 @@ export async function POST(request, { params }) {
     }
 
     const result = await consumeSignoff({
-      actor: auth.entity,
+      actor: authEntityActor(auth),
       signoffId,
       executionRef: body.executionRef,
     });

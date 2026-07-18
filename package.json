@@ -14,7 +14,8 @@
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run",
-    "check:protocol": "node scripts/check-protocol-discipline.js",
+    "check:protocol": "node scripts/check-protocol-discipline.js && node scripts/check-write-discipline.js",
+    "check:write-discipline": "node scripts/check-write-discipline.js",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "check:admissibility": "node scripts/check-admissibility-registry.mjs",
     "check:security-case": "node scripts/verify-security-case.mjs --execute",
@@ -81,6 +82,7 @@
   "dependencies": {
     "@emilia-protocol/require-receipt": "file:packages/require-receipt",
     "@emilia-protocol/verify": "file:packages/verify",
+    "@noble/post-quantum": "^0.6.1",
     "@node-saml/node-saml": "^5.1.0",
     "@remotion/player": "^4.0.481",
     "@sentry/nextjs": "10.59.0",
@@ -112,7 +114,6 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@noble/post-quantum": "^0.6.1",
     "@playwright/test": "^1.61.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",

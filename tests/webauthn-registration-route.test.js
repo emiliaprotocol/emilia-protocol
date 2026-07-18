@@ -42,12 +42,12 @@ function req(body) {
   return { json: () => Promise.resolve(body ?? {}) };
 }
 
-function authed(entity) {
-  mockAuthenticateRequest.mockResolvedValue({ entity });
+function authed(entity, permissions = ['approver.enroll']) {
+  mockAuthenticateRequest.mockResolvedValue({ entity, permissions });
 }
 
 function makeClient({ challenges = [] } = {}) {
-  const calls = { inserts: [], selects: [], updates: [] };
+  const calls = { inserts: [], selects: [], updates: [], rpcs: [] };
   function builder(table) {
     const state = { table, eq: {}, is: {} };
     const b = {
@@ -72,7 +72,16 @@ function makeClient({ challenges = [] } = {}) {
     };
     return b;
   }
-  return { client: { from: (table) => builder(table) }, calls };
+  return {
+    client: {
+      from: (table) => builder(table),
+      rpc: vi.fn(async (name, params) => {
+        calls.rpcs.push({ name, params });
+        return { data: { credential_id: params.p_credential.credential_id, consumed: true }, error: null };
+      }),
+    },
+    calls,
+  };
 }
 
 describe('WebAuthn registration route org binding red-team regressions', () => {
@@ -94,6 +103,45 @@ describe('WebAuthn registration route org binding red-team regressions', () => {
     expect(res.status).toBe(403);
     expect((await res.json()).type).toContain('entity_not_org_bound');
     expect(calls.inserts).toHaveLength(0);
+  });
+
+  it('rejects registration enrollment for a non-admin organization key', async () => {
+    authed({ entity_id: 'ep_entity_member', organization_id: 'org_acme' }, ['read', 'write']);
+    const { client, calls } = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await RegisterOptions.POST(req({ approver_id: 'cfo@acme.example' }));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_permissions');
+    expect(calls.inserts).toHaveLength(0);
+  });
+
+  it('rejects registration completion for a non-admin organization key', async () => {
+    authed({ entity_id: 'ep_entity_member', organization_id: 'org_acme' }, ['read', 'write']);
+    const { client, calls } = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await RegisterVerify.POST(req({
+      approver_id: 'cfo@acme.example',
+      attestation: { id: 'cred_acme', response: {} },
+    }));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_permissions');
+    expect(calls.inserts).toHaveLength(0);
+    expect(calls.selects).toHaveLength(0);
+  });
+
+  it('accepts the hosted enrollment surface admin capability', async () => {
+    authed({ entity_id: 'ep_entity_admin', organization_id: 'org_acme' }, ['admin']);
+    const { client, calls } = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await RegisterOptions.POST(req({ approver_id: 'cfo@acme.example' }));
+
+    expect(res.status).toBe(200);
+    expect(calls.inserts).toHaveLength(1);
   });
 
   it('rejects a cross-org enrollment attempt even for a syntactically valid approver id', async () => {
@@ -150,9 +198,13 @@ describe('WebAuthn registration route org binding red-team regressions', () => {
       organization_id: 'org_acme',
       approver_id: 'cfo@acme.example',
     });
-    expect(verifyCalls.inserts[0]).toMatchObject({
-      table: 'approver_credentials',
-      payload: { organization_id: 'org_acme', approver_id: 'cfo@acme.example', credential_id: 'cred_acme' },
+    expect(verifyCalls.rpcs[0]).toMatchObject({
+      name: 'complete_webauthn_registration_atomic',
+      params: {
+        p_organization_id: 'org_acme',
+        p_approver_id: 'cfo@acme.example',
+        p_credential: { credential_id: 'cred_acme' },
+      },
     });
   });
 });

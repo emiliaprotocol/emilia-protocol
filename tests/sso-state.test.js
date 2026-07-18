@@ -63,4 +63,63 @@ describe('SSO state token', () => {
     expect(verifyState(token)).toBeNull();
     process.env.SSO_STATE_SECRET = 'test-secret-for-sso-state'; // restore
   });
+
+  it('requires an explicit secret in production', () => {
+    const saved = {
+      nodeEnv: process.env.NODE_ENV,
+      stateSecret: process.env.SSO_STATE_SECRET,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      serviceKey: process.env.SUPABASE_SERVICE_KEY,
+    };
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.SSO_STATE_SECRET;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      delete process.env.SUPABASE_SERVICE_KEY;
+
+      expect(() => signState({ tenant: 't' })).toThrow(/SSO_STATE_SECRET is required/);
+    } finally {
+      if (saved.nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = saved.nodeEnv;
+      if (saved.stateSecret === undefined) delete process.env.SSO_STATE_SECRET;
+      else process.env.SSO_STATE_SECRET = saved.stateSecret;
+      if (saved.serviceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = saved.serviceRoleKey;
+      if (saved.serviceKey === undefined) delete process.env.SUPABASE_SERVICE_KEY;
+      else process.env.SUPABASE_SERVICE_KEY = saved.serviceKey;
+    }
+  });
+
+  it('does not use the source-predictable development fallback', () => {
+    const saved = {
+      nodeEnv: process.env.NODE_ENV,
+      stateSecret: process.env.SSO_STATE_SECRET,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      serviceKey: process.env.SUPABASE_SERVICE_KEY,
+    };
+    try {
+      process.env.NODE_ENV = 'development';
+      delete process.env.SSO_STATE_SECRET;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      delete process.env.SUPABASE_SERVICE_KEY;
+
+      const token = signState({ tenant: 't' });
+      const [body, mac] = token.split('.');
+      const predictableKey = crypto.createHash('sha256')
+        .update('ep-sso:ep-sso-dev-secret')
+        .digest('hex');
+      const predictableMac = crypto.createHmac('sha256', predictableKey).update(body).digest('base64url');
+      expect(mac).not.toBe(predictableMac);
+      expect(verifyState(token)).toMatchObject({ tenant: 't' });
+    } finally {
+      if (saved.nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = saved.nodeEnv;
+      if (saved.stateSecret === undefined) delete process.env.SSO_STATE_SECRET;
+      else process.env.SSO_STATE_SECRET = saved.stateSecret;
+      if (saved.serviceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = saved.serviceRoleKey;
+      if (saved.serviceKey === undefined) delete process.env.SUPABASE_SERVICE_KEY;
+      else process.env.SUPABASE_SERVICE_KEY = saved.serviceKey;
+    }
+  });
 });

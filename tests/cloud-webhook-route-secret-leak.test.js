@@ -119,7 +119,7 @@ describe('cloud/webhooks/:endpointId — HMAC secret must not leak on read/updat
   });
 
   it('PUT does not echo the signing secret in the updated endpoint', async () => {
-    mockGetServiceClient.mockReturnValue(makeClient(ROW));
+    mockGetGuardedClient.mockReturnValue(makeClient(ROW));
 
     const res = await PUT(putReq({ status: 'paused' }), params);
     const body = await res.json();
