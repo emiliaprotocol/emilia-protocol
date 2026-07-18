@@ -1,0 +1,556 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * EP-ACTION-ESCROW-EVIDENCE-PACKAGE-v1
+ *
+ * A content-addressed manifest for the artifacts used by Action Escrow. This
+ * module does not decide whether a contract is enforceable and does not move
+ * money. Verification replays caller-supplied, relying-party-owned component
+ * verifiers so a package cannot make an invalid nested artifact trustworthy by
+ * merely hashing it.
+ */
+import crypto from 'node:crypto';
+import { hashCanonical } from './execution-binding.js';
+
+export const ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION = 'EP-ACTION-ESCROW-EVIDENCE-PACKAGE-v1';
+export const ACTION_ESCROW_EVIDENCE_STAGES = Object.freeze([
+  'draft',
+  'awaiting_acceptance',
+  'effective',
+  'awaiting_funding',
+  'funded',
+  'milestone_submitted',
+  'release_reserved',
+  'released',
+  'disputed',
+  'amendment_pending',
+  'cancelled',
+  'completed',
+  'release_indeterminate',
+]);
+
+const HASH = /^sha256:[0-9a-f]{64}$/;
+const TOP_KEYS = new Set([
+  'version',
+  'agreement_id',
+  'stage',
+  'binding',
+  'document',
+  'approvals',
+  'funding_statement',
+  'milestones',
+  'release',
+  'state_record',
+  'amendments',
+  'verification_profile',
+  'assembled_at',
+  'limitations',
+  'package_digest',
+]);
+const DOCUMENT_KEYS = new Set(['media_type', 'digest', 'byte_length', 'file_name']);
+const APPROVAL_KEYS = new Set(['party_id', 'role', 'resolution']);
+const MILESTONE_KEYS = new Set(['milestone_id', 'evidence', 'resolution']);
+const RELEASE_KEYS = new Set([
+  'reservation',
+  'provider_request',
+  'provider_statement',
+  'execution_record',
+]);
+const LIMITATIONS = Object.freeze([
+  'The package does not establish contract enforceability, comprehension, voluntariness, workmanship, physical truth, or legal compliance.',
+  'The package does not establish custodian licensing, solvency, or that no payment path existed outside the integrated release boundary.',
+  'A content digest does not upgrade an invalid component; each component must verify under relying-party-pinned trust roots.',
+  'An indeterminate provider effect is not proof of failure and must not be retried before authoritative reconciliation.',
+]);
+const DEFAULT_MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
+
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function exactKeys(value, allowed, required = allowed) {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value);
+  return keys.every((key) => allowed.has(key))
+    && [...required].every((key) => Object.hasOwn(value, key));
+}
+
+function toIso(value) {
+  const candidate = typeof value === 'function' ? value() : value;
+  const date = candidate instanceof Date ? candidate : new Date(candidate ?? 0);
+  if (!Number.isFinite(date.getTime())) {
+    throw new TypeError('action-escrow evidence: assembled_at must be a valid instant');
+  }
+  return date.toISOString();
+}
+
+function portableJsonCopy(value) {
+  let nodes = 0;
+  let stringBytes = 0;
+  const active = new Set();
+
+  function copy(current, depth) {
+    nodes += 1;
+    if (nodes > 50_000 || depth > 64) {
+      throw new TypeError('action-escrow evidence: value exceeds resource limits');
+    }
+    if (current === null || typeof current === 'boolean') return current;
+    if (typeof current === 'string') {
+      stringBytes += Buffer.byteLength(current, 'utf8');
+      if (stringBytes > 4 * 1024 * 1024) {
+        throw new TypeError('action-escrow evidence: strings exceed resource limits');
+      }
+      return current;
+    }
+    if (typeof current === 'number') {
+      if (!Number.isSafeInteger(current) || Object.is(current, -0)) {
+        throw new TypeError('action-escrow evidence: numbers must be safe integers');
+      }
+      return current;
+    }
+    if (!isRecord(current) && !Array.isArray(current)) {
+      throw new TypeError('action-escrow evidence: value is not canonical JSON');
+    }
+    if (active.has(current)) {
+      throw new TypeError('action-escrow evidence: cyclic or aliased value');
+    }
+    active.add(current);
+    try {
+      if (Array.isArray(current)) return current.map((entry) => copy(entry, depth + 1));
+      const prototype = Object.getPrototypeOf(current);
+      if (prototype !== Object.prototype && prototype !== null) {
+        throw new TypeError('action-escrow evidence: objects must use a plain prototype');
+      }
+      return Object.fromEntries(
+        Object.entries(current).map(([key, entry]) => [key, copy(entry, depth + 1)]),
+      );
+    } finally {
+      active.delete(current);
+    }
+  }
+
+  return copy(value, 0);
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  Object.freeze(value);
+  for (const child of Object.values(value)) deepFreeze(child);
+  return value;
+}
+
+function documentBytes(value, maxBytes) {
+  if (!(Buffer.isBuffer(value) || value instanceof Uint8Array)) {
+    throw new TypeError('action-escrow evidence: documentBytes must be bytes');
+  }
+  const bytes = Buffer.from(value);
+  if (bytes.length === 0 || bytes.length > maxBytes) {
+    throw new TypeError(`action-escrow evidence: documentBytes must be between 1 and ${maxBytes} bytes`);
+  }
+  return bytes;
+}
+
+function sha256(bytes) {
+  return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+function canonicalSha256(value) {
+  return `sha256:${hashCanonical(value)}`;
+}
+
+function digestScope(pkg) {
+  const { package_digest: _digest, ...scope } = pkg;
+  return scope;
+}
+
+function normalizedRequiredParties(value) {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const result = [];
+  for (const entry of value) {
+    if (typeof entry === 'string' && entry.length > 0) {
+      result.push({ party_id: entry, role: null });
+      continue;
+    }
+    if (!isRecord(entry)
+      || typeof entry.party_id !== 'string' || entry.party_id.length === 0
+      || typeof entry.role !== 'string' || entry.role.length === 0) {
+      return null;
+    }
+    result.push({ party_id: entry.party_id, role: entry.role });
+  }
+  const identities = result.map((entry) => `${entry.role ?? ''}\u0000${entry.party_id}`);
+  return new Set(identities).size === identities.length ? result : null;
+}
+
+function stageRequiresApprovals(stage) {
+  return !['draft', 'awaiting_acceptance', 'cancelled'].includes(stage);
+}
+
+function stageRequiresFunding(stage) {
+  return [
+    'funded',
+    'milestone_submitted',
+    'release_reserved',
+    'released',
+    'disputed',
+    'amendment_pending',
+    'completed',
+    'release_indeterminate',
+  ].includes(stage);
+}
+
+function stageRequiresMilestone(stage) {
+  return [
+    'milestone_submitted',
+    'release_reserved',
+    'released',
+    'disputed',
+    'amendment_pending',
+    'completed',
+    'release_indeterminate',
+  ].includes(stage);
+}
+
+function stageRequiresRelease(stage) {
+  return ['release_reserved', 'released', 'completed', 'release_indeterminate'].includes(stage);
+}
+
+/**
+ * Build a portable evidence manifest. The final document bytes are hashed but
+ * not embedded; transport them beside the JSON manifest.
+ */
+export function buildActionEscrowEvidencePackage({
+  agreementId,
+  stage,
+  binding,
+  documentBytes: rawDocumentBytes,
+  documentFileName = null,
+  approvals = [],
+  fundingStatement = null,
+  milestones = [],
+  release = null,
+  stateRecord,
+  amendments = [],
+  verificationProfile,
+} = {}, {
+  now = 0,
+  maxDocumentBytes = DEFAULT_MAX_DOCUMENT_BYTES,
+} = {}) {
+  if (typeof agreementId !== 'string' || agreementId.length === 0) {
+    throw new TypeError('action-escrow evidence: agreementId is required');
+  }
+  if (!ACTION_ESCROW_EVIDENCE_STAGES.includes(stage)) {
+    throw new TypeError('action-escrow evidence: stage is not in the closed set');
+  }
+  if (!Number.isSafeInteger(maxDocumentBytes) || maxDocumentBytes <= 0) {
+    throw new TypeError('action-escrow evidence: maxDocumentBytes must be a positive safe integer');
+  }
+  const bytes = documentBytes(rawDocumentBytes, maxDocumentBytes);
+  if (documentFileName !== null
+    && (typeof documentFileName !== 'string'
+      || documentFileName.length === 0
+      || documentFileName.length > 255
+      || /[/\\\u0000]/.test(documentFileName))) {
+    throw new TypeError('action-escrow evidence: documentFileName is invalid');
+  }
+
+  const body = portableJsonCopy({
+    version: ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION,
+    agreement_id: agreementId,
+    stage,
+    binding,
+    document: {
+      media_type: 'application/pdf',
+      digest: sha256(bytes),
+      byte_length: bytes.length,
+      ...(documentFileName === null ? {} : { file_name: documentFileName }),
+    },
+    approvals,
+    funding_statement: fundingStatement,
+    milestones,
+    release: release ?? {
+      reservation: null,
+      provider_request: null,
+      provider_statement: null,
+      execution_record: null,
+    },
+    state_record: stateRecord,
+    amendments,
+    verification_profile: verificationProfile,
+    assembled_at: toIso(now),
+    limitations: [...LIMITATIONS],
+  });
+
+  return deepFreeze({
+    ...body,
+    package_digest: canonicalSha256(body),
+  });
+}
+
+function resultFailure(reason, checks, details = {}) {
+  return {
+    valid: false,
+    reason,
+    checks,
+    ...details,
+  };
+}
+
+async function callVerifier(verifier, value, context) {
+  if (typeof verifier !== 'function') return { valid: false, reason: 'verifier_required' };
+  try {
+    const result = await verifier(value, context);
+    return isRecord(result) ? result : { valid: false, reason: 'malformed_verifier_result' };
+  } catch {
+    return { valid: false, reason: 'verifier_threw' };
+  }
+}
+
+/**
+ * Re-perform every package join using relying-party-owned component verifiers.
+ *
+ * Component verifiers are configuration, never read from the package. Their
+ * returned binding fields are checked again here so a valid artifact for one
+ * agreement, document, party, or action cannot be relabeled into another slot.
+ */
+export async function verifyActionEscrowEvidencePackage(pkg, {
+  documentBytes: rawDocumentBytes,
+  verifyBinding,
+  verifyApproval,
+  verifyFunding,
+  verifyMilestone,
+  verifyRelease,
+  verifyState,
+  expectedAgreementId,
+  now,
+  maxDocumentBytes = DEFAULT_MAX_DOCUMENT_BYTES,
+} = {}) {
+  const checks = {
+    structure: false,
+    package_digest: false,
+    time: false,
+    document: false,
+    binding: false,
+    state: false,
+    approvals: false,
+    funding: false,
+    milestones: false,
+    release: false,
+  };
+
+  try {
+    const requiredTop = new Set(TOP_KEYS);
+    checks.structure = exactKeys(pkg, TOP_KEYS, requiredTop)
+      && pkg.version === ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION
+      && typeof pkg.agreement_id === 'string' && pkg.agreement_id.length > 0
+      && ACTION_ESCROW_EVIDENCE_STAGES.includes(pkg.stage)
+      && HASH.test(pkg.package_digest)
+      && exactKeys(pkg.document, DOCUMENT_KEYS, new Set(['media_type', 'digest', 'byte_length']))
+      && pkg.document.media_type === 'application/pdf'
+      && HASH.test(pkg.document.digest)
+      && Number.isSafeInteger(pkg.document.byte_length) && pkg.document.byte_length > 0
+      && Array.isArray(pkg.approvals)
+      && Array.isArray(pkg.milestones)
+      && exactKeys(pkg.release, RELEASE_KEYS)
+      && Array.isArray(pkg.amendments)
+      && Array.isArray(pkg.limitations)
+      && pkg.limitations.length === LIMITATIONS.length
+      && pkg.limitations.every((entry, index) => entry === LIMITATIONS[index]);
+    if (!checks.structure) return resultFailure('malformed_evidence_package', checks);
+
+    if (expectedAgreementId !== undefined
+      && (typeof expectedAgreementId !== 'string' || pkg.agreement_id !== expectedAgreementId)) {
+      return resultFailure('agreement_id_mismatch', checks);
+    }
+
+    checks.package_digest = canonicalSha256(digestScope(pkg)) === pkg.package_digest;
+    if (!checks.package_digest) return resultFailure('package_digest_mismatch', checks);
+
+    const assembledAt = Date.parse(pkg.assembled_at);
+    const evaluation = now === undefined
+      ? null
+      : (now instanceof Date ? now.getTime() : typeof now === 'number' ? now : Date.parse(now));
+    checks.time = Number.isFinite(assembledAt)
+      && (evaluation === null || (Number.isFinite(evaluation) && assembledAt <= evaluation));
+    if (!checks.time) return resultFailure('invalid_or_future_assembled_at', checks);
+
+    if (!Number.isSafeInteger(maxDocumentBytes) || maxDocumentBytes <= 0) {
+      return resultFailure('invalid_document_limit', checks);
+    }
+    const bytes = documentBytes(rawDocumentBytes, maxDocumentBytes);
+    checks.document = bytes.length === pkg.document.byte_length && sha256(bytes) === pkg.document.digest;
+    if (!checks.document) return resultFailure('document_bytes_mismatch', checks);
+
+    const bindingResult = await callVerifier(verifyBinding, pkg.binding, {
+      expectedAgreementId: pkg.agreement_id,
+      expectedDocumentDigest: pkg.document.digest,
+    });
+    const requiredParties = normalizedRequiredParties(bindingResult.required_parties);
+    checks.binding = bindingResult.valid === true
+      && bindingResult.agreement_id === pkg.agreement_id
+      && bindingResult.document_digest === pkg.document.digest
+      && HASH.test(bindingResult.binding_digest)
+      && HASH.test(bindingResult.action_digest)
+      && requiredParties !== null;
+    if (!checks.binding) {
+      return resultFailure('binding_verification_failed', checks, {
+        binding_reason: bindingResult.reason ?? null,
+      });
+    }
+
+    const stateResult = await callVerifier(verifyState, pkg.state_record, {
+      agreementId: pkg.agreement_id,
+      bindingDigest: bindingResult.binding_digest,
+      actionDigest: bindingResult.action_digest,
+      stage: pkg.stage,
+    });
+    checks.state = stateResult.valid === true
+      && stateResult.agreement_id === pkg.agreement_id
+      && stateResult.binding_digest === bindingResult.binding_digest
+      && stateResult.action_digest === bindingResult.action_digest
+      && stateResult.state === pkg.stage;
+    if (!checks.state) {
+      return resultFailure('state_record_verification_failed', checks, {
+        state_reason: stateResult.reason ?? null,
+      });
+    }
+
+    const requiredByIdentity = new Map(
+      requiredParties.map((entry) => [`${entry.role ?? ''}\u0000${entry.party_id}`, entry]),
+    );
+    const seenApprovals = new Set();
+    let approvalsValid = true;
+    const approvalResults = [];
+    for (const approval of pkg.approvals) {
+      if (!exactKeys(approval, APPROVAL_KEYS)
+        || typeof approval.party_id !== 'string' || approval.party_id.length === 0
+        || typeof approval.role !== 'string' || approval.role.length === 0) {
+        approvalsValid = false;
+        break;
+      }
+      const identity = `${approval.role}\u0000${approval.party_id}`;
+      if (!requiredByIdentity.has(identity) || seenApprovals.has(identity)) {
+        approvalsValid = false;
+        break;
+      }
+      seenApprovals.add(identity);
+      const result = await callVerifier(verifyApproval, approval.resolution, {
+        partyId: approval.party_id,
+        role: approval.role,
+        agreementId: pkg.agreement_id,
+        bindingDigest: bindingResult.binding_digest,
+        actionDigest: bindingResult.action_digest,
+      });
+      approvalResults.push({ party_id: approval.party_id, role: approval.role, result });
+      if (result.valid !== true
+        || result.authorizes_action !== true
+        || result.outcome !== 'approved'
+        || result.party_id !== approval.party_id
+        || result.role !== approval.role
+        || result.binding_digest !== bindingResult.binding_digest
+        || result.action_digest !== bindingResult.action_digest) {
+        approvalsValid = false;
+        break;
+      }
+    }
+    if (stageRequiresApprovals(pkg.stage)) {
+      approvalsValid = approvalsValid && seenApprovals.size === requiredByIdentity.size;
+    }
+    checks.approvals = approvalsValid;
+    if (!checks.approvals) {
+      return resultFailure('party_approval_verification_failed', checks, { approval_results: approvalResults });
+    }
+
+    if (stageRequiresFunding(pkg.stage)) {
+      const fundingResult = await callVerifier(verifyFunding, pkg.funding_statement, {
+        agreementId: pkg.agreement_id,
+        bindingDigest: bindingResult.binding_digest,
+        actionDigest: bindingResult.action_digest,
+      });
+      checks.funding = fundingResult.valid === true
+        && fundingResult.agreement_id === pkg.agreement_id
+        && fundingResult.binding_digest === bindingResult.binding_digest
+        && fundingResult.state === 'funded';
+      if (!checks.funding) {
+        return resultFailure('funding_statement_verification_failed', checks, {
+          funding_reason: fundingResult.reason ?? null,
+        });
+      }
+    } else {
+      checks.funding = pkg.funding_statement === null;
+      if (!checks.funding) return resultFailure('unexpected_funding_statement', checks);
+    }
+
+    let milestonesValid = true;
+    const milestoneIds = new Set();
+    for (const milestone of pkg.milestones) {
+      if (!exactKeys(milestone, MILESTONE_KEYS)
+        || typeof milestone.milestone_id !== 'string' || milestone.milestone_id.length === 0
+        || milestoneIds.has(milestone.milestone_id)) {
+        milestonesValid = false;
+        break;
+      }
+      milestoneIds.add(milestone.milestone_id);
+      const result = await callVerifier(verifyMilestone, milestone, {
+        agreementId: pkg.agreement_id,
+        bindingDigest: bindingResult.binding_digest,
+        actionDigest: bindingResult.action_digest,
+      });
+      if (result.valid !== true
+        || result.milestone_id !== milestone.milestone_id
+        || result.binding_digest !== bindingResult.binding_digest) {
+        milestonesValid = false;
+        break;
+      }
+    }
+    if (stageRequiresMilestone(pkg.stage)) milestonesValid = milestonesValid && milestoneIds.size > 0;
+    checks.milestones = milestonesValid;
+    if (!checks.milestones) return resultFailure('milestone_verification_failed', checks);
+
+    if (stageRequiresRelease(pkg.stage)) {
+      const releaseResult = await callVerifier(verifyRelease, pkg.release, {
+        agreementId: pkg.agreement_id,
+        bindingDigest: bindingResult.binding_digest,
+        actionDigest: bindingResult.action_digest,
+        stage: pkg.stage,
+      });
+      const expectedReleaseState = pkg.stage === 'release_indeterminate'
+        ? 'indeterminate'
+        : pkg.stage === 'release_reserved'
+          ? 'reserved'
+          : 'released';
+      checks.release = releaseResult.valid === true
+        && releaseResult.agreement_id === pkg.agreement_id
+        && releaseResult.binding_digest === bindingResult.binding_digest
+        && releaseResult.action_digest === bindingResult.action_digest
+        && releaseResult.state === expectedReleaseState;
+      if (!checks.release) {
+        return resultFailure('release_verification_failed', checks, {
+          release_reason: releaseResult.reason ?? null,
+        });
+      }
+    } else {
+      checks.release = Object.values(pkg.release).every((entry) => entry === null);
+      if (!checks.release) return resultFailure('unexpected_release_artifact', checks);
+    }
+
+    return {
+      valid: true,
+      reason: 'verified',
+      checks,
+      package_digest: pkg.package_digest,
+      agreement_id: pkg.agreement_id,
+      binding_digest: bindingResult.binding_digest,
+      action_digest: bindingResult.action_digest,
+      required_parties: requiredParties,
+    };
+  } catch {
+    return resultFailure('malformed_evidence_package', checks);
+  }
+}
+
+export default {
+  ACTION_ESCROW_EVIDENCE_PACKAGE_VERSION,
+  ACTION_ESCROW_EVIDENCE_STAGES,
+  buildActionEscrowEvidencePackage,
+  verifyActionEscrowEvidencePackage,
+};
