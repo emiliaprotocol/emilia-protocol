@@ -164,6 +164,17 @@ function capabilitySignature(capabilityReceipt) {
     : null;
 }
 
+function capabilityEnvelopeFingerprint(capabilityReceipt) {
+  const signature = capabilitySignature(capabilityReceipt);
+  if (!signature) throw new TypeError('capability signature is required for fingerprinting');
+  return `sha256:${sha256Hex(Buffer.from(canonicalize({
+    '@version': CAPABILITY_RECEIPT_VERSION,
+    base_receipt_id: capabilityReceipt.receipt.payload.receipt_id,
+    capability: capabilityReceipt.capability,
+    issuer_public_key: signature.public_key,
+  }), 'utf8'))}`;
+}
+
 function assertDelegationChain(chain) {
   if (chain === undefined) return [];
   if (!Array.isArray(chain) || chain.length > MAX_DELEGATES) throw new TypeError('delegation_chain must be a bounded array');
@@ -374,6 +385,7 @@ function capabilityStateFromEnvelope(capabilityReceipt) {
   const c = capabilityReceipt.capability;
   return {
     capability_id: c.id,
+    capability_fingerprint: capabilityEnvelopeFingerprint(capabilityReceipt),
     budget_amount: c.budget.amount,
     currency: c.budget.currency,
     expires_at: Date.parse(c.expiry),
@@ -395,16 +407,22 @@ export function createMemoryCapabilityStore() {
       if (!verified.ok) return false;
       const state = capabilityStateFromEnvelope(capabilityReceipt);
       const existing = states.get(state.capability_id);
-      if (existing) return existing.budget_amount === state.budget_amount && existing.currency === state.currency && existing.expires_at === state.expires_at;
+      if (existing) {
+        return existing.capability_fingerprint === state.capability_fingerprint
+          && existing.budget_amount === state.budget_amount
+          && existing.currency === state.currency
+          && existing.expires_at === state.expires_at;
+      }
       states.set(state.capability_id, { ...state, consumed_amount: 0, reserved_amount: 0 });
       return true;
     },
-    async reserveSpend({ capabilityId, operationId, amount, currency, now = Date.now } = {}) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationId, amount, currency, now = Date.now } = {}) {
       validateOperationId(operationId);
       validateAmount(amount);
       validateCurrency(currency);
       const state = states.get(capabilityId);
       if (!state) return { ok: false, reason: 'capability_not_registered' };
+      if (state.capability_fingerprint !== capabilityFingerprint) return { ok: false, reason: 'capability_envelope_mismatch' };
       const existing = operations.get(operationId);
       if (existing) return { ok: false, reason: existing.status === 'reserved' ? 'operation_in_flight' : 'operation_already_committed' };
       const at = nowMs(now);
@@ -444,6 +462,7 @@ export const CAPABILITY_STATE_TABLE = 'ep_capability_state';
 export const CAPABILITY_OPERATION_TABLE = 'ep_capability_operations';
 export const CAPABILITY_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${CAPABILITY_STATE_TABLE} (
   capability_id TEXT PRIMARY KEY,
+  capability_fingerprint TEXT NOT NULL CHECK (capability_fingerprint ~ '^sha256:[0-9a-f]{64}$'),
   budget_amount BIGINT NOT NULL CHECK (budget_amount >= 0),
   currency TEXT NOT NULL,
   consumed_amount BIGINT NOT NULL DEFAULT 0 CHECK (consumed_amount >= 0),
@@ -451,6 +470,7 @@ export const CAPABILITY_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${CAPABILITY_STA
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS capability_fingerprint TEXT;
 CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   operation_id TEXT PRIMARY KEY,
   capability_id TEXT NOT NULL REFERENCES ${CAPABILITY_STATE_TABLE}(capability_id),
@@ -465,8 +485,8 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
 CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_capability_idx ON ${CAPABILITY_OPERATION_TABLE}(capability_id);`;
 
 export const CAPABILITY_SQL = Object.freeze({
-  register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at) VALUES ($1, $2, $3, $4) ON CONFLICT (capability_id) DO NOTHING`,
-  readState: `SELECT capability_id, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
+  register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at`,
+  readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
   readOperation: `SELECT operation_id, capability_id, amount, currency, status, reservation_token FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_id = $1 FOR UPDATE`,
   insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_id, capability_id, amount, currency, status, reservation_token, reserved_at) VALUES ($1, $2, $3, $4, 'reserved', $5, $6)`,
   reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
@@ -489,22 +509,24 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
       if (!verified.ok) return false;
       const state = capabilityStateFromEnvelope(capabilityReceipt);
       return transaction(async (query) => {
-        await query(CAPABILITY_SQL.register, [state.capability_id, state.budget_amount, capabilityReceipt.capability.budget.currency, new Date(state.expires_at).toISOString()]);
+        await query(CAPABILITY_SQL.register, [state.capability_id, state.budget_amount, capabilityReceipt.capability.budget.currency, new Date(state.expires_at).toISOString(), state.capability_fingerprint]);
         const result = await query(CAPABILITY_SQL.readState, [state.capability_id]);
         const row = result?.rows?.[0];
         return Boolean(row)
+          && row.capability_fingerprint === state.capability_fingerprint
           && Number(row.budget_amount) === state.budget_amount
           && row.currency === state.currency
           && Date.parse(row.expires_at) === state.expires_at;
       });
     },
-    async reserveSpend({ capabilityId, operationId, amount, currency, now = Date.now } = {}) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationId, amount, currency, now = Date.now } = {}) {
       validateOperationId(operationId); validateAmount(amount); validateCurrency(currency);
       const at = nowMs(now);
       return transaction(async (query) => {
         const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
         const state = stateResult?.rows?.[0];
         if (!state) return { ok: false, reason: 'capability_not_registered' };
+        if (state.capability_fingerprint !== capabilityFingerprint) return { ok: false, reason: 'capability_envelope_mismatch' };
         const operationResult = await query(CAPABILITY_SQL.readOperation, [operationId]);
         if (operationResult?.rows?.[0]) return { ok: false, reason: operationResult.rows[0].status === 'reserved' ? 'operation_in_flight' : 'operation_already_committed' };
         if (at >= Date.parse(state.expires_at)) return { ok: false, reason: 'capability_expired' };
@@ -595,7 +617,7 @@ export async function executeWithCapability({
   } else {
     return { ok: false, reason: 'base_receipt_verifier_required' };
   }
-  const reserved = await store.reserveSpend({ capabilityId: verified.capability.id, operationId, amount: spend.amount, currency: spend.currency, now });
+  const reserved = await store.reserveSpend({ capabilityId: verified.capability.id, capabilityFingerprint: capabilityEnvelopeFingerprint(capabilityReceipt), operationId, amount: spend.amount, currency: spend.currency, now });
   if (!reserved?.ok) return { ok: false, reason: reserved?.reason || 'capability_reservation_refused', authorization };
   try {
     const result = await executeAction(action, { capabilityReceipt, authorization, operation_id: operationId, reservation: reserved });
@@ -657,11 +679,14 @@ export async function delegateCapabilityReceipt({
     const currency = validateCurrency(budget.currency);
     if (childAmount <= 0) throw new TypeError('delegated capability budget must be greater than zero');
     if (currency !== verified.capability.budget.currency) throw new TypeError('delegated capability currency does not match the parent budget');
+    const childExpiry = validateExpiry(expiry);
+    const parentExpiry = validateExpiry(verified.capability.expiry);
+    if (Date.parse(childExpiry) > Date.parse(parentExpiry)) return { ok: false, reason: 'delegated_capability_expiry_exceeds_parent' };
     const parentOperationId = validateOperationId(operationId || `delegation:${childId}`);
     const child = mintCapabilityReceipt(verified.receipt, {
       issuerPrivateKey,
       budget: { amount: childAmount, currency },
-      expiry,
+      expiry: childExpiry,
       threshold,
       capabilityId: childId,
       secret,
@@ -679,6 +704,7 @@ export async function delegateCapabilityReceipt({
     });
     const reserved = await store.reserveSpend({
       capabilityId: verified.capability.id,
+      capabilityFingerprint: capabilityEnvelopeFingerprint(parentCapabilityReceipt),
       operationId: parentOperationId,
       amount: childAmount,
       currency,

@@ -9,6 +9,8 @@ import {
   executeWithThreshold,
   delegateCapabilityReceipt,
   createMemoryCapabilityStore,
+  createPostgresCapabilityStore,
+  CAPABILITY_SQL,
   mintCapabilityReceipt,
   reconstructCapabilitySecret,
   splitCapabilitySecret,
@@ -193,4 +195,142 @@ test('delegation burns parent budget before registering a spendable child', asyn
   assert.equal(tooLarge.ok, false);
   assert.equal(tooLarge.reason, 'budget_exceeded');
   assert.equal(store.getState('parent_1').consumed_amount, 40);
+});
+
+test('delegation cannot outlive its parent, including across multiple hops', async () => {
+  const keys = issuer();
+  const parent = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'temporal_parent',
+    expiry: NOW + 30_000,
+    secret: Buffer.alloc(32, 10),
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(parent.capabilityReceipt), true);
+
+  const directOutlivesParent = await delegateCapabilityReceipt({
+    parentCapabilityReceipt: parent.capabilityReceipt,
+    parentSecret: parent.secret,
+    issuerPrivateKey: keys.privateKey,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    budget: { amount: 10, currency: 'USD' },
+    expiry: NOW + 30_001,
+    delegateId: 'temporal-direct',
+    capabilityId: 'temporal_child_invalid',
+    store,
+    now: NOW,
+  });
+  assert.equal(directOutlivesParent.ok, false);
+  assert.equal(directOutlivesParent.reason, 'delegated_capability_expiry_exceeds_parent');
+  assert.equal(store.getState('temporal_parent').consumed_amount, 0);
+
+  const child = await delegateCapabilityReceipt({
+    parentCapabilityReceipt: parent.capabilityReceipt,
+    parentSecret: parent.secret,
+    issuerPrivateKey: keys.privateKey,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    budget: { amount: 10, currency: 'USD' },
+    expiry: NOW + 20_000,
+    delegateId: 'temporal-child',
+    capabilityId: 'temporal_child',
+    secret: Buffer.alloc(32, 11),
+    store,
+    now: NOW,
+  });
+  assert.equal(child.ok, true);
+
+  const grandchildOutlivesChild = await delegateCapabilityReceipt({
+    parentCapabilityReceipt: child.capabilityReceipt,
+    parentSecret: child.secret,
+    issuerPrivateKey: keys.privateKey,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    budget: { amount: 5, currency: 'USD' },
+    expiry: NOW + 20_001,
+    delegateId: 'temporal-grandchild',
+    capabilityId: 'temporal_grandchild_invalid',
+    store,
+    now: NOW,
+  });
+  assert.equal(grandchildOutlivesChild.ok, false);
+  assert.equal(grandchildOutlivesChild.reason, 'delegated_capability_expiry_exceeds_parent');
+  assert.equal(store.getState('temporal_child').consumed_amount, 0);
+});
+
+test('capability stores bind an id to the complete signed envelope', async () => {
+  const keys = issuer();
+  const first = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'envelope_collision',
+    secret: Buffer.alloc(32, 12),
+  }));
+  const conflicting = mintCapabilityReceipt(baseReceipt({
+    privateKey: keys.privateKey,
+    publicKey: keys.publicKey,
+    receiptId: 'base_2',
+  }), options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'envelope_collision',
+    secret: Buffer.alloc(32, 13),
+  }));
+  const store = createMemoryCapabilityStore();
+
+  assert.equal(store.registerCapability(first.capabilityReceipt), true);
+  assert.equal(store.registerCapability(first.capabilityReceipt), true);
+  assert.equal(store.registerCapability(conflicting.capabilityReceipt), false);
+
+  const spend = await executeWithCapability({
+    capabilityReceipt: conflicting.capabilityReceipt,
+    secret: conflicting.secret,
+    action: { amount: 1, currency: 'USD' },
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    operationId: 'envelope_collision_spend',
+    now: NOW,
+    executeAction: async () => assert.fail('conflicting envelope must not spend'),
+  });
+  assert.equal(spend.ok, false);
+  assert.equal(spend.reason, 'capability_envelope_mismatch');
+});
+
+test('postgres capability state also rejects a conflicting envelope', async () => {
+  const keys = issuer();
+  const first = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'postgres_envelope_collision',
+    secret: Buffer.alloc(32, 14),
+  }));
+  const conflicting = mintCapabilityReceipt(baseReceipt({
+    privateKey: keys.privateKey,
+    publicKey: keys.publicKey,
+    receiptId: 'base_3',
+  }), options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'postgres_envelope_collision',
+    secret: Buffer.alloc(32, 15),
+  }));
+  let row = null;
+  const transaction = async (callback) => callback(async (sql, params) => {
+    if (sql === CAPABILITY_SQL.register) {
+      if (!row) {
+        row = {
+          capability_id: params[0],
+          capability_fingerprint: params[4],
+          budget_amount: String(params[1]),
+          currency: params[2],
+          consumed_amount: '0',
+          reserved_amount: '0',
+          expires_at: params[3],
+        };
+      }
+      return { rowCount: row.capability_fingerprint === params[4] ? 1 : 0 };
+    }
+    if (sql === CAPABILITY_SQL.readState) return { rows: row ? [row] : [] };
+    throw new Error(`unexpected SQL in registration test: ${sql}`);
+  });
+  const store = createPostgresCapabilityStore({ transaction });
+
+  assert.equal(await store.registerCapability(first.capabilityReceipt), true);
+  assert.equal(await store.registerCapability(first.capabilityReceipt), true);
+  assert.equal(await store.registerCapability(conflicting.capabilityReceipt), false);
 });
