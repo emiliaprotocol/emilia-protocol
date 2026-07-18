@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-18T20:43:04.810Z",
+  "evidence_snapshot_at": "2026-07-18T20:50:22.535Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "13191e40d102811094f76e5282925829e7d168d346d8739e02c0391ab48a7544",
+    "input_digest_sha256": "a3ec73112af82b9816fe6274215207ac73f8c611f1526bb7bf98bcb6f8e32a87",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "5d30c026b46ba6650a1b0513bbe54c0b13c7580ee824c865ee00fadb12d4b513",
+        "sha256": "8318c961873da781b9e89fe69bed32f878603b64e5df82da62479cef03b24123",
         "bytes": 1068
       },
       {
@@ -32,8 +32,8 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "f38d04831849ee0a36ed650942ed3132cda942b1c925aebd60456a8ba97b8053",
-        "bytes": 122064
+        "sha256": "1e4d9ac569ad5d1752428bf1994c2485ea85ff2ba2d9a2fba62e1ff06db5a4f8",
+        "bytes": 125650
       },
       {
         "path": "security/security-case.json",
@@ -240,8 +240,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 6590,
-      "files": 340,
+      "total": 6606,
+      "files": 341,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -2340,10 +2340,11 @@
     },
     {
       "claim_id": "action-escrow-releases-one-exact-milestone-once",
-      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. The portable package keeps document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
+      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. When a project-system source is supplied, its complete stable snapshot digest binds the provider origin, company, project, record type and identifier, normalized payload, observation time, and non-authoritative claim boundary as a signed typed material term inside that exact action. The portable package keeps project source, document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
       "acceptance_roots": [
         "relying-party-pinned document-mapping issuer, Action Escrow profile, party keys, operator state key, and custodian adapter configuration",
         "the exact final PDF bytes and signed Document Action Binding whose closed material-term profile commits the payment action and evidence requirements",
+        "when configured, an authenticated complete project-system snapshot whose digest is independently mapped into the signed release action",
         "a licensed external custodian that exclusively mediates funding and release for the configured transaction and honors idempotency"
       ],
       "enforcement_path": [
@@ -2356,7 +2357,7 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-verifiers.js",
-          "symbol": "createActionEscrowDocumentBindingVerifier",
+          "symbol": "createActionEscrowContractorDocumentBindingVerifier",
           "exported": true
         },
         {
@@ -2368,7 +2369,13 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-package.js",
-          "symbol": "assembleActionEscrowEvidencePackage",
+          "symbol": "assembleActionEscrowContractorEvidencePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-evidence.js",
+          "symbol": "verifyActionEscrowEvidencePackage",
           "exported": true
         },
         {
@@ -2381,6 +2388,18 @@
           "language": "javascript",
           "file": "lib/integrations/action-escrow/escrow-com.js",
           "symbol": "createEscrowComAdapter",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "createProcoreChangeOrderAdapter",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "verifyProcoreChangeOrderEvidence",
           "exported": true
         }
       ],
@@ -2453,12 +2472,32 @@
           "suite": "security/vectors.v1.json",
           "case_id": "reject_action_escrow_custodian_alias_or_unfunded_release",
           "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_action_escrow_project_source_snapshot",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_sidecar_bytes_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_context_relabeling",
+          "polarity": "negative"
         }
       ],
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "The complete document-to-custodian composition, five-row evidence package, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+          "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
         }
       ],
       "assumptions": [
@@ -2466,12 +2505,14 @@
         "the relying party provisions and maintains the mapping issuer, party, operator, and provider trust roots out of band",
         "the durable store runs under a separately provisioned non-owner role with no DELETE or TRUNCATE privilege on state and no UPDATE, DELETE, or TRUNCATE privilege on history; database-owner compromise remains outside this claim",
         "the deployment supplies a durable fail-closed effect-reference binding store to the external custodian adapter",
+        "the configured project-system API and OAuth credentials resolve the intended company, project, and change-order namespace",
         "the external evidence verifier truthfully checks completion evidence under the requirements committed by the signed action"
       ],
       "exclusions": [
         "EMILIA does not hold funds, act as an escrow agent, determine licensure, or establish legal enforceability",
         "cryptographic evidence does not prove workmanship, physical completion, identity, comprehension, voluntariness, fairness, or absence of fraud by an authentic trusted key",
         "the guarantee does not cover payment routes or custodian operations that bypass the integrated mediation boundary",
+        "a project-system record is source evidence only and does not prove party acceptance, human approval, legal enforceability, or physical completion",
         "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
         "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
       ]
