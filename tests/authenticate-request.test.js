@@ -20,6 +20,7 @@ vi.mock('@supabase/supabase-js', () => ({
 
 vi.mock('../lib/env.js', () => ({
   getSupabaseConfig: () => ({ url: 'https://fake.supabase.co', serviceRoleKey: 'fake-key' }),
+  getSiemConfig: () => ({ webhookUrl: null, disabled: true, isProduction: false }),
 }));
 
 const { authenticateRequest, authEntityActor, authEntityDbId, authEntityId, hashApiKey } = await import('../lib/supabase.js');

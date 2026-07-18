@@ -171,23 +171,25 @@ export async function POST(request) {
     }
 
     // === ISSUE COMMIT (via protocolWrite) ===
+    const issueInput = Object.fromEntries(Object.entries({
+      action_type: body.action_type,
+      entity_id: body.entity_id,
+      principal_id: body.principal_id,
+      counterparty_entity_id: body.counterparty_entity_id,
+      delegation_id: body.delegation_id,
+      scope: body.scope,
+      max_value_usd: body.max_value_usd,
+      context: {
+        ...body.context,
+        ...(body.gate_ref ? { gate_ref: body.gate_ref } : {}),
+      },
+      policy: body.policy,
+    }).filter(([, value]) => value !== undefined));
+
     const commit = await protocolWrite({
       type: COMMAND_TYPES.ISSUE_COMMIT,
       actor: auth,
-      input: {
-        action_type: body.action_type,
-        entity_id: body.entity_id,
-        principal_id: body.principal_id,
-        counterparty_entity_id: body.counterparty_entity_id,
-        delegation_id: body.delegation_id,
-        scope: body.scope,
-        max_value_usd: body.max_value_usd,
-        context: {
-          ...body.context,
-          ...(body.gate_ref ? { gate_ref: body.gate_ref } : {}),
-        },
-        policy: body.policy,
-      },
+      input: issueInput,
     });
 
     return NextResponse.json({

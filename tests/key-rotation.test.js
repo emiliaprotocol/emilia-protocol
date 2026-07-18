@@ -30,6 +30,7 @@ vi.mock('../lib/env.js', () => ({
     serviceRoleKey: 'test-service-key',
   }),
   getUpstashConfig: () => null,
+  getSiemConfig: () => ({ webhookUrl: null, disabled: true, isProduction: false }),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
