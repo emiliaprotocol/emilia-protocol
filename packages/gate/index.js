@@ -62,6 +62,37 @@ import {
   RUNTIME_INVARIANTS,
 } from './runtime-monitor.js';
 import {
+  FORMAL_RUNTIME_BRIDGE_VERSION,
+  FORMAL_RUNTIME_SPEC,
+  FORMAL_RUNTIME_CONFIG,
+  FORMAL_RUNTIME_INVARIANT_MAP,
+} from './formal-runtime-map.js';
+import {
+  CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_STATE_VERSION,
+  CAPABILITY_SHARE_VERSION,
+  CAPABILITY_STATE_DDL,
+  CAPABILITY_SQL,
+  mintCapabilityReceipt,
+  verifyCapabilityReceipt,
+  splitCapabilitySecret,
+  reconstructCapabilitySecret,
+  createMemoryCapabilityStore,
+  createPostgresCapabilityStore,
+  executeWithCapability,
+  executeWithThreshold,
+  delegateCapabilityReceipt,
+} from './capability-receipt.js';
+import {
+  ZK_RANGE_RECEIPT_VERSION,
+  ZK_RANGE_SCHEME,
+  ZK_RANGE_BACKEND_PACKAGE,
+  deriveZkRangeBases,
+  loadBulletproofBackend,
+  mintZkRangeReceipt,
+  verifyZkRangeReceipt,
+} from './zk-range-proof.js';
+import {
   mintBreakGlassAuthorization,
   verifyBreakGlass,
   consumeBreakGlass,
@@ -124,6 +155,37 @@ export {
   BREAKGLASS_EVIDENCE_KIND,
 };
 export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, RUNTIME_INVARIANTS } from './runtime-monitor.js';
+export {
+  FORMAL_RUNTIME_BRIDGE_VERSION,
+  FORMAL_RUNTIME_SPEC,
+  FORMAL_RUNTIME_CONFIG,
+  FORMAL_RUNTIME_INVARIANT_MAP,
+} from './formal-runtime-map.js';
+export {
+  CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_STATE_VERSION,
+  CAPABILITY_SHARE_VERSION,
+  CAPABILITY_STATE_DDL,
+  CAPABILITY_SQL,
+  mintCapabilityReceipt,
+  verifyCapabilityReceipt,
+  splitCapabilitySecret,
+  reconstructCapabilitySecret,
+  createMemoryCapabilityStore,
+  createPostgresCapabilityStore,
+  executeWithCapability,
+  executeWithThreshold,
+  delegateCapabilityReceipt,
+} from './capability-receipt.js';
+export {
+  ZK_RANGE_RECEIPT_VERSION,
+  ZK_RANGE_SCHEME,
+  ZK_RANGE_BACKEND_PACKAGE,
+  deriveZkRangeBases,
+  loadBulletproofBackend,
+  mintZkRangeReceipt,
+  verifyZkRangeReceipt,
+} from './zk-range-proof.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
@@ -1362,4 +1424,28 @@ export default {
   RUNTIME_MONITOR_VERSION,
   RUNTIME_MONITOR_MODES,
   RUNTIME_INVARIANTS,
+  FORMAL_RUNTIME_BRIDGE_VERSION,
+  FORMAL_RUNTIME_SPEC,
+  FORMAL_RUNTIME_CONFIG,
+  FORMAL_RUNTIME_INVARIANT_MAP,
+  CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_STATE_VERSION,
+  CAPABILITY_SHARE_VERSION,
+  CAPABILITY_STATE_DDL,
+  CAPABILITY_SQL,
+  mintCapabilityReceipt,
+  verifyCapabilityReceipt,
+  splitCapabilitySecret,
+  reconstructCapabilitySecret,
+  createMemoryCapabilityStore,
+  createPostgresCapabilityStore,
+  executeWithCapability,
+  executeWithThreshold,
+  ZK_RANGE_RECEIPT_VERSION,
+  ZK_RANGE_SCHEME,
+  ZK_RANGE_BACKEND_PACKAGE,
+  deriveZkRangeBases,
+  loadBulletproofBackend,
+  mintZkRangeReceipt,
+  verifyZkRangeReceipt,
 };

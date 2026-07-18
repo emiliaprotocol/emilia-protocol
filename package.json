@@ -21,6 +21,7 @@
     "check:security-case": "node scripts/verify-security-case.mjs --execute",
     "security-case:emit": "node scripts/verify-security-case.mjs --execute --emit security/security-case.json",
     "check:authority-claims": "node scripts/check-authority-claims.mjs",
+    "check:runtime-bridge": "node scripts/check-runtime-bridge.mjs",
     "check:conformance-docs": "node scripts/check-conformance-doc-counts.mjs",
     "gov:check": "node scripts/gov-readiness-check.mjs",
     "gov:db-contract": "node scripts/db-contract.mjs",
@@ -82,6 +83,7 @@
   "dependencies": {
     "@emilia-protocol/require-receipt": "file:packages/require-receipt",
     "@emilia-protocol/verify": "file:packages/verify",
+    "@noble/curves": "2.2.0",
     "@noble/post-quantum": "^0.6.1",
     "@node-saml/node-saml": "^5.1.0",
     "@remotion/player": "^4.0.481",
