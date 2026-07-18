@@ -361,9 +361,18 @@ export function buildAuditWorkpaper(entries = [], {
 
 /* -------------------------------- markdown ------------------------------- */
 
-/** Table cells must not break the table; the source strings are log-derived. */
+/**
+ * Table cells must not break the table; the source strings are log-derived.
+ * Backslash is escaped FIRST: escaping only the pipe turns a log-derived
+ * `a\|b` into `a\\|b`, where the `\\` renders as a literal backslash and
+ * leaves the pipe live as a cell delimiter, letting an action or refusal
+ * reason split its cell and shift every column after it.
+ */
 function cell(v) {
-  return String(v ?? '—').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(v ?? '—')
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
 const BLANK = '`____________________`';
