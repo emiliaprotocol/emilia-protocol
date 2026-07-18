@@ -5,8 +5,11 @@ import assert from 'node:assert/strict';
 import {
   ACTION_ESCROW_PROFILE_VERSION,
   ACTION_ESCROW_STATES,
+  computeActionEscrowReleaseBindingMomentDigest,
+  computeActionEscrowResolutionNonce,
   createActionEscrowKernel,
 } from './action-escrow.js';
+import { hashCanonical } from './execution-binding.js';
 
 const digest = (character) => `sha256:${character.repeat(64)}`;
 
@@ -26,6 +29,38 @@ const PROFILE = Object.freeze({
   required_release_approver_party_ids: Object.freeze(PARTIES.map((party) => party.party_id)),
   prohibit_self_approval: false,
 });
+const PROFILE_DIGEST = `sha256:${hashCanonical(PROFILE)}`;
+const RELEASE_ACTION_TEMPLATE = Object.freeze({
+  action_type: 'escrow.milestone.release',
+  action_escrow_profile_digest: PROFILE_DIGEST,
+  agreement_id: 'agreement-kitchen-01',
+  agreement_digest: AGREEMENT_DIGEST,
+  milestone_id: 'milestone-01',
+  amount: '18400.00',
+  currency: 'USD',
+  destination_id: 'custody-destination-4821',
+  payee_id: 'ep:principal:contractor',
+  custodian_provider: 'licensed-custodian.test',
+  custodian_environment: 'sandbox',
+  custodian_transaction_id: 'provider-transaction-001',
+  custodian_milestone_id: 'provider-milestone-001',
+  document_sha256: digest('4'),
+  material_terms_sha256: digest('5'),
+  completion_evidence_sha256: EVIDENCE_DIGEST,
+  amendment_version: 1,
+});
+
+function resolutionBindingInput() {
+  return {
+    agreement_digest: AGREEMENT_DIGEST,
+    document_action_binding_digest: BINDING_DIGEST,
+    milestone_id: 'milestone-01',
+    release_action_digest: RELEASE_ACTION_DIGEST,
+    profile_digest: PROFILE_DIGEST,
+    evidence_digest: EVIDENCE_DIGEST,
+    release_action_template: RELEASE_ACTION_TEMPLATE,
+  };
+}
 
 function durableCasStore() {
   const values = new Map();
@@ -99,15 +134,17 @@ function milestoneEvidence(submitterPartyId = 'ep:principal:contractor', overrid
 }
 
 function resolution(partyId, overrides = {}) {
+  const bindingInput = resolutionBindingInput();
   return {
     profile: 'EP-RESOLUTION-v1',
     signoff: {
       context: {
         principal: partyId,
         principal_key_id: `key:${partyId}`,
-        envelope_hash: BINDING_DIGEST,
+        initiator: 'ep:principal:contractor',
+        envelope_hash: computeActionEscrowReleaseBindingMomentDigest(bindingInput),
         action_hash: RELEASE_ACTION_DIGEST,
-        nonce: `nonce:${partyId}`,
+        nonce: computeActionEscrowResolutionNonce(bindingInput, partyId),
         issued_at: '2026-07-17T12:00:00.000Z',
         expires_at: '2026-07-17T12:05:00.000Z',
         resolution: { outcome: 'approved', selected_option: 0 },
@@ -174,23 +211,10 @@ function defaultVerifiers() {
           ? 'binding-kitchen-01'
           : 'binding-kitchen-02',
         release_action_template: {
-          action_type: 'escrow.milestone.release',
+          ...RELEASE_ACTION_TEMPLATE,
           action_escrow_profile_digest: expected.profile_digest,
-          agreement_id: 'agreement-kitchen-01',
           agreement_digest: expected.agreement_digest,
           milestone_id: expected.milestone_id,
-          amount: '18400.00',
-          currency: 'USD',
-          destination_id: 'custody-destination-4821',
-          payee_id: 'ep:principal:contractor',
-          custodian_provider: 'licensed-custodian.test',
-          custodian_environment: 'sandbox',
-          custodian_transaction_id: 'provider-transaction-001',
-          custodian_milestone_id: 'provider-milestone-001',
-          document_sha256: digest('4'),
-          material_terms_sha256: digest('5'),
-          completion_evidence_sha256: EVIDENCE_DIGEST,
-          amendment_version: 1,
         },
         ...verifierBindings(expected),
         ...(expected.supersedes_document_action_binding_digest === undefined
@@ -234,8 +258,14 @@ function defaultVerifiers() {
         partyId === context.principal
       ));
       return {
-        valid: artifact?.profile === 'EP-RESOLUTION-v1',
-        authorizes_action: outcome === 'approved',
+        valid: artifact?.profile === 'EP-RESOLUTION-v1'
+          && context.envelope_hash === expected.binding_moment_digest
+          && context.initiator === expected.expected_initiator
+          && context.nonce === expected.expected_nonce
+          && context.resolution?.selected_option === expected.expected_selected_option
+          && expected.evaluation_time === '2026-07-17T12:00:00.000Z',
+        authorizes_action: outcome === 'approved'
+          && context.envelope_hash === expected.binding_moment_digest,
         outcome,
         party_id: context.principal,
         party_role: party?.role,
@@ -509,6 +539,22 @@ test('joins resolutions to the exact current binding, action, and party', async 
     resolution: resolution('ep:principal:contractor'),
   }));
   assert.equal(refused.code, 'resolution_party_mismatch');
+
+  const wrongInitiator = resolution('ep:principal:client');
+  wrongInitiator.signoff.context.initiator = 'ep:principal:attacker';
+  refused = await kernel.approveRelease(common('wrong-initiator-approval', {
+    party_id: 'ep:principal:client',
+    resolution: wrongInitiator,
+  }));
+  assert.equal(refused.code, 'resolution_initiator_mismatch');
+
+  const presenterNonce = resolution('ep:principal:client');
+  presenterNonce.signoff.context.nonce = 'presenter-selected-nonce';
+  refused = await kernel.approveRelease(common('presenter-nonce-approval', {
+    party_id: 'ep:principal:client',
+    resolution: presenterNonce,
+  }));
+  assert.equal(refused.code, 'resolution_nonce_mismatch');
 });
 
 test('release approval binds milestone evidence, freshness, and one device key per party', async () => {

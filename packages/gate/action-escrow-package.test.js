@@ -5,6 +5,8 @@ import test from 'node:test';
 
 import {
   ACTION_ESCROW_PROFILE_VERSION,
+  computeActionEscrowReleaseBindingMomentDigest,
+  computeActionEscrowResolutionNonce,
   createActionEscrowKernel,
 } from './action-escrow.js';
 import {
@@ -195,22 +197,22 @@ function milestoneArtifact(bindingDigest) {
   };
 }
 
-function resolutionArtifact(party, bindingDigest, actionDigest, evidenceDigest) {
+function resolutionArtifact(party, bindingInput) {
   return {
     profile: 'EP-RESOLUTION-v1',
     signoff: {
       context: {
         principal: party.party_id,
         principal_key_id: `release-key:${party.party_id}`,
-        envelope_hash: bindingDigest,
-        action_hash: actionDigest,
-        nonce: `nonce:${party.party_id}`,
+        initiator: 'party:contractor',
+        envelope_hash: computeActionEscrowReleaseBindingMomentDigest(bindingInput),
+        action_hash: bindingInput.release_action_digest,
+        nonce: computeActionEscrowResolutionNonce(bindingInput, party.party_id),
         issued_at: '2026-07-17T11:56:00.000Z',
         expires_at: '2026-07-17T12:30:00.000Z',
         resolution: {
           outcome: 'approved',
           selected_option: 0,
-          evidence_digest: evidenceDigest,
         },
       },
     },
@@ -276,6 +278,15 @@ function harness() {
   });
   const bindingDigest = computeDocumentActionBindingDigest(binding);
   const actionDigest = computeReleaseActionDigest(binding.release_action.template);
+  const resolutionBindingInput = (evidenceDigest) => ({
+    agreement_digest: agreementDigest,
+    document_action_binding_digest: bindingDigest,
+    milestone_id: MILESTONE_ID,
+    release_action_digest: actionDigest,
+    profile_digest: profileDigest,
+    evidence_digest: evidenceDigest,
+    release_action_template: binding.release_action.template,
+  });
   let authoritativeRequest = null;
 
   const provider = {
@@ -344,8 +355,14 @@ function harness() {
       const context = artifact?.signoff?.context;
       const party = PARTIES.find((entry) => entry.party_id === context?.principal);
       return {
-        valid: artifact?.profile === 'EP-RESOLUTION-v1',
-        authorizes_action: context?.resolution?.outcome === 'approved',
+        valid: artifact?.profile === 'EP-RESOLUTION-v1'
+          && context?.envelope_hash === expected.binding_moment_digest
+          && context?.initiator === expected.expected_initiator
+          && context?.nonce === expected.expected_nonce
+          && context?.resolution?.selected_option === expected.expected_selected_option
+          && expected.evaluation_time === NOW,
+        authorizes_action: context?.resolution?.outcome === 'approved'
+          && context?.envelope_hash === expected.binding_moment_digest,
         outcome: context?.resolution?.outcome,
         party_id: context?.principal,
         party_role: party?.role,
@@ -478,6 +495,7 @@ function harness() {
     kernel,
     profile,
     profileDigest,
+    resolutionBindingInput,
     stateStatementFor,
     get authoritativeRequest() {
       return authoritativeRequest;
@@ -541,9 +559,7 @@ async function lifecycle(fixture) {
         party_id: party.party_id,
         resolution: resolutionArtifact(
           party,
-          fixture.bindingDigest,
-          fixture.actionDigest,
-          evidence.evidence_digest,
+          fixture.resolutionBindingInput(evidence.evidence_digest),
         ),
       },
     ));

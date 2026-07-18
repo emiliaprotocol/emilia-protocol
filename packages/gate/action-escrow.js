@@ -146,6 +146,123 @@ function canonicalDigest(value) {
   return `sha256:${hashCanonical(value)}`;
 }
 
+function resolutionBindingInput(record) {
+  return {
+    agreement_digest: record.agreement_digest,
+    document_action_binding_digest: record.document_action_binding_digest,
+    milestone_id: record.milestone_id,
+    release_action_digest: record.release_action_digest,
+    profile_digest: record.profile_digest,
+    evidence_digest: record.milestone_evidence?.verification?.evidence_digest,
+    release_action_template:
+      record.document_action_binding?.verification?.release_action_template,
+  };
+}
+
+/**
+ * Build the exact human-facing envelope signed by an Action Escrow approver.
+ *
+ * The release action digest remains the normative machine-action binding. This
+ * envelope binds the document, evidence, and material release fields that the
+ * approver reviews before selecting the approval option.
+ */
+export function createActionEscrowReleaseBindingMoment(input) {
+  try {
+    if (!isPlainObject(input)
+      || !validDigest(input.agreement_digest)
+      || !validDigest(input.document_action_binding_digest)
+      || !validString(input.milestone_id, 256)
+      || !validDigest(input.release_action_digest)
+      || !validDigest(input.profile_digest)
+      || !validDigest(input.evidence_digest)
+      || !isPlainObject(input.release_action_template)) {
+      return null;
+    }
+    const template = input.release_action_template;
+    if (template.action_type !== 'escrow.milestone.release'
+      || !validString(template.amount, 128)
+      || !validString(template.currency, 16)
+      || !validString(template.payee_id, 512)
+      || !validString(template.destination_id, 512)
+      || !validDigest(template.document_sha256)
+      || !validDigest(template.material_terms_sha256)
+      || template.completion_evidence_sha256 !== input.evidence_digest
+      || !Number.isSafeInteger(template.amendment_version)
+      || template.amendment_version < 1) {
+      return null;
+    }
+    return deepFreeze(canonicalSnapshot({
+      synopsis: `Authorize one ${template.amount} ${template.currency} milestone release.`,
+      findings: [
+        `Agreement digest: ${input.agreement_digest}`,
+        `Document-action binding digest: ${input.document_action_binding_digest}`,
+        `Release action digest: ${input.release_action_digest}`,
+        `Milestone evidence digest: ${input.evidence_digest}`,
+        `Milestone: ${input.milestone_id}`,
+        `Payee: ${template.payee_id}`,
+        `Destination: ${template.destination_id}`,
+        `Amendment version: ${template.amendment_version}`,
+      ],
+      recommendations: [
+        'Verify the exact document, amount, destination, and completion evidence before approving.',
+      ],
+      offer: 'Decline if any material field is unexpected; amendments require a new binding and fresh approvals.',
+      question: {
+        stem: `Authorize release of ${template.amount} ${template.currency} for milestone ${input.milestone_id} to ${template.payee_id} at ${template.destination_id}?`,
+        options: [
+          {
+            label: 'Approve exact release',
+            reasoning: 'Authorize only the action identified by the signed action digest.',
+          },
+          {
+            label: 'Decline release',
+            reasoning: 'Do not authorize this action or any custodian effect.',
+          },
+        ],
+        recommended_idx: 1,
+        hatches: {
+          free_text: false,
+          dialogue: false,
+        },
+      },
+      meta: {
+        decision_class: 'escrow.milestone.release',
+        calibration_note: 'No approval recommendation; verify every material field.',
+      },
+    }));
+  } catch {
+    return null;
+  }
+}
+
+export function computeActionEscrowReleaseBindingMomentDigest(input) {
+  const bindingMoment = createActionEscrowReleaseBindingMoment(input);
+  return bindingMoment === null ? null : canonicalDigest(bindingMoment);
+}
+
+/**
+ * Return the relying-party-pinned nonce for one party and one exact release.
+ *
+ * It is stable while both parties approve, changes with any material action or
+ * evidence change, and is consumed by the durable approval CAS.
+ */
+export function computeActionEscrowResolutionNonce(input, partyId) {
+  if (!validString(partyId, 256)) return null;
+  const bindingMomentDigest = computeActionEscrowReleaseBindingMomentDigest(input);
+  if (bindingMomentDigest === null) return null;
+  try {
+    return `ep-ae-resolution:${hashCanonical({
+      '@version': 'EP-ACTION-ESCROW-RESOLUTION-NONCE-v1',
+      party_id: partyId,
+      binding_moment_digest: bindingMomentDigest,
+      release_action_digest: input.release_action_digest,
+      evidence_digest: input.evidence_digest,
+    })}`;
+  } catch {
+    return null;
+  }
+}
+
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   Object.freeze(value);
@@ -1296,21 +1413,38 @@ export function createActionEscrowKernel(options = {}) {
         }
 
         const artifact = normalized.snapshot.resolution;
+        const bindingInput = resolutionBindingInput(draft);
+        const bindingMoment = createActionEscrowReleaseBindingMoment(bindingInput);
+        const bindingMomentDigest = bindingMoment === null
+          ? null
+          : canonicalDigest(bindingMoment);
+        const expectedNonce = computeActionEscrowResolutionNonce(bindingInput, partyId);
+        const expectedInitiator = draft.milestone_evidence?.verification?.submitter_party_id;
         if (!isPlainObject(artifact)
           || artifact.profile !== RESOLUTION_VERSION
           || !isPlainObject(artifact.signoff)
-          || !isPlainObject(artifact.signoff.context)) {
+          || !isPlainObject(artifact.signoff.context)
+          || bindingMoment === null
+          || bindingMomentDigest === null
+          || expectedNonce === null
+          || !validString(expectedInitiator, 256)) {
           return { refusal: 'resolution_profile_invalid' };
         }
         const resolutionContext = artifact.signoff.context;
         if (resolutionContext.principal !== partyId) {
           return { refusal: 'resolution_party_mismatch' };
         }
-        if (resolutionContext.envelope_hash !== draft.document_action_binding_digest) {
+        if (resolutionContext.envelope_hash !== bindingMomentDigest) {
           return { refusal: 'resolution_binding_mismatch' };
         }
         if (resolutionContext.action_hash !== draft.release_action_digest) {
           return { refusal: 'resolution_action_mismatch' };
+        }
+        if (resolutionContext.initiator !== expectedInitiator) {
+          return { refusal: 'resolution_initiator_mismatch' };
+        }
+        if (resolutionContext.nonce !== expectedNonce) {
+          return { refusal: 'resolution_nonce_mismatch' };
         }
         if (resolutionContext.resolution?.outcome !== 'approved') {
           return { refusal: 'resolution_not_approved' };
@@ -1337,6 +1471,12 @@ export function createActionEscrowKernel(options = {}) {
           ...normalized.context,
           party_id: partyId,
           evidence_digest: draft.milestone_evidence.verification.evidence_digest,
+          binding_moment: bindingMoment,
+          binding_moment_digest: bindingMomentDigest,
+          expected_selected_option: 0,
+          expected_initiator: expectedInitiator,
+          expected_nonce: expectedNonce,
+          evaluation_time: at,
         };
         const verified = await invokeVerifier(
           verifyResolutionReceipt,
@@ -2301,5 +2441,8 @@ export default Object.freeze({
   ACTION_ESCROW_PROFILE_VERSION,
   ACTION_ESCROW_STATES,
   ACTION_ESCROW_TRANSITIONS,
+  createActionEscrowReleaseBindingMoment,
+  computeActionEscrowReleaseBindingMomentDigest,
+  computeActionEscrowResolutionNonce,
   createActionEscrowKernel,
 });

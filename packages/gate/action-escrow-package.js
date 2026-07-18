@@ -14,6 +14,8 @@ import {
   ACTION_ESCROW_STATE_VERSION,
   ACTION_ESCROW_STATES,
   ACTION_ESCROW_TRANSITIONS,
+  computeActionEscrowReleaseBindingMomentDigest,
+  computeActionEscrowResolutionNonce,
 } from './action-escrow.js';
 import { buildActionEscrowEvidencePackage } from './action-escrow-evidence.js';
 import {
@@ -860,6 +862,21 @@ function validateReleaseApprovals(record, milestoneVerification) {
   if (!Array.isArray(record.release_approvals)) fail('release approvals are malformed');
   const parties = new Map(record.parties.map((party) => [party.party_id, party]));
   const required = new Set(record.profile.required_release_approver_party_ids);
+  const bindingInput = {
+    agreement_digest: record.agreement_digest,
+    document_action_binding_digest: record.document_action_binding_digest,
+    milestone_id: record.milestone_id,
+    release_action_digest: record.release_action_digest,
+    profile_digest: record.profile_digest,
+    evidence_digest: milestoneVerification.evidence_digest,
+    release_action_template:
+      record.document_action_binding.verification.release_action_template,
+  };
+  const bindingMomentDigest = computeActionEscrowReleaseBindingMomentDigest(bindingInput);
+  const expectedInitiator = milestoneVerification.submitter_party_id;
+  if (!validDigest(bindingMomentDigest) || !validString(expectedInitiator, 256)) {
+    fail('release approval binding context is malformed');
+  }
   const seenParties = new Set();
   const seenKeys = new Set();
   const result = [];
@@ -893,12 +910,15 @@ function validateReleaseApprovals(record, milestoneVerification) {
       || verification.evidence_digest !== milestoneVerification.evidence_digest
       || context.principal !== entry.party_id
       || context.principal_key_id !== verification.principal_key_id
-      || context.envelope_hash !== record.document_action_binding_digest
+      || context.envelope_hash !== bindingMomentDigest
       || context.action_hash !== record.release_action_digest
+      || context.initiator !== expectedInitiator
+      || context.nonce !== computeActionEscrowResolutionNonce(bindingInput, entry.party_id)
       || context.nonce !== verification.nonce
       || context.issued_at !== verification.issued_at
       || context.expires_at !== verification.expires_at
-      || context.resolution?.outcome !== 'approved') {
+      || context.resolution?.outcome !== 'approved'
+      || context.resolution?.selected_option !== 0) {
       fail('release approval is malformed or inconsistent');
     }
     const approvalOperation = approvalOperations[index];

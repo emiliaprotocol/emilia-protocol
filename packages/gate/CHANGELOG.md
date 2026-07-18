@@ -24,6 +24,10 @@ This package follows [Semantic Versioning](https://semver.org/).
 - Release approvals are fresh and action-specific, release is consumed once,
   storage failure refuses, and an ambiguous provider effect enters
   reconciliation instead of being retried.
+- Release approvals now use the canonical `EP-RESOLUTION-v1` binding-moment
+  hash, relying-party-pinned option mapping, initiator, per-party nonce, and
+  evaluation time. The reference scenario uses real WebAuthn-shaped P-256
+  signatures rather than a resolution-like demo envelope.
 - Runtime roles cannot also act as contract parties. Provider and effect
   references are fenced to prevent substitution across actions or sessions.
 

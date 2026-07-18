@@ -16,7 +16,17 @@ import {
   verifyDocumentActionBinding,
 } from '../../packages/verify/document-action-binding.js';
 import {
+  RESOLUTION_CONTEXT_TYPE,
+  RESOLUTION_VERSION,
+  computeResolutionChallenge,
+  computeResolutionResponseHash,
+  verifyResolutionReceipt,
+} from '../../packages/verify/resolution.js';
+import {
   ACTION_ESCROW_PROFILE_VERSION,
+  createActionEscrowReleaseBindingMoment,
+  computeActionEscrowReleaseBindingMomentDigest,
+  computeActionEscrowResolutionNonce,
   createActionEscrowKernel,
 } from '../../packages/gate/action-escrow.js';
 import {
@@ -50,6 +60,8 @@ const MILESTONE_ID = 'MS-03-CABINETRY';
 const CREATED_AT = '2026-07-17T16:00:00.000Z';
 const FIXED_NOW_MS = Date.parse(CREATED_AT);
 const PKCS8_ED25519_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
+const RESOLUTION_RP_ID = 'emiliaprotocol.ai';
+const RESOLUTION_ORIGIN = 'https://www.emiliaprotocol.ai';
 const MAPPING_ISSUER_ID = 'demo:emilia-mapping-issuer';
 const OPERATOR_ID = 'demo:action-escrow-operator';
 const CUSTODIAN_PROVIDER_ID = 'harborline_demo';
@@ -112,6 +124,46 @@ function deterministicDemoKey(label) {
     publicKey,
     publicKeyObject,
     keyId: `demo:${label}:${sha256Bytes(Buffer.from(publicKey, 'utf8')).slice(7, 19)}`,
+  };
+}
+
+function deterministicP256Key(label) {
+  let privateBytes = crypto
+    .createHash('sha256')
+    .update(`EMILIA_ACTION_ESCROW_WEBAUTHN_DEMO_ONLY:${label}`, 'utf8')
+    .digest();
+  const ecdh = crypto.createECDH('prime256v1');
+  let accepted = false;
+  for (let counter = 0; counter < 256; counter += 1) {
+    try {
+      ecdh.setPrivateKey(privateBytes);
+      accepted = true;
+      break;
+    } catch {
+      privateBytes = crypto
+        .createHash('sha256')
+        .update(privateBytes)
+        .update(Buffer.from([counter]))
+        .digest();
+    }
+  }
+  invariant(accepted, `deterministic P-256 key derivation failed for ${label}`);
+  const point = ecdh.getPublicKey(null, 'uncompressed');
+  const jwk = {
+    kty: 'EC',
+    crv: 'P-256',
+    d: privateBytes.toString('base64url'),
+    x: point.subarray(1, 33).toString('base64url'),
+    y: point.subarray(33, 65).toString('base64url'),
+  };
+  const privateKey = crypto.createPrivateKey({ key: jwk, format: 'jwk' });
+  const publicKeyObject = crypto.createPublicKey(privateKey);
+  const publicKey = publicKeyBase64url(publicKeyObject);
+  return {
+    privateKey,
+    publicKey,
+    publicKeyObject,
+    keyId: `demo:resolution:${label}:${sha256Bytes(Buffer.from(publicKey, 'utf8')).slice(7, 19)}`,
   };
 }
 
@@ -512,8 +564,38 @@ function makeAgreementAcceptance({
   });
 }
 
-function resolutionSigningBytes(context) {
-  return Buffer.from(canonicalize(context), 'utf8');
+function actionEscrowResolutionBindingInput(bindings, action) {
+  return {
+    agreement_digest: bindings.agreement_digest,
+    document_action_binding_digest: bindings.document_action_binding_digest,
+    milestone_id: bindings.milestone_id,
+    release_action_digest: bindings.release_action_digest,
+    profile_digest: bindings.profile_digest,
+    evidence_digest: bindings.evidence_digest,
+    release_action_template: action,
+  };
+}
+
+function resolutionOutcome(outcome, detail) {
+  if (outcome === 'approved') return { outcome, selected_option: 0 };
+  if (outcome === 'declined') return { outcome };
+  if (outcome === 'rejected') {
+    return {
+      outcome,
+      objection_hash: computeResolutionResponseHash(detail),
+    };
+  }
+  if (outcome === 'amended') {
+    return {
+      outcome,
+      response_hash: computeResolutionResponseHash(detail),
+      successor_envelope_hash: sha256Canonical({
+        '@version': 'EP-ACTION-ESCROW-SUCCESSOR-REFERENCE-v1',
+        ...detail,
+      }),
+    };
+  }
+  throw new Error(`unsupported resolution outcome: ${outcome}`);
 }
 
 function makeResolution({
@@ -522,46 +604,50 @@ function makeResolution({
   outcome,
   bindings,
   action,
-  receiptId,
   detail,
 }) {
+  const bindingInput = actionEscrowResolutionBindingInput(bindings, action);
+  const bindingMoment = createActionEscrowReleaseBindingMoment(bindingInput);
+  invariant(bindingMoment !== null, 'resolution binding moment must be constructible');
   const context = {
+    ep_version: '1.0',
+    context_type: RESOLUTION_CONTEXT_TYPE,
+    envelope_hash: computeActionEscrowReleaseBindingMomentDigest(bindingInput),
+    action_hash: bindings.release_action_digest,
     principal: party.party_id,
     principal_key_id: key.keyId,
-    nonce: `nonce:${receiptId}`,
+    initiator: 'contractor:oak-line-builders',
+    nonce: computeActionEscrowResolutionNonce(bindingInput, party.party_id),
     issued_at: '2026-07-17T15:40:00.000Z',
     expires_at: '2026-07-17T16:40:00.000Z',
-    envelope_hash: bindings.document_action_binding_digest,
-    action_hash: bindings.release_action_digest,
-    agreement_digest: bindings.agreement_digest,
-    milestone_id: bindings.milestone_id,
-    parties_digest: bindings.parties_digest,
-    profile_digest: bindings.profile_digest,
-    evidence_hash: bindings.evidence_digest,
-    action_summary: {
-      amount: action.amount,
-      currency: action.currency,
-      destination_id: action.destination_id,
-      amendment_version: action.amendment_version,
-    },
-    resolution: {
-      outcome,
-      selected_option: 0,
-      detail,
-    },
+    resolution: resolutionOutcome(outcome, detail),
   };
+  const clientData = Buffer.from(JSON.stringify({
+    type: 'webauthn.get',
+    challenge: computeResolutionChallenge(context),
+    origin: RESOLUTION_ORIGIN,
+  }), 'utf8');
+  const authenticatorData = Buffer.concat([
+    crypto.createHash('sha256').update(RESOLUTION_RP_ID, 'utf8').digest(),
+    Buffer.from([0x05]),
+    Buffer.from([0, 0, 0, 1]),
+  ]);
+  const signedBytes = Buffer.concat([
+    authenticatorData,
+    crypto.createHash('sha256').update(clientData).digest(),
+  ]);
   return {
-    profile: 'EP-RESOLUTION-v1',
+    profile: RESOLUTION_VERSION,
     signoff: {
-      receipt_id: receiptId,
-      role: party.role,
+      '@type': 'ep.signoff',
       context,
-      key_id: key.keyId,
-      algorithm: 'Ed25519',
-      signature_b64u: crypto
-        .sign(null, resolutionSigningBytes(context), key.privateKey)
-        .toString('base64url'),
-      signed_at: '2026-07-17T15:40:00.000Z',
+      webauthn: {
+        authenticator_data: authenticatorData.toString('base64url'),
+        client_data_json: clientData.toString('base64url'),
+        signature: crypto
+          .sign('sha256', signedBytes, key.privateKey)
+          .toString('base64url'),
+      },
     },
   };
 }
@@ -572,48 +658,23 @@ function verifyResolutionArtifact(artifact, {
   bindings,
   action,
 }) {
-  const context = artifact?.signoff?.context;
-  let signatureValid = false;
-  try {
-    signatureValid = artifact?.signoff?.algorithm === 'Ed25519'
-      && crypto.verify(
-        null,
-        resolutionSigningBytes(context),
-        key.publicKeyObject,
-        Buffer.from(artifact.signoff.signature_b64u, 'base64url'),
-      );
-  } catch {
-    signatureValid = false;
-  }
-  const checks = {
-    profile: artifact?.profile === 'EP-RESOLUTION-v1',
-    signature: signatureValid,
-    signer_key: artifact?.signoff?.key_id === key.keyId,
-    principal_key: context?.principal_key_id === key.keyId,
-    signer_party: context?.principal === party.party_id,
-    signer_role: artifact?.signoff?.role === party.role,
-    binding: context?.envelope_hash === bindings.document_action_binding_digest,
-    action: context?.action_hash === bindings.release_action_digest,
-    agreement: context?.agreement_digest === bindings.agreement_digest,
-    milestone: context?.milestone_id === bindings.milestone_id,
-    parties: context?.parties_digest === bindings.parties_digest,
-    profile_digest: context?.profile_digest === bindings.profile_digest,
-    evidence: context?.evidence_hash === bindings.evidence_digest,
-    action_summary: canonicalize(context?.action_summary) === canonicalize({
-      amount: action.amount,
-      currency: action.currency,
-      destination_id: action.destination_id,
-      amendment_version: action.amendment_version,
-    }),
-  };
-  const valid = Object.values(checks).every(Boolean);
-  const outcome = context?.resolution?.outcome || null;
-  return {
-    valid,
-    checks,
-    outcome,
-    authorizes_action: valid && outcome === 'approved',
-  };
+  const bindingInput = actionEscrowResolutionBindingInput(bindings, action);
+  return verifyResolutionReceipt(artifact, {
+    bindingMoment: createActionEscrowReleaseBindingMoment(bindingInput),
+    expectedActionHash: bindings.release_action_digest,
+    expectedSelectedOption: 0,
+    expectedNonce: computeActionEscrowResolutionNonce(bindingInput, party.party_id),
+    expectedInitiator: 'contractor:oak-line-builders',
+    evaluationTime: CREATED_AT,
+    rpId: RESOLUTION_RP_ID,
+    allowedOrigins: [RESOLUTION_ORIGIN],
+    principalKeys: {
+      [key.keyId]: {
+        principal: party.party_id,
+        public_key: key.publicKey,
+      },
+    },
+  });
 }
 
 function durableCasStore() {
@@ -960,7 +1021,7 @@ function buildView({
         pass: approvalVerification.homeowner.valid && approvalVerification.contractor.valid,
         detail: 'Each party separately signed the exact action digest, evidence digest, amount, destination, and amendment version.',
         boundary: 'E-sign acceptance alone was refused as release authority.',
-        source: 'Two pinned demo party keys + Action Escrow kernel',
+        source: 'Two pinned P-256 WebAuthn demo keys + Action Escrow kernel',
       },
       {
         id: 'custodian',
@@ -1011,12 +1072,12 @@ function buildView({
       action_sha256: computeReleaseActionDigest(action),
       approvals: {
         homeowner: {
-          receipt_id: approvals.homeowner.signoff.receipt_id,
+          receipt_id: approvals.homeowner.signoff.context.nonce,
           outcome: approvals.homeowner.signoff.context.resolution.outcome,
           verification: approvalVerification.homeowner,
         },
         contractor: {
-          receipt_id: approvals.contractor.signoff.receipt_id,
+          receipt_id: approvals.contractor.signoff.context.nonce,
           outcome: approvals.contractor.signoff.context.resolution.outcome,
           verification: approvalVerification.contractor,
         },
@@ -1056,6 +1117,8 @@ export async function runActionEscrowScenario() {
     mapping: deterministicDemoKey('mapping-issuer'),
     homeowner: deterministicDemoKey('homeowner'),
     contractor: deterministicDemoKey('contractor'),
+    homeownerResolution: deterministicP256Key('homeowner'),
+    contractorResolution: deterministicP256Key('contractor'),
     custodian: deterministicDemoKey('external-custodian'),
     operator: deterministicDemoKey('state-operator'),
   };
@@ -1149,6 +1212,10 @@ export async function runActionEscrowScenario() {
   const keyByPartyId = new Map([
     [partyByRole.homeowner.party_id, keys.homeowner],
     [partyByRole.contractor.party_id, keys.contractor],
+  ]);
+  const resolutionKeyByPartyId = new Map([
+    [partyByRole.homeowner.party_id, keys.homeownerResolution],
+    [partyByRole.contractor.party_id, keys.contractorResolution],
   ]);
 
   function verifyAcceptanceArtifact(artifact, expected) {
@@ -1292,7 +1359,7 @@ export async function runActionEscrowScenario() {
     ),
     verifyResolutionReceipt: async (artifact, expected) => {
       const party = parties.find((entry) => entry.party_id === expected.party_id);
-      const key = keyByPartyId.get(expected.party_id);
+      const key = resolutionKeyByPartyId.get(expected.party_id);
       const verification = party && key
         ? verifyResolutionArtifact(artifact, {
           party,
@@ -1312,6 +1379,10 @@ export async function runActionEscrowScenario() {
         issued_at: artifact?.signoff?.context?.issued_at ?? null,
         expires_at: artifact?.signoff?.context?.expires_at ?? null,
         evidence_digest: expected.evidence_digest,
+        binding_moment_digest: expected.binding_moment_digest,
+        expected_selected_option: expected.expected_selected_option,
+        expected_initiator: expected.expected_initiator,
+        expected_nonce: expected.expected_nonce,
         ...expectedBindings(expected),
       };
     },
@@ -1400,38 +1471,34 @@ export async function runActionEscrowScenario() {
   const homeownerDecisions = {
     approve: makeResolution({
       party: partyByRole.homeowner,
-      key: keys.homeowner,
+      key: keys.homeownerResolution,
       outcome: 'approved',
       bindings: resolutionBindings,
       action,
-      receiptId: 'ae_release_approval_homeowner',
       detail: { reason_code: 'milestone_accepted' },
     }),
     decline: makeResolution({
       party: partyByRole.homeowner,
-      key: keys.homeowner,
+      key: keys.homeownerResolution,
       outcome: 'declined',
       bindings: resolutionBindings,
       action,
-      receiptId: 'ae_outcome_decline',
       detail: { reason_code: 'not_ready_to_release' },
     }),
     reject: makeResolution({
       party: partyByRole.homeowner,
-      key: keys.homeowner,
+      key: keys.homeownerResolution,
       outcome: 'rejected',
       bindings: resolutionBindings,
       action,
-      receiptId: 'ae_outcome_reject',
       detail: { reason_code: 'evidence_not_accepted' },
     }),
     amend: makeResolution({
       party: partyByRole.homeowner,
-      key: keys.homeowner,
-      outcome: 'amendment_requested',
+      key: keys.homeownerResolution,
+      outcome: 'amended',
       bindings: resolutionBindings,
       action,
-      receiptId: 'ae_outcome_amend',
       detail: {
         proposed_amendment_version: 3,
         proposed_release_amount: '17200.00',
@@ -1440,11 +1507,10 @@ export async function runActionEscrowScenario() {
   };
   const contractorApproval = makeResolution({
     party: partyByRole.contractor,
-    key: keys.contractor,
+    key: keys.contractorResolution,
     outcome: 'approved',
     bindings: resolutionBindings,
     action,
-    receiptId: 'ae_release_approval_contractor',
     detail: { reason_code: 'exact_release_confirmed' },
   });
 
@@ -1471,11 +1537,10 @@ export async function runActionEscrowScenario() {
 
   const wrongSignerApproval = makeResolution({
     party: partyByRole.homeowner,
-    key: keys.contractor,
+    key: keys.contractorResolution,
     outcome: 'approved',
     bindings: resolutionBindings,
     action,
-    receiptId: 'ae_attack_wrong_signer',
     detail: { mutation: 'contractor key claims homeowner approval seat' },
   });
   const signerAttackResult = await kernel.approveRelease(common('attack-signer', {
@@ -1638,13 +1703,13 @@ export async function runActionEscrowScenario() {
   const approvalVerification = {
     homeowner: verifyResolutionArtifact(homeownerDecisions.approve, {
       party: partyByRole.homeowner,
-      key: keys.homeowner,
+      key: keys.homeownerResolution,
       bindings: resolutionBindings,
       action,
     }),
     contractor: verifyResolutionArtifact(contractorApproval, {
       party: partyByRole.contractor,
-      key: keys.contractor,
+      key: keys.contractorResolution,
       bindings: resolutionBindings,
       action,
     }),
@@ -1692,7 +1757,7 @@ export async function runActionEscrowScenario() {
   const outcomes = outcomeDefinitions.map((entry) => {
     const verification = verifyResolutionArtifact(entry.resolution, {
       party: partyByRole.homeowner,
-      key: keys.homeowner,
+      key: keys.homeownerResolution,
       bindings: resolutionBindings,
       action,
     });
@@ -1705,7 +1770,7 @@ export async function runActionEscrowScenario() {
       release_authorized: entry.outcome === 'approve'
         && entry.coreResult.ok
         && contractorApprovalResult.ok,
-      receipt_id: entry.resolution.signoff.receipt_id,
+      receipt_id: entry.resolution.signoff.context.nonce,
       signature_verified: verification.valid,
       reason: entry.coreResult.code,
       proposed_amendment: entry.outcome === 'amend' ? 3 : null,
@@ -1838,7 +1903,7 @@ export async function runActionEscrowScenario() {
     verifyState: verifyPackagedState,
     verifyReleaseApproval: async (resolution, expected) => {
       const party = parties.find((entry) => entry.party_id === expected.partyId);
-      const key = keyByPartyId.get(expected.partyId);
+      const key = resolutionKeyByPartyId.get(expected.partyId);
       const verification = party && key
         ? verifyResolutionArtifact(resolution, {
           party,

@@ -302,6 +302,10 @@ release must obey the exact final document. The customer application supplies
 the signed agreement, material terms, party acceptances, funding evidence,
 milestone evidence, and action-specific release approvals. Gate verifies and
 binds those inputs, advances a signed lifecycle, and consumes the release once.
+Each release approval is a standard `EP-RESOLUTION-v1` WebAuthn record over a
+canonical binding moment. Gate independently pins the approval option,
+initiator, per-party nonce, evaluation time, exact action digest, and the
+document and milestone-evidence digests rendered to the approver.
 
 The public modules are `action-escrow`, `action-escrow-state`,
 `action-escrow-postgres`, `action-escrow-custodian`,
