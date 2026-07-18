@@ -837,6 +837,7 @@ function buildBindMockDb(status, { affectedRows = 1, updateError = null, existin
   };
   const updateChain = {
     eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     then: (resolve) => Promise.resolve(updateResult).then(resolve),
   };
@@ -847,7 +848,7 @@ function buildBindMockDb(status, { affectedRows = 1, updateError = null, existin
       update: updateSpy,
     })),
   };
-  return { db, updateSpy };
+  return { db, updateSpy, updateChain };
 }
 
 describe('bindReceiptToCommit', () => {
@@ -882,6 +883,43 @@ describe('bindReceiptToCommit', () => {
     // The mutation is guarded, not the response: no UPDATE is ever issued, so
     // the already-recorded receipt_id cannot be overwritten.
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // SECURITY REGRESSION (Strix, high / CWE-362): the link is append-only even
+  // WHILE the commit is active. A second bind with a DIFFERENT receipt must be
+  // refused without issuing any UPDATE — otherwise two concurrent authorized
+  // binds could leave an attacker-chosen receipt_id as the persisted record.
+  it('refuses to overwrite an already-bound receipt while active, no mutation', async () => {
+    const { db, updateSpy } = buildBindMockDb('active', { existingReceiptId: 'receipt_original' });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(
+      bindReceiptToCommit('epc_bind_active', 'receipt_attacker')
+    ).rejects.toMatchObject({ code: 'RECEIPT_ALREADY_BOUND', status: 409 });
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // Re-binding the SAME receipt is an idempotent retry (bind->fulfill may be
+  // re-run after a fulfillment failure) and must succeed without re-mutating.
+  it('idempotent: re-binding the same receipt to an active commit succeeds, no mutation', async () => {
+    const { db, updateSpy } = buildBindMockDb('active', { existingReceiptId: 'receipt_xyz' });
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await bindReceiptToCommit('epc_bind_retry', 'receipt_xyz');
+    expect(result).toMatchObject({ success: true, receipt_id: 'receipt_xyz' });
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // First-write-wins is enforced at the MUTATION: the UPDATE must carry the
+  // `receipt_id IS NULL` compare-and-set predicate so the second of two
+  // concurrent binds matches 0 rows at the database, not just in the pre-read.
+  it('predicates the bind UPDATE on receipt_id IS NULL (first-write-wins CAS)', async () => {
+    const { db, updateChain } = buildBindMockDb('active', { affectedRows: 1 });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await bindReceiptToCommit('epc_bind_cas', 'receipt_xyz');
+    expect(updateChain.is).toHaveBeenCalledWith('receipt_id', null);
+    expect(updateChain.eq).toHaveBeenCalledWith('status', 'active');
   });
 
   // The precondition read can race with a concurrent fulfill/revoke. Even if the
