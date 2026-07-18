@@ -72,19 +72,6 @@ function walkDir(dir, results = []) {
   return results;
 }
 
-// Routes that are ALLOWED to import getServiceClient directly.
-// These routes have known trust-table writes that need to be migrated
-// to protocolWrite commands. Until then, they are allowlisted.
-const SERVICE_CLIENT_ALLOWLIST = new Set([
-  // Admin/operational routes with legitimate service-client needs.
-  // Each entry must have a TODO comment in the file explaining what
-  // cannot be migrated to protocolWrite() and when that will change.
-  'app/api/cloud/webhooks/[endpointId]/route.js',   // webhook endpoint CRUD
-  'app/api/handshake/[handshakeId]/verify/route.js', // verify reads binding state
-  'app/api/handshake/[handshakeId]/present/route.js', // authz read of party membership (IDOR guard) — same pattern as verify; must see true rows unfiltered by RLS
-  'app/api/keys/rotate/route.js',                    // key rotation admin op
-]);
-
 let violations = [];
 
 try {
@@ -118,20 +105,17 @@ try {
 
     // Check 2: Route files must use getGuardedClient, not getServiceClient.
     // getServiceClient bypasses runtime write-path enforcement on trust tables.
-    const normalizedPath = relPath.split(sep).join('/');
-    if (!SERVICE_CLIENT_ALLOWLIST.has(normalizedPath)) {
-      const lines = content.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line.startsWith('//') || line.startsWith('*')) continue;
-        if (/\bgetServiceClient\b/.test(line)) {
-          violations.push({
-            file: relPath,
-            line: i + 1,
-            function: 'getServiceClient',
-            text: line.substring(0, 120),
-          });
-        }
+    const lines = content.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('//') || line.startsWith('*')) continue;
+      if (/\bgetServiceClient\b/.test(line)) {
+        violations.push({
+          file: relPath,
+          line: i + 1,
+          function: 'getServiceClient',
+          text: line.substring(0, 120),
+        });
       }
     }
 
@@ -175,7 +159,7 @@ if (violations.length > 0) {
   }
   console.error(`\n${violations.length} violation(s) found.`);
   console.error('Routes must use protocolWrite() for trust-bearing writes and getGuardedClient() for database access.');
-  console.error('getServiceClient() is only permitted in allowlisted routes and the canonical write layer.');
+  console.error('getServiceClient() is only permitted in the canonical write layer and non-route library code.');
   console.error('Routes must use authEntityId()/authEntityActor() projections instead of the raw auth.entity row.');
   process.exit(1);
 } else {
