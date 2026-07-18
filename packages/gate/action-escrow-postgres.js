@@ -14,6 +14,7 @@ export const ACTION_ESCROW_MAX_STATE_BYTES = 4 * 1024 * 1024;
 
 export const ACTION_ESCROW_STATE_DDL = `CREATE TABLE IF NOT EXISTS ${ACTION_ESCROW_STATE_TABLE} (
   agreement_key TEXT PRIMARY KEY,
+  revision      BIGINT NOT NULL CHECK (revision >= 0),
   record_json   TEXT NOT NULL,
   updated_at    BIGINT NOT NULL,
   CHECK (octet_length(record_json) <= ${ACTION_ESCROW_MAX_STATE_BYTES})
@@ -25,13 +26,15 @@ export const ACTION_ESCROW_STATE_SQL = Object.freeze({
   to_regclass('public.${ACTION_ESCROW_STATE_TABLE}') IS NOT NULL AS table_ready,
   CASE WHEN to_regclass('public.${ACTION_ESCROW_STATE_TABLE}') IS NULL THEN FALSE
     ELSE has_table_privilege(current_user, to_regclass('public.${ACTION_ESCROW_STATE_TABLE}'), 'SELECT,INSERT,UPDATE') END AS can_use`,
-  get: `SELECT record_json FROM ${ACTION_ESCROW_STATE_TABLE} WHERE agreement_key = $1`,
-  addIfAbsent: `INSERT INTO ${ACTION_ESCROW_STATE_TABLE} (agreement_key, record_json, updated_at)
-VALUES ($1, $2, $3)
-ON CONFLICT (agreement_key) DO NOTHING`,
-  compareAndSet: `UPDATE ${ACTION_ESCROW_STATE_TABLE}
-SET record_json = $3, updated_at = $4
-WHERE agreement_key = $1 AND record_json = $2`,
+  read: `SELECT revision, record_json FROM ${ACTION_ESCROW_STATE_TABLE} WHERE agreement_key = $1`,
+  create: `INSERT INTO ${ACTION_ESCROW_STATE_TABLE} (agreement_key, revision, record_json, updated_at)
+VALUES ($1, 0, $2, $3)
+ON CONFLICT (agreement_key) DO NOTHING
+RETURNING revision`,
+  compareAndSwap: `UPDATE ${ACTION_ESCROW_STATE_TABLE}
+SET revision = $3, record_json = $4, updated_at = $5
+WHERE agreement_key = $1 AND revision = $2
+RETURNING revision`,
 });
 
 function validKey(value) {
@@ -41,20 +44,22 @@ function validKey(value) {
     && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
-function validState(value) {
+function parsedState(value) {
   if (typeof value !== 'string'
     || Buffer.byteLength(value, 'utf8') > ACTION_ESCROW_MAX_STATE_BYTES
     || !strictJsonGate(value).ok) {
-    return false;
+    return null;
   }
   try {
     const parsed = JSON.parse(value);
     return parsed !== null
       && typeof parsed === 'object'
       && !Array.isArray(parsed)
-      && Object.getPrototypeOf(parsed) === Object.prototype;
+      && Object.getPrototypeOf(parsed) === Object.prototype
+      ? parsed
+      : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -96,30 +101,43 @@ export function createActionEscrowPostgresStore({
     if (!validKey(key)) throw new TypeError('action-escrow agreement key is invalid');
   }
 
-  function assertState(value) {
-    if (!validState(value)) {
+  function assertState(value, revision) {
+    const parsed = parsedState(value);
+    if (!parsed) {
       throw new TypeError('action-escrow state must be bounded strict JSON text');
+    }
+    if (!Number.isSafeInteger(parsed.revision)
+      || parsed.revision < 0
+      || parsed.revision !== revision) {
+      throw new TypeError('action-escrow state revision must match the CAS revision');
     }
   }
 
-  async function get(key) {
+  async function read(key) {
     assertKey(key);
     const result = assertResult(
-      await query(ACTION_ESCROW_STATE_SQL.get, [key]),
-      'action-escrow get',
+      await query(ACTION_ESCROW_STATE_SQL.read, [key]),
+      'action-escrow read',
     );
-    if (result.rowCount === 0) return undefined;
+    if (result.rowCount === 0) return null;
     if (result.rowCount !== 1 || !Array.isArray(result.rows) || result.rows.length !== 1
-      || !validState(result.rows[0]?.record_json)) {
-      throw new Error('action-escrow get: database returned malformed or ambiguous state');
+      || !Number.isSafeInteger(Number(result.rows[0]?.revision))
+      || Number(result.rows[0].revision) < 0
+      || !parsedState(result.rows[0]?.record_json)) {
+      throw new Error('action-escrow read: database returned malformed or ambiguous state');
     }
-    return result.rows[0].record_json;
+    const revision = Number(result.rows[0].revision);
+    assertState(result.rows[0].record_json, revision);
+    return { revision, value: result.rows[0].record_json };
   }
 
   return Object.freeze({
     version: ACTION_ESCROW_PG_STORE_VERSION,
     durable: true,
-    atomicCompareAndSwap: true,
+    atomicExpectedRevisionCas: true,
+    linearizableReads: true,
+    monotonicRevisions: true,
+    nonExpiring: true,
     maxStateBytes: ACTION_ESCROW_MAX_STATE_BYTES,
     async health() {
       const result = assertResult(
@@ -134,33 +152,35 @@ export function createActionEscrowPostgresStore({
         version: ACTION_ESCROW_PG_STORE_VERSION,
       };
     },
-    get,
-    read: get,
-    async addIfAbsent(key, value) {
+    read,
+    async compareAndSwap(key, expectedRevision, value) {
       assertKey(key);
-      assertState(value);
+      if (expectedRevision !== null
+        && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)) {
+        throw new TypeError('action-escrow expected revision is invalid');
+      }
+      const nextRevision = expectedRevision === null ? 0 : expectedRevision + 1;
+      assertState(value, nextRevision);
+      const sql = expectedRevision === null
+        ? ACTION_ESCROW_STATE_SQL.create
+        : ACTION_ESCROW_STATE_SQL.compareAndSwap;
+      const params = expectedRevision === null
+        ? [key, value, nowMs()]
+        : [key, expectedRevision, nextRevision, value, nowMs()];
       const result = assertResult(
-        await query(ACTION_ESCROW_STATE_SQL.addIfAbsent, [key, value, nowMs()]),
-        'action-escrow addIfAbsent',
+        await query(sql, params),
+        'action-escrow compareAndSwap',
       );
-      if (result.rowCount > 1) throw new Error('action-escrow addIfAbsent affected multiple rows');
-      return result.rowCount === 1;
-    },
-    async compareAndSet(key, expected, replacement) {
-      assertKey(key);
-      assertState(expected);
-      assertState(replacement);
-      const result = assertResult(
-        await query(ACTION_ESCROW_STATE_SQL.compareAndSet, [
-          key,
-          expected,
-          replacement,
-          nowMs(),
-        ]),
-        'action-escrow compareAndSet',
-      );
-      if (result.rowCount > 1) throw new Error('action-escrow compareAndSet affected multiple rows');
-      return result.rowCount === 1;
+      if (result.rowCount > 1) {
+        throw new Error('action-escrow compareAndSwap affected multiple rows');
+      }
+      if (result.rowCount === 0) return { applied: false, revision: null };
+      if (!Array.isArray(result.rows)
+        || result.rows.length !== 1
+        || Number(result.rows[0]?.revision) !== nextRevision) {
+        throw new Error('action-escrow compareAndSwap returned a malformed revision');
+      }
+      return { applied: true, revision: nextRevision };
     },
   });
 }
