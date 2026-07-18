@@ -295,6 +295,31 @@ challenge. The Gate composes that and adds the lifecycle controls a firewall nee
   can establish a declared surface as `gated`; a passive network witness alone is always
   `witness_only`. Inventory completeness remains an explicit relying-party assumption.
 
+## Formal-to-runtime bridge
+
+Every Gate has an explicit runtime lifecycle monitor. It mirrors the load-bearing
+state ordering behind the formal model: authorization must precede the effect,
+consumption is one-way, and execution evidence follows the effect attempt. A
+divergence emits a bounded `SPEC_DIVERGENCE` event and moves the Gate into
+fail-closed safe mode. In safe mode, pass-through is disabled and a receipt must
+earn at least Class-A assurance before execution.
+
+```js
+import { createRuntimeMonitor, createTrustedActionFirewall } from '@emilia-protocol/gate';
+
+const monitor = createRuntimeMonitor({
+  onDivergence: (event) => siem.append(event),
+  authorizeRecovery: (request) => operatorApproval.verify(request),
+});
+const gate = createTrustedActionFirewall({ runtimeMonitor: monitor, /* ... */ });
+```
+
+Recovery is explicit and operator-authorized; it never re-authorizes a prior
+receipt. The monitor is a reviewed runtime bridge, not a claim that TLA+ is
+automatically compiled into JavaScript. The formal specifications remain the
+source of the invariants and the monitor's transition table is covered by its
+own tests.
+
 ## Action Escrow
 
 Action Escrow is the Gate profile for a two-party agreement whose downstream

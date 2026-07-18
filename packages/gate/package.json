@@ -59,7 +59,8 @@
     "./reports/external-verification": "./reports/external-verification.js",
     "./reports/assurance-package": "./reports/assurance-package.js",
     "./reliance-kernel": "./reliance-kernel.js",
-    "./aec-execution": "./aec-execution.js"
+    "./aec-execution": "./aec-execution.js",
+    "./runtime-monitor": "./runtime-monitor.js"
   },
   "bin": {
     "ep-assure": "./ep-assure.mjs"
@@ -86,6 +87,7 @@
     "reliance-packet.js",
     "reliance-kernel.js",
     "aec-execution.js",
+    "runtime-monitor.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
     "key-registry.js",
