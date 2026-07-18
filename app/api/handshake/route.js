@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { initiateHandshake, listHandshakes } from '@/lib/handshake';
 import { epProblem } from '@/lib/errors'; // retained for edge-case compat
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';

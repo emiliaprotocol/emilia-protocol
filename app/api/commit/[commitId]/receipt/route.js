@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { bindReceiptToCommit, fulfillCommit, getCommitStatus, CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -32,7 +33,7 @@ export async function POST(request, { params }) {
       return epProblem(404, 'commit_not_found', 'Commit not found');
     }
 
-    if (commit.entity_id !== auth.entity.entity_id) {
+    if (commit.entity_id !== authEntityId(auth)) {
       return epProblem(403, 'not_authorized', 'Only the issuing entity can bind a receipt to this commit');
     }
 

@@ -31,6 +31,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 import { getAutoSubmitSecret } from '@/lib/env';
@@ -57,8 +58,8 @@ const MAX_BODY_BYTES = 1024 * 1024;
  *   1. Standard Bearer token (Authorization: Bearer ep_live_...) — preferred.
  *   2. Shared machine secret (x-ep-auto-key header matching EP_AUTO_SUBMIT_SECRET).
  *
- * Returns an entity object usable as the `submitter` parameter for the
- * canonical writer, or an error object.
+ * Returns a minimal actor projection usable by the canonical writer, or an
+ * error object. The authenticated database row never crosses this boundary.
  *
  * @param {Request} request
  * @returns {Promise<{ entity: object } | { error: string }>}
@@ -69,7 +70,7 @@ async function authenticateAutoSubmit(request) {
   if (authHeader?.startsWith('Bearer ep_')) {
     const auth = await authenticateRequest(request);
     if (!auth.error) {
-      return { entity: auth.entity };
+      return { actor: authEntityActor(auth) };
     }
     // If Bearer was provided but invalid, fail immediately — don't fall through
     return { error: auth.error };
@@ -101,7 +102,7 @@ async function authenticateAutoSubmit(request) {
   // dedup keys. The machine entity ID is a well-known sentinel that
   // cannot collide with real entity UUIDs.
   return {
-    entity: {
+    actor: {
       id: 'ep_machine_auto_submit',
       entity_id: 'ep_machine_auto_submit',
       status: 'active',
@@ -238,7 +239,7 @@ export async function POST(request) {
         const result = await protocolWrite({
           type: COMMAND_TYPES.SUBMIT_AUTO_RECEIPT,
           input: receipt,
-          actor: auth.entity,
+          actor: auth.actor,
         });
 
         if (result.error) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityDbId, authEntityReceiptSubmitter } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { createReceipt } from '@/lib/create-receipt';
 import { epProblem } from '@/lib/errors';
@@ -42,7 +43,7 @@ export async function POST(request, { params }) {
       return epProblem(409, 'need_not_completed', `Need is ${need.status}, can only rate completed needs`);
     }
 
-    if (need.from_entity_id !== auth.entity.id) {
+    if (need.from_entity_id !== authEntityDbId(auth)) {
       return epProblem(403, 'not_requester', 'Only the requesting entity can rate this need');
     }
 
@@ -69,7 +70,7 @@ export async function POST(request, { params }) {
     // Use the SAME receipt engine as /api/receipts/submit
     const result = await createReceipt({
       targetEntitySlug: need.claimed_by,
-      submitter: auth.entity,
+      submitter: authEntityReceiptSubmitter(auth),
       transactionRef: `need:${need.need_id}`,
       transactionType: 'task_completion',
       signals: {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, authEntityDbId, generateApiKey, hashApiKey } from '@/lib/supabase';
+import { authenticateRequest, generateApiKey, hashApiKey } from '@/lib/supabase';
+import { authEntityDbId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';

@@ -134,6 +134,29 @@ try {
         }
       }
     }
+
+    // Check 3: route handlers must not forward or inspect the raw auth row.
+    // The row can contain api_key_hash and other sensitive fields. Use the
+    // narrow helpers from lib/supabase.js for identity, operator, and actor
+    // projections so a future auth-shape change cannot reintroduce the leak.
+    const withoutComments = content
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|\s)\/\/.*$/gm, '$1');
+    const rawAuthEntity = /\bauth\s*\.\s*entity\b/;
+    if (rawAuthEntity.test(withoutComments)) {
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const lineWithoutComment = lines[i].replace(/\/\/.*$/, '');
+        if (rawAuthEntity.test(lineWithoutComment)) {
+          violations.push({
+            file: relPath,
+            line: i + 1,
+            function: 'auth.entity',
+            text: lines[i].trim().substring(0, 120),
+          });
+        }
+      }
+    }
   }
 } catch (e) {
   if (e.code === 'ENOENT') {
@@ -153,6 +176,7 @@ if (violations.length > 0) {
   console.error(`\n${violations.length} violation(s) found.`);
   console.error('Routes must use protocolWrite() for trust-bearing writes and getGuardedClient() for database access.');
   console.error('getServiceClient() is only permitted in allowlisted routes and the canonical write layer.');
+  console.error('Routes must use authEntityId()/authEntityActor() projections instead of the raw auth.entity row.');
   process.exit(1);
 } else {
   console.log(`✓ All route files pass write discipline check`);

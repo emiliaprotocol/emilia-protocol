@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityDbId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -48,7 +49,7 @@ export async function POST(request, { params }) {
     }
 
     // Only the claiming entity can complete
-    if (need.claimed_by !== auth.entity.id) {
+    if (need.claimed_by !== authEntityDbId(auth)) {
       return epProblem(403, 'not_claimant', 'Only the claiming entity can complete this need');
     }
 

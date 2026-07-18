@@ -8,7 +8,8 @@ import { verifyDelegation } from '@/lib/delegation';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId, authEntityActor } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { canonicalize } from '@/lib/canonical-json';
@@ -42,6 +43,8 @@ export async function POST(request) {
 
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+    const actor = authEntityActor(auth);
+    const handshakeActor = { entity_id: authEntityId(auth) };
 
     const { entity_id, action, policy = 'standard', value_usd, delegation_id, handshake_id, resource_ref, intent_ref } = body;
 
@@ -212,14 +215,14 @@ export async function POST(request) {
             binding_hash: handshakeBinding.binding_hash,
             consumed_by_type: 'trust_gate',
             consumed_by_id: randomUUID(),
-            actor: auth.entity,
+            actor: handshakeActor,
             consumed_by_action: action,
           });
         }
 
         const commitResult = await protocolWrite({
           type: COMMAND_TYPES.ISSUE_COMMIT,
-          actor: auth.entity,
+          actor,
           input: {
             entity_id,
             action_type: action,

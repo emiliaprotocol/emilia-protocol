@@ -4,7 +4,8 @@
 
 export const runtime = 'nodejs';
 
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { upsertConnection, listConnections, spOrigin } from '@/lib/sso/config';
 import { validateOidcRedirectUri, validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { seal } from '@/lib/crypto/secret-box';

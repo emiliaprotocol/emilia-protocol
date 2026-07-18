@@ -5,7 +5,8 @@
 
 import crypto from 'node:crypto';
 import { getGuardedClient } from '@/lib/write-guard';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId, authEntityOrganizationId } from '@/lib/auth-projections.js';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { generateScimToken, hashScimToken } from '@/lib/scim/auth';
@@ -24,9 +25,7 @@ export async function POST(request) {
   // the minting entity's organization. Approvers enroll under this same org, so
   // deprovision revokes exactly this tenant's credentials. (Falls back to
   // tenant_id at revoke time when the entity is not yet org-bound.)
-  const organizationId = (auth.entity && typeof auth.entity === 'object')
-    ? (auth.entity.organization_id || null)
-    : null;
+  const organizationId = authEntityOrganizationId(auth);
 
   const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
   if (!parsed.ok) return parsed.response;

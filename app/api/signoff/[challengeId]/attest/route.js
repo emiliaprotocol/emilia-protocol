@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
 import { createAttestation } from '@/lib/signoff/attest';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
@@ -48,7 +49,7 @@ export async function POST(request, { params }) {
     }
 
     const result = await createAttestation({
-      actor: auth.entity,
+      actor: authEntityActor(auth),
       challengeId,
       ...data,
     });

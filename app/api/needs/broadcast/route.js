@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityDbId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import crypto from 'crypto';
@@ -36,6 +37,7 @@ export async function POST(request) {
     if (auth.error) {
       return epProblem(401, 'unauthorized', auth.error);
     }
+    const callerDbId = authEntityDbId(auth);
 
     const parsed = await readEpJson(request, MAX_BODY_BYTES);
     if (!parsed.ok) return parsed.response;
@@ -87,7 +89,7 @@ export async function POST(request) {
       .from('needs')
       .insert({
         need_id: needId,
-        from_entity_id: auth.entity.id,
+        from_entity_id: callerDbId,
         capability_needed: body.capability_needed,
         context: needContext,
         input_data: body.input_data || null,
@@ -113,7 +115,7 @@ export async function POST(request) {
         query_embedding: embedding,
         min_score: body.min_emilia_score || 0,
         match_limit: 20, // Fetch extra for post-filtering
-        exclude_entity: auth.entity.id,
+        exclude_entity: callerDbId,
       });
       matches = candidates || [];
     }

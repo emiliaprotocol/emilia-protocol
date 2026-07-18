@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityDbId, authEntityActor } from '@/lib/auth-projections.js';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -29,10 +30,10 @@ export async function POST(request) {
       type: COMMAND_TYPES.CONFIRM_RECEIPT,
       input: {
         receipt_id: body.receipt_id,
-        confirming_entity_id: auth.entity.id,
+        confirming_entity_id: authEntityDbId(auth),
         confirm: body.confirm,
       },
-      actor: auth.entity,
+      actor: authEntityActor(auth),
     });
 
     if (result.error) {
