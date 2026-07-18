@@ -23,6 +23,7 @@ import { canonicalize } from './execution-binding.js';
 export const ZK_RANGE_RECEIPT_VERSION = 'EP-ZK-RANGE-RECEIPT-v1';
 export const ZK_RANGE_SCHEME = 'Bulletproofs-Ristretto255-range-v1';
 export const ZK_RANGE_BACKEND_PACKAGE = '@aptos-labs/confidential-asset-bindings@1.1.2';
+const ZK_RANGE_BACKEND_MODULE = '@aptos-labs/confidential-asset-bindings';
 
 const ORDER = ristretto255.Point.Fn.ORDER;
 const TEXT_ENCODER = new TextEncoder();
@@ -91,7 +92,10 @@ export function deriveZkRangeBases(domain = ZK_RANGE_RECEIPT_VERSION) {
 /** Lazy-load the audited/pinned optional Bulletproof WASM binding. */
 export async function loadBulletproofBackend() {
   try {
-    return await import('@aptos-labs/confidential-asset-bindings');
+    // Keep the backend genuinely optional at bundle time. Server deployments
+    // that enable ZK install the pinned module explicitly; default Gate builds
+    // must not fail or pull the WASM/mobile distribution into every route.
+    return await import(/* webpackIgnore: true */ ZK_RANGE_BACKEND_MODULE);
   } catch {
     throw new Error(`ZK range backend unavailable; install ${ZK_RANGE_BACKEND_PACKAGE} explicitly before enabling this path`);
   }
