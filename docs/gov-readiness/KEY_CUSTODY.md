@@ -13,4 +13,10 @@ Production posture:
 
 The repository provides `lib/key-custody.js` as the abstraction. Cloud-specific KMS/HSM clients plug into `createExternalCustodySigner()`.
 
+Base anchoring has a separate EVM transaction boundary in `lib/blockchain-signing.js`.
+`EP_BLOCKCHAIN_SIGNING_MODE=env` is the compatibility path; `kms` and `hsm` require
+an explicitly registered external signer plus `EP_BLOCKCHAIN_SIGNING_KEY_ID` and
+never fall back to `EP_WALLET_PRIVATE_KEY`. A deployment must register and test
+that provider before claiming hardware-backed blockchain custody.
+
 FIPS note: using an HSM or KMS is not itself a FIPS claim. The deployment must choose a FIPS-validated cryptographic module and document the module certificate, operating mode, and boundary.
