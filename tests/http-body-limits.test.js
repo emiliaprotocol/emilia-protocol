@@ -18,11 +18,18 @@ import path from 'node:path';
 // ---------------------------------------------------------------------------
 
 const mockAuthenticate = vi.fn();
+const mockAuthenticateOperator = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticate(...args),
   // present route imports this; not reached on the 413 path, but must resolve.
   getServiceClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ data: [], error: null }) }) }) }),
+}));
+
+// identity/verify is host-verifier/operator-only; auth runs BEFORE the body read,
+// so it must pass for the 413 body cap to be the thing under test here.
+vi.mock('@/lib/operator-auth', () => ({
+  authenticateOperator: (...args) => mockAuthenticateOperator(...args),
 }));
 
 const mockProtocolWrite = vi.fn();
@@ -122,6 +129,8 @@ describe('authenticated write-route body limits (heap-exhaustion DoS)', () => {
     vi.clearAllMocks();
     // Auth always succeeds — the cap must fire on the body regardless of a valid key.
     mockAuthenticate.mockResolvedValue({ entity: { id: 'ent_1', entity_id: 'test-entity' } });
+    // identity/verify uses operator auth; a host_verifier passes the binding.verify gate.
+    mockAuthenticateOperator.mockReturnValue({ valid: true, operator_id: 'host-verifier-1', role: 'host_verifier' });
     // Commit revoke reads the body AFTER these gates; let them pass.
     mockGetCommitStatus.mockResolvedValue({ commit_id: 'epc_1', status: 'active' });
     mockAuthorizeCommitAccess.mockReturnValue({ authorized: true });

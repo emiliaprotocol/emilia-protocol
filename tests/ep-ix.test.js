@@ -305,6 +305,22 @@ describe('verifyBinding', () => {
     const result = await verifyBinding('ep_bind_xyz', 'op_1');
     expect(result.binding).toEqual(binding);
   });
+
+  it('refuses an anonymous/empty verifier and does not write (defense in depth)', async () => {
+    // The route authorizes and passes a named operator_id; this guard ensures a
+    // caller reaching verifyBinding without a named verifier cannot record an
+    // unattributable verification. No supabase write should occur.
+    mockSupabase.from.mockImplementation(() => {
+      throw new Error('verifyBinding must not touch the DB without a named verifier');
+    });
+
+    for (const bad of [undefined, null, '', '   ']) {
+      const result = await verifyBinding('ep_bind_xyz', bad);
+      expect(result.status).toBe(400);
+      expect(result.error).toMatch(/named verifier/i);
+    }
+    expect(mockSupabase.from).not.toHaveBeenCalled();
+  });
 });
 
 // ── fileContinuityClaim ───────────────────────────────────────────────────────

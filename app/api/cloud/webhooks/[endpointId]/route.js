@@ -10,6 +10,12 @@ import { logger } from '../../../../../lib/logger.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
+// Columns safe to return on any read/update response. Deliberately EXCLUDES
+// `secret` (the plaintext whsec_... HMAC signing key): it is shown exactly once
+// at creation (registerEndpoint / POST) and must never be re-served on GET/PUT.
+const PUBLIC_ENDPOINT_COLUMNS =
+  'endpoint_id, url, events, status, failure_count, last_success_at, last_failure_at, created_at, updated_at';
+
 /**
  * GET /api/cloud/webhooks/[endpointId]
  *
@@ -27,7 +33,7 @@ export async function GET(request, { params }) {
 
     const { data: endpoint, error } = await supabase
       .from('webhook_endpoints')
-      .select('*')
+      .select(PUBLIC_ENDPOINT_COLUMNS) // never fetch/serialize the plaintext HMAC secret on read
       .eq('endpoint_id', endpointId)
       .eq('tenant_id', auth.tenantId)
       .maybeSingle();
@@ -126,7 +132,7 @@ export async function PUT(request, { params }) {
       .update(update)
       .eq('endpoint_id', endpointId)
       .eq('tenant_id', auth.tenantId) // carry tenant scope into the mutation itself (defense-in-depth)
-      .select()
+      .select(PUBLIC_ENDPOINT_COLUMNS) // never return the plaintext HMAC secret on update
       .single();
 
     if (updateErr) {
