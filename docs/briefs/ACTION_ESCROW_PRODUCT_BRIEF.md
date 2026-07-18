@@ -8,8 +8,9 @@
 obey it.**
 
 Action Escrow is a contractor-milestone reference experience. It joins one
-final agreement, structured material terms, separate party decisions, milestone
-evidence, and an external custodian's state before allowing one exact release.
+project-system change-order snapshot, one final agreement, structured material
+terms, separate party decisions, milestone evidence, and an external
+custodian's state before allowing one exact release.
 
 It is an enforcement demonstration, not a claim that EMILIA holds money,
 adjudicates workmanship, or makes a contract legally enforceable.
@@ -28,26 +29,32 @@ The experience is written for both parties, with a contractor-oriented primary
 view. Each party can download the same portable evidence-package manifest and
 the exact final PDF it references.
 
-## Five separate public claims
+## Six separate public claims
 
-The release-clearance UI must always show five visibly separate rows:
+The release-clearance UI must always show six visibly separate rows:
 
-1. **Final document + material-term mapping verified.** The shipped
+1. **Project change-order source verified.** The read-only project-system
+   adapter authenticates to the provider, refetches the complete structured
+   change order and line-item set twice, and refuses an incomplete or changing
+   view. The source record establishes neither acceptance nor release
+   authority.
+2. **Final document + material-term mapping verified.** The shipped
    `EP-DOCUMENT-ACTION-BINDING-v1` verifier authenticates the issuer-signed join
    among the final PDF digest, typed material terms, exact release template, and
-   required party roster.
-2. **Final document execution verified.** The configured e-sign adapter
+   required party roster. The exact release template includes the project
+   snapshot digest.
+3. **Final document execution verified.** The configured e-sign adapter
    authoritatively refetches the provider record, exact final PDF bytes, and
    participant-set and version-event snapshots twice. This proves the provider
    reported the document executed; it authorizes no release.
-3. **Both parties accepted the final agreement.** Separate pinned signatures
+4. **Both parties accepted the final agreement.** Separate pinned signatures
    bind the homeowner and contractor to the same final PDF bytes and current
    document-action binding; acceptance still authorizes no payment.
-4. **Homeowner and contractor approved the exact release action.** Separate
-   Ed25519-signed `EP-RESOLUTION-v1` artifacts bind each party to the same
+5. **Homeowner and contractor approved the exact release action.** Separate
+   P-256 WebAuthn-shaped `EP-RESOLUTION-v1` artifacts bind each party to the same
    document-action binding, action digest, completion-evidence digest, amount,
    destination, and amendment version.
-5. **External custodian reports funding and release state.** The demo
+6. **External custodian reports funding and release state.** The demo
    uses the shipped external-custodian adapter contract with signed,
    deterministic local reports. The provider and any license reference are
    simulated and make no licensing assertion.
@@ -80,6 +87,8 @@ The reference scenario imports and exercises:
   - `verifyActionEscrowEvidencePackage`
 - `lib/integrations/action-escrow/acrobat-sign.js`
   - deterministic authenticated-refetch simulation
+- `lib/integrations/action-escrow/procore-change-order.js`
+  - read-only complete-view and stable-snapshot enforcement
 - `lib/integrations/action-escrow/licensed-custodian.js`
   - deterministic external-custodian simulation
 
@@ -87,24 +96,27 @@ There is no parallel receipt or Gate implementation in the example.
 
 ## Reference flow
 
-1. Generate the final PDF and fetch those exact bytes through the simulated
+1. Refetch one complete, stable project change-order snapshot through the
+   read-only simulated Procore adapter.
+2. Generate the final PDF and fetch those exact bytes through the simulated
    e-sign adapter.
-2. Issue and verify the DAB over the PDF, typed terms, release template, pinned
-   Action Escrow profile, custodian transaction, and party roster.
-3. Record homeowner and contractor agreement acceptances. These make the
+3. Issue and verify the DAB over the PDF, typed terms, project snapshot digest,
+   release template, pinned Action Escrow profile, custodian transaction, and
+   party roster.
+4. Record homeowner and contractor agreement acceptances. These make the
    agreement effective but authorize no payment.
-4. Request funding and verify a signed external-custodian funding statement.
-5. Verify the contractor's signed completion-evidence manifest. This proves
+5. Request funding and verify a signed external-custodian funding statement.
+6. Verify the contractor's signed completion-evidence manifest. This proves
    artifact integrity and submitter control only.
-6. Evaluate signed homeowner outcomes: approve, decline, reject, or amend.
-7. Record separate homeowner and contractor approvals for the exact release.
-8. Reserve and invoke the external custodian once through the shipped custodian
+7. Evaluate signed homeowner outcomes: approve, decline, reject, or amend.
+8. Record separate homeowner and contractor approvals for the exact release.
+9. Reserve and invoke the external custodian once through the shipped custodian
    bridge.
-9. Authoritatively reconcile and verify the bridge's signed release-state
+10. Authoritatively reconcile and verify the bridge's signed release-state
    observation.
-10. Refuse replay from durable `released` state before another provider call.
-11. Sign the exact durable state and build the portable evidence package.
-12. Re-perform every package trust boundary with relying-party-pinned keys.
+11. Refuse replay from durable `released` state before another provider call.
+12. Sign the exact durable state and build the portable evidence package.
+13. Re-perform every package trust boundary with relying-party-pinned keys.
 
 Every successful state compare-and-swap also appends the exact revision to the
 Postgres history table atomically. Lost acknowledgements can make a caller
@@ -126,7 +138,7 @@ approval check.
 
 ## Refusal bench
 
-The public demo mutates exactly eight facts and must show all eight refusals:
+The public demo mutates exactly nine facts and must show all nine refusals:
 
 | Mutation | Shipped refusal |
 | --- | --- |
@@ -137,6 +149,7 @@ The public demo mutates exactly eight facts and must show all eight refusals:
 | Signer seat | `resolution_verification_refused` |
 | Milestone evidence | `milestone_evidence_invalid` |
 | Amendment version | `action_digest_mismatch` |
+| Project source snapshot | `action_digest_mismatch` |
 | Replay | `release_already_applied` |
 
 The custodian adapter's release method must be called exactly once.
@@ -152,7 +165,7 @@ state command and makes no workmanship, acceptance, or waiver claim.
 ## Portable evidence
 
 The JSON download is the output of
-`buildActionEscrowEvidencePackage`, not a demo-specific wrapper. It includes:
+`assembleActionEscrowEvidencePackage`, not a demo-specific wrapper. It includes:
 
 - the DAB;
 - final PDF digest, byte length, media type, and file name;
@@ -167,16 +180,18 @@ The JSON download is the output of
 - verification-profile reference;
 - package digest and explicit limitations.
 
-The PDF bytes are intentionally not embedded. The final PDF is downloaded
-beside the JSON and joined by its exact byte digest. Package verification
-requires relying-party-owned trust roots and re-runs each component verifier;
-the package digest alone does not make an invalid component trustworthy.
+The PDF bytes and project source record are intentionally not embedded. They
+are downloaded beside the JSON. The PDF is joined by its exact byte digest, and
+the DAB's exact action template binds the project-record snapshot digest.
+Package verification requires relying-party-owned trust roots and re-runs each
+component verifier; the package digest alone does not make an invalid component
+trustworthy.
 
 ## Provider claims
 
-The hero remains provider-neutral. Adobe Acrobat Sign may appear only lower in
-the experience as a clearly labeled simulated adapter. The demo has no Adobe
-partnership, endorsement, credential, or live API call.
+The hero remains provider-neutral. Procore and Adobe Acrobat Sign may appear
+only lower in the experience as clearly labeled simulated adapters. The demo
+has no provider partnership, endorsement, credential, or live API call.
 
 The custodian is likewise a simulated model. Copy must not imply that the named
 fictional provider is licensed, solvent, connected, or fit for a real

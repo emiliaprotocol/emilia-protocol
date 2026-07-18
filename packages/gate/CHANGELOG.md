@@ -4,6 +4,29 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.12.0 (2026-07-18)
+
+### Added
+
+- A distinct contractor release-template profile that requires a signed
+  `project_record_snapshot_digest` while preserving the closed legacy profile.
+- A contractor evidence-package profile that carries and re-verifies the exact
+  project-record sidecar bytes under a relying-party-owned verifier.
+- A read-only Procore change-order source adapter with complete pagination and
+  stable double-fetch snapshots.
+
+### Security
+
+- A project-system source record cannot become agreement acceptance or release
+  authority. Replacing its committed snapshot changes the action digest and
+  fails closed.
+- Existing Action Escrow templates without a project source remain valid under
+  their original closed profile; new contractor artifacts use an explicit
+  version boundary and cannot be silently downgraded.
+- Unmarked project-bound artifacts from the unreleased `0.11.1` preview remain
+  readable only through the contractor package path, which requires the exact
+  project-record sidecar and a relying-party-owned source verifier.
+
 ## 0.11.0 (2026-07-17)
 
 ### Added

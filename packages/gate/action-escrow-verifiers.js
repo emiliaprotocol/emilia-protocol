@@ -10,6 +10,8 @@ import { canonicalize, hashCanonical } from './execution-binding.js';
 
 export const ACTION_ESCROW_AGREEMENT_DIGEST_VERSION =
   'EP-ACTION-ESCROW-AGREEMENT-DIGEST-v1';
+export const ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION =
+  'EP-ACTION-ESCROW-CONTRACTOR-TEMPLATE-v1';
 
 const HASH = /^sha256:[0-9a-f]{64}$/;
 const AMOUNT = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
@@ -26,7 +28,11 @@ export const ACTION_ESCROW_REQUIRED_MATERIAL_TERM_IDS = Object.freeze([
   'release_requires_mutual_approval',
   'retainage_amount',
 ]);
-const RELEASE_TEMPLATE_KEYS = new Set([
+export const ACTION_ESCROW_CONTRACTOR_REQUIRED_MATERIAL_TERM_IDS = Object.freeze([
+  ...ACTION_ESCROW_REQUIRED_MATERIAL_TERM_IDS,
+  'project_record_snapshot_digest',
+]);
+const LEGACY_RELEASE_TEMPLATE_KEYS = new Set([
   'action_type',
   'action_escrow_profile_digest',
   'agreement_id',
@@ -44,6 +50,15 @@ const RELEASE_TEMPLATE_KEYS = new Set([
   'material_terms_sha256',
   'completion_evidence_sha256',
   'amendment_version',
+]);
+const UNMARKED_PROJECT_RELEASE_TEMPLATE_KEYS = new Set([
+  ...LEGACY_RELEASE_TEMPLATE_KEYS,
+  'project_record_snapshot_digest',
+]);
+const CONTRACTOR_RELEASE_TEMPLATE_KEYS = new Set([
+  ...LEGACY_RELEASE_TEMPLATE_KEYS,
+  'action_escrow_template_profile',
+  'project_record_snapshot_digest',
 ]);
 
 function isRecord(value) {
@@ -143,10 +158,21 @@ export function validateActionEscrowReleaseTemplate(template, {
   milestoneId,
   documentDigest,
   materialTerms,
+  contractorProjectSource = false,
 } = {}) {
+  const templateKeys = isRecord(template) ? Object.keys(template) : [];
+  const allowedKeys = contractorProjectSource
+    ? CONTRACTOR_RELEASE_TEMPLATE_KEYS
+    : UNMARKED_PROJECT_RELEASE_TEMPLATE_KEYS;
+  const requiredKeys = contractorProjectSource
+    ? CONTRACTOR_RELEASE_TEMPLATE_KEYS
+    : LEGACY_RELEASE_TEMPLATE_KEYS;
   if (!isRecord(template)
-    || Object.keys(template).length !== RELEASE_TEMPLATE_KEYS.size
-    || Object.keys(template).some((key) => !RELEASE_TEMPLATE_KEYS.has(key))
+    || templateKeys.some((key) => !allowedKeys.has(key))
+    || [...requiredKeys].some((key) => !Object.hasOwn(template, key))
+    || (contractorProjectSource
+      && template.action_escrow_template_profile
+        !== ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION)
     || template.action_type !== 'escrow.milestone.release'
     || template.action_escrow_profile_digest !== profileDigest
     || template.agreement_id !== agreementId
@@ -166,6 +192,10 @@ export function validateActionEscrowReleaseTemplate(template, {
     || !HASH.test(template.material_terms_sha256)
     || (materialTerms !== undefined
       && template.material_terms_sha256 !== `sha256:${hashCanonical(materialTerms)}`)
+    || (contractorProjectSource
+      && !HASH.test(template.project_record_snapshot_digest))
+    || (Object.hasOwn(template, 'project_record_snapshot_digest')
+      && !HASH.test(template.project_record_snapshot_digest))
     || !HASH.test(template.completion_evidence_sha256)
     || !Number.isSafeInteger(template.amendment_version)
     || template.amendment_version < 1) {
@@ -179,7 +209,7 @@ export function validateActionEscrowReleaseTemplate(template, {
   }
 }
 
-function exactActionTemplate(binding, expected) {
+function exactActionTemplate(binding, expected, contractorProjectSource) {
   return validateActionEscrowReleaseTemplate(binding?.release_action?.template, {
     profileDigest: expected.profile_digest,
     agreementId: binding?.agreement_id,
@@ -187,6 +217,7 @@ function exactActionTemplate(binding, expected) {
     milestoneId: expected.milestone_id,
     documentDigest: binding?.document?.digest,
     materialTerms: binding?.material_terms,
+    contractorProjectSource,
   });
 }
 
@@ -203,6 +234,11 @@ function materialTermsMatchAction(binding, template) {
   const payee = terms.get('payee_id');
   const releaseRequiresMutualApproval = terms.get('release_requires_mutual_approval');
   const retainage = terms.get('retainage_amount');
+  const projectRecord = terms.get('project_record_snapshot_digest');
+  const projectRecordBound = Object.hasOwn(
+    template,
+    'project_record_snapshot_digest',
+  );
   return amount?.type === 'amount'
     && amount.value === template.amount
     && amount.currency === template.currency
@@ -223,7 +259,12 @@ function materialTermsMatchAction(binding, template) {
     && releaseRequiresMutualApproval?.type === 'boolean'
     && releaseRequiresMutualApproval.value === true
     && retainage?.type === 'amount'
-    && retainage.currency === template.currency;
+    && retainage.currency === template.currency
+    && (!projectRecordBound
+      || (
+        projectRecord?.type === 'digest'
+        && projectRecord.value === template.project_record_snapshot_digest
+      ));
 }
 
 /**
@@ -232,13 +273,15 @@ function materialTermsMatchAction(binding, template) {
  * The document resolver is mandatory: mapping authenticity without checking
  * the final bytes is insufficient for a release decision.
  */
-export function createActionEscrowDocumentBindingVerifier({
+function createDocumentBindingVerifier({
   issuerKeys,
   resolveDocumentBytes,
   allowedMediaTypes = ['application/pdf'],
   allowedPartyRoles = ['client', 'contractor'],
   now = Date.now,
-} = {}) {
+} = {}, {
+  contractorProjectSource,
+}) {
   if (!isRecord(issuerKeys)
     || Object.keys(issuerKeys).length === 0
     || typeof resolveDocumentBytes !== 'function'
@@ -260,7 +303,9 @@ export function createActionEscrowDocumentBindingVerifier({
         allowedMediaTypes: mediaTypes,
         allowedPartyRoles: partyRoles,
         allowedActionTypes: ['escrow.milestone.release'],
-        requiredMaterialTermIds: ACTION_ESCROW_REQUIRED_MATERIAL_TERM_IDS,
+        requiredMaterialTermIds: contractorProjectSource
+          ? ACTION_ESCROW_CONTRACTOR_REQUIRED_MATERIAL_TERM_IDS
+          : ACTION_ESCROW_REQUIRED_MATERIAL_TERM_IDS,
         expectedRequiredParties: expected.parties,
         expectedSupersedesDigest:
           expected.supersedes_document_action_binding_digest,
@@ -274,8 +319,16 @@ export function createActionEscrowDocumentBindingVerifier({
         return refusal('kernel_binding_context_mismatch');
       }
 
-      const actionTemplate = exactActionTemplate(binding, expected);
-      if (!actionTemplate || !materialTermsMatchAction(binding, actionTemplate)) {
+      const actionTemplate = exactActionTemplate(
+        binding,
+        expected,
+        contractorProjectSource,
+      );
+      if (!actionTemplate
+        || !materialTermsMatchAction(
+          binding,
+          actionTemplate,
+        )) {
         return refusal('material_action_mapping_mismatch');
       }
       const resolved = await resolveDocumentBytes(deepFreeze({
@@ -310,6 +363,12 @@ export function createActionEscrowDocumentBindingVerifier({
         release_action_digest: verified.action_digest,
         parties_digest: expected.parties_digest,
         profile_digest: expected.profile_digest,
+        ...(HASH.test(actionTemplate.project_record_snapshot_digest)
+          ? {
+            project_record_snapshot_digest:
+              actionTemplate.project_record_snapshot_digest,
+          }
+          : {}),
         ...(verified.supersedes_digest === null
           ? {}
           : {
@@ -323,10 +382,25 @@ export function createActionEscrowDocumentBindingVerifier({
   };
 }
 
+export function createActionEscrowDocumentBindingVerifier(options = {}) {
+  return createDocumentBindingVerifier(options, {
+    contractorProjectSource: false,
+  });
+}
+
+export function createActionEscrowContractorDocumentBindingVerifier(options = {}) {
+  return createDocumentBindingVerifier(options, {
+    contractorProjectSource: true,
+  });
+}
+
 export default Object.freeze({
   ACTION_ESCROW_AGREEMENT_DIGEST_VERSION,
+  ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
+  ACTION_ESCROW_CONTRACTOR_REQUIRED_MATERIAL_TERM_IDS,
   ACTION_ESCROW_REQUIRED_MATERIAL_TERM_IDS,
   computeActionEscrowAgreementDigest,
+  createActionEscrowContractorDocumentBindingVerifier,
   createActionEscrowDocumentBindingVerifier,
   validateActionEscrowReleaseTemplate,
 });

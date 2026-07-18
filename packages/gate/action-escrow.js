@@ -7,7 +7,10 @@
  * CAS and refuses every state or external-effect ambiguity.
  */
 import { canonicalize, hashCanonical } from './execution-binding.js';
-import { validateActionEscrowReleaseTemplate } from './action-escrow-verifiers.js';
+import {
+  ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
+  validateActionEscrowReleaseTemplate,
+} from './action-escrow-verifiers.js';
 
 export const ACTION_ESCROW_STATE_VERSION = 'EP-ACTION-ESCROW-STATE-v1';
 export const ACTION_ESCROW_OUTCOME_VERSION = 'EP-ACTION-ESCROW-OUTCOME-v1';
@@ -509,6 +512,9 @@ function bindingVerificationDetails(result, expected) {
         agreementDigest: expected.agreement_digest,
         milestoneId: expected.milestone_id,
         documentDigest: result.document_digest,
+        contractorProjectSource:
+          result.release_action_template.action_escrow_template_profile
+            === ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
       },
     );
     if (!releaseActionTemplate) return null;

@@ -7,8 +7,11 @@ import {
 } from '@emilia-protocol/verify/document-action-binding';
 import { hashCanonical } from './execution-binding.js';
 import {
+  ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
   computeActionEscrowAgreementDigest,
+  createActionEscrowContractorDocumentBindingVerifier,
   createActionEscrowDocumentBindingVerifier,
+  validateActionEscrowReleaseTemplate,
 } from './action-escrow-verifiers.js';
 
 const documentBytes = Buffer.from('%PDF-1.7\nfinal agreement bytes\n', 'utf8');
@@ -110,6 +113,19 @@ function verifier(bytes = documentBytes) {
   });
 }
 
+function contractorVerifier(bytes = documentBytes) {
+  return createActionEscrowContractorDocumentBindingVerifier({
+    issuerKeys: {
+      'mapping-key-01': {
+        issuer_id: 'mapping-issuer.test',
+        public_key: publicKey,
+      },
+    },
+    resolveDocumentBytes: async () => bytes,
+    now: () => '2026-07-17T12:00:00.000Z',
+  });
+}
+
 test('maps a real signed DAB and final PDF into the exact kernel result contract', async () => {
   const binding = signedBinding();
   const result = await verifier()(binding, expected(binding));
@@ -153,6 +169,91 @@ test('material terms cannot disagree with the exact release template', async () 
   const result = await verifier()(binding, expected(binding));
   assert.equal(result.valid, false);
   assert.equal(result.reason, 'material_action_mapping_mismatch');
+});
+
+test('the contractor profile requires a project source digest bound to its signed term', async () => {
+  const projectDigest = `sha256:${'4'.repeat(64)}`;
+  const sourceTerms = [
+    ...materialTerms,
+    {
+      term_id: 'project_record_snapshot_digest',
+      type: 'digest',
+      value: projectDigest,
+    },
+  ].sort((left, right) => (
+    left.term_id < right.term_id ? -1 : left.term_id > right.term_id ? 1 : 0
+  ));
+  const sourceTemplate = {
+    ...actionTemplate,
+    action_escrow_template_profile: ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
+    material_terms_sha256: `sha256:${hashCanonical(sourceTerms)}`,
+    project_record_snapshot_digest: projectDigest,
+  };
+  const binding = signedBinding({
+    material_terms: sourceTerms,
+    release_action_template: sourceTemplate,
+  });
+  const validatedSourceTemplate = validateActionEscrowReleaseTemplate(
+    binding.release_action.template,
+    {
+    profileDigest,
+    agreementId,
+    agreementDigest,
+    milestoneId: 'milestone-01',
+    documentDigest: binding.document.digest,
+    materialTerms: binding.material_terms,
+    contractorProjectSource: true,
+    },
+  );
+  assert.ok(validatedSourceTemplate);
+  const result = await contractorVerifier()(binding, expected(binding));
+  assert.equal(result.valid, true, result.reason);
+  assert.equal(result.project_record_snapshot_digest, projectDigest);
+  assert.equal(
+    (await verifier()(binding, expected(binding))).reason,
+    'material_action_mapping_mismatch',
+  );
+
+  const {
+    action_escrow_template_profile: _profileMarker,
+    ...unmarkedSourceTemplate
+  } = sourceTemplate;
+  const unmarkedBinding = signedBinding({
+    material_terms: sourceTerms,
+    release_action_template: unmarkedSourceTemplate,
+  });
+  const unmarkedResult = await verifier()(
+    unmarkedBinding,
+    expected(unmarkedBinding),
+  );
+  assert.equal(unmarkedResult.valid, true, unmarkedResult.reason);
+  assert.equal(unmarkedResult.project_record_snapshot_digest, projectDigest);
+  assert.equal(
+    (await contractorVerifier()(
+      unmarkedBinding,
+      expected(unmarkedBinding),
+    )).reason,
+    'material_action_mapping_mismatch',
+  );
+
+  const substitutedTerms = sourceTerms.map((term) => (
+    term.term_id === 'project_record_snapshot_digest'
+      ? { ...term, value: `sha256:${'5'.repeat(64)}` }
+      : term
+  ));
+  const substitutedBinding = signedBinding({
+    material_terms: substitutedTerms,
+    release_action_template: {
+      ...sourceTemplate,
+      material_terms_sha256: `sha256:${hashCanonical(substitutedTerms)}`,
+    },
+  });
+  const substitutedResult = await contractorVerifier()(
+    substitutedBinding,
+    expected(substitutedBinding),
+  );
+  assert.equal(substitutedResult.valid, false);
+  assert.equal(substitutedResult.reason, 'material_action_mapping_mismatch');
 });
 
 test('supersession is explicit and mapped to the kernel amendment join', async () => {

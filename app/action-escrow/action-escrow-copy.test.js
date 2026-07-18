@@ -20,6 +20,8 @@ describe('Action Escrow public claims', () => {
     expect(source).not.toContain('Adobe proves the document was signed');
     expect(scenarioSource)
       .toContain('No Adobe partnership, endorsement, credential, or live API call');
+    expect(scenarioSource)
+      .toContain('No Procore partnership, endorsement, credential, or live API call');
   });
 
   it('states the document/payment authorization boundary directly', () => {
