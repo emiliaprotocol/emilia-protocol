@@ -9,7 +9,7 @@ import {
   computeActionEscrowResolutionNonce,
   createActionEscrowKernel,
 } from './action-escrow.js';
-import { hashCanonical } from './execution-binding.js';
+import { canonicalize, hashCanonical } from './execution-binding.js';
 
 const digest = (character) => `sha256:${character.repeat(64)}`;
 
@@ -454,6 +454,54 @@ test('runs the complete milestone lifecycle and releases exactly once', async ()
   assert.equal(completed.ok, true);
   assertState(completed, 'completed');
   assert.equal(completed.record.completion.meaning, 'administrative_archive_only');
+});
+
+test('refuses release when a stored approval artifact no longer verifies', async () => {
+  const { kernel, store, provider } = kernelFor();
+
+  await readyForRelease(kernel);
+  const [key, envelope] = store._values.entries().next().value;
+  const record = JSON.parse(envelope.value);
+  record.release_approvals[0].resolution.signoff.context.resolution.outcome = 'declined';
+  store._values.set(key, {
+    revision: envelope.revision,
+    value: canonicalize(record),
+  });
+
+  const refused = await kernel.release(common('release-after-approval-tamper'));
+  assert.equal(refused.ok, false);
+  assert.equal(refused.code, 'store_record_invalid');
+  assert.equal(provider.calls.length, 0);
+});
+
+test('replays persisted approvals before accepting a recomputed cached summary', async () => {
+  const originalVerifier = defaultVerifiers().verifyResolutionReceipt;
+  const { kernel, store, provider } = kernelFor({
+    async verifyResolutionReceipt(artifact, expected) {
+      const principal = artifact?.signoff?.context?.principal;
+      const keyId = artifact?.signoff?.context?.principal_key_id;
+      if (keyId !== `key:${principal}`) return { valid: false };
+      return originalVerifier(artifact, expected);
+    },
+  });
+
+  await readyForRelease(kernel);
+  const [key, envelope] = store._values.entries().next().value;
+  const record = JSON.parse(envelope.value);
+  const approval = record.release_approvals[0];
+  approval.resolution.signoff.context.principal_key_id = 'forged-key';
+  approval.verification.principal_key_id = 'forged-key';
+  approval.verification.resolution_digest = `sha256:${hashCanonical(approval.resolution)}`;
+  store._values.set(key, {
+    revision: envelope.revision,
+    value: canonicalize(record),
+  });
+
+  const refused = await kernel.release(common('release-after-summary-recompute'));
+  assert.equal(refused.ok, false);
+  assert.equal(refused.code, 'release_approval_stale');
+  assert.deepEqual(refused.details, { party_id: 'ep:principal:client' });
+  assert.equal(provider.calls.length, 0);
 });
 
 test('mutual e-sign acceptance makes the agreement effective but never approves release', async () => {

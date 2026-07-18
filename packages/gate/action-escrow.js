@@ -110,6 +110,98 @@ const RECORD_KEYS = new Set([
   'created_at',
   'updated_at',
 ]);
+const CONTAINER_KEYS = new Set(['artifact', 'verification']);
+const FUNDING_CONTAINER_KEYS = new Set(['statement', 'verification']);
+const ACCEPTANCE_KEYS = new Set(['party_id', 'artifact', 'verification']);
+const RELEASE_APPROVAL_KEYS = new Set(['party_id', 'resolution', 'verification']);
+const CORE_VERIFICATION_KEYS = new Set([
+  'valid',
+  'agreement_digest',
+  'document_action_binding_digest',
+  'milestone_id',
+  'release_action_digest',
+  'parties_digest',
+  'profile_digest',
+]);
+const ACCEPTANCE_VERIFICATION_KEYS = new Set([
+  ...CORE_VERIFICATION_KEYS,
+  'party_id',
+  'principal_key_id',
+  'acceptance_digest',
+]);
+const FUNDING_VERIFICATION_KEYS = new Set([
+  ...CORE_VERIFICATION_KEYS,
+  'authenticated',
+  'provider_id',
+  'statement_type',
+  'status',
+  'provider_transaction_id',
+  'provider_milestone_id',
+  'amount',
+  'currency',
+  'destination_id',
+  'statement_digest',
+]);
+const MILESTONE_VERIFICATION_KEYS = new Set([
+  ...CORE_VERIFICATION_KEYS,
+  'evidence_digest',
+  'submitter_party_id',
+  'observed_at',
+]);
+const RELEASE_APPROVAL_VERIFICATION_KEYS = new Set([
+  ...CORE_VERIFICATION_KEYS,
+  'authorizes_action',
+  'outcome',
+  'party_role',
+  'principal_key_id',
+  'nonce',
+  'issued_at',
+  'expires_at',
+  'resolution_digest',
+  'evidence_digest',
+]);
+const PROVIDER_VERIFICATION_KEYS = new Set([
+  ...CORE_VERIFICATION_KEYS,
+  'authenticated',
+  'provider_id',
+  'provider_idempotency_key',
+  'provider_request_digest',
+  'provider_transaction_id',
+  'provider_milestone_id',
+  'amount',
+  'currency',
+  'destination_id',
+  'statement_type',
+  'status',
+  'statement_digest',
+]);
+const OPERATION_KEYS = new Set([
+  'idempotency_key',
+  'operation',
+  'request_digest',
+  'code',
+  'ok',
+  'outcome',
+  'state',
+  'at',
+]);
+const HISTORY_KEYS = new Set(['from', 'to', 'operation', 'idempotency_key', 'at']);
+const KERNEL_OPERATIONS = new Set([
+  'create',
+  'begin_acceptance',
+  'accept_agreement',
+  'request_funding',
+  'record_funding',
+  'submit_milestone',
+  'approve_release',
+  'release',
+  'reconcile_release',
+  'open_dispute',
+  'propose_amendment',
+  'accept_amendment',
+  'cancel',
+  'complete',
+]);
 
 function isPlainObject(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -540,6 +632,196 @@ function storedBindingVerificationValid(container, expected) {
   return bindingVerificationDetails(container.verification, expected) !== null;
 }
 
+function coreVerificationValid(value, record, allowedKeys, overrides = {}) {
+  const expected = {
+    agreement_digest: record.agreement_digest,
+    document_action_binding_digest: record.document_action_binding_digest,
+    milestone_id: record.milestone_id,
+    release_action_digest: record.release_action_digest,
+    parties_digest: record.parties_digest,
+    profile_digest: record.profile_digest,
+    ...overrides,
+  };
+  return exactKeys(value, allowedKeys, CORE_VERIFICATION_KEYS)
+    && value.valid === true
+    && Object.entries(expected).every(([key, entry]) => value[key] === entry);
+}
+
+function storedAcceptancesValid(entries, record, {
+  documentActionBindingDigest = record.document_action_binding_digest,
+  releaseActionDigest = record.release_action_digest,
+} = {}) {
+  if (!Array.isArray(entries) || entries.length > record.profile.required_acceptance_party_ids.length) {
+    return false;
+  }
+  const required = new Set(record.profile.required_acceptance_party_ids);
+  const parties = new Set(record.parties.map((party) => party.party_id));
+  const seenParties = new Set();
+  const seenKeys = new Set();
+  for (const entry of entries) {
+    const verification = entry?.verification;
+    if (!exactKeys(entry, ACCEPTANCE_KEYS)
+      || !isPlainObject(entry.artifact)
+      || !isPlainObject(verification)
+      || !coreVerificationValid(verification, record, ACCEPTANCE_VERIFICATION_KEYS, {
+        document_action_binding_digest: documentActionBindingDigest,
+        release_action_digest: releaseActionDigest,
+      })
+      || !parties.has(entry.party_id)
+      || !required.has(entry.party_id)
+      || seenParties.has(entry.party_id)
+      || verification.party_id !== entry.party_id
+      || !validString(verification.principal_key_id, 512)
+      || seenKeys.has(verification.principal_key_id)
+      || !validDigest(verification.acceptance_digest)) {
+      return false;
+    }
+    seenParties.add(entry.party_id);
+    seenKeys.add(verification.principal_key_id);
+  }
+  return true;
+}
+
+function storedFundingValid(record) {
+  if (record.funding === null) return true;
+  const template = record.document_action_binding.verification.release_action_template;
+  const verification = record.funding?.verification;
+  return exactKeys(record.funding, FUNDING_CONTAINER_KEYS)
+    && isPlainObject(record.funding.statement)
+    && coreVerificationValid(verification, record, FUNDING_VERIFICATION_KEYS)
+    && verification.authenticated === true
+    && verification.provider_id === record.profile.provider_id
+    && verification.statement_type === 'funding'
+    && verification.status === 'funded'
+    && verification.provider_transaction_id === template.custodian_transaction_id
+    && verification.provider_milestone_id === template.custodian_milestone_id
+    && verification.amount === template.amount
+    && verification.currency === template.currency
+    && verification.destination_id === template.destination_id
+    && validDigest(verification.statement_digest);
+}
+
+function storedMilestoneEvidenceValid(record) {
+  if (record.milestone_evidence === null) return true;
+  const verification = record.milestone_evidence?.verification;
+  return exactKeys(record.milestone_evidence, CONTAINER_KEYS)
+    && isPlainObject(record.milestone_evidence.artifact)
+    && coreVerificationValid(verification, record, MILESTONE_VERIFICATION_KEYS)
+    && validDigest(verification.evidence_digest)
+    && record.parties.some((party) => (
+      party.party_id === verification.submitter_party_id
+    ))
+    && validInstant(verification.observed_at);
+}
+
+function storedReleaseApprovalsValid(record) {
+  if (!Array.isArray(record.release_approvals)
+    || record.release_approvals.length > record.profile.required_release_approver_party_ids.length
+    || (record.release_approvals.length > 0 && record.milestone_evidence === null)) {
+    return false;
+  }
+  const required = new Set(record.profile.required_release_approver_party_ids);
+  const parties = new Map(record.parties.map((party) => [party.party_id, party]));
+  const seenParties = new Set();
+  const seenKeys = new Set();
+  const evidenceDigest = record.milestone_evidence?.verification?.evidence_digest;
+  const bindingInput = resolutionBindingInput(record);
+  const bindingMomentDigest = computeActionEscrowReleaseBindingMomentDigest(bindingInput);
+  if (record.release_approvals.length > 0
+    && (!validDigest(evidenceDigest) || !validDigest(bindingMomentDigest))) {
+    return false;
+  }
+  for (const entry of record.release_approvals) {
+    const party = parties.get(entry?.party_id);
+    const verification = entry?.verification;
+    const context = entry?.resolution?.signoff?.context;
+    if (!exactKeys(entry, RELEASE_APPROVAL_KEYS)
+      || !party
+      || !required.has(entry.party_id)
+      || seenParties.has(entry.party_id)
+      || !isPlainObject(entry.resolution)
+      || entry.resolution.profile !== RESOLUTION_VERSION
+      || !isPlainObject(context)
+      || !isPlainObject(context.resolution)
+      || !coreVerificationValid(verification, record, RELEASE_APPROVAL_VERIFICATION_KEYS)
+      || verification.authorizes_action !== true
+      || verification.outcome !== 'approved'
+      || verification.party_role !== party.role
+      || !validString(verification.principal_key_id, 512)
+      || seenKeys.has(verification.principal_key_id)
+      || !validString(verification.nonce, 512)
+      || !validInstant(verification.issued_at)
+      || !validInstant(verification.expires_at)
+      || verification.resolution_digest !== canonicalDigest(entry.resolution)
+      || verification.evidence_digest !== evidenceDigest
+      || context.principal !== entry.party_id
+      || context.principal_key_id !== verification.principal_key_id
+      || context.envelope_hash !== bindingMomentDigest
+      || context.action_hash !== record.release_action_digest
+      || context.initiator !== record.milestone_evidence.verification.submitter_party_id
+      || context.nonce !== computeActionEscrowResolutionNonce(bindingInput, entry.party_id)
+      || context.nonce !== verification.nonce
+      || context.issued_at !== verification.issued_at
+      || context.expires_at !== verification.expires_at
+      || context.resolution.outcome !== 'approved'
+      || context.resolution.selected_option !== 0) {
+      return false;
+    }
+    seenParties.add(entry.party_id);
+    seenKeys.add(verification.principal_key_id);
+  }
+  return true;
+}
+
+function storedHistoryValid(record) {
+  if (!Array.isArray(record.operations)
+    || record.operations.length === 0
+    || !Array.isArray(record.history)
+    || record.history.length === 0
+    || record.operations.length > MAX_OPERATIONS
+    || record.history.length > MAX_HISTORY) {
+    return false;
+  }
+  const operations = new Map();
+  for (const entry of record.operations) {
+    if (!exactKeys(entry, OPERATION_KEYS)
+      || !validString(entry.idempotency_key, 512)
+      || operations.has(entry.idempotency_key)
+      || !validString(entry.operation, 128)
+      || !KERNEL_OPERATIONS.has(entry.operation)
+      || !validDigest(entry.request_digest)
+      || !validString(entry.code, 256)
+      || typeof entry.ok !== 'boolean'
+      || !validString(entry.outcome, 128)
+      || !ACTION_ESCROW_STATES.includes(entry.state)
+      || !validInstant(entry.at)) {
+      return false;
+    }
+    operations.set(entry.idempotency_key, entry);
+  }
+  let previousState = null;
+  for (const [index, entry] of record.history.entries()) {
+    const operation = operations.get(entry?.idempotency_key);
+    if (!exactKeys(entry, HISTORY_KEYS)
+      || !ACTION_ESCROW_STATES.includes(entry.to)
+      || (entry.from !== null && !ACTION_ESCROW_STATES.includes(entry.from))
+      || !validString(entry.operation, 128)
+      || !validString(entry.idempotency_key, 512)
+      || !validInstant(entry.at)
+      || !operation
+      || operation.operation !== entry.operation
+      || entry.from !== previousState
+      || (index > 0 && !ACTION_ESCROW_TRANSITIONS[entry.from]?.includes(entry.to))) {
+      return false;
+    }
+    if (index === 0 && (entry.from !== null || entry.to !== 'draft' || entry.operation !== 'create')) {
+      return false;
+    }
+    previousState = entry.to;
+  }
+  return previousState === record.state;
+}
+
 function recordShapeValid(record, revision) {
   if (!exactKeys(record, RECORD_KEYS)
     || record['@version'] !== ACTION_ESCROW_STATE_VERSION
@@ -569,7 +851,12 @@ function recordShapeValid(record, revision) {
     || record.history.length > MAX_HISTORY
     || record.superseded_bindings.length > MAX_SUPERSEDED_BINDINGS
     || !validInstant(record.created_at)
-    || !validInstant(record.updated_at)) {
+    || !validInstant(record.updated_at)
+    || !storedHistoryValid(record)
+    || !storedAcceptancesValid(record.agreement_acceptances, record)
+    || !storedFundingValid(record)
+    || !storedMilestoneEvidenceValid(record)
+    || !storedReleaseApprovalsValid(record)) {
     return false;
   }
   if (['release_reserved', 'released', 'release_indeterminate'].includes(record.state)
@@ -919,6 +1206,155 @@ export function createActionEscrowKernel(options = {}) {
     } catch {
       return { error: 'verifier_failed' };
     }
+  }
+
+  async function verifyStoredReleaseInputs(record, at) {
+    const expectedCore = {
+      ...expectedBindings(record),
+      parties: record.parties,
+      profile: record.profile,
+    };
+    const lastSupersession = record.superseded_bindings.at(-1);
+    const expectedSupersedes = lastSupersession?.superseded_by_binding_digest
+      === record.document_action_binding_digest
+      ? lastSupersession.document_action_binding_digest
+      : undefined;
+    const bindingExpected = expectedSupersedes === undefined
+      ? expectedCore
+      : {
+        ...expectedCore,
+        supersedes_document_action_binding_digest: expectedSupersedes,
+      };
+    const binding = await invokeVerifier(
+      verifyDocumentActionBinding,
+      record.document_action_binding.artifact,
+      bindingExpected,
+    );
+    const bindingDetails = binding.error
+      ? null
+      : bindingVerificationDetails(binding.result, bindingExpected);
+    const storedBindingDetails = bindingVerificationDetails(
+      record.document_action_binding.verification,
+      record,
+    );
+    if (!bindingDetails
+      || !storedBindingDetails
+      || canonicalize(bindingDetails) !== canonicalize(storedBindingDetails)
+      || (binding.result.supersedes_document_action_binding_digest ?? null)
+        !== (record.document_action_binding.verification
+          .supersedes_document_action_binding_digest ?? null)) {
+      return { code: binding.error ?? 'document_action_binding_stale' };
+    }
+
+    const template = record.document_action_binding.verification.release_action_template;
+    const fundingExpected = {
+      ...expectedCore,
+      provider_id: record.profile.provider_id,
+      statement_type: 'funding',
+      expected_status: 'funded',
+      provider_transaction_id: template.custodian_transaction_id,
+      provider_milestone_id: template.custodian_milestone_id,
+      amount: template.amount,
+      currency: template.currency,
+      destination_id: template.destination_id,
+    };
+    const funding = await invokeVerifier(
+      verifyProviderStatement,
+      record.funding.statement,
+      fundingExpected,
+    );
+    if (funding.error
+      || !boundVerificationMatches(funding.result, expectedBindings(fundingExpected))
+      || funding.result.authenticated !== true
+      || funding.result.provider_id !== fundingExpected.provider_id
+      || funding.result.statement_type !== 'funding'
+      || funding.result.status !== 'funded'
+      || funding.result.provider_transaction_id !== fundingExpected.provider_transaction_id
+      || funding.result.provider_milestone_id !== fundingExpected.provider_milestone_id
+      || funding.result.amount !== fundingExpected.amount
+      || funding.result.currency !== fundingExpected.currency
+      || funding.result.destination_id !== fundingExpected.destination_id
+      || funding.result.statement_digest !== record.funding.verification.statement_digest) {
+      return { code: funding.error ?? 'funding_statement_stale' };
+    }
+
+    const milestone = await invokeVerifier(
+      verifyMilestoneEvidence,
+      record.milestone_evidence.artifact,
+      expectedCore,
+    );
+    const expectedEvidenceDigest = template.completion_evidence_sha256;
+    if (milestone.error
+      || !boundVerificationMatches(milestone.result, expectedBindings(expectedCore))
+      || !validDigest(milestone.result.evidence_digest)
+      || milestone.result.evidence_digest !== expectedEvidenceDigest
+      || milestone.result.evidence_digest
+        !== record.milestone_evidence.verification.evidence_digest
+      || !record.parties.some((party) => (
+        party.party_id === milestone.result.submitter_party_id
+      ))
+      || !validInstant(milestone.result.observed_at)
+      || Date.parse(milestone.result.observed_at) > Date.parse(at)) {
+      return { code: milestone.error ?? 'milestone_evidence_stale' };
+    }
+
+    const bindingInput = resolutionBindingInput(record);
+    const bindingMoment = createActionEscrowReleaseBindingMoment(bindingInput);
+    const bindingMomentDigest = bindingMoment === null
+      ? null
+      : canonicalDigest(bindingMoment);
+    const expectedInitiator = record.milestone_evidence.verification.submitter_party_id;
+    if (bindingMoment === null
+      || bindingMomentDigest === null
+      || !validString(expectedInitiator, 256)) {
+      return { code: 'release_approval_context_invalid' };
+    }
+    for (const entry of record.release_approvals) {
+      const context = entry.resolution.signoff.context;
+      const expectedNonce = computeActionEscrowResolutionNonce(
+        bindingInput,
+        entry.party_id,
+      );
+      const expected = {
+        ...expectedCore,
+        party_id: entry.party_id,
+        evidence_digest: record.milestone_evidence.verification.evidence_digest,
+        binding_moment: bindingMoment,
+        binding_moment_digest: bindingMomentDigest,
+        expected_selected_option: 0,
+        expected_initiator: expectedInitiator,
+        expected_nonce: expectedNonce,
+        evaluation_time: at,
+      };
+      const approval = await invokeVerifier(
+        verifyResolutionReceipt,
+        entry.resolution,
+        expected,
+      );
+      if (approval.error
+        || approval.result.valid !== true
+        || approval.result.authorizes_action !== true
+        || approval.result.outcome !== 'approved'
+        || !boundVerificationMatches(approval.result, expectedBindings(expected))
+        || approval.result.party_id !== entry.party_id
+        || approval.result.party_role
+          !== record.parties.find((party) => party.party_id === entry.party_id)?.role
+        || approval.result.principal_key_id !== context.principal_key_id
+        || approval.result.nonce !== context.nonce
+        || approval.result.issued_at !== context.issued_at
+        || approval.result.expires_at !== context.expires_at
+        || approval.result.evidence_digest !== expected.evidence_digest
+        || approval.result.principal_key_id !== entry.verification.principal_key_id
+        || approval.result.nonce !== entry.verification.nonce
+        || approval.result.issued_at !== entry.verification.issued_at
+        || approval.result.expires_at !== entry.verification.expires_at) {
+        return {
+          code: approval.error ?? 'release_approval_stale',
+          details: { party_id: entry.party_id },
+        };
+      }
+    }
+    return null;
   }
 
   async function verifyCommandAuthorization(
@@ -1530,7 +1966,7 @@ export function createActionEscrowKernel(options = {}) {
     });
   }
 
-  function releasePreconditions(record, at) {
+  async function releasePreconditions(record, at) {
     if (record.funding?.verification?.status !== 'funded') {
       return { code: 'funding_not_verified' };
     }
@@ -1559,9 +1995,10 @@ export function createActionEscrowKernel(options = {}) {
         || Date.parse(entry.verification.expires_at) <= evaluationTime
       ))
       .map((entry) => entry.party_id);
-    return stale.length > 0
-      ? { code: 'release_approval_expired', details: { party_ids: stale } }
-      : null;
+    if (stale.length > 0) {
+      return { code: 'release_approval_expired', details: { party_ids: stale } };
+    }
+    return verifyStoredReleaseInputs(record, at);
   }
 
   function providerRequestFor(record) {
@@ -1903,7 +2340,7 @@ export function createActionEscrowKernel(options = {}) {
           return outcome({ code: operationTime.error, operation, record });
         }
         const { at } = operationTime;
-        const precondition = releasePreconditions(record, at);
+        const precondition = await releasePreconditions(record, at);
         if (precondition) {
           return outcome({
             code: precondition.code,
