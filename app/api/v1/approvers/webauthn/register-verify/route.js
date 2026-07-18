@@ -15,6 +15,7 @@ import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { getRpConfig, coseToSpkiP256, APPROVER_ID_PATTERN } from '@/lib/webauthn';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import { hasApproverEnrollmentPermission } from '@/lib/approver-enrollment-auth.js';
 
 const MAX_WEBAUTHN_REGISTER_VERIFY_BYTES = 256 * 1024;
 
@@ -37,6 +38,9 @@ export async function POST(request) {
       return epProblem(orgResolution.error.status, orgResolution.error.code, orgResolution.error.detail);
     }
     const organizationId = orgResolution.organizationId;
+    if (!hasApproverEnrollmentPermission(auth)) {
+      return epProblem(403, 'insufficient_permissions', 'Approver enrollment requires approver.enroll or admin permission');
+    }
 
     const supabase = getGuardedClient();
 

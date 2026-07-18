@@ -182,6 +182,37 @@ test('guard() wrapper throws when refused, runs when allowed', async () => {
   assert.equal(await release(100, r), 'sent 100');
 });
 
+test('guard() awaits async selector, receipt, and observed-action providers', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
+  const receiptDoc = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  let executions = 0;
+  const release = g.guard(async (amount) => {
+    executions++;
+    return `sent ${amount}`;
+  }, {
+    selector: async () => PAY,
+    receipt: async () => receiptDoc,
+    observedAction: async () => ({ amount: 100 }),
+  });
+
+  assert.equal(await release(100), 'sent 100');
+  assert.equal(executions, 1);
+});
+
+test('guard() fails closed when an async selector resolves to a guarded action without a receipt', async () => {
+  const { pub } = makeKey();
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
+  let executions = 0;
+  const release = g.guard(async () => {
+    executions++;
+  }, { selector: async () => PAY });
+
+  await assert.rejects(() => release(100), /EMILIA Gate refused \(receipt_required\)/);
+  assert.equal(executions, 0);
+  assert.equal(g.evidence.all().at(-1).reason, 'receipt_required');
+});
+
 test('evidence log is hash-chained and tamper-evident', async () => {
   const { pub, privateKey } = makeKey();
   const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));

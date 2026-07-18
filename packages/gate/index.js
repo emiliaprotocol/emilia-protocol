@@ -1067,16 +1067,24 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
    */
   function guard(fn, opts = {}) {
     return async function guarded(...args) {
-      const selector = typeof opts.selector === 'function' ? opts.selector(...args) : (opts.selector || {});
-      const receipt = typeof opts.receipt === 'function' ? opts.receipt(...args) : (opts.receipt ?? null);
+      // Guard providers may load the selector, receipt, or system-of-record
+      // action asynchronously. Resolve each one before check() so a Promise
+      // object can never be mistaken for a selector/receipt and accidentally
+      // bypass the manifest's guarded action requirement.
+      const selector = typeof opts.selector === 'function'
+        ? await opts.selector(...args)
+        : (opts.selector || {});
+      const receipt = typeof opts.receipt === 'function'
+        ? await opts.receipt(...args)
+        : (opts.receipt ?? null);
       const observedAction = typeof opts.observedAction === 'function'
-        ? opts.observedAction(...args)
+        ? await opts.observedAction(...args)
         : (opts.observedAction || selector.observedAction || null);
       const admissibilityProfile = typeof opts.admissibilityProfile === 'function'
-        ? opts.admissibilityProfile(...args)
+        ? await opts.admissibilityProfile(...args)
         : (opts.admissibilityProfile ?? null);
       const presentedPacket = typeof opts.reliancePacket === 'function'
-        ? opts.reliancePacket(...args)
+        ? await opts.reliancePacket(...args)
         : (opts.reliancePacket ?? opts.admissibility ?? null);
       const out = await run({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket }, () => fn(...args), { recordExecution: opts.recordExecution });
       if (!out.ok) {

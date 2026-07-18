@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-18T17:41:28.315Z",
+  "evidence_snapshot_at": "2026-07-18T18:06:46.746Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "6ba3b736263269f402c6d9ac10259ed02589bc8b2ef53fae1fe9d224b54c3c2b",
+    "input_digest_sha256": "056c1923ac18eec55f50fd98641f7f5a14e52c76e16c7b98c33640f95a9a657a",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "aa3849a1da949281d16762e3a4d7fe2542c2d56fc5e280c9bf61f1eaca391844",
-        "bytes": 29743
+        "sha256": "fbbe9d18a069b05f769eb38c76ffd5d13dd6f9b996b9641a21357343d995bb4a",
+        "bytes": 30809
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "a53cafa747f8c88a6bf27fd9f27ed3869880ddbb8bd68f1cf481ae09631551b0",
+        "sha256": "aa97eef2643e40a322caa5c2ede3af724aa58dd32b6065ef019f7331ed67441d",
         "bytes": 1068
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "f38d04831849ee0a36ed650942ed3132cda942b1c925aebd60456a8ba97b8053",
-        "bytes": 122064
+        "sha256": "1e4d9ac569ad5d1752428bf1994c2485ea85ff2ba2d9a2fba62e1ff06db5a4f8",
+        "bytes": 125650
       },
       {
         "path": "security/security-case.json",
-        "sha256": "01acca8740b318c4d80242e2716717635136a8472eacf2f936d23ff8ffef5d3b",
-        "bytes": 195355
+        "sha256": "82cd22f502a97b13a6da7be8124048c2224ba23c9dbfdb41b108ce4d40f3e295",
+        "bytes": 201637
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -211,7 +211,7 @@
       "layer": "delegation, capability, and policy",
       "question": "What authority, capability, or machine policy applies?",
       "ep_role": "Verifies native artifacts and keeps policy ALLOW distinct from human approval.",
-      "adjacent_examples": "DRP, OAuth, AuthZEN, AGTP, AgentROA"
+      "adjacent_examples": "DRP, OAuth, AuthZEN, ACTA signed decision receipts, AGTP, AgentROA"
     },
     {
       "layer": "material action identity and mapping",
@@ -240,7 +240,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 6584,
+      "total": 6587,
       "files": 336,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -271,8 +271,8 @@
     "security_case": {
       "status": "passed",
       "claims": 26,
-      "evidence_files": 116,
-      "evidence_bundle_sha256": "f34ec4653d5b6d5d6ff40b9dac95b601ad68d10d533e1735fe9e5a78e83cd5fb"
+      "evidence_files": 121,
+      "evidence_bundle_sha256": "edd219d0a1b757fcf08a6a807568128f29c07f3da1c83e84bb8cfa0166f0ff78"
     },
     "caid": {
       "core_vectors": 48,
@@ -2340,10 +2340,11 @@
     },
     {
       "claim_id": "action-escrow-releases-one-exact-milestone-once",
-      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. The portable package keeps document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
+      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. When a project-system source is supplied, its complete stable snapshot digest binds the provider origin, company, project, record type and identifier, normalized payload, observation time, and non-authoritative claim boundary as a signed typed material term inside that exact action. The portable package keeps project source, document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
       "acceptance_roots": [
         "relying-party-pinned document-mapping issuer, Action Escrow profile, party keys, operator state key, and custodian adapter configuration",
         "the exact final PDF bytes and signed Document Action Binding whose closed material-term profile commits the payment action and evidence requirements",
+        "when configured, an authenticated complete project-system snapshot whose digest is independently mapped into the signed release action",
         "a licensed external custodian that exclusively mediates funding and release for the configured transaction and honors idempotency"
       ],
       "enforcement_path": [
@@ -2356,7 +2357,7 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-verifiers.js",
-          "symbol": "createActionEscrowDocumentBindingVerifier",
+          "symbol": "createActionEscrowContractorDocumentBindingVerifier",
           "exported": true
         },
         {
@@ -2368,7 +2369,13 @@
         {
           "language": "javascript",
           "file": "packages/gate/action-escrow-package.js",
-          "symbol": "assembleActionEscrowEvidencePackage",
+          "symbol": "assembleActionEscrowContractorEvidencePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-evidence.js",
+          "symbol": "verifyActionEscrowEvidencePackage",
           "exported": true
         },
         {
@@ -2381,6 +2388,18 @@
           "language": "javascript",
           "file": "lib/integrations/action-escrow/escrow-com.js",
           "symbol": "createEscrowComAdapter",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "createProcoreChangeOrderAdapter",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "verifyProcoreChangeOrderEvidence",
           "exported": true
         }
       ],
@@ -2453,12 +2472,32 @@
           "suite": "security/vectors.v1.json",
           "case_id": "reject_action_escrow_custodian_alias_or_unfunded_release",
           "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_action_escrow_project_source_snapshot",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_sidecar_bytes_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_context_relabeling",
+          "polarity": "negative"
         }
       ],
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "The complete document-to-custodian composition, five-row evidence package, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+          "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
         }
       ],
       "assumptions": [
@@ -2466,12 +2505,14 @@
         "the relying party provisions and maintains the mapping issuer, party, operator, and provider trust roots out of band",
         "the durable store runs under a separately provisioned non-owner role with no DELETE or TRUNCATE privilege on state and no UPDATE, DELETE, or TRUNCATE privilege on history; database-owner compromise remains outside this claim",
         "the deployment supplies a durable fail-closed effect-reference binding store to the external custodian adapter",
+        "the configured project-system API and OAuth credentials resolve the intended company, project, and change-order namespace",
         "the external evidence verifier truthfully checks completion evidence under the requirements committed by the signed action"
       ],
       "exclusions": [
         "EMILIA does not hold funds, act as an escrow agent, determine licensure, or establish legal enforceability",
         "cryptographic evidence does not prove workmanship, physical completion, identity, comprehension, voluntariness, fairness, or absence of fraud by an authentic trusted key",
         "the guarantee does not cover payment routes or custodian operations that bypass the integrated mediation boundary",
+        "a project-system record is source evidence only and does not prove party acceptance, human approval, legal enforceability, or physical completion",
         "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
         "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
       ]
@@ -2954,6 +2995,14 @@
       "purpose": "runnable cross-domain gateway labs: independent verification under each gateway's trust anchors, plus receiver-computed physical-action challenges, one-time consumption, and offline decision replay"
     },
     {
+      "path": "examples/acta-ep-join",
+      "purpose": "runnable ACTA-02 machine-policy decision plus EMILIA named-human authorization: separate role-scoped trust anchors, ACTA action_ref, CAID material-action matching, exact EP receipt reference, and stateful replay refusal"
+    },
+    {
+      "path": "examples/oaip-oversight-receipt",
+      "purpose": "offline regulator-style oversight demo: monthly clinician-approval receipts verify from signed bytes, bind a named approver, keep patient references out of the receipt, and refuse tampering or unpinned keys"
+    },
+    {
       "path": "lib/frontier/model-to-matter.js",
       "purpose": "executor-side Model-to-Matter clearance profile"
     },
@@ -3038,6 +3087,14 @@
     {
       "command": "node examples/cross-gateway/dmsc-physical-action.mjs",
       "purpose": "run the DMSC Sections 6.9 and 7.7 physical-action composition and its fail-closed cases"
+    },
+    {
+      "command": "node examples/acta-ep-join/demo.mjs",
+      "purpose": "run ACTA machine-decision plus EP human-authorization composition and its action-substitution, role-confusion, key-pinning, freshness, receipt-swap, embedded-key, and replay refusals"
+    },
+    {
+      "command": "node examples/oaip-oversight-receipt/demo.mjs",
+      "purpose": "run the offline oversight receipt report and its tamper and unpinned-approver refusals"
     },
     {
       "command": "npm run sync:llm-context",

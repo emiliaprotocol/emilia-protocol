@@ -42,8 +42,8 @@ function req(body) {
   return { json: () => Promise.resolve(body ?? {}) };
 }
 
-function authed(entity) {
-  mockAuthenticateRequest.mockResolvedValue({ entity });
+function authed(entity, permissions = ['approver.enroll']) {
+  mockAuthenticateRequest.mockResolvedValue({ entity, permissions });
 }
 
 function makeClient({ challenges = [] } = {}) {
@@ -94,6 +94,45 @@ describe('WebAuthn registration route org binding red-team regressions', () => {
     expect(res.status).toBe(403);
     expect((await res.json()).type).toContain('entity_not_org_bound');
     expect(calls.inserts).toHaveLength(0);
+  });
+
+  it('rejects registration enrollment for a non-admin organization key', async () => {
+    authed({ entity_id: 'ep_entity_member', organization_id: 'org_acme' }, ['read', 'write']);
+    const { client, calls } = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await RegisterOptions.POST(req({ approver_id: 'cfo@acme.example' }));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_permissions');
+    expect(calls.inserts).toHaveLength(0);
+  });
+
+  it('rejects registration completion for a non-admin organization key', async () => {
+    authed({ entity_id: 'ep_entity_member', organization_id: 'org_acme' }, ['read', 'write']);
+    const { client, calls } = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await RegisterVerify.POST(req({
+      approver_id: 'cfo@acme.example',
+      attestation: { id: 'cred_acme', response: {} },
+    }));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_permissions');
+    expect(calls.inserts).toHaveLength(0);
+    expect(calls.selects).toHaveLength(0);
+  });
+
+  it('accepts the hosted enrollment surface admin capability', async () => {
+    authed({ entity_id: 'ep_entity_admin', organization_id: 'org_acme' }, ['admin']);
+    const { client, calls } = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await RegisterOptions.POST(req({ approver_id: 'cfo@acme.example' }));
+
+    expect(res.status).toBe(200);
+    expect(calls.inserts).toHaveLength(1);
   });
 
   it('rejects a cross-org enrollment attempt even for a syntactically valid approver id', async () => {

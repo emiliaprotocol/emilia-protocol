@@ -20,6 +20,8 @@ The hostile-code audit v3 was available as a source report and was checked again
 | Logger and runtime configuration | Logger bootstrap settings now come only from `lib/env.js`; environment access is no longer duplicated in `lib/logger.js`. | Current `rg process.env lib/logger.js` is empty; logger and auth regression tests pass. |
 | Service-client isolation | `getServiceClient()` creates a non-persistent client per call with session persistence disabled; no process-scoped singleton remains. | `tests/service-client-isolation.test.js`; 91 focused security tests passed. |
 | Durable rate-limit posture | Sensitive routes use named durable-required categories; unknown `write` categories were removed, and `protocol_read` is explicit instead of silently falling back to generic reads. | `lib/rate-limit.js`; production without Upstash fails closed for sensitive categories. |
+| Async Gate provider resolution | `guard()` awaits selector, receipt, observed-action, admissibility, and reliance-packet providers; an async selector without a receipt now produces `receipt_required` and never invokes the effect. | `packages/gate/index.js`; async-provider and fail-closed regressions in `packages/gate/gate.test.js` pass. |
+| Approver enrollment authorization | WebAuthn registration issuance and completion require the explicit `approver.enroll` capability or the documented `admin` super-capability; tenant binding remains mandatory. | `lib/approver-enrollment-auth.js`; both registration routes and the non-admin regression tests pass. |
 | Public Action Escrow surface | Website content now explains the action-bound approval flow, exact outcomes, refusal codes, and simulated-provider/custody boundary. | `4d22394`; focused copy tests and Next build passed in the worker lane. |
 
 The earlier confirmed non-Gate Sentrix remediations remain in `c0a3db8` on the mainline ancestry: identity-verify authorization, receipt rebind first-write-wins, webhook secret disclosure, rollout mismatch handling, bounded spreadsheet parsing, and IPv4-mapped SSRF handling.
@@ -35,6 +37,8 @@ The earlier confirmed non-Gate Sentrix remediations remain in `c0a3db8` on the m
 7. The Supabase service client is now created per call with session persistence and auto-refresh disabled; the process-scoped singleton is removed.
 8. Sensitive rate-limit categories require durable Redis in production (or fail closed); sensitive routes no longer use an undefined category that falls back to the generic read limiter.
 9. The public key-revocation route no longer exposes the operational rotation procedure in source comments.
+10. Gate function wrappers await all async input providers; a missing receipt cannot be reclassified as an unguarded action through a Promise-valued selector.
+11. Approver enrollment is capability-gated at both WebAuthn registration phases; organization binding alone is not treated as enrollment authorization.
 
 ## Release blockers and external validation
 
