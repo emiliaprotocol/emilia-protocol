@@ -2,7 +2,7 @@
 
 > EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-18T22:37:18.547Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-18T23:23:18.143Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 
