@@ -1,12 +1,19 @@
 # Strix / Hostile Audit Remediation — 2026-07-18
 
+> **Status: active retest — not a closure memo.** The latest full-stack Strix report records
+> **14 issues: 1 critical, 6 high, 5 medium, and 2 low**. Strix is currently running against the
+> target surface and has reported additional findings. The branch evidence below describes
+> changes and tests observed in this integration tree; it does not establish production
+> deployment, live schema application, or closure of the active Strix report. Update this
+> document only after each finding is independently triaged, fixed, and retested.
+
 ## Scope and evidence boundary
 
-The Strix completion email reported 10 findings: 7 high, 1 medium, and 2 low. The email summary was available during this remediation; the linked full report was not accessible from this environment. This document therefore records verified code and test evidence, not a claim that every detail of the linked report was independently re-performed.
+The earlier Strix completion email reported 10 findings: 7 high, 1 medium, and 2 low. The latest full-stack report supplied for this review supersedes that summary with 14 findings: 1 critical, 6 high, 5 medium, and 2 low. The report says repository-level fixes were applied and targeted tests/builds passed, but production still requires deployment and live retesting. This document records branch evidence, not a claim that every report item is closed.
 
 The hostile-code audit v3 was available as a source report and was checked against the integration tree.
 
-## Remediations shipped on the integration branch
+## Remediations present on the integration branch
 
 | Area | Change | Evidence |
 | --- | --- | --- |
@@ -26,7 +33,10 @@ The hostile-code audit v3 was available as a source report and was checked again
 
 The earlier confirmed non-Gate Sentrix remediations remain in `c0a3db8` on the mainline ancestry: identity-verify authorization, receipt rebind first-write-wins, webhook secret disclosure, rollout mismatch handling, bounded spreadsheet parsing, and IPv4-mapped SSRF handling.
 
-## Hostile audit v3 disposition
+## Hostile audit v3 branch disposition
+
+The following are branch-level dispositions against the audit-v3 items. They are not a claim
+that the current Strix run is clean or that the corresponding production paths are deployed.
 
 1. The historical RLS incident remains fixed by migration 113 and is now reasserted by the Fortress migration and source/live contract checks.
 2. Direct route write-guard bypasses are closed for the audited routes.
@@ -41,6 +51,8 @@ The earlier confirmed non-Gate Sentrix remediations remain in `c0a3db8` on the m
 11. Approver enrollment is capability-gated at both WebAuthn registration phases; organization binding alone is not treated as enrollment authorization.
 
 ## Release blockers and external validation
+
+These remain open until verified against the target deployment and the active Strix report:
 
 - Apply `supabase/migrations/20260718145410_fortress_db_security_invariants.sql` to the target Supabase project, then run the live schema contract. No production database credentials were available during this pass.
 - Configure and verify production `SSO_STATE_SECRET`, `SSO_SESSION_SECRET`, and Upstash credentials before enabling the corresponding production paths.

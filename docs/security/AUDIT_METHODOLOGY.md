@@ -126,7 +126,8 @@ All findings and their remediations are documented in `docs/security/PENTEST_REM
 ```bash
 # 1. Run the full test suite
 npm test
-# Expected: 5,000+ total cases, 0 failing; platform-specific cases may skip
+# Expected: all platform-applicable cases pass; platform-specific cases may skip. Check
+# `lib/proof-stats.json` for the current generated total and file count.
 
 # 2. Run TLC formal verification
 cd formal
