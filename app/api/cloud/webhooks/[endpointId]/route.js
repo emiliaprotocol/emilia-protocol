@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { getServiceClient } from '@/lib/supabase';
 import { validateWebhookUrl } from '@/lib/cloud/webhooks';
 import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -78,7 +77,7 @@ export async function PUT(request, { params }) {
     const parsed = await readEpJson(request, MAX_BODY_BYTES);
     if (!parsed.ok) return parsed.response;
     const body = parsed.value;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Verify ownership
     const { data: existing, error: lookupErr } = await supabase
@@ -166,7 +165,7 @@ export async function DELETE(request, { params }) {
     requirePermission(auth, 'write');
 
     const { endpointId } = await params;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Verify ownership
     const { data: existing, error: lookupErr } = await supabase

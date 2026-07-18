@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { revokeHandshake } from '@/lib/handshake';
 import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
@@ -31,9 +31,7 @@ export async function POST(request, { params }) {
 
     // Access control: only parties to the handshake may revoke it
     const supabase = getGuardedClient();
-    const entityId = typeof auth.entity === 'object'
-      ? (auth.entity.entity_id || auth.entity.id)
-      : auth.entity;
+    const entityId = authEntityId(auth);
 
     const { data: party } = await supabase
       .from('handshake_parties')
@@ -46,7 +44,7 @@ export async function POST(request, { params }) {
       return epProblem(403, 'not_party', 'Only parties to the handshake may revoke it');
     }
 
-    const result = await revokeHandshake(handshakeId, validation.sanitized.reason, auth.entity);
+    const result = await revokeHandshake(handshakeId, validation.sanitized.reason, entityId);
 
     if (result.error) {
       // The writer/DB error can carry internal detail; epDbError logs it

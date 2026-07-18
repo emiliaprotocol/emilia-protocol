@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getHandshake } from '@/lib/handshake';
 import { epProblem } from '@/lib/errors';
@@ -22,9 +22,7 @@ export async function GET(request, { params }) {
 
     // Access control: only parties to the handshake may view it
     const supabase = getGuardedClient();
-    const entityId = typeof auth.entity === 'object'
-      ? (auth.entity.entity_id || auth.entity.id)
-      : auth.entity;
+    const entityId = authEntityId(auth);
 
     const { data: party } = await supabase
       .from('handshake_parties')
@@ -37,7 +35,7 @@ export async function GET(request, { params }) {
       return epError(EP_ERROR_CODES.FORBIDDEN, 'Only parties to the handshake may view it');
     }
 
-    const result = await getHandshake(handshakeId, null, auth.entity);
+    const result = await getHandshake(handshakeId, entityId);
 
     if (result.error) {
       return epError(EP_ERROR_CODES.HANDSHAKE_NOT_FOUND, result.error);

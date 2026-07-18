@@ -30,7 +30,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityDbId, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { adjudicateDispute } from '@/lib/dispute-adjudication';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
@@ -59,8 +59,7 @@ export async function POST(request, { params }) {
     const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
     const isCron = opAuth.valid;
 
-    let callerEntity = null;
-    let callerIsFiler = false;
+    let callerEntityId = null;
     let triggeredBy = isCron ? opAuth.operator_id : 'filer';
 
     if (!isCron) {
@@ -69,8 +68,8 @@ export async function POST(request, { params }) {
       if (auth.error) {
         return EP_ERRORS.UNAUTHORIZED();
       }
-      callerEntity = auth.entity;
-      triggeredBy = callerEntity.entity_id;
+      callerEntityId = authEntityDbId(auth);
+      triggeredBy = authEntityId(auth) || callerEntityId;
     }
 
     // -------------------------------------------------------------------
@@ -111,15 +110,13 @@ export async function POST(request, { params }) {
 
     if (!isCron) {
       // Non-cron caller must be the filer
-      if (callerEntity.entity_id !== dispute.filed_by) {
+      if (callerEntityId !== dispute.filed_by) {
         // Allow operators (future: check for operator permission)
         // For now, only the filer and cron can trigger adjudication
         return EP_ERRORS.FORBIDDEN(
           'Only the dispute filer or the protocol cron can trigger adjudication'
         );
       }
-      callerIsFiler = true;
-
       if (isTooFresh) {
         // Return 403: filers must wait 48h to give the accused a fair window
         const hoursRemaining = Math.ceil(
@@ -135,7 +132,9 @@ export async function POST(request, { params }) {
     // -------------------------------------------------------------------
     // Run trust evaluation
     // -------------------------------------------------------------------
-    const result = await adjudicateDispute(disputeId, supabase);
+    // adjudicateDispute owns its internal service writes. Do not pass the
+    // route-scoped guarded client into a helper that persists its result.
+    const result = await adjudicateDispute(disputeId);
 
     if (result.error) {
       return epProblem(result.status || 500, 'adjudication_failed', result.error);

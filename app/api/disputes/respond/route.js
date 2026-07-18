@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityDbId, authEntityId } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
@@ -28,11 +28,11 @@ export async function POST(request) {
       type: COMMAND_TYPES.RESPOND_DISPUTE,
       input: {
         dispute_id: body.dispute_id,
-        responder_id: auth.entity.id,
+        responder_id: authEntityDbId(auth),
         response: body.response,
         evidence: body.evidence,
       },
-      actor: auth.entity,
+      actor: authEntityId(auth),
     });
 
     if (result.error) {

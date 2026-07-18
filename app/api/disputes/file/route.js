@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityActor } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
@@ -36,7 +36,7 @@ export async function POST(request) {
     const result = await protocolWrite({
       type: COMMAND_TYPES.FILE_DISPUTE,
       input: body,
-      actor: auth.entity,
+      actor: authEntityActor(auth),
     });
 
     if (result.error) {

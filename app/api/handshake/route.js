@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { initiateHandshake, listHandshakes } from '@/lib/handshake';
 import { epProblem } from '@/lib/errors'; // retained for edge-case compat
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
@@ -47,13 +47,14 @@ export async function POST(request) {
     if (initiators.length !== 1) {
       return epError(EP_ERROR_CODES.INVALID_INPUT, 'Exactly one initiator party is required');
     }
-    if (initiators[0].entity_ref !== auth.entity.entity_id) {
+    const actorId = authEntityId(auth);
+    if (initiators[0].entity_ref !== actorId) {
       return epError(EP_ERROR_CODES.UNAUTHORIZED_HANDSHAKE,
         'Initiator entity_ref must match the authenticated entity');
     }
 
     const result = await initiateHandshake({
-      actor: auth.entity,
+      actor: actorId,
       ...data,
     });
 
@@ -74,7 +75,7 @@ export async function POST(request) {
  *
  * List handshakes, optionally filtered by status or mode.
  * Reads are scoped to the authenticated entity — the entity_ref filter is
- * always forced to match auth.entity regardless of query parameters.
+ * always forced to match the authenticated actor regardless of query parameters.
  */
 export async function GET(request) {
   try {
@@ -82,13 +83,14 @@ export async function GET(request) {
     if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
 
     const { searchParams } = new URL(request.url);
+    const actorId = authEntityId(auth);
     const filters = {
-      entity_ref: auth.entity.entity_id, // forced — callers may only list their own handshakes
+      entity_ref: actorId, // forced — callers may only list their own handshakes
       status: searchParams.get('status') || null,
       mode: searchParams.get('mode') || null,
     };
 
-    const result = await listHandshakes(filters, auth.entity);
+    const result = await listHandshakes(filters, actorId);
 
     if (result.error) {
       // The query/DB error can carry internal detail. Log server-side; return a

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { addPresentation } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validatePresentBody } from '@/lib/handshake/schema';
 import { validatePresent } from '@/lib/validation/schemas';
-import { authorizeHandshakePresent, resolveAuthEntityId } from '@/lib/handshake-auth';
-import { getServiceClient } from '@/lib/supabase';
+import { authorizeHandshakePresent } from '@/lib/handshake-auth';
+import { getGuardedClient } from '@/lib/write-guard';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../../lib/logger.js';
 
@@ -50,9 +50,9 @@ export async function POST(request, { params }) {
     // handshake as any role (IDOR) — impersonating a counterparty or injecting
     // fake identity proofs. addPresentation only validates the role is a valid
     // enum, not that the caller owns it. Mirrors the verify route's guard.
-    const authEntityId = resolveAuthEntityId(auth.entity);
-    const supabase = getServiceClient();
-    await authorizeHandshakePresent(supabase, authEntityId, handshakeId, party_role);
+    const actorId = authEntityId(auth);
+    const supabase = getGuardedClient();
+    await authorizeHandshakePresent(supabase, actorId, handshakeId, party_role);
 
     const result = await addPresentation(
       handshakeId,
@@ -63,7 +63,7 @@ export async function POST(request, { params }) {
         issuer_ref,
         disclosure_mode,
       },
-      auth.entity
+      actorId
     );
 
     if (result.error) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityDbId, authEntityId } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -28,9 +28,9 @@ export async function POST(request) {
       type: COMMAND_TYPES.WITHDRAW_DISPUTE,
       input: {
         dispute_id: body.dispute_id,
-        withdrawer_id: auth.entity.id,
+        withdrawer_id: authEntityDbId(auth),
       },
-      actor: auth.entity,
+      actor: authEntityId(auth),
     });
 
     if (result.error) {
