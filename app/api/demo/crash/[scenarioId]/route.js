@@ -18,7 +18,7 @@
 
 import { NextResponse } from 'next/server';
 import { evaluateGuardPolicy, hashCanonicalAction } from '@/lib/guard-policies';
-import { signDemoPayload, getDemoPublicKeyBase64url } from '@/lib/demo-receipt';
+import { signDemoPayload, getDemoRuntimePublicKeyBase64url } from '@/lib/demo-receipt';
 import { getCrashScenario, buildCanonicalAction } from '@/lib/crash-scenarios';
 
 export const dynamic = 'force-dynamic';
@@ -147,7 +147,7 @@ export async function GET(_request, { params }) {
       blocked_response: blockedResponse,
       committed,
       receipt,
-      public_key: getDemoPublicKeyBase64url(),
+      public_key: getDemoRuntimePublicKeyBase64url(),
     },
     { headers: CORS },
   );

@@ -15,8 +15,7 @@
 // not a debug view.
 //
 // ID handling:
-//   example | tr_example → hardcoded demo receipt with a real Ed25519
-//                signature generated at module-load time. Always works,
+//   example | tr_example → signed public-only demo fixture. Always works,
 //                even without prod DB access. The shorter `/r/example`
 //                slug is the marketing URL printed in proposals + cold
 //                emails; `/r/tr_example` matches the canonical receipt_id
@@ -39,15 +38,10 @@ export const metadata = {
     'Publicly verifiable authorization receipt: who approved this action, under what authority, when, and with what cryptographic proof. Verify yourself with @emilia-protocol/verify.',
 };
 
-// Demo receipt is built once in lib/demo-receipt.js with a STABLE Ed25519
-// keypair (hardcoded JWK) and a recursive canonical-JSON signer. Same key
-// across cold starts, same key across routes — so the public_key the page
-// advertises matches the public_key returned by
-// /api/demo/trust-receipts/tr_example/evidence, and verifyReceipt() over
-// the document we serve passes cleanly. This was previously a fresh
-// keypair per cold-boot AND used a shallow canonicalize that left
-// nested fields outside the signed material — both fixed in
-// lib/demo-receipt.js + @emilia-protocol/verify@1.0.1.
+// Demo receipt is a stable public-only fixture in lib/demo-receipt.js. Its
+// public key and signature are committed; the private signing key is not.
+// Dynamic crash-test artifacts use a separate deployment-held key and never
+// reuse the public fixture signer.
 const DEMO_RECEIPT = getDemoReceipt();
 
 // ─── Real-receipt loader (DB) ─────────────────────────────────────────────
@@ -388,7 +382,7 @@ const { document, public_key } = await fetch(
 const result = verifyReceipt(document, public_key);`}</pre>
           {r.is_demo && (
             <p style={{ fontSize: 12, color: color.t3, marginTop: 12, fontFamily: font.mono }}>
-              Demo public key (stable, hardcoded in <code>lib/demo-receipt.js</code>):{' '}
+              Demo public key (stable public-only fixture):{' '}
               <code style={{ wordBreak: 'break-all' }}>{r.public_key.slice(0, 48)}…</code>
               <br />Production receipts use operator keys held in <code>EP_OPERATOR_KEYS</code> (env, never in source).
             </p>

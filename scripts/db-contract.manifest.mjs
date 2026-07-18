@@ -99,7 +99,7 @@ export const contract = {
 
   // Columns that MUST exist on a table. Missing => hard FAIL.
   requiredColumns: {
-    api_keys: ['key_hash', 'key_prefix', 'revoked_at', 'invalidated_at', 'entity_id', 'label'],
+    api_keys: ['key_hash', 'key_prefix', 'revoked_at', 'invalidated_at', 'entity_id', 'label', 'auth_strength'],
     entities: ['display_name', 'display_name_key', 'organization_id', 'status', 'metadata'],
     signoff_challenges: ['quorum_policy'],
     receipts: ['receipt_id'],
