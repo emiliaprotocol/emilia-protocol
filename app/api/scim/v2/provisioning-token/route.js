@@ -13,6 +13,7 @@ import { generateScimToken, hashScimToken } from '@/lib/scim/auth';
 import { readEpJson } from '@/lib/http/route-body';
 import { refuseObserveScope } from '@/lib/auth/observe-scope';
 import { hasApiPermission } from '@/lib/auth-permissions.js';
+import { refuseObserveScope } from '@/lib/auth/observe-scope';
 
 const BASE = 'https://www.emiliaprotocol.ai';
 const MAX_BODY_BYTES = 32 * 1024;

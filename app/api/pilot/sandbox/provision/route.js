@@ -58,12 +58,10 @@ export async function POST(request) {
         display_name: `Pilot · ${orgName}`,
         entity_type: 'agent',
         description: `Observe-mode pilot sandbox for ${orgName}`,
-        api_key_hash: keyHash,
         public_key: publicKeyB64,
         private_key_encrypted: seal(privateKeyB64),
-        // Observe-scope marker: this self-serve key runs traffic through the
-        // gate and reads its own report, but is refused at the control plane
-        // (SSO/SCIM/tenant admin). See lib/auth/observe-scope.js.
+        // Durable observe marker. The reconciliation migration also recognizes
+        // the legacy route-generated identity shape and retires old keys.
         metadata: { pilot_sandbox: true, scope: 'observe' },
       })
       .select('id')
@@ -79,7 +77,9 @@ export async function POST(request) {
       key_hash: keyHash,
       key_prefix: apiKey.slice(0, 16),
       label: 'Pilot sandbox key',
-      // No control-plane permissions: an observe-mode sandbox key holds none.
+      // A public pilot credential is least-privilege at birth: it can
+      // authenticate the observe-mode adapter/report loop, but cannot reach
+      // SSO, SCIM, enrollment, or other control-plane capabilities.
       permissions: [],
     });
     if (keyError) {
