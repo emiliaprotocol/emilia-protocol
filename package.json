@@ -138,7 +138,7 @@
     "lint-staged": "^17.0.8",
     "pg": "^8.22.0",
     "qrcode": "1.5.4",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.0",
     "yaml": "2.9.0"
   }
