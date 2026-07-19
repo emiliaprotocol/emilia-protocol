@@ -16,6 +16,7 @@ import { logger } from '@/lib/logger.js';
 import { getRpConfig, APPROVER_ID_PATTERN, CHALLENGE_TTL_MS } from '@/lib/webauthn';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { hasApproverEnrollmentPermission } from '@/lib/approver-enrollment-auth.js';
+import { resolveEnrollmentBasis } from '@/lib/scim/directory-anchor.js';
 
 const MAX_WEBAUTHN_REGISTER_OPTIONS_BYTES = 32 * 1024;
 
@@ -40,6 +41,17 @@ export async function POST(request) {
       return epProblem(403, 'insufficient_permissions', 'Approver enrollment requires approver.enroll or admin permission');
     }
 
+    // Directory anchor: when the org provisions a directory, the approver_id
+    // must be an active user in it — an enrollment-authorized operator cannot
+    // bind an approver the directory does not carry. No directory => the pilot
+    // operator-attested path (prod has 0 SCIM rows today). Fail fast here before
+    // the WebAuthn ceremony; register-verify re-checks as the authoritative gate.
+    const supabase = getGuardedClient();
+    const basisResolution = await resolveEnrollmentBasis(supabase, organizationId, body.approver_id);
+    if (basisResolution.error) {
+      return epProblem(basisResolution.error.status, basisResolution.error.code, basisResolution.error.detail);
+    }
+
     const { rpName, rpID } = getRpConfig();
     const options = await generateRegistrationOptions({
       rpName,
@@ -57,11 +69,14 @@ export async function POST(request) {
       supportedAlgorithmIDs: [-7],
     });
 
-    const supabase = getGuardedClient();
+    // In directory mode the challenge (and later the credential) is keyed under
+    // the NORMALIZED approver_id, so the verify-side challenge lookup and the
+    // SCIM deprovision revoke both find it. Operator-attested mode keeps the raw
+    // id. storedApproverId carries whichever applies.
     const { error: insertErr } = await supabase.from('webauthn_challenges').insert({
       kind: 'registration',
       organization_id: organizationId,
-      approver_id: body.approver_id,
+      approver_id: basisResolution.storedApproverId,
       challenge: options.challenge,
       expires_at: new Date(Date.now() + CHALLENGE_TTL_MS).toISOString(),
     });

@@ -16,6 +16,7 @@ import { logger } from '@/lib/logger.js';
 import { getRpConfig, coseToSpkiP256, APPROVER_ID_PATTERN } from '@/lib/webauthn';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { hasApproverEnrollmentPermission } from '@/lib/approver-enrollment-auth.js';
+import { resolveEnrollmentBasis } from '@/lib/scim/directory-anchor.js';
 
 const MAX_WEBAUTHN_REGISTER_VERIFY_BYTES = 256 * 1024;
 
@@ -44,13 +45,27 @@ export async function POST(request) {
 
     const supabase = getGuardedClient();
 
+    // Directory anchor (authoritative): resolve the basis on which this operator
+    // may bind approver_id under this org. A directory org rejects an approver
+    // not in its provisioned directory; a non-directory org records the
+    // operator-attested basis. This must precede the credential INSERT below.
+    const basisResolution = await resolveEnrollmentBasis(supabase, organizationId, body.approver_id);
+    if (basisResolution.error) {
+      return epProblem(basisResolution.error.status, basisResolution.error.code, basisResolution.error.detail);
+    }
+    // The canonical approver_id to key the credential and its challenge under:
+    // NORMALIZED in directory mode (so deprovision/signoff can find it), RAW in
+    // operator_attested mode. register-options stored the challenge under the
+    // same value.
+    const storedApproverId = basisResolution.storedApproverId;
+
     // Latest unconsumed, unexpired registration challenge for this approver.
     const { data: challenges, error: chErr } = await supabase
       .from('webauthn_challenges')
       .select('id, challenge, expires_at')
       .eq('kind', 'registration')
       .eq('organization_id', organizationId)
-      .eq('approver_id', body.approver_id)
+      .eq('approver_id', storedApproverId)
       .is('consumed_at', null)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -101,7 +116,7 @@ export async function POST(request) {
       {
         p_challenge_id: challengeRow.id,
         p_organization_id: organizationId,
-        p_approver_id: body.approver_id,
+        p_approver_id: storedApproverId,
         p_credential: {
           credential_id: credential.id,
           public_key_cose: Buffer.from(credential.publicKey).toString('base64url'),
@@ -114,6 +129,11 @@ export async function POST(request) {
           // Second-party attestation: the authenticated entity that confirmed
           // enrollment, never the approver's own assertion.
           attested_by: authEntityId(auth),
+          // How the operator was authorized to bind this approver_id: matched an
+          // active directory user ('directory'), or operator-vouched with no
+          // provisioned directory ('operator_attested').
+          enrollment_basis: basisResolution.basis,
+          directory_user_id: basisResolution.directoryUserId || null,
         },
       },
     );
@@ -135,10 +155,13 @@ export async function POST(request) {
     return NextResponse.json({
       enrolled: true,
       organization_id: organizationId,
-      approver_id: body.approver_id,
+      // The canonical id the credential was stored under (normalized in
+      // directory mode) — the value a caller must use at signoff time.
+      approver_id: storedApproverId,
       credential_id: registration?.credential_id || credential.id,
       key_class: 'A',
       attested_by: authEntityId(auth),
+      enrollment_basis: registration?.enrollment_basis || basisResolution.basis,
     }, { status: 201 });
   } catch (err) {
     logger.error('[webauthn] POST register-verify error:', err);
