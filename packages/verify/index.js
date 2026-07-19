@@ -988,12 +988,18 @@ function trustReceiptCanonicalProfileError(receipt) {
  *
  * @param {object} receipt - Section 6.2 Trust Receipt
  * @param {object} opts
- * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
- *   - pinned approver key entries by approver_key_id (or a directory extract)
- * @param {string} opts.logPublicKey - trusted log Ed25519 key (base64url SPKI DER)
+ * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} [opts.approverKeys]
+ *   - pinned approver key entries by approver_key_id (or a directory extract).
+ *   Required for a meaningful result; the body defaults a missing/empty opts to
+ *   {} and fails closed rather than throwing.
+ * @param {string} [opts.logPublicKey] - trusted log Ed25519 key (base64url SPKI DER)
  * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
  * @param {string} [opts.rpId] - expected WebAuthn RP ID when strict mode sees Class-A signoffs
  * @param {string} [opts.expectedPolicyHash] - expected policy hash when strict mode is enabled
+ * @param {boolean} [opts.allowLegacyMerkle] - DORMANT opt-in: verify pre-v2
+ *   (sorted-pair, undomain-separated) Merkle inclusion. Never the default; never
+ *   used by production gates.
+ * @param {boolean} [opts.allowLegacyTrustReceiptMerkle] - alias of allowLegacyMerkle
  * @param {{tree_size:number, root_hash:string, consistency_proof:string[]}} [opts.priorCheckpoint]
  *   OPT-IN append-only check: a checkpoint head this verifier previously
  *   OBSERVED and pinned, plus the RFC 6962 consistency proof from that head to

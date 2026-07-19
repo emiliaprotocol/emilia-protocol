@@ -101,6 +101,9 @@ export function validateSurfaceBinding(binding) {
     errors.push('surface binding must be a non-array object');
     return fail();
   }
+  // Post-guard: an indexable view of the same object (no runtime change) so the
+  // closed-member checks below read typed members off the validated shape.
+  const b = /** @type {Record<string, any>} */ (binding);
 
   // Closed member set, unknown members are rejected, not ignored, so a producer
   // cannot smuggle unbound side-channel content past a permissive verifier.
@@ -114,22 +117,22 @@ export function validateSurfaceBinding(binding) {
     errors.push(`@version must be ${SURFACE_BINDING_VERSION} when present`);
   }
 
-  if (typeof binding.surface_kind !== 'string' || binding.surface_kind.length === 0) {
+  if (typeof b.surface_kind !== 'string' || b.surface_kind.length === 0) {
     errors.push('surface_kind is required and must be a non-empty string');
   }
 
   // attestation_digest is checked for TYPE first (parity with surface_kind), so a
   // Buffer or a {toString:()=>hex} object can never coerce into a passing digest.
-  if (binding.attestation_digest === undefined || binding.attestation_digest === null) {
+  if (b.attestation_digest === undefined || b.attestation_digest === null) {
     errors.push('attestation_digest is required');
-  } else if (typeof binding.attestation_digest !== 'string') {
+  } else if (typeof b.attestation_digest !== 'string') {
     errors.push('attestation_digest must be a string');
-  } else if (normalizeSurfaceDigest(binding.attestation_digest) === '') {
+  } else if (normalizeSurfaceDigest(b.attestation_digest) === '') {
     errors.push('attestation_digest must be a well-formed SHA-256 (optionally "sha256:"-prefixed 64-hex)');
   }
 
-  if (binding.verifier_hint !== undefined &&
-      (typeof binding.verifier_hint !== 'string' || binding.verifier_hint.length === 0)) {
+  if (b.verifier_hint !== undefined &&
+      (typeof b.verifier_hint !== 'string' || b.verifier_hint.length === 0)) {
     errors.push('verifier_hint, when present, must be a non-empty string');
   }
 
@@ -137,10 +140,10 @@ export function validateSurfaceBinding(binding) {
 
   const normalized = {
     '@version': SURFACE_BINDING_VERSION,
-    surface_kind: binding.surface_kind,
-    attestation_digest: `sha256:${normalizeSurfaceDigest(binding.attestation_digest)}`,
+    surface_kind: b.surface_kind,
+    attestation_digest: `sha256:${normalizeSurfaceDigest(b.attestation_digest)}`,
   };
-  if (binding.verifier_hint !== undefined) normalized.verifier_hint = binding.verifier_hint;
+  if (b.verifier_hint !== undefined) normalized.verifier_hint = b.verifier_hint;
 
   return { ok: true, normalized, errors };
 }
@@ -204,7 +207,7 @@ export function bindSurfaceInto(action, binding) {
 export function receiptSurfaceBinding(receipt) {
   let raw;
   try {
-    const action = receipt && typeof receipt === 'object' ? receipt.action : undefined;
+    const action = receipt && typeof receipt === 'object' ? /** @type {Record<string, any>} */ (receipt).action : undefined;
     // OWN property only. A binding reachable via the prototype chain is NOT an own
     // member of the action object, so canonicalize() never sees it and the human's
     // signature never covers it. Honoring an inherited member would upgrade an
