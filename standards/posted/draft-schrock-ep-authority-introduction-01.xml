@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-ep-authority-introduction-01"
-     category="info" ipr="trust200902" submissionType="IETF"
+     category="info" ipr="trust200902"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="Authority Introduction">Authority Documents and Scoped Authority for Agent-Action Evidence</title>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="14"/>
+    <date year="2026" month="July" day="19"/>
     <area>sec</area>
     <keyword>trust establishment</keyword>
     <keyword>key rotation</keyword>
@@ -95,7 +95,7 @@
       <t>The signed core is the document without sig, continuity_sig,
       and endorsements; its canonical digest is the document's identity.
       Endorsements are countersignatures over that digest by OTHER
-      authorities — third-party attestations that ride with the
+      authorities -- third-party attestations that ride with the
       document without being part of it.</t>
     </section>
     <section anchor="scoped-authority">
@@ -200,8 +200,8 @@
       the previous core digest, and each rotation MUST carry a
       continuity signature by the previous document's root key or one
       of its non-revoked issuer keys. A verifier walking the chain
-      therefore needs exactly one leap — the first document it ever
-      saw — and every subsequent rotation is mechanically checkable. A
+      therefore needs exactly one leap - the first document it ever
+      saw - and every subsequent rotation is mechanically checkable. A
       rotation without valid continuity MUST be flagged, never silently
       accepted; whether endorsements can substitute for continuity is
       the relying party's policy (<xref target="compromise"/>), not a
@@ -212,7 +212,7 @@
         <li>Time of issuance. An artifact verifies against the key that
         was valid WHEN THE ARTIFACT WAS ISSUED. Rotation never
         invalidates previously issued evidence, and a revocation voids
-        a key only for signatures claimed at or after revoked_at —
+        a key only for signatures claimed at or after revoked_at -
         honest history survives compromise.</li>
         <li>Newest document authoritative. The newest document that
         mentions a key identifier is authoritative for it. A
@@ -265,7 +265,7 @@
       exceptional: the successor document is published with no (or
       invalid) continuity signature, the break is flagged by every
       verifier, and the relying party's policy decides what
-      substitutes — typically an endorsement threshold (a quorum of
+      substitutes - typically an endorsement threshold (a quorum of
       the relying party's pinned anchors countersigning the successor
       document) plus a revocation statement over the compromised keys.
       A relying party with no such policy simply continues to refuse:
@@ -340,8 +340,9 @@
       policy, delegation, malformed-time, registry-head, and stale-epoch
       refusals. This revision does not claim an integrated conformance
       result for resolving an Authority Proof key through an Authority
-      Document; that join and its cross-language vectors are required
-      before publication of this revision.</t>
+      Document. That join and its cross-language vectors remain future
+      conformance work; the two component-level implementation results
+      <bcp14>MUST NOT</bcp14> be represented as an integrated result.</t>
     </section>
   </back>
 </rfc>

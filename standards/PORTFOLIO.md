@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-07-14
+Updated: 2026-07-19
 
 ## One story
 
@@ -93,34 +93,39 @@ content. The CAID Action-Mapping Profile handles the harder case:
 This is content correlation, not authorization. The current implementation and
 shared vectors are in [`../caid`](../caid).
 
-## July 19 post-blackout filing line
+## July 19 published line
 
-The IETF submission tool says uploads remain closed until after **July 18 at
-23:59 CEST**. The first valid filing date is therefore **Sunday, July 19,
-2026**, not July 18. The filing candidate is deliberately cohesive:
+Eight revisions were published on **Sunday, July 19, 2026**. Their local TXT
+snapshots were verified byte-for-byte against the IETF archive:
 
 1. `draft-schrock-canonical-action-identifier-00`: material action identity
    and profile-bounded matching.
 2. `draft-schrock-ep-architecture-01`: the ecosystem map, applicability test,
    and decision vocabulary.
-3. `draft-schrock-ep-authorization-evidence-chain-03`: native verification,
-   action binding, and evidence satisfaction.
+3. `draft-schrock-ep-authority-introduction-01`: trust-root introduction and
+   scoped human authority.
 4. `draft-schrock-ep-authorization-receipts-07`: one explicit organizational
    approval-evidence profile, with scoped offline and replay claims.
-5. `draft-schrock-model-to-matter-00`: filed last as an Experimental
-   name-establishing profile. It applies the four-document core to a physical
+5. `draft-schrock-ep-quorum-03`: ordered multi-party ceremony and
+   distinct-human policy semantics.
+6. `draft-schrock-ep-bounded-capability-receipts-00`: action-bound capability
+   budgets and spend evidence.
+7. `draft-schrock-ep-authorization-evidence-chain-03`: native verification,
+   action binding, and evidence satisfaction.
+8. `draft-schrock-model-to-matter-00`: an Experimental name-establishing
+   profile. It applies the protocol line to a physical
    executor and is backed by a JavaScript reference gate, deterministic public
    vectors, mutation testing, and a runnable synthetic demonstration.
 
-The first four documents are the cohesive protocol line. Model-to-Matter is
+The first seven documents are the cohesive protocol line. Model-to-Matter is
 deliberately separate: filing it establishes the name and executor-side
 application without claiming a wet-lab deployment, screening capability,
 scientific-safety judgment, physical truth, or external endorsement. A partner
 is required before claiming adoption, not before publishing the open profile.
 
-Outcome Binding files sixth only if its independent verification gate clears.
-Revocation is deliberately the first document in the next lifecycle wave, not
-an extra item smuggled into this one.
+Outcome Binding was not filed and remains deferred until its independent
+verification gate clears. Revocation is deliberately the first document in the
+next lifecycle wave.
 
 Machine-readable status, including every active individual draft and every
 disposition, is in [`STATUS.json`](STATUS.json). A published individual
@@ -136,17 +141,14 @@ revocation-first:
    permanent, exact-target revocation evidence. An old revocation never ages
    out; current non-revocation requires separately authenticated,
    policy-fresh status evidence. The draft composes with the IETF Token Status
-   List work instead of claiming status mechanisms are missing.
-2. `draft-schrock-ep-authority-introduction-01` is conditional. It files only
-   if the staged trust-root and scoped-authority consolidation gains executable
-   vectors for the Authority Document to Authority Proof trust join and clears
-   hostile review.
-3. `draft-schrock-authorization-evidence-challenge-01` is conditional. It files
+   List work instead of claiming status mechanisms are missing. It is the only
+   complete artifact currently in `staged/`.
+2. `draft-schrock-authorization-evidence-challenge-01` is conditional. It files
    only if its AuthZEN AARP binding survives source-locked review.
 
 The revocation design freezes July 20 and clears independent hostile review by
 July 24. Missing a conditional document does not move the mandatory revocation
-filing.
+filing. Challenge-01 is not staged because no reviewed `-01` source exists.
 
 ## Disposition ledger
 
@@ -158,7 +160,7 @@ These are decisions, not an indefinite waiting room:
 | Authority Registry | Retired and absorbed | Authority Introduction-01 |
 | Agent Trust Stack | Retired and absorbed | Architecture-01 |
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
-| Model-to-Matter | July 19 Experimental profile, filed last | Name and open executor profile established now; deployment claims require a real executor |
+| Model-to-Matter | Published July 19 as an Experimental profile | Name and open executor profile established; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |
 | Reliance Agreement | Partner-triggered profile | A bank, insurer, or counterparty participates in legal review |
 

@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Experimental                               14 July 2026
-Expires: 15 January 2027
+Intended status: Experimental                               19 July 2026
+Expires: 20 January 2027
 
 
   Model-to-Matter: Authorization Evidence for Model-Directed Physical
@@ -47,13 +47,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 January 2027.
+   This Internet-Draft will expire on 20 January 2027.
 
 
 
 
 
-Schrock                  Expires 15 January 2027                [Page 1]
+Schrock                  Expires 20 January 2027                [Page 1]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -85,12 +85,13 @@ Table of Contents
    8.  Clearance Evaluation  . . . . . . . . . . . . . . . . . . . .   8
    9.  HTTP Integration  . . . . . . . . . . . . . . . . . . . . . .   9
    10. Executor Effect Statement . . . . . . . . . . . . . . . . . .   9
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  10
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  11
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
-   14. Implementation Status . . . . . . . . . . . . . . . . . . . .  11
-   15. Normative References  . . . . . . . . . . . . . . . . . . . .  11
-   16. Informative References  . . . . . . . . . . . . . . . . . . .  12
+   11. Relationship to Bounded Capabilities  . . . . . . . . . . . .  10
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  11
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
+   15. Implementation Status . . . . . . . . . . . . . . . . . . . .  12
+   16. Normative References  . . . . . . . . . . . . . . . . . . . .  12
+   17. Informative References  . . . . . . . . . . . . . . . . . . .  13
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  13
 
 1.  Introduction
@@ -108,8 +109,7 @@ Table of Contents
 
 
 
-
-Schrock                  Expires 15 January 2027                [Page 2]
+Schrock                  Expires 20 January 2027                [Page 2]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -165,7 +165,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 3]
+Schrock                  Expires 20 January 2027                [Page 3]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -221,7 +221,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 4]
+Schrock                  Expires 20 January 2027                [Page 4]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -277,7 +277,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 5]
+Schrock                  Expires 20 January 2027                [Page 5]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -333,7 +333,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 6]
+Schrock                  Expires 20 January 2027                [Page 6]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -389,7 +389,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 7]
+Schrock                  Expires 20 January 2027                [Page 7]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -445,7 +445,7 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 8]
+Schrock                  Expires 20 January 2027                [Page 8]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
@@ -501,12 +501,28 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 9]
+Schrock                  Expires 20 January 2027                [Page 9]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
 
-11.  Security Considerations
+11.  Relationship to Bounded Capabilities
+
+   A deployment can require a Bounded Capability Receipt
+   ([I-D.schrock-ep-bounded-capability-receipts]) as an additional
+   machine-authority input before creating a clearance.  That capability
+   can constrain aggregate budget, validity, holder proof, and action
+   scope across operations.
+
+   It does not relax this profile's single-use rule.  Every Model-to-
+   Matter action still requires its own action-bound clearance, and each
+   clearance remains terminal after one execution attempt.  A capability
+   reservation is an additional precondition; it is not a reusable
+   clearance, does not satisfy any of this profile's six evidence roles,
+   and is not evidence of scientific safety.  Threshold reconstruction
+   of a holder secret MUST NOT satisfy the quorum human-assurance value.
+
+12.  Security Considerations
 
    *Executor bypass.* Model-to-Matter is effective only when every path
    to the protected effect traverses the enforcing executor.  Alternate
@@ -536,6 +552,16 @@ Internet-Draft               Model-to-Matter                   July 2026
    atomic shared state.  After the effect begins, an unavailable
    response MUST leave the action consumed or frozen.
 
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 10]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
    *Revocation completeness.* An empty or absent revocation view is not
    evidence that nothing is revoked.  This profile requires an explicit
    view, but the authenticity, freshness, and completeness of that view
@@ -554,19 +580,11 @@ Internet-Draft               Model-to-Matter                   July 2026
    Independent technical, organizational, and operational controls
    remain necessary.
 
-
-
-
-Schrock                  Expires 15 January 2027               [Page 10]
-
-Internet-Draft               Model-to-Matter                   July 2026
-
-
    *Resource exhaustion.* Implementations MUST bound object depth, node
    count, string bytes, evidence count, identifier length, and parser
    work before signature or graph evaluation.
 
-12.  Privacy Considerations
+13.  Privacy Considerations
 
    Action, evidence, and effect objects can reveal model use,
    institution, facility, principal, approver, purpose, destination, and
@@ -580,13 +598,27 @@ Internet-Draft               Model-to-Matter                   July 2026
    sensitive material SHOULD use domain-separated hiding commitments
    with adequate randomness and keep openings outside portable evidence.
 
-13.  IANA Considerations
+14.  IANA Considerations
 
    This document has no IANA actions.  A future revision may request
    media types or registries after the object model and deployment
    experience have stabilized.
 
-14.  Implementation Status
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 11]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+15.  Implementation Status
 
    An Apache-2.0 JavaScript reference implementation, a synthetic self-
    checking demonstration, and adversarial tests are publicly available.
@@ -600,7 +632,7 @@ Internet-Draft               Model-to-Matter                   July 2026
    partnership or endorsement.  The demonstration does not process raw
    biological content or perform screening.
 
-15.  Normative References
+16.  Normative References
 
    [I-D.schrock-authorization-evidence-challenge]
               Schrock, I., "Authorization Evidence Challenge", Work in
@@ -608,15 +640,6 @@ Internet-Draft               Model-to-Matter                   July 2026
               evidence-challenge-00, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-
               authorization-evidence-challenge/>.
-
-
-
-
-
-Schrock                  Expires 15 January 2027               [Page 11]
-
-Internet-Draft               Model-to-Matter                   July 2026
-
 
    [I-D.schrock-canonical-action-identifier]
               Schrock, I., "The Canonical Action Identifier (CAID)",
@@ -643,6 +666,14 @@ Internet-Draft               Model-to-Matter                   July 2026
               DOI 10.17487/RFC8032, January 2017,
               <https://www.rfc-editor.org/info/rfc8032>.
 
+
+
+
+Schrock                  Expires 20 January 2027               [Page 12]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
@@ -652,7 +683,7 @@ Internet-Draft               Model-to-Matter                   July 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
 
-16.  Informative References
+17.  Informative References
 
    [I-D.schrock-ep-action-evidence-graph]
               Schrock, I., "Action Evidence Graphs and Evidence Policy
@@ -661,19 +692,6 @@ Internet-Draft               Model-to-Matter                   July 2026
               July 2026, <https://datatracker.ietf.org/doc/draft-
               schrock-ep-action-evidence-graph/>.
 
-
-
-
-
-
-
-
-
-Schrock                  Expires 15 January 2027               [Page 12]
-
-Internet-Draft               Model-to-Matter                   July 2026
-
-
    [I-D.schrock-ep-authorization-evidence-chain]
               Schrock, I., "Authorization Evidence Chains: Composing
               Heterogeneous Agent-Authorization Receipts", Work in
@@ -681,6 +699,13 @@ Internet-Draft               Model-to-Matter                   July 2026
               evidence-chain-03, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-evidence-chain/>.
+
+   [I-D.schrock-ep-bounded-capability-receipts]
+              Schrock, I., "Bounded Capability Receipts and Durable
+              Spend Control for Agent Actions", Work in Progress,
+              Internet-Draft, draft-schrock-ep-bounded-capability-
+              receipts-00, July 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-ep-bounded-capability-receipts/>.
 
    [RFC6585]  Nottingham, M. and R. Fielding, "Additional HTTP Status
               Codes", RFC 6585, DOI 10.17487/RFC6585, April 2012,
@@ -700,29 +725,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 15 January 2027               [Page 13]
+Schrock                  Expires 20 January 2027               [Page 13]

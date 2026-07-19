@@ -1,0 +1,1008 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Experimental                               19 July 2026
+Expires: 20 January 2027
+
+
+Bounded Capability Receipts and Durable Spend Control for Agent Actions
+            draft-schrock-ep-bounded-capability-receipts-00
+
+Abstract
+
+   Agents sometimes need bounded authority to perform more than one
+   consequential action without obtaining a new human approval for every
+   operation.  A signed token alone cannot enforce a shared budget
+   across replicas, survive retries safely, or distinguish an operation
+   that never crossed an effect boundary from one whose outcome is
+   unknown.
+
+   This document defines a bounded capability receipt and a durable
+   reserve-execute-commit protocol.  The receipt binds an issuance
+   authorization, a closed action scope, a budget with explicit units, a
+   holder proof, an expiry, and any parent capability.  The state
+   protocol atomically refuses overspend and replay, fences concurrent
+   owners, and charges an indeterminate operation when an external
+   effect may have occurred.  It also defines narrowing-only delegation
+   and evidence interfaces.  It does not make a bearer token into human
+   approval, does not provide offline global double-spend prevention,
+   and does not claim that an authorized action was safe, lawful, or
+   successfully executed.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 20 January 2027.
+
+
+
+
+
+Schrock                  Expires 20 January 2027                [Page 1]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
+     1.2.  Scope and Non-Goals . . . . . . . . . . . . . . . . . . .   3
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   3.  Trust Model . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   4.  The Bounded Capability Receipt  . . . . . . . . . . . . . . .   5
+     4.1.  Required Fields . . . . . . . . . . . . . . . . . . . . .   6
+     4.2.  Signature Input and Receipt Digest  . . . . . . . . . . .   7
+     4.3.  Receipt Verification  . . . . . . . . . . . . . . . . . .   7
+   5.  Issuance Authorization  . . . . . . . . . . . . . . . . . . .   8
+   6.  Action Scope  . . . . . . . . . . . . . . . . . . . . . . . .   8
+   7.  Holder Proof and Threshold Custody  . . . . . . . . . . . . .   9
+   8.  Registration  . . . . . . . . . . . . . . . . . . . . . . . .   9
+   9.  Reserve, Execute, and Commit  . . . . . . . . . . . . . . . .   9
+     9.1.  Reserve . . . . . . . . . . . . . . . . . . . . . . . . .  10
+     9.2.  Effect Boundary . . . . . . . . . . . . . . . . . . . . .  10
+     9.3.  Commit  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+     9.4.  Crash Recovery and Reconciliation . . . . . . . . . . . .  11
+   10. Narrowing Delegation  . . . . . . . . . . . . . . . . . . . .  11
+   11. Evidence and Decision Vocabulary  . . . . . . . . . . . . . .  12
+   12. Failure Codes . . . . . . . . . . . . . . . . . . . . . . . .  12
+   13. Conformance . . . . . . . . . . . . . . . . . . . . . . . . .  13
+   14. Relationship to Other Work  . . . . . . . . . . . . . . . . .  14
+   15. Security Considerations . . . . . . . . . . . . . . . . . . .  14
+   16. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  15
+   17. Implementation Status . . . . . . . . . . . . . . . . . . . .  16
+   18. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  17
+   19. Normative References  . . . . . . . . . . . . . . . . . . . .  17
+   20. Informative References  . . . . . . . . . . . . . . . . . . .  18
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  18
+
+
+
+
+
+Schrock                  Expires 20 January 2027                [Page 2]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+1.  Introduction
+
+   A single-action authorization receipt is intentionally narrow: it
+   records approval of one exact action and can be accepted at most once
+   within its atomic consumption domain.  Some agent deployments also
+   need a different primitive.  For example, an operator may authorize
+   an agent to purchase a bounded class of supplies, subject to an
+   aggregate monetary ceiling and an expiry, without asking a human to
+   approve each conforming purchase.
+
+   That primitive has two inseparable parts:
+
+   1.  a signed capability receipt that states the immutable authority
+       boundary; and
+
+   2.  a shared, durable state machine that serializes reservations and
+       committed consumption across retries, processes, replicas, and
+       restarts.
+
+   The signed object without the state machine is replayable budget
+   metadata.  The state machine without a signed, scoped grant has no
+   portable statement of authority.  This document specifies their
+   composition.
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+1.2.  Scope and Non-Goals
+
+   This document defines issuance binding, action-scope evaluation,
+   budget accounting, holder proof, durable reservation and commitment,
+   and narrowing delegation.  It does not define user authentication,
+   human-approval presentation, general policy syntax, payment clearing,
+   settlement, currency conversion, revocation distribution, or the
+   external effect adapter.
+
+   A capability receipt is machine authority evidence.  It is not,
+   merely by being signed, evidence that a human reviewed each later
+   action.  Deployments that require per-action human authorization
+   continue to require a per-action authorization artifact.
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027                [Page 3]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+2.  Terminology
+
+   Issuance authorization:  An independently verified authorization
+      artifact for the exact act of creating a bounded capability.
+
+   Capability receipt:  The signed immutable grant defined by this
+      document.
+
+   Capability issuer:  The principal whose pinned key signs a capability
+      receipt.
+
+   Holder proof:  Proof that the requester controls the secret or key
+      named by the capability receipt.  Holder proof is not proof that a
+      requested action is in scope.
+
+   Scope verifier:  A verifier for a named scope profile, selected and
+      configured by the relying party.
+
+   Capability store:  The authoritative shared transactional state for
+      registration, reservation, and committed consumption.
+
+   Operation ID:  A globally unique identifier for one attempted
+      capability-funded operation within a capability-store domain.
+
+   Reservation token:  An unguessable owner-fencing value returned by a
+      successful reservation and required for its commitment.
+
+   Effect boundary:  The point after which an external effect may have
+      occurred and therefore budget cannot safely be restored merely
+      because the caller did not receive a successful response.
+
+   Indeterminate outcome:  An operation for which the executor cannot
+      prove that no effect occurred and cannot prove a successful
+      expected effect.
+
+3.  Trust Model
+
+   The relying party selects capability-issuer keys, accepted issuance
+   authorization profiles, scope profiles, state-store domain, and local
+   authorization policy.  A key embedded in a presented capability
+   receipt MUST NOT, by itself, become a trust anchor.  An empty trust
+   configuration MUST fail closed.
+
+   The capability store is trusted to serialize state transitions and
+   retain committed operation records.  The effect adapter is trusted to
+   place the effect boundary correctly and to report outcomes honestly.
+   This protocol makes those trust dependencies explicit; it does not
+   remove them.
+
+
+
+Schrock                  Expires 20 January 2027                [Page 4]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   All capability-store participants that can authorize the same
+   capability MUST use one shared atomic state domain.  Independent
+   stores cannot prevent each other from accepting the same remaining
+   budget.
+
+4.  The Bounded Capability Receipt
+
+   The receipt is a JSON object serialized using the JSON
+   Canonicalization Scheme (JCS) [RFC8785] before signing.  The
+   following is illustrative:
+
+   {
+     "@version": "EP-BOUNDED-CAPABILITY-v1",
+     "capability": {
+       "capability_id": "cap_01J...",
+       "issuer": "https://operator.example",
+       "subject": "agent:procurement-7",
+       "authorization": {
+         "receipt_id": "rcpt_01J...",
+         "receipt_digest": "sha256:4c..."
+       },
+       "scope": {
+         "profile": "urn:emilia:scope:caid-set-v1",
+         "value": {
+           "caids": ["caid1:sha256:..."]
+         },
+         "digest": "sha256:8a..."
+       },
+       "budget": {
+         "amount": 250000,
+         "unit": "iso4217:USD",
+         "scale": 2
+       },
+       "holder": {
+         "method": "sha-256-preimage",
+         "commitment": "sha256:91..."
+       },
+       "threshold": {"m": 2, "n": 3},
+       "parent": null,
+       "not_before": "2026-07-18T20:00:00Z",
+       "expires_at": "2026-07-19T20:00:00Z"
+     },
+     "capability_signature": {
+       "algorithm": "Ed25519",
+       "public_key": "base64url...",
+       "value": "base64url..."
+     }
+   }
+
+
+
+Schrock                  Expires 20 January 2027                [Page 5]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+4.1.  Required Fields
+
+   @version:  EP-BOUNDED-CAPABILITY-v1.
+
+   capability_id:  A globally unique, opaque identifier.  Uniqueness is
+      not used as a substitute for cryptographic binding.
+
+   issuer:  The issuer identifier used to select a relying-party-pinned
+      verification key.
+
+   subject:  The intended holder or workload identifier.  This
+      identifier does not replace holder proof or live workload
+      authentication.
+
+   authorization:  The identifier and SHA-256 digest of the complete
+      issuance authorization artifact.  The digest MUST cover the exact
+      bytes accepted by that artifact's native verifier.
+
+   scope:  A named scope profile, its value, and the SHA-256 digest of
+      the JCS serialization of profile and value.
+
+   budget:  A non-negative integer amount no greater than
+      9007199254740991, an explicit unit, and a decimal scale from 0
+      through 18.  For iso4217:USD with scale 2, an amount of 250000
+      denotes USD 2500.00.  Implementations MUST NOT infer a scale from
+      display conventions.
+
+   holder:  A recognized holder-proof method and commitment.
+
+   threshold:  Integers m and n satisfying 1 <= m <= n <= 255.  This
+      field describes custody of the holder credential; it does not
+      assert approval by distinct humans.
+
+   parent:  null for a root capability.  For a child capability, an
+      object containing the parent capability ID, the digest of the
+      complete signed parent receipt, and the identifier of an
+      authenticated parent delegation operation.  That operation MUST
+      bind the child receipt digest and the delegated amount, unit,
+      scale, scope, and validity interval.  A parent identifier without
+      digest-bound parent and delegation evidence is insufficient.
+
+   not_before and expires_at:  UTC timestamps in Internet Date/Time
+      format [RFC3339] using the canonical string form selected by the
+      deployment profile.  Expiry is exclusive.  Numeric epochs,
+      implementation-specific date strings, and values that do not
+      round-trip to the canonical form MUST be rejected.
+
+
+
+
+
+Schrock                  Expires 20 January 2027                [Page 6]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+4.2.  Signature Input and Receipt Digest
+
+   The issuer signature input is the JCS serialization of the object
+   containing exactly @version and capability.  The signature algorithm
+   for this version is Ed25519 [RFC8032].  The receipt digest is:
+
+   SHA-256(JCS({
+     "@version": receipt["@version"],
+     "capability": receipt.capability,
+     "capability_signature": receipt.capability_signature
+   }))
+
+   The issuance authorization is bound by both its identifier and
+   digest.  Binding only a caller-selected receipt identifier is
+   insufficient because two different artifacts can carry the same
+   identifier.
+
+4.3.  Receipt Verification
+
+   A verifier MUST perform all of the following and fail closed on any
+   error:
+
+   1.  apply bounded parsing and reject duplicate JSON member names,
+       unknown critical versions, malformed encodings, and out-of-range
+       values;
+
+   2.  select the issuer key from relying-party configuration, not from
+       the presented object alone;
+
+   3.  verify the issuer signature over the exact signature input;
+
+   4.  natively verify the issuance authorization under its own pinned
+       trust inputs and compare both receipt identifier and digest;
+
+   5.  verify that the authorized action is issuance of this exact
+       capability object, or of a digest that commits to it;
+
+   6.  verify the scope digest and require a recognized, relying-party-
+       enabled scope profile;
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027                [Page 7]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   7.  verify the validity interval and, for a child, resolve and verify
+       the digest-bound parent lineage to a root capability or a locally
+       trusted, previously validated lineage checkpoint.  Reject an
+       unresolved, truncated, reordered, or substituted link; a repeated
+       capability ID or receipt digest; the leaf appearing among its
+       ancestors; or a path exceeding deployment policy.  At every hop,
+       verify that the child amount does not exceed the authenticated
+       delegated amount, unit and scale are unchanged, validity is
+       contained by the parent, and scope is no broader than the parent
+       scope; and
+
+   8.  compute the capability receipt digest used for store
+       registration.
+
+   Receipt verification returns VERIFIED.  It does not return
+   AUTHORIZED, prove remaining budget, or prove that a proposed
+   operation is in scope.
+
+5.  Issuance Authorization
+
+   The issuance authorization MUST authorize the act of creating the
+   capability, including the immutable digest of its subject, scope,
+   budget, holder commitment, parent, and validity interval.  It MUST
+   NOT be reused as though it were a per-operation authorization for
+   later spends.
+
+   When the issuance artifact is an EMILIA Authorization Receipt, its
+   exact action is capability issuance and its one-time consumption
+   occurs when the capability is registered.  Later capability-funded
+   operations are governed by this document's scope and durable state
+   protocol.
+
+6.  Action Scope
+
+   Before reserving budget, the enforcement point MUST compute the
+   proposed material action independently of presenter-supplied labels
+   and invoke the pinned verifier for scope.profile.  A missing profile,
+   unknown action representation, lossy mapping, or indeterminate
+   comparison MUST refuse.
+
+   The mandatory-to-implement urn:emilia:scope:caid-set-v1 profile
+   contains a non-empty, duplicate-free array of Canonical Action
+   IDentifiers.  It matches only exact identifier equality.  Possession
+   of a CAID authorizes nothing outside this verified capability
+   context.
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027                [Page 8]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   Application profiles can define closed constraints over typed action
+   fields.  Such a profile MUST specify canonicalization, comparison,
+   unknown-field handling, numerical units, and an algorithm for proving
+   that a delegated scope is no broader than its parent.  Profiles that
+   cannot decide either action membership or attenuation MUST return
+   INDETERMINATE.
+
+7.  Holder Proof and Threshold Custody
+
+   The mandatory-to-implement holder method is sha-256-preimage.  The
+   holder presents exactly 32 bytes over a confidential, integrity-
+   protected channel, and the enforcement point compares SHA-
+   256(preimage) with the signed commitment using a constant-time
+   comparison.  The preimage MUST NOT be logged, stored with the
+   receipt, or included in portable evidence.
+
+   The preimage may be divided using a threshold secret-sharing scheme
+   before presentation.  Share format, participant authentication,
+   confidentiality, recovery, and distribution are outside this
+   document.  Reconstructing m shares proves control of the holder
+   secret; it does not prove that m distinct humans reviewed or approved
+   the action.  Human multi-party approval requires a protocol such as
+   [EP-QUORUM].
+
+8.  Registration
+
+   After receipt verification and one-time consumption of the issuance
+   authorization, the issuer registers the capability in the
+   authoritative store.  Registration MUST atomically create immutable
+   fields for capability ID, receipt digest, unit, scale, total budget,
+   scope digest, validity interval, and parent.  It MUST initialize
+   consumed and reserved to zero.
+
+   A second registration of the same capability ID MUST succeed only
+   when every immutable field and receipt digest is identical.  Any
+   mismatch is a collision and MUST refuse.
+
+   Mutable counters in a presented receipt are not authoritative.
+   Remaining budget is computed only from the shared store:
+
+   remaining = total - consumed - reserved
+
+9.  Reserve, Execute, and Commit
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027                [Page 9]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+9.1.  Reserve
+
+   A reservation request contains the capability ID, capability receipt
+   digest, globally unique operation ID, the immutable canonical
+   exercise-action digest and CAID where used, positive integer amount,
+   unit, scale, and authenticated holder proof.  The same immutable
+   action snapshot MUST be used for scope evaluation, authorization,
+   reservation accounting, and the effect callback; a mutable caller
+   object MUST NOT cross those boundaries.  In one serializable
+   transaction, or while holding an equivalent row lock, the store MUST:
+
+   1.  load the registered capability and compare the receipt digest;
+
+   2.  reject an unknown, not-yet-valid, expired, or revoked capability;
+
+   3.  reject a unit or scale mismatch;
+
+   4.  reject any already-seen operation ID, regardless of its previous
+       capability or outcome;
+
+   5.  verify that the amount is positive and no greater than total -
+       consumed - reserved;
+
+   6.  increase reserved by the amount; and
+
+   7.  create an operation in state reserved with an unguessable
+       reservation token, exercise-action digest, and amount, and return
+       that token only to the owner.
+
+   Scope evaluation and local authorization policy MUST succeed before
+   the effect adapter is entered.  Deployments SHOULD perform them
+   before reserving to reduce abandoned reservations.
+
+9.2.  Effect Boundary
+
+   The enforcement point enters the effect adapter only after a
+   successful reservation.  It MUST NOT expose an alternate path to the
+   same effect that bypasses capability enforcement when the action
+   requires this profile.
+
+9.3.  Commit
+
+   A commit request contains the operation ID, reservation token, and
+   one of three outcomes: executed, indeterminate, or delegated.  In one
+   atomic transaction, the store MUST verify ownership and reserved
+   state, decrease reserved, increase consumed by the same amount, and
+   make the operation terminal.
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 10]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   A repeated commit, wrong reservation token, or commit against a non-
+   reserved operation MUST refuse.  A caller timeout does not justify
+   retrying with a new operation ID; the caller MUST query the original
+   operation or reconcile it.
+
+   If the executor cannot prove that the effect boundary was not
+   crossed, it MUST commit indeterminate and charge the budget.
+   Availability loss is safer than allowing the same authority to be
+   spent again after an unobserved external effect.
+
+9.4.  Crash Recovery and Reconciliation
+
+   Reservations survive process and replica failure.  A deployment MUST
+   define a reconciler for non-terminal operations.  The reconciler may
+   commit executed only with authenticated effect evidence.  It may
+   restore budget only when it can prove the effect boundary was never
+   crossed.  In every other case it MUST commit indeterminate.
+
+10.  Narrowing Delegation
+
+   A child capability MUST NOT outlive its parent, exceed the
+   authenticated amount delegated from the parent, change unit or scale,
+   or broaden the parent's scope.  Its delegation chain MUST be bounded
+   by deployment policy and MUST include the parent receipt digest.
+
+   Before registering a child, the verifier MUST validate complete
+   digest-linked ancestry to a trusted root within the configured depth
+   bound, or enforce equivalent authenticated parent-edge constraints in
+   one authoritative store.  The verified lineage MUST form a simple
+   path.  The verifier MUST reject a repeated capability identifier or
+   receipt digest, a missing or inconsistent parent, a substituted or
+   reordered edge, or a chain whose trusted root cannot be established.
+   A cycle, truncated lineage, or over-depth chain MUST fail closed.
+   Per-receipt identifier uniqueness or a self-declared list of
+   ancestors does not establish graph-wide acyclicity.  An
+   implementation MUST NOT infer acyclicity merely because its ordinary
+   issuance path constructs children from known parents; verification
+   applies the same check to imported and reconstructed chains.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 11]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   Creating a child is itself a parent-funded operation.  The issuer
+   reserves and commits the delegated amount from the parent with
+   outcome delegated.  The authenticated terminal operation record MUST
+   bind the exact child receipt digest, delegated amount, unit, scale,
+   scope, and validity interval before the child is registered;
+   otherwise a valid parent spend could be paired with a different
+   child.  A shared store SHOULD perform parent commitment and child
+   registration atomically.  If that is impossible and child
+   registration fails after the parent is committed, the parent budget
+   remains consumed and the orphaned delegation MUST be retained for
+   reconciliation.  The system MUST NOT silently refund it.
+
+11.  Evidence and Decision Vocabulary
+
+   A capability receipt can be VERIFIED.  A scope verifier can return
+   the profile-local result IN_SCOPE, OUT_OF_SCOPE, or INDETERMINATE.
+   This containment result is not the architecture's MATCH state, which
+   is reserved for correlation of exact material actions.  A relying-
+   party evidence requirement can be SATISFIED.  Successful local policy
+   and an atomic reservation together can establish AUTHORIZED for one
+   exercise.  Separately authenticated effect evidence can establish
+   EXECUTED.  No earlier state implies a later one.
+
+   Portable evidence for a capability-funded operation SHOULD include
+   the capability receipt digest, issuance authorization digest, scope
+   profile and digest, operation ID, the exact exercise action digest
+   and CAID where used, amount, unit, scale, reservation timestamp,
+   terminal outcome, and any authenticated effect statement.  The
+   integrity-protected operation record MUST bind the exercise action
+   and the capability receipt digest.  Holder secrets and reservation
+   tokens MUST NOT be included.
+
+   An Authorization Evidence Chain may carry that operation record as a
+   native component whose verifier recursively verifies the capability
+   receipt, issuance authorization, scope result, and operation-record
+   integrity.  The static grant is not a same-action component for every
+   later exercise.  Evidence satisfaction does not query or reserve
+   current budget; that state transition remains at the enforcement
+   point.
+
+12.  Failure Codes
+
+   Implementations SHOULD expose stable, non-authorizing failure codes
+   including:
+
+   *  capability_untrusted_issuer
+
+   *  capability_authorization_mismatch
+
+
+
+Schrock                  Expires 20 January 2027               [Page 12]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   *  capability_scope_mismatch
+
+   *  capability_scope_indeterminate
+
+   *  capability_holder_proof_invalid
+
+   *  capability_not_active
+
+   *  capability_expired
+
+   *  capability_revoked
+
+   *  capability_budget_exceeded
+
+   *  capability_delegation_lineage_invalid
+
+   *  capability_delegation_not_narrowed
+
+   *  capability_operation_replay
+
+   *  capability_reservation_owner_mismatch
+
+   *  capability_commit_indeterminate
+
+   A failure code is diagnostic output, not an authorization artifact.
+   Responses SHOULD avoid revealing secret, budget, or scope details to
+   an unauthenticated caller.
+
+13.  Conformance
+
+   A conforming implementation MUST pass positive and adversarial
+   vectors for receipt canonicalization and signature, authorization-
+   digest substitution, untrusted issuer, unknown scope profile, action
+   mismatch, holder-proof failure, duplicate registration, concurrent
+   overspend, operation replay, wrong reservation token, double commit,
+   expiry, a cycle spread across separately signed receipts, repeated
+   ancestors, leaf-as-ancestor, missing or truncated lineage, reordered
+   or substituted parent links, parent-receipt and delegation-operation
+   substitution, a single-hop child exceeding the authenticated
+   delegated amount, unit or scale changes, scope or validity widening
+   at every hop, over-depth chains, parent over-allocation, crash
+   recovery, and indeterminate-effect charging.
+
+   A wire-format implementation that does not implement one shared
+   atomic store is a receipt verifier, not a conforming spend-control
+   implementation.  A store implementation that accepts a capability
+   without pinned issuer verification, issuance authorization, and scope
+   matching is not conforming.
+
+
+
+Schrock                  Expires 20 January 2027               [Page 13]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+14.  Relationship to Other Work
+
+   Rich Authorization Requests [RFC9396] carries fine-grained
+   authorization details but deliberately leaves comparison semantics
+   for arbitrary detail types to their specifications.  This document
+   defines an executor-side durable spend state machine and requires a
+   named closed scope profile.
+
+   OAuth Transaction Tokens [TXN-TOKENS] propagate transaction-specific
+   authorization context through a call chain.  Bounded Capability
+   Receipts instead address an aggregate budget shared across multiple
+   operations and the reserve/commit boundary at the executor.  A
+   deployment can use both.
+
+   The Delegation Receipt Protocol [DRP] records delegation and
+   narrowing.  This document requires narrowing for child capabilities
+   and additionally accounts delegated budget as a terminal parent
+   spend.
+
+   OAuth Attenuating Tokens for Agentic AI [ATTENUATING] describes
+   constrained, attenuable agent tokens.  This document's distinct
+   contribution is not the existence of constrained tokens; it is the
+   composition of a signed grant with shared reservation ownership,
+   committed budget accounting, and conservative treatment of
+   indeterminate external effects.
+
+15.  Security Considerations
+
+   *Identifier substitution.* Capability signatures bind the full
+   issuance authorization digest, not only an identifier.  Scope, budget
+   units, parent, holder commitment, and validity are all inside the
+   issuer signature.
+
+   *State forks.* Two stores accepting the same capability can each
+   spend its full budget.  Global offline double-spend prevention is
+   therefore not provided.  Deployments that cannot name one
+   authoritative state domain MUST NOT claim an aggregate budget is
+   enforced.
+
+   *Crash ambiguity.* Restoring budget after a timeout can authorize
+   duplicate external effects.  Once the effect boundary may have been
+   crossed, uncertainty is charged as indeterminate.
+
+   *Bearer and share theft.* A raw holder secret or enough
+   unauthenticated shares can authorize possession.  Secret shares
+   require confidential distribution, authenticated participants,
+   compromise response, and rate limiting.  Threshold custody is not
+   human quorum.
+
+
+
+Schrock                  Expires 20 January 2027               [Page 14]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   *Revocation.* Expiry and exhausted budget are not revocation.  A
+   deployment that requires early invalidation MUST consult a separately
+   authenticated revocation or status source before reservation and
+   define its freshness policy.
+
+   *Units and arithmetic.* All accounting uses integers with signed unit
+   and scale.  Floating-point arithmetic, implicit currency conversion,
+   and caller-selected rounding MUST NOT occur in the authoritative
+   budget path.
+
+   *Database authority.* The capability tables contain authorization
+   state.  Deployments MUST restrict writes to the enforcement service,
+   use least-privilege credentials, protect backups, and audit
+   administrative changes.
+
+   *Delegation lineage.* Local uniqueness checks over one presented
+   receipt do not establish graph-wide acyclicity or complete ancestry.
+   Separately presented receipts can omit links, substitute a parent
+   operation, or form a cycle unless each parent edge is authenticated
+   and resolved by digest, or an authoritative store enforces equivalent
+   edge constraints.  Implementations MUST fail closed on incomplete,
+   cyclic, substituted, or non-narrowing lineage.  Verifiers apply the
+   complete traversal and refusal rules in Section 10 to imported chains
+   and chains reconstructed from storage.
+
+   *Semantic limits.* A valid capability does not prove that an action
+   is safe, lawful, beneficial, or correctly executed.  Local policy and
+   domain controls remain necessary.
+
+   *Cryptographic scope.* This version uses SHA-256 and Ed25519.  It
+   does not provide a post-quantum signature profile or a zero-knowledge
+   receipt.  Algorithm agility and long-term preservation are separate
+   concerns.
+
+16.  Privacy Considerations
+
+   Capability receipts and operation records can reveal spending limits,
+   organizational roles, intended action classes, counterparties, and
+   timing.  Profiles SHOULD minimize identifiers, separate portable
+   evidence from operational secrets, and define retention and access
+   controls.  Hashing a low-entropy scope or identifier does not make it
+   confidential.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 15]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+17.  Implementation Status
+
+   The main branch of an Apache-2.0 JavaScript implementation includes a
+   signed pre-standard capability envelope, holder-secret commitment,
+   optional threshold secret reconstruction, and a durable PostgreSQL
+   reservation and commitment store.  Its issuer-controlled delegation
+   API, when used with one shared capability store, reserves and commits
+   a child amount from the immediate parent before registering the
+   child.  The store has adversarial tests for overspend, replay,
+   ownership fencing, expiry, and terminal commitment.  Production Gate
+   guard-path enforcement using this store remains on a public review
+   branch and is not represented as part of the repository's main
+   branch.
+
+   The prototype wire format predates this document and does not yet
+   implement all mandatory fields in this version, including full
+   issuance authorization digest binding, an explicit action-scope
+   profile, and explicit budget unit scale, digest-linked parent
+   lineage, authenticated parent-delegation binding, not_before, and
+   complete ingest-time cycle validation.  It is therefore
+   implementation experience, not a claim of conformance.  There is no
+   independent implementation, interoperability event, production
+   transaction history, post-quantum profile, or zero-knowledge
+   implementation.
+
+   The main implementation does reject repeated delegation identifiers,
+   repeated parent capability identifiers, a leaf named as its own
+   parent, and increasing amounts within the delegation chain presented
+   at mint or verification time.  Those checks provide local simple-path
+   and monotonic amount enforcement.  They do not discover omitted
+   parents or establish the digest-linked, graph-wide lineage required
+   by Section 10, so they do not close the remaining conformance gap.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 16]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   The public repository also contains a CI-gated TLA+ model of
+   capability registration, reservation, commitment, revocation,
+   delegation, replay refusal, and budget conservation.  In the checked
+   configuration, three capability identifiers, two operation
+   identifiers, amounts from zero through two, delegation depth two, and
+   a three-value clock produced 6,033 distinct states; TLC found no
+   counterexample to ten configured state invariants and four transition
+   properties.  This is bounded evidence about the model, not a
+   refinement proof of the JavaScript, SQL, transaction adapter,
+   cryptography, lineage verification, or complete protocol defined
+   here.  A separate repository witness module contains five
+   reachability checks but is not executed by the CI workflow and is not
+   represented as proving every assertion non-vacuous.  The model
+   obtains delegation acyclicity through its construction rules;
+   arbitrary implementation inputs still require the explicit runtime
+   traversal and refusal rules in Section 10.
+
+   The main branch also runs a fixed-seed adversarial harness in per-
+   push CI over the actual JavaScript in-memory capability and
+   consumption stores.  It includes a true-concurrency Promise.all race
+   target and a deliberately non-atomic comparison store that
+   demonstrates the race detector can expose over-commitment.
+   Additional targets exercise accounting and ownership invariants at
+   whole-method boundaries.  This is regression evidence for those in-
+   process stores, not complete protocol conformance: it does not fuzz
+   the PostgreSQL capability transaction path, the atomic handshake RPC,
+   replica or connection failures, and no deeper nightly sweep is
+   scheduled.
+
+18.  IANA Considerations
+
+   This document has no IANA actions.  A future revision may request a
+   media type and registries for receipt versions, scope profiles,
+   holder methods, and failure codes after implementation experience
+   stabilizes the protocol.
+
+19.  Normative References
+
+   [EP-QUORUM]
+              Schrock, I., "Multi-Party Authorization (Quorum) for the
+              EMILIA Protocol", 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-ep-quorum/>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 17]
+
+Internet-Draft           EP Bounded Capabilities               July 2026
+
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032,
+              DOI 10.17487/RFC8032, January 2017,
+              <https://www.rfc-editor.org/info/rfc8032>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+20.  Informative References
+
+   [ATTENUATING]
+              Niyikiza, E., "OAuth Attenuating Tokens for Agentic AI",
+              2026, <https://datatracker.ietf.org/doc/draft-niyikiza-
+              oauth-attenuating-agent-tokens/>.
+
+   [DRP]      Nelson, A., "Delegation Receipt Protocol", 2026,
+              <https://datatracker.ietf.org/doc/draft-nelson-agent-
+              delegation-receipts/>.
+
+   [RFC9396]  Lodderstedt, T., Richer, J., and B. Campbell, "OAuth 2.0
+              Rich Authorization Requests", RFC 9396,
+              DOI 10.17487/RFC9396, May 2023,
+              <https://www.rfc-editor.org/info/rfc9396>.
+
+   [TXN-TOKENS]
+              Fletcher, G., "Transaction Tokens", 2026,
+              <https://datatracker.ietf.org/doc/draft-ietf-oauth-
+              transaction-tokens/>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 18]

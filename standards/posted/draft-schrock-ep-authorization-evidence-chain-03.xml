@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-ep-authorization-evidence-chain-03"
-     category="info" ipr="trust200902" submissionType="IETF"
+     category="info" ipr="trust200902"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="Authorization Evidence Chains">Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)</title>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="14"/>
+    <date year="2026" month="July" day="19"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -341,13 +341,27 @@ WS       = *(SP / HTAB / CR / LF)
       be unsatisfied.</t>
     </section>
 
+    <section anchor="bounded-capability-leg"><name>The bounded-capability operation leg</name>
+      <t>A static bounded-capability receipt authorizes capability issuance and
+      <bcp14>MUST NOT</bcp14> be treated as bound to every later exercise. It
+      is therefore not an eligible component of an exercise chain merely
+      because the proposed action falls within its scope.</t>
+      <t>A <tt>bounded-capability-operation</tt> component is eligible only
+      when its integrity-protected operation record binds the chain's exact
+      action digest and its native verifier verifies the referenced capability
+      receipt, issuance authorization, scope result, and operation record. AEC
+      does not query or reserve current budget. A capability component
+      <bcp14>MUST NOT</bcp14> satisfy <tt>ep-receipt</tt>,
+      <tt>ep-quorum</tt>, or any human-authorization role.</t>
+    </section>
+
 
     <section anchor="security"><name>Security Considerations</name>
       <t>Presenter-chosen sufficiency (fixed in -01). Prior to this
       revision the requirement was read only from the presented
       document, letting a presenter select the bar its own evidence
       would be judged against. Section
-      "<xref target="whose-requirement" format="title"/>" closes this:
+      "<xref target="whose-requirement"/>" closes this:
       relying-party-supplied requirements take precedence and the
       evaluated source is recorded. Deployments of -00 verifiers SHOULD
       upgrade or wrap verification with an out-of-band requirement
@@ -455,6 +469,12 @@ WS       = *(SP / HTAB / CR / LF)
       <xref target="DRP"/>, <xref target="PERMIT"/>,
       <xref target="ACTA"/>, or <xref target="AGENTROA"/>; each plugs in
       as a component type.</t>
+      <t>A Bounded Capability Receipt (<xref target="EP-BOUNDED-CAP"/>) can be
+      recursively verified by a native bounded-capability-operation component.
+      The static grant itself is not treated as bound to every exercise. EP-AEC
+      does not query remaining budget, reserve funds, or promote
+      <tt>SATISFIED</tt> to spend authority; those mutable state transitions
+      remain at the enforcement point.</t>
     </section>
 
     <section anchor="iana"><name>IANA Considerations</name>
@@ -487,6 +507,9 @@ WS       = *(SP / HTAB / CR / LF)
         snapshots, and atomic shared-head decision logging across replicas and
         restarts with exact successful-append readback and independently checked
         logger acknowledgments.</li>
+        <li>Clarified the bounded-capability composition boundary: receipt and
+        operation evidence can satisfy slots, while live budget reservation
+        remains an executor-side state transition.</li>
       </ul>
     </section>
 
@@ -520,7 +543,7 @@ WS       = *(SP / HTAB / CR / LF)
           </author>
           <date year="2026" month="July"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-07"/>
       </reference>
       <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
         <front>
@@ -599,6 +622,14 @@ WS       = *(SP / HTAB / CR / LF)
           <date year="2026"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-marques-asqav-compliance-receipts"/>
+      </reference>
+      <reference anchor="EP-BOUNDED-CAP" target="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">
+        <front>
+          <title>Bounded Capability Receipts and Durable Spend Control for Agent Actions</title>
+          <author fullname="Iman Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-00"/>
       </reference>
     </references>
   </back>

@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              14 July 2026
-Expires: 15 January 2027
+Intended status: Informational                              19 July 2026
+Expires: 20 January 2027
 
 
    Portable Revocation Statements for Digest-Addressed Authorization
@@ -48,12 +48,12 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 January 2027.
+   This Internet-Draft will expire on 20 January 2027.
 
 
 
 
-Schrock                  Expires 15 January 2027                [Page 1]
+Schrock                  Expires 20 January 2027                [Page 1]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                  Expires 15 January 2027                [Page 2]
+Schrock                  Expires 20 January 2027                [Page 2]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -165,7 +165,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 3]
+Schrock                  Expires 20 January 2027                [Page 3]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -221,7 +221,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 4]
+Schrock                  Expires 20 January 2027                [Page 4]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -277,7 +277,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 5]
+Schrock                  Expires 20 January 2027                [Page 5]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -333,7 +333,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 6]
+Schrock                  Expires 20 January 2027                [Page 6]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -389,7 +389,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 7]
+Schrock                  Expires 20 January 2027                [Page 7]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -445,7 +445,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 8]
+Schrock                  Expires 20 January 2027                [Page 8]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -501,7 +501,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 9]
+Schrock                  Expires 20 January 2027                [Page 9]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -557,7 +557,7 @@ Internet-Draft            Revocation Statement                 July 2026
 
 
 
-Schrock                  Expires 15 January 2027               [Page 10]
+Schrock                  Expires 20 January 2027               [Page 10]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -574,7 +574,7 @@ Internet-Draft            Revocation Statement                 July 2026
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-06, July 2026,
+              ep-authorization-receipts-07, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
 
@@ -613,7 +613,7 @@ Appendix A.  Implementation Status
 
 
 
-Schrock                  Expires 15 January 2027               [Page 11]
+Schrock                  Expires 20 January 2027               [Page 11]
 
 Internet-Draft            Revocation Statement                 July 2026
 
@@ -669,4 +669,4 @@ Author's Address
 
 
 
-Schrock                  Expires 15 January 2027               [Page 12]
+Schrock                  Expires 20 January 2027               [Page 12]

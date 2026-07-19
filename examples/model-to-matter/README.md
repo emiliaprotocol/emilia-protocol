@@ -35,7 +35,7 @@ npm run test:mutation:model-to-matter
 ```
 
 The Experimental Internet-Draft source is staged at
-`standards/staged/draft-schrock-model-to-matter-00.xml`. It is a July 19
+`standards/posted/draft-schrock-model-to-matter-00.xml`. It is a July 19
 Experimental filing candidate, scheduled after the four-document protocol
 line. An executor partner remains necessary for any deployment or adoption
 claim, not for publication of the open profile.

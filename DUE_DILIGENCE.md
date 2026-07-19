@@ -191,13 +191,17 @@ the artifact. Registry state and tags were therefore checked independently.
 ## Standards status
 
 The live IETF Datatracker, not a repository filename, is authoritative for
-filing status. The public documents linked from this repository were verified
-as active individual Internet-Drafts:
+filing status. On July 19, 2026, the following published TXT artifacts were
+verified byte-for-byte against their local snapshots:
 
-- [Authorization Receipts, revision 06](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
-- [EP-QUORUM, revision 02](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/)
-- [EP-AEC, revision 02](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/)
-- [EP-EVIDENCE-RECORD, revision 01](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/)
+- [CAID, revision 00](https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/)
+- [Architecture, revision 01](https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/)
+- [Authority Introduction, revision 01](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/)
+- [Authorization Receipts, revision 07](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
+- [EP-QUORUM, revision 03](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/)
+- [Bounded Capability Receipts, revision 00](https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/)
+- [EP-AEC, revision 03](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/)
+- [Model-to-Matter, revision 00](https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/)
 
 Datatracker labels each as an **Active Internet-Draft (individual)** and states
 that an Internet-Draft is not IETF-endorsed and has no formal standing in the

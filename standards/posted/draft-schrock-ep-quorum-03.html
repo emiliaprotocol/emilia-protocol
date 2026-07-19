@@ -1,0 +1,2352 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)</title>
+<meta content="Iman Schrock" name="author">
+<meta content="
+       This document defines EP-QUORUM, a multi-party authorization
+      profile for the EMILIA Protocol (EP) authorization receipt
+      (draft-schrock-ep-authorization-receipts). Where the base receipt
+      binds a single accountable human to one exact high-risk action,
+      EP-QUORUM binds a set of distinct accountable humans -- the
+      &quot;two-person rule,&quot; generalized to M-of-N and to ordered approval
+      trails -- to one exact action, such that the quorum predicate is not
+      satisfied until the full quorum holds. The profile is purely additive: each
+      quorum member is an unmodified EP signoff over the same action hash,
+      and a single-approver policy is the degenerate one-member case.
+      EP-QUORUM specifies a fail-closed quorum predicate (all member
+      signatures valid, every member bound to the exact action, approvers
+      pairwise distinct, every approver admitted by role, the threshold
+      met, the declared order respected, and all signatures within a
+      bounded time window), an incremental server-side admission rule that
+      rejects a non-conforming signer before it enters the trail, and a set
+      of adversarial conformance vectors. The predicate is
+      offline-verifiable under the base draft's verification model and is
+      maintained as cross-language conformance vectors that three reference
+      verifiers (JavaScript, Python, Go) are required to agree on. Those
+      verifiers live in one repository -- a cross-language consistency check,
+      not clean-room independent implementations; independent implementations
+      remain future interoperability evidence. The document also describes,
+      informatively, the multi-handshake composition process: how individual
+      signing ceremonies -- fresh one-time challenge, exact-action binding,
+      user-verified device signature -- compose into one ordered,
+      offline-verifiable, at-most-once-consumable multi-party decision.
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="AI agents" name="keyword">
+<meta content="authorization" name="keyword">
+<meta content="multi-party" name="keyword">
+<meta content="quorum" name="keyword">
+<meta content="two-person rule" name="keyword">
+<meta content="separation of duties" name="keyword">
+<meta content="WebAuthn" name="keyword">
+<meta content="draft-schrock-ep-quorum-03" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
+    pycountry 26.2.16
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.8.1
+-->
+<link href="draft-schrock-ep-quorum-03.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/*
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">EP Multi-Party Quorum</td>
+<td class="right">July 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Schrock</td>
+<td class="center">Expires 20 January 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-schrock-ep-quorum-03</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-07-19" class="published">19 July 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-01-20">20 January 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">I. Schrock</div>
+<div class="org">EMILIA Protocol, Inc.</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document defines EP-QUORUM, a multi-party authorization
+      profile for the EMILIA Protocol (EP) authorization receipt
+      (draft-schrock-ep-authorization-receipts). Where the base receipt
+      binds a single accountable human to one exact high-risk action,
+      EP-QUORUM binds a set of distinct accountable humans -- the
+      "two-person rule," generalized to M-of-N and to ordered approval
+      trails -- to one exact action, such that the quorum predicate is not
+      satisfied until the full quorum holds. The profile is purely additive: each
+      quorum member is an unmodified EP signoff over the same action hash,
+      and a single-approver policy is the degenerate one-member case.
+      EP-QUORUM specifies a fail-closed quorum predicate (all member
+      signatures valid, every member bound to the exact action, approvers
+      pairwise distinct, every approver admitted by role, the threshold
+      met, the declared order respected, and all signatures within a
+      bounded time window), an incremental server-side admission rule that
+      rejects a non-conforming signer before it enters the trail, and a set
+      of adversarial conformance vectors. The predicate is
+      offline-verifiable under the base draft's verification model and is
+      maintained as cross-language conformance vectors that three reference
+      verifiers (JavaScript, Python, Go) are required to agree on. Those
+      verifiers live in one repository -- a cross-language consistency check,
+      not clean-room independent implementations; independent implementations
+      remain future interoperability evidence. The document also describes,
+      informatively, the multi-handshake composition process: how individual
+      signing ceremonies -- fresh one-time challenge, exact-action binding,
+      user-verified device signature -- compose into one ordered,
+      offline-verifiable, at-most-once-consumable multi-party decision.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 20 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-design-goals" class="internal xref">Design Goals</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-the-quorum-policy" class="internal xref">The Quorum Policy</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-approval-modes" class="internal xref">Approval Modes</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-the-quorum-gate-fail-closed" class="internal xref">The Quorum Gate (fail-closed predicate)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-incremental-admission-canac" class="internal xref">Incremental Admission (canAccept)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-multi-handshake-composition" class="internal xref">Multi-Handshake Composition</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-member-representation-in-th" class="internal xref">Member Representation in the Receipt</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-conformance" class="internal xref">Conformance</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.1">
+                <p id="section-toc.1-1.10.2.1.1"><a href="#section-10.1" class="auto internal xref">10.1</a>.  <a href="#name-what-multi-party-authorizat" class="internal xref">What multi-party authorization does and does not prevent</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.2">
+                <p id="section-toc.1-1.10.2.2.1"><a href="#section-10.2" class="auto internal xref">10.2</a>.  <a href="#name-fail-closed-is-the-only-saf" class="internal xref">Fail-closed is the only safe default</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.3">
+                <p id="section-toc.1-1.10.2.3.1"><a href="#section-10.3" class="auto internal xref">10.3</a>.  <a href="#name-partial-trails-confer-no-au" class="internal xref">Partial trails confer no authority</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.4">
+                <p id="section-toc.1-1.10.2.4.1"><a href="#section-10.4" class="auto internal xref">10.4</a>.  <a href="#name-window-and-replay" class="internal xref">Window and replay</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.5">
+                <p id="section-toc.1-1.10.2.5.1"><a href="#section-10.5" class="auto internal xref">10.5</a>.  <a href="#name-divide-and-misinform-across" class="internal xref">Divide-and-misinform across members</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.6">
+                <p id="section-toc.1-1.10.2.6.1"><a href="#section-10.6" class="auto internal xref">10.6</a>.  <a href="#name-approver-fatigue-at-quorum-" class="internal xref">Approver fatigue, at quorum scale</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.7">
+                <p id="section-toc.1-1.10.2.7.1"><a href="#section-10.7" class="auto internal xref">10.7</a>.  <a href="#name-rubber-stamping-and-review-" class="internal xref">Rubber-stamping and review-latency evidence</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.8">
+                <p id="section-toc.1-1.10.2.8.1"><a href="#section-10.8" class="auto internal xref">10.8</a>.  <a href="#name-human-quorum-is-not-thresho" class="internal xref">Human quorum is not threshold secret custody</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-changes-from-02" class="internal xref">Changes from -02</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#appendix-A" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">The base EP authorization receipt closes the gap between "is this
+      actor authorized in general?" and "should this exact action happen,
+      and which accountable human said yes?" by binding one named
+      approver's device-held signature to one exact action (see
+      <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 1). For the
+      highest-consequence actions, one approver is not the right control.
+      The discipline that governs nuclear release, large-value treasury
+      movement, and production-credential change is the
+      <em>two-person rule</em>: no single human -- however
+      well-authenticated, however senior -- can unilaterally cause the
+      action. Two or more distinct, accountable humans must each
+      independently authorize, and the action proceeds only when all of
+      them have.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">As autonomous agents acquire credentials sufficient for
+      irreversible operations, the two-person rule is exactly the control
+      that lets an organization grant an agent real authority without
+      creating a single point of failure: a compromised, misaligned, or
+      prompt-injected agent cannot act alone, and neither can a single
+      compromised or coerced approver. EP-QUORUM specifies how to express
+      that control as a cryptographic predicate over EP signoffs and how to
+      enforce it both at the moment each approver signs and at the moment
+      the action would execute.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">The base draft already contemplates multi-approver policies
+      (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 7): each approver signs an
+      individual Authorization Context sharing the same action hash, and
+      commitment occurs only when k valid, distinct signoffs exist before
+      expiry. This document makes that sketch normative and testable. It
+      adds: ordered approval trails (<a href="#approval-modes" class="auto internal xref">Section 4</a>); an
+      explicit role roster and admission semantics
+      (<a href="#quorum-policy" class="auto internal xref">Section 3</a>); a bounded approval window with a
+      monotonic-time constraint for ordered mode
+      (<a href="#approval-modes" class="auto internal xref">Section 4</a>); an incremental server-side
+      admission rule that keeps a non-conforming signer out of the trail in
+      the first place (<a href="#incremental-admission" class="auto internal xref">Section 6</a>); the
+      consolidated fail-closed quorum predicate
+      (<a href="#quorum-gate" class="auto internal xref">Section 5</a>); and an adversarial conformance suite
+      (<a href="#conformance" class="auto internal xref">Section 9</a>).<a href="#section-1-3" class="pilcrow">¶</a></p>
+<div id="design-goals">
+<section id="section-1.1">
+        <h3 id="name-design-goals">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-design-goals" class="section-name selfRef">Design Goals</a>
+        </h3>
+<p id="section-1.1-1">EP-QUORUM inherits design goals G1-G7 of the base draft and
+        adds:<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.1-2.1">
+            <strong>Q1 -- Additivity.</strong> A quorum is a set of
+          unmodified EP signoffs over the same action hash. No new
+          signature type, no new signing ceremony, and no change to the
+          receipt verifier are introduced. A single-approver policy is the
+          one-member quorum.<a href="#section-1.1-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.2">
+            <strong>Q2 -- Fail-closed.</strong> The quorum predicate is not
+          satisfied unless <em>every</em> element of the predicate holds.
+          Absence of evidence, an unparseable member, a malformed policy,
+          or any single failed check yields "not satisfied," never
+          "satisfied."<a href="#section-1.1-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.3">
+            <strong>Q3 -- Distinctness (separation of duties at the human
+          level).</strong> A quorum of size k requires k pairwise-distinct
+          human approvers, each distinct from the initiator. One human
+          <span class="bcp14">MUST NOT</span> fill two slots.<a href="#section-1.1-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.4">
+            <strong>Q4 -- Incremental enforcement.</strong> The protocol
+          enforces conformance as each approver signs, not only at consume
+          time, so that a wrong-action, wrong-role, duplicate,
+          out-of-order, stale, or invalid signature never becomes part of
+          the trail.<a href="#section-1.1-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-2.5">
+            <strong>Q5 -- Offline-verifiable quorum.</strong> The
+          satisfied/not-satisfied judgment is computable from the receipt's
+          members and the policy alone, under the same offline verification
+          model as the base draft (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>,
+          Section 6.3).<a href="#section-1.1-2.5" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+</div>
+</section>
+</div>
+<div id="terminology">
+<section id="section-2">
+      <h2 id="name-terminology">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+      </h2>
+<p id="section-2-1">In addition to the terminology of <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>:<a href="#section-2-1" class="pilcrow">¶</a></p>
+<p id="section-2-2">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>",
+      "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>",
+      "<span class="bcp14">SHOULD</span>", "<span class="bcp14">MAY</span>" are to be interpreted as
+      described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span>
+      when, and only when, they appear in all capitals.<a href="#section-2-2" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-2-3">
+        <dt id="section-2-3.1">Quorum.</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.2">The set of distinct approver signoffs required to satisfy one
+        human-authorization evidence requirement for an action under a Quorum
+        Policy.<a href="#section-2-3.2" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.3">Quorum Policy.</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.4">A named, versioned rule set declaring the approval mode, the
+        required count, the roster of eligible (role, approver) slots, the
+        distinct-humans rule, and the approval window. Carried in the
+        policy that governs the action; see
+        <a href="#quorum-policy" class="auto internal xref">Section 3</a>.<a href="#section-2-3.4" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.5">Member.</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.6">One element of a candidate quorum: a (role, approver public
+        key, signoff) triple, where the signoff is an unmodified EP signoff
+        (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 5.3) over the Authorization
+        Context the approver signed.<a href="#section-2-3.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.7">Trail.</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.8">The ordered sequence of members admitted so far for one action
+        -- the partial quorum under construction.<a href="#section-2-3.8" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.9">Quorum Gate.</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.10">The fail-closed predicate (<a href="#quorum-gate" class="auto internal xref">Section 5</a>) that
+        decides whether a trail is a satisfied quorum. The Verifying
+        Executor (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 9)
+        <span class="bcp14">MUST</span> consult it before performing the action.<a href="#section-2-3.10" class="pilcrow">¶</a>
+</dd>
+      <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="quorum-policy">
+<section id="section-3">
+      <h2 id="name-the-quorum-policy">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-the-quorum-policy" class="section-name selfRef">The Quorum Policy</a>
+      </h2>
+<p id="section-3-1">A Quorum Policy is a JSON object:<a href="#section-3-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-3-2">
+<pre>
+{
+  "mode": "ordered",
+  "required": 3,
+  "approvers": [
+    {
+      "role": "program_officer",
+      "approver": "ep:approver:po_rivera"
+    },
+    {
+      "role": "authorizing_official",
+      "approver": "ep:approver:ao_chen"
+    },
+    {
+      "role": "inspector_general",
+      "approver": "ep:approver:ig_okafor"
+    }
+  ],
+  "distinct_humans": true,
+  "window_sec": 900
+}
+</pre><a href="#section-3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3-3">Members:<a href="#section-3-3" class="pilcrow">¶</a></p>
+<table class="center" id="table-1">
+        <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Field</th>
+            <th class="text-left" rowspan="1" colspan="1">Required</th>
+            <th class="text-left" rowspan="1" colspan="1">Type</th>
+            <th class="text-left" rowspan="1" colspan="1">Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>mode</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">string (enum)</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>threshold</code> or <code>ordered</code>
+            (<a href="#approval-modes" class="auto internal xref">Section 4</a>).</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>required</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">integer &gt;= 1</td>
+            <td class="text-left" rowspan="1" colspan="1">The quorum size k.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>approvers</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">REQUIRED</span>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">array</td>
+            <td class="text-left" rowspan="1" colspan="1">The roster of eligible {role, approver} slots. <span class="bcp14">MUST</span>
+            be non-empty.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>distinct_humans</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span> (default true)</td>
+            <td class="text-left" rowspan="1" colspan="1">boolean</td>
+            <td class="text-left" rowspan="1" colspan="1">When true, no approver identifier may fill more than one
+            slot, AND no single device key may fill more than one slot
+            (<a href="#quorum-gate" class="auto internal xref">Section 5</a>, checks 5 and 5a). Implementations
+            <span class="bcp14">MUST</span> treat a missing value as true.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>window_sec</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span> (default 900)</td>
+            <td class="text-left" rowspan="1" colspan="1">integer &gt; 0</td>
+            <td class="text-left" rowspan="1" colspan="1">Maximum span, in seconds, between the first and any later
+            admitted signature.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>ordered_chain</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <span class="bcp14">OPTIONAL</span> (default false)</td>
+            <td class="text-left" rowspan="1" colspan="1">boolean</td>
+            <td class="text-left" rowspan="1" colspan="1">Strong ordered mode (<a href="#approval-modes" class="auto internal xref">Section 4</a>). When
+            true (ordered mode only), each signoff after the first
+            <span class="bcp14">MUST</span> commit, inside its own signed context, to the
+            hash of its predecessor's context (<code>prev_context_hash</code>), so
+            approval order is proven by the signatures rather than by
+            <code>issued_at</code> timestamps.</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-3-5">Rules:<a href="#section-3-5" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3-6.1">An <code>approver</code> slot identifies an eligible approver in the
+        Approver Directory (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 5.2). The
+        <code>role</code> is the organizational role under which that approver
+        is admitted to this quorum; it is the unit of role eligibility
+        (<a href="#quorum-gate" class="auto internal xref">Section 5</a>, check 4).<a href="#section-3-6.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-6.2">A member is admitted only if its (role, approver) pair is
+        present in the roster. A correct signature by a real, enrolled
+        approver who is not on the roster for this action
+        <span class="bcp14">MUST</span> be rejected (<code>wrong_role</code>).<a href="#section-3-6.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-6.3">
+          <code>required</code> <span class="bcp14">MUST NOT</span> exceed the number of
+        distinct human approvers the roster can supply under
+        <code>distinct_humans</code>. A policy that cannot be satisfied is a
+        misconfiguration; verifiers treat an unsatisfiable trail as not
+        satisfied, as always.<a href="#section-3-6.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-3-6.4">The Quorum Policy is part of the action's governing policy and
+        is therefore committed by the <code>policy_hash</code> of every
+        member's Authorization Context (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>,
+        Section 4). A signature collected under one Quorum Policy version
+        <span class="bcp14">MUST NOT</span> satisfy a requirement evaluated under
+        another.<a href="#section-3-6.4" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="approval-modes">
+<section id="section-4">
+      <h2 id="name-approval-modes">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-approval-modes" class="section-name selfRef">Approval Modes</a>
+      </h2>
+<p id="section-4-1"><strong>Threshold mode (<code>"threshold"</code>).</strong> Any
+      <code>required</code> distinct approvers drawn from the roster, in any
+      order, satisfy the quorum. This is the classic M-of-N rule.<a href="#section-4-1" class="pilcrow">¶</a></p>
+<p id="section-4-2"><strong>Ordered mode (<code>"ordered"</code>).</strong> Approvals
+      <span class="bcp14">MUST</span> occur in the roster's listed order: the i-th
+      admitted member <span class="bcp14">MUST</span> match <code>approvers[i-1]</code> in
+      both role and approver. In addition, signature times
+      <span class="bcp14">MUST</span> be strictly increasing -- each member's
+      <code>issued_at</code> <span class="bcp14">MUST</span> be later than the previous
+      admitted member's <code>issued_at</code> (<code>non_increasing_time</code>).
+      Ordered mode expresses escalation chains in which a later authority
+      signs <em>after, and in knowledge of,</em> an earlier one (e.g.,
+      Program Officer, then Authorizing Official, then Inspector
+      General).<a href="#section-4-2" class="pilcrow">¶</a></p>
+<p id="section-4-3">In both modes, every admitted member's <code>issued_at</code>
+        <span class="bcp14">MUST</span> fall within <code>window_sec</code> of the first
+      admitted member's <code>issued_at</code> (<code>window_exceeded</code>). The
+      window bounds the lifetime of a partial quorum so that a long-dormant
+      partial trail cannot be completed much later by an attacker who has
+      since compromised a remaining approver.<a href="#section-4-3" class="pilcrow">¶</a></p>
+<p id="section-4-4"><strong>Strong ordered mode (<code>"ordered_chain": true</code>).</strong>
+      Ordering by <code>issued_at</code> alone is asserted by whoever stamps the
+      time. To prove order by the signatures themselves, a policy
+      <span class="bcp14">MAY</span> require a cryptographic chain: each signoff after the
+      first carries, inside its signed Authorization Context, a
+      <code>prev_context_hash</code> equal to the SHA-256 of the canonical context
+      of its predecessor in the trail; the first signoff carries none. Because
+      each approver's device signs over its own context, the i-th approver
+      thereby attests to having signed <em>after</em> the exact (i-1)-th
+      approval, and no party -- including the operator -- can reorder, insert,
+      or backdate a signoff without invalidating a signature
+      (<code>broken_chain</code>). This is <span class="bcp14">RECOMMENDED</span> for the
+      highest-consequence ordered actions. Implementations that do not set
+      <code>ordered_chain</code> retain timestamp ordering and remain
+      conformant.<a href="#section-4-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="quorum-gate">
+<section id="section-5">
+      <h2 id="name-the-quorum-gate-fail-closed">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-the-quorum-gate-fail-closed" class="section-name selfRef">The Quorum Gate (fail-closed predicate)</a>
+      </h2>
+<p id="section-5-1">A trail is a <strong>satisfied quorum</strong> for an action with
+      hash H under policy P if and only if ALL of the following hold. A
+      verifier <span class="bcp14">MUST</span> return "satisfied" only when every check
+      passes, and <span class="bcp14">MUST</span> return "not satisfied" on the first
+      failure, on a malformed policy or member, or on any unrecognized
+      condition (Q2):<a href="#section-5-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-5-2">
+        <li id="section-5-2.1">
+          <strong>Well-formed policy.</strong> P has a recognized
+        <code>mode</code>, an integer <code>required &gt;= 1</code>, and a non-empty
+        <code>approvers</code> roster. Otherwise: not satisfied.<a href="#section-5-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.2">
+          <strong>All signatures valid.</strong> For every member, the EP
+        signoff verifies under <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>,
+        Section 5.3 / 6.3 -- the WebAuthn <span>[<a href="#WEBAUTHN" class="cite xref">WEBAUTHN</a>]</span>
+        assertion (Class A) verifies against the member's
+        <code>approver_public_key</code>, with the
+        assertion challenge equal to the member's context hash and user
+        verification asserted. One invalid signature
+        (<code>one_bad_signature</code>) fails the whole quorum.<a href="#section-5-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.3">
+          <strong>Action binding.</strong> Every member's Authorization
+        Context carries <code>action_hash == H</code>
+        (<code>action_mismatch</code>). A member bound to any other action does
+        not count.<a href="#section-5-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.4">
+          <strong>Role admission.</strong> Every member's (role,
+        approver) pair is present in the roster
+        (<code>wrong_role</code>).<a href="#section-5-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.5">
+          <strong>Distinct humans.</strong> When <code>distinct_humans</code>
+        is true (the default), approvers are pairwise distinct and (per the
+        base draft's SelfApprovalImpossible) distinct from the initiator
+        (<code>duplicate_human</code>).<a href="#section-5-2.5" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.6">
+          <strong>Distinct keys (check 5a).</strong> When
+        <code>distinct_humans</code> is true, the admitted members'
+        <code>approver_public_key</code> values are pairwise distinct
+        (<code>duplicate_key</code>). This defends against a single device key
+        enrolled under two approver identifiers, which would otherwise pass
+        the distinct-humans check by name while being one signer.<a href="#section-5-2.6" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.7">
+          <strong>Threshold.</strong> At least <code>required</code> admitted
+        members exist (<code>under_threshold</code>).<a href="#section-5-2.7" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.8">
+          <strong>Order (ordered mode only).</strong> The i-th admitted
+        member matches <code>approvers[i-1]</code>; signature times are strictly
+        increasing (<code>out_of_order</code>,
+        <code>non_increasing_time</code>).<a href="#section-5-2.8" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.9">
+          <strong>Ordering chain (strong ordered mode only, check 7a).</strong>
+        When <code>ordered_chain</code> is true, the first admitted member carries
+        no <code>prev_context_hash</code> and every later member's
+        <code>prev_context_hash</code> equals the SHA-256 of the canonical context
+        of its predecessor (<code>broken_chain</code>). When <code>ordered_chain</code>
+        is false this check is not applicable.<a href="#section-5-2.9" class="pilcrow">¶</a>
+</li>
+        <li id="section-5-2.10">
+          <strong>Window.</strong> Every admitted member's
+        <code>issued_at</code> is within <code>window_sec</code> of the first
+        member's <code>issued_at</code> (<code>window_exceeded</code>).<a href="#section-5-2.10" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-5-3">The predicate is the same whether computed by the orchestrating
+      operator before consumption or by an independent Verifying Executor or
+      auditor offline (Q5): it is a pure function of (P, H, members).
+      Because each member is an unmodified EP signoff, check 2 is exactly
+      the base draft's verifier invoked per member; EP-QUORUM adds the
+      set-level checks 1, 3-10 on top.<a href="#section-5-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="incremental-admission">
+<section id="section-6">
+      <h2 id="name-incremental-admission-canac">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-incremental-admission-canac" class="section-name selfRef">Incremental Admission (canAccept)</a>
+      </h2>
+<p id="section-6-1">To keep a non-conforming signer out of the trail rather than
+      discovering it only at consume time (Q4), an orchestrator
+      <span class="bcp14">MUST</span> evaluate an incremental admission rule before
+      recording each new signoff. Given the policy P, the action hash H, the
+      already-admitted trail, and one incoming candidate member, the rule
+      ADMITS the candidate only if all of the following hold, and otherwise
+      REJECTS it with the named reason:<a href="#section-6-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-6-2">
+        <li id="section-6-2.1">P is well-formed and its roster is non-empty (else
+        <code>no_policy</code> / <code>no_eligible_approvers</code>).<a href="#section-6-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.2">The candidate's context carries <code>action_hash == H</code> (else
+        <code>action_mismatch</code>).<a href="#section-6-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.3">The candidate's (role, approver) is on the roster (else
+        <code>ineligible_role</code>).<a href="#section-6-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.4">When <code>distinct_humans</code> is true, no already-admitted
+        member shares the candidate's approver (else
+        <code>duplicate_human</code>).<a href="#section-6-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.5">In ordered mode, the candidate matches the next unfilled roster
+        slot (<code>approvers[len(trail)]</code>) in both role and approver
+        (else <code>out_of_order</code>).<a href="#section-6-2.5" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.6">If the trail is non-empty, the candidate's <code>issued_at</code> is
+        within <code>window_sec</code> of the first member's <code>issued_at</code>
+        (else <code>window_exceeded</code>); and in ordered mode it is strictly
+        greater than the last admitted member's <code>issued_at</code> (else
+        <code>non_increasing_time</code>).<a href="#section-6-2.6" class="pilcrow">¶</a>
+</li>
+        <li id="section-6-2.7">The candidate's signature verifies (else
+        <code>invalid_signature</code>).<a href="#section-6-2.7" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-6-3">A rejected candidate <span class="bcp14">MUST NOT</span> be written into the
+      trail. Incremental admission is an enforcement convenience and an
+      early-rejection UX; it is not a substitute for the Quorum Gate. A
+      conforming Verifying Executor <span class="bcp14">MUST</span> re-evaluate the full
+      Quorum Gate (<a href="#quorum-gate" class="auto internal xref">Section 5</a>) over the assembled trail
+      before performing the action, regardless of incremental admission,
+      because the executor does not trust the orchestrator to have applied
+      admission honestly (this mirrors the base draft's execution-side
+      enforcement, <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 9).<a href="#section-6-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="composition">
+<section id="section-7">
+      <h2 id="name-multi-handshake-composition">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-multi-handshake-composition" class="section-name selfRef">Multi-Handshake Composition</a>
+      </h2>
+<p id="section-7-1">This section is informative. It describes, end to end, the process
+      by which the normative machinery of <a href="#quorum-policy" class="auto internal xref">Section 3</a>
+      through <a href="#incremental-admission" class="auto internal xref">Section 6</a> composes individual
+      signing ceremonies into one multi-party decision. Every property named
+      here is required elsewhere in this document or in the base draft; this
+      section introduces no new requirements.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<p id="section-7-2"><strong>The handshake is the unit of approval.</strong> Each quorum
+      member is one complete run of the base draft's single-approver signing
+      ceremony (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 5.3): a fresh, one-time
+      challenge is issued for that approver against a verified handshake,
+      bound to the exact action bytes through the action hash and binding
+      hash it commits to, and bounded by an explicit validity window; the
+      approver answers it with a user-verified, device-held signature whose
+      WebAuthn assertion challenge is the member's context hash (the
+      per-member requirement is check 2 of the Quorum Gate,
+      <a href="#quorum-gate" class="auto internal xref">Section 5</a>). Nothing about the ceremony is weakened
+      or amortized when the action needs several approvers: there is no
+      batch signature and no shared signing session; k approvals are k
+      separate ceremonies, each independently verifiable and each
+      independently refusable.<a href="#section-7-2" class="pilcrow">¶</a></p>
+<p id="section-7-3"><strong>A malformed trail never exists.</strong> Composition is
+      incremental and server-side. Each candidate member is evaluated
+      against the admission rule of <a href="#incremental-admission" class="auto internal xref">Section 6</a>
+      before it is recorded, so a wrong-action, off-roster, duplicate,
+      out-of-order, stale, or invalidly signed member handshake is refused
+      at the moment it is presented and never enters the trail. The stored
+      trail is therefore, at every instant, a prefix of a potentially
+      satisfiable quorum; there is no later cleaning pass that removes bad
+      members, because bad members are never written. The Verifying
+      Executor still re-evaluates the full Quorum Gate over the assembled
+      trail, as <a href="#incremental-admission" class="auto internal xref">Section 6</a> requires, precisely
+      because it does not trust the orchestrator to have admitted
+      honestly.<a href="#section-7-3" class="pilcrow">¶</a></p>
+<p id="section-7-4"><strong>Order is a signed commitment, not a claim.</strong> In
+      strong ordered mode (<a href="#approval-modes" class="auto internal xref">Section 4</a>), each member's
+      signed context after the first commits to the hash of its
+      predecessor's context. Because that commitment sits inside the bytes
+      the approver's device signed, and each predecessor in turn committed
+      to its own predecessor, the i-th signature transitively covers the
+      entire prior trail: the order of approvals is non-repudiable, and no
+      party -- including the operator -- can reorder, insert, or backdate a
+      member without invalidating a signature (check 7a,
+      <a href="#quorum-gate" class="auto internal xref">Section 5</a>). Plain ordered mode retains the weaker,
+      timestamp-based ordering described in
+      <a href="#approval-modes" class="auto internal xref">Section 4</a>.<a href="#section-7-4" class="pilcrow">¶</a></p>
+<p id="section-7-5"><strong>Denial is a first-class terminal outcome.</strong> Any
+      approver in the trail can refuse, and a refusal is not the mere
+      absence of an approval. Under the base draft a denial is signed over
+      the same context hash with a decision of "denied" and is terminal: a
+      denied authorization can never later become approved
+      (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Sections 5.3 and 6.1). At the
+      composition level, one dissenting approver leaves durable,
+      attributable evidence of the dissent, which a relying party can weigh
+      as adverse evidence rather than as a gap in the trail.<a href="#section-7-5" class="pilcrow">¶</a></p>
+<p id="section-7-6"><strong>The composed decision is accepted at most once.</strong> A
+      satisfied quorum is authorization evidence for one exact action and is
+      consumable at most once within its atomic consumption domain; the relying
+      party separately decides AUTHORIZED. Each
+      member's signoff individually retains the base draft's
+      one-time-consumption rule (<a href="#sec-window" class="auto internal xref">Section 10.4</a>), and
+      consumption of the composed decision is refused until the Quorum Gate
+      is satisfied; a partial trail confers no partial authority
+      (<a href="#sec-partial" class="auto internal xref">Section 10.3</a>).<a href="#section-7-6" class="pilcrow">¶</a></p>
+<p id="section-7-7"><strong>The whole composition is verifiable offline.</strong>
+      Because the satisfied/not-satisfied judgment is a pure function of
+      the policy, the action hash, and the members
+      (<a href="#quorum-gate" class="auto internal xref">Section 5</a>, Q5), an auditor holding only the
+      quorum receipt can recompute every check above -- per-member
+      signatures, action binding, distinctness of humans and keys, roster
+      admission, threshold, order and ordering chain, and window -- without
+      contacting the operator. As in the base draft, such offline
+      verification establishes the integrity and authenticity of the
+      recorded composition as of signing time; it does not by itself
+      establish current validity, such as the present enrollment or
+      revocation status of the approvers involved.<a href="#section-7-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="member-representation">
+<section id="section-8">
+      <h2 id="name-member-representation-in-th">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-member-representation-in-th" class="section-name selfRef">Member Representation in the Receipt</a>
+      </h2>
+<p id="section-8-1">A quorum receipt is an ordinary EP Trust Receipt
+      (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 6.2) whose <code>contexts</code>
+      and <code>signoffs</code> arrays carry one entry per admitted member, plus
+      the Quorum Policy (by reference via <code>policy_hash</code>, and
+      optionally inline for convenience). For the offline
+      quorum computation, each member is the triple:<a href="#section-8-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-8-2">
+<pre>
+{
+  "role": "program_officer",
+  "approver_public_key": "&lt;SPKI of the approver's enrolled key&gt;",
+  "signoff": {
+    "@type": "ep.signoff",
+    "context": {
+      "context_type": "ep.signoff.v1",
+      "action_hash": "...",
+      "approver": "...",
+      "issued_at": "...",
+      "...": "..."
+    },
+    "webauthn": {
+      "authenticator_data": "...",
+      "client_data_json": "...",
+      "signature": "..."
+    }
+  }
+}
+</pre><a href="#section-8-2" class="pilcrow">¶</a>
+</div>
+<p id="section-8-3">The <code>context</code> and <code>webauthn</code> members are exactly as
+      defined by the base draft; EP-QUORUM does not alter their
+      canonicalization, hashing, or signature verification. The
+      <code>role</code> and <code>approver_public_key</code> are the join keys
+      against the Quorum Policy roster and the Approver Directory.<a href="#section-8-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="conformance">
+<section id="section-9">
+      <h2 id="name-conformance">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-conformance" class="section-name selfRef">Conformance</a>
+      </h2>
+<p id="section-9-1">An implementation conforms to EP-QUORUM if, for the published
+      adversarial conformance vectors, it returns the expected
+      satisfied/not-satisfied verdict for every vector and rejects every
+      non-conforming candidate at incremental admission with the expected
+      reason. The reference suite (EP-QUORUM-v1) comprises the following
+      vectors, each carrying real Class-A WebAuthn assertions:<a href="#section-9-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-2">
+        <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Vector</th>
+            <th class="text-left" rowspan="1" colspan="1">Expect</th>
+            <th class="text-left" rowspan="1" colspan="1">Exercises</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>accept_ordered_3of3</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">Ordered PO, AO, IG; distinct; increasing time; all action-bound</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>accept_threshold_2of3</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">Any 2 distinct approvers from a 3-slot roster</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_under_threshold</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">Fewer than <code>required</code> valid members</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_duplicate_human</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">One human filling two slots</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_out_of_order</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">Ordered mode, members out of roster order</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_action_mismatch</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">A member bound to a different action hash</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_expired_window</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">A member outside <code>window_sec</code>
+</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_one_bad_signature</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">One invalid member signature</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_wrong_role</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">A correct signature by an off-roster approver</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_duplicate_key</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">One device key signing under two approver identifiers (check 5a)</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>reject_broken_chain</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">not satisfied</td>
+            <td class="text-left" rowspan="1" colspan="1">Strong ordered mode, a member committing to the wrong predecessor context hash (check 7a)</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="section-9-3">The reference suite is maintained such that three cross-language
+      reference verifiers (JavaScript, Python, Go), which share one
+      repository and are therefore a consistency check rather than
+      clean-room independent implementations, <span class="bcp14">MUST</span> agree on
+      every vector; divergence is a conformance defect in at least one
+      verifier. Independent implementations remain future interoperability
+      evidence. The "accept" vectors guard against a verifier that is
+      too strict (denying valid quorums); the "reject" vectors guard against
+      a verifier that is too lenient (the security-critical direction).<a href="#section-9-3" class="pilcrow">¶</a></p>
+<p id="section-9-4">Separate symbolic evidence covers a fixed 2-of-2 quorum instance.
+      It does not prove this document's general k-of-n construction, the
+      reference implementations, WebAuthn internals, directory correctness,
+      parser behavior, collusion resistance, or deployment behavior. A CI
+      regression gate over an existing prover result improves reproducibility
+      but does not enlarge the modeled system.<a href="#section-9-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-10">
+      <h2 id="name-security-considerations">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-10-1">EP-QUORUM inherits all Security Considerations of
+      <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span> and adds the following. Several restate,
+      honestly, what a quorum does <em>not</em> buy.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<div id="sec-prevent">
+<section id="section-10.1">
+        <h3 id="name-what-multi-party-authorizat">
+<a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-what-multi-party-authorizat" class="section-name selfRef">What multi-party authorization does and does not prevent</a>
+        </h3>
+<p id="section-10.1-1">A satisfied quorum proves that k pairwise-distinct enrolled
+        approvers each produced a valid, action-bound, in-window, in-order
+        (where required) signature with their own device-held keys, and that
+        the orchestrator could not have forged any of them
+        (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 11.1). It raises the cost of
+        unilateral action: a single compromised agent, a single stolen key,
+        a single coerced or malicious approver is insufficient. It does
+        <em>not</em> defeat collusion among the required number of
+        distinct humans, nor one human who controls multiple enrolled
+        identities (an enrollment control -- base draft Section 5.2), nor
+        simultaneous coercion of a full quorum. As in the base draft,
+        EP-QUORUM makes such events <em>attributable</em> -- named, signed,
+        and evidenced for every member -- which is a deterrent and an audit
+        primitive, not an impossibility proof. Implementations
+        <span class="bcp14">MUST NOT</span> claim a quorum is collusion-proof.<a href="#section-10.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-failclosed">
+<section id="section-10.2">
+        <h3 id="name-fail-closed-is-the-only-saf">
+<a href="#section-10.2" class="section-number selfRef">10.2. </a><a href="#name-fail-closed-is-the-only-saf" class="section-name selfRef">Fail-closed is the only safe default</a>
+        </h3>
+<p id="section-10.2-1">The dangerous error in a multi-party gate is to treat ambiguity
+        as approval. EP-QUORUM is specified so that a malformed policy, a
+        missing or unparseable member, a partial trail, or any single failed
+        check yields "not satisfied." A verifier <span class="bcp14">MUST NOT</span>
+        default to satisfied on any unrecognized condition. The "reject"
+        conformance vectors exist to catch a regression in this
+        direction.<a href="#section-10.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-partial">
+<section id="section-10.3">
+        <h3 id="name-partial-trails-confer-no-au">
+<a href="#section-10.3" class="section-number selfRef">10.3. </a><a href="#name-partial-trails-confer-no-au" class="section-name selfRef">Partial trails confer no authority</a>
+        </h3>
+<p id="section-10.3-1">A trail short of the threshold, or one in which incremental
+        admission has accepted some but not all required slots, authorizes
+        nothing. A Verifying Executor presented with a partial trail
+        <span class="bcp14">MUST</span> refuse, exactly as it refuses a missing single
+        signoff. This is the multi-party form of the base draft's
+        NoBypassWrite invariant.<a href="#section-10.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-window">
+<section id="section-10.4">
+        <h3 id="name-window-and-replay">
+<a href="#section-10.4" class="section-number selfRef">10.4. </a><a href="#name-window-and-replay" class="section-name selfRef">Window and replay</a>
+        </h3>
+<p id="section-10.4-1">The approval window (<code>window_sec</code>) bounds how long a
+        partial quorum remains completable, limiting the value to an
+        attacker of compromising a <em>remaining</em> approver after some
+        approvals already exist. Each member's signoff retains the base
+        draft's one-time-consumption nonce (G3); the window is an
+        additional, quorum-level constraint, not a substitute for
+        per-signoff replay protection. The monotonic-time rule in ordered
+        mode additionally prevents back-dating a later authority's signature
+        to appear to precede an earlier one.<a href="#section-10.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-misinform">
+<section id="section-10.5">
+        <h3 id="name-divide-and-misinform-across">
+<a href="#section-10.5" class="section-number selfRef">10.5. </a><a href="#name-divide-and-misinform-across" class="section-name selfRef">Divide-and-misinform across members</a>
+        </h3>
+<p id="section-10.5-1">Because each approver signs their own Authorization Context, a
+        malicious orchestrator can attempt to show different approvers
+        different renderings or different initiator attestations
+        (<span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 11.9) while each individual
+        signature remains valid. EP-QUORUM does not change the base draft's
+        cross-context consistency requirement; verifiers
+        <span class="bcp14">SHOULD</span> surface per-member context differences, and
+        high-value ordered policies <span class="bcp14">SHOULD</span> render the prior
+        approvers' decisions to each subsequent approver so that the trail is
+        a chain of informed approvals rather than parallel ones. The
+        presentation-attack mitigations of base draft Section 11.3 apply per
+        member.<a href="#section-10.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-fatigue">
+<section id="section-10.6">
+        <h3 id="name-approver-fatigue-at-quorum-">
+<a href="#section-10.6" class="section-number selfRef">10.6. </a><a href="#name-approver-fatigue-at-quorum-" class="section-name selfRef">Approver fatigue, at quorum scale</a>
+        </h3>
+<p id="section-10.6-1">Requiring more humans does not help if each rubber-stamps; it can
+        hurt, by diffusing responsibility across a group in which no member
+        feels decisive (base draft Section 11.8). Quorum policies
+        <span class="bcp14">MUST</span> be scoped to genuinely high-consequence,
+        low-frequency actions, and deployments <span class="bcp14">SHOULD</span> monitor
+        per-role time-to-sign and deny rates rather than assume that more
+        signers means more scrutiny.<a href="#section-10.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-rubberstamp">
+<section id="section-10.7">
+        <h3 id="name-rubber-stamping-and-review-">
+<a href="#section-10.7" class="section-number selfRef">10.7. </a><a href="#name-rubber-stamping-and-review-" class="section-name selfRef">Rubber-stamping and review-latency evidence</a>
+        </h3>
+<p id="section-10.7-1">Signing-ceremony telemetry -- the times at which each member's
+        challenge was issued, first viewed, and approved --
+        <span class="bcp14">SHOULD</span> be retained alongside the trail as evidence of
+        how much review each approval actually received. A relying party
+        <span class="bcp14">MAY</span> apply a minimum-review-latency policy when
+        weighing an approval: an approval recorded a very short interval
+        after the challenge was first viewed is evidence of rubber-stamping
+        rather than review, and a relying party may discount it or treat the
+        bundle as containing conflicting evidence accordingly. This raises
+        the probability that rubber-stamping is detected after the fact and
+        makes it attributable to a named approver; it does not prevent
+        rubber-stamping, and it does not defeat collusion or coercion, for
+        which <a href="#sec-prevent" class="auto internal xref">Section 10.1</a> applies. Ceremony telemetry
+        originates with the orchestrator, so a relying party that depends on
+        it should weigh unsigned telemetry with the same skepticism as any
+        other operator-supplied metadata; deployments that need it to serve
+        as evidence rather than log data can have the operator sign the
+        ceremony record so that its integrity is independently
+        checkable.<a href="#section-10.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-threshold-custody">
+<section id="section-10.8">
+        <h3 id="name-human-quorum-is-not-thresho">
+<a href="#section-10.8" class="section-number selfRef">10.8. </a><a href="#name-human-quorum-is-not-thresho" class="section-name selfRef">Human quorum is not threshold secret custody</a>
+        </h3>
+<p id="section-10.8-1">EP-QUORUM verifies distinct enrolled approvers, action-bound
+        signatures, roles, order, and timing. Reconstructing a capability
+        holder secret from m-of-n shares proves only that enough shares were
+        combined. Unless each share holder separately performs the EP-QUORUM
+        ceremony, threshold reconstruction does not prove that distinct
+        humans reviewed or approved the action. Implementations and public
+        claims <span class="bcp14">MUST NOT</span> describe threshold secret custody as
+        EP-QUORUM authorization.<a href="#section-10.8-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="changes-03">
+<section id="section-11">
+      <h2 id="name-changes-from-02">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-changes-from-02" class="section-name selfRef">Changes from -02</a>
+      </h2>
+<p id="section-11-1">Clarified that EP-QUORUM's distinct-human, action-bound approval
+      ceremony is not interchangeable with m-of-n reconstruction of a
+      capability holder secret.<a href="#section-11-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana">
+<section id="section-12">
+      <h2 id="name-iana-considerations">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-12-1">This document has no IANA actions.<a href="#section-12-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-13">
+      <h2 id="name-normative-references">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="EP-RECEIPTS">[EP-RECEIPTS]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions (EP)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts</span>, <time datetime="2026-06" class="refDate">June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+      <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+      <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="WEBAUTHN">[WEBAUTHN]</dt>
+    <dd>
+<span class="refAuthor">W3C</span>, <span class="refTitle">"Web Authentication: An API for accessing Public Key Credentials, Level 2"</span>, <time datetime="2021-04" class="refDate">April 2021</time>, <span>&lt;<a href="https://www.w3.org/TR/webauthn-2/">https://www.w3.org/TR/webauthn-2/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<div id="authors-addresses">
+<section id="appendix-A">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Iman Schrock</span></div>
+<div dir="auto" class="left"><span class="org">EMILIA Protocol, Inc.</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:team@emiliaprotocol.ai" class="email">team@emiliaprotocol.ai</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-canonical-action-identifier-00"
-     category="info" ipr="trust200902" submissionType="IETF"
+     category="info" ipr="trust200902"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="CAID">The Canonical Action Identifier (CAID)</title>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="14"/>
+    <date year="2026" month="July" day="19"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>action</keyword>
@@ -656,6 +656,16 @@ lower-char    = %x61-7A          ; a-z
       <ul spacing="normal">
         <li>A CAID is not authorization. Possession of an identifier,
         or of the object it digests, authorizes nothing.</li>
+        <li>A capability scope can name one or more CAIDs as exact content
+        constraints. The capability's signature, issuer trust, holder proof,
+        budget state, and local policy create that authorization context;
+        the CAIDs themselves still grant nothing.</li>
+        <li>A capability grant, a narrowing delegation, and each capability
+        exercise are different material actions and can have separate CAIDs.
+        Equality or EQUIVALENT_UNDER_PROFILE does not establish that an
+        exercise falls within a grant. Scope containment, attenuation,
+        remaining budget, and permission to act are evaluated by the
+        capability protocol under relying-party-selected inputs.</li>
         <li>A CAID is not identity. It names content, not any human,
         agent, workload, or organization.</li>
         <li>A CAID is not proof of execution or of outcome. An
