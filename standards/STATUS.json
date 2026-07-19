@@ -279,13 +279,12 @@
   "consolidation_rules": [
     "Architecture-01 absorbs the staged Agent Trust Stack map.",
     "AEC owns component verification, action binding, and evidence satisfaction; it does not define effect or ceremony records.",
-    "Outcome Binding owns predicted-versus-observed effect semantics.",
     "Quorum owns ordered multi-handshake and distinct-human policy semantics.",
     "Receipts owns the base receipt and explicit approval profile, not every approval mechanism.",
     "Challenge will profile AuthZEN AARP's requestable denial and PDP-verifiable approval state instead of redefining its workflow.",
     "Revocation owns terminal negative evidence; current non-revocation is a separately authenticated, policy-fresh status input and may profile Token Status List.",
     "Assurance requirements are verifier-visible proof predicates; no standalone universal S/H/V/Q taxonomy is being filed.",
-    "Authority Introduction owns both trust-root introduction and the next scoped-authority consolidation; no separate Authority Registry draft is filed.",
+    "Authority Introduction owns trust-root introduction and scoped authority; no separate Authority Registry draft is filed.",
     "Evidence Record owns crypto agility and hybrid anti-stripping; no standalone PQC algorithm catalog is filed."
   ],
   "matching_claim": {
