@@ -332,26 +332,34 @@ export default function HomePage() {
         </C>
       </section>
 
-      {/* ── STANDARDS COMPOSITION — adjacent layers, not rival claims ─ */}
+      {/* ── INTEROPERABLE CONTROL CHAIN — adjacent layers, not rival claims ─ */}
       <section style={{ padding: '88px 0 0' }}>
         <C>
           <motion.div {...reveal()} style={{ maxWidth: 820 }}>
-            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>Fits the authorization stack</div>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>Interoperable consequence control</div>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
-              Keep delegation, policy, and accountable authorization separate.
+              Three distinct proofs. One controlled outcome.
             </h2>
             <p style={{ fontSize: 18, color: color.t1, lineHeight: 1.7, maxWidth: 780, marginTop: 22 }}>
-              AgentROA governs what an agent may call. ORPRG verifies that policy permitted the
-              effect. EMILIA proves who authorized the exact material action — and safely controls
-              the consequence when money, infrastructure, regulated records, or irreversible state
-              is involved.
+              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact
+              human authorization and safely controls consequential outcomes.
             </p>
             <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72, maxWidth: 700, marginTop: 16 }}>
-              These are complementary layers. A deployment pins the native evidence and verifiers
-              it trusts; EMILIA keeps those inputs distinct from exact-action human authorization
-              and executor-side enforcement.
+              CAID correlates native action descriptions only under exact, relying-party-pinned
+              mapping profiles. It can return <code>INDETERMINATE</code>, and it never grants
+              authority. Gate keeps native verification, material-action matching, human approval,
+              and executor-side enforcement separate.
             </p>
-            <div style={{ marginTop: 24 }}>
+            <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72, maxWidth: 760, marginTop: 16 }}>
+              Action Escrow shows the chain on one exact release. If a provider is entered but its
+              result cannot be established, Gate refuses blind replay and holds the operation
+              indeterminate until authenticated evidence reconciles it. The Assurance Plane then
+              re-performs the record against public verification, conformance, and formal-model
+              evidence.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 24 }}>
+              <Link href="/action-escrow" className="ep-cta-secondary" style={cta.secondary}>Open Action Escrow →</Link>
+              <Link href="/assurance" className="ep-cta-secondary" style={cta.secondary}>Inspect Assurance →</Link>
               <Link href="/observatory" className="ep-cta-secondary" style={cta.secondary}>Review the standards map →</Link>
             </div>
           </motion.div>
