@@ -73,6 +73,10 @@ const SERVICE_ONLY_TABLES = [
   'revoked_commit_keys',
   'revoked_sessions',
   'session_cutoffs',
+  // Marvel durable capability store (packages/gate/capability-receipt.js):
+  // spending/budget state reached only through the service-role durable store.
+  'ep_capability_state',
+  'ep_capability_operations',
 ];
 
 export const contract = {
@@ -137,6 +141,10 @@ export const contract = {
       'status', 'reservation_expires_at', 'reservation_attempts', 'claim_attempts',
       'effect_contract_digest', 'retryable', 'provider_result'],
     scim_provisioning_tokens: ['tenant_id', 'token_hash', 'token_prefix', 'revoked_at'],
+    ep_capability_state: ['capability_id', 'capability_fingerprint', 'budget_amount',
+      'currency', 'consumed_amount', 'reserved_amount', 'expires_at'],
+    ep_capability_operations: ['operation_id', 'capability_id', 'amount', 'currency',
+      'status', 'reservation_token', 'reserved_at', 'committed_at'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.

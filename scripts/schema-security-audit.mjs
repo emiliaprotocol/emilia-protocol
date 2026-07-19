@@ -144,8 +144,13 @@ export function readMigrationBundle(root = ROOT) {
 export function auditMigrationBundle(migrationFiles, schemaContract = contract) {
   const files = migrationFiles.map((entry) => ({ file: entry.file, sql: entry.sql }));
   const statements = files.flatMap((entry) => statementsFor(entry.sql));
-  const invariantFile = files.find((entry) => entry.file.endsWith('_fortress_db_security_invariants.sql'));
-  const invariantStatements = invariantFile ? statementsFor(invariantFile.sql) : [];
+  // Fortress reassertions are forward-only: a service-only table added AFTER the
+  // first fortress migration reasserts its ACL/RLS in a LATER fortress file.
+  // Union the statements across ALL fortress files so a new one counts, while
+  // the invariant strength is unchanged — every table's revoke must still appear
+  // in some fortress migration in the checked-in source.
+  const invariantFiles = files.filter((entry) => entry.file.endsWith('_fortress_db_security_invariants.sql'));
+  const invariantStatements = invariantFiles.flatMap((entry) => statementsFor(entry.sql));
   const failures = [];
   const checks = [];
   const source = files.map((entry) => `${entry.file}\n${entry.sql}`).join('\n');
@@ -156,7 +161,7 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
     else failures.push({ name, detail: detail || 'invariant failed' });
   };
 
-  check('fortress reconciliation migration present', () => Boolean(invariantFile));
+  check('fortress reconciliation migration present', () => invariantFiles.length > 0);
 
   for (const table of schemaContract.rlsRequired) {
     check(`RLS enabled: ${table}`, () => statements.some((statement) =>
