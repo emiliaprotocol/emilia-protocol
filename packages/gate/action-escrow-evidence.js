@@ -345,8 +345,33 @@ function stageAllowsRelease(stage) {
 }
 
 /**
+ * @typedef {Object} EvidencePackageInput
+ * @property {string} [agreementId]
+ * @property {string} [stage]
+ * @property {*} [binding]
+ * @property {*} [documentBytes]
+ * @property {string|null} [documentFileName]
+ * @property {*} [documentExecution]
+ * @property {Array<*>} [agreementAcceptances]
+ * @property {Array<*>} [releaseApprovals]
+ * @property {*} [fundingStatement]
+ * @property {Array<*>} [milestones]
+ * @property {*} [release]
+ * @property {*} [stateRecord]
+ * @property {Array<*>} [amendments]
+ * @property {*} [verificationProfile]
+ * @property {*} [projectRecordBytes]
+ * @property {string|null} [projectRecordFileName]
+ * @property {string|null} [projectRecordProvider]
+ * @property {string|null} [projectRecordSnapshotDigest]
+ */
+
+/**
  * Build a portable evidence manifest. The final document bytes are hashed but
  * not embedded; transport them beside the JSON manifest.
+ *
+ * @param {EvidencePackageInput} [input]
+ * @param {{ now?: number, maxDocumentBytes?: number, maxProjectRecordBytes?: number }} [limits]
  */
 export function buildActionEscrowEvidencePackage({
   agreementId,
@@ -486,6 +511,26 @@ async function callVerifier(verifier, value, context) {
  * Component verifiers are configuration, never read from the package. Their
  * returned binding fields are checked again here so a valid artifact for one
  * agreement, document, party, or action cannot be relabeled into another slot.
+ *
+ * @param {*} pkg
+ * @param {Object} [options]
+ * @param {*} [options.documentBytes]
+ * @param {*} [options.projectRecordBytes]
+ * @param {*} [options.verifyBinding]
+ * @param {*} [options.verifyProjectRecord]
+ * @param {*} [options.verifyProfile]
+ * @param {*} [options.verifyDocumentExecution]
+ * @param {*} [options.verifyAgreementAcceptance]
+ * @param {*} [options.verifyReleaseApproval]
+ * @param {*} [options.verifyFunding]
+ * @param {*} [options.verifyMilestone]
+ * @param {*} [options.verifyRelease]
+ * @param {*} [options.verifyAmendment]
+ * @param {*} [options.verifyState]
+ * @param {string} [options.expectedAgreementId]
+ * @param {Date|number|string} [options.now]
+ * @param {number} [options.maxDocumentBytes]
+ * @param {number} [options.maxProjectRecordBytes]
  */
 export async function verifyActionEscrowEvidencePackage(pkg, {
   documentBytes: rawDocumentBytes,
