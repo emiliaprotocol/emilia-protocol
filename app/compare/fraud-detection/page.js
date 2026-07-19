@@ -62,9 +62,9 @@ export default function CompareFraudPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dimension</th>
-                <th style={styles.tableHead}>Post-action fraud detection</th>
-                <th style={styles.tableHead}>EP pre-action authorization</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>Dimension</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>Post-action fraud detection</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>EP pre-action authorization</th>
               </tr>
             </thead>
             <tbody>

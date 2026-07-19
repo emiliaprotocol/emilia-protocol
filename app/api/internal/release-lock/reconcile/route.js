@@ -12,6 +12,7 @@ import { getReleaseLockService } from '@/lib/release-lock/runtime.js';
 
 export async function POST(request) {
   try {
+    /** @type {{ valid: boolean, operator_id?: string, role?: string|null, error?: string }} */
     const operator = authenticateOperator(request, {
       requireOperatorIdentity: true,
     });

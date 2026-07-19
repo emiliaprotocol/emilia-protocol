@@ -32,7 +32,10 @@ export async function POST(request) {
     const body = parsed.value;
 
     // ── Schema validation (early gate) ────────────────────────────────
-    const { valid, data, errors } = validateHandshakeCreate(body);
+    const { valid, data, errors } = /** @type {
+      | { valid: true, data: { mode: string, policy_id: string, parties: any[], payload?: any, interaction_id?: string|null, binding?: any, binding_ttl_ms?: number, idempotency_key?: string|null, action_type?: string|null, resource_ref?: string|null, intent_ref?: string|null }, errors?: undefined }
+      | { valid: false, data?: undefined, errors: string[] }
+    } */ (validateHandshakeCreate(body));
     if (!valid) {
       return epError(EP_ERROR_CODES.INVALID_INPUT, errors.join('; '));
     }
@@ -54,10 +57,10 @@ export async function POST(request) {
         'Initiator entity_ref must match the authenticated entity');
     }
 
-    const result = await initiateHandshake({
+    const result = /** @type {import('@/lib/handshake/create').InitiateHandshakeResult & { error?: any }} */ (await initiateHandshake({
       actor: actorId,
       ...data,
-    });
+    }));
 
     if (result.error) {
       logger.error('[handshake] Initiation failed:', result.error);

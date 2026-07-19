@@ -118,6 +118,7 @@ const INSET = 'rgba(228,229,225,0.35) 0 1px 0 0 inset, rgba(110,111,109,0.08) 0 
 // ── Motion animation presets ────────────────────────────────────────────────
 // All scroll reveals use Motion whileInView — no manual IntersectionObserver,
 // no class-toggling, no timing hacks. Motion handles edge cases internally.
+/** @type {readonly [number, number, number, number]} */
 const EASE = [0.23, 1, 0.32, 1];
 
 // Scroll-triggered rise: used for every section below the hero.

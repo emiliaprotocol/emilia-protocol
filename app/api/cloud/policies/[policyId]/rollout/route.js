@@ -32,6 +32,7 @@ const MAX_BODY_BYTES = 64 * 1024;
  */
 export async function POST(request, { params }) {
   try {
+    /** @type {{ tenantId: string, environment: string, permissions: string[], keyId: string, operatorId?: string, principalId?: string }} */
     const auth = await authenticateCloudRequest(request);
     if (!auth) return EP_ERRORS.UNAUTHORIZED();
     requirePermission(auth, 'admin');

@@ -20,6 +20,19 @@ import { resolveEnrollmentBasis } from '@/lib/scim/directory-anchor.js';
 
 const MAX_WEBAUTHN_REGISTER_VERIFY_BYTES = 256 * 1024;
 
+/**
+ * Local merge of lib/scim/directory-anchor.js's EnrollmentBasisOk |
+ * EnrollmentBasisError — that union has no shared discriminant, so a plain
+ * `if (x.error)` check can't narrow it. All fields optional here to mirror
+ * the two disjoint shapes without changing the runtime check below.
+ * @typedef {Object} EnrollmentBasisResult
+ * @property {{status:number, code:string, detail:string}} [error]
+ * @property {'directory'|'operator_attested'} [basis]
+ * @property {string|null} [directoryUserId]
+ * @property {string} [storedApproverId]
+ * @property {boolean} [hasDirectory]
+ */
+
 export async function POST(request) {
   try {
     const auth = await authenticateRequest(request);
@@ -49,7 +62,7 @@ export async function POST(request) {
     // may bind approver_id under this org. A directory org rejects an approver
     // not in its provisioned directory; a non-directory org records the
     // operator-attested basis. This must precede the credential INSERT below.
-    const basisResolution = await resolveEnrollmentBasis(supabase, organizationId, body.approver_id);
+    const basisResolution = /** @type {EnrollmentBasisResult} */ (await resolveEnrollmentBasis(supabase, organizationId, body.approver_id));
     if (basisResolution.error) {
       return epProblem(basisResolution.error.status, basisResolution.error.code, basisResolution.error.detail);
     }

@@ -86,6 +86,7 @@ export async function POST(request) {
       return epProblem(400, 'invalid_events', 'At least one event type is required');
     }
 
+    /** @type {{ endpoint?: any, secret?: string, error?: string, status?: number }} */
     const result = await registerEndpoint(auth.tenantId, url, events);
 
     if (result.error) {

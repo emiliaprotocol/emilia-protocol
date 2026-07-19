@@ -5,6 +5,6 @@
     "jsx": "preserve", "skipLibCheck": true, "noImplicitAny": false,
     "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": ["react", "node"]
   },
-  "include": ["app/**/*.js", "app/**/*.jsx"],
+  "include": ["app/**/*.js", "app/**/*.jsx", "app/**/*.d.ts"],
   "exclude": ["**/*.test.js", "**/*.test.jsx", "**/node_modules/**"]
 }

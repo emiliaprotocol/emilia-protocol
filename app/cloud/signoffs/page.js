@@ -2,6 +2,30 @@
 
 import { useState, useEffect } from 'react';
 
+/**
+ * @typedef {Object} SignoffStyles
+ * @property {import('react').CSSProperties} page
+ * @property {import('react').CSSProperties} container
+ * @property {import('react').CSSProperties} eyebrow
+ * @property {import('react').CSSProperties} h1
+ * @property {import('react').CSSProperties} subtitle
+ * @property {import('react').CSSProperties} grid
+ * @property {import('react').CSSProperties} statCard
+ * @property {import('react').CSSProperties} statLabel
+ * @property {import('react').CSSProperties} statValue
+ * @property {import('react').CSSProperties} card
+ * @property {import('react').CSSProperties} cardTitle
+ * @property {import('react').CSSProperties} tabs
+ * @property {(active: boolean) => import('react').CSSProperties} tab
+ * @property {import('react').CSSProperties} mono
+ * @property {import('react').CSSProperties} th
+ * @property {import('react').CSSProperties} td
+ * @property {(color: string) => import('react').CSSProperties} dot
+ * @property {import('react').CSSProperties} loading
+ * @property {import('react').CSSProperties} error
+ */
+
+/** @type {SignoffStyles} */
 const s = {
   page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },

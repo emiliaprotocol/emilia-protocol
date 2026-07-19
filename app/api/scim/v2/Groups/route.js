@@ -11,11 +11,11 @@ import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson
 const GROUP_FILTER_COLUMN = { displayName: 'display_name', externalId: 'external_id', id: 'id' };
 
 export async function GET(request) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {{ tenantId?: string, organizationId?: string, tokenId?: string, response?: import('next/server').NextResponse }} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
 
   const url = new URL(request.url);
-  const filter = parseFilter(url.searchParams.get('filter'));
+  const filter = /** @type {{ attribute?: string, operator?: 'eq', value?: string|boolean, unsupported?: true, raw?: string }} */ (parseFilter(url.searchParams.get('filter')));
   if (filter?.unsupported) return scimErrorResponse(400, `Unsupported filter: ${filter.raw}`, 'invalidFilter');
 
   const startIndex = Math.max(1, parseInt(url.searchParams.get('startIndex') || '1', 10) || 1);
@@ -44,7 +44,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {{ tenantId?: string, organizationId?: string, tokenId?: string, response?: import('next/server').NextResponse }} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
 
   const parsed = await readScimJson(request);

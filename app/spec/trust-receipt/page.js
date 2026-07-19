@@ -32,6 +32,7 @@ const ARTICLE_JSONLD = {
   license: 'https://www.apache.org/licenses/LICENSE-2.0',
 };
 
+/** @param {{ children: any, style?: React.CSSProperties }} props */
 const C = ({ children, style }) => (
   <div style={{ maxWidth: 880, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );

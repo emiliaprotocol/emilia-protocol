@@ -135,6 +135,7 @@ export async function POST(request, { params }) {
     // -------------------------------------------------------------------
     // adjudicateDispute owns its internal service writes. Do not pass the
     // route-scoped guarded client into a helper that persists its result.
+    /** @type {{ error?: string, status?: number, dispute_id?: string, disputed_entity_id?: string, receipt_id?: string, adjudication?: any, vouchers?: any[], adjudicated_at?: string }} */
     const result = await adjudicateDispute(disputeId);
 
     if (result.error) {

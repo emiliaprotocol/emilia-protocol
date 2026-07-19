@@ -23,6 +23,7 @@ const MAX_BODY_BYTES = 64 * 1024;
  */
 export async function POST(request) {
   try {
+    /** @type {{ valid: boolean, operator_id?: string, role?: string, error?: string }} */
     const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
     const operatorId = opAuth.operator_id;

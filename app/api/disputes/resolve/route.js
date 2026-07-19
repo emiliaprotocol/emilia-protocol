@@ -25,7 +25,9 @@ const MAX_BODY_BYTES = 64 * 1024;
 export async function POST(request) {
   try {
     // Sensitive operator action — require a named operator identity for audit.
-    const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
+    const opAuth = /** @type {{ valid: boolean, operator_id?: string, role?: string|null, error?: string }} */ (
+      authenticateOperator(request, { requireOperatorIdentity: true })
+    );
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
     const operatorId = opAuth.operator_id;
     if (!hasPermission(opAuth.role, 'dispute.resolve')) {

@@ -314,6 +314,7 @@ function Fieldset({ legend, children }) {
   );
 }
 
+/** @param {{ label: string, required?: boolean, children: React.ReactNode }} props */
 function Field({ label, required, children }) {
   return (
     <label style={{ display: 'block' }}>

@@ -28,6 +28,7 @@ const PAGE_JSONLD = {
   mainEntityOfPage: 'https://www.emiliaprotocol.ai/why-agents-fail',
 };
 
+/** @param {{ children: React.ReactNode, style?: React.CSSProperties }} props */
 const C = ({ children, style }) => (
   <div style={{ maxWidth: 920, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );

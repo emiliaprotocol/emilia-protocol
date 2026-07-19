@@ -68,9 +68,9 @@ export default function CompareAuditLogsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dimension</th>
-                <th style={styles.tableHead}>Audit logs</th>
-                <th style={styles.tableHead}>EP trust receipts</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Dimension</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Audit logs</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>EP trust receipts</th>
               </tr>
             </thead>
             <tbody>

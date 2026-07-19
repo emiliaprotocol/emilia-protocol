@@ -62,9 +62,9 @@ export default function ComparePermitPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dimension</th>
-                <th style={styles.tableHead}>Permit.io</th>
-                <th style={styles.tableHead}>EMILIA Protocol</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>Dimension</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>Permit.io</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>EMILIA Protocol</th>
               </tr>
             </thead>
             <tbody>

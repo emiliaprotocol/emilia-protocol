@@ -494,6 +494,7 @@ function PanelTop({ label, value }) {
   );
 }
 
+/** @param {{ children: any, muted?: boolean, danger?: boolean }} props */
 function Line({ children, muted, danger }) {
   return (
     <div style={{ color: danger ? '#FCA5A5' : muted ? 'rgba(245,245,244,0.42)' : '#E7E5E4' }}>
@@ -525,6 +526,7 @@ function Strike({ strike, state, index, active }) {
   );
 }
 
+/** @returns {import('react').CSSProperties} */
 function tone(kind) {
   if (kind === 'safe') return { color: '#14532D', borderColor: '#86EFAC', background: '#DCFCE7' };
   if (kind === 'danger') return { color: '#7F1D1D', borderColor: '#FCA5A5', background: '#FEE2E2' };
@@ -533,6 +535,7 @@ function tone(kind) {
   return { color: '#44403C', borderColor: color.borderHover, background: '#F5F5F4' };
 }
 
+/** @returns {import('react').CSSProperties} */
 function gateShadow(kind) {
   if (kind === 'safe') return { boxShadow: '0 0 0 1px rgba(134,239,172,0.28), 0 30px 80px rgba(22,163,74,0.22)' };
   if (kind === 'danger') return { boxShadow: '0 0 0 1px rgba(252,165,165,0.32), 0 30px 80px rgba(220,38,38,0.22)' };
@@ -540,6 +543,7 @@ function gateShadow(kind) {
   return { boxShadow: '0 24px 70px rgba(0,0,0,0.28)' };
 }
 
+/** @returns {import('react').CSSProperties} */
 function ringTone(kind) {
   if (kind === 'safe') return { borderColor: '#86EFAC', borderTopColor: '#16A34A' };
   if (kind === 'danger') return { borderColor: '#FCA5A5', borderTopColor: '#DC2626' };
@@ -548,6 +552,7 @@ function ringTone(kind) {
   return { borderColor: '#78716C', borderTopColor: '#E7E5E4' };
 }
 
+/** @returns {import('react').CSSProperties} */
 function strikeTone(status) {
   if (status === 'allowed' || status === 'exported') return { borderColor: '#86EFAC', background: '#F0FDF4' };
   if (status === 'signed') return { borderColor: '#93C5FD', background: '#EFF6FF' };
@@ -566,6 +571,7 @@ function feedColor(kind) {
   return '#D6D3D1';
 }
 
+/** @type {Record<string, import('react').CSSProperties>} */
 const s = {
   page: {
     minHeight: '100vh',

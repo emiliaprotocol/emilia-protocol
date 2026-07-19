@@ -56,10 +56,12 @@ export async function POST(request, { params }) {
       return epProblem(403, 'attestation_identity_mismatch', 'humanEntityRef must match the authenticated actor');
     }
 
+    /** @type {any} */
+    const attestInput = data;
     const result = await createAttestation({
       actor,
       challengeId,
-      ...data,
+      ...attestInput,
     });
 
     if (result.error) {

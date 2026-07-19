@@ -6,7 +6,7 @@ import { CircleDollarSign, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { color, font, radius } from '@/lib/tokens';
 import styles from './release-lock.module.css';
 
-const tokenStyle = {
+const tokenStyle = /** @type {React.CSSProperties} */ ({
   '--rl-bg': color.bg,
   '--rl-surface': color.card,
   '--rl-surface-muted': color.cardHover,
@@ -23,7 +23,7 @@ const tokenStyle = {
   '--rl-radius-control': `${radius.sm}px`,
   '--rl-font-sans': font.sans,
   '--rl-font-mono': font.mono,
-};
+});
 
 export function DemoBadge() {
   return (
@@ -34,6 +34,7 @@ export function DemoBadge() {
   );
 }
 
+/** @param {{ children?: React.ReactNode, demo?: boolean, role?: string, statusLabel?: string }} props */
 export default function ReleaseLockShell({
   children,
   demo = false,

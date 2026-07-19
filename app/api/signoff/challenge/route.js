@@ -47,13 +47,17 @@ export async function POST(request) {
       }
     }
 
+    /** @type {any} */
+    const challengeInput = data;
     const result = await issueChallenge({
       actor: authEntityActor(auth),
-      ...data,
+      ...challengeInput,
     });
 
-    if (result.error) {
-      return epProblem(result.status || 500, 'signoff_challenge_failed', result.error);
+    /** @type {any} */
+    const resultAny = result;
+    if (resultAny.error) {
+      return epProblem(resultAny.status || 500, 'signoff_challenge_failed', resultAny.error);
     }
 
     return NextResponse.json(result, { status: 201 });

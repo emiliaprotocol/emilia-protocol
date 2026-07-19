@@ -21,6 +21,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { CRASH_SCENARIOS } from '@/lib/crash-scenarios';
 import { styles, color, font, radius, cta } from '@/lib/tokens';
 
+/** @type {[number, number, number, number]} */
 const EASE = [0.23, 1, 0.32, 1];
 const fmtUsd = (n) => (typeof n === 'number' ? `$${n.toLocaleString()}` : null);
 
@@ -288,6 +289,7 @@ function ModeBadge({ mode }) {
   );
 }
 
+/** @param {{ label: any, children: any, tone?: any }} props */
 function Field({ label, children, tone }) {
   return (
     <div style={{ marginTop: 16 }}>
@@ -312,6 +314,7 @@ function Field({ label, children, tone }) {
   );
 }
 
+/** @type {import('react').CSSProperties} */
 const consolePre = {
   fontFamily: font.mono,
   fontSize: 11.5,

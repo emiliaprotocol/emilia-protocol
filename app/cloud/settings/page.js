@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from 'react';
 
+/**
+ * @type {{
+ *   page: React.CSSProperties, container: React.CSSProperties, eyebrow: React.CSSProperties,
+ *   h1: React.CSSProperties, subtitle: React.CSSProperties, card: React.CSSProperties,
+ *   cardTitle: React.CSSProperties, cardDesc: React.CSSProperties, fieldGroup: React.CSSProperties,
+ *   label: React.CSSProperties, input: React.CSSProperties, select: React.CSSProperties,
+ *   toggle: (on: boolean) => React.CSSProperties, toggleDot: (on: boolean) => React.CSSProperties,
+ *   row: React.CSSProperties, rowLabel: React.CSSProperties, rowDesc: React.CSSProperties,
+ *   btn: React.CSSProperties, btnDanger: React.CSSProperties, mono: React.CSSProperties,
+ *   loading: React.CSSProperties, error: React.CSSProperties, success: React.CSSProperties,
+ * }}
+ */
 const s = {
   page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 900, margin: '0 auto', padding: '40px 24px' },

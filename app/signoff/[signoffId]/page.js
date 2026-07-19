@@ -31,6 +31,7 @@ const card = { width: '100%', maxWidth: 560 };
 const label = { fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8A857C', marginBottom: 6 };
 const mono = { fontFamily: "'JetBrains Mono', ui-monospace, monospace" };
 
+/** @param {{ k: string, v: any, monoVal?: boolean }} props */
 function Row({ k, v, monoVal }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '10px 0', borderBottom: '1px solid #26231F' }}>

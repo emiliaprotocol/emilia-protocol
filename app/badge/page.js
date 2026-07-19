@@ -26,6 +26,7 @@ export default function BadgePage() {
     return () => obs.disconnect();
   }, []);
 
+  /** @type {React.CSSProperties} */
   const codeBox = {
     fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.7, color: '#D6D3D1',
     background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base,

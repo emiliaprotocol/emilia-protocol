@@ -62,7 +62,7 @@ const MAX_BODY_BYTES = 1024 * 1024;
  * error object. The authenticated database row never crosses this boundary.
  *
  * @param {Request} request
- * @returns {Promise<{ entity: object } | { error: string }>}
+ * @returns {Promise<{ actor?: { id: any, entity_id: any, status?: string, emilia_score?: number } | null, error?: string }>}
  */
 async function authenticateAutoSubmit(request) {
   // Path 1: standard Bearer token (full API key auth with entity lookup)
@@ -134,7 +134,7 @@ function timingSafeEqual(a, b) {
  * delegated to the canonical writer.
  *
  * @param {Request} request  Next.js request object.
- * @returns {Response}       JSON response with accepted/rejected counts.
+ * @returns {Promise<Response>}  JSON response with accepted/rejected counts.
  */
 export async function POST(request) {
   try {

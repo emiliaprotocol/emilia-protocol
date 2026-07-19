@@ -27,6 +27,7 @@ export const metadata = {
   ],
 };
 
+/** @param {{ children: any, style?: React.CSSProperties }} props */
 const C = ({ children, style }) => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );
@@ -115,6 +116,7 @@ const SCENARIOS = [
   { tag: 'DATA', title: 'Agent exfiltrates PII', body: 'An agent attempts to export a table of personal records to an external destination. The high-risk write is intercepted.', enforced: false },
 ];
 
+/** @type {React.CSSProperties} */
 const codeBox = {
   fontFamily: font.mono,
   fontSize: 12.5,

@@ -33,13 +33,15 @@ export async function POST(request, { params }) {
     if (!parsed.ok) return parsed.response;
     const body = parsed.value;
 
-    const result = await verifyHandshake(handshakeId, {
-      actor: actorId,
-      payload: body.payload || null,
-      nonce: body.nonce || null,
-      action_hash: body.action_hash || null,
-      policy_hash: body.policy_hash || null,
-    });
+    const result = /** @type {import('@/lib/handshake/verify.js').VerifyHandshakeResult & { error?: string }} */ (
+      await verifyHandshake(handshakeId, {
+        actor: actorId,
+        payload: body.payload || null,
+        nonce: body.nonce || null,
+        action_hash: body.action_hash || null,
+        policy_hash: body.policy_hash || null,
+      })
+    );
 
     if (result.error) {
       // Same info-leak posture as the present route: the verifier/DB error can

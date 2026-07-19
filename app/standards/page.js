@@ -84,9 +84,9 @@ function ComplementTable({ rows }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
         <thead>
           <tr>
-            <th style={{ ...styles.tableHead, width: '38%' }}>Standard</th>
-            <th style={{ ...styles.tableHead, width: '16%' }}>Status</th>
-            <th style={styles.tableHead}>How EMILIA complements it</th>
+            <th style={{ ...(/** @type {import('react').CSSProperties} */ (styles.tableHead)), width: '38%' }}>Standard</th>
+            <th style={{ ...(/** @type {import('react').CSSProperties} */ (styles.tableHead)), width: '16%' }}>Status</th>
+            <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>How EMILIA complements it</th>
           </tr>
         </thead>
         <tbody>

@@ -101,7 +101,7 @@ export async function GET(request) {
     directory,
     session: 'set',
   });
-  res.cookies.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+  res.cookies.set(SESSION_COOKIE, token, /** @type {Partial<import('next/dist/compiled/@edge-runtime/cookies').ResponseCookie>} */ (SESSION_COOKIE_OPTIONS));
   // The one-shot login state has served its purpose.
   res.cookies.delete(SSO_STATE_COOKIE);
   return res;

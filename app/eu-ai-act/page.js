@@ -17,6 +17,7 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
+/** @type {readonly [number, number, number, number]} */
 const EASE = [0.23, 1, 0.32, 1];
 
 // Annex III high-risk obligations: originally 2026-08-02 (Article 113), then

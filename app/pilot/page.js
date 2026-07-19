@@ -155,4 +155,5 @@ export default function PilotPage() {
 
 const lnk = { color: color.blue, textDecoration: 'none' };
 const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: color.t2, margin: '16px 0 6px', fontFamily: font.mono, letterSpacing: 0.5 };
+/** @type {React.CSSProperties} */
 const input = { width: '100%', padding: '12px 14px', borderRadius: radius.base, border: `1px solid ${color.inputBorder}`, background: color.card, color: color.t1, fontSize: 15, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };

@@ -16,6 +16,7 @@ const TYPES = [
 const slugify = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 36);
 const rand = () => Math.random().toString(36).slice(2, 6);
 
+/** @param {{ label: React.ReactNode, children: React.ReactNode, hint?: React.ReactNode }} props */
 function Field({ label, children, hint }) {
   return (
     <div style={{ marginBottom: 16 }}>

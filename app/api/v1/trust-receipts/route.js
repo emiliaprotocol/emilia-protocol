@@ -258,6 +258,7 @@ export async function POST(request) {
     if (!Object.values(ENFORCEMENT_MODES).includes(mode)) {
       return epProblem(400, 'invalid_enforcement_mode', `mode must be one of ${Object.values(ENFORCEMENT_MODES).join(', ')}`);
     }
+    /** @type {{ decision: string, reasons: string[], signoffRequired: boolean, requiredAssurance?: string, signoffTier?: string, observed_decision?: string, aml_signals?: string[] }} */
     const decision = applyEnforcementMode(baseDecision, mode);
 
     // ── EP-AUTHORITY-REGISTRY-v1: staged enforcement (server-pinned) ─────────
@@ -417,6 +418,7 @@ export async function POST(request) {
     //  "pre-calibration scaffold," not "production fraud engine."
     if (isRulesEngineV0Enabled()) {
       try {
+        /** @type {Parameters<typeof evaluateRulesEngineV0>[0]} */
         const rulesEngineInput = {
           tenant_id: body.organization_id,
           environment: mode === ENFORCEMENT_MODES.ENFORCE ? 'enforce' : 'shadow',

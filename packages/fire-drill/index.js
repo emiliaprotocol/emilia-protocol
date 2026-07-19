@@ -62,7 +62,10 @@ const FAMILIES = [
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-/** Classify one operation. Returns the strongest matching family (or {dangerous:false}). */
+/**
+ * Classify one operation. Returns the strongest matching family (or {dangerous:false}).
+ * @returns {{ dangerous: boolean, family?: string, label?: string, tier?: string, adapter?: string, why?: string }}
+ */
 export function classifyOperation({ name = '', description = '', method = '', path = '' } = {}) {
   // Normalize separators to spaces: tool names like `release_payment` or
   // `delete-customer` must produce word boundaries, since \b treats `_` as a
