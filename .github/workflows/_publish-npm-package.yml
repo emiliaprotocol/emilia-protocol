@@ -77,10 +77,11 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install pinned release tooling
+      - name: Install hash-locked release tooling
         run: |
-          npm install -g npm@11.18.0 --min-release-age=0
-          python -m pip install cryptography==46.0.6
+          npm ci --prefix .github/npm-toolchain --ignore-scripts --min-release-age=0
+          echo "$GITHUB_WORKSPACE/.github/npm-toolchain/node_modules/.bin" >> "$GITHUB_PATH"
+          python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
 
       - name: Install locked repository tooling
         run: npm ci --ignore-scripts
