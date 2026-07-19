@@ -1,5 +1,7 @@
 name: Reusable verified package release
 
+permissions: read-all
+
 on:
   workflow_call:
     inputs:

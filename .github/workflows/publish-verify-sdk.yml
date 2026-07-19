@@ -1,5 +1,7 @@
 name: Publish Verify SDK
 
+permissions: read-all
+
 # npm Trusted Publishing (OIDC) — NO long-lived NPM_TOKEN. On each run npm
 # verifies the OIDC claim (owner / repo / workflow filename) and issues a
 # short-lived credential, and `--provenance` attaches a signed provenance
