@@ -205,6 +205,7 @@ test('capability executes the exact immutable action that passed scope verificat
   assert.deepEqual(executedAction, authorizedAction);
   assert.notDeepEqual(executedAction, unverifiedAction);
   assert.equal(store.getOperation(authorizedAction.operation_id).action_digest, capabilityActionDigest(authorizedAction));
+  assert.equal(store.getOperation(authorizedAction.operation_id).amount, authorizedAction.amount);
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, authorizedAction.amount);
 });
 
@@ -244,6 +245,7 @@ test('capability refuses an understated budget projection before execution', asy
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'capability budget projection does not match the verified action');
   assert.equal(effects, 0);
+  assert.equal(store.getOperation(authorizedAction.operation_id), null);
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
 });
 
