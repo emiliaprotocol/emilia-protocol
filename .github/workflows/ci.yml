@@ -56,6 +56,17 @@ jobs:
         # missing_receipt_id contract that packages/gate redteam HI-5 and
         # app/api/v1/guarded both enforce. Keep it wired in.
         run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/attest/test.js packages/require-receipt/*.test.js
+      - name: Verify every remaining package suite (discovered, not listed)
+        # The step above still enumerates packages. That is the bug pattern that
+        # dropped 8 of 11 verify suites until 2026-07-02 and left eight whole
+        # packages (langchain, openai-guard, openai-agents, scan, ep-verify,
+        # crash-test, fire-drill, fire-drill-mcp) in NO runner until 2026-07-19.
+        # This step inverts the default: it DISCOVERS every packages/* that
+        # declares a test script and runs the ones no other job covers, so a new
+        # package is gated the moment it lands. Handing one off to another job
+        # requires naming that job in COVERED_ELSEWHERE, and a stale handoff
+        # fails the step instead of quietly shrinking coverage.
+        run: node scripts/run-package-suites.mjs
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
