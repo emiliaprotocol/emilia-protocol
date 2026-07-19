@@ -23,6 +23,7 @@ import {
   SIGNOFF_ID_PATTERN,
 } from '@/lib/webauthn';
 import { loadSignoffForSigning } from '@/lib/webauthn-signoff';
+import { normalizeUserName } from '@/lib/scim/core';
 import { canAccept } from '@/lib/signoff/quorum-session.js';
 import { decisionToMember, decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
@@ -174,7 +175,14 @@ export async function POST(request, { params }) {
       return epProblem(500, 'internal_error', 'Failed to load credential');
     }
     const credential = (creds || [])[0];
-    if (!credential || credential.approver_id !== body.approver_id) {
+    // A directory-anchored credential is stored under the normalized approver_id;
+    // accept either the exact stored id or a normalization-equal one so a
+    // directory approver's credential is not silently unfindable. Additive: the
+    // exact-match branch preserves the prior raw comparison.
+    const approverMatches = !!credential
+      && (credential.approver_id === body.approver_id
+        || normalizeUserName(credential.approver_id) === normalizeUserName(body.approver_id));
+    if (!approverMatches) {
       return epProblem(403, 'credential_not_enrolled', 'Assertion credential is not an active enrollment for this approver');
     }
 

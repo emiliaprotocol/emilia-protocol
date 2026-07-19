@@ -145,6 +145,12 @@ export const contract = {
       'currency', 'consumed_amount', 'reserved_amount', 'expires_at'],
     ep_capability_operations: ['operation_id', 'capability_id', 'amount', 'currency',
       'status', 'reservation_token', 'reserved_at', 'committed_at'],
+    // enrollment_basis records whether an approver credential was bound against
+    // the org's provisioned directory or operator-attested; directory_user_id
+    // pins the exact scim_users row that authorized a directory-basis enrollment.
+    // The enrollment gate writes both and Class-A provenance depends on them
+    // (mig 20260718180000).
+    approver_credentials: ['approver_id', 'organization_id', 'attested_by', 'enrollment_basis', 'directory_user_id'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
