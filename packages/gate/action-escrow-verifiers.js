@@ -151,6 +151,10 @@ function exactExpected(value) {
   };
 }
 
+/**
+ * @param {any} template
+ * @param {{ profileDigest?: any, agreementId?: any, agreementDigest?: any, milestoneId?: any, documentDigest?: any, materialTerms?: any, contractorProjectSource?: boolean }} [options]
+ */
 export function validateActionEscrowReleaseTemplate(template, {
   profileDigest,
   agreementId,
@@ -272,6 +276,9 @@ function materialTermsMatchAction(binding, template) {
  *
  * The document resolver is mandatory: mapping authenticity without checking
  * the final bytes is insufficient for a release decision.
+ *
+ * @param {{ issuerKeys?: any, resolveDocumentBytes?: any, allowedMediaTypes?: string[], allowedPartyRoles?: string[], now?: () => number }} deps
+ * @param {{ contractorProjectSource?: boolean }} params
  */
 function createDocumentBindingVerifier({
   issuerKeys,
@@ -303,9 +310,9 @@ function createDocumentBindingVerifier({
         allowedMediaTypes: mediaTypes,
         allowedPartyRoles: partyRoles,
         allowedActionTypes: ['escrow.milestone.release'],
-        requiredMaterialTermIds: contractorProjectSource
+        requiredMaterialTermIds: /** @type {string[]} */ (contractorProjectSource
           ? ACTION_ESCROW_CONTRACTOR_REQUIRED_MATERIAL_TERM_IDS
-          : ACTION_ESCROW_REQUIRED_MATERIAL_TERM_IDS,
+          : ACTION_ESCROW_REQUIRED_MATERIAL_TERM_IDS),
         expectedRequiredParties: expected.parties,
         expectedSupersedesDigest:
           expected.supersedes_document_action_binding_digest,

@@ -148,9 +148,7 @@ function assertResult(result, operation) {
 }
 
 /**
- * @param {object} options
- * @param {(text:string, params:any[]) => Promise<{rowCount:number,rows?:any[]}>} options.query
- * @param {number|Function} [options.now=Date.now]
+ * @param {{ query?: (text:string, params:any[]) => Promise<{rowCount:number,rows?:any[]}>, now?: number|Function }} [options]
  */
 export function createActionEscrowPostgresStore({
   query,

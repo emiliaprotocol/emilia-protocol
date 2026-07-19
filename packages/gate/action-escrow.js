@@ -578,6 +578,12 @@ function boundVerificationMatches(result, expected) {
     && result.profile_digest === expected.profile_digest;
 }
 
+/**
+ * @param {any} result
+ * @param {any} expected
+ * @param {Record<string, any>} [extras]
+ * @returns {Record<string, any>}
+ */
 function boundVerificationSummary(result, expected, extras = {}) {
   return {
     valid: true,
@@ -1368,6 +1374,7 @@ export function createActionEscrowKernel(options = {}) {
       return { error: 'command_party_invalid' };
     }
     const detailsDigest = canonicalDigest(details);
+    /** @type {Record<string, any>} */
     const expected = {
       ...expectedBindings(record),
       profile: record.profile,

@@ -238,6 +238,8 @@ function verifyHistory(records, head) {
  * `query` is a node-postgres style function such as `pool.query.bind(pool)`.
  * The migration must be installed and the connection role must inherit or SET
  * ROLE to `emilia_gate_evidence_runtime`.
+ *
+ * @param {{ query?: (text: string, params: any[]) => Promise<{ rowCount: number, rows?: any[] }>, tenantId?: any, gateId?: any }} [options]
  */
 export function createPostgresEvidenceBackend({ query, tenantId, gateId } = {}) {
   if (typeof query !== 'function') {
