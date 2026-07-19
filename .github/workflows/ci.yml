@@ -493,6 +493,8 @@ jobs:
         run: npm run check:conformance-docs
       - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
         run: node conformance/run-signoffs.mjs
+      - name: TLA+-invariant conformance (JS lane drives the real store + guards)
+        run: node conformance/runners/run-invariants.mjs
 
   # ── Job 11c: Pinned external Rust implementation evidence ────────
   # Rebuilds an externally authored verifier from an immutable source tree and
