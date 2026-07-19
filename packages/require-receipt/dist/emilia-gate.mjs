@@ -29,7 +29,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:efea80bf0b323d0d
+//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:45a07e13aa3765f2
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -971,6 +971,14 @@ export function makeReceiptGate(opts = {}) {
 
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
+
+    // No receipt_id means no consumption identity: every no-id receipt collapses
+    // to the same empty consume key, so the reservation below would neither
+    // identify nor protect this receipt. Refuse before touching the store, as
+    // app/api/v1/guarded and packages/gate already do (redteam HI-5).
+    if (typeof v.receipt_id !== 'string' || v.receipt_id === '') {
+      return refuse(boundAction, 'missing_receipt_id');
+    }
 
     const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
       approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy,

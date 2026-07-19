@@ -49,7 +49,13 @@ jobs:
         # @emilia-protocol/verify). "issue locally, verify anywhere", enforced
         # every push. Do NOT go back to an explicit file list — that silently
         # dropped 8 of 11 suites from CI until 2026-07-02.
-        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/attest/test.js
+        # packages/require-receipt ships the shared makeReceiptGate reused by
+        # packages/langchain, packages/openai-guard and packages/openai-agents.
+        # Its suite ran in NO runner until 2026-07-19 (vitest collects zero
+        # files under packages/), which is how the gate drifted out of the
+        # missing_receipt_id contract that packages/gate redteam HI-5 and
+        # app/api/v1/guarded both enforce. Keep it wired in.
+        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/attest/test.js packages/require-receipt/*.test.js
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

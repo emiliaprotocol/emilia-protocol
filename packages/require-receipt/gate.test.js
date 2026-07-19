@@ -21,11 +21,11 @@ const ASSURANCE_SCOPE = {
 };
 
 // Mint a valid EP-RECEIPT-v1 bound to exactly `actionType`.
-function mint(actionType, { outcome = 'allow_with_signoff', quorum = null } = {}) {
+function mint(actionType, { outcome = 'allow_with_signoff', quorum = null, omitId = false } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
-    receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
+    ...(omitId ? {} : { receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex') }),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
     claim: {
@@ -54,6 +54,39 @@ function fixtureAssurance(doc) {
 }
 
 const gate = () => makeReceiptGate({ action: 'db.records.delete', allowInlineKey: true, maxAgeSec: 900 });
+
+// Parity with packages/gate redteam HI-5 and app/api/v1/guarded: a receipt that
+// verifies but carries no receipt_id has no consumption identity, so it must be
+// refused BEFORE the store is touched. Otherwise every no-id receipt reserves the
+// same empty key: distinct authorizations collide, and a store that does not
+// equate empty keys re-executes the guarded action on every replay.
+test('receipt without receipt_id -> refused before any reservation', async () => {
+  const calls = [];
+  const spy = {
+    async reserve(id) { calls.push(['reserve', id]); return true; },
+    async commit(id) { calls.push(['commit', id]); return true; },
+    async release(id) { calls.push(['release', id]); return true; },
+  };
+  const g = makeReceiptGate({ action: 'db.records.delete', allowInlineKey: true, maxAgeSec: 900, store: spy });
+
+  const r = await g.check(mint('db.records.delete:customers', { omitId: true }), { target: 'customers' });
+  assert.equal(r.ok, false);
+  assert.equal(r.body.rejected.reason, 'missing_receipt_id');
+  assert.deepEqual(calls, [], 'consumption store must not be touched for a no-id receipt');
+
+  // A second, independently minted no-id receipt is refused identically rather
+  // than colliding with the first on a shared empty consume key.
+  const r2 = await g.check(mint('db.records.delete:customers', { omitId: true }), { target: 'customers' });
+  assert.equal(r2.ok, false);
+  assert.equal(r2.body.rejected.reason, 'missing_receipt_id');
+  assert.deepEqual(calls, []);
+
+  // The guarded effect never runs.
+  let ran = false;
+  const out = await g.run(mint('db.records.delete:customers', { omitId: true }), { target: 'customers' }, async () => { ran = true; });
+  assert.equal(ran, false);
+  assert.equal(out.ok, false);
+});
 
 test('missing receipt -> 428 challenge, no rejected detail', async () => {
   let ran = false;
