@@ -15,6 +15,7 @@ import {
   reconstructCapabilitySecret,
   splitCapabilitySecret,
   verifyCapabilityReceipt,
+  CAPABILITY_RECEIPT_VERSION,
 } from './capability-receipt.js';
 
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
@@ -333,4 +334,148 @@ test('postgres capability state also rejects a conflicting envelope', async () =
   assert.equal(await store.registerCapability(first.capabilityReceipt), true);
   assert.equal(await store.registerCapability(first.capabilityReceipt), true);
   assert.equal(await store.registerCapability(conflicting.capabilityReceipt), false);
+});
+
+const ISO = new Date(NOW - 500).toISOString();
+
+function chainEntry({ delegation_id, parent, delegate = 'operator', amount, currency = 'USD' }) {
+  return { delegation_id, parent_capability_id: parent, delegate_id: delegate, amount, currency, issued_at: ISO };
+}
+
+// Re-sign a mutated capability envelope with a trusted issuer key so the only
+// thing standing between a forged chain and acceptance is the structural
+// ingest check, not the signature.
+function resignEnvelope(capabilityReceipt, privateKey) {
+  const body = { '@version': CAPABILITY_RECEIPT_VERSION, base_receipt_id: capabilityReceipt.receipt.payload.receipt_id, capability: capabilityReceipt.capability };
+  capabilityReceipt.capability_signature.value = sign(null, Buffer.from(canonicalize(body)), privateKey).toString('base64url');
+  return capabilityReceipt;
+}
+
+test('a valid linear delegation chain mints and verifies', () => {
+  const keys = issuer();
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'linear_leaf',
+    secret: Buffer.alloc(32, 20),
+    delegationChain: [
+      chainEntry({ delegation_id: 'd1', parent: 'root_cap', amount: 50 }),
+      chainEntry({ delegation_id: 'd2', parent: 'mid_cap', amount: 30 }),
+    ],
+  }));
+  assert.equal(verifyCapabilityReceipt(minted.capabilityReceipt, { trustedIssuerKeys: [keys.receipt.public_key] }).ok, true);
+  assert.equal(minted.capabilityReceipt.capability.delegation_chain.length, 2);
+});
+
+test('a real multi-hop delegation produces a chain that survives acyclicity ingest', async () => {
+  const keys = issuer();
+  const parent = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    capabilityId: 'acyc_parent',
+    expiry: NOW + 40_000,
+    secret: Buffer.alloc(32, 21),
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(parent.capabilityReceipt), true);
+
+  const child = await delegateCapabilityReceipt({
+    parentCapabilityReceipt: parent.capabilityReceipt,
+    parentSecret: parent.secret,
+    issuerPrivateKey: keys.privateKey,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    budget: { amount: 40, currency: 'USD' },
+    expiry: NOW + 30_000,
+    delegateId: 'acyc-child',
+    capabilityId: 'acyc_child',
+    secret: Buffer.alloc(32, 22),
+    store,
+    now: NOW,
+  });
+  assert.equal(child.ok, true);
+
+  const grandchild = await delegateCapabilityReceipt({
+    parentCapabilityReceipt: child.capabilityReceipt,
+    parentSecret: child.secret,
+    issuerPrivateKey: keys.privateKey,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    budget: { amount: 20, currency: 'USD' },
+    expiry: NOW + 20_000,
+    delegateId: 'acyc-grandchild',
+    capabilityId: 'acyc_grandchild',
+    secret: Buffer.alloc(32, 23),
+    store,
+    now: NOW,
+  });
+  assert.equal(grandchild.ok, true);
+  const chain = grandchild.capabilityReceipt.capability.delegation_chain;
+  assert.equal(chain.length, 2);
+  // Distinct parents, non-increasing amount: a genuine chain is a simple path.
+  assert.equal(new Set(chain.map((e) => e.parent_capability_id)).size, 2);
+  assert.ok(chain[1].amount <= chain[0].amount);
+  assert.equal(verifyCapabilityReceipt(grandchild.capabilityReceipt, { trustedIssuerKeys: [keys.receipt.public_key] }).ok, true);
+});
+
+test('a cyclic delegation chain is rejected at ingest, even when validly signed', () => {
+  const keys = issuer();
+  const cyclic = [
+    chainEntry({ delegation_id: 'd1', parent: 'cap_A', amount: 50 }),
+    chainEntry({ delegation_id: 'd2', parent: 'cap_A', amount: 30 }), // cap_A recurs as parent
+  ];
+  // Minting refuses to construct the forged envelope.
+  assert.throws(
+    () => mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey, capabilityId: 'cyclic_leaf', delegationChain: cyclic })),
+    /repeats a parent_capability_id/,
+  );
+
+  // And a hand-crafted, correctly-signed envelope is still refused on ingest.
+  const good = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey, capabilityId: 'cyclic_leaf', secret: Buffer.alloc(32, 24) }));
+  const forged = structuredClone(good.capabilityReceipt);
+  forged.capability.delegation_chain = cyclic;
+  resignEnvelope(forged, keys.privateKey);
+  const verified = verifyCapabilityReceipt(forged, { trustedIssuerKeys: [keys.receipt.public_key] });
+  assert.equal(verified.ok, false);
+  assert.equal(verified.reason, 'capability_malformed');
+});
+
+test('a repeated delegation_id is rejected as a cycle', () => {
+  const keys = issuer();
+  assert.throws(
+    () => mintCapabilityReceipt(keys.receipt, options({
+      issuerPrivateKey: keys.privateKey,
+      capabilityId: 'dupid_leaf',
+      delegationChain: [
+        chainEntry({ delegation_id: 'same', parent: 'cap_A', amount: 20 }),
+        chainEntry({ delegation_id: 'same', parent: 'cap_B', amount: 10 }),
+      ],
+    })),
+    /repeats a delegation_id/,
+  );
+});
+
+test('a delegation chain that grants increasing authority is rejected', () => {
+  const keys = issuer();
+  assert.throws(
+    () => mintCapabilityReceipt(keys.receipt, options({
+      issuerPrivateKey: keys.privateKey,
+      capabilityId: 'inflate_leaf',
+      delegationChain: [
+        chainEntry({ delegation_id: 'd1', parent: 'cap_A', amount: 30 }),
+        chainEntry({ delegation_id: 'd2', parent: 'cap_B', amount: 50 }), // 50 > 30
+      ],
+    })),
+    /increasing authority/,
+  );
+});
+
+test('a delegation chain naming the leaf capability as a parent is rejected as a broken link', () => {
+  const keys = issuer();
+  assert.throws(
+    () => mintCapabilityReceipt(keys.receipt, options({
+      issuerPrivateKey: keys.privateKey,
+      capabilityId: 'broken_leaf',
+      delegationChain: [
+        chainEntry({ delegation_id: 'd1', parent: 'broken_leaf', amount: 10 }), // parent == leaf id
+      ],
+    })),
+    /references the leaf capability as a parent/,
+  );
 });

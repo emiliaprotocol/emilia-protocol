@@ -175,9 +175,33 @@ function capabilityEnvelopeFingerprint(capabilityReceipt) {
   }), 'utf8'))}`;
 }
 
-function assertDelegationChain(chain) {
+/**
+ * Validate a delegation chain at ingest time.
+ *
+ * Shape and bounded length are not sufficient: a hand-crafted envelope can
+ * carry a cyclic or authority-inflating chain and still be internally
+ * consistent. This validator enforces three structural invariants that every
+ * chain produced by {@link delegateCapabilityReceipt} satisfies and that no
+ * cyclic or forged chain can:
+ *
+ *   1. Acyclicity. Each delegation is a distinct parent spend, so a
+ *      delegation_id never recurs; a capability delegates at most once as a
+ *      parent, so a parent_capability_id never recurs. Either repeat is a cycle
+ *      in the delegation graph and is rejected. The leaf capability id (when
+ *      supplied) may never appear as one of its own ancestors' parents.
+ *   2. Monotonic authority. No hop may grant more than the hop that delegated
+ *      to it: amounts are non-increasing from root to leaf. This holds
+ *      standalone here, independent of the runtime parent reserve guard.
+ *
+ * Fail-closed: any violation throws and the caller treats the envelope as
+ * malformed. Signature and per-entry shape checks are unchanged.
+ */
+function assertDelegationChain(chain, capabilityId) {
   if (chain === undefined) return [];
   if (!Array.isArray(chain) || chain.length > MAX_DELEGATES) throw new TypeError('delegation_chain must be a bounded array');
+  const seenDelegationIds = new Set();
+  const seenParentIds = new Set();
+  let previousAmount = null;
   return chain.map((entry) => {
     if (!isRecord(entry)
         || typeof entry.delegation_id !== 'string'
@@ -189,6 +213,13 @@ function assertDelegationChain(chain) {
         || typeof entry.issued_at !== 'string') {
       throw new TypeError('delegation_chain contains an invalid signed entry');
     }
+    if (seenDelegationIds.has(entry.delegation_id)) throw new TypeError('delegation_chain repeats a delegation_id (cyclic or forged chain)');
+    if (seenParentIds.has(entry.parent_capability_id)) throw new TypeError('delegation_chain repeats a parent_capability_id (cyclic delegation)');
+    if (capabilityId !== undefined && entry.parent_capability_id === capabilityId) throw new TypeError('delegation_chain references the leaf capability as a parent (broken delegation link)');
+    if (previousAmount !== null && entry.amount > previousAmount) throw new TypeError('delegation_chain grants increasing authority (non-monotonic amount)');
+    seenDelegationIds.add(entry.delegation_id);
+    seenParentIds.add(entry.parent_capability_id);
+    previousAmount = entry.amount;
     return structuredClone(entry);
   });
 }
@@ -202,7 +233,7 @@ function assertCapabilityShape(capability) {
   validateCurrency(capability.budget.currency);
   validateExpiry(capability.expiry);
   validateThreshold(capability.threshold);
-  assertDelegationChain(capability.delegation_chain);
+  assertDelegationChain(capability.delegation_chain, capability.id);
   if (capability.consumed !== 0) throw new TypeError('capability consumed is issuer-initialized and must be zero');
   return true;
 }
