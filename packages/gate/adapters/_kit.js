@@ -51,12 +51,17 @@ export function manifestFromPack(pack, extraActions = []) {
 
 /**
  * Create an adapter from a system name + op map.
- * @returns {{ ops:object, OPS:string[], guard:(gate,client,{op,params,receipt})=>Promise<{result,reliance,execution}> }}
+ * @returns {{ ops:object, OPS:readonly string[], guard:(gate,client,{op,params,receipt})=>Promise<{result,reliance,execution}> }}
  */
 export function createAdapter({ system, ops }) {
   if (!system || !ops || typeof ops !== 'object') throw new Error('createAdapter requires { system, ops }');
   const OPS = Object.freeze(Object.keys(ops));
 
+  /**
+   * @param {object} gate
+   * @param {object} client
+   * @param {{ op?: string, params?: object, receipt?: any }} [args]
+   */
   async function guard(gate, client, { op, params = {}, receipt = null } = {}) {
     if (!gate || typeof gate.run !== 'function') throw new Error(`${system} adapter requires an EMILIA Gate (with .run)`);
     const spec = ops[op];
@@ -66,6 +71,7 @@ export function createAdapter({ system, ops }) {
         { selector: spec.selector, receipt: null, observedAction: null },
         () => { throw new Error('unreachable_adapter_effect'); },
       );
+      /** @type {Error & { code?: string, status?: any, gate?: any, challenge?: any }} */
       const e = new Error(`EMILIA Gate refused ${system}:${op} — ${refused.authorization.reason}`);
       e.code = 'EMILIA_RECEIPT_REQUIRED';
       e.status = refused.status;
@@ -89,6 +95,7 @@ export function createAdapter({ system, ops }) {
       () => spec.perform(client, actuator),
     );
     if (!out.ok) {
+      /** @type {Error & { code?: string, status?: any, gate?: any, challenge?: any }} */
       const e = new Error(`EMILIA Gate refused ${system}:${op} — ${out.authorization.reason}`);
       e.code = 'EMILIA_RECEIPT_REQUIRED';
       e.status = out.status;

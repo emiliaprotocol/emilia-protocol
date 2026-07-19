@@ -72,7 +72,7 @@ export function createStripeManifest(extraActions = []) {
  * Guard a destructive Stripe mutation behind the gate.
  * @param {object} gate    a gate built with createStripeManifest()
  * @param {object} stripe  a Stripe-like client (the official `stripe` SDK or compatible)
- * @param {object} o       { op:'payout.create'|'refund.create'|'bank_account.change', params, receipt }
+ * @param {object} args    { op:'payout.create'|'refund.create'|'bank_account.change', params, receipt }
  * @throws Error{code:'EMILIA_RECEIPT_REQUIRED'} if refused — the call never reaches Stripe
  */
 export function guardStripeMutation(gate, stripe, args) {

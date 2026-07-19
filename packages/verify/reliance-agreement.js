@@ -125,7 +125,9 @@ export function signRelianceAgreement(payload, signers) {
   const body = stripSignatures(payload);
   const bytes = agreementSigningBytes(body);
   const signatures = (signers || []).map(({ party, privateKey }) => {
-    const publicKey = crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+    // @types/node omits KeyObject from createPublicKey's param union though the
+    // runtime derives a public key from a private KeyObject (see its own docs).
+    const publicKey = crypto.createPublicKey(/** @type {any} */ (privateKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
     return {
       party,
       algorithm: 'Ed25519',
@@ -146,7 +148,9 @@ export function signRelianceAgreement(payload, signers) {
 export function signRelianceEvent(payload, privateKey) {
   const body = stripSignature(payload);
   const bytes = eventSigningBytes(body);
-  const publicKey = crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+  // @types/node omits KeyObject from createPublicKey's param union though the
+  // runtime derives a public key from a private KeyObject (see its own docs).
+  const publicKey = crypto.createPublicKey(/** @type {any} */ (privateKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
   return {
     ...body,
     signature: {
@@ -184,8 +188,8 @@ function checkAmount(terms, field, required) {
  * unknown vocabulary value, or amount-as-number is a refusal with a reason.
  *
  * @param {object} agreement
- * @param {object} opts
- * @param {Object<string,(string|{public_key:string})>} opts.trustedKeys  key_id -> pinned base64url SPKI Ed25519 key
+ * @param {object} [opts]
+ * @param {Object<string,(string|{public_key:string})>} [opts.trustedKeys]  key_id -> pinned base64url SPKI Ed25519 key
  * @param {number|string|Date} [opts.now]
  * @returns {{valid:boolean, reasons:string[], digest?:string, required_signers?:string[]}}
  */
@@ -333,12 +337,12 @@ export function verifyRelianceAgreement(agreement, opts = {}) {
  * not by this binding check.
  *
  * @param {object} event
- * @param {object} opts
- * @param {object} opts.agreement       the EP-RELIANCE-AGREEMENT-v1 relied on
- * @param {object} opts.relianceResult  the reliance result record the event binds
+ * @param {object} [opts]
+ * @param {object} [opts.agreement]       the EP-RELIANCE-AGREEMENT-v1 relied on
+ * @param {object} [opts.relianceResult]  the reliance result record the event binds
  *                                      (must carry action_digest and action_family;
  *                                      may carry profile_digest and verdict)
- * @param {Object<string,(string|{public_key:string})>} opts.trustedKeys
+ * @param {Object<string,(string|{public_key:string})>} [opts.trustedKeys]
  * @param {number|string|Date} [opts.now]
  * @returns {{valid:boolean, reasons:string[], agreement_digest?:string, event_digest?:string}}
  */

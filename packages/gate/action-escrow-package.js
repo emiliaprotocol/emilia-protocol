@@ -775,6 +775,12 @@ function validateBindingContainer(container, record, {
   };
 }
 
+/**
+ * @param {any} entries
+ * @param {any} record
+ * @param {any} core
+ * @param {{ requireComplete?: boolean, requireIncomplete?: boolean }} [options]
+ */
 function validateAcceptances(entries, record, core, { requireComplete, requireIncomplete = false } = {}) {
   if (!Array.isArray(entries)) fail('agreement acceptances are malformed');
   const parties = new Map(record.parties.map((party) => [party.party_id, party]));
@@ -1676,7 +1682,7 @@ function assembleEvidencePackage(
     assembledAt,
   );
 
-  return buildActionEscrowEvidencePackage({
+  return buildActionEscrowEvidencePackage(/** @type {any} */ ({
     agreementId: binding.agreementId,
     stage: record.state,
     binding: binding.binding,
@@ -1702,7 +1708,7 @@ function assembleEvidencePackage(
         projectRecordSnapshotDigest: input.projectRecordSnapshotDigest,
       }
       : {}),
-  }, {
+  }), {
     now: assembledAt,
     maxDocumentBytes,
     ...(contractorProjectSource

@@ -226,6 +226,9 @@ export function validateInitiatorAttestation(att) {
     errors.push('initiator attestation must be a non-array object');
     return fail();
   }
+  // Post-guard: an indexable view of the same object (no runtime change) so the
+  // member checks below read typed members off the validated shape.
+  const a = /** @type {Record<string, any>} */ (att);
 
   // Closed member set — unknown members are rejected, not ignored, so a producer
   // cannot smuggle unbound side-channel content past a permissive verifier.
@@ -250,8 +253,8 @@ export function validateInitiatorAttestation(att) {
   }
 
   // tool_chain_digest: required, well-formed SHA-256.
-  const digestHex = normalizeDigest(att.tool_chain_digest);
-  if (att.tool_chain_digest === undefined || att.tool_chain_digest === null) {
+  const digestHex = normalizeDigest(a.tool_chain_digest);
+  if (a.tool_chain_digest === undefined || a.tool_chain_digest === null) {
     errors.push('tool_chain_digest is required');
   } else if (digestHex === '') {
     errors.push('tool_chain_digest must be a well-formed SHA-256 (optionally "sha256:"-prefixed 64-hex)');
@@ -261,10 +264,10 @@ export function validateInitiatorAttestation(att) {
   // neutralized below regardless of type, but a wrong TYPE is a rejectable
   // malformation (an object/number statement is a producer bug or an attack).
   let statementReport = null;
-  if (att.statement !== undefined) {
-    if (typeof att.statement !== 'string') {
+  if (a.statement !== undefined) {
+    if (typeof a.statement !== 'string') {
       errors.push('statement, when present, must be a string');
-    } else if (Array.from(att.statement).length > INITIATOR_STATEMENT_MAX) {
+    } else if (Array.from(a.statement).length > INITIATOR_STATEMENT_MAX) {
       errors.push(`statement exceeds the ${INITIATOR_STATEMENT_MAX}-character cap`);
     }
   }
@@ -274,14 +277,14 @@ export function validateInitiatorAttestation(att) {
   // Neutralize the (validated) statement for the normalized form. Even a
   // well-formed statement is hostile input; the normalized attestation NEVER
   // carries the raw bytes.
-  if (att.statement !== undefined) {
-    statementReport = neutralizeStatement(att.statement);
+  if (a.statement !== undefined) {
+    statementReport = neutralizeStatement(a.statement);
   }
 
   const normalized = {
     '@version': INITIATOR_ATTESTATION_VERSION,
-    model_id: att.model_id,
-    model_version: att.model_version,
+    model_id: a.model_id,
+    model_version: a.model_version,
     tool_chain_digest: `sha256:${digestHex}`,
   };
   if (statementReport) normalized.statement = statementReport.safe;

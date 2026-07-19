@@ -136,6 +136,8 @@ export function materialFieldsFor(requirement) {
  * Verifies that the signed claim and the executor-observed mutation fields
  * match for the action pack. The executor must pass `observedAction` from the
  * system of record, not from the agent request body.
+ *
+ * @param {{ requirement?: any, receipt?: any, observedAction?: any }} [options]
  */
 export function verifyExecutionBinding({ requirement, receipt, observedAction } = {}) {
   const requiredFields = materialFieldsFor(requirement);

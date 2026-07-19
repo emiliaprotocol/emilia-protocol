@@ -99,7 +99,7 @@ export function createAwsManifest(extraActions = []) {
  * Guard a high-blast-radius AWS mutation behind the gate.
  * @param {object} gate    a gate built with createAwsManifest()
  * @param {object} client  { iam: {attachUserPolicy, createAccessKey, deleteUser}, ec2: {authorizeSecurityGroupIngress} }
- * @param {object} o       { op, params, receipt }
+ * @param {object} args    { op, params, receipt }
  * @throws Error{code:'EMILIA_RECEIPT_REQUIRED'} if refused — the call never reaches AWS
  */
 export function guardAwsMutation(gate, client, args) {

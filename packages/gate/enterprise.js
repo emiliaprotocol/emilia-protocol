@@ -100,10 +100,10 @@ function issuerKeyFor(issuerKeys, kid) {
  * remain gated by `requireFeature`, which fails closed on any non-valid result.
  *
  * @param {object|string|null} entitlementJson the artifact (object or JSON string); absence -> community
- * @param {object} o
- * @param {object|Array<{kid:string,key:string}>} o.issuerKeys pinned kid -> base64url SPKI-DER public key
+ * @param {object} [o]
+ * @param {object|Array<{kid:string,key:string}>} [o.issuerKeys] pinned kid -> base64url SPKI-DER public key
  * @param {number|string|function} [o.now=Date.now] injected clock (ms, ISO, or () => ms)
- * @returns {{ valid: boolean, tier: string, features: string[], limits: object|null, reason: string, org?: string, kid?: string }}
+ * @returns {{ valid: boolean, tier: string, features: string[], limits: object|null, reason: string, org?: string, kid?: string, not_before?: any, expires_at?: any }}
  */
 export function verifyEntitlement(entitlementJson, { issuerKeys, now = Date.now } = {}) {
   // Absence is NOT an error: the open-core floor. Community keeps working.

@@ -129,7 +129,10 @@ function publicStatement({ policyHash, actionPredicate, max, baseReceiptDigest, 
   };
 }
 
-/** Mint a hidden-amount Bulletproof range receipt. */
+/**
+ * Mint a hidden-amount Bulletproof range receipt.
+ * @param {{ value?: any, max?: any, blindingFactor?: any, policyHash?: any, actionPredicate?: any, baseReceiptDigest?: any, issuerPublicKey?: any, nonce?: string, domain?: string, backend?: any }} [options]
+ */
 export async function mintZkRangeReceipt({
   value,
   max,

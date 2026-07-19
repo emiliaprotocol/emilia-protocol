@@ -87,13 +87,13 @@ function statedRetentionYears(e) {
  * Window is [periodStart, periodEnd): inclusive start, exclusive end.
  *
  * @param {Array<object>} entries  evidence.all()
- * @param {object} o
- * @param {string|number} o.periodStart  ISO or ms — required
- * @param {string|number} o.periodEnd    ISO or ms — required, >= periodStart
+ * @param {object} [o]
+ * @param {string|number} [o.periodStart]  ISO or ms — required
+ * @param {string|number} [o.periodEnd]    ISO or ms — required, >= periodStart
  * @param {number} [o.retentionYearsDefault=6]  applied when an entry states no retention
- * @returns {{protected_actions:number, allows:number, denies:number,
+ * @returns {{'@version':string, protected_actions:number, allows:number, denies:number,
  *   replays_blocked:number, by_action_type:object, by_tier:object,
- *   receipt_years:number, period:object, integrity_warnings:object[]}}
+ *   receipt_years:number, retention_years_default:number, period:object, integrity_warnings:object[]}}
  */
 export function meterUsage(entries = [], { periodStart, periodEnd, retentionYearsDefault = DEFAULT_RETENTION_YEARS } = {}) {
   const startMs = toMs(periodStart);
@@ -180,6 +180,8 @@ export function meterUsage(entries = [], { periodStart, periodEnd, retentionYear
  * JSON of everything else) binds that signature to exactly these numbers.
  * Deterministic: same usage + org → byte-identical statement, regardless of
  * the entry order the usage was metered from.
+ * @param {object} usage  a USAGE_VERSION object from meterUsage
+ * @param {{ org?: string }} [o]
  */
 export function buildUsageStatement(usage, { org } = {}) {
   // Never emit a statement over an artifact of a different or unknown format,

@@ -401,7 +401,7 @@ export function receiptRequiredHeader(opts = {}) {
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this
  * @param {()=>number} [opts.now=Date.now] trusted clock used for freshness
  * @param {string[]} [opts.allowedOutcomes] acceptable claim.outcome values
- * @returns {{ok:boolean, reason?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
+ * @returns {{ok:boolean, reason?:string, detail?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
  */
 export function verifyEmiliaReceipt(doc, opts = {}) {
   const { trustedKeys = [], allowInlineKey = false, action = null, maxAgeSec = 900,
@@ -621,8 +621,8 @@ export function requireEmiliaReceipt(opts = {}) {
  * @param {string} p.tool       receipt-required tool/route name to probe
  * @param {object} [p.args]     arguments passed to the tool
  * @param {string} p.action     canonical action_type the receipt must bind
- * @param {()=>(object|Promise<object>)} p.issueReceipt  mints a FRESH valid
- *   EP-RECEIPT-v1 bound to `action` that this dispatcher accepts
+ * @param {(action:string)=>(object|Promise<object>)} p.issueReceipt  mints a FRESH
+ *   valid EP-RECEIPT-v1 bound to `action` (passed in) that this dispatcher accepts
  * @param {object} [p.manifest] optional Action Risk Manifest to validate
  * @returns {Promise<{level:string, passed:boolean, checks:object, detail:object}>}
  */

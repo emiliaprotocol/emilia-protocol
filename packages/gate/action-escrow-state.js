@@ -170,8 +170,33 @@ function refuse(reason, checks) {
 }
 
 /**
+ * @typedef {Object} StateStatementInput
+ * @property {string} [statementId]
+ * @property {string} [agreementId]
+ * @property {string} [bindingDigest]
+ * @property {string} [actionDigest]
+ * @property {string} [profileDigest]
+ * @property {string} [state]
+ * @property {number} [revision]
+ * @property {string[]} [amendmentDigests]
+ * @property {*} [stateRecord]
+ * @property {string|null} [previousStatementDigest]
+ * @property {string} [occurredAt]
+ */
+
+/**
+ * @typedef {Object} StateStatementSigner
+ * @property {string} [operatorId]
+ * @property {string} [keyId]
+ * @property {*} [privateKey]
+ */
+
+/**
  * Sign one exact state snapshot. Issuance may throw on invalid local input;
  * verification below never throws.
+ *
+ * @param {StateStatementInput} [input]
+ * @param {StateStatementSigner} [signer]
  */
 export function signActionEscrowStateStatement({
   statementId,
@@ -234,7 +259,25 @@ export function signActionEscrowStateStatement({
 }
 
 /**
+ * @typedef {Object} StateStatementExpectations
+ * @property {*} [trustedKeys]
+ * @property {*} [stateRecord]
+ * @property {string} [expectedAgreementId]
+ * @property {string} [expectedBindingDigest]
+ * @property {string} [expectedActionDigest]
+ * @property {string} [expectedProfileDigest]
+ * @property {string} [expectedState]
+ * @property {number} [expectedRevision]
+ * @property {string[]} [expectedAmendmentDigests]
+ * @property {string|null} [expectedPreviousStatementDigest]
+ * @property {Date|number|string} [now]
+ */
+
+/**
  * Verify one state statement against an exact snapshot and relying-party pins.
+ *
+ * @param {*} statement
+ * @param {StateStatementExpectations} [expectations]
  */
 export function verifyActionEscrowStateStatement(statement, {
   trustedKeys,
@@ -344,6 +387,8 @@ export function verifyActionEscrowStateStatement(statement, {
  * Build the callback expected by verifyActionEscrowEvidencePackage. The
  * package carries both the exact durable snapshot and the signed statement
  * over it; trust keys and time remain verifier configuration.
+ *
+ * @param {{ trustedKeys?: *, now?: Date|number|string, minimumRevision?: number }} [options]
  */
 export function createActionEscrowStatePackageVerifier({
   trustedKeys,

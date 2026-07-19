@@ -74,11 +74,10 @@ export const CONSUMPTION_SQL = {
 
 /**
  * Create the Postgres consumption backend.
- * @param {object} o
- * @param {(text: string, params: any[]) => Promise<{ rowCount: number, rows?: any[] }>} o.query
- *   pg-style query function (e.g. `pool.query.bind(pool)`). Injected so tests
- *   need no database. MUST throw on failure — errors propagate (fail closed).
- * @param {number|function} [o.now=Date.now] injected clock (ms or () => ms).
+ * @param {{ query?: (text: string, params: any[]) => Promise<{ rowCount: number, rows?: any[] }>, now?: number|function }} [o]
+ *   `query` is a pg-style query function (e.g. `pool.query.bind(pool)`). Injected
+ *   so tests need no database. MUST throw on failure — errors propagate (fail
+ *   closed). `now` is the injected clock (ms or () => ms).
  * @returns backend conforming to createDurableConsumptionStore, plus cleanupExpired(now).
  */
 export function createPostgresBackend({ query, now = Date.now } = {}) {

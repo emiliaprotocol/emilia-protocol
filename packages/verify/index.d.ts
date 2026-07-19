@@ -340,6 +340,14 @@ export interface TrustReceiptVerificationOptions {
    * the software behaved.
    */
   requireInitiatorAttestation?: boolean;
+  /**
+   * DORMANT legacy opt-in: verify pre-v2 (sorted-pair, undomain-separated)
+   * Merkle inclusion. Never the default and never used by production gates;
+   * present only so callers holding pre-v2 proofs can explicitly opt in.
+   */
+  allowLegacyMerkle?: boolean;
+  /** Alias of `allowLegacyMerkle` for the Trust Receipt inclusion path. */
+  allowLegacyTrustReceiptMerkle?: boolean;
 }
 
 /**
@@ -626,3 +634,68 @@ export function createOrprgAecVerifier(
   reason: string | null;
   action_digest?: string;
 };
+
+/**
+ * Deterministic canonical serialization (RFC 8785 JCS for the value subset EP
+ * signs) — the single canonicalization source of truth shared by every offline
+ * verifier module so signer and verifier produce byte-identical material.
+ */
+export function canonicalize(value: unknown): string;
+
+/**
+ * True if `value` serializes within the EP canonicalization profile
+ * (JSON scalars, arrays, and plain objects of canonicalizable values).
+ */
+export function isCanonicalizable(value: unknown): boolean;
+
+/** b64u/hex SHA-256 over `canonicalize(context)`; links each ordered signoff to its predecessor. */
+export function contextChainHash(context: unknown): string;
+
+export const REVOCATION_VERSION: 'EP-REVOCATION-v1';
+
+/**
+ * Verify an EP-REVOCATION-v1 statement against the authorization the relying
+ * party holds. Fail-closed: a missing or malformed statement returns valid:false.
+ */
+export function verifyRevocation(
+  target: { target_type: string; target_id: string; action_hash: string },
+  statement: object,
+  opts?: {
+    revokerKeys?: Record<string, { public_key: string }>;
+    maxAgeSeconds?: number;
+    now?: number | string | Date;
+    [k: string]: unknown;
+  }
+): { valid: boolean; checks: Record<string, boolean>; errors: string[] };
+
+/** True if any statement in `statements` validly revokes `target`. */
+export function isRevoked(target: object, statements: unknown, opts?: object): boolean;
+
+export const PROVENANCE_VERSION: 'EP-PROVENANCE-CHAIN-v1';
+
+/** Verify an EP-PROVENANCE-CHAIN-v1 document fully offline. Fail-closed. */
+export function verifyProvenanceOffline(
+  doc: unknown,
+  opts?: Record<string, unknown>
+): {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+  links: unknown[];
+  agent_identity: unknown;
+  liability: unknown;
+};
+
+export const TIME_ATTESTATION_VERSION: 'EP-TIME-ATTESTATION-v1';
+
+/** EP-TIME-ATTESTATION-v1: independent, pinned, offline-verifiable proof of WHEN (trusted-time anchor). */
+export function verifyTimeAttestation(
+  att: Record<string, unknown> | null | undefined,
+  opts?: {
+    pinnedTsaKeys?: string | string[] | Record<string, string>;
+    expectedHash?: string | Uint8Array;
+    notBefore?: number | string | Date;
+    notAfter?: number | string | Date;
+    [k: string]: unknown;
+  }
+): { valid: boolean; checks: Record<string, boolean>; errors: string[] };

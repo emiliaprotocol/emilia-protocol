@@ -53,6 +53,7 @@ const RP_ORIGIN = `https://www.${RP_ID}`;
  * assertion, not a self-asserted `outcome` string. Used to build the Class-A and
  * quorum evidence the EG-1 harness embeds so the Gate can CRYPTOGRAPHICALLY
  * credit the tier.
+ * @param {{ actionHash?: string, approver?: string, issuedAtMs?: number, nonce?: string, prevContextHash?: string }} [opts]
  */
 export function mintDeviceSignoff({ actionHash, approver, issuedAtMs = Date.now(), nonce, prevContextHash = undefined } = {}) {
   const signer = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -97,6 +98,7 @@ export function mintDeviceSignoff({ actionHash, approver, issuedAtMs = Date.now(
  * distinct device key, each with a real WebAuthn assertion bound to the SAME
  * action_hash, within a window. verifyQuorum returns valid for it. This is what
  * earns a receipt its `quorum` tier — never a bare {signers,threshold} block.
+ * @param {{ actionHash?: string, threshold?: number, approvers?: Array<{ role: string, approver: string }>, issuedAtMs?: number }} [opts]
  */
 export function mintQuorumEvidence({ actionHash, threshold = 2, approvers, issuedAtMs = Date.now() } = {}) {
   const people = approvers || Array.from({ length: threshold }, (_, i) => ({ role: `approver_${i + 1}`, approver: `ep:approver:eg1_${i + 1}` }));
@@ -253,6 +255,7 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
    *   ({signers,threshold}) with no per-signer signatures — used to prove the Gate
    *   REFUSES it (must NOT be credited quorum). For adversarial tests only.
    * @param {object} [o.tamper] fields assigned to the claim AFTER signing (breaks the signature)
+   * @param {object} [o.extra] extra fields merged into the claim before signing
   */
   function mint({ outcome = 'allow_with_signoff', quorum = null, fakeQuorum = false, tamper = null, extra = {} } = {}) {
     const approver = outcome === 'allow'
@@ -334,9 +337,9 @@ const pick = (r) => ({ allowed: !!r.allowed, status: r.status ?? null, reason: r
 
 /**
  * Drive a subject through the eight EG-1 checks and return a JSON report.
- * @param {object} o
- * @param {(scenario:object)=>Promise<object>} o.invoke the integration under test
- * @param {object} o.harness from createEg1Harness()
+ * @param {object} [o]
+ * @param {(scenario:object)=>Promise<object>} [o.invoke] the integration under test
+ * @param {object} [o.harness] from createEg1Harness()
  * @param {object} [o.action] the high-risk action (defaults to the harness action)
  */
 export async function runEg1({ invoke, harness, action } = {}) {
