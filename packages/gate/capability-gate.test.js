@@ -98,6 +98,36 @@ test('gate capability path refuses overspend before the effect', async () => {
   assert.equal(f.runtimeMonitor.getMode(), 'normal');
 });
 
+test('gate capability path refuses a missing stable operation id before the effect', async () => {
+  const f = fixture();
+  let effects = 0;
+  const out = await f.gate.run(request(f), async () => {
+    effects += 1;
+  });
+
+  assert.equal(out.ok, false);
+  assert.equal(out.capability.reason, 'capability_operation_id_required');
+  assert.equal(effects, 0);
+  assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 0);
+});
+
+test('capability-enabled gate requires an explicit role-scoped issuer pin', () => {
+  const f = fixture();
+  assert.throws(
+    () => createGate({
+      manifest: createDefaultActionRiskManifest(),
+      trustedKeys: [f.harness.publicKey],
+      approverKeys: f.harness.approverKeys,
+      quorumPolicy: f.harness.quorumPolicy,
+      rpId: f.harness.rpId,
+      allowedOrigins: f.harness.allowedOrigins,
+      capabilityStore: createMemoryCapabilityStore(),
+      allowEphemeralStore: true,
+    }),
+    /capabilityTrustedIssuerKeys must explicitly pin/,
+  );
+});
+
 test('gate capability path refuses operation replay while allowing a new bounded spend', async () => {
   const f = fixture();
   let effects = 0;

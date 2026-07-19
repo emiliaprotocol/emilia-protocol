@@ -54,6 +54,7 @@ test('capability metadata is issuer-signed and tamper-evident', () => {
   const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
   const trusted = keys.receipt.public_key;
   assert.equal(verifyCapabilityReceipt(minted.capabilityReceipt, { trustedIssuerKeys: [trusted] }).ok, true);
+  assert.equal(verifyCapabilityReceipt(minted.capabilityReceipt).reason, 'capability_issuer_not_trusted');
 
   const tampered = structuredClone(minted.capabilityReceipt);
   tampered.capability.budget.amount = 1_000_000;
@@ -120,6 +121,12 @@ test('capability refuses invalid secret, currency, and unverified base authority
   assert.equal((await executeWithCapability({ ...common, secret: Buffer.alloc(32), action: { amount: 1, currency: 'USD' } })).reason, 'invalid_secret');
   assert.equal((await executeWithCapability({ ...common, secret: minted.secret, action: { amount: 1, currency: 'EUR' } })).reason, 'capability action currency does not match the budget');
   assert.equal((await executeWithCapability({ ...common, secret: minted.secret, verifyBaseReceipt: () => false, action: { amount: 1, currency: 'USD' } })).reason, 'base_receipt_rejected');
+  assert.equal((await executeWithCapability({
+    ...common,
+    secret: minted.secret,
+    operationId: null,
+    action: { amount: 1, currency: 'USD' },
+  })).reason, 'capability_operation_id_required');
 });
 
 test('threshold capability uses unique Shamir shares and requires m-of-n', async () => {

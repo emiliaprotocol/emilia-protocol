@@ -238,8 +238,10 @@ function assertCapabilityShape(capability) {
   return true;
 }
 
-function verifyTrustedIssuer(publicKey, trustedIssuerKeys) {
-  if (!Array.isArray(trustedIssuerKeys) || trustedIssuerKeys.length === 0) return true;
+function verifyTrustedIssuer(publicKey, trustedIssuerKeys, allowUntrustedIssuer) {
+  if (!Array.isArray(trustedIssuerKeys) || trustedIssuerKeys.length === 0) {
+    return allowUntrustedIssuer === true;
+  }
   return trustedIssuerKeys.includes(publicKey);
 }
 
@@ -294,13 +296,18 @@ export function mintCapabilityReceipt(baseReceipt, {
 }
 
 /** Verify the issuer signature and immutable capability metadata. */
-export function verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys = [] } = {}) {
+export function verifyCapabilityReceipt(capabilityReceipt, {
+  trustedIssuerKeys = [],
+  allowUntrustedIssuer = false,
+} = {}) {
   try {
     if (!isRecord(capabilityReceipt) || capabilityReceipt['@version'] !== CAPABILITY_RECEIPT_VERSION) return { ok: false, reason: 'malformed_capability_receipt' };
     const receipt = validateBaseReceipt(capabilityReceipt.receipt);
     assertCapabilityShape(capabilityReceipt.capability);
     const signature = capabilitySignature(capabilityReceipt);
-    if (!signature || !verifyTrustedIssuer(signature.public_key, trustedIssuerKeys)) return { ok: false, reason: 'capability_issuer_not_trusted' };
+    if (!signature || !verifyTrustedIssuer(signature.public_key, trustedIssuerKeys, allowUntrustedIssuer)) {
+      return { ok: false, reason: 'capability_issuer_not_trusted' };
+    }
     if (receipt.public_key && receipt.public_key !== signature.public_key) return { ok: false, reason: 'capability_issuer_mismatch' };
     const ok = verify(
       null,
@@ -434,7 +441,7 @@ export function createMemoryCapabilityStore() {
   return {
     durable: false,
     registerCapability(capabilityReceipt) {
-      const verified = verifyCapabilityReceipt(capabilityReceipt);
+      const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
       if (!verified.ok) return false;
       const state = capabilityStateFromEnvelope(capabilityReceipt);
       const existing = states.get(state.capability_id);
@@ -536,7 +543,7 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
   return {
     durable: true,
     async registerCapability(capabilityReceipt) {
-      const verified = verifyCapabilityReceipt(capabilityReceipt);
+      const verified = verifyCapabilityReceipt(capabilityReceipt, { allowUntrustedIssuer: true });
       if (!verified.ok) return false;
       const state = capabilityStateFromEnvelope(capabilityReceipt);
       return transaction(async (query) => {
@@ -622,7 +629,7 @@ export async function executeWithCapability({
   observedAction = null,
   trustedIssuerKeys = [],
   verifyBaseReceipt = null,
-  operationId = randomUUID(),
+  operationId = null,
   now = Date.now,
   thresholdSecretVerified = false,
 } = {}) {
@@ -632,6 +639,11 @@ export async function executeWithCapability({
   if (!verifySecret(verified.capability, secret)) return { ok: false, reason: 'invalid_secret' };
   if (!store || typeof store.reserveSpend !== 'function' || typeof store.commitSpend !== 'function') return { ok: false, reason: 'capability_store_required' };
   if (typeof executeAction !== 'function') throw new TypeError('executeWithCapability requires executeAction');
+  try {
+    validateOperationId(operationId);
+  } catch {
+    return { ok: false, reason: 'capability_operation_id_required' };
+  }
   let spend;
   try {
     spend = capabilityAmount(action, verified.capability);

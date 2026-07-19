@@ -351,6 +351,8 @@ await executeWithCapability({
   action: { amount: 10_000, currency: 'USD' },
   store,
   gate,
+  trustedIssuerKeys: [capabilityIssuerPublicKey],
+  operationId: 'provider-idempotency-key',
   executeAction: sendPayment,
 });
 ```
@@ -358,9 +360,12 @@ await executeWithCapability({
 The production adapter requires a transaction callback and locks the capability
 state row before reserving budget. If the external effect throws, the reserved
 amount is committed as indeterminate; it is never silently reopened. The
-capability path is separate from the ordinary one-time receipt consumption
-path, so a signed base receipt can authorize multiple bounded spends without
-turning replay defense off.
+capability path is separate from ordinary receipt consumption: the capability
+store owns replay and budget state for each explicitly supplied operation ID.
+The verifier requires a pinned capability issuer key. Integrations must not
+turn a one-off action approval into a general budget grant; the signed base
+authorization and every observed operation must remain within the capability's
+intended action scope.
 
 ### Gate-integrated capability enforcement
 

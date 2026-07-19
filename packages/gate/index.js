@@ -743,9 +743,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       || typeof capabilityStore.commitSpend !== 'function')) {
     throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), and commitSpend()');
   }
-  const effectiveCapabilityTrustedIssuerKeys = Array.isArray(capabilityTrustedIssuerKeys) && capabilityTrustedIssuerKeys.length > 0
-    ? [...capabilityTrustedIssuerKeys]
-    : [...trustedKeys];
+  if (capabilityStore && (!Array.isArray(capabilityTrustedIssuerKeys)
+      || capabilityTrustedIssuerKeys.length === 0
+      || capabilityTrustedIssuerKeys.some((key) => typeof key !== 'string' || key.length === 0))) {
+    throw new Error('EMILIA Gate capabilityTrustedIssuerKeys must explicitly pin at least one capability issuer');
+  }
+  const effectiveCapabilityTrustedIssuerKeys = [...capabilityTrustedIssuerKeys];
   // Replay defense is only sound if the store is shared, ownership-fenced, and
   // permanent. This is a security property in every environment; NODE_ENV must
   // never silently decide whether a receipt can be replayed.
@@ -1270,7 +1273,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         || !capability.capabilityReceipt || !capability.action) {
       return capabilityRefusal({ capability, reason: 'capability_request_invalid' });
     }
-    const operationId = capability.operationId || crypto.randomUUID();
+    if (typeof capability.operationId !== 'string' || capability.operationId.length === 0
+        || Buffer.byteLength(capability.operationId, 'utf8') > 128) {
+      return capabilityRefusal({ capability, reason: 'capability_operation_id_required' });
+    }
+    const operationId = capability.operationId;
     const context = { ...capability, operationId };
     const baseReceipt = capability.capabilityReceipt.receipt;
     if (receipt && safeCanonicalHash(receipt) !== safeCanonicalHash(baseReceipt)) {
