@@ -7,6 +7,7 @@ import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { color, cta, font, radius } from '@/lib/tokens';
+import { postReceiptRequiredDemo as postDemo } from './post-demo';
 
 const FALLBACK_ACTIONS = [
   {
@@ -96,19 +97,6 @@ function tamperReceipt(receipt) {
   const forged = JSON.parse(JSON.stringify(receipt));
   forged.payload.claim.action_type = 'payment.release:wire:attacker-controlled';
   return forged;
-}
-
-async function postDemo(body) {
-  const res = await fetch('/api/demo/require-receipt', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return {
-    status: res.status,
-    data: await res.json(),
-    receiptRequired: res.headers.get('receipt-required'),
-  };
 }
 
 function sceneFrom(strikes, busy, evidence) {

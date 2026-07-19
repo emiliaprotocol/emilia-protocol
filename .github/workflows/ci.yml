@@ -201,7 +201,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version: '1.22'
-      - run: python -m pip install cryptography==46.0.6
+      - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - run: npm ci --ignore-scripts
       - name: Execute exact claims and bind reproducible release artifacts
         run: npm run security-case:emit
@@ -421,9 +421,12 @@ jobs:
           npm pack ./packages/verify --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/verify-pack.json"
           VERIFY_TARBALL=$(node -e "const r=require(process.argv[1]); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)" "$RUNNER_TEMP/verify-pack.json")
           cd mcp-server
-          npm pkg set "dependencies.@emilia-protocol/verify=file:$RUNNER_TEMP/$VERIFY_TARBALL"
-          npm install --package-lock-only --ignore-scripts
           npm ci --ignore-scripts
+          rm -rf node_modules/@emilia-protocol/verify
+          mkdir -p node_modules/@emilia-protocol/verify
+          tar -xzf "$RUNNER_TEMP/$VERIFY_TARBALL" \
+            --strip-components=1 \
+            -C node_modules/@emilia-protocol/verify
       - name: Verify npm pack succeeds
         working-directory: mcp-server
         run: npm pack
@@ -471,14 +474,16 @@ jobs:
   # ── Job 11: Python SDK ──────────────────────────────────────────
   sdk-python:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/sdks/python/src
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: "3.11"
-      - name: Install SDK and dev dependencies
+      - name: Install hash-locked SDK test dependencies
         working-directory: sdks/python
-        run: pip install -e ".[dev]"
+        run: python -m pip install --require-hashes -r "$GITHUB_WORKSPACE/.github/workflow-requirements/python-sdk-test.txt"
       - name: Verify import
         run: python -c "from emilia_protocol import EPClient; print('Python SDK import OK')"
       - name: Run tests
@@ -504,7 +509,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version: "1.22"
-      - run: pip install cryptography
+      - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
         run: node conformance/run.mjs
       - name: Conformance docs count guard
@@ -657,9 +662,11 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: "3.12"
-      - name: Install with dev extras
-        run: pip install -e './integrations/langchain-emilia[dev]'
+      - name: Install hash-locked test dependencies
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/langchain-test.txt
       - name: Tests (digest parity, gate semantics, fail-closed tool wrapping)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/integrations/langchain-emilia
         run: pytest -q integrations/langchain-emilia/tests
 
   # ── examples/grok_guard red-team regression ─────────────────────
@@ -675,7 +682,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install verifier deps (cryptography)
-        run: pip install cryptography
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - name: Compile grok_guard.py
         run: python -m py_compile examples/grok_guard.py
       - name: Red-team regression suite (six vectors + control)

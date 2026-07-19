@@ -2,7 +2,7 @@
   "name": "@emilia-protocol/gate-service",
   "version": "0.2.0",
   "private": true,
-  "description": "BYOC HTTP enforcement service for complete-mediated GitHub repository deletion.",
+  "description": "BYOC HTTP enforcement service for exact-action authorization and durable consequence control.",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
@@ -19,6 +19,9 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pg": "8.22.0"
   },
   "license": "Apache-2.0"
 }

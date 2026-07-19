@@ -34,9 +34,8 @@ model, no signatures-of-badness, no false positives: receipt or no execution.
 
 ## How it composes with the authorization stack
 
-> **AgentROA governs what an agent may call. ORPRG verifies that policy permitted the effect.
-> EMILIA proves who authorized the exact material action — and safely controls the consequence
-> when money, infrastructure, regulated records, or irreversible state is involved.**
+> **AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact human
+> authorization and safely controls consequential outcomes.**
 
 This is an interoperability position, not a replacement claim. EMILIA verifies
 AgentROA and the concrete `ORPRG-JSON-JCS-ED25519-v1` profile under separate
@@ -67,6 +66,19 @@ entering the provider boundary. Overspend and replay fail closed. Success
 commits the operation. If the provider executes but its response is lost, Gate
 records `indeterminate`, does not refund or blindly replay, and reconciles only
 authenticated provider evidence bound to the same operation and action.
+
+## Product proof: Action Escrow
+
+Action Escrow is the customer-facing proof that these layers remain separate
+under a real consequence. A signed agreement does not authorize payment. The
+reference experience separately verifies document execution, exact release
+approvals from both parties, custodian state, one-time Gate admission, and the
+portable evidence package for one milestone release.
+
+The simulated adapters and custodian move no real money and imply no provider
+partnership, endorsement, or license. What the reference proves is the
+cryptographic and state-machine boundary: only the exact mutually approved
+release can enter the protected effect once.
 
 ## The EP-to-EP handshake (this is the protocol)
 
@@ -104,8 +116,8 @@ certs).
 | **Durable replay + evidence state** | **Postgres consumption and atomic evidence backends** | **built; ownership-fenced consumption, tenant/gate scoping, fork detection, and database immutability controls** |
 | **Bounded capability enforcement** | **Exact-action/CAID scope, atomic budget reservation, operation binding, replay refusal, authenticated reconciliation** | **built in the Gate path with memory and PostgreSQL stores; executable provider-timeout scenario and negative evidence tests** |
 | **Adjacent authorization adapters** | **AgentROA native verifier + concrete ORPRG JCS/Ed25519 verifier** | **built fail closed; shared-CAID suite composes both with genuine EP Class-A quorum evidence** |
-| **Attested Gate + coverage inventory** | **Pinned deployment verifier + signed active probes + five-state coverage kernel** | **built; `gated` requires both fresh attestation and a verified 428 canary; a passive observer is `witness_only`** |
-| **Network witness profile** | **Signed, privacy-minimized observation profile with durable sequence ingestion** | **built; pinned sensor/capture/config, action binding, freshness, replay/rollback/equivocation refusal; explicitly not enforcement and not evidence that an independent operator exists** |
+| **Attestation verifier + coverage inventory** | **Source-pinned rebuild chain, strict TPM quote verifier, signed active probes, and five-state coverage kernel** | **verifier and kernel built; TPM interoperability uses a software fixture. No physical TPM, manufacturer EK chain, measured boot, or production-host attestation is claimed** |
+| **Network witness profile** | **Signed, privacy-minimized observation profile with durable sequence ingestion** | **local profile and testnet built; pinned sensor/capture/config, action binding, freshness, replay/rollback/equivocation refusal. No independently administered operator has produced external witness evidence** |
 | **Control plane + settlement eligibility** | **Coverage, evidence joins, outcome verification, metering, and closed settlement verdicts** | **built reference kernel and operator view; managed operation and real partner adapters remain deployment work** |
 | MCP gateway | `@emilia-protocol/mcp-guard` | shipped |
 | Framework and actuator adapters | GitHub, Stripe, AWS, Supabase, OpenAI, LangChain, MCP | adapter libraries built; GitHub has the deployable reference service |
@@ -126,8 +138,8 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 3. **Cloud** — GitHub, Vercel, AWS/IAM, Kubernetes, Terraform, Supabase, Stripe. *(GitHub BYOC service + GitHub/Stripe/AWS/Supabase adapters built; additional complete-mediation services follow)*
 4. **Robots** — a local daemon/sidecar at the actuator boundary, before motion/tool/door/vehicle commands; simulated first, then real hardware. *(build)*
 5. **EP-Gated conformance badge** — earned, not asserted: missing receipt refused · valid runs · replay refused · forged refused. *(EG-1 reference harness built; public certification program remains future work)*
-6. **Attested Gate** — a relying-party-pinned attestation verifier checks workload/image/config/policy measurements, while a separately pinned active probe proves the declared route returns 428. *(built reference kernel; production attestation-provider credentials are deployment inputs)*
-7. **Network witness** — a TAP, packet broker, or service observer signs privacy-minimized action-bound observations. It remains an evidence plane and can never establish enforcement by itself. *(built vendor-neutral profile and replay-safe ingestion)*
+6. **Attestation-verifier profile** — a relying-party-pinned verifier checks workload/image/config/policy measurements, while a separately pinned active probe proves the declared route returns 428. *(reference verifier and software-TPM interoperability fixture built; physical production-host attestation remains external deployment evidence)*
+7. **Network witness** — a TAP, packet broker, or service observer signs privacy-minimized action-bound observations. It remains an evidence plane and can never establish enforcement by itself. *(local vendor-neutral profile and replay-safe testnet built; no independent operator is claimed)*
 
 ## Build order (for the managed product)
 
@@ -146,6 +158,12 @@ working-group-adopted documents, or IETF endorsement. CAID -00 is a render-clean
 filing candidate but is not posted. Bounded Capability is implemented EMILIA
 architecture and must not be represented as a posted standard. Conformance is
 earned by executable harnesses, not asserted by draft status.
+
+Formal assurance is scoped the same way. Machine-checked models establish named
+properties within their declared bounds and assumptions; they do not prove the
+deployed service, provider, or physical world. The Assurance Plane packages and
+re-performs those model results beside runtime evidence and conformance records
+without issuing an audit opinion or accredited certification.
 
 ## Boundary (state it honestly)
 

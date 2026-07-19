@@ -1,0 +1,122 @@
+name: Bug report
+description: Report a reproducible problem in EMILIA Protocol or a supported package.
+title: "[Bug]: "
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve EMILIA Protocol.
+
+        **Do not report security vulnerabilities in a public issue.** If the problem could enable unauthorized action, authentication or authorization bypass, receipt forgery or replay, data exposure, secret disclosure, cross-tenant access, or another exploitable security impact, stop here and follow our [private security reporting process](https://github.com/emiliaprotocol/emilia-protocol/security/policy).
+
+        Never include credentials, API keys, tokens, private keys, production connection strings, personal data, or unsanitized private logs.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Select the closest component.
+      options:
+        - Protocol, specification, or conformance
+        - Verify, issue, or attestation package
+        - Gate or enforcement path
+        - Approver, mobile, or WebAuthn
+        - Hosted service or API
+        - SDK, integration, or example
+        - Build, release, or developer tooling
+        - Documentation or generated context
+        - Other or unknown
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Provide the package version, release, commit SHA, or branch where you observed the problem.
+      placeholder: "For example: @emilia-protocol/verify 1.x or commit abc1234"
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem summary
+      description: Describe the problem and its user-visible impact without including sensitive details.
+      placeholder: What happened, and who or what is affected?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest deterministic reproduction you can. Use synthetic data and placeholders only.
+      placeholder: |
+        1. Configure ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the expected result, including the expected refusal or failure state when relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: State the observed result and any stable error code or message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include relevant OS, runtime, package-manager, browser, database, and deployment details.
+      placeholder: |
+        - OS:
+        - Node/npm:
+        - Browser or client:
+        - Database or deployment:
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Regression status
+      options:
+        - Unknown
+        - Yes, this worked in an earlier version
+        - No, this has never worked for me
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Add a minimal repository, failing test, stack trace, screenshot, or redacted log. Do not paste secrets or private production data.
+      placeholder: Links or sanitized output, if available.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched existing issues for a duplicate.
+          required: true
+        - label: I removed secrets, credentials, personal data, and private production details from this report.
+          required: true
+        - label: This report is not an undisclosed security vulnerability; security-sensitive reports will be sent privately under SECURITY.md.
+          required: true
+        - label: I agree to follow the repository's Code of Conduct.
+          required: true

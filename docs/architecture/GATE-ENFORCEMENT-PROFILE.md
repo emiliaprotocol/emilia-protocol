@@ -81,6 +81,84 @@ lifecycle conclusions.
 
 ![Four Gate deployment topologies and the shared consequence lifecycle. The diagram shows MCP proxy, service mesh, egress gateway, and system-of-record placements, followed by challenge, evidence decisions, authorization, reservation, invocation, execution or indeterminate state, and reconciliation.](../diagrams/gate-enforcement-topologies.svg)
 
+### 4.1 Evidence-to-consequence topology
+
+The deployment diagram above answers **where** Gate runs. The following
+topology answers **what remains separate** as evidence moves toward a protected
+effect.
+
+```mermaid
+flowchart LR
+  subgraph NATIVE["Independent native evidence inputs"]
+    ROA["AgentROA<br/>ROA / ARA chain + AER"]
+    ORP["ORPRG<br/>PermitReceipt"]
+    EPH["EMILIA authorization evidence<br/>Class-A receipt or quorum"]
+  end
+
+  subgraph VERIFY["Relying-party-pinned native verification"]
+    VROA["AgentROA verifier<br/>scope, chain, policy, AER"]
+    VORP["ORPRG verifier<br/>issuer, policy, epoch, scope, status, replay"]
+    VEP["EP verifier<br/>approver, role, ceremony, action hash"]
+  end
+
+  subgraph BIND["Material-action binding"]
+    MROA["Pinned AgentROA-to-CAID mapping"]
+    MORP["Pinned ORPRG-to-CAID mapping"]
+    MEP["EP action hash equals<br/>the CAID digest"]
+    MATCH["MATCH<br/>same CAID under the exact profiles"]
+  end
+
+  subgraph DECIDE["Evidence sufficiency and local authority"]
+    SAT["AEC / relying-party requirement<br/>SATISFIED"]
+    AUTH["Gate local policy<br/>AUTHORIZED"]
+  end
+
+  subgraph CONSEQUENCE["Consequence-owning enforcement"]
+    PROFILE{"Protected executor profile"}
+    CAP["Generic Gate path<br/>one-time or bounded reserve"]
+    ESC["Action Escrow kernel<br/>DAB + acceptances + funding + milestone<br/>+ distinct release approvals"]
+    ERES["CAS release reservation"]
+    EFFECT["Protected executor / provider boundary"]
+    CUST["External custodian bridge"]
+    OUTCOME{"Authoritative outcome available?"}
+    DONE["EXECUTED"]
+    UNKNOWN["INDETERMINATE<br/>replay authority remains consumed"]
+    RECON["Authenticated reconciliation<br/>same provider + operation + action<br/>no re-execution"]
+  end
+
+  ROA --> VROA --> MROA --> MATCH
+  ORP --> VORP --> MORP --> MATCH
+  EPH --> VEP --> MEP --> MATCH
+  MATCH --> SAT --> AUTH --> PROFILE
+  PROFILE -->|"generic adapter"| CAP --> EFFECT
+  PROFILE -->|"escrow release"| ESC --> ERES --> CUST
+  CUST --> OUTCOME
+  EFFECT --> OUTCOME
+  OUTCOME -->|"yes"| DONE
+  OUTCOME -->|"unknown after entry"| UNKNOWN --> RECON
+  RECON -->|"proved executed"| DONE
+  RECON -->|"absent, stale, conflicting, or pending"| UNKNOWN
+
+  classDef external fill:#eef2ff,stroke:#4f46e5,color:#111827;
+  classDef evidence fill:#ecfeff,stroke:#0891b2,color:#111827;
+  classDef decision fill:#fefce8,stroke:#ca8a04,color:#111827;
+  classDef effect fill:#f0fdf4,stroke:#16a34a,color:#111827;
+  classDef indeterminate fill:#fff1f2,stroke:#e11d48,color:#111827;
+  class ROA,ORP external;
+  class EPH,VROA,VORP,VEP,MROA,MORP,MEP,MATCH evidence;
+  class SAT,AUTH,PROFILE decision;
+  class CAP,ESC,ERES,EFFECT,CUST,OUTCOME,DONE,RECON effect;
+  class UNKNOWN indeterminate;
+```
+
+This is a composition profile, not a claim that one constructor automatically
+wires every box. The repository has a real-crypto AgentROA + ORPRG + EP
+shared-CAID suite, a separate Gate bounded-capability path, and a separate
+Action Escrow state machine. A deployment MAY make the composed evidence
+requirement a precondition for an Action Escrow release, but the checked-in
+Action Escrow scenario does not currently present AgentROA and ORPRG artifacts
+as one end-to-end release harness.
+
 The four topologies are composable. A high-assurance deployment commonly uses
 a broad upstream placement for early refusal and a domain/system-of-record
 placement for final enforcement.
@@ -308,14 +386,18 @@ effect requires the lifecycle and policy defined for a new action instance.
 ## 7. External Composition Inputs
 
 AgentROA and ORPRG are external, work-in-progress protocol sources. EMILIA does
-not rename or claim ownership of their semantics.
+not rename or claim ownership of their semantics. The current reference code
+implements the documented AgentROA -01 object family and one concrete
+`ORPRG-JSON-JCS-ED25519-v1` PermitReceipt profile. It does not claim universal
+support for future AgentROA revisions, every ORPRG serialization, or every
+artifact discussed by those drafts.
 
 | Native artifact | Native question it can answer | EMILIA composition role | It does not establish by itself |
 | --- | --- | --- | --- |
 | AgentROA ROA envelope and ARA chain | Was this agent session and delegation chain within a signed, monotonically narrowed capability scope? | Delegated machine-scope evidence, verified under AgentROA's native rules and relying-party pins. | Named-human approval, EMILIA evidence satisfaction, local authorization, or successful execution. |
 | AgentROA AER | Did an AgentROA Border Gateway record a pre-execution permit or denial for the bound invocation and policy? | Machine-policy or enforcement-decision evidence. Its `enforcement_mode` and deployment topology remain visible to local policy. | That the target effect executed; AgentROA defines the AER commitment before execution. |
 | ORPRG PermitReceipt | Did the selected ORPRG profile authorize the canonical effect request under the named policy epoch, scope, status, and anti-replay rules? | Machine-policy permit evidence, verified under ORPRG's native rules and relying-party pins. | Named-human approval, universal authorization, complete mediation, or successful execution. |
-| ORPRG DecisionReceipt or capability token | Did a local ORPRG verifier derive action- and audience-bound downstream evidence? | A dual-enforcement input at the downstream boundary. | Permission for a different audience, action, epoch, or operation; execution success. |
+| ORPRG DecisionReceipt or capability token | Did a local ORPRG verifier derive action- and audience-bound downstream evidence? | A possible dual-enforcement input at the downstream boundary; this row is an extension point, not a claim that the current reference verifier implements these artifacts. | Permission for a different audience, action, epoch, or operation; execution success. |
 
 An adapter for either protocol MUST:
 
@@ -330,10 +412,35 @@ An adapter for either protocol MUST:
 7. avoid converting a machine permit into human authorization or execution
    evidence.
 
+### 7.1 CAID material-action binding
+
+CAID correlates material action content after native verification. It does not
+verify AgentROA, ORPRG, or EP evidence and it does not authorize execution.
+
+For the currently implemented interoperability profile:
+
+1. Gate or the relying-party verifier first verifies the AgentROA bundle,
+   ORPRG PermitReceipt, and EP authorization evidence under their separate
+   trust pins.
+2. The verified AgentROA AER action and ORPRG canonical action are projected
+   through their exact relying-party-pinned Action-Mapping Profiles.
+3. Both projections MUST produce the same CAID, and the EP quorum or receipt
+   action hash MUST equal that CAID's digest for the selected suite.
+4. Only then may the bundle reach **MATCH**. The relying party still evaluates
+   its own evidence requirement to reach **SATISFIED**, and the executor still
+   makes the separate **AUTHORIZED** decision.
+
+An unpinned profile, failed native verification, missing material field, or
+lossy mapping is not guessed into equivalence. The mapping result is
+`INDETERMINATE` and a required match fails closed. The executable corpus in
+`conformance/vectors/agentroa-orprg-ep.v1.json` includes the accepted
+shared-CAID case plus action substitution, wrong mapping profile, untrusted
+issuer, policy-only substitution, replay, and missing-requirement refusals.
+
 The current official sources used for this profile are:
 
-- [AgentROA -01](https://www.ietf.org/archive/id/draft-nivalto-agentroa-route-authorization-01.txt)
-- [ORPRG Permit Receipts -00](https://www.ietf.org/archive/id/draft-lee-orprg-permit-receipts-00.txt)
+- [AgentROA -01](https://datatracker.ietf.org/doc/draft-nivalto-agentroa-route-authorization/)
+- [ORPRG Permit Receipts -00](https://datatracker.ietf.org/doc/draft-lee-orprg-permit-receipts/)
 
 They are individual Internet-Drafts and therefore works in progress. This
 profile makes no adoption, endorsement, or ownership claim about them.
@@ -452,6 +559,42 @@ the mutation, and records the outcome.
   where possible, or an idempotent provider operation plus conservative
   indeterminate handling where not.
 
+### 8.5 Domain profile: Action Escrow
+
+Action Escrow is a specialization of the domain/system-of-record topology, not
+a fifth placement topology and not a claim that EMILIA holds funds.
+
+```text
+verified exact agreement and release evidence
+  -> Action Escrow release preconditions
+  -> durable CAS transition to release_reserved
+  -> external custodian bridge, under one provider idempotency key
+  -> released | release_indeterminate
+  -> authenticated reconcileRelease query, never blind re-execution
+```
+
+The kernel re-verifies the persisted Document Action Binding, agreement
+acceptances, funding statement, milestone evidence, release approvals, and
+current profile immediately before release. It reserves the exact release in
+durable state before invoking the configured custodian. A timeout, provider
+exception, unverifiable response, or post-effect state-write ambiguity becomes
+`release_indeterminate`.
+
+`createActionEscrowCustodianBridge` binds the custodian transaction, milestone,
+amount, currency, destination, provider identity, environment, request digest,
+and idempotency key. `reconcileRelease` accepts only a configured verifier's
+authenticated observation bound to those same fields. The separately signed
+state statement in `action-escrow-state.js` authenticates an operator snapshot;
+it does not prove that a custodian moved money and is not the reconciliation
+engine.
+
+A production claim additionally requires a licensed external custodian,
+exclusive mediation of every release path, production credentials and key
+custody, deployed durable storage, and live failure/reconciliation drills. The
+repository's deterministic scenarios and adapters establish reference
+behavior, not custody, licensure, legal enforceability, physical completion,
+or production money movement.
+
 ## 9. Dual Enforcement
 
 High-risk effects SHOULD combine an upstream Gate with a downstream
@@ -557,12 +700,19 @@ The current repository maps this profile to:
 
 | Profile requirement | Reference implementation |
 | --- | --- |
+| AgentROA -01 envelope, delegation-chain, policy, topology, and AER verification | `packages/verify/agentroa.js` and `packages/verify/agentroa.test.js` |
+| Concrete ORPRG JSON/JCS/Ed25519 PermitReceipt verification with pinned issuer, policy, epoch, status, scope, budget, and durable anti-replay | `packages/verify/orprg.js` and `packages/verify/orprg.test.js` |
+| Pinned CAID projection and AgentROA + ORPRG + genuine EP quorum shared-action composition | `caid/impl/js/mapping.mjs`, `conformance/vectors/agentroa-orprg-ep.v1.json`, and `tests/agentroa-orprg-ep-caid.test.js` |
+| EP receipt and quorum verification, kept separate from machine-scope and machine-policy evidence | `packages/verify/index.js` and `packages/verify/quorum.js` |
+| Constructor-pinned heterogeneous evidence requirement and action-keyed execution custody | `packages/verify/evidence-chain.js` and `packages/gate/aec-execution.js` |
 | Challenge, receipt verification, assurance, observed-action binding, one-time reservation, invocation, and execution evidence | `packages/gate/index.js` |
-| Atomic bounded-spend reserve and commit, replay refusal, Postgres adapter, and indeterminate spend | `packages/gate/capability-receipt.js` |
-| Constructor-pinned heterogeneous evidence requirement and action-keyed execution custody | `packages/gate/aec-execution.js` |
+| Atomic bounded-spend reserve and commit, extraction-bypass refusal, stable operation and observed-action binding, Postgres adapter, and indeterminate spend | `packages/gate/capability-receipt.js`, `packages/gate/index.js`, `packages/gate/capability-gate.test.js`, and `supabase/migrations/20260719043735_capability_operation_action_binding.sql` |
+| Authenticated same-action reconciliation of an indeterminate capability spend without re-execution | `examples/indeterminate-effect-reconciliation/` |
 | Lifecycle divergence detection and fail-closed safe mode | `packages/gate/runtime-monitor.js` |
 | Shared-head durable evidence | `packages/gate/evidence.js` and `packages/gate/evidence-postgres.js` |
-| Authenticated external-provider reconciliation for Action Escrow | `packages/gate/action-escrow-custodian.js` and `packages/gate/action-escrow-state.js` |
+| Action Escrow release reservation, indeterminate state, and reconciliation state machine | `packages/gate/action-escrow.js` and `packages/gate/action-escrow.test.js` |
+| Action Escrow external-custodian binding and authenticated provider observation | `packages/gate/action-escrow-custodian.js` and `packages/gate/action-escrow-custodian.test.js` |
+| Portable signed Action Escrow operator snapshot, distinct from provider reconciliation | `packages/gate/action-escrow-state.js` |
 | Deployment isolation, network policy, database posture, backup, restore, and rollback | `docs/EMILIA-GATE-DEPLOYMENT.md` |
 | Narrow executable Consequence Firewall claim | `docs/CONSEQUENCE-FIREWALL-CONFORMANCE.md` |
 
@@ -570,7 +720,28 @@ This mapping identifies the code that implements the profile. It does not claim
 that every possible deployment has complete mediation. Each deployment must
 prove its own declared coverage and failure behavior.
 
-## 14. Deployment Acceptance Checklist
+## 14. Implementation Status and External Milestones
+
+Repository evidence and external milestones are different closure states.
+
+| Surface | Repository-backed status | Boundary or external milestone |
+| --- | --- | --- |
+| AgentROA and ORPRG inputs | Fail-closed JavaScript verifiers implement AgentROA -01 and the concrete `ORPRG-JSON-JCS-ED25519-v1` profile with native negative tests. | Both source documents are active individual Internet-Drafts, not RFCs, adopted working-group items, or IETF endorsements. Support is profile-specific, not universal. |
+| CAID interoperability | JavaScript, Python, and Go same-team ports exercise shared CAID and Action-Mapping vectors; the AgentROA + ORPRG + EP corpus uses genuine signatures and pinned mappings. | Same-team agreement is consistency evidence, not an independent implementation. The existing time-pinned external Rust result does not cover this current CAID/AgentROA/ORPRG/Gate composition. No CAID standard or IETF adoption is claimed here. |
+| Evidence satisfaction and Gate authorization | AEC verification and the Gate execution paths are implemented as separately configurable components with relying-party-owned requirements and trust. | The repository does not claim one pre-wired production constructor for the complete diagram. Integrators must wire, pin, deploy, and test the selected profile. |
+| Bounded capability enforcement | Exact-action or CAID scope, stable operation binding, atomic memory/PostgreSQL reserve and commit, overspend and replay refusal, indeterminate consumption, and authenticated reconciliation are implemented. | Bounded Capability is implemented architecture, not a posted standard. Production closure requires the migration, shared durable state, provider idempotency, and operational reconciliation. |
+| Action Escrow | The JavaScript state machine, evidence package, PostgreSQL store, external-custodian interface, signed provider observations, and indeterminate reconciliation are executable. | EMILIA does not hold funds or establish escrow licensure. The repository does not establish a live licensed-custodian deployment, legal enforceability, physical completion, or production money movement. |
+| Complete mediation | The profile names placement, bypass inventory, active probes, dual enforcement, and fail-closed behavior. | Only a concrete deployment can prove that every protected mutation path is covered. A library, proxy, diagram, or successful reference test cannot establish production non-bypassability. |
+| Independent deployment evidence | Local witness, attestation, and failure-path tooling can support a deployment evidence package. | Independent witness operators, physical TPM deployment evidence, external hostile reruns, and customer production evidence remain separate milestones unless a current scoped artifact establishes them. |
+
+The live Datatracker is authoritative for standards status. At this profile
+revision, [AgentROA](https://datatracker.ietf.org/doc/draft-nivalto-agentroa-route-authorization/),
+[ORPRG Permit Receipts](https://datatracker.ietf.org/doc/draft-lee-orprg-permit-receipts/),
+and [EP-AEC](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/)
+are individual Internet-Drafts. Their existence does not imply consensus,
+adoption, or endorsement.
+
+## 15. Deployment Acceptance Checklist
 
 A production owner SHOULD NOT mark a protected surface ready until all answers
 below are yes.
@@ -601,14 +772,15 @@ below are yes.
       drills preserve the closed state?
 - [ ] Is the coverage claim no broader than the paths actually tested?
 
-## 15. Source Notes
+## 16. Source Notes
 
 The topology categories, external trust-boundary observations, dual-enforcement
 concept, and degraded metadata in this profile were informed by the official
-AgentROA -01 and ORPRG -00 texts linked in Section 7. EMILIA's decision
-vocabulary, durable consequence lifecycle, and claim boundaries follow the
-current repository implementation and canonical context.
+AgentROA -01 and ORPRG -00 texts linked in Section 7. CAID, capability, Gate,
+and Action Escrow statements follow the public implementation and negative
+tests named in Section 13. EMILIA's decision vocabulary, durable consequence
+lifecycle, and claim boundaries follow the current canonical context.
 
-No private draft text is reproduced here. Nothing in this document states or
-implies that an EMILIA document, AgentROA, or ORPRG has been adopted or endorsed
-by the IETF.
+No private or staged draft text is reproduced or used as implementation
+evidence here. Nothing in this document states or implies that an EMILIA
+document, AgentROA, ORPRG, or CAID has been adopted or endorsed by the IETF.

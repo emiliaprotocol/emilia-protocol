@@ -10,8 +10,8 @@ WORKDIR /opt/dependencies
 # apps/gate-service is dependency-light. pg backs the built-in environment
 # factory's durable Postgres stores. Cloud KMS SDKs remain operator choices in
 # a derived image that uses an explicit operator config.
-RUN npm init --yes \
-    && npm install --omit=dev --ignore-scripts --no-audit --no-fund --save-exact pg@8.22.0 \
+COPY apps/gate-service/package.json apps/gate-service/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
     && npm cache clean --force
 
 FROM ${NODE_IMAGE} AS runtime

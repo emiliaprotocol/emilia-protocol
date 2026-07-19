@@ -759,11 +759,21 @@ test('enforces initiator exclusion when the bound profile prohibits self-approva
 test('provider timeout becomes release_indeterminate and requires authenticated GET reconciliation', async () => {
   let releaseCalls = 0;
   let reconciledKey;
+  let effectExecuted = false;
+  let completeProviderResponse;
+  const providerResponse = new Promise((resolve) => {
+    completeProviderResponse = resolve;
+  });
   const provider = successfulProvider({
     async release(request) {
       releaseCalls++;
       reconciledKey = request.idempotency_key;
-      throw new Error('response lost after request');
+      effectExecuted = true;
+      await providerResponse;
+      return {
+        authenticated: true,
+        statement: releaseStatement(request.idempotency_key),
+      };
     },
     async getRelease(request) {
       assert.equal(request.method, 'GET');
@@ -774,23 +784,34 @@ test('provider timeout becomes release_indeterminate and requires authenticated 
       };
     },
   });
-  const { kernel } = kernelFor({ provider });
+  const { kernel } = kernelFor({ provider, providerTimeoutMs: 5 });
   await readyForRelease(kernel);
 
   const unknown = await kernel.release(common('release-timeout'));
+  assert.equal(effectExecuted, true, 'the provider effect happened before its response timed out');
   assert.equal(unknown.ok, false);
   assert.equal(unknown.outcome, 'indeterminate');
   assert.equal(unknown.code, 'release_effect_indeterminate');
   assertState(unknown, 'release_indeterminate');
+  assert.equal(unknown.record.release.reconciled_at, null);
+  assert.equal(unknown.record.release.provider_statement, null);
+  assert.equal(unknown.record.release.provider_verification, null);
+
+  completeProviderResponse();
+  await new Promise((resolve) => setImmediate(resolve));
 
   const retry = await kernel.release(common('automatic-retry-refused'));
   assert.equal(retry.code, 'release_reconciliation_required');
+  assertState(retry, 'release_indeterminate');
+  assert.equal(retry.record.release.reconciled_at, null);
   assert.equal(releaseCalls, 1);
 
   const reconciled = await kernel.reconcileRelease(common('authenticated-get'));
   assert.equal(reconciled.ok, true);
   assert.equal(reconciled.code, 'release_reconciled_released');
   assertState(reconciled, 'released');
+  assert.equal(reconciled.record.release.reconciled_at, '2026-07-17T12:00:00.000Z');
+  assert.equal(reconciled.record.release.provider_verification.authenticated, true);
   assert.equal(releaseCalls, 1);
 
   const originalRetry = await kernel.release(common('release-timeout'));
@@ -843,14 +864,18 @@ test('authenticated reconciliation of no effect reopens release with the same pr
 });
 
 test('unauthenticated or unverifiable reconciliation stays indeterminate', async () => {
+  let reconciliationAttempt = 0;
   const provider = successfulProvider({
     async release() {
       throw new Error('timeout');
     },
     async getRelease(request) {
+      reconciliationAttempt++;
       return {
-        authenticated: false,
-        statement: releaseStatement(request.idempotency_key),
+        authenticated: reconciliationAttempt !== 1,
+        statement: releaseStatement(request.idempotency_key, {
+          authenticated: reconciliationAttempt === 2 ? false : true,
+        }),
       };
     },
   });
@@ -862,6 +887,23 @@ test('unauthenticated or unverifiable reconciliation stays indeterminate', async
   assert.equal(refused.ok, false);
   assert.equal(refused.code, 'provider_reconciliation_unauthenticated');
   assertState(refused, 'release_indeterminate');
+  assert.equal(refused.record.release.reconciled_at, null);
+  assert.equal(refused.record.release.provider_statement, null);
+  assert.equal(refused.record.release.provider_verification, null);
+
+  const verifierRefused = await kernel.reconcileRelease(common('verifier-unauthenticated-get'));
+  assert.equal(verifierRefused.ok, false);
+  assert.equal(verifierRefused.code, 'provider_release_statement_invalid');
+  assertState(verifierRefused, 'release_indeterminate');
+  assert.equal(verifierRefused.record.release.reconciled_at, null);
+  assert.equal(verifierRefused.record.release.provider_statement, null);
+  assert.equal(verifierRefused.record.release.provider_verification, null);
+
+  const reconciled = await kernel.reconcileRelease(common('authenticated-get'));
+  assert.equal(reconciled.ok, true);
+  assert.equal(reconciled.code, 'release_reconciled_released');
+  assertState(reconciled, 'released');
+  assert.equal(reconciled.record.release.provider_verification.authenticated, true);
 });
 
 test('concurrent release requests durably reserve once before provider invocation', async () => {

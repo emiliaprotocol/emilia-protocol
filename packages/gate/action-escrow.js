@@ -2127,8 +2127,8 @@ export function createActionEscrowKernel(options = {}) {
       : targetState === 'milestone_submitted'
         ? 'not_released'
         : 'indeterminate';
-    next.release.reconciled_at = at;
     if (providerResult) {
+      next.release.reconciled_at = at;
       next.release.provider_statement = providerResult.artifact;
       next.release.provider_verification = providerResult.verification;
     }

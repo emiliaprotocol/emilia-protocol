@@ -1,5 +1,7 @@
 name: Publish Verify SDK
 
+permissions: read-all
+
 # npm Trusted Publishing (OIDC) — NO long-lived NPM_TOKEN. On each run npm
 # verifies the OIDC claim (owner / repo / workflow filename) and issues a
 # short-lived credential, and `--provenance` attaches a signed provenance
@@ -76,15 +78,15 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install cross-language verifier dependency
+      - name: Install hash-locked cross-language verifier dependency
         working-directory: ${{ github.workspace }}
-        run: python -m pip install cryptography==46.0.6
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
 
-      - name: Upgrade npm (>= 11.5.1 for OIDC trusted publishing + provenance)
-        # --min-release-age=0: the repo .npmrc age-gates app dependencies (supply-
-        # chain defense); the trusted first-party npm tool is exempt so publish
-        # tooling always installs a current npm with full provenance support.
-        run: npm install -g npm@11.18.0 --min-release-age=0
+      - name: Install hash-locked npm (>= 11.5.1 for OIDC publishing)
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci --prefix .github/npm-toolchain --ignore-scripts --min-release-age=0
+          echo "$GITHUB_WORKSPACE/.github/npm-toolchain/node_modules/.bin" >> "$GITHUB_PATH"
 
       # The published verifier remains zero-dependency. Its test suite also
       # exercises the optional PQ adapter, so install the repository's locked
