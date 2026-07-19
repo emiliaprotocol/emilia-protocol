@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="14"/>
+    <date year="2026" month="July" day="19"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>revocation</keyword>
@@ -421,7 +421,7 @@
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
             <date year="2026" month="July"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-07"/>
         </reference>
       </references>
     </references>

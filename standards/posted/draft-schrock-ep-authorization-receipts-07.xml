@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-ep-authorization-receipts-07"
-     category="info" ipr="trust200902" submissionType="IETF"
+     category="info" ipr="trust200902"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="EP Authorization Receipts">Authorization Receipts for High-Risk Agent Actions</title>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="14"/>
+    <date year="2026" month="July" day="19"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -919,6 +919,17 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
       authorization under its own SoD and m-of-n profiles. The two
       compose: a DRP delegation can be referenced in
       an EP Action Object's provenance field.</t>
+      <t><strong>Bounded Capability Receipts</strong>
+      (<xref target="EP-BOUNDED-CAP"/>) authorize a different lifecycle.
+      An EP Authorization Receipt can approve the exact act of issuing a
+      bounded capability, and that issuance receipt is consumed when the
+      capability is registered. It <bcp14>MUST NOT</bcp14> then be reused
+      as though it approved every later capability-funded operation. The
+      capability binds the complete issuance-receipt digest, scope, budget,
+      holder proof, and validity interval; its shared reserve/commit store
+      accounts later operations. A deployment that requires human approval of
+      an individual exercise obtains a new action-bound EP receipt or
+      EP-QUORUM for that exercise.</t>
       <t><strong>CIBA</strong> (<xref target="CIBA"/>) transports an
       authentication-time approval to a backchannel device; it does not
       produce an action-bound, offline-verifiable, one-time-consumable
@@ -1050,7 +1061,20 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         <t>A malicious log could show different trees to different
         parties. Checkpoints <bcp14>SHOULD</bcp14> be witness-cosigned
         and/or gossiped between independent EP operators; the federation
-        profile makes cross-operator checkpoint exchange mandatory.</t>
+        profile makes cross-operator checkpoint exchange mandatory. Before a
+        witness signs a checkpoint or a gossip participant accepts it for
+        comparison, that participant <bcp14>MUST</bcp14> verify the
+        checkpoint's log signature under the pinned log key and
+        <bcp14>MUST</bcp14> verify any required consistency proof from the
+        participant's previously accepted checkpoint. A quorum of witness
+        signatures over a caller-supplied but unauthenticated tuple is not
+        evidence that the named log produced that tuple.</t>
+        <t>For this purpose, independent operators require separate
+        administrative control, key custody, and failure domains; multiple
+        co-located processes under one operator do not provide independent
+        witnessing. Comparing supplied authenticated views can prove that the
+        views conflict. It does not by itself prove freshness, completeness,
+        or that every relying party received the latest checkpoint.</t>
       </section>
       <section>
         <name>What the Formal Models Do and Do Not Prove</name>
@@ -1096,6 +1120,12 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         prove WebAuthn internals, parser correctness, amount arithmetic,
         policy authorship, clock freshness, transparency-log completeness,
         collusion resistance, or downstream exactly-once physical effects.</t>
+        <t>The quorum abstraction in the standalone symbolic model is a fixed
+        2-of-2 instance. Its checked result is evidence for that instance, not
+        a proof of the arbitrary k-of-n construction defined by the companion
+        EP-QUORUM document and not a proof of production code. CI regression
+        gating of an existing prover result increases reproducibility; it does
+        not add a lemma or enlarge the model's scope.</t>
         <t>Independent implementation status, stated precisely: the
         three reference verifiers (JavaScript, Python, Go) agree on the
         published conformance vectors but live in one repository -- a
@@ -1313,6 +1343,14 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
           <date year="2026" month="July"/>
         </front>
       </reference>
+      <reference anchor="EP-BOUNDED-CAP" target="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">
+        <front>
+          <title>Bounded Capability Receipts and Durable Spend Control for Agent Actions</title>
+          <author fullname="Iman Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-00"/>
+      </reference>
       <reference anchor="FORMAL-STATUS" target="https://github.com/emiliaprotocol/emilia-protocol/blob/main/formal/PROOF_STATUS.md">
         <front>
           <title>EMILIA Formal Proof Status and Scope</title>
@@ -1344,6 +1382,9 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         changing the EP v1 signature input.</li>
         <li>Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
         composable work.</li>
+        <li>Clarified that a receipt can authorize and be consumed for
+        capability issuance, but cannot be reused as per-operation approval;
+        the capability protocol binds the full issuance-receipt digest.</li>
       </ul>
     </section>
     <section anchor="changes-since-04" numbered="true">

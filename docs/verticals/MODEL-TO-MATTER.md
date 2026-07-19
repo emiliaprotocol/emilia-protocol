@@ -141,12 +141,11 @@ npx vitest run tests/model-to-matter.test.js tests/model-to-matter-security-bran
 npm run test:mutation:model-to-matter
 ```
 
-An Experimental Internet-Draft source is staged at
-`standards/staged/draft-schrock-model-to-matter-00.xml`. It specifies the
-executor-side lifecycle and explicit non-goals. It is a July 19 Experimental
-filing candidate, scheduled last after the four-document core line. Filing the
-profile establishes the open Model-to-Matter name; it does not establish
-deployment, adoption, partnership, or endorsement.
+The published Experimental Internet-Draft source is archived locally at
+`standards/posted/draft-schrock-model-to-matter-00.xml`. It specifies the
+executor-side lifecycle and explicit non-goals. Publication establishes the
+open Model-to-Matter name; it does not establish deployment, adoption,
+partnership, or endorsement.
 
 ## Integration shape
 

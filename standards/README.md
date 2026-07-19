@@ -8,7 +8,7 @@ Start here:
 - [`PORTFOLIO.md`](PORTFOLIO.md) is the human-readable architecture and filing
   narrative.
 - [`STATUS.json`](STATUS.json) is the machine-readable source of truth for
-  revisions, roles, consolidation, the July 19 post-blackout wave, the July 27
+  revisions, roles, consolidation, the July 19 published wave, the July 27
   lifecycle wave, retired work, and partner-triggered profiles.
 - [`../caid`](../caid) contains the CAID identifier, Action-Mapping Profile,
   registry, three same-team reference ports, and shared vectors.
@@ -20,10 +20,10 @@ Internet-Draft**. It is not an RFC, not an adopted working-group item, and not
 IETF endorsement. Candidate and staged files in this repository have not been
 filed.
 
-The Datatracker was last checked on 2026-07-14. It listed thirteen active
-`draft-schrock-*` documents plus one coauthored composition document. The exact
-inventory and revision numbers are in `STATUS.json`; Datatracker remains the
-authority for live status.
+The July 19 publication set was verified against the IETF archive on
+2026-07-19. Each archived IETF TXT is byte-for-byte identical to its local
+snapshot under `posted/`. The exact inventory and revision numbers are in
+`STATUS.json`; the IETF Datatracker remains the authority for live status.
 
 ## Cohesive architecture
 
@@ -40,22 +40,31 @@ and Quorum provide named evidence profiles. AEC evaluates evidence
 satisfaction. Challenge, enforcement, outcome, revocation, and preservation
 remain separate lifecycle transitions.
 
-## July 19 post-blackout candidate wave
+## July 19 published wave
 
 1. `draft-schrock-canonical-action-identifier-00`
 2. `draft-schrock-ep-architecture-01`
-3. `draft-schrock-ep-authorization-evidence-chain-03`
+3. `draft-schrock-ep-authority-introduction-01`
 4. `draft-schrock-ep-authorization-receipts-07`
-5. `draft-schrock-model-to-matter-00` (Experimental application profile,
-   filed last to establish the name; no deployment or partner claim)
+5. `draft-schrock-ep-quorum-03`
+6. `draft-schrock-ep-bounded-capability-receipts-00`
+7. `draft-schrock-ep-authorization-evidence-chain-03`
+8. `draft-schrock-model-to-matter-00` (Experimental application profile; no
+   deployment or partner claim)
 
-The first four documents are the cohesive core. Model-to-Matter demonstrates
-that core at an executor boundary and carries its own JavaScript implementation,
-deterministic public vectors, and explicit non-goals. Outcome Binding is
-conditional on its independent gate. Revocation is the
-mandatory July 27 lifecycle filing; other former holds are now retired,
-absorbed, or partner-triggered. Filing is a human Datatracker action and occurs
-only after render, claim-tracing, conformance, test, and build gates pass.
+The first seven documents form the protocol line. Model-to-Matter demonstrates
+the architecture at an executor boundary and carries explicit non-goals.
+Outcome Binding was not filed and remains deferred pending independent
+verification.
+
+## July 27 lifecycle wave
+
+`draft-schrock-ep-revocation-statement-00` is the only complete draft in
+`staged/` and is the mandatory next filing candidate. Its design freeze is
+July 20, hostile-review deadline is July 24, and target filing date is July 27.
+`draft-schrock-authorization-evidence-challenge-01` is conditional and is not
+staged because its source-locked AuthZEN AARP review and new revision source do
+not yet exist.
 
 ## Directory layout
 

@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              14 July 2026
-Expires: 15 January 2027
+Intended status: Informational                              19 July 2026
+Expires: 20 January 2027
 
 
                  The Canonical Action Identifier (CAID)
@@ -41,7 +41,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 January 2027.
+   This Internet-Draft will expire on 20 January 2027.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Schrock                  Expires 15 January 2027                [Page 1]
+Schrock                  Expires 20 January 2027                [Page 1]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -92,11 +92,11 @@ Table of Contents
      7.4.  Completeness Assumption . . . . . . . . . . . . . . . . .  15
    8.  What a CAID Is Not  . . . . . . . . . . . . . . . . . . . . .  15
    9.  Security Considerations . . . . . . . . . . . . . . . . . . .  16
-   10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  17
+   10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  18
    11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  18
      11.1.  Normative References . . . . . . . . . . . . . . . . . .  18
      11.2.  Informative References . . . . . . . . . . . . . . . . .  19
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  19
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  20
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  20
 
 1.  Introduction
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                  Expires 15 January 2027                [Page 2]
+Schrock                  Expires 20 January 2027                [Page 2]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -165,7 +165,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 3]
+Schrock                  Expires 20 January 2027                [Page 3]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -221,7 +221,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 4]
+Schrock                  Expires 20 January 2027                [Page 4]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -277,7 +277,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 5]
+Schrock                  Expires 20 January 2027                [Page 5]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -333,7 +333,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 6]
+Schrock                  Expires 20 January 2027                [Page 6]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -389,7 +389,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 7]
+Schrock                  Expires 20 January 2027                [Page 7]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -445,7 +445,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 8]
+Schrock                  Expires 20 January 2027                [Page 8]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -501,7 +501,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 9]
+Schrock                  Expires 20 January 2027                [Page 9]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -557,7 +557,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027               [Page 10]
+Schrock                  Expires 20 January 2027               [Page 10]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -613,7 +613,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027               [Page 11]
+Schrock                  Expires 20 January 2027               [Page 11]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -669,7 +669,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027               [Page 12]
+Schrock                  Expires 20 January 2027               [Page 12]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -725,7 +725,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027               [Page 13]
+Schrock                  Expires 20 January 2027               [Page 13]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -781,7 +781,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027               [Page 14]
+Schrock                  Expires 20 January 2027               [Page 14]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -837,7 +837,7 @@ Internet-Draft                    CAID                         July 2026
 
 
 
-Schrock                  Expires 15 January 2027               [Page 15]
+Schrock                  Expires 20 January 2027               [Page 15]
 
 Internet-Draft                    CAID                         July 2026
 
@@ -848,6 +848,18 @@ Internet-Draft                    CAID                         July 2026
 
    *  A CAID is not authorization.  Possession of an identifier, or of
       the object it digests, authorizes nothing.
+
+   *  A capability scope can name one or more CAIDs as exact content
+      constraints.  The capability's signature, issuer trust, holder
+      proof, budget state, and local policy create that authorization
+      context; the CAIDs themselves still grant nothing.
+
+   *  A capability grant, a narrowing delegation, and each capability
+      exercise are different material actions and can have separate
+      CAIDs.  Equality or EQUIVALENT_UNDER_PROFILE does not establish
+      that an exercise falls within a grant.  Scope containment,
+      attenuation, remaining budget, and permission to act are evaluated
+      by the capability protocol under relying-party-selected inputs.
 
    *  A CAID is not identity.  It names content, not any human, agent,
       workload, or organization.
@@ -871,6 +883,21 @@ Internet-Draft                    CAID                         July 2026
    registered and issuers move to it, emitting new identifiers.  There
    is no in-place algorithm change within a suite, ever.
 
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 16]
+
+Internet-Draft                    CAID                         July 2026
+
+
    No domain separation.  The digest input carries no domain separation
    prefix, deliberately, so that existing formats can adopt a digest
    they may already compute over canonical bytes (Section 3.2).  The
@@ -890,14 +917,6 @@ Internet-Draft                    CAID                         July 2026
    confidentiality or unlinkability.  Type authors handling personal
    data SHOULD prefer high-entropy opaque references or a deployment-
    specific privacy-preserving commitment scheme, document its
-
-
-
-Schrock                  Expires 15 January 2027               [Page 16]
-
-Internet-Draft                    CAID                         July 2026
-
-
    normalization and correlation scope, and avoid placing unnecessary
    personal data in the action object.  A deployment-specific scheme can
    require an explicit mapping profile for cross-domain joins.
@@ -924,6 +943,17 @@ Internet-Draft                    CAID                         July 2026
    therefore a relying-party policy decision; unpinned, lossy, or
    ambiguous mappings MUST yield INDETERMINATE.
 
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 17]
+
+Internet-Draft                    CAID                         July 2026
+
+
    Native integrity coverage.  A valid native signature does not make
    unsigned members beside the signed payload trustworthy.  A native
    adapter MUST establish that every mapped field is covered by the
@@ -944,15 +974,6 @@ Internet-Draft                    CAID                         July 2026
 10.  IANA Considerations
 
    This document requests no immediate IANA actions.
-
-
-
-
-
-Schrock                  Expires 15 January 2027               [Page 17]
-
-Internet-Draft                    CAID                         July 2026
-
 
    Two registries are described: the CAID action type registry
    (Section 4), whose entries follow the normative schema of
@@ -982,6 +1003,13 @@ Internet-Draft                    CAID                         July 2026
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/info/rfc3339>.
 
+
+
+Schrock                  Expires 20 January 2027               [Page 18]
+
+Internet-Draft                    CAID                         July 2026
+
+
    [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
               Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
               <https://www.rfc-editor.org/info/rfc4648>.
@@ -1000,15 +1028,6 @@ Internet-Draft                    CAID                         July 2026
               "JavaScript Object Notation (JSON) Pointer", RFC 6901,
               DOI 10.17487/RFC6901, April 2013,
               <https://www.rfc-editor.org/info/rfc6901>.
-
-
-
-
-
-Schrock                  Expires 15 January 2027               [Page 18]
-
-Internet-Draft                    CAID                         July 2026
-
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -1034,6 +1053,19 @@ Internet-Draft                    CAID                         July 2026
               <https://datatracker.ietf.org/doc/html/draft-lee-orprg-
               permit-receipts-00>.
 
+
+
+
+
+
+
+
+
+Schrock                  Expires 20 January 2027               [Page 19]
+
+Internet-Draft                    CAID                         July 2026
+
+
    [I-D.morrow-sogomonian-exec-outcome-attest]
               Morrow and A. Sogomonian, "Execution Outcome Attestation
               for AI Agents and Automated Systems", Work in Progress,
@@ -1058,14 +1090,6 @@ Appendix A.  Acknowledgments
    boundaries.  Chris Hood's work on agent transport and composition
    helped expose the need to keep action identity independent from any
    one authorization artifact.  These acknowledgments do not imply
-
-
-
-Schrock                  Expires 15 January 2027               [Page 19]
-
-Internet-Draft                    CAID                         July 2026
-
-
    endorsement of this document.
 
 Author's Address
@@ -1093,28 +1117,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 15 January 2027               [Page 20]
+Schrock                  Expires 20 January 2027               [Page 20]

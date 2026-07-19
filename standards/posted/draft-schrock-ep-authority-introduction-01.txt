@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              14 July 2026
-Expires: 15 January 2027
+Intended status: Informational                              19 July 2026
+Expires: 20 January 2027
 
 
    Authority Documents and Scoped Authority for Agent-Action Evidence
@@ -42,7 +42,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 January 2027.
+   This Internet-Draft will expire on 20 January 2027.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Schrock                  Expires 15 January 2027                [Page 1]
+Schrock                  Expires 20 January 2027                [Page 1]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                  Expires 15 January 2027                [Page 2]
+Schrock                  Expires 20 January 2027                [Page 2]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -150,7 +150,7 @@ Internet-Draft           Authority Introduction                July 2026
    The signed core is the document without sig, continuity_sig, and
    endorsements; its canonical digest is the document's identity.
    Endorsements are countersignatures over that digest by OTHER
-   authorities — third-party attestations that ride with the document
+   authorities -- third-party attestations that ride with the document
    without being part of it.
 
 3.  Scoped Authority Proof (EP-AUTHORITY-PROOF-v1)
@@ -165,7 +165,7 @@ Internet-Draft           Authority Introduction                July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 3]
+Schrock                  Expires 20 January 2027                [Page 3]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -221,7 +221,7 @@ Internet-Draft           Authority Introduction                July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 4]
+Schrock                  Expires 20 January 2027                [Page 4]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -277,7 +277,7 @@ Internet-Draft           Authority Introduction                July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 5]
+Schrock                  Expires 20 January 2027                [Page 5]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -291,7 +291,7 @@ Internet-Draft           Authority Introduction                July 2026
    previous core digest, and each rotation MUST carry a continuity
    signature by the previous document's root key or one of its non-
    revoked issuer keys.  A verifier walking the chain therefore needs
-   exactly one leap — the first document it ever saw — and every
+   exactly one leap - the first document it ever saw - and every
    subsequent rotation is mechanically checkable.  A rotation without
    valid continuity MUST be flagged, never silently accepted; whether
    endorsements can substitute for continuity is the relying party's
@@ -303,7 +303,7 @@ Internet-Draft           Authority Introduction                July 2026
    1.  Time of issuance.  An artifact verifies against the key that was
        valid WHEN THE ARTIFACT WAS ISSUED.  Rotation never invalidates
        previously issued evidence, and a revocation voids a key only for
-       signatures claimed at or after revoked_at — honest history
+       signatures claimed at or after revoked_at - honest history
        survives compromise.
 
    2.  Newest document authoritative.  The newest document that mentions
@@ -333,7 +333,7 @@ Internet-Draft           Authority Introduction                July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 6]
+Schrock                  Expires 20 January 2027                [Page 6]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -367,7 +367,7 @@ Internet-Draft           Authority Introduction                July 2026
    construction.  The recovery path is explicit rather than exceptional:
    the successor document is published with no (or invalid) continuity
    signature, the break is flagged by every verifier, and the relying
-   party's policy decides what substitutes — typically an endorsement
+   party's policy decides what substitutes - typically an endorsement
    threshold (a quorum of the relying party's pinned anchors
    countersigning the successor document) plus a revocation statement
    over the compromised keys.  A relying party with no such policy
@@ -389,7 +389,7 @@ Internet-Draft           Authority Introduction                July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 7]
+Schrock                  Expires 20 January 2027                [Page 7]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -445,7 +445,7 @@ Internet-Draft           Authority Introduction                July 2026
 
 
 
-Schrock                  Expires 15 January 2027                [Page 8]
+Schrock                  Expires 20 January 2027                [Page 8]
 
 Internet-Draft           Authority Introduction                July 2026
 
@@ -468,9 +468,10 @@ Appendix A.  Implementation Status
    substitution, amount, currency, scope, role, lifecycle, policy,
    delegation, malformed-time, registry-head, and stale-epoch refusals.
    This revision does not claim an integrated conformance result for
-   resolving an Authority Proof key through an Authority Document; that
-   join and its cross-language vectors are required before publication
-   of this revision.
+   resolving an Authority Proof key through an Authority Document.  That
+   join and its cross-language vectors remain future conformance work;
+   the two component-level implementation results MUST NOT be
+   represented as an integrated result.
 
 Author's Address
 
@@ -500,5 +501,4 @@ Author's Address
 
 
 
-
-Schrock                  Expires 15 January 2027                [Page 9]
+Schrock                  Expires 20 January 2027                [Page 9]

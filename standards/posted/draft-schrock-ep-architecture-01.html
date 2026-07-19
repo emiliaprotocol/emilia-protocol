@@ -4,29 +4,30 @@
 <meta charset="utf-8">
 <meta content="Common,Latin" name="scripts">
 <meta content="initial-scale=1.0" name="viewport">
-<title>Authority Documents and Scoped Authority for Agent-Action Evidence</title>
+<title>The EMILIA Protocol: An Evidence Architecture for Consequential Agent Actions</title>
 <meta content="Iman Schrock" name="author">
 <meta content="
-       Signature verification answers whether a key produced an
-      artifact. It does not answer why a relying party accepts that key,
-      or whether the key holder had authority for the action. This
-      document specifies two composable artifacts. An Authority Document
-      introduces and rotates an organization's evidence-issuing keys
-      through a signed, hash-chained sequence. A Scoped Authority Proof
-      records the authority held by a subject at a registry snapshot,
-      including role, action scope, material limits, policy binding,
-      validity, and revocation status. A relying party evaluates both
-      artifacts under its own pinned trust inputs and policy. The design
-      does not make a self-presented key authoritative, does not turn log
-      inclusion or domain control into automatic trust, and does not
-      equate a valid signature with permission to act.
+       Consequential agent actions can cross operator and
+      administrative boundaries. The party that later decides whether
+      to rely on an action record may not have participated in the
+      interaction and may not trust either operator. This document
+      describes an evidence architecture for that case. It separates
+      transport identity, delegation and policy, material action
+      matching, authorization evidence, evidence satisfaction,
+      enforcement, outcome evidence, and long-term preservation.
+       The architecture does not define a universal authorization
+      policy and does not claim that a valid signature establishes
+      authority. It defines where independently verified artifacts join,
+      which decisions remain local to the relying party, and the terms
+      VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED so that an
+      implementation cannot silently collapse one into another.
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
-<meta content="trust establishment" name="keyword">
-<meta content="key rotation" name="keyword">
-<meta content="introduction" name="keyword">
-<meta content="AI agents" name="keyword">
-<meta content="draft-schrock-ep-authority-introduction-01" name="ietf.draft">
+<meta content="agent authorization" name="keyword">
+<meta content="evidence" name="keyword">
+<meta content="cross-domain" name="keyword">
+<meta content="human approval" name="keyword">
+<meta content="draft-schrock-ep-architecture-01" name="ietf.draft">
 <!-- Generator version information:
   xml2rfc 3.34.0
     Python 3.14.5
@@ -42,7 +43,7 @@
     requests 2.34.2
     wcwidth 0.8.1
 -->
-<link href="draft-schrock-ep-authority-introduction-01.xml" rel="alternate" type="application/rfc+xml">
+<link href="draft-schrock-ep-architecture-01.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
 <style type="text/css">/*
 
@@ -1230,12 +1231,12 @@ li > p:last-of-type:only-child {
 <table class="ears">
 <thead><tr>
 <td class="left">Internet-Draft</td>
-<td class="center">Authority Introduction</td>
+<td class="center">EP Architecture</td>
 <td class="right">July 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 15 January 2027</td>
+<td class="center">Expires 20 January 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1245,15 +1246,15 @@ li > p:last-of-type:only-child {
 <dt class="label-workgroup">Workgroup:</dt>
 <dd class="workgroup">Network Working Group</dd>
 <dt class="label-internet-draft">Internet-Draft:</dt>
-<dd class="internet-draft">draft-schrock-ep-authority-introduction-01</dd>
+<dd class="internet-draft">draft-schrock-ep-architecture-01</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-07-14" class="published">14 July 2026</time>
+<time datetime="2026-07-19" class="published">19 July 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-01-15">15 January 2027</time></dd>
+<dd class="expires"><time datetime="2027-01-20">20 January 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1263,22 +1264,23 @@ li > p:last-of-type:only-child {
 </dd>
 </dl>
 </div>
-<h1 id="title">Authority Documents and Scoped Authority for Agent-Action Evidence</h1>
+<h1 id="title">The EMILIA Protocol: An Evidence Architecture for Consequential Agent Actions</h1>
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
-<p id="section-abstract-1">Signature verification answers whether a key produced an
-      artifact. It does not answer why a relying party accepts that key,
-      or whether the key holder had authority for the action. This
-      document specifies two composable artifacts. An Authority Document
-      introduces and rotates an organization's evidence-issuing keys
-      through a signed, hash-chained sequence. A Scoped Authority Proof
-      records the authority held by a subject at a registry snapshot,
-      including role, action scope, material limits, policy binding,
-      validity, and revocation status. A relying party evaluates both
-      artifacts under its own pinned trust inputs and policy. The design
-      does not make a self-presented key authoritative, does not turn log
-      inclusion or domain control into automatic trust, and does not
-      equate a valid signature with permission to act.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-1">Consequential agent actions can cross operator and
+      administrative boundaries. The party that later decides whether
+      to rely on an action record may not have participated in the
+      interaction and may not trust either operator. This document
+      describes an evidence architecture for that case. It separates
+      transport identity, delegation and policy, material action
+      matching, authorization evidence, evidence satisfaction,
+      enforcement, outcome evidence, and long-term preservation.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2">The architecture does not define a universal authorization
+      policy and does not claim that a valid signature establishes
+      authority. It defines where independently verified artifacts join,
+      which decisions remain local to the relying party, and the terms
+      VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED so that an
+      implementation cannot silently collapse one into another.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
 </section>
 <div id="status-of-memo">
 <section id="section-boilerplate.1">
@@ -1299,7 +1301,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 15 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 20 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1337,51 +1339,63 @@ li > p:last-of-type:only-child {
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
-            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-the-authority-document-ep-a" class="internal xref">The Authority Document (EP-AUTHORITY-DOC-v1)</a></p>
+            <p id="section-toc.1-1.2.1" class="keepWithNext"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-decision-vocabulary" class="internal xref">Decision Vocabulary</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
-            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-scoped-authority-proof-ep-a" class="internal xref">Scoped Authority Proof (EP-AUTHORITY-PROOF-v1)</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
-            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-authority-evaluation" class="internal xref">Authority Evaluation</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
-            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-separation-of-duties-and-qu" class="internal xref">Separation of Duties and Quorum</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
-            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-rotation-continuity-and-tim" class="internal xref">Rotation, Continuity, and Time-of-Issuance</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
-            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-anti-equivocation" class="internal xref">Anti-Equivocation</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
-            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-introduction-as-evidence-gr" class="internal xref">Introduction as Evidence: Graded, Replayable Acceptance</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
-            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-compromise-recovery" class="internal xref">Compromise Recovery</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
-            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
-            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
-</li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
-            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-references" class="internal xref">References</a></p>
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-layered-composition" class="internal xref">Layered Composition</a></p>
 <ul class="compact toc ulBare ulEmpty">
-<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.1">
-                <p id="section-toc.1-1.12.2.1.1"><a href="#section-12.1" class="auto internal xref">12.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-transport-workload-and-agen" class="internal xref">Transport, Workload, and Agent Identity</a></p>
 </li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12.2.2">
-                <p id="section-toc.1-1.12.2.2.1"><a href="#section-12.2" class="auto internal xref">12.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-delegation-capability-and-p" class="internal xref">Delegation, Capability, and Policy</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3">
+                <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="auto internal xref">3.3</a>.  <a href="#name-material-action-identity-an" class="internal xref">Material Action Identity and Mapping</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.4">
+                <p id="section-toc.1-1.3.2.4.1"><a href="#section-3.4" class="auto internal xref">3.4</a>.  <a href="#name-authorization-and-confirmat" class="internal xref">Authorization and Confirmation Evidence</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.5">
+                <p id="section-toc.1-1.3.2.5.1"><a href="#section-3.5" class="auto internal xref">3.5</a>.  <a href="#name-evidence-composition-and-sa" class="internal xref">Evidence Composition and Satisfaction</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.6">
+                <p id="section-toc.1-1.3.2.6.1"><a href="#section-3.6" class="auto internal xref">3.6</a>.  <a href="#name-challenge-enforcement-outco" class="internal xref">Challenge, Enforcement, Outcome, and Preservation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.7">
+                <p id="section-toc.1-1.3.2.7.1"><a href="#section-3.7" class="auto internal xref">3.7</a>.  <a href="#name-application-profiles" class="internal xref">Application Profiles</a></p>
 </li>
             </ul>
 </li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
-            <p id="section-toc.1-1.13.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-cross-domain-verification-f" class="internal xref">Cross-Domain Verification Flow</a></p>
 </li>
-          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
-            <p id="section-toc.1-1.14.1"><a href="#appendix-B" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-emilia-component-boundaries" class="internal xref">EMILIA Component Boundaries</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-relationship-to-adjacent-wo" class="internal xref">Relationship to Adjacent Work</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-changes-from-00" class="internal xref">Changes from -00</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#appendix-B" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
 </li>
         </ul>
 </nav>
@@ -1392,22 +1406,27 @@ li > p:last-of-type:only-child {
       <h2 id="name-introduction">
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
-<p id="section-1-1">This document follows the distinction between VERIFIED and
-      ACCEPTED. Verification establishes cryptographic and structural
-      facts given a key. Acceptance is a relying-party decision about
-      which keys, issuers, authority sources, and policies are
-      admissible. Existing systems use certificates, federation
-      metadata, trust bundles, transparency services, and deployment
-      configuration for portions of that decision. Agent-action evidence
-      profiles still need a concrete way to bind those trust inputs to
-      the issuer key and to the human authority being relied upon.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">The design is deliberately not a universal public-key
-      infrastructure. The relying party selects its trust anchors and
-      acceptance policy. Domain control, log inclusion, and endorsement
-      are evidence inputs, not authority by themselves. The goal is a
-      reproducible answer to two narrower questions: which evidence key
-      was valid at issuance, and what scoped authority did the approving
-      subject hold for the exact action under review?<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-1">An agent in one administrative domain can request a gateway in
+      another domain to perform an action whose consequences are borne by
+      a third party. Months later, an auditor, counterparty, insurer, or
+      regulator may need to determine which identity, delegation, policy,
+      approval, and enforcement facts held for that exact action. An
+      operator-controlled log can be useful operationally, but it is not
+      by itself portable evidence against a dishonest or unavailable
+      operator.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">This architecture addresses that cross-domain and delayed-review
+      case. It is not required for every agent interaction. A deployment
+      in one trusted administrative domain, with no need to export or
+      preserve independently verifiable evidence, can use ordinary
+      authentication, authorization, and logging.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">The architecture also separates an interoperability requirement
+      from ordinary implementation hygiene. For example, refusing a key
+      supplied by an untrusted artifact from establishing its own
+      authority is a baseline verifier property, not a new architectural
+      layer. The architectural question is which independently verified
+      facts a remote relying party needs, how those facts are bound to the
+      same material action, and which party decides whether the resulting
+      evidence is sufficient.<a href="#section-1-3" class="pilcrow">¶</a></p>
 <div id="terms">
 <section id="section-1.1">
         <h3 id="name-terminology">
@@ -1419,354 +1438,407 @@ li > p:last-of-type:only-child {
         interpreted as described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>
           <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they appear in
         all capitals, as shown here.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-1.1-2">
+          <dt id="section-1.1-2.1">Native verifier:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.2">The verifier defined by an artifact's own specification,
+          operating under trust anchors selected by the relying party.<a href="#section-1.1-2.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.3">Relying party:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.4">The party that states an evidence requirement and decides
+          whether to act on the verified facts.<a href="#section-1.1-2.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.1-2.5">Consequential action:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.1-2.6">An action for which a deployment requires evidence that
+          can survive beyond the live interaction or operator boundary.<a href="#section-1.1-2.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
 </section>
 </div>
 </section>
 </div>
-<div id="doc">
+<div id="vocabulary">
 <section id="section-2">
-      <h2 id="name-the-authority-document-ep-a">
-<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-the-authority-document-ep-a" class="section-name selfRef">The Authority Document (EP-AUTHORITY-DOC-v1)</a>
+      <h2 id="name-decision-vocabulary">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-decision-vocabulary" class="section-name selfRef">Decision Vocabulary</a>
       </h2>
-<p id="section-2-1">An authority document is a JSON object, served from the
-      organization's own origin (RECOMMENDED:
-      /.well-known/ep-authority.json) and registrable to a transparency
-      service:<a href="#section-2-1" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-2-2">
-<pre>
-{
-  "@version": "EP-AUTHORITY-DOC-v1",
-  "org": { "name": "...", "domain": "acme.example" },
-  "seq": 3,
-  "prev_doc_digest": "sha256:&lt;core digest of doc seq 2&gt;",
-  "root_key": "&lt;b64url SPKI&gt;",
-  "issuer_keys": [
-    { "kid": "&lt;hex&gt;", "key": "&lt;b64url SPKI&gt;",
-      "usages": ["evidence_issuer", "authority_proof_issuer"],
-      "valid_from": "...", "valid_to": "...",
-      "revoked_at": "&lt;OPTIONAL&gt;" }
-  ],
-  "issued_at": "...",
-  "sig": "&lt;root_key over the canonical core&gt;",
-  "continuity_sig": "&lt;by a key from the PREVIOUS doc&gt;",
-  "endorsements": [ { "by_org": "...", "by_key": "...",
-                      "doc_digest": "...", "sig": "..." } ]
-}
-</pre><a href="#section-2-2" class="pilcrow">¶</a>
-</div>
-<p id="section-2-3">The signed core is the document without sig, continuity_sig,
-      and endorsements; its canonical digest is the document's identity.
-      Endorsements are countersignatures over that digest by OTHER
-      authorities — third-party attestations that ride with the
-      document without being part of it.<a href="#section-2-3" class="pilcrow">¶</a></p>
+<p id="section-2-1">Conforming descriptions and APIs MUST keep the following states
+      distinct:<a href="#section-2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-2-2">
+        <dt id="section-2-2.1">VERIFIED:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-2.2">An artifact passed its native cryptographic and structural
+        verification under relying-party-selected trust anchors. It does
+        not follow that the artifact filled an authorization role.<a href="#section-2-2.2" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-2.3">MATCH:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-2.4">Two independently verified artifacts refer to the same
+        material action, either by direct identifier equality or by an
+        explicit, pinned mapping profile. MATCH is content correlation,
+        not authorization.<a href="#section-2-2.4" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-2.5">SATISFIED:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-2.6">The verified and matched evidence fills every slot in a
+        relying-party-pinned evidence requirement. The evidence
+        composition layer can compute this state.<a href="#section-2-2.6" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-2.7">AUTHORIZED:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-2.8">The relying party's local policy permits execution. This is a
+        business and policy decision; no presented artifact establishes
+        its own authority.<a href="#section-2-2.8" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-2.9">EXECUTED:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-2.10">An executor asserts or attests that an effect occurred. This
+        is distinct from what was requested or authorized.<a href="#section-2-2.10" class="pilcrow">¶</a>
+</dd>
+      <dd class="break"></dd>
+</dl>
+<p id="section-2-3">An implementation MUST NOT promote VERIFIED to MATCH, MATCH to
+      SATISFIED, SATISFIED to AUTHORIZED, or AUTHORIZED to EXECUTED
+      without performing the separate check that transition requires.<a href="#section-2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="scoped-authority">
+<div id="layers">
 <section id="section-3">
-      <h2 id="name-scoped-authority-proof-ep-a">
-<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-scoped-authority-proof-ep-a" class="section-name selfRef">Scoped Authority Proof (EP-AUTHORITY-PROOF-v1)</a>
+      <h2 id="name-layered-composition">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-layered-composition" class="section-name selfRef">Layered Composition</a>
       </h2>
-<p id="section-3-1">An accepted issuer key with the authority_proof_issuer usage MAY
-      sign a snapshot of one subject's authority. The proof records what
-      the authority source asserted at issuance; it does not grant
-      authority merely because it is carried with an action.<a href="#section-3-1" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-3-2">
-<pre>
-{
-  "@type": "EP-AUTHORITY-PROOF-v1",
-  "authority_id": "auth_cfo",
-  "subject": "ep:approver:ada",
-  "organization_id": "org1",
-  "role": "cfo",
-  "scope": ["payment.release"],
-  "limits": { "max_amount_usd": 50000, "currency": "USD" },
-  "validity": {
-    "from": "2026-01-01T00:00:00Z",
-    "to": "2027-01-01T00:00:00Z"
-  },
-  "revocation": {
-    "status": "not_revoked",
-    "checked_at": "2026-07-14T16:00:00Z"
-  },
-  "registry_head": "sha256:&lt;snapshot digest&gt;",
-  "registry_epoch": 17,
-  "policy_hash": "sha256:&lt;applicable policy digest&gt;",
-  "issued_at": "2026-07-14T16:00:00Z",
-  "signature": {
-    "algorithm": "Ed25519",
-    "key_id": "ep:authority-registry-key:sha256:&lt;prefix&gt;",
-    "public_key": "&lt;b64url SPKI&gt;",
-    "proof_digest": "sha256:&lt;signed-body digest&gt;",
-    "signature_b64u": "&lt;signature&gt;"
-  }
-}
-</pre><a href="#section-3-2" class="pilcrow">¶</a>
-</div>
-<p id="section-3-3">The signed body is the proof without the signature member,
-      domain-separated with the ASCII string "EP-AUTHORITY-PROOF-v1"
-      followed by a zero octet, and canonicalized using JCS
-      <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span>. The public key carried in the signature
-      envelope is a verification input only. It MUST NOT establish its
-      own authority. A relying party MUST resolve it through an accepted
-      Authority Document or match it to an independently pinned authority
-      issuer key.<a href="#section-3-3" class="pilcrow">¶</a></p>
-<p id="section-3-4">The max_amount_usd field is the implemented v1 monetary limit.
-      It permits no currency conversion: a proof denominated in USD MUST
-      NOT satisfy a limit check for another currency. Profiles that need
-      other monetary representations MUST define their canonical amount
-      and comparison rules rather than relying on floating-point currency
-      conversion.<a href="#section-3-4" class="pilcrow">¶</a></p>
+<div id="identity">
+<section id="section-3.1">
+        <h3 id="name-transport-workload-and-agen">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-transport-workload-and-agen" class="section-name selfRef">Transport, Workload, and Agent Identity</a>
+        </h3>
+<p id="section-3.1-1">This layer establishes who or what is present in a live
+        channel and how a workload credential is managed. WIMSE and
+        related workload-identity work are examples. The evidence
+        architecture consumes those results but does not redefine them.<a href="#section-3.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="authority-evaluation">
+<div id="authority">
+<section id="section-3.2">
+        <h3 id="name-delegation-capability-and-p">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-delegation-capability-and-p" class="section-name selfRef">Delegation, Capability, and Policy</a>
+        </h3>
+<p id="section-3.2-1">This layer establishes what a principal delegated, what a
+        capability permits, and what a policy decision point allowed.
+        OAuth profiles, delegation receipts, AuthZEN, and agent transport
+        work occupy parts of this layer. A machine policy decision is not
+        represented as human approval unless a separately defined and
+        verified approval artifact establishes that fact.<a href="#section-3.2-1" class="pilcrow">¶</a></p>
+<p id="section-3.2-2">A bounded capability combines an immutable signed grant with
+        mutable shared state. Receipt verification establishes the grant;
+        action-scope matching and an atomic reserve/commit transition establish
+        whether one operation can consume part of its budget. A signed budget
+        without one authoritative state domain cannot enforce aggregate spend
+        across replicas.<a href="#section-3.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="action">
+<section id="section-3.3">
+        <h3 id="name-material-action-identity-an">
+<a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-material-action-identity-an" class="section-name selfRef">Material Action Identity and Mapping</a>
+        </h3>
+<p id="section-3.3-1">This layer answers whether independently represented artifacts
+        concern the same material action. The candidate Canonical Action
+        IDentifier specification defines a typed action object and an
+        Action-Mapping Profile. A mapping result is one of
+        EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT, or INDETERMINATE. The
+        mapping profile is selected and pinned by the relying party and
+        cannot establish authorization.<a href="#section-3.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="artifacts">
+<section id="section-3.4">
+        <h3 id="name-authorization-and-confirmat">
+<a href="#section-3.4" class="section-number selfRef">3.4. </a><a href="#name-authorization-and-confirmat" class="section-name selfRef">Authorization and Confirmation Evidence</a>
+        </h3>
+<p id="section-3.4-1">This layer carries evidence that a specified approval ceremony
+        or authorization event occurred. EMILIA authorization receipts,
+        multi-party quorum records, presentation bindings, FIDO
+        Verifiable Intent, and other confirmation artifacts can occupy
+        this layer under their own guarantees. No single artifact is
+        assumed to fill every relying-party requirement.<a href="#section-3.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="satisfaction">
+<section id="section-3.5">
+        <h3 id="name-evidence-composition-and-sa">
+<a href="#section-3.5" class="section-number selfRef">3.5. </a><a href="#name-evidence-composition-and-sa" class="section-name selfRef">Evidence Composition and Satisfaction</a>
+        </h3>
+<p id="section-3.5-1">The Authorization Evidence Chain verifies each component using
+        the component's native verifier and role-scoped trust anchors,
+        checks that all required components MATCH the same action, and
+        evaluates a relying-party-pinned requirement. Its result is
+        SATISFIED or UNSATISFIED, not a universal authorization decision.<a href="#section-3.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="lifecycle">
+<section id="section-3.6">
+        <h3 id="name-challenge-enforcement-outco">
+<a href="#section-3.6" class="section-number selfRef">3.6. </a><a href="#name-challenge-enforcement-outco" class="section-name selfRef">Challenge, Enforcement, Outcome, and Preservation</a>
+        </h3>
+<p id="section-3.6-1">An evidence challenge can state what is missing before an
+        executor acts. The enforcement point applies local policy and
+        refuses when required evidence is absent. Outcome evidence states
+        what occurred after the effect boundary. Revocation and evidence
+        records address lifecycle and long-term verification. Each is a
+        separate transition and none is inferred from receipt validity.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
+<p id="section-3.6-2">For a bounded capability, the enforcement point reserves budget
+        before the effect boundary and commits it afterward as executed,
+        delegated, or indeterminate. If an external effect may have occurred,
+        uncertainty consumes budget rather than reopening authority for a
+        duplicate effect.<a href="#section-3.6-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="profiles">
+<section id="section-3.7">
+        <h3 id="name-application-profiles">
+<a href="#section-3.7" class="section-number selfRef">3.7. </a><a href="#name-application-profiles" class="section-name selfRef">Application Profiles</a>
+        </h3>
+<p id="section-3.7-1">Application profiles select action types, evidence
+        requirements, trust anchors, freshness, consumption, and outcome
+        rules for one deployment context. Agent Gateways, payments,
+        healthcare, grid coordination, and model-directed laboratory
+        execution can use the architecture without changing the core
+        artifact formats. A profile does not make a domain claim true; it
+        states the checks a deployment will perform.<a href="#section-3.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="flow">
 <section id="section-4">
-      <h2 id="name-authority-evaluation">
-<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-authority-evaluation" class="section-name selfRef">Authority Evaluation</a>
+      <h2 id="name-cross-domain-verification-f">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-cross-domain-verification-f" class="section-name selfRef">Cross-Domain Verification Flow</a>
       </h2>
-<p id="section-4-1">Given an action, its authorization evidence, an Authority Proof,
-      and relying-party trust inputs, a verifier MUST perform all of the
-      following checks. A missing or failed required check produces a
-      refusal; no unknown value is treated as permission.<a href="#section-4-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-4-2">
-        <li id="section-4-2.1">Verify the proof digest and signature and establish that the
-        signing key is accepted for authority-proof issuance.<a href="#section-4-2.1" class="pilcrow">¶</a>
+<ol start="1" type="1" class="normal type-1" id="section-4-1">
+        <li id="section-4-1.1">The relying party identifies the proposed material action and
+        pins its trust roots, mapping profiles, and evidence requirement.<a href="#section-4-1.1" class="pilcrow">¶</a>
 </li>
-        <li id="section-4-2.2">Match subject and organization to the approving identity and
-        action context. A proof for one subject or organization MUST NOT
-        be substituted for another.<a href="#section-4-2.2" class="pilcrow">¶</a>
+        <li id="section-4-1.2">Each identity, delegation, policy, and approval artifact is
+        verified by its native verifier. Presenter-supplied keys or labels
+        do not create authority.<a href="#section-4-1.2" class="pilcrow">¶</a>
 </li>
-        <li id="section-4-2.3">Require the action type to be within scope and any required
-        role to match.<a href="#section-4-2.3" class="pilcrow">¶</a>
+        <li id="section-4-1.3">Verified artifacts are matched to the action. Missing or lossy
+        mappings yield INDETERMINATE and fail the requirement.<a href="#section-4-1.3" class="pilcrow">¶</a>
 </li>
-        <li id="section-4-2.4">Apply every material limit. If a capped action omits the
-        amount or currency needed for comparison, refuse it.<a href="#section-4-2.4" class="pilcrow">¶</a>
+        <li id="section-4-1.4">The evidence requirement is evaluated. A missing role,
+        mismatched action, stale fact, invalid signature, or unpinned trust
+        anchor yields UNSATISFIED with a reproducible reason.<a href="#section-4-1.4" class="pilcrow">¶</a>
 </li>
-        <li id="section-4-2.5">Check that the action authorization time falls within the
-        authority validity window and that the policy hash, when present,
-        matches the policy being evaluated.<a href="#section-4-2.5" class="pilcrow">¶</a>
+        <li id="section-4-1.5">The local policy enforcement point decides whether the
+        SATISFIED evidence is sufficient to authorize execution.<a href="#section-4-1.5" class="pilcrow">¶</a>
 </li>
-        <li id="section-4-2.6">Check the registry head and minimum epoch required by the
-        relying party. A stale or unavailable required authority view is
-        not equivalent to an unbounded grant.<a href="#section-4-2.6" class="pilcrow">¶</a>
-</li>
-        <li id="section-4-2.7">Apply revocation at its effective time. Terminal revocation
-        evidence does not age out. A not_revoked snapshot establishes
-        only the status observed at checked_at; current status is a
-        separate, freshness-bounded input
-        <span>[<a href="#I-D.schrock-ep-revocation-statement" class="cite xref">I-D.schrock-ep-revocation-statement</a>]</span>.<a href="#section-4-2.7" class="pilcrow">¶</a>
+        <li id="section-4-1.6">Consumption and outcome evidence are recorded separately so
+        replay and request-versus-effect divergence remain detectable.<a href="#section-4-1.6" class="pilcrow">¶</a>
 </li>
       </ol>
-<p id="section-4-3">Portable profiles SHOULD express ceremony strength as
-      verifier-visible proof predicates, such as user verification,
-      named-human binding, or device binding. This document does not
-      define a universal letter-grade assurance taxonomy.<a href="#section-4-3" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="separation-of-duties">
+<div id="components">
 <section id="section-5">
-      <h2 id="name-separation-of-duties-and-qu">
-<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-separation-of-duties-and-qu" class="section-name selfRef">Separation of Duties and Quorum</a>
+      <h2 id="name-emilia-component-boundaries">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-emilia-component-boundaries" class="section-name selfRef">EMILIA Component Boundaries</a>
       </h2>
-<p id="section-5-1">Authority and independence are different properties. An
-      authority source can establish that a subject is eligible to
-      approve an action; it cannot establish that the subject did not
-      initiate that same action merely by asserting a flag. Initiator
-      exclusion MUST be evaluated by joining the signed initiator and
-      approver identities for the action. For a quorum, every counted
-      approver MUST have its own accepted authority proof, and the
-      authorization profile MUST separately enforce distinct-human and
-      initiator-exclusion requirements.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-5-1.1">
+          <code>draft-schrock-ep-authorization-receipts</code> defines an
+        action-bound authorization evidence artifact and verification
+        profiles.<a href="#section-5-1.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-1.2">
+          <code>draft-schrock-ep-quorum</code> composes distinct approval
+        ceremonies for multi-party requirements.<a href="#section-5-1.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-1.3">
+          <code>draft-schrock-human-authorization-binding</code> defines how
+        human-authorization evidence binds into adjacent artifact
+        families without replacing them.<a href="#section-5-1.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-1.4">
+          <code>draft-schrock-canonical-action-identifier</code> defines
+        material action identity and profile-bounded matching.<a href="#section-5-1.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-1.5">
+          <code>draft-schrock-ep-authorization-evidence-chain</code> defines
+        evidence composition and requirement satisfaction.<a href="#section-5-1.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-1.6">
+          <code>draft-schrock-ep-bounded-capability-receipts</code> defines a
+        signed grant plus durable reserve-execute-commit profile for scoped,
+        budgeted multi-operation authority. It is a separate experimental
+        document. Its reference implementation provides implementation
+        experience but does not yet claim conformance with that document's
+        complete wire format.<a href="#section-5-1.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-1.7">For that profile, native receipt verification can establish
+        VERIFIED; scope containment returns profile-local <code>in_scope</code>,
+        <code>out_of_scope</code>, or <code>indeterminate</code>, not MATCH.
+        SATISFIED remains evidence sufficiency. AUTHORIZED requires local
+        policy and a successful live reservation, and EXECUTED requires
+        separately authenticated effect evidence.<a href="#section-5-1.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-5-1.8">The action manifest, challenge, enforcement, outcome,
+        revocation, and evidence-record documents address distinct
+        lifecycle transitions. Their presence does not change the trust
+        semantics of the core evidence artifacts.<a href="#section-5-1.8" class="pilcrow">¶</a>
+</li>
+      </ul>
 </section>
 </div>
-<div id="continuity">
+<div id="related">
 <section id="section-6">
-      <h2 id="name-rotation-continuity-and-tim">
-<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-rotation-continuity-and-tim" class="section-name selfRef">Rotation, Continuity, and Time-of-Issuance</a>
+      <h2 id="name-relationship-to-adjacent-wo">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-relationship-to-adjacent-wo" class="section-name selfRef">Relationship to Adjacent Work</a>
       </h2>
-<p id="section-6-1">Documents chain: seq increments by one, prev_doc_digest names
-      the previous core digest, and each rotation MUST carry a
-      continuity signature by the previous document's root key or one
-      of its non-revoked issuer keys. A verifier walking the chain
-      therefore needs exactly one leap — the first document it ever
-      saw — and every subsequent rotation is mechanically checkable. A
-      rotation without valid continuity MUST be flagged, never silently
-      accepted; whether endorsements can substitute for continuity is
-      the relying party's policy (<a href="#compromise" class="auto internal xref">Section 9</a>), not a
-      default.<a href="#section-6-1" class="pilcrow">¶</a></p>
-<p id="section-6-2">Two invariants govern key resolution, and implementations
-      that miss either will hurt someone:<a href="#section-6-2" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-6-3">
-        <li id="section-6-3.1">Time of issuance. An artifact verifies against the key that
-        was valid WHEN THE ARTIFACT WAS ISSUED. Rotation never
-        invalidates previously issued evidence, and a revocation voids
-        a key only for signatures claimed at or after revoked_at —
-        honest history survives compromise.<a href="#section-6-3.1" class="pilcrow">¶</a>
+<p id="section-6-1">The architecture is designed to compose with, rather than absorb,
+      adjacent work:<a href="#section-6-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-6-2.1">Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft
+        (<span>[<a href="#DMSC-GW" class="cite xref">DMSC-GW</a>]</span>) provides a concrete cross-domain
+        enforcement point: one gateway can enforce local policy while
+        evidence remains verifiable outside either operator. This is a use
+        case from an individual draft, not a claim of DMSC BoF consensus.<a href="#section-6-2.1" class="pilcrow">¶</a>
 </li>
-        <li id="section-6-3.2">Newest document authoritative. The newest document that
-        mentions a key identifier is authoritative for it. A
-        revocation recorded in document N MUST NOT be undone by
-        resolving the same key identifier against the pre-revocation
-        entry in document N-1.<a href="#section-6-3.2" class="pilcrow">¶</a>
+        <li class="normal" id="section-6-2.2">WIMSE Condition-Bounded Credentials
+        (<span>[<a href="#WIMSE-CBC" class="cite xref">WIMSE-CBC</a>]</span>) establish workload identity and channel possession;
+        portable authorization evidence can be bound to the same action
+        without treating a workload credential as human approval.<a href="#section-6-2.2" class="pilcrow">¶</a>
 </li>
-      </ol>
-</section>
-</div>
-<div id="equivocation">
-<section id="section-7">
-      <h2 id="name-anti-equivocation">
-<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-anti-equivocation" class="section-name selfRef">Anti-Equivocation</a>
-      </h2>
-<p id="section-7-1">A malicious authority might show different documents to
-      different relying parties. The hash chain exposes a fork when a
-      verifier possesses both branches or a previously pinned head.
-      Registration to a transparency service <span>[<a href="#RFC9943" class="cite xref">RFC9943</a>]</span>
-      can make revisions discoverable, but inclusion in one log view
-      alone does not prove global consistency. Split-view resistance
-      requires an independently checked consistency mechanism such as
-      witnesses, gossip, or cross-logging. A profile MUST state which
-      of those observations it requires; this document does not convert
-      log inclusion into automatic acceptance.<a href="#section-7-1" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="graded">
-<section id="section-8">
-      <h2 id="name-introduction-as-evidence-gr">
-<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-introduction-as-evidence-gr" class="section-name selfRef">Introduction as Evidence: Graded, Replayable Acceptance</a>
-      </h2>
-<p id="section-8-1">Acceptance is not a boolean in a config file; it is a verdict
-      over introduction evidence, evaluated under a RELYING-PARTY
-      policy, using the same closed-verdict classification and
-      replay-digest discipline as the evidence-sufficiency layer this
-      family defines for actions
-      (<span>[<a href="#I-D.schrock-ep-action-evidence-graph" class="cite xref">I-D.schrock-ep-action-evidence-graph</a>]</span>). The
-      evidence facts: the authority chain itself (consistent, signed,
-      no unexplained continuity breaks); domain binding (the relying
-      party's own attested observation that it fetched this document
-      digest from the organization's origin); transparency-log
-      inclusion and FIRST-LOGGED AGE (history can be a policy input,
-      particularly when the history is independently witnessed); and endorsements,
-      graded by whether the endorser is among the relying party's own
-      pinned anchors.<a href="#section-8-1" class="pilcrow">¶</a></p>
-<p id="section-8-2">Policies are per action class. A relying party can require
-      stronger introduction evidence for money movement than for a
-      low-impact action. New observations, such as an endorsement from
-      an already pinned anchor or a longer witnessed history, may satisfy
-      an unchanged policy, but they never alter that policy and never
-      compel acceptance. The replay result MUST identify the policy and
-      observations used so another evaluator can reproduce the decision.<a href="#section-8-2" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="compromise">
-<section id="section-9">
-      <h2 id="name-compromise-recovery">
-<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-compromise-recovery" class="section-name selfRef">Compromise Recovery</a>
-      </h2>
-<p id="section-9-1">If an authority loses its keys entirely, continuity breaks by
-      construction. The recovery path is explicit rather than
-      exceptional: the successor document is published with no (or
-      invalid) continuity signature, the break is flagged by every
-      verifier, and the relying party's policy decides what
-      substitutes — typically an endorsement threshold (a quorum of
-      the relying party's pinned anchors countersigning the successor
-      document) plus a revocation statement over the compromised keys.
-      A relying party with no such policy simply continues to refuse:
-      fail closed is the default, recovery is opt-in.<a href="#section-9-1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-6-2.3">AuthZEN's Access Request and Approval Profile
+        (<span>[<a href="#AUTHZEN-AARP" class="cite xref">AUTHZEN-AARP</a>]</span>) defines requestable
+        denial, asynchronous approval tasks, an approval object whose optional
+        state carries opaque proof or verifier state, JWS interoperability when
+        that state is carried by value, an exact-match baseline, and PDP
+        re-evaluation at enforcement time. An EMILIA profile is complementary when a deployment requires
+        a verifier-visible approver-held device ceremony, distinct-human
+        quorum, portable initiator exclusion, cross-format material-action
+        matching, or one-time executor consumption. None of those additional
+        properties is implied merely by carrying an AuthZEN approval
+        result.<a href="#section-6-2.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-6-2.4">Mastercard's Verifiable Intent, co-developed with Google and
+        contributed to the FIDO Alliance (<span>[<a href="#FIDO-VI" class="cite xref">FIDO-VI</a>]</span>), describes
+        portable evidence of user intent. The cited page describes a
+        contribution and prospective standardization, not a final FIDO
+        specification. EMILIA does not claim that portable human evidence is
+        absent; it defines additional action matching, quorum,
+        consumption, and composition profiles where deployments require
+        them.<a href="#section-6-2.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-6-2.5">AGTP (<span>[<a href="#AGTP" class="cite xref">AGTP</a>]</span>) carries agent identity, authority,
+        attribution, and application payloads at the wire layer. This
+        architecture defines evidence that can be carried or referenced by
+        that transport and checked after the live channel is gone.<a href="#section-6-2.5" class="pilcrow">¶</a>
+</li>
+      </ul>
 </section>
 </div>
 <div id="security">
-<section id="section-10">
+<section id="section-7">
       <h2 id="name-security-considerations">
-<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
       </h2>
-<p id="section-10-1">Nothing creates trust from nothing, and this document does
-      not claim to. It makes the bootstrap and scoped-authority inputs
-      explicit and permits their checks to be replayed. The residual
-      assumptions are named:
-      domain binding inherits the Web PKI and is worth exactly that;
-      log-backed consistency is as strong as the log's operator or the
-      cross-log witnessing above it; endorsements are as strong as the
-      endorser and mean nothing until a relying party pins one.
-      A presenter-supplied key cannot establish its own authority.
-      Key-resurrection (resolving a revoked key through an older
-      document) is defeated by the newest-document-authoritative rule.
-      Hash chaining detects conflicting branches only when the verifier
-      has a comparison point; a single log view is insufficient to prove
-      non-equivocation. Rotation-based history rewriting is constrained
-      by time-of-issuance resolution. No combination of missing
-      observations grades toward acceptance.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-7-1">The primary architectural failure is category collapse. A valid
+      signature can authenticate an untrusted assertion; it does not make
+      the assertion authoritative. A policy ALLOW does not prove a named
+      human approved. A matching action identifier does not prove either
+      artifact is valid. A satisfied evidence requirement does not prove an
+      action is lawful, safe, wise, or correctly executed.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<p id="section-7-2">Trust anchors, role assignments, evidence requirements, mapping
+      profiles, freshness limits, and consumption stores are
+      relying-party inputs. They MUST NOT be silently imported from the
+      artifact being judged. Implementations MUST fail closed when a
+      required input is absent or unavailable.<a href="#section-7-2" class="pilcrow">¶</a></p>
+<p id="section-7-3">Human evidence remains vulnerable to coercion, fatigue,
+      mis-rendering, compromised devices, and collusion. Device-bound user
+      verification, exact-action presentation, initiator exclusion, and
+      distinct-human quorum reduce specified threats but do not establish
+      comprehension or correctness.<a href="#section-7-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="changes">
+<section id="section-8">
+      <h2 id="name-changes-from-00">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-changes-from-00" class="section-name selfRef">Changes from -00</a>
+      </h2>
+<p id="section-8-1">This revision replaces the "human-authorization apex" framing
+      with an ecosystem-first composition model; adds a concrete
+      cross-domain applicability test; separates ordinary verifier hygiene
+      from the portable-evidence requirement; defines the MATCH, VERIFIED,
+      SATISFIED, AUTHORIZED, and EXECUTED vocabulary; introduces material
+      action mapping; and narrows all claims to relying-party-pinned trust
+      inputs and named verification profiles.<a href="#section-8-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana">
-<section id="section-11">
+<section id="section-9">
       <h2 id="name-iana-considerations">
-<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
       </h2>
-<p id="section-11-1">This document has no IANA actions. A well-known URI
-      registration (ep-authority.json) is anticipated for a future
-      revision.<a href="#section-11-1" class="pilcrow">¶</a></p>
+<p id="section-9-1">This document has no IANA actions.<a href="#section-9-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<section id="section-12">
-      <h2 id="name-references">
-<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-references" class="section-name selfRef">References</a>
+<section id="section-10">
+      <h2 id="name-normative-references">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
       </h2>
-<section id="section-12.1">
-        <h3 id="name-normative-references">
-<a href="#section-12.1" class="section-number selfRef">12.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
-        </h3>
 <dl class="references">
 <dt id="RFC2119">[RFC2119]</dt>
-        <dd>
+      <dd>
 <span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8174">[RFC8174]</dt>
-        <dd>
+    <dd>
 <span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="RFC8785">[RFC8785]</dt>
-      <dd>
-<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 </dl>
 </section>
-<section id="section-12.2">
-        <h3 id="name-informative-references">
-<a href="#section-12.2" class="section-number selfRef">12.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
-        </h3>
-<dl class="references">
-<dt id="I-D.schrock-ep-action-evidence-graph">[I-D.schrock-ep-action-evidence-graph]</dt>
-        <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-action-evidence-graph-00</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="I-D.schrock-ep-revocation-statement">[I-D.schrock-ep-revocation-statement]</dt>
-        <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Revocation Statements for Agent-Action Authorization Evidence"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-revocation-statement-00</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/">https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="RFC9943">[RFC9943]</dt>
-      <dd>
-<span class="refAuthor">Birkholz, H.</span>, <span class="refAuthor">Delignat-Lavaud, A.</span>, <span class="refAuthor">Fournet, C.</span>, <span class="refAuthor">Deshpande, Y.</span>, and <span class="refAuthor">S. Lasker</span>, <span class="refTitle">"An Architecture for Trustworthy and Transparent Digital Supply Chains"</span>, <span class="seriesInfo">RFC 9943</span>, <span class="seriesInfo">DOI 10.17487/RFC9943</span>, <time datetime="2026-06" class="refDate">June 2026</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9943">https://www.rfc-editor.org/info/rfc9943</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-</dl>
-</section>
-</section>
-<div id="impl">
-<section id="appendix-A">
-      <h2 id="name-implementation-status">
-<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
+<section id="section-11">
+      <h2 id="name-informative-references">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
       </h2>
-<p id="appendix-A-1">Two Apache-2.0 reference components are published in the
-      EMILIA Protocol repository. lib/authority/authority-doc.js covers
-      document creation, rotation, chain verification, time-of-issuance
-      key resolution, endorsement verification, and introduction-policy
-      replay. lib/authority/proof.js and lib/authority/resolver.js cover
-      signed scoped-authority proofs and closed authority verdicts. The
-      authority vector suite contains 27 cases, including unpinned-key,
-      issuer-substitution, amount, currency, scope, role, lifecycle,
-      policy, delegation, malformed-time, registry-head, and stale-epoch
-      refusals. This revision does not claim an integrated conformance
-      result for resolving an Authority Proof key through an Authority
-      Document; that join and its cross-language vectors are required
-      before publication of this revision.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+<dl class="references">
+<dt id="AGTP">[AGTP]</dt>
+      <dd>
+<span class="refAuthor">Hood, C.</span>, <span class="refTitle">"Agent Transfer Protocol (AGTP)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-hood-independent-agtp-09</span>, <time datetime="2026-06-28" class="refDate">28 June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-hood-independent-agtp/">https://datatracker.ietf.org/doc/draft-hood-independent-agtp/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="AUTHZEN-AARP">[AUTHZEN-AARP]</dt>
+      <dd>
+<span class="refAuthor">McGuinness, K.</span>, <span class="refTitle">"AuthZEN Access Request and Approval Profile - Draft 1"</span>, <time datetime="2026-07-09" class="refDate">9 July 2026</time>, <span>&lt;<a href="https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html">https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="DMSC-GW">[DMSC-GW]</dt>
+      <dd>
+<span class="refAuthor">Dunbar, L.</span>, <span class="refTitle">"Deployment Scenarios and Gap Analysis for AI Agent Gateway"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-dunbar-dmsc-gw-scenarios-gap-analysis-02</span>, <time datetime="2026-07-02" class="refDate">2 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="FIDO-VI">[FIDO-VI]</dt>
+      <dd>
+<span class="refAuthor">FIDO Alliance</span>, <span class="refTitle">"Building the Trust Layer for Agentic Payments with AP2 and Verifiable Intent"</span>, <time datetime="2026-05-26" class="refDate">26 May 2026</time>, <span>&lt;<a href="https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/">https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="WIMSE-CBC">[WIMSE-CBC]</dt>
+    <dd>
+<span class="refAuthor">Nguyen-Huu, T.</span>, <span class="refTitle">"Condition-Bounded Credentials for Workload and Agent Identity"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-winmagic-wimse-condition-bounded-credentials-01</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/">https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<div id="acknowledgments">
+<section id="appendix-A">
+      <h2 id="name-acknowledgments">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="appendix-A-1">Eric Rescorla's review prompted a sharper separation between
+      baseline verifier security properties and the specific need for
+      third-party, cross-domain validation. Linda Dunbar's Agent Gateway
+      scenarios supplied the concrete multi-operator use case. Chris
+      Hood's agent transport and composition work helped clarify the
+      boundary between carrying authority context and independently
+      verifying evidence after the interaction. These acknowledgments do
+      not imply endorsement of this document.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="authors-addresses">

@@ -3,12 +3,12 @@
   "evidence_snapshot_at": "2026-07-19T08:23:04.364Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "3147a6d19525a01fe7a2c74bd82bb9ebc6b0b721b59990b40f76faff0a0a39c6",
+    "input_digest_sha256": "5440f5588376ab04b0f5bc7db6a93b16668801844d251f0bf6089f38761c042d",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "c70f9ccf3808e7e1f289b77d87a931b4b9f42931f9693447d40da2e5b354092a",
-        "bytes": 37788
+        "sha256": "7159fc4137a6eebab5eeba84c48c80ce44007579d9529f36a315424bd68a91d8",
+        "bytes": 37789
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "74ba909650b56075f6a524825ad1594f11a837cd7020d59cbeb9694765fa08d0",
-        "bytes": 16105
+        "sha256": "086581647dfe1f8e7fe4caf76ede071d2d469f1859c789cfee5a4b507832986c",
+        "bytes": 17993
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -2633,6 +2633,14 @@
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
+      "identifier": "draft-schrock-canonical-action-identifier",
+      "revision_at_snapshot": "00",
+      "role": "Typed material-action identity and profile-bounded cross-format matching",
+      "next_action": "Published July 19; hold -00 while implementation and interoperability feedback accumulates",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
       "identifier": "draft-schrock-emilia-eye",
       "revision_at_snapshot": "00",
       "role": "Scope-bound advisory that can tighten but never authorize",
@@ -2650,34 +2658,42 @@
     },
     {
       "identifier": "draft-schrock-ep-architecture",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Portfolio architecture",
-      "next_action": "Replace with -01 in the July 19 post-blackout wave",
+      "next_action": "Published July 19; use -01 as the current architecture baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
       "identifier": "draft-schrock-ep-authority-introduction",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Conditional July 27 -01: absorb scoped-authority entry, action/amount limits, separation-of-duties, snapshot, and revocation material from the retired authority-registry candidate",
+      "next_action": "Published July 19; validate the Authority Document to Authority Proof trust join before any later revision",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
       "identifier": "draft-schrock-ep-authorization-evidence-chain",
-      "revision_at_snapshot": "02",
+      "revision_at_snapshot": "03",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Replace with -03 using SATISFIED vocabulary and CAID mapping boundary",
+      "next_action": "Published July 19; use -03 SATISFIED vocabulary and CAID mapping boundary",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "06",
+      "revision_at_snapshot": "07",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Replace with -07 narrowing novelty and replay claims",
+      "next_action": "Published July 19; use -07 scoped novelty, offline, and replay claims",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-schrock-ep-bounded-capability-receipts",
+      "revision_at_snapshot": "00",
+      "role": "Action-bound capability budget and spend evidence",
+      "next_action": "Published July 19; preserve the -00 snapshot, note that guard-path spend enforcement and verified-action binding subsequently landed on main, and reflect implementation feedback in a future revision",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
@@ -2706,9 +2722,9 @@
     },
     {
       "identifier": "draft-schrock-ep-quorum",
-      "revision_at_snapshot": "02",
+      "revision_at_snapshot": "03",
       "role": "Distinct-human multi-handshake composition",
-      "next_action": "Hold current revision; quorum owns ordered multi-party ceremony semantics",
+      "next_action": "Published July 19; quorum owns ordered multi-party ceremony semantics",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2721,6 +2737,14 @@
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
+      "identifier": "draft-schrock-model-to-matter",
+      "revision_at_snapshot": "00",
+      "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
+      "next_action": "Published July 19; do not claim deployment, scientific-safety determination, physical truth, or external endorsement without independent evidence",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
       "identifier": "draft-mih-sato-agent-accountability-composition",
       "revision_at_snapshot": "00",
       "role": "Coauthored composition perspective",
@@ -2730,7 +2754,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-07-14",
+    "updated": "2026-07-19",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -2779,51 +2803,73 @@
     "july_19_2026_core_wave": {
       "submission_window_opens_after": "2026-07-18T23:59:00+02:00",
       "filing_date": "2026-07-19",
-      "source": "https://datatracker.ietf.org/submit",
+      "publication_status": "published_and_ietf_archive_verified_2026_07_19",
+      "verification": "Each posted TXT is byte-for-byte identical to the corresponding https://www.ietf.org/archive/id/ artifact.",
       "items": [
         {
           "priority": 1,
           "draft": "draft-schrock-canonical-action-identifier-00",
-          "source": "standards/staged/draft-schrock-canonical-action-identifier-00.xml",
+          "source": "standards/posted/draft-schrock-canonical-action-identifier-00.xml",
           "claim": "Typed material action identity plus profile-bounded cross-format matching",
-          "state": "render_clean_code_verified_ready_for_human_filing"
+          "state": "published_ietf_archive_verified_exact_local_match"
         },
         {
           "priority": 2,
           "draft": "draft-schrock-ep-architecture-01",
-          "source": "standards/staged/draft-schrock-ep-architecture-01.xml",
+          "source": "standards/posted/draft-schrock-ep-architecture-01.xml",
           "claim": "Cross-domain evidence architecture and non-collapsing decision vocabulary",
-          "state": "render_clean_code_verified_ready_for_human_filing"
+          "state": "published_ietf_archive_verified_exact_local_match"
         },
         {
           "priority": 3,
-          "draft": "draft-schrock-ep-authorization-evidence-chain-03",
-          "source": "standards/staged/draft-schrock-ep-authorization-evidence-chain-03.xml",
-          "claim": "Relying-party evidence satisfaction over natively verified, action-matched components",
-          "state": "render_clean_code_verified_ready_for_human_filing"
+          "draft": "draft-schrock-ep-authority-introduction-01",
+          "source": "standards/posted/draft-schrock-ep-authority-introduction-01.xml",
+          "claim": "Trust-root introduction and scoped human authority",
+          "state": "published_ietf_archive_verified_exact_local_match"
         },
         {
           "priority": 4,
           "draft": "draft-schrock-ep-authorization-receipts-07",
-          "source": "standards/staged/draft-schrock-ep-authorization-receipts-07.xml",
+          "source": "standards/posted/draft-schrock-ep-authorization-receipts-07.xml",
           "claim": "One explicit action-bound approval evidence profile with scoped replay and offline guarantees",
-          "state": "render_clean_code_verified_ready_for_human_filing"
+          "state": "published_ietf_archive_verified_exact_local_match"
         },
         {
           "priority": 5,
-          "draft": "draft-schrock-model-to-matter-00",
-          "source": "standards/staged/draft-schrock-model-to-matter-00.xml",
-          "lane": "name_establishing_experimental_profile",
-          "claim": "Executor-side authorization-evidence clearance for model-directed physical execution",
-          "state": "render_clean_code_verified_ready_for_human_filing",
-          "limitations": "Reference implementation and synthetic vectors only; no wet-lab deployment, screening capability, scientific-safety determination, physical-truth claim, or external endorsement"
+          "draft": "draft-schrock-ep-quorum-03",
+          "source": "standards/posted/draft-schrock-ep-quorum-03.xml",
+          "claim": "Ordered multi-party ceremony and distinct-human policy semantics",
+          "state": "published_ietf_archive_verified_exact_local_match"
         },
         {
           "priority": 6,
+          "draft": "draft-schrock-ep-bounded-capability-receipts-00",
+          "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-00.xml",
+          "claim": "Action-bound capability budget and spend evidence",
+          "state": "published_ietf_archive_verified_exact_local_match"
+        },
+        {
+          "priority": 7,
+          "draft": "draft-schrock-ep-authorization-evidence-chain-03",
+          "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-03.xml",
+          "claim": "Relying-party evidence satisfaction over natively verified, action-matched components",
+          "state": "published_ietf_archive_verified_exact_local_match"
+        },
+        {
+          "priority": 8,
+          "draft": "draft-schrock-model-to-matter-00",
+          "source": "standards/posted/draft-schrock-model-to-matter-00.xml",
+          "lane": "name_establishing_experimental_profile",
+          "claim": "Executor-side authorization-evidence clearance for model-directed physical execution",
+          "state": "published_ietf_archive_verified_exact_local_match",
+          "limitations": "Reference implementation and synthetic vectors only; no wet-lab deployment, screening capability, scientific-safety determination, physical-truth claim, or external endorsement"
+        }
+      ],
+      "not_filed": [
+        {
           "draft": "draft-schrock-ep-outcome-binding-00",
           "source": "standards/draft-schrock-ep-outcome-binding-00.xml",
-          "claim": "Predicted-versus-observed effect comparison",
-          "state": "conditional_on_independent_verification"
+          "state": "deferred_pending_independent_verification"
         }
       ]
     },
@@ -2835,9 +2881,9 @@
         {
           "priority": 1,
           "draft": "draft-schrock-ep-revocation-statement-00",
-          "source": "standards/draft-schrock-ep-revocation-statement-00.xml",
+          "source": "standards/staged/draft-schrock-ep-revocation-statement-00.xml",
           "claim": "Permanent, exact-target revocation evidence with current non-revocation delegated to separately authenticated, policy-fresh status evidence",
-          "state": "implementation_render_and_cross_language_gates_clear_pending_independent_hostile_review",
+          "state": "staged_implementation_render_and_cross_language_gates_clear_pending_independent_hostile_review",
           "required_gates": [
             "An old authentic revocation remains effective regardless of a legacy max-age option",
             "A future-dated revocation and a future-dated status head fail closed",
@@ -2850,16 +2896,9 @@
       "conditional": [
         {
           "priority": 2,
-          "draft": "draft-schrock-ep-authority-introduction-01",
-          "source": "standards/staged/draft-schrock-ep-authority-introduction-01.xml",
-          "claim": "One authority-introduction document spanning trust-root introduction and scoped human authority, without a competing registry draft",
-          "state": "consolidated_source_staged_requires_document_to_proof_join_vectors_and_hostile_review"
-        },
-        {
-          "priority": 3,
           "draft": "draft-schrock-authorization-evidence-challenge-01",
           "claim": "AARP-compatible challenge profile for missing ceremony and consumption evidence",
-          "state": "requires_source_locked_aarp_binding_review"
+          "state": "requires_source_locked_aarp_binding_review_not_staged"
         }
       ]
     },
@@ -3060,8 +3099,8 @@
       "purpose": "15 deterministic Model-to-Matter CAID, acceptance, refusal, replay, storage-failure, and effect-statement cases"
     },
     {
-      "path": "standards/staged/draft-schrock-model-to-matter-00.xml",
-      "purpose": "July 19 Experimental Model-to-Matter filing candidate with explicit non-goals and implementation status"
+      "path": "standards/posted/draft-schrock-model-to-matter-00.xml",
+      "purpose": "Published July 19 Experimental Model-to-Matter profile with explicit non-goals and implementation status"
     },
     {
       "path": "examples/mobile-government",

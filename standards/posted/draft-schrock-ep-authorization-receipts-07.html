@@ -1240,7 +1240,7 @@ li > p:last-of-type:only-child {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 15 January 2027</td>
+<td class="center">Expires 20 January 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1253,12 +1253,12 @@ li > p:last-of-type:only-child {
 <dd class="internet-draft">draft-schrock-ep-authorization-receipts-07</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-07-14" class="published">14 July 2026</time>
+<time datetime="2026-07-19" class="published">19 July 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-01-15">15 January 2027</time></dd>
+<dd class="expires"><time datetime="2027-01-20">20 January 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1308,7 +1308,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 15 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 20 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2564,13 +2564,24 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       authorization under its own SoD and m-of-n profiles. The two
       compose: a DRP delegation can be referenced in
       an EP Action Object's provenance field.<a href="#section-10-1" class="pilcrow">¶</a></p>
-<p id="section-10-2"><strong>CIBA</strong> (<span>[<a href="#CIBA" class="cite xref">CIBA</a>]</span>) transports an
+<p id="section-10-2"><strong>Bounded Capability Receipts</strong>
+      (<span>[<a href="#EP-BOUNDED-CAP" class="cite xref">EP-BOUNDED-CAP</a>]</span>) authorize a different lifecycle.
+      An EP Authorization Receipt can approve the exact act of issuing a
+      bounded capability, and that issuance receipt is consumed when the
+      capability is registered. It <span class="bcp14">MUST NOT</span> then be reused
+      as though it approved every later capability-funded operation. The
+      capability binds the complete issuance-receipt digest, scope, budget,
+      holder proof, and validity interval; its shared reserve/commit store
+      accounts later operations. A deployment that requires human approval of
+      an individual exercise obtains a new action-bound EP receipt or
+      EP-QUORUM for that exercise.<a href="#section-10-2" class="pilcrow">¶</a></p>
+<p id="section-10-3"><strong>CIBA</strong> (<span>[<a href="#CIBA" class="cite xref">CIBA</a>]</span>) transports an
       authentication-time approval to a backchannel device; it does not
       produce an action-bound, offline-verifiable, one-time-consumable
       artifact. CIBA <span class="bcp14">MAY</span> serve as the transport by which
       an approver is reached; the EP signoff is what they produce when
-      they get there.<a href="#section-10-2" class="pilcrow">¶</a></p>
-<p id="section-10-3"><strong>Mastercard Verifiable Intent</strong>, co-developed with
+      they get there.<a href="#section-10-3" class="pilcrow">¶</a></p>
+<p id="section-10-4"><strong>Mastercard Verifiable Intent</strong>, co-developed with
       Google and contributed to the FIDO Alliance
       (<span>[<a href="#FIDO-VI" class="cite xref">FIDO-VI</a>]</span>), describes portable, verifiable evidence of
       user intent. The cited page describes a contribution and prospective
@@ -2578,8 +2589,8 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       portable human evidence is absent.
       Its receipt profile separately specifies an enrolled organizational
       approver directory, exact Authorization Context, initiator exclusion,
-      terminal consumption record, and optional distinct-human quorum.<a href="#section-10-3" class="pilcrow">¶</a></p>
-<p id="section-10-4"><strong>AuthZEN Access Request and Approval Profile</strong>
+      terminal consumption record, and optional distinct-human quorum.<a href="#section-10-4" class="pilcrow">¶</a></p>
+<p id="section-10-5"><strong>AuthZEN Access Request and Approval Profile</strong>
       (<span>[<a href="#AUTHZEN-AARP" class="cite xref">AUTHZEN-AARP</a>]</span>) defines requestable denial,
       asynchronous approval tasks, an approval object whose optional state
       carries opaque proof or verifier state, JWS interoperability when that
@@ -2590,43 +2601,43 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       approver-held device ceremony, enrolled-human directory binding,
       portable initiator exclusion, or one-time executor consumption. The
       relying party remains responsible for deciding which profile satisfies
-      its requirement.<a href="#section-10-4" class="pilcrow">¶</a></p>
-<p id="section-10-5"><strong>WIMSE / workload identity</strong> authenticates the
+      its requirement.<a href="#section-10-5" class="pilcrow">¶</a></p>
+<p id="section-10-6"><strong>WIMSE / workload identity</strong> authenticates the
       workload to services; EP supplies action-bound approval evidence that
       a relying party may require in its local authorization decision.
-      These are complementary layers.<a href="#section-10-5" class="pilcrow">¶</a></p>
-<p id="section-10-6"><strong>Receiver-attested logging (e.g., Sello)</strong> has the
+      These are complementary layers.<a href="#section-10-6" class="pilcrow">¶</a></p>
+<p id="section-10-7"><strong>Receiver-attested logging (e.g., Sello)</strong> has the
       receiving service sign what it observed, post-hoc. EP is
       pre-execution authorization. A complete deployment benefits from
       both: EP records the pre-execution signing and consumption event under
       a selected profile; receiver attestation records what the receiver
       observed afterward. Local policy determines whether the former is
-      sufficient for authorization.<a href="#section-10-6" class="pilcrow">¶</a></p>
-<p id="section-10-7"><strong>AgentROA (draft-nivalto-agentroa-route-authorization),
+      sufficient for authorization.<a href="#section-10-7" class="pilcrow">¶</a></p>
+<p id="section-10-8"><strong>AgentROA (draft-nivalto-agentroa-route-authorization),
       AIIP, and CIRP</strong> define machine-side, per-hop execution and
       route receipts for agent actions under delegated authority. Their
       approval-state or approval-reference fields do not by themselves
       define the EP ceremony and directory profile. EP evidence can fill
       such a reference where that profile is selected, and its delegation
       constraints share AgentROA's monotonic ("tighten-only")
-      scope-narrowing discipline.<a href="#section-10-7" class="pilcrow">¶</a></p>
-<p id="section-10-8"><strong>The Entity Attestation Token (RFC 9711, RATS)</strong>
+      scope-narrowing discipline.<a href="#section-10-8" class="pilcrow">¶</a></p>
+<p id="section-10-9"><strong>The Entity Attestation Token (RFC 9711, RATS)</strong>
       attests the <em>agent or platform</em> -- model, keys, posture; EP
       carries evidence of an enrolled approver key's action-bound decision.
       The two are orthogonal and
       composable: an EAT says the machine is what it claims; an EP receipt
-      says a named person approved the exact action.<a href="#section-10-8" class="pilcrow">¶</a></p>
-<p id="section-10-9"><strong>Transaction Tokens
+      says a named person approved the exact action.<a href="#section-10-9" class="pilcrow">¶</a></p>
+<p id="section-10-10"><strong>Transaction Tokens
       (draft-ietf-oauth-transaction-tokens)</strong> propagate workload and
       agent authorization context across a machine call chain; an EP
       receipt can be one referenced approval artifact when a relying
-      party requires that profile.<a href="#section-10-9" class="pilcrow">¶</a></p>
-<p id="section-10-10"><strong>Evidence Record Syntax (RFC 4998)</strong> preserves
+      party requires that profile.<a href="#section-10-10" class="pilcrow">¶</a></p>
+<p id="section-10-11"><strong>Evidence Record Syntax (RFC 4998)</strong> preserves
       signed evidence across algorithm aging by periodic re-timestamping.
       EP applies the same approach to long-lived receipts via an
       evidence-record renewal chain, so a receipt verifiable today remains
       verifiable after its original algorithms weaken -- a property the
-      10-25+ year retention schedules of government records require.<a href="#section-10-10" class="pilcrow">¶</a></p>
+      10-25+ year retention schedules of government records require.<a href="#section-10-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <section id="section-11">
@@ -2709,7 +2720,20 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
 <p id="section-11.4-1">A malicious log could show different trees to different
         parties. Checkpoints <span class="bcp14">SHOULD</span> be witness-cosigned
         and/or gossiped between independent EP operators; the federation
-        profile makes cross-operator checkpoint exchange mandatory.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+        profile makes cross-operator checkpoint exchange mandatory. Before a
+        witness signs a checkpoint or a gossip participant accepts it for
+        comparison, that participant <span class="bcp14">MUST</span> verify the
+        checkpoint's log signature under the pinned log key and
+        <span class="bcp14">MUST</span> verify any required consistency proof from the
+        participant's previously accepted checkpoint. A quorum of witness
+        signatures over a caller-supplied but unauthenticated tuple is not
+        evidence that the named log produced that tuple.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+<p id="section-11.4-2">For this purpose, independent operators require separate
+        administrative control, key custody, and failure domains; multiple
+        co-located processes under one operator do not provide independent
+        witnessing. Comparing supplied authenticated views can prove that the
+        views conflict. It does not by itself prove freshness, completeness,
+        or that every relying party received the latest checkpoint.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <section id="section-11.5">
@@ -2758,7 +2782,13 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         prove WebAuthn internals, parser correctness, amount arithmetic,
         policy authorship, clock freshness, transparency-log completeness,
         collusion resistance, or downstream exactly-once physical effects.<a href="#section-11.5-2" class="pilcrow">¶</a></p>
-<p id="section-11.5-3">Independent implementation status, stated precisely: the
+<p id="section-11.5-3">The quorum abstraction in the standalone symbolic model is a fixed
+        2-of-2 instance. Its checked result is evidence for that instance, not
+        a proof of the arbitrary k-of-n construction defined by the companion
+        EP-QUORUM document and not a proof of production code. CI regression
+        gating of an existing prover result increases reproducibility; it does
+        not add a lemma or enlarge the model's scope.<a href="#section-11.5-3" class="pilcrow">¶</a></p>
+<p id="section-11.5-4">Independent implementation status, stated precisely: the
         three reference verifiers (JavaScript, Python, Go) agree on the
         published conformance vectors but live in one repository -- a
         cross-language consistency check, not independent
@@ -2769,7 +2799,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         and the available construction statement predates the evaluated
         hardening commit. It is therefore evidence of external implementation
         and execution for that bundle, not yet strict clean-room construction
-        acceptance for the current specification.<a href="#section-11.5-3" class="pilcrow">¶</a></p>
+        acceptance for the current specification.<a href="#section-11.5-4" class="pilcrow">¶</a></p>
 </section>
 <div id="directory-authority">
 <section id="section-11.6">
@@ -2987,6 +3017,10 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       <dd>
 <span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"AuthZEN Access Request and Approval Profile - Draft 1"</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html">https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="EP-BOUNDED-CAP">[EP-BOUNDED-CAP]</dt>
+      <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Bounded Capability Receipts and Durable Spend Control for Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-bounded-capability-receipts-00</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="EXTERNAL-RUST-PIN">[EXTERNAL-RUST-PIN]</dt>
       <dd>
 <span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"Time-Pinned External Rust Verifier Evaluation Record"</span>, <time datetime="2026-07-11" class="refDate">11 July 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json">https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json</a>&gt;</span>. </dd>
@@ -3028,6 +3062,10 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
 </li>
         <li class="normal" id="appendix-A-1.5">Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
         composable work.<a href="#appendix-A-1.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-1.6">Clarified that a receipt can authorize and be consumed for
+        capability issuance, but cannot be reused as per-operation approval;
+        the capability protocol binds the full issuance-receipt digest.<a href="#appendix-A-1.6" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>

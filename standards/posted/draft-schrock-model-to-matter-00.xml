@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-model-to-matter-00"
-     category="exp" ipr="trust200902" submissionType="IETF"
+     category="exp" ipr="trust200902"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="Model-to-Matter">Model-to-Matter: Authorization Evidence for Model-Directed Physical Execution</title>
@@ -13,7 +13,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="14"/>
+    <date year="2026" month="July" day="19"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>physical execution</keyword>
@@ -318,6 +318,22 @@
       attribution, or physical truth.</t>
     </section>
 
+    <section anchor="bounded-capabilities"><name>Relationship to Bounded Capabilities</name>
+      <t>A deployment can require a Bounded Capability Receipt
+      (<xref target="I-D.schrock-ep-bounded-capability-receipts"/>) as an
+      additional machine-authority input before creating a clearance. That
+      capability can constrain aggregate budget, validity, holder proof, and
+      action scope across operations.</t>
+      <t>It does not relax this profile's single-use rule. Every
+      Model-to-Matter action still requires its own action-bound clearance,
+      and each clearance remains terminal after one execution attempt. A
+      capability reservation is an additional precondition; it is not a
+      reusable clearance, does not satisfy any of this profile's six evidence
+      roles, and is not evidence of scientific safety. Threshold reconstruction
+      of a holder secret <bcp14>MUST NOT</bcp14> satisfy the
+      <tt>quorum</tt> human-assurance value.</t>
+    </section>
+
     <section anchor="security"><name>Security Considerations</name>
       <t><strong>Executor bypass.</strong> Model-to-Matter is effective only when
       every path to the protected effect traverses the enforcing executor.
@@ -437,6 +453,14 @@
           <date year="2026" month="July"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-03"/>
+      </reference>
+      <reference anchor="I-D.schrock-ep-bounded-capability-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">
+        <front>
+          <title>Bounded Capability Receipts and Durable Spend Control for Agent Actions</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-00"/>
       </reference>
     </references>
   </back>
