@@ -74,10 +74,10 @@ export default function InvestorsPage() {
           that re-performs evidence instead of trusting a dashboard.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
-          CAID -00 is a private filing candidate and Bounded Capability is implemented
-          architecture. Authorization Receipts, EP-QUORUM, EP-AEC, and EP-EVIDENCE-RECORD are
-          active individual Internet-Drafts; none is an adopted standard. No physical hardware
-          attestation in production or independently operated witness network is claimed today.
+          CAID -00, Bounded Capability Receipts -00, Authorization Receipts -07,
+          EP-QUORUM -03, and EP-AEC -03 are active individual Internet-Drafts; none
+          is an RFC or adopted standard. No physical hardware attestation in production
+          or independently operated witness network is claimed today.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560 }}>
           The round materials, business model, and commercial detail are shared directly under NDA. Tell us a little below, or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.

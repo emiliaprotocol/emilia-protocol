@@ -123,32 +123,14 @@ application without claiming a wet-lab deployment, screening capability,
 scientific-safety judgment, physical truth, or external endorsement. A partner
 is required before claiming adoption, not before publishing the open profile.
 
-Outcome Binding was not filed and remains deferred until its independent
-verification gate clears. Revocation is deliberately the first document in the
-next lifecycle wave.
-
 Machine-readable status, including every active individual draft and every
 disposition, is in [`STATUS.json`](STATUS.json). A published individual
 Internet-Draft is a proposal, not an RFC, a working-group adoption, or IETF
 endorsement.
 
-## July 27 lifecycle wave
-
-The next filing date is **Monday, July 27, 2026**. The wave is intentionally
-revocation-first:
-
-1. `draft-schrock-ep-revocation-statement-00` is mandatory. It defines
-   permanent, exact-target revocation evidence. An old revocation never ages
-   out; current non-revocation requires separately authenticated,
-   policy-fresh status evidence. The draft composes with the IETF Token Status
-   List work instead of claiming status mechanisms are missing. It is the only
-   complete artifact currently in `staged/`.
-2. `draft-schrock-authorization-evidence-challenge-01` is conditional. It files
-   only if its AuthZEN AARP binding survives source-locked review.
-
-The revocation design freezes July 20 and clears independent hostile review by
-July 24. Missing a conditional document does not move the mandatory revocation
-filing. Challenge-01 is not staged because no reviewed `-01` source exists.
+Unsubmitted draft sources, review packets, and filing schedules are maintained
+outside the public repository. Public status changes only when a submission is
+published and its immutable snapshot is archived here.
 
 ## Disposition ledger
 

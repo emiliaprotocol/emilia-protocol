@@ -1,15 +1,16 @@
 # EMILIA Standards Work
 
-This directory contains individual Internet-Drafts and candidate drafts for an
-evidence architecture for consequential agent actions.
+This directory contains published individual Internet-Draft snapshots and
+their public supporting material for an evidence architecture for consequential
+agent actions.
 
 Start here:
 
 - [`PORTFOLIO.md`](PORTFOLIO.md) is the human-readable architecture and filing
   narrative.
 - [`STATUS.json`](STATUS.json) is the machine-readable source of truth for
-  revisions, roles, consolidation, the July 19 published wave, the July 27
-  lifecycle wave, retired work, and partner-triggered profiles.
+  published revisions, roles, consolidation, retired work, and
+  partner-triggered profiles.
 - [`../caid`](../caid) contains the CAID identifier, Action-Mapping Profile,
   registry, three same-team reference ports, and shared vectors.
 
@@ -17,8 +18,8 @@ Start here:
 
 A draft published on the IETF Datatracker is an **active individual
 Internet-Draft**. It is not an RFC, not an adopted working-group item, and not
-IETF endorsement. Candidate and staged files in this repository have not been
-filed.
+IETF endorsement. Unsubmitted draft sources and filing schedules are prepared
+outside this public repository.
 
 The July 19 publication set was verified against the IETF archive on
 2026-07-19. Each archived IETF TXT is byte-for-byte identical to its local
@@ -54,23 +55,12 @@ remain separate lifecycle transitions.
 
 The first seven documents form the protocol line. Model-to-Matter demonstrates
 the architecture at an executor boundary and carries explicit non-goals.
-Outcome Binding was not filed and remains deferred pending independent
-verification.
-
-## July 27 lifecycle wave
-
-`draft-schrock-ep-revocation-statement-00` is the only complete draft in
-`staged/` and is the mandatory next filing candidate. Its design freeze is
-July 20, hostile-review deadline is July 24, and target filing date is July 27.
-`draft-schrock-authorization-evidence-challenge-01` is conditional and is not
-staged because its source-locked AuthZEN AARP review and new revision source do
-not yet exist.
 
 ## Directory layout
 
 - `posted/`: source snapshots for revisions already on Datatracker.
 - `archive/`: superseded revisions and retired standalone candidates.
-- `staged/`: complete candidates that have not been filed.
+- `staged/`: public staging policy only; unsubmitted draft sources stay private.
 - `profiles/`: remaining application or commercial profiles that need an
   external validating partner before they re-enter the filing lane.
 - `observatory/`: revision-pinned source catalog and generated comparison data.
