@@ -1,0 +1,249 @@
+{
+  "$comment": "TLA+-invariant-derived cross-language conformance cases. These are NOT receipt vectors (see conformance/vectors/*.json for those). Each entry is a SAFETY INVARIANT proven in formal/*.tla, expanded into concrete language-agnostic action sequences that any conformant verifier/store MUST uphold. A JS runner drives the REAL production store and invariant functions against every case (conformance/runners/run-invariants.mjs). Python and Go runners are scaffolded; see runners/run_invariants.py and runners/run_invariants.go for the exact wiring blocker.",
+  "version": "EP-INVARIANT-CONFORMANCE-v1",
+  "baselineNowIso": "2026-07-18T22:00:00.000Z",
+  "invariants": [
+    {
+      "invariant": "ReserveWithinBudget",
+      "spec": "formal/ep_capability.tla:135",
+      "domain": "capability",
+      "description": "committed + reserved authority never exceeds the immutable budget. Reserving beyond the remaining authority must be refused with budget_exceeded, and the store's (consumed + reserved <= budget) accounting identity must hold after every step.",
+      "cases": [
+        {
+          "name": "reserve_to_budget_then_over_is_refused",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 100, "expiryMs": 60000 },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 60, "expect": { "ok": true } },
+            { "do": "reserve", "capability": "c1", "operation": "o2", "amount": 60, "expect": { "ok": false, "reason": "budget_exceeded" } },
+            { "do": "commit", "operation": "o1", "expect": { "ok": true } },
+            { "do": "reserve", "capability": "c1", "operation": "o3", "amount": 40, "expect": { "ok": true } },
+            { "do": "reserve", "capability": "c1", "operation": "o4", "amount": 1, "expect": { "ok": false, "reason": "budget_exceeded" } }
+          ],
+          "structural": { "predicate": "reserve_within_budget", "capability": "c1" },
+          "expected": "hold"
+        },
+        {
+          "name": "exact_budget_reservation_is_allowed",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 50, "expiryMs": 60000 },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 50, "expect": { "ok": true } },
+            { "do": "commit", "operation": "o1", "expect": { "ok": true } }
+          ],
+          "structural": { "predicate": "reserve_within_budget", "capability": "c1" },
+          "expected": "hold"
+        },
+        {
+          "name": "expired_capability_refuses_reserve",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 100, "expiryMs": 1000 },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 10, "atMs": 5000, "expect": { "ok": false, "reason": "capability_expired" } }
+          ],
+          "structural": { "predicate": "reserve_within_budget", "capability": "c1" },
+          "expected": "hold"
+        }
+      ]
+    },
+    {
+      "invariant": "NoDoubleCommit",
+      "spec": "formal/ep_capability.tla:196",
+      "domain": "capability",
+      "description": "an operation, once committed, contributes to consumed at most once. A second commit of the same operation must be refused with capability_operation_already_finalized, and consumed must not increase on the refused commit.",
+      "cases": [
+        {
+          "name": "second_commit_of_same_operation_is_refused",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 100, "expiryMs": 60000 },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 30, "expect": { "ok": true } },
+            { "do": "commit", "operation": "o1", "expect": { "ok": true } },
+            { "do": "commit", "operation": "o1", "expect": { "ok": false, "reason": "capability_operation_already_finalized" } }
+          ],
+          "structural": { "predicate": "consumed_is_committed_sum", "capability": "c1" },
+          "expected": "hold"
+        },
+        {
+          "name": "reusing_committed_operation_id_for_reserve_is_refused",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 100, "expiryMs": 60000 },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 30, "expect": { "ok": true } },
+            { "do": "commit", "operation": "o1", "expect": { "ok": true } },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 10, "expect": { "ok": false, "reason": "operation_already_committed" } }
+          ],
+          "structural": { "predicate": "consumed_is_committed_sum", "capability": "c1" },
+          "expected": "hold"
+        }
+      ]
+    },
+    {
+      "invariant": "CommitRequiresReserve",
+      "spec": "formal/ep_capability.tla:201",
+      "domain": "capability",
+      "description": "an operation may become committed only from a prior reserved state, and only by the holder of the matching reservation token. Committing an unknown operation must be refused with capability_operation_not_found; committing with the wrong token must be refused with capability_reservation_owner_mismatch.",
+      "cases": [
+        {
+          "name": "commit_of_never_reserved_operation_is_refused",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 100, "expiryMs": 60000 },
+            { "do": "commitRaw", "capability": "c1", "operation": "ghost", "token": "not-a-real-token-000000", "expect": { "ok": false, "reason": "capability_operation_not_found" } }
+          ],
+          "structural": { "predicate": "consumed_is_committed_sum", "capability": "c1" },
+          "expected": "hold"
+        },
+        {
+          "name": "commit_with_wrong_reservation_token_is_refused",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 100, "expiryMs": 60000 },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 20, "expect": { "ok": true } },
+            { "do": "commitRaw", "capability": "c1", "operation": "o1", "token": "wrong-token-0000000000", "expect": { "ok": false, "reason": "capability_reservation_owner_mismatch" } },
+            { "do": "commit", "operation": "o1", "expect": { "ok": true } }
+          ],
+          "structural": { "predicate": "consumed_is_committed_sum", "capability": "c1" },
+          "expected": "hold"
+        }
+      ]
+    },
+    {
+      "invariant": "ConsumptionMonotonic",
+      "spec": "formal/ep_capability.tla:186",
+      "domain": "capability",
+      "description": "consumed_amount is monotonic non-decreasing; no code path decrements it. The runner asserts consumed never drops between consecutive steps across the whole sequence.",
+      "cases": [
+        {
+          "name": "consumed_only_ever_increases_across_mixed_ops",
+          "actions": [
+            { "do": "register", "capability": "c1", "budget": 100, "expiryMs": 60000 },
+            { "do": "reserve", "capability": "c1", "operation": "o1", "amount": 40, "expect": { "ok": true } },
+            { "do": "reserve", "capability": "c1", "operation": "o2", "amount": 40, "expect": { "ok": true } },
+            { "do": "commit", "operation": "o1", "expect": { "ok": true } },
+            { "do": "reserve", "capability": "c1", "operation": "o3", "amount": 40, "expect": { "ok": false, "reason": "budget_exceeded" } },
+            { "do": "commit", "operation": "o2", "expect": { "ok": true } }
+          ],
+          "structural": { "predicate": "consumption_monotonic", "capability": "c1" },
+          "expected": "hold"
+        }
+      ]
+    },
+    {
+      "invariant": "ConsumeOnceSafety",
+      "spec": "formal/ep_handshake.tla:102",
+      "domain": "handshake",
+      "description": "an accepted handshake binds at most once: a second accepted result carrying the same binding hash must be refused (DUPLICATE_RESULT). Maps to lib/handshake/invariants.js checkNoDuplicateResult, the JS-layer twin of the consume_handshake_atomic unique constraint.",
+      "cases": [
+        {
+          "name": "first_accepted_result_is_permitted",
+          "actions": [
+            { "do": "check_no_duplicate_result", "existingResults": [], "bindingHash": "bh_1", "expect": { "ok": true } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "second_accepted_result_same_binding_is_refused",
+          "actions": [
+            { "do": "check_no_duplicate_result", "existingResults": [ { "outcome": "accepted", "binding_hash": "bh_1" } ], "bindingHash": "bh_1", "expect": { "ok": false, "code": "DUPLICATE_RESULT" } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "rejected_result_does_not_block_a_different_binding",
+          "actions": [
+            { "do": "check_no_duplicate_result", "existingResults": [ { "outcome": "rejected", "binding_hash": "bh_1" } ], "bindingHash": "bh_2", "expect": { "ok": true } }
+          ],
+          "expected": "hold"
+        }
+      ]
+    },
+    {
+      "invariant": "TerminalStateIrreversibility",
+      "spec": "formal/ep_handshake.tla:159",
+      "domain": "handshake",
+      "description": "once a handshake result is finalized (accepted or rejected) it is immutable; no further modification is permitted (RESULT_IMMUTABLE). Maps to lib/handshake/invariants.js checkResultImmutability.",
+      "cases": [
+        {
+          "name": "accepted_result_is_immutable",
+          "actions": [
+            { "do": "check_result_immutability", "existingResult": { "outcome": "accepted" }, "expect": { "ok": false, "code": "RESULT_IMMUTABLE" } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "rejected_result_is_immutable",
+          "actions": [
+            { "do": "check_result_immutability", "existingResult": { "outcome": "rejected" }, "expect": { "ok": false, "code": "RESULT_IMMUTABLE" } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "absent_result_permits_progress",
+          "actions": [
+            { "do": "check_result_immutability", "existingResult": null, "expect": { "ok": true } }
+          ],
+          "expected": "hold"
+        }
+      ]
+    },
+    {
+      "invariant": "ExpiredIsTerminal",
+      "spec": "formal/ep_handshake.tla:136",
+      "domain": "handshake",
+      "description": "a handshake whose binding has passed its expiry is terminal and cannot advance (BINDING_EXPIRED). Maps to lib/handshake/invariants.js checkNotExpired.",
+      "cases": [
+        {
+          "name": "past_expiry_is_rejected",
+          "actions": [
+            { "do": "check_not_expired", "handshake": { "binding": { "expires_at": "2000-01-01T00:00:00.000Z" } }, "expect": { "ok": false, "code": "BINDING_EXPIRED" } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "far_future_expiry_is_permitted",
+          "actions": [
+            { "do": "check_not_expired", "handshake": { "binding": { "expires_at": "2999-01-01T00:00:00.000Z" } }, "expect": { "ok": true } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "missing_expiry_is_rejected",
+          "actions": [
+            { "do": "check_not_expired", "handshake": { "binding": {} }, "expect": { "ok": false, "code": "BINDING_EXPIRED" } }
+          ],
+          "expected": "hold"
+        }
+      ]
+    },
+    {
+      "invariant": "BindingIntegrityNoBypass",
+      "spec": "formal/ep_handshake.tla:150",
+      "domain": "handshake",
+      "description": "binding verification cannot be bypassed by omitting the verification payload hash. When the binding carries a payload_hash, a caller that omits the hash, or supplies a mismatched hash, must be refused (BINDING_INVALID). Guards the H6 omit-to-bypass audit fix in lib/handshake/invariants.js checkBindingValid.",
+      "cases": [
+        {
+          "name": "matching_payload_hash_verifies",
+          "actions": [
+            { "do": "check_binding_valid", "binding": { "nonce": "n1", "payload_hash": "sha256:abc" }, "verificationPayloadHash": "sha256:abc", "expect": { "ok": true } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "omitted_payload_hash_does_not_bypass",
+          "actions": [
+            { "do": "check_binding_valid", "binding": { "nonce": "n1", "payload_hash": "sha256:abc" }, "verificationPayloadHash": null, "expect": { "ok": false, "code": "BINDING_INVALID" } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "mismatched_payload_hash_is_refused",
+          "actions": [
+            { "do": "check_binding_valid", "binding": { "nonce": "n1", "payload_hash": "sha256:abc" }, "verificationPayloadHash": "sha256:def", "expect": { "ok": false, "code": "BINDING_INVALID" } }
+          ],
+          "expected": "hold"
+        },
+        {
+          "name": "missing_nonce_is_refused",
+          "actions": [
+            { "do": "check_binding_valid", "binding": { "payload_hash": "sha256:abc" }, "verificationPayloadHash": "sha256:abc", "expect": { "ok": false, "code": "BINDING_INVALID" } }
+          ],
+          "expected": "hold"
+        }
+      ]
+    }
+  ]
+}
