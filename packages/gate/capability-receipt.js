@@ -231,6 +231,9 @@ function validateBaseReceipt(baseReceipt) {
   if (typeof baseReceipt.payload.receipt_id !== 'string' || baseReceipt.payload.receipt_id.length === 0) {
     throw new TypeError('capability base receipt must carry receipt_id');
   }
+  if (!isRecord(baseReceipt.payload.claim) || baseReceipt.payload.claim.capability_only !== true) {
+    throw new TypeError('capability base receipt must be signed as capability_only');
+  }
   return structuredClone(baseReceipt);
 }
 

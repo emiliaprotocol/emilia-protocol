@@ -28,7 +28,7 @@ function fixture({ budget = 100, baseAction = ACTION } = {}) {
   const harness = createEg1Harness({ action: baseAction, now: () => NOW, idPrefix: 'cap-gate' });
   const issuer = generateKeyPairSync('ed25519');
   const issuerPublicKey = issuer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
-  const baseReceipt = harness.mint({ outcome: 'allow_with_signoff' });
+  const baseReceipt = harness.mint({ outcome: 'allow_with_signoff', extra: { capability_only: true } });
   const capability = mintCapabilityReceipt(baseReceipt, {
     issuerPrivateKey: issuer.privateKey,
     budget: { amount: budget, currency: 'USD' },
@@ -136,6 +136,39 @@ test('capability-enabled gate requires an explicit role-scoped issuer pin', () =
     }),
     /capabilityTrustedIssuerKeys must explicitly pin/,
   );
+});
+
+test('embedded capability receipt cannot bypass budget through ordinary run or route paths', async () => {
+  const f = fixture();
+  let effects = 0;
+  const extractedReceipt = f.capability.capabilityReceipt.receipt;
+  const direct = await f.gate.run({
+    selector: SELECTOR,
+    receipt: extractedReceipt,
+    observedAction: f.action,
+  }, async () => {
+    effects += 1;
+  });
+  assert.equal(direct.ok, false);
+  assert.equal(direct.authorization.reason, 'capability_required');
+
+  let statusCode = null;
+  const response = {
+    status(code) { statusCode = code; return this; },
+    json(body) { return body; },
+    setHeader() {},
+  };
+  const guardedRoute = f.gate.route(async () => {
+    effects += 1;
+  }, {
+    selector: SELECTOR,
+    receipt: extractedReceipt,
+    observedAction: f.action,
+  });
+  const routeResult = await guardedRoute({ headers: {}, body: {} }, response);
+  assert.equal(statusCode, 428);
+  assert.equal(routeResult.detail, 'capability_required');
+  assert.equal(effects, 0);
 });
 
 test('gate capability path refuses replay and a new id cannot relabel the same exact action', async () => {

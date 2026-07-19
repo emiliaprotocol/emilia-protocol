@@ -30,7 +30,7 @@ function baseReceipt({ privateKey, publicKey, receiptId = 'base_1' } = {}) {
     receipt_id: receiptId,
     created_at: new Date(NOW - 1000).toISOString(),
     subject: 'operator@example.test',
-    claim: { action_type: 'payment.release', outcome: 'allow' },
+    claim: { action_type: 'payment.release', outcome: 'allow', capability_only: true },
   };
   return {
     '@version': 'EP-RECEIPT-v1',

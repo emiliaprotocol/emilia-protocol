@@ -17,6 +17,8 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync } from 'node:crypto';
 import { concurrent, InvariantViolation, invariant } from './harness.mjs';
 import {
+  CAPABILITY_SCOPE_PROFILE,
+  capabilityActionDigest,
   createMemoryCapabilityStore,
   mintCapabilityReceipt,
 } from '../packages/gate/capability-receipt.js';
@@ -26,7 +28,13 @@ const CURRENCY = 'usd';
 const NOW = 1_700_000_000_000;
 const clock = () => NOW;
 const EXPIRY = new Date(NOW + 86_400_000).toISOString();
-const baseReceipt = (id) => ({ '@version': 'EP-RECEIPT-v1', payload: { receipt_id: id } });
+const baseReceipt = (id) => ({ '@version': 'EP-RECEIPT-v1', payload: { receipt_id: id, claim: { capability_only: true } } });
+const STORE_ACTION_DIGEST = capabilityActionDigest({ operation_id: 'fuzz-store-template' });
+const STORE_SCOPE = {
+  profile: CAPABILITY_SCOPE_PROFILE,
+  operation_id_field: 'operation_id',
+  action_digests: [STORE_ACTION_DIGEST],
+};
 
 // A deliberately NON-ATOMIC budget store: reserveSpend reads the remaining
 // budget, yields to the event loop (the check-then-act window), then mutates.
@@ -91,6 +99,7 @@ test('concurrent driver PASSES against the shipped atomic store (clean signal)',
   const capabilityId = 'cap-teeth';
   const { capabilityReceipt } = mintCapabilityReceipt(baseReceipt('r-teeth'), {
     issuerPrivateKey: privateKey, budget: { amount: budget, currency: CURRENCY }, expiry: EXPIRY, capabilityId,
+    scope: STORE_SCOPE,
   });
   const store = createMemoryCapabilityStore();
   store.registerCapability(capabilityReceipt);
@@ -100,7 +109,7 @@ test('concurrent driver PASSES against the shipped atomic store (clean signal)',
     const s = { token: null };
     return [
       async () => {
-        const r = await store.reserveSpend({ capabilityId, capabilityFingerprint: fingerprint, operationId: `op${i}`, amount: 40, currency: CURRENCY, now: clock });
+        const r = await store.reserveSpend({ capabilityId, capabilityFingerprint: fingerprint, operationId: `op${i}`, actionDigest: STORE_ACTION_DIGEST, amount: 40, currency: CURRENCY, now: clock });
         if (r.ok) s.token = r.reservation_token;
       },
       async () => { if (!s.token) return; const c = await store.commitSpend({ capabilityId, operationId: `op${i}`, reservationToken: s.token, now: clock }); if (c.ok) acc.committed += 40; },

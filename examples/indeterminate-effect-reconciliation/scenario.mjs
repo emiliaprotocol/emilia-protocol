@@ -80,6 +80,7 @@ function mintBaseReceipt(privateKey, publicKey) {
     claim: {
       ...ACTION,
       outcome: 'allow_with_signoff',
+      capability_only: true,
     },
     signoff: approval.signoff,
     approver_public_key: approval.approver_public_key,

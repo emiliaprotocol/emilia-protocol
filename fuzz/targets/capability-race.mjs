@@ -24,6 +24,8 @@
 
 import { generateKeyPairSync } from 'node:crypto';
 import {
+  CAPABILITY_SCOPE_PROFILE,
+  capabilityActionDigest,
   createMemoryCapabilityStore,
   mintCapabilityReceipt,
 } from '../../packages/gate/capability-receipt.js';
@@ -34,8 +36,14 @@ import { invariant } from '../harness.mjs';
 const { privateKey } = generateKeyPairSync('ed25519');
 
 function baseReceipt(receiptId) {
-  return { '@version': 'EP-RECEIPT-v1', payload: { receipt_id: receiptId } };
+  return { '@version': 'EP-RECEIPT-v1', payload: { receipt_id: receiptId, claim: { capability_only: true } } };
 }
+const STORE_ACTION_DIGEST = capabilityActionDigest({ operation_id: 'fuzz-store-template' });
+const STORE_SCOPE = {
+  profile: CAPABILITY_SCOPE_PROFILE,
+  operation_id_field: 'operation_id',
+  action_digests: [STORE_ACTION_DIGEST],
+};
 
 const CURRENCY = 'usd';
 // A fixed logical clock well before the capability expiry; the store treats
@@ -67,6 +75,7 @@ export default {
       budget: { amount: budget, currency: CURRENCY },
       expiry: EXPIRY,
       capabilityId,
+      scope: STORE_SCOPE,
     });
 
     const store = createMemoryCapabilityStore();
@@ -100,6 +109,7 @@ export default {
           capabilityId,
           capabilityFingerprint: fingerprint,
           operationId,
+          actionDigest: STORE_ACTION_DIGEST,
           amount,
           currency: CURRENCY,
           now: clock,

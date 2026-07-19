@@ -904,6 +904,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!receipt) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'receipt_required');
     }
+    // A capability issuance receipt is not a bearer bypass around the budget
+    // path. The marker is inside the signed claim; stripping it breaks the
+    // receipt signature. Such a receipt is accepted only while the capability
+    // executor supplies the signed envelope and durable budget context.
+    if (receipt?.payload?.claim?.capability_only === true && !capability) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'capability_required');
+    }
     // A manifest-guarded action that declares no assurance_class is a
     // misconfiguration. Fail CLOSED rather than defaulting to the weakest tier
     // (which would accept a bare machine-signed receipt for a guarded action).
