@@ -42,8 +42,8 @@ function relianceChallenge(verdict, reasons, profile) {
 /**
  * Create a reliance kernel bound to one relying-party profile.
  *
- * @param {object} cfg
- * @param {object} cfg.profile        the pinned EP-RELIANCE-PROFILE-v1
+ * @param {object} [cfg]
+ * @param {object} [cfg.profile]      the pinned EP-RELIANCE-PROFILE-v1
  * @param {object} [cfg.log]          an evidence log (createEvidenceLog); one is created if absent
  * @param {boolean} [cfg.strictEvidence=true]  fail closed if the evidence log sink fails
  * @returns {{ check: Function, evidence: object }}

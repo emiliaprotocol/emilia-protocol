@@ -39,6 +39,9 @@ export function canonicalEvidenceJson(v) {
 
 const canonical = canonicalEvidenceJson;
 
+/**
+ * @param {{ sink?: any, strict?: boolean }} [options]
+ */
 export function createEvidenceLog({ sink, strict = false } = {}) {
   const records = [];
   let prev = 'genesis';
@@ -101,7 +104,11 @@ export function createEvidenceLog({ sink, strict = false } = {}) {
 const LOG_HEX_256 = /^[0-9a-f]{64}$/;
 const LOG_RESERVED_FIELDS = new Set(['seq', 'prev_hash', 'record_id', 'hash']);
 
-/** Verify one logger acknowledgement independently of the logger that emitted it. */
+/**
+ * Verify one logger acknowledgement independently of the logger that emitted it.
+ * @param {any} record
+ * @param {{ atomicRequired?: boolean, expectedEntry?: any }} [options]
+ */
 export function verifyEvidenceRecord(record, { atomicRequired = false, expectedEntry } = {}) {
   try {
     if (!record || typeof record !== 'object' || Array.isArray(record)
