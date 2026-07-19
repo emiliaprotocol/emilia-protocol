@@ -19,7 +19,10 @@ jobs:
     # own commits, and the bumps it ships don't carry copyrightable
     # contribution. A skipped job satisfies required status checks per
     # GitHub's documented behavior, so this doesn't open a hole.
-    if: github.actor != 'dependabot[bot]'
+    # Key this exception to the PR author. A maintainer-triggered "update
+    # branch" changes github.actor but does not change who authored the
+    # dependency update.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
