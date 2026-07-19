@@ -47,7 +47,9 @@ async function epPost(base, pathname, apiKey, body, fetchImpl, allowInsecureHttp
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = new Error(`EMILIA ${pathname} ${res.status}: ${data.detail || data.title || JSON.stringify(data).slice(0, 160)}`);
+    const err = /** @type {Error & { status?: number, body?: unknown }} */ (
+      new Error(`EMILIA ${pathname} ${res.status}: ${data.detail || data.title || JSON.stringify(data).slice(0, 160)}`)
+    );
     err.status = res.status;
     err.body = data;
     throw err;
@@ -73,7 +75,11 @@ export function mintReceipt({ apiKey, base = DEFAULT_BASE, fetchImpl, allowInsec
   return epPost(base, '/api/v1/trust-receipts', apiKey, receipt, fetchImpl, allowInsecureHttp);
 }
 
-/** Request signoff on a receipt that came back signoff_required=true. */
+/**
+ * Request signoff on a receipt that came back signoff_required=true.
+ *
+ * @param {{ apiKey?: string, base?: string, fetchImpl?: typeof fetch, allowInsecureHttp?: boolean, receipt_id?: string, comment?: string, expires_in_minutes?: number }} [o]
+ */
 export function requestSignoff({ apiKey, base = DEFAULT_BASE, fetchImpl, allowInsecureHttp, receipt_id, comment, expires_in_minutes } = {}) {
   if (!apiKey) throw new Error('requestSignoff: apiKey is required');
   if (!receipt_id) throw new Error('requestSignoff: receipt_id is required');
@@ -84,6 +90,8 @@ export function requestSignoff({ apiKey, base = DEFAULT_BASE, fetchImpl, allowIn
  * A DIFFERENT authenticated principal approves the signoff. This software/API-key
  * path enforces separation of duty, but does not prove human presence. Use the
  * WebAuthn approval route or mobile ceremony when Class-A evidence is required.
+ *
+ * @param {{ apiKey?: string, base?: string, fetchImpl?: typeof fetch, allowInsecureHttp?: boolean, signoff_id?: string, comment?: string }} [o]
  */
 export function approveSignoff({ apiKey, base = DEFAULT_BASE, fetchImpl, allowInsecureHttp, signoff_id, comment } = {}) {
   if (!apiKey) throw new Error("approveSignoff: apiKey is required (the approving human's key)");
@@ -91,7 +99,11 @@ export function approveSignoff({ apiKey, base = DEFAULT_BASE, fetchImpl, allowIn
   return epPost(base, `/api/v1/signoffs/${encodeURIComponent(signoff_id)}/approve`, apiKey, { comment }, fetchImpl, allowInsecureHttp);
 }
 
-/** Reject a signoff. */
+/**
+ * Reject a signoff.
+ *
+ * @param {{ apiKey?: string, base?: string, fetchImpl?: typeof fetch, allowInsecureHttp?: boolean, signoff_id?: string, comment?: string }} [o]
+ */
 export function rejectSignoff({ apiKey, base = DEFAULT_BASE, fetchImpl, allowInsecureHttp, signoff_id, comment } = {}) {
   if (!apiKey) throw new Error('rejectSignoff: apiKey is required');
   if (!signoff_id) throw new Error('rejectSignoff: signoff_id is required');

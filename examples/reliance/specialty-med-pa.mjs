@@ -33,7 +33,7 @@ const logKey = ed();                 // the hub / EHR transparency-log key
 const intake = ed();                 // Class-B intake software (the agent that filed the PA)
 const reviewer = p256();             // Class-A device: the payer medical reviewer
 const registryKey = crypto.createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from('a7'.repeat(32), 'hex')]), format: 'der', type: 'pkcs8' });
-const registryPub = crypto.createPublicKey(registryKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+const registryPub = crypto.createPublicKey(/** @type {any} */ (registryKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
 
 // A synthetic NCPDP transaction the PA determination rides beside. Only its
 // digest is bound into the action — no transaction contents leave the rail.

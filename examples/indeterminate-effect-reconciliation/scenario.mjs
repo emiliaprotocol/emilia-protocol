@@ -163,7 +163,10 @@ export function createIndeterminateEffectHarness() {
     attempt: execute,
     retry: execute,
     reconcile(providerEvidence = provider.getSignedEvidence(OPERATION_ID)) {
-      return reconcileIndeterminateEffect({
+      // reconciliation.mjs's reconcileIndeterminateEffect has no JSDoc signature, so
+      // TS infers its parameter type only from the one destructured default (`now`)
+      // — cast only, this is the real call shape the function reads at runtime.
+      return reconcileIndeterminateEffect(/** @type {any} */ ({
         capabilityStore,
         capabilityId: minted.capabilityReceipt.capability.id,
         operationId: OPERATION_ID,
@@ -172,7 +175,7 @@ export function createIndeterminateEffectHarness() {
         pinnedProviderKey: provider.pinnedPublicKey,
         expectedProviderId: provider.providerId,
         ledger: reconciliationLedger,
-      });
+      }));
     },
     get capabilityOperation() {
       return capabilityStore.getOperation(OPERATION_ID);

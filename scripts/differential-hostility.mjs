@@ -212,6 +212,8 @@ if (new Set(implementations.map((implementation) => implementation.name)).size !
   throw new Error('implementation names must be unique');
 }
 
+/** @typedef {{ leaf: boolean } | { nested: DeepNested }} DeepNested */
+/** @type {DeepNested} */
 let deep = { leaf: true };
 for (let i = 0; i < 66; i += 1) deep = { nested: deep };
 const rawParserCases = [

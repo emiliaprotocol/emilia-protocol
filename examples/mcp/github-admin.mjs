@@ -10,11 +10,11 @@
 
 import { runDemo } from './_kit.mjs';
 
-await runDemo({
+await runDemo(/** @type {any} */ ({
   title: 'mcp-github-admin — delete_repo / change_permissions requires a receipt',
   tool: 'delete_repo',
   action: 'github.repo.delete',
   args: { owner: 'acme', repo: 'billing-core', confirm: true },
   approver: 'ep:approver:eng-director (passkey)',
   agentLine: '"Cleaning up stale repos — removing acme/billing-core."',
-});
+}));

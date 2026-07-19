@@ -44,18 +44,18 @@ console.log(`EMILIA × Eve — release_funds demo${demoMode ? ' (demo mode: inli
 console.log(`action bound to: ${bound}\n`);
 
 const r1 = await releaseFundsGate.run(undefined, { target: DEST }, doRelease);
-console.log(`1. no receipt          -> ${r1.ok ? 'RAN (BUG!)' : `BLOCKED (${r1.status}) — funds NOT moved`}`);
+console.log(`1. no receipt          -> ${r1.ok ? 'RAN (BUG!)' : `BLOCKED (${(/** @type {{ok:false,status:any,body:any}} */ (r1)).status}) — funds NOT moved`}`);
 
 const receipt = humanApproves(bound);
 const r2 = await releaseFundsGate.run(receipt, { target: DEST }, doRelease);
-console.log(`2. human signs         -> ${r2.ok ? `RAN ONCE — released $${r2.result.amount} to ${DEST}` : `BLOCKED (${r2.body?.rejected?.reason})`}`);
+console.log(`2. human signs         -> ${r2.ok ? `RAN ONCE — released $${r2.result.amount} to ${DEST}` : `BLOCKED (${(/** @type {{ok:false,status:any,body:any}} */ (r2)).body?.rejected?.reason})`}`);
 
 const r3 = await releaseFundsGate.run(receipt, { target: DEST }, doRelease);
-console.log(`3. replay same receipt -> ${r3.ok ? 'RAN (BUG!)' : `BLOCKED (${r3.body.rejected.reason})`}`);
+console.log(`3. replay same receipt -> ${r3.ok ? 'RAN (BUG!)' : `BLOCKED (${(/** @type {{ok:false,status:any,body:any}} */ (r3)).body.rejected.reason})`}`);
 
 const wrong = humanApproves(releaseFundsGate.boundActionFor('attacker-acct'));
 const r4 = await releaseFundsGate.run(wrong, { target: DEST }, doRelease);
-console.log(`4. receipt for another acct -> ${r4.ok ? 'RAN (BUG!)' : `BLOCKED (${r4.body.rejected.reason})`}`);
+console.log(`4. receipt for another acct -> ${r4.ok ? 'RAN (BUG!)' : `BLOCKED (${(/** @type {{ok:false,status:any,body:any}} */ (r4)).body.rejected.reason})`}`);
 
 const pass = !r1.ok && r2.ok && !r3.ok && !r4.ok;
 console.log(`\n${pass ? 'PASS' : 'FAIL'} — no receipt, no mutation; if it runs, the proof travels.`);

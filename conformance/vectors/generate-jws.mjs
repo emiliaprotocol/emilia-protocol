@@ -26,7 +26,9 @@ const b64u = (buf) => Buffer.from(buf).toString('base64url');
 const PKCS8 = Buffer.from('302e020100300506032b657004220420', 'hex');
 function keyFromSeed(byte) {
   const priv = crypto.createPrivateKey({ key: Buffer.concat([PKCS8, Buffer.alloc(32, byte)]), format: 'der', type: 'pkcs8' });
-  const pub = crypto.createPublicKey(priv).export({ type: 'spki', format: 'der' }).toString('base64url');
+  // Node's crypto.createPublicKey accepts a private KeyObject at runtime (it derives
+  // the public key), but @types/node's overloads don't include KeyObject — cast only.
+  const pub = crypto.createPublicKey(/** @type {any} */ (priv)).export({ type: 'spki', format: 'der' }).toString('base64url');
   return { priv, pub };
 }
 const KEY = keyFromSeed(0xA1);        // the canonical signer (same seed as receipts.v1.json)
@@ -35,8 +37,20 @@ const OTHER = keyFromSeed(0xB2);      // an unrelated key (wrong-key vector)
 const TYP = 'application/ep-receipt+jws';
 const deriveKid = (pub) => crypto.createHash('sha256').update(pub, 'utf8').digest('hex').slice(0, 32);
 
+/**
+ * @typedef {Object} JwsOptions
+ * @property {{ priv: import('node:crypto').KeyObject, pub: string }} [key]
+ * @property {string|null} [kid]
+ * @property {{ alg: string, typ: string, kid?: string }} [header]
+ * @property {(parts: string[]) => string[]} [mutate]
+ */
+
 // Build a compact JWS over canon(payload). `mutate` optionally rewrites a
 // segment AFTER signing to produce a reject vector.
+/**
+ * @param {unknown} payload
+ * @param {JwsOptions} [options]
+ */
 function jws(payload, { key = KEY, kid = deriveKid(KEY.pub), header, mutate } = {}) {
   const hdr = header || { alg: 'EdDSA', typ: TYP, ...(kid ? { kid } : {}) };
   const hB64 = b64u(Buffer.from(JSON.stringify(hdr), 'utf8'));

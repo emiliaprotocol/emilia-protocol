@@ -27,6 +27,14 @@ function refusingVerifier(reason) {
  * construction. Per request, only the executor's expected action/evaluation and
  * presenter evidence vary. The same store is reused across calls, so replay of
  * an already executed action is refused by the underlying AEC gate.
+ * @param {object} [opts]
+ * @param {Record<string, any>} [opts.actaIssuerKeys]
+ * @param {object} [opts.actaPolicy]
+ * @param {object} [opts.epReceiptProfile]
+ * @param {object} [opts.store]
+ * @param {object} [opts.log]
+ * @param {boolean} [opts.allowEphemeralState]
+ * @param {() => number} [opts.now]
  */
 export function createActaEpExecutionGate({
   actaIssuerKeys,

@@ -57,7 +57,7 @@ const keys = generateIssuerKeyBundle({
 const { receipt, verification } = await issueFromKeyBundle({ keys, action, policy });
 
 console.log('=== Row 1: authorization (EP receipt over the signed action) ===');
-const r = verifyTrustReceipt(receipt, { approverKeys: verification.approver_keys, logPublicKey: verification.log_public_key });
+const r = verifyTrustReceipt(/** @type {any} */ (receipt), { approverKeys: verification.approver_keys, logPublicKey: verification.log_public_key });
 console.log('receipt valid:', r.valid);
 
 console.log('\n=== Row 2 join: surface binding covered by the human signature ===');

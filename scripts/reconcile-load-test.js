@@ -102,6 +102,8 @@ const SINCE = parseSinceArg();
 
 /**
  * Count rows in a table, optionally filtering by a column/value and a time range.
+ * @param {string} table
+ * @param {{ column?: string, value?: any, timeColumn?: string, since?: string }} [params]
  */
 async function countRows(table, { column, value, timeColumn = 'created_at', since = SINCE } = {}) {
   let query = supabase
@@ -287,7 +289,7 @@ async function check7_noDuplicateConsumptions() {
   }
 
   // RPC path
-  const dupeCount = data?.dupe_count ?? 0;
+  const dupeCount = /** @type {{ dupe_count?: number } | null} */ (data)?.dupe_count ?? 0;
   const pass = dupeCount === 0;
   record(
     '7. No duplicate signoff consumptions',

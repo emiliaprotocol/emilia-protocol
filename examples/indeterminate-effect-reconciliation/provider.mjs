@@ -50,6 +50,7 @@ export function createSignedMockProvider({
   const effects = new Map();
   let executionAttempts = 0;
 
+  /** @param {{ operationId?: string, action?: any }} [o] */
   function signEvidence({ operationId, action } = {}) {
     const committed = effects.get(operationId);
     if (!committed) throw new Error('provider has no committed effect for operation');
@@ -81,6 +82,10 @@ export function createSignedMockProvider({
     providerId,
     pinnedPublicKey,
 
+    /**
+     * @param {any} action
+     * @param {{ operation_id?: string }} [o]
+     */
     async execute(action, { operation_id: operationId } = {}) {
       if (!operationId) throw new TypeError('provider operation_id is required');
       executionAttempts += 1;
@@ -92,7 +97,9 @@ export function createSignedMockProvider({
         });
       }
 
-      const error = new Error('simulated provider response lost after authentic commit');
+      const error = /** @type {Error & { code?: string }} */ (
+        new Error('simulated provider response lost after authentic commit')
+      );
       error.code = 'PROVIDER_RESPONSE_LOST';
       throw error;
     },
@@ -118,6 +125,10 @@ export function createSignedMockProvider({
   };
 }
 
+/**
+ * @param {any} evidence
+ * @param {{ pinnedProviderKey?: string, expectedProviderId?: string, expectedOperationId?: string, expectedAction?: any }} [o]
+ */
 export function verifySignedProviderEvidence(evidence, {
   pinnedProviderKey,
   expectedProviderId,

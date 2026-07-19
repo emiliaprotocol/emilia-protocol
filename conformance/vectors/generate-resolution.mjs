@@ -20,7 +20,7 @@ WdPo+H/5oIqu2VUMEkc7PIt5MOehRANCAATbrq46hGNCM0BGVFEUCThNq5j4EPAy
 7MoVtW6QpL5GkZcLCA98W74O8i3o/V31OFBPLyo3dYmk8y57UJeWw1wP
 -----END PRIVATE KEY-----`;
 const PRIVATE_KEY = crypto.createPrivateKey(TEST_PRIVATE_KEY);
-const PUBLIC_KEY = crypto.createPublicKey(PRIVATE_KEY)
+const PUBLIC_KEY = crypto.createPublicKey(/** @type {any} */ (PRIVATE_KEY))
   .export({ type: 'spki', format: 'der' }).toString('base64url');
 
 const RP_ID = 'emiliaprotocol.ai';

@@ -32,7 +32,9 @@ const p256 = () => { const { publicKey, privateKey } = crypto.generateKeyPairSyn
 
 const logKey = ed(); const intake = ed(); const reviewer = p256();
 const registryKey = crypto.createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from('e5'.repeat(32), 'hex')]), format: 'der', type: 'pkcs8' });
-const registryPub = crypto.createPublicKey(registryKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+// Node's crypto.createPublicKey accepts a private KeyObject at runtime (it derives
+// the public key), but @types/node's overloads don't include KeyObject — cast only.
+const registryPub = crypto.createPublicKey(/** @type {any} */ (registryKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
 const NOW = Date.parse('2026-07-07T14:05:00.000Z');
 
 function signA(digestHex) {

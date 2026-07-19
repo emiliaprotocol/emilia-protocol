@@ -38,9 +38,26 @@ function certificateDigestBytes(value) {
 }
 
 /**
+ * @typedef {Object} PlayIntegrityVerifierOptions
+ * @property {(token: string) => Promise<any>} [decodeToken]
+ * @property {string} [packageName]
+ * @property {Array<string>} [certificateDigests]
+ * @property {boolean} [requireLicensed]
+ * @property {boolean} [requireStrongIntegrity]
+ * @property {boolean} [requireNoCaptureOrControl]
+ * @property {boolean} [requirePlayProtect]
+ * @property {Array<number|string>} [allowedVersionCodes]
+ * @property {number|string|null} [minimumSdkVersion]
+ * @property {number} [maxTokenAgeMs]
+ * @property {() => number} [clock]
+ */
+
+/**
  * Adapt the official Google decodeIntegrityToken response into the closed
  * result consumed by verifyMobileCeremony. `decodeToken` owns OAuth and the
  * server-to-server Google call; this function owns the relying party's pins.
+ *
+ * @param {PlayIntegrityVerifierOptions} [options]
  */
 export function createPlayIntegrityAttestationVerifier({
   decodeToken,
@@ -75,6 +92,19 @@ export function createPlayIntegrityAttestationVerifier({
   const pinnedCertificates = certificateDigests.map(certificateDigestBytes);
   const pinnedVersions = new Set(allowedVersionCodes.map((version) => parsePositiveInteger(version)));
 
+  /**
+   * @typedef {Object} PlayIntegrityAssertionInput
+   * @property {string} [format]
+   * @property {string} [token]
+   * @property {string} [expected_request_hash]
+   * @property {string} [expected_app_id]
+   * @property {string} [expected_attestation_key_id]
+   * @property {string} [platform]
+   */
+
+  /**
+   * @param {PlayIntegrityAssertionInput} [input]
+   */
   return async function verifyPlayIntegrity({
     format,
     token,
@@ -153,10 +183,21 @@ export function createPlayIntegrityAttestationVerifier({
 }
 
 /**
+ * @typedef {Object} AppleAppAttestVerifierOptions
+ * @property {(input: { assertionObject: Buffer, clientDataHash: Buffer, expectedBinding: unknown, appId: string, keyId: string, environment: string }) => Promise<any>} [verifyAssertion]
+ * @property {string} [appId]
+ * @property {string} [attestationKeyId]
+ * @property {string} [environment]
+ * @property {{ advance: (keyId: string, counter: number) => Promise<boolean> }} [counterStore]
+ */
+
+/**
  * Adapt an App Attest cryptographic verifier. `verifyAssertion` MUST validate
  * the Apple certificate/credential chain and assertion signature against the
  * enrolled App Attest public key. This adapter pins application identity,
  * request bytes, environment, and the monotonic App Attest counter.
+ *
+ * @param {AppleAppAttestVerifierOptions} [options]
  */
 export function createAppleAppAttestVerifier({
   verifyAssertion,
@@ -172,6 +213,20 @@ export function createAppleAppAttestVerifier({
   if (!['development', 'production'].includes(environment)) throw new TypeError('unsupported App Attest environment');
   if (typeof counterStore?.advance !== 'function') throw new TypeError('a durable App Attest counterStore is required');
 
+  /**
+   * @typedef {Object} AppleAppAttestAssertionInput
+   * @property {string} [format]
+   * @property {string} [token]
+   * @property {string} [expected_request_hash]
+   * @property {unknown} [expected_binding]
+   * @property {string} [expected_app_id]
+   * @property {string} [expected_attestation_key_id]
+   * @property {string} [platform]
+   */
+
+  /**
+   * @param {AppleAppAttestAssertionInput} [input]
+   */
   return async function verifyAppleAppAttest({
     format,
     token,

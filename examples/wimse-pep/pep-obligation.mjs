@@ -37,7 +37,7 @@ import { verifyEmiliaReceipt } from '../../packages/require-receipt/index.js';
  * @param {string[]} o.pinnedIssuerKeys    base64url SPKI-DER issuer keys the PEP trusts
  * @param {number}   [o.now]               current epoch ms (injectable for tests)
  * @param {number}   [o.maxAgeSec=900]     reject receipts older than this
- * @returns {{allow: boolean, reason: string, receipt_id?: string, subject?: string}}
+ * @returns {{allow: boolean, reason: string, receipt_id?: string, subject?: string, detail?: string}}
  */
 export function enforceHumanAuthorizationObligation({ action, presentedReceipt, pinnedIssuerKeys, now = Date.now(), maxAgeSec = 900 }) {
   if (!action) return { allow: false, reason: 'no_action_specified' };            // misconfigured PEP: cannot bind

@@ -11,11 +11,11 @@
 
 import { runDemo } from './_kit.mjs';
 
-await runDemo({
+await runDemo(/** @type {any} */ ({
   title: 'mcp-payment-server — release_payment requires a receipt',
   tool: 'release_payment',
   action: 'payment.release',
   args: { amount_usd: 82000, destination: 'acct_new_4471', vendor: 'Acme Industrial LLC' },
   approver: 'ep:approver:treasury-controller (Face ID)',
   agentLine: '"Vendor updated their bank details — paying the $82,000 invoice."',
-});
+}));

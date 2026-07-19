@@ -131,6 +131,10 @@ function claimsFor(type, overrides = {}) {
   return { ...claims[type], ...overrides };
 }
 
+/**
+ * @param {string} type
+ * @param {{ privateKey?: import('node:crypto').KeyObject, issuerId?: string, issuedAt?: string, expiresAt?: string, outcome?: string, claims?: object }} [params]
+ */
 function signEvidence(type, {
   privateKey = issuerKeys[type],
   issuerId = `issuer:${type}`,

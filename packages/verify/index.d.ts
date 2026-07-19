@@ -686,6 +686,27 @@ export function verifyProvenanceOffline(
   liability: unknown;
 };
 
+export const EVIDENCE_RECORD_VERSION: 'EP-EVIDENCE-RECORD-v1';
+
+/**
+ * Verify an EP-EVIDENCE-RECORD-v1 document: a chain of EP-TIME-ATTESTATION-v1
+ * renewals proving a protected artifact was continuously, independently
+ * time-anchored across algorithm aging. Fail-closed.
+ */
+export function verifyEvidenceRecord(
+  record: Record<string, unknown>,
+  opts?: {
+    tsaKeys?: Record<string, { public_key: string }>;
+    protectedHash?: string;
+  }
+): {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+  protected_since?: string;
+  last_renewed?: string;
+};
+
 export const TIME_ATTESTATION_VERSION: 'EP-TIME-ATTESTATION-v1';
 
 /** EP-TIME-ATTESTATION-v1: independent, pinned, offline-verifiable proof of WHEN (trusted-time anchor). */

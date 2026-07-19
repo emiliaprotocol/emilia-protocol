@@ -31,7 +31,7 @@ const PKCS8 = Buffer.from('302e020100300506032b657004220420', 'hex');
 const keyFromSeed = (label) => {
   const seed = crypto.createHash('sha256').update(label).digest();
   const priv = crypto.createPrivateKey({ key: Buffer.concat([PKCS8, seed]), format: 'der', type: 'pkcs8' });
-  return { priv, pub: crypto.createPublicKey(priv) };
+  return { priv, pub: crypto.createPublicKey(/** @type {any} */ (priv)) };
 };
 const spkiB64u = (pub) => pub.export({ type: 'spki', format: 'der' }).toString('base64url');
 const signB64u = (priv, bytes) => crypto.sign(null, Buffer.from(bytes), priv).toString('base64url');
@@ -86,6 +86,15 @@ function buildRecourse(overrides = {}) {
 // Returns { verified, accepted, checks } — verified = signature+bindings hold;
 // accepted = verified AND the issuer key is pinned by the relying party AND the
 // action time is within the coverage window.
+/**
+ * @param {object} ref  the signed recourse reference document
+ * @param {object} [opts]
+ * @param {string} [opts.presentedSubjectDigest]
+ * @param {string} [opts.presentedReceiptPayloadDigest]
+ * @param {string[]} [opts.pinnedIssuerKeys]
+ * @param {string} [opts.atTime]
+ * @returns {{verified:boolean, accepted:boolean, checks:object}}
+ */
 export function verifyRecourse(ref, { presentedSubjectDigest, presentedReceiptPayloadDigest, pinnedIssuerKeys, atTime } = {}) {
   const checks = { signature: false, subject_binding: false, authorization_binding: false, within_window: false, issuer_pinned: false };
   try {

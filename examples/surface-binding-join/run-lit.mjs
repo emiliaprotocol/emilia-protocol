@@ -126,7 +126,7 @@ function verifyPresentation(evidenceBytes, { pinnedKeys, actionInFront, expected
   }
 
   // 5. Freshness under the RP's own staleness window.
-  const ageMs = new Date(now) - new Date(claims.presented_at);
+  const ageMs = /** @type {any} */ (new Date(now)) - /** @type {any} */ (new Date(claims.presented_at));
   if (!(ageMs >= 0 && ageMs <= maxAgeMs)) {
     return { valid: false, reason: 'presentation_stale' };
   }
@@ -193,7 +193,7 @@ const rpVerifyContext = (actionInFront) => ({
 });
 
 console.log('\n=== RP check 1: authorization row (EP receipt) ===');
-const r = verifyTrustReceipt(receipt, { approverKeys: verification.approver_keys, logPublicKey: verification.log_public_key });
+const r = verifyTrustReceipt(/** @type {Record<string, unknown>} */ (/** @type {unknown} */ (receipt)), { approverKeys: verification.approver_keys, logPublicKey: verification.log_public_key });
 console.log('receipt valid:', r.valid);
 
 console.log('\n=== RP check 2: the join (digest equality) ===');

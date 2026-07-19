@@ -88,6 +88,15 @@ async function parseBody(request, maxBodyBytes) {
 /**
  * Fetch-compatible transport for the native reference applications.
  * Authentication is provided by the deployment and never inferred from JSON.
+ * @param {{
+ *   controller?: *,
+ *   enrollmentService?: *,
+ *   authenticate?: (request: Request) => *,
+ *   resolveEnrollmentIdentity?: (input: { caller: *, approver_id: * }) => *,
+ *   enrollmentConfig?: *,
+ *   maxBodyBytes?: number,
+ *   routePrefix?: string,
+ * }} [options]
  */
 export function createMobileHttpHandler({
   controller,

@@ -34,6 +34,7 @@ export const LOCAL_CONTROL_RESULT = Object.freeze({
 
 const QUORUM = Object.freeze({ signers: ['ep:human:change-owner', 'ep:human:security-reviewer'], threshold: 2 });
 
+/** @param {{ action?: any, idPrefix?: string }} [o] */
 function makeSubject({ action = EXACT_ACTION, idPrefix = 'gcp_rc1' } = {}) {
   const harness = createEg1Harness({ action, idPrefix });
   const gate = createGate({
@@ -99,7 +100,9 @@ async function callMcpTool(subject, action = EXACT_ACTION, receipt = null) {
     ...(receipt ? { _emilia_receipt: receipt } : {}),
   });
   if (result?.isError) {
-    const error = new Error(result._emilia?.reason || 'mcp_tool_refused');
+    const error = /** @type {Error & { status?: unknown, gate?: unknown, challenge?: unknown }} */ (
+      new Error(result._emilia?.reason || 'mcp_tool_refused')
+    );
     error.status = result._emilia?.status;
     error.gate = { reason: result._emilia?.reason };
     error.challenge = result._emilia?.challenge;

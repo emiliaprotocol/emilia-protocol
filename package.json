@@ -23,6 +23,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck:core": "tsc -p tsconfig.core.json",
+    "typecheck:rest": "tsc -p tsconfig.rest.json",
     "check:protocol": "node scripts/check-protocol-discipline.js && node scripts/check-write-discipline.js",
     "check:write-discipline": "node scripts/check-write-discipline.js",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",

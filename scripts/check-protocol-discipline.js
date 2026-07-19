@@ -603,6 +603,10 @@ function checkHandshakeTestSuite() {
 // Main
 // ---------------------------------------------------------------------------
 
+/**
+ * @typedef {{ file: string, line: number, message: string, severity: string, section?: string }} DisciplineViolation
+ */
+
 export function runChecks() {
   const trustViolations = checkTrustTableWrites();
   const envViolations = checkEnvReads();
@@ -615,10 +619,12 @@ export function runChecks() {
   const hsKeyViolations = checkEmbeddedIssuerKeys();
   const hsTestWarnings = checkHandshakeTestSuite();
 
+  /** @type {DisciplineViolation[]} */
   const criticals = [
     ...trustViolations, ...envViolations,
     ...hsTableViolations, ...hsKeyViolations,
   ];
+  /** @type {DisciplineViolation[]} */
   const warnings = [
     ...complexityWarnings,
     ...hsEnvWarnings, ...hsPolicyWarnings, ...hsTestWarnings,

@@ -136,6 +136,38 @@ const SIGNOFF_MEMBERS = new Set(['context', 'webauthn']);
 const WEBAUTHN_ASSERTION_MEMBERS = new Set(['authenticator_data', 'client_data_json', 'signature']);
 const RESPONSE_ATTESTATION_MEMBERS = new Set(['format', 'token', 'device_key_signature']);
 
+/**
+ * @typedef {(input: any) => any} MobileCallback
+ *
+ * @typedef {Object} MobileCeremonyResult
+ * @property {boolean} valid
+ * @property {string} verdict
+ * @property {*} decision
+ * @property {*} checks
+ * @property {*} reason
+ * @property {*} [context_hash]
+ * @property {*} [sign_count]
+ * @property {*} [approver_id]
+ * @property {*} [device_key_id]
+ * @property {*} [decision_evidence]
+ * @property {*} [class_a]
+ * @property {*} [webauthn]
+ * @property {*} [audit_record]
+ *
+ * @typedef {Object} MobileChallengeStore
+ * @property {(challenge: any) => (boolean|Promise<boolean>)} register
+ * @property {(challenge: any) => (boolean|Promise<boolean>)} consume
+ * @property {boolean} [durable]
+ *
+ * @typedef {Object} MobileAuditLog
+ * @property {(entry: any) => any} record
+ * @property {boolean} [durable]
+ * @property {boolean} [strict]
+ *
+ * @typedef {Object} MobileCounterStore
+ * @property {(deviceKeyId: any, signCount: any) => (boolean|Promise<boolean>)} advance
+ */
+
 function isRecord(value) {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
@@ -261,6 +293,20 @@ function normalizeEnrollment(enrollment) {
   return normalized;
 }
 
+/**
+ * @param {Object} [params]
+ * @param {string} [params.profileId]
+ * @param {string} [params.rpId]
+ * @param {string[]} [params.allowedOrigins]
+ * @param {{ios: string[], android: string[]}} [params.acceptedApps]
+ * @param {any[]} [params.enrollments]
+ * @param {boolean} [params.attestationRequired]
+ * @param {boolean} [params.hardwareBackedRequired]
+ * @param {boolean} [params.strongIntegrityRequired]
+ * @param {number} [params.maxChallengeAgeMs]
+ * @param {string} [params.counterPolicy]
+ * @returns {Object}
+ */
 export function createMobileRelianceProfile({
   profileId,
   rpId,
@@ -366,6 +412,28 @@ function contextHash(context) {
   return hashCanonical(context);
 }
 
+/**
+ * @param {Object} [params]
+ * @param {string} [params.actionHash]
+ * @param {(string|null)} [params.policyId]
+ * @param {(string|null)} [params.policyHash]
+ * @param {string} [params.initiatorId]
+ * @param {string} [params.approverId]
+ * @param {number} [params.approverIndex]
+ * @param {number} [params.requiredApprovals]
+ * @param {string} [params.nonce]
+ * @param {string} [params.issuedAt]
+ * @param {string} [params.expiresAt]
+ * @param {string} [params.decision]
+ * @param {string} [params.displayHash]
+ * @param {string} [params.profileHash]
+ * @param {string} [params.platform]
+ * @param {string} [params.appId]
+ * @param {string} [params.deviceKeyId]
+ * @param {string} [params.credentialId]
+ * @param {string} [params.attestationKeyId]
+ * @returns {Object}
+ */
 export function buildMobileAuthorizationContext({
   actionHash,
   policyId = null,
@@ -444,6 +512,27 @@ export function buildMobileAttestationBinding(challenge) {
   };
 }
 
+/**
+ * @param {Object} [params]
+ * @param {*} [params.action]
+ * @param {*} [params.policy]
+ * @param {(string|null)} [params.policyId]
+ * @param {string} [params.initiatorId]
+ * @param {string} [params.approverId]
+ * @param {number} [params.approverIndex]
+ * @param {number} [params.requiredApprovals]
+ * @param {string} [params.decision]
+ * @param {*} [params.presentation]
+ * @param {string} [params.platform]
+ * @param {string} [params.appId]
+ * @param {string} [params.deviceKeyId]
+ * @param {*} [params.profile]
+ * @param {string} [params.issuedAt]
+ * @param {string} [params.expiresAt]
+ * @param {string} [params.challengeId]
+ * @param {string} [params.nonce]
+ * @returns {Object}
+ */
 export function createMobileChallenge({
   action,
   policy = null,
@@ -611,6 +700,13 @@ function profileEnrollmentValidAt(enrollment, instant) {
 /**
  * Pure verification. It does not establish that the challenge was registered
  * or unused; use createMobileCeremonyService for durable one-time processing.
+ * @param {Object} [params]
+ * @param {*} [params.challenge]
+ * @param {*} [params.response]
+ * @param {*} [params.profile]
+ * @param {string} [params.now]
+ * @param {MobileCallback} [params.attestationVerifier]
+ * @returns {Promise<MobileCeremonyResult>}
  */
 export async function verifyMobileCeremony({
   challenge,
@@ -849,6 +945,15 @@ function decisionRecord(challenge, result) {
  * Durable service boundary. Registration and consumption use the exact
  * AE-CHALLENGE body, so any changed action, profile, display, or expiry is a
  * different body and cannot consume the registered challenge.
+ * @param {Object} [params]
+ * @param {MobileChallengeStore} [params.challengeStore]
+ * @param {MobileAuditLog} [params.auditLog]
+ * @param {MobileCallback} [params.attestationVerifier]
+ * @param {MobileCounterStore} [params.counterStore]
+ * @param {MobileCallback} [params.commitDecision]
+ * @param {() => string} [params.clock]
+ * @param {boolean} [params.allowEphemeral]
+ * @returns {Object}
  */
 export function createMobileCeremonyService({
   challengeStore,
@@ -992,6 +1097,15 @@ export function createMobileCeremonyService({
   };
 }
 
+/**
+ * @param {Object} [params]
+ * @param {MobileCeremonyResult} [params.result]
+ * @param {(string|null)} [params.receiptId]
+ * @param {string} [params.recordedAt]
+ * @param {*} [params.signerPrivateKey]
+ * @param {string} [params.signerKeyId]
+ * @returns {Object}
+ */
 export function createMobileAck({ result, receiptId = null, recordedAt, signerPrivateKey, signerKeyId } = {}) {
   if (result?.valid !== true || result.verdict !== 'verified' || !['approved', 'denied'].includes(result.decision)) {
     throw new TypeError('a verified mobile ceremony result is required');
@@ -1046,6 +1160,14 @@ function auditRecordMatches(challenge, result) {
  * is deliberately separate from the Class-A signoff: its signature proves what
  * the operator attested, not that Apple/Google, storage, or physical execution
  * can be independently reconstructed offline.
+ * @param {Object} [params]
+ * @param {*} [params.challenge]
+ * @param {MobileCeremonyResult} [params.result]
+ * @param {string} [params.receiptId]
+ * @param {string} [params.recordedAt]
+ * @param {*} [params.signerPrivateKey]
+ * @param {string} [params.signerKeyId]
+ * @returns {Object}
  */
 export function createMobileExecutionRecord({
   challenge,

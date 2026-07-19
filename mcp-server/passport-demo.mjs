@@ -24,7 +24,7 @@ import { verifyEmiliaReceipt } from '../packages/require-receipt/index.js';
 
 // ── This server's issuing identity (demo: issuer == verifier) ────────────────
 const { privateKey } = crypto.generateKeyPairSync('ed25519');
-const SERVER_PUB = crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+const SERVER_PUB = crypto.createPublicKey(/** @type {any} */ (privateKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
 
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
@@ -103,7 +103,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     }
     const v = verifyEmiliaReceipt(args.emilia_receipt, { trustedKeys: [SERVER_PUB], action: 'payment.release', maxAgeSec: 900 });
     if (!v.ok) return out({ status: 402, error: 'receipt_rejected', reason: v.reason, detail: 'Obtain a fresh, valid receipt via emilia_authorize.' });
-    return out({ status: 200, released: true, amount: args.amount, destination: args.destination, receipt_id: v.receipt_id, approved_by: args.emilia_receipt.payload?.claim?.context?.approver });
+    return out({ status: 200, released: true, amount: args.amount, destination: args.destination, receipt_id: v.receipt_id, approved_by: /** @type {{payload?:{claim?:{context?:{approver?:string}}}}} */ (args.emilia_receipt).payload?.claim?.context?.approver });
   }
 
   if (name === 'emilia_authorize') {
@@ -111,7 +111,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const context = args.context || {};
     const isPayment = /payment|wire|payout|release|transfer|disburse/i.test(action);
     const base = isPayment
-      ? evaluateGuardPolicy({ actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION, riskFlags: [] })
+      ? evaluateGuardPolicy(/** @type {any} */ ({ actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION, riskFlags: [] }))
       : { decision: GUARD_DECISIONS.ALLOW, reasons: ['No high-risk policy matched.'], signoffRequired: false };
     if (base.decision === GUARD_DECISIONS.DENY) {
       return out({ status: 403, authorized: false, decision: 'deny', reasons: base.reasons });
@@ -124,7 +124,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
   }
 
   if (name === 'verify_receipt') {
-    const v = verifyEmiliaReceipt(args.emilia_receipt, { trustedKeys: [SERVER_PUB], action: args.action || null, maxAgeSec: 900 });
+    const v = verifyEmiliaReceipt(args.emilia_receipt, { trustedKeys: [SERVER_PUB], action: /** @type {string|null} */ (args.action) || null, maxAgeSec: 900 });
     return out(v);
   }
 

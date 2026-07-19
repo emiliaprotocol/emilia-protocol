@@ -326,6 +326,10 @@ export class ProvenanceLedger {
    * Append an entry that REFERENCES a v1 receipt for an executed irreversible
    * tool call. Stores only references + the verified summary, never a re-signed
    * receipt.
+   * @param {{tool:string, action:string, actionDigest:string,
+   *   receiptRef:{receipt_id?:string, receipt_hash?:string},
+   *   verified?:{outcome?:string, subject?:any, signer?:any}|null,
+   *   agentClaim?:any, liability?:any, at?:string}} entry
    * @returns {object} the appended entry (with its own entry_hash)
    */
   append({ tool, action, actionDigest, receiptRef, verified, agentClaim, liability, at }) {
@@ -385,8 +389,12 @@ export class ProvenanceLedger {
  * @property {(name:string, args:object)=>boolean} [policy]
  *   Returns true if a tool is irreversible. Used when no annotation/override.
  * @property {Object.<string, {irreversible?:boolean, action?:string|((args,extra)=>string),
- *   readOnlyHint?:boolean, destructiveHint?:boolean}>} [annotations]
+ *   readOnlyHint?:boolean, destructiveHint?:boolean, assuranceClass?:string,
+ *   assurance_class?:string, agent_claim?:any, liability?:any,
+ *   onSignoffRequired?:any}>} [annotations]
  *   Per-tool flags. `action` is the canonical action bound into the receipt.
+ *   `assuranceClass`/`assurance_class` set the required receipt tier;
+ *   `agent_claim`/`liability` seed the provenance-ledger entry.
  * @property {boolean} [defaultIrreversible=true]
  *   How to classify a tool with no annotation/policy answer.
  * @property {boolean} [trustReadOnlyHints=false]
@@ -407,7 +415,7 @@ export class ProvenanceLedger {
  *   authenticator. No-op default REFUSES (fail closed).
  * @property {(ctx:object)=>Promise<{receipt:object, receipt_id?:string}>} [issueReceipt]
  *   ADAPTER. Emit an EP-RECEIPT-v1 for the approved action. Delegated to an EP
- *   host or @emilia-protocol/issue. This package never signs a receipt itself.
+ *   host or `@emilia-protocol/issue`. This package never signs a receipt itself.
  * @property {ProvenanceLedger} [ledger]  shared ledger; one is created if absent.
  * @property {boolean} [enforceDemand=true]
  *   If true, an irreversible call that arrives WITH a receipt is verified by the
@@ -741,7 +749,11 @@ export function withMcpReceiptGuard(handler, options = {}) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Remove EP control fields so the underlying tool sees clean args. */
+/**
+ * Remove EP control fields so the underlying tool sees clean args.
+ * @param {{__ep?:object, emilia_receipt?:object, [key:string]:any}} [args]
+ * @returns {object}
+ */
 function stripEpFields(args = {}) {
   if (!args || typeof args !== 'object') return args;
   const { __ep, emilia_receipt, ...rest } = args;

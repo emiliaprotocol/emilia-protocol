@@ -60,7 +60,7 @@ function readAt(commit, filePath) {
 
 function parseJsonAt(commit, filePath) {
   try {
-    return JSON.parse(readAt(commit, filePath).toString('utf8'));
+    return JSON.parse((/** @type {Buffer} */ (/** @type {unknown} */ (readAt(commit, filePath)))).toString('utf8'));
   } catch (error) {
     throw new Error(`cannot parse ${filePath} at ${commit}: ${error.message}`);
   }
@@ -177,6 +177,11 @@ function archiveFiles(output) {
   return entries.filter((entry) => !entry.endsWith('/'));
 }
 
+/**
+ * @param {Object} [params]
+ * @param {string} [params.ref]
+ * @param {string} [params.output]
+ */
 export function buildCleanRoomKit({ ref = 'HEAD', output } = {}) {
   const target = path.resolve(output ?? path.join(ROOT, 'release-artifacts/emilia-clean-room-kit-v1.tar.gz'));
   const manifestTarget = `${target}.manifest.json`;

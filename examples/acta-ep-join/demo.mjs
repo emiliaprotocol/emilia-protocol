@@ -31,6 +31,19 @@ function digestText(value) {
   return `sha256:${crypto.createHash('sha256').update(value, 'utf8').digest('hex')}`;
 }
 
+/**
+ * @returns {{
+ *   approverKeyId: string,
+ *   approverId: string,
+ *   keyEntry: { approver_id: string, public_key: string, key_class: 'A', status: string, valid_from: string, valid_to: string, revoked_at: null },
+ *   signer: {
+ *     approverKeyId: string,
+ *     keyClass: 'A',
+ *     signedAt: string,
+ *     signWebAuthn: (digest: Buffer) => { authenticator_data: string, client_data_json: string, signature: string },
+ *   },
+ * }}
+ */
 function classASigner() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const approverKeyId = 'ep:key:cfo-mrios#1';
