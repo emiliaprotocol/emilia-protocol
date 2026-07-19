@@ -44,21 +44,16 @@ is handy, to confirm against the exact engine arXiv uses.
 | Tamarin composed lemma block (12 lines) | verbatim | `formal/PROOF_STATUS.md` |
 | Ten strict composed lemmas verified; 2 deliberate falsifications | 10 / 2 | `formal/PROOF_STATUS.md` ("10 strict lemmas verified; ... comparisons falsified"); `lib/proof-stats.json` `tamarin.verifiedObligations=10`, `deliberatelyUnsafeCounterexamples=2` |
 | TLA+ states / distinct / invariants | 413,137 / 45,342 / 26 | `formal/PROOF_STATUS.md`; `lib/proof-stats.json` `tla.invariants=26` |
-| Alloy assertions | 15 + 7 = 22 | `formal/PROOF_STATUS.md`; `lib/proof-stats.json` `alloy.assertions=22` |
+| Alloy assertions | 15 + 7 + 6 + 4 = 32 | `formal/PROOF_STATUS.md`; `lib/proof-stats.json` `alloy.assertions=32` |
 | Rust external verifier commit / tree | `7faba360…` / `0553c5fa…` | `conformance/external/rust-cleanroom-jdieselny.v1.json` |
 | Rust clean-room bundle / hostility | 16-suite / 164-vector; 353 + 6 | `conformance/external/rust-cleanroom-jdieselny.v1.json`; `lib/proof-stats.json` `externalImplementation.vectors=164`, `hostilityCases=359` |
 | External reproduction (COSA / J Diesel NY) | 158 vectors | carried from preprint; matches EP-EXTERNAL-VERIFICATION-STATEMENT record |
 
-### KNOWN COUNT DISCREPANCY — for the lead
+### COUNT ALIGNMENT
 
-`lib/proof-stats.json` currently reports `conformance.vectors = 232`, which is
-**stale** relative to the authoritative `conformance/conformance-manifest.json`
-(`totals.vectors = 251`, and the 18 suite entries sum to 251). The paper uses
-**251**, matching the manifest and the source preprint. I did **not** edit
-`lib/proof-stats.json` (shared count file, out of my scope). Flagging so the lead
-can re-sync proof-stats to the manifest on merge. This is the only number where
-the two repo sources disagree; every other figure is consistent across
-proof-stats, PROOF_STATUS.md, and the manifests.
+`lib/proof-stats.json`, `formal/PROOF_STATUS.md`, and the conformance manifest
+agree on the figures used by the paper: 18 suites, 251 vectors, 26 TLA+
+invariants, and 32 Alloy assertions across four models.
 
 ## Overclaim discipline verified (the paper does NOT do any of these)
 

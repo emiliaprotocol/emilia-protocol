@@ -29,7 +29,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:6ce04a19ad572d41
+//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:efea80bf0b323d0d
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -538,7 +538,7 @@ export function receiptRequiredHeader(opts = {}) {
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this
  * @param {()=>number} [opts.now=Date.now] trusted clock used for freshness
  * @param {string[]} [opts.allowedOutcomes] acceptable claim.outcome values
- * @returns {{ok:boolean, reason?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
+ * @returns {{ok:boolean, reason?:string, detail?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
  */
 export function verifyEmiliaReceipt(doc, opts = {}) {
   const { trustedKeys = [], allowInlineKey = false, action = null, maxAgeSec = 900,
@@ -758,8 +758,8 @@ export function requireEmiliaReceipt(opts = {}) {
  * @param {string} p.tool       receipt-required tool/route name to probe
  * @param {object} [p.args]     arguments passed to the tool
  * @param {string} p.action     canonical action_type the receipt must bind
- * @param {()=>(object|Promise<object>)} p.issueReceipt  mints a FRESH valid
- *   EP-RECEIPT-v1 bound to `action` that this dispatcher accepts
+ * @param {(action:string)=>(object|Promise<object>)} p.issueReceipt  mints a FRESH
+ *   valid EP-RECEIPT-v1 bound to `action` (passed in) that this dispatcher accepts
  * @param {object} [p.manifest] optional Action Risk Manifest to validate
  * @returns {Promise<{level:string, passed:boolean, checks:object, detail:object}>}
  */
@@ -878,9 +878,10 @@ function normalizeGateAssuranceClass(value) {
 /**
  * Build a hardened Receipt-Required gate for one action type.
  *
- * @param {object} opts
- * @param {string|((target:any)=>string)} opts.action  base action_type, or a fn
- *   that derives the fully-bound action from the target.
+ * @param {object} [opts]
+ * @param {string|((target:any)=>string)} [opts.action]  base action_type, or a fn
+ *   that derives the fully-bound action from the target. Required at runtime
+ *   (throws when absent); optional in the type so a `{}` default is well-formed.
  * @param {string[]} [opts.trustedKeys]      issuer SPKI keys you trust (recommended).
  * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own key
  *   (proves integrity, NOT issuer trust) — demo only; leave off in production.
@@ -891,6 +892,12 @@ function normalizeGateAssuranceClass(value) {
  * @param {string} [opts.assuranceClass]
  * @param {object} [opts.quorum]
  * @param {object} [opts.quorumPolicy] relying-party-pinned organizational quorum rule
+ * @param {Record<string, any>} [opts.approverKeys] pinned approver keys (assurance eval).
+ * @param {Record<string, any>} [opts.approver_keys] snake_case alias of approverKeys.
+ * @param {(receipt:any, requiredTier:string, ctx:any)=>any} [opts.verifyAssurance]
+ *   optional override for assurance evaluation.
+ * @param {string} [opts.rpId] expected WebAuthn RP ID for Class-A assurance checks.
+ * @param {string[]} [opts.allowedOrigins] allowed WebAuthn origins for Class-A checks.
  * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
  *   commit:(id:string)=>Promise<boolean>|boolean,
  *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]
@@ -935,6 +942,7 @@ export function makeReceiptGate(opts = {}) {
   const requiredTier = normalizeGateAssuranceClass(assuranceClass);
   const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass: requiredTier, quorum, maxAgeSec });
 
+  /** @returns {{ok:false, status:number, body:any}} */
   function refuse(boundAction, reason) {
     return {
       ok: false,
@@ -947,10 +955,10 @@ export function makeReceiptGate(opts = {}) {
    * Verify + reserve a receipt WITHOUT consuming it. On ok, the caller MUST
    * later call commit(receiptId) after an execution attempt, or release(receiptId)
    * only when it can prove the external effect never began.
-   * @returns {{ok:true, receiptId, outcome, signer, subject, boundAction}
-   *          | {ok:false, status, body}}
+   * @returns {Promise<{ok:true, receiptId, outcome, signer, subject, boundAction}
+   *          | {ok:false, status, body}>}
    */
-  async function check(receipt, { target } = {}) {
+  async function check(receipt, { target } = /** @type {{target?:any}} */ ({})) {
     const boundAction = boundActionFor(target);
 
     if (!receipt) {
@@ -1004,7 +1012,7 @@ export function makeReceiptGate(opts = {}) {
     if (typeof ctx === 'function') { fn = ctx; ctx = {}; }
     if (typeof fn !== 'function') throw new Error('makeReceiptGate.run: fn is required');
     const c = await check(receipt, ctx || {});
-    if (!c.ok) return c;
+    if (!c.ok) return /** @type {{ok:false, status:any, body:any}} */ (c);
     let attempted = false;
     let committed = false;
     try {

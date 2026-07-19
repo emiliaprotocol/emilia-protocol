@@ -1,0 +1,19 @@
+{
+  "//": "Focused type-gate for the brand-typed protocol-state module (GAP-4). Identical compilerOptions to tsconfig.core.json; scoped to this module + its type-level test so the branding proof is not drowned by unrelated pre-existing errors in the wider core. The module and its typecheck are ALSO in tsconfig.core.json's include (packages/gate/**/*.js).",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "protocol-state.js",
+    "protocol-state.typecheck.js"
+  ]
+}

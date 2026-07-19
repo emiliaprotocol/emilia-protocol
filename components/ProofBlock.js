@@ -24,7 +24,7 @@ const EASE = [0.23, 1, 0.32, 1];
 // models — same convention as app/page.js.
 const TLA_INVARIANTS = String(proofStats.tla?.invariants ?? 26);
 const ALLOY_FACTS = String(proofStats.alloy?.facts ?? 35);
-const ALLOY_ASSERTIONS = String(proofStats.alloy?.assertions ?? 22);
+const ALLOY_ASSERTIONS = String(proofStats.alloy?.assertions ?? 32);
 const TAMARIN_OBLIGATIONS = String(proofStats.tamarin?.verifiedObligations ?? 0);
 const TAMARIN_ATTACK_TRACES = String(proofStats.tamarin?.deliberatelyUnsafeCounterexamples ?? 0);
 const SECURITY_CLAIMS = String(proofStats.securityCase?.claims ?? 0);
