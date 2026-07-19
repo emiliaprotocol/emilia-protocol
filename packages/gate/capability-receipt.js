@@ -47,6 +47,20 @@ function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object') return value;
+  const stack = [value];
+  const seen = new WeakSet();
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current || typeof current !== 'object' || seen.has(current)) continue;
+    seen.add(current);
+    for (const child of Object.values(current)) stack.push(child);
+    Object.freeze(current);
+  }
+  return value;
+}
+
 function nowMs(now) {
   const value = typeof now === 'function' ? now() : now;
   if (!Number.isSafeInteger(value) || value < 0) throw new TypeError('capability clock must return a non-negative safe integer');
@@ -771,7 +785,9 @@ function capabilityAmount(action, capability) {
  * Execute one spend under a capability. The base EP receipt is checked on
  * every spend with consumptionMode=none; the capability store is the replay
  * and budget authority. The external function is entered only after the
- * atomic reservation succeeds. Any exception after entry permanently commits
+ * atomic reservation succeeds. `action` is the budget projection; the
+ * external function receives only a clone of the exact verified
+ * `observedAction ?? action`. Any exception after entry permanently commits
  * the reserved amount as indeterminate.
  */
 export async function executeWithCapability({
@@ -804,7 +820,7 @@ export async function executeWithCapability({
   let immutableAction;
   let scope;
   try {
-    immutableAction = structuredClone(observedAction ?? action);
+    immutableAction = deepFreeze(structuredClone(observedAction ?? action));
     scope = verifyCapabilityScope(verified.capability, immutableAction, operationId, { resolveCaid });
   } catch {
     return { ok: false, reason: 'capability_action_invalid' };
@@ -812,6 +828,8 @@ export async function executeWithCapability({
   if (!scope.ok) return { ok: false, reason: scope.reason, scope };
   let spend;
   try {
+    // `action` is the budget projection used by Gate integrations; the exact
+    // verified action below remains the only object that can reach the effect.
     spend = capabilityAmount(action, verified.capability);
   } catch (error) {
     return { ok: false, reason: error?.message || 'capability_action_invalid' };
@@ -823,11 +841,16 @@ export async function executeWithCapability({
       receipt: verified.receipt,
       observedAction: immutableAction,
       consumptionMode: 'none',
-      capability: { capabilityReceipt, action, operationId },
+      capability: { capabilityReceipt, action: immutableAction, operationId },
     });
     if (!authorization?.allow) return { ok: false, reason: 'base_receipt_rejected', authorization };
   } else if (typeof verifyBaseReceipt === 'function') {
-    const result = await verifyBaseReceipt(verified.receipt, { action, selector, observedAction: immutableAction, scope });
+    const result = await verifyBaseReceipt(verified.receipt, {
+      action: immutableAction,
+      selector,
+      observedAction: immutableAction,
+      scope,
+    });
     if (result !== true && result?.ok !== true) return { ok: false, reason: 'base_receipt_rejected', authorization: result };
   } else {
     return { ok: false, reason: 'base_receipt_verifier_required' };
@@ -843,7 +866,7 @@ export async function executeWithCapability({
   });
   if (!reserved?.ok) return { ok: false, reason: reserved?.reason || 'capability_reservation_refused', authorization };
   try {
-    const result = await executeAction(structuredClone(action), {
+    const result = await executeAction(structuredClone(immutableAction), {
       capabilityReceipt,
       authorization,
       operation_id: operationId,
