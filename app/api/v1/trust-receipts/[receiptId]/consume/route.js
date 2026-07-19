@@ -24,7 +24,7 @@ import { boundSignoffDecisionEvents, findBoundSignoffDecision } from '@/lib/guar
 import { deriveSignoffUserVerification } from '@/lib/guard-signoff-uv.js';
 import { resolveGuardAuthority } from '@/lib/guard-authority.js';
 import { isTierQuorumEnforced } from '@/lib/env';
-import { countDistinctValidApprovers, requiredApprovalsForTier } from '@/lib/guard-tier.js';
+import { requiredApprovalsForTier } from '@/lib/guard-tier.js';
 import { canMutateReceipt } from '@/lib/tenant-binding.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { resolveOrgQuorumTemplate, evaluateQuorumAgainstTemplate } from '@/lib/guard-quorum-template.js';
@@ -76,6 +76,13 @@ export async function POST(request, { params }) {
       return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
     }
     const base = created.after_state;
+    if (base.action_type === 'policy_rollout') {
+      return epProblem(
+        409,
+        'policy_rollout_activation_required',
+        'Policy rollout receipts may be consumed only by the atomic policy activation endpoint',
+      );
+    }
 
     // Tenant scoping (IDOR): consume is a mutation and must be at least as
     // tightly scoped as read/evidence. An org-bound caller may consume only
@@ -94,7 +101,8 @@ export async function POST(request, { params }) {
       return epProblem(409, 'receipt_already_consumed', 'Receipt has already been consumed');
     }
 
-    if (new Date(base.expires_at) < new Date()) {
+    const expiresAtMs = Date.parse(base.expires_at);
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
       return epProblem(410, 'receipt_expired', 'Receipt has expired');
     }
 
@@ -107,6 +115,7 @@ export async function POST(request, { params }) {
     }
 
     let authorityFacts = null;
+    const registryBindingsForConsume = [];
 
     // A quorum policy always implies a signoff is required, even if the policy
     // decision didn't set signoff_required.
@@ -165,25 +174,110 @@ export async function POST(request, { params }) {
             const approver = d.approver_id || (d.context && d.context.approver) || null;
             return approver !== quorumInitiatorId;
           });
-        const credentialIds = approvedDecisions
+        const rosterRoleByApprover = new Map(
+          (Array.isArray(base.quorum_policy.approvers) ? base.quorum_policy.approvers : [])
+            .filter((entry) => entry?.approver && entry?.role)
+            .map((entry) => [entry.approver, entry.role]),
+        );
+        const rosterDecisions = approvedDecisions.filter((decision) => {
+          const approverId = decision.approver_id || decision.context?.approver || null;
+          return approverId && rosterRoleByApprover.has(approverId);
+        });
+        const credentialIds = rosterDecisions
           .map((d) => d.webauthn && d.webauthn.credential_id)
           .filter(Boolean);
         let credsByCredentialId = {};
         if (credentialIds.length > 0) {
-          const { data: creds, error: credErr } = await supabase
-            .from('approver_credentials')
-            .select('credential_id, public_key_spki')
-            .eq('organization_id', base.organization_id)
-            .in('credential_id', credentialIds);
+          let creds;
+          let credErr;
+          try {
+            ({ data: creds, error: credErr } = await supabase
+              .from('approver_credentials')
+              .select('organization_id, approver_id, credential_id, public_key_spki, key_class, valid_from, valid_to, revoked_at')
+              .eq('organization_id', base.organization_id)
+              .in('credential_id', credentialIds));
+          } catch (error) {
+            logger.error('[guard] consume: quorum credential load threw:', error);
+            return epProblem(
+              503,
+              'quorum_credential_unavailable',
+              'Could not re-verify quorum credentials; failing closed.',
+            );
+          }
           if (credErr) {
             logger.error('[guard] consume: credential load failed:', credErr);
-            return epProblem(500, 'internal_error', 'Failed to load approver credentials');
+            return epProblem(
+              503,
+              'quorum_credential_unavailable',
+              'Could not re-verify quorum credentials; failing closed.',
+            );
           }
           credsByCredentialId = Object.fromEntries(
             (creds || []).map((c) => [c.credential_id, c]),
           );
         }
-        const members = decisionsToMembers(base.quorum_policy, approvedDecisions, credsByCredentialId);
+        const checkedAt = new Date();
+        const checkedAtMs = checkedAt.getTime();
+        const authorizedDecisions = [];
+        for (const decision of rosterDecisions) {
+          const approverId = decision.approver_id || decision.context?.approver || null;
+          const credentialId = decision.webauthn?.credential_id || null;
+          const credential = credentialId ? credsByCredentialId[credentialId] : null;
+          const validFromMs = Date.parse(credential?.valid_from || '');
+          const validToMs = credential?.valid_to == null
+            ? null
+            : Date.parse(credential.valid_to);
+          const credentialIsLive = credential
+            && credential.organization_id === base.organization_id
+            && credential.approver_id === approverId
+            && credential.key_class === 'A'
+            && typeof credential.public_key_spki === 'string'
+            && credential.public_key_spki.length > 0
+            && Number.isFinite(validFromMs)
+            && validFromMs <= checkedAtMs
+            && (validToMs === null || (Number.isFinite(validToMs) && validToMs > checkedAtMs))
+            && credential.revoked_at == null;
+          if (!credentialIsLive) continue;
+
+          let authority;
+          try {
+            authority = await resolveGuardAuthority(supabase, {
+              organizationId: base.organization_id,
+              approverId,
+              role: rosterRoleByApprover.get(approverId),
+              requiredAssurance: 'A',
+              actionType: base.action_type || undefined,
+              requireExplicitScope: base.action_type === 'policy_rollout',
+              at: checkedAt.toISOString(),
+            });
+          } catch (error) {
+            logger.error('[guard] consume: quorum authority load threw:', error);
+            return epProblem(
+              503,
+              'quorum_authority_unavailable',
+              'Could not re-verify quorum approver authority; failing closed.',
+            );
+          }
+          if (authority.reason === 'authority_lookup_failed') {
+            logger.error('[guard] consume: quorum authority load failed');
+            return epProblem(
+              503,
+              'quorum_authority_unavailable',
+              'Could not re-verify quorum approver authority; failing closed.',
+            );
+          }
+          if (authority.authorized && authority.authority_id) {
+            authorizedDecisions.push(decision);
+            registryBindingsForConsume.push({
+              authority_id: String(authority.authority_id),
+              approver_id: approverId,
+              role: rosterRoleByApprover.get(approverId),
+              credential_id: credentialId,
+              required_assurance: 'A',
+            });
+          }
+        }
+        const members = decisionsToMembers(base.quorum_policy, authorizedDecisions, credsByCredentialId);
         const { rpID, origin } = getRpConfig();
         const gate = quorumGate(base.quorum_policy, base.action_hash, members, {
           rpId: rpID,
@@ -227,11 +321,12 @@ export async function POST(request, { params }) {
         // mint — is threaded into the decision that consumes it.
         if (base.required_assurance === 'A') {
           const credentialId = approved.after_state?.webauthn?.credential_id || null;
+          const approverId = approved.after_state?.approver_id || approved.actor_id || null;
           let approverPublicKeySpki = null;
           if (credentialId) {
             const { data: credRows, error: credErr } = await supabase
               .from('approver_credentials')
-              .select('credential_id, public_key_spki')
+              .select('organization_id, approver_id, credential_id, public_key_spki, key_class, valid_from, valid_to, revoked_at')
               .eq('organization_id', base.organization_id)
               .eq('credential_id', credentialId)
               .is('revoked_at', null)
@@ -240,7 +335,31 @@ export async function POST(request, { params }) {
               logger.error('[guard] consume: approver credential load failed:', credErr);
               return epProblem(500, 'internal_error', 'Failed to load approver credential for signoff verification');
             }
-            approverPublicKeySpki = (credRows || [])[0]?.public_key_spki || null;
+            const credential = (credRows || [])[0] || null;
+            const checkedAt = Date.now();
+            const validFromMs = Date.parse(credential?.valid_from || '');
+            const validToMs = credential?.valid_to == null
+              ? null
+              : Date.parse(credential.valid_to);
+            const credentialIsLive = credential
+              && credential.organization_id === base.organization_id
+              && credential.approver_id === approverId
+              && credential.credential_id === credentialId
+              && credential.key_class === 'A'
+              && typeof credential.public_key_spki === 'string'
+              && credential.public_key_spki.length > 0
+              && Number.isFinite(validFromMs)
+              && validFromMs <= checkedAt
+              && (validToMs === null || (Number.isFinite(validToMs) && validToMs > checkedAt))
+              && credential.revoked_at == null;
+            if (!credentialIsLive) {
+              return epProblem(
+                403,
+                'credential_invalid',
+                'The Class-A approver credential is not active, valid, and owned by the recorded approver',
+              );
+            }
+            approverPublicKeySpki = credential.public_key_spki;
           }
           const { rpID, origin } = getRpConfig();
           const uv = deriveSignoffUserVerification({
@@ -269,11 +388,29 @@ export async function POST(request, { params }) {
           approverId,
           role: approved.after_state?.role,
           requiredAssurance: base.required_assurance || undefined,
+          actionType: base.action_type || undefined,
+          // Rollout authority is deliberately narrower than the legacy
+          // Class-A registry. Existing Class-A grants predate action_scopes;
+          // requiring a scope for every action would turn that migration-safe
+          // compatibility into a production-wide denial.
+          requireExplicitScope: base.action_type === 'policy_rollout',
           at: new Date().toISOString(),
         });
         if (!authority.authorized) {
           return epProblem(403, 'authority_invalid', `Approver authority check failed: ${authority.reason}`);
         }
+        if (!authority.authority_id) {
+          return epProblem(403, 'authority_invalid', 'Approver authority has no stable registry identifier');
+        }
+        registryBindingsForConsume.push({
+          authority_id: String(authority.authority_id),
+          approver_id: approverId,
+          role: approved.after_state?.role || null,
+          credential_id: base.required_assurance === 'A'
+            ? approved.after_state?.webauthn?.credential_id || null
+            : null,
+          required_assurance: base.required_assurance || 'C',
+        });
         authorityFacts = {
           authority_id: authority.authority_id || null,
           assurance_class: authority.assurance_class || null,
@@ -292,17 +429,83 @@ export async function POST(request, { params }) {
           const approvals = boundSignoffDecisionEvents(events, created, 'guard.signoff.approved')
             .map((e) => e.after_state)
             .filter(Boolean);
-          const distinct = await countDistinctValidApprovers(approvals, {
-            initiatorId,
-            requiredAssurance: base.required_assurance || null,
-            resolveAuthority: (a) => resolveGuardAuthority(supabase, {
+          const { rpID, origin } = getRpConfig();
+          // Rebuild the complete dual roster at Class A. The ordinary receipt
+          // may require only B/C assurance, but the value-tier escalation is
+          // specifically two distinct, user-verified Class-A humans.
+          const validBindingsByApprover = new Map();
+          for (const approval of approvals) {
+            const dualApproverId = approval.approver_id || null;
+            if (!dualApproverId
+                || dualApproverId === initiatorId
+                || validBindingsByApprover.has(dualApproverId)
+                || approval.key_class !== 'A') {
+              continue;
+            }
+
+            const credentialId = approval.webauthn?.credential_id || null;
+            if (!credentialId) continue;
+            const { data: credentialRows, error: credentialError } = await supabase
+              .from('approver_credentials')
+              .select('organization_id, approver_id, credential_id, public_key_spki, key_class, valid_from, valid_to, revoked_at')
+              .eq('organization_id', base.organization_id)
+              .eq('credential_id', credentialId)
+              .is('revoked_at', null)
+              .limit(1);
+            if (credentialError) {
+              logger.error('[guard] consume: dual credential load failed:', credentialError);
+              return epProblem(
+                503,
+                'dual_credential_unavailable',
+                'Could not re-verify dual-authorization credentials; failing closed.',
+              );
+            }
+            const credential = (credentialRows || [])[0] || null;
+            const checkedAtMs = Date.now();
+            const validFromMs = Date.parse(credential?.valid_from || '');
+            const validToMs = credential?.valid_to == null
+              ? null
+              : Date.parse(credential.valid_to);
+            if (!credential
+                || credential.organization_id !== base.organization_id
+                || credential.approver_id !== dualApproverId
+                || credential.key_class !== 'A'
+                || typeof credential.public_key_spki !== 'string'
+                || credential.public_key_spki.length === 0
+                || !Number.isFinite(validFromMs)
+                || validFromMs > checkedAtMs
+                || (validToMs !== null && (!Number.isFinite(validToMs) || validToMs <= checkedAtMs))
+                || credential.revoked_at != null) {
+              continue;
+            }
+            const uv = deriveSignoffUserVerification({
+              decision: approval,
+              approverPublicKeySpki: credential.public_key_spki,
+              expectedActionHash: base.action_hash,
+              rpId: rpID,
+              allowedOrigins: [origin],
+            });
+            if (!uv.verified) continue;
+
+            const dualAuthority = await resolveGuardAuthority(supabase, {
               organizationId: base.organization_id,
-              approverId: a.approver_id || null,
-              role: a.role,
-              requiredAssurance: base.required_assurance || undefined,
+              approverId: dualApproverId,
+              role: approval.role,
+              requiredAssurance: 'A',
+              actionType: base.action_type || undefined,
+              requireExplicitScope: base.action_type === 'policy_rollout',
               at: new Date().toISOString(),
-            }),
-          });
+            });
+            if (!dualAuthority.authorized || !dualAuthority.authority_id) continue;
+            validBindingsByApprover.set(dualApproverId, {
+              authority_id: String(dualAuthority.authority_id),
+              approver_id: dualApproverId,
+              role: approval.role || null,
+              credential_id: credentialId,
+              required_assurance: 'A',
+            });
+          }
+          const distinct = validBindingsByApprover.size;
           const need = requiredApprovalsForTier('dual');
           if (distinct < need) {
             return epProblem(
@@ -311,42 +514,54 @@ export async function POST(request, { params }) {
               `This value tier requires dual authorization: ${distinct} of ${need} distinct valid Class-A approvals present`,
             );
           }
+          registryBindingsForConsume.splice(
+            0,
+            registryBindingsForConsume.length,
+            ...validBindingsByApprover.values(),
+          );
           authorityFacts = { ...authorityFacts, tier: 'dual', distinct_approvers: distinct };
         }
       }
     }
 
     // ── Record consume event (append-only) ───────────────────────────────
-    const consumedAt = new Date().toISOString();
-    const { error: insertErr } = await supabase.from('audit_events').insert({
-      event_type: 'guard.trust_receipt.consumed',
-      actor_id: authEntityId(auth),
-      actor_type: 'system',
-      target_type: 'trust_receipt',
-      target_id: receiptId,
-      action: 'consume',
-      before_state: { receipt_status: 'pending_consume' },
-      after_state: {
-        receipt_status: 'consumed',
-        consumed_at: consumedAt,
-        consumed_by_system: body.executing_system,
-        execution_reference_id: body.execution_reference_id || null,
-        action_hash: body.action_hash,
-        authority: authorityFacts,
+    const { data: consumed, error: insertErr } = await supabase.rpc(
+      'consume_trust_receipt_authorized',
+      {
+        p_receipt_id: receiptId,
+        p_action_hash: body.action_hash,
+        p_actor_id: authEntityId(auth),
+        p_organization_id: base.organization_id,
+        p_executing_system: body.executing_system,
+        p_execution_reference_id: body.execution_reference_id || null,
+        p_registry_bindings: registryBindingsForConsume,
+        p_authority_facts: authorityFacts,
       },
-    });
+    );
 
     if (insertErr) {
       // Postgres unique_violation (SQLSTATE 23505) on the
       // guard_receipt_consume_once partial unique index means another
       // request raced this one and won. Return 409 (the receipt has
       // already been consumed) instead of 500.
-      if (insertErr.code === '23505') {
+      if (insertErr.code === '23505'
+          || String(insertErr.message || '').includes('trust_receipt_already_consumed')) {
         return epProblem(409, 'receipt_already_consumed', 'Receipt has already been consumed');
+      }
+      if (String(insertErr.message || '').includes('trust_receipt_expired')) {
+        return epProblem(410, 'receipt_expired', 'Receipt has expired');
+      }
+      if (String(insertErr.message || '').includes('trust_receipt_registry_facts_invalid')) {
+        return epProblem(
+          403,
+          'registry_facts_changed',
+          'Approver credential or authority changed before consume committed',
+        );
       }
       logger.error('[guard] consume: audit insert failed:', insertErr);
       return epProblem(500, 'internal_error', 'Failed to record consume');
     }
+    const consumedAt = consumed?.consumed_at || new Date().toISOString();
 
     return NextResponse.json({
       receipt_id: receiptId,

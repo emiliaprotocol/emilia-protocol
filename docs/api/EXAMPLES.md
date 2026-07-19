@@ -563,11 +563,50 @@ When a receipt is later submitted for this action, the attribution chain will wr
 
 **Scenario**: An operations team uses the EMILIA Gate Cloud API to review pending signoffs, check event history for a handshake, and simulate a policy change before rolling it out.
 
-All cloud requests require an EMILIA Gate Cloud API key:
+Runtime cloud requests require an EMILIA Gate Cloud API key:
 
 ```
-Authorization: Bearer ep_cloud_...
+Authorization: Bearer ept_live_...
 ```
+
+### Step 0: Bootstrap the Operator Key and Rollout Authority
+
+An existing admin-capable EP entity key held by a tenant owner/admin issues the
+cloud key. The plaintext key appears only in this response:
+
+```
+POST /api/cloud/tenants/33333333-3333-4333-8333-333333333333/api-keys
+Authorization: Bearer ep_live_...
+```
+
+```json
+{
+  "name": "production rollout operator",
+  "environment": "production",
+  "permissions": ["admin"]
+}
+```
+
+After the intended human has completed Class-A WebAuthn enrollment, grant only
+the authority needed for rollout:
+
+```
+POST /api/cloud/authorities/policy-rollout
+Authorization: Bearer ept_live_...
+```
+
+```json
+{
+  "approver_id": "change-manager@example.com",
+  "role": "policy_admin",
+  "valid_to": "2027-01-01T00:00:00.000Z",
+  "reason": "Production change-control duty"
+}
+```
+
+Confirm readiness with `GET /api/cloud/authorities/policy-rollout`. This step
+does not invent the approver identity: the grant succeeds only for an already
+active Class-A enrollment in the same tenant.
 
 ### Step 1: List Pending Signoffs
 
@@ -641,18 +680,48 @@ Response (200):
 
 ### Step 4: Roll Out the Policy Change
 
+Policy rollout is a Class-A action. First submit the desired rollout without an
+`authorization` field:
+
+```json
+{
+  "version": 2,
+  "environment": "production",
+  "strategy": "canary",
+  "canary_pct": 10,
+  "metadata": { "change_ticket": "CAB-42" }
+}
+```
+
+The HTTP 428 response contains `authorization_request`. Submit that exact object
+to `POST /api/v1/trust-receipts`, request signoff, and approve it with a Class-A
+WebAuthn credential whose authority is explicitly scoped to `policy_rollout`.
+The authorization request includes the policy rules, current active rollouts,
+requested after-state, and executing cloud key so the human sees what will
+change.
+
+If the tenant requires quorum, the same 428 response contains the server-chosen
+org-pinned roster and threshold. Each named seat completes its own signoff with
+a distinct Class-A credential and current `policy_rollout` authority; callers
+cannot substitute their own roster.
+
+Do not consume that receipt separately. Re-submit the unchanged rollout with its
+approved receipt ID:
+
 ```
 POST /api/cloud/policies/strict/rollout
 ```
 
 ```json
 {
-  "version": "v2",
-  "stages": [
-    { "percentage": 10, "duration_hours": 24 },
-    { "percentage": 50, "duration_hours": 48 },
-    { "percentage": 100 }
-  ]
+  "version": 2,
+  "environment": "production",
+  "strategy": "canary",
+  "canary_pct": 10,
+  "metadata": { "change_ticket": "CAB-42" },
+  "authorization": {
+    "receipt_id": "tr_0123456789abcdef0123456789abcdef"
+  }
 }
 ```
 
@@ -660,10 +729,22 @@ Response (200):
 
 ```json
 {
-  "policy_id": "strict",
-  "rollout_id": "roll_x1y2z3",
-  "status": "stage_1",
-  "current_percentage": 10,
-  "rollback_on": { "error_rate_above": 0.05 }
+  "rollout_id": "92f6692f-6d2e-42cc-97d1-f80dfd20bd86",
+  "policy_id": "f61418e4-65d8-4f14-a773-8c783e219aa8",
+  "policy_key": "strict",
+  "version": 2,
+  "environment": "production",
+  "strategy": "canary",
+  "status": "active",
+  "canary_pct": 10,
+  "initiated_at": "2026-07-19T19:30:00.000Z",
+  "tenant_id": "33333333-3333-4333-8333-333333333333",
+  "authorization_receipt_id": "tr_0123456789abcdef0123456789abcdef",
+  "authorization_action_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "authorization_execution_reference_id": "policy-rollout:92f6692f-6d2e-42cc-97d1-f80dfd20bd86"
 }
 ```
+
+The database writes the consume event and rollout row together. If activation
+fails, the approval remains unconsumed; if the active rollout changed after the
+human approved, activation fails stale instead of superseding unseen state.

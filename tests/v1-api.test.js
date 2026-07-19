@@ -24,6 +24,7 @@ import crypto from 'node:crypto';
 
 const mockGetGuardedClient = vi.fn();
 const mockAuthenticateRequest = vi.fn();
+const mockAuthenticateCloudRequest = vi.fn();
 
 vi.mock('@/lib/write-guard', () => ({
   getGuardedClient: (...args) => mockGetGuardedClient(...args),
@@ -38,6 +39,9 @@ vi.mock('@/lib/supabase', () => ({
     return e?.entity_id || e?.id || '';
   },
   getServiceClient: vi.fn(), // kept so any indirect import doesn't crash
+}));
+vi.mock('@/lib/cloud/auth', () => ({
+  authenticateCloudRequest: (...args) => mockAuthenticateCloudRequest(...args),
 }));
 vi.mock('../lib/logger.js', () => ({
   logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -63,10 +67,13 @@ import { buildExecutionBindingContract } from '../lib/execution/binding-contract
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 /** Make a real Request so body-limit defenses are exercised in route tests. */
-function req(body) {
+function req(body, token) {
   return new Request('https://www.emiliaprotocol.ai/api/v1/test', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body ?? {}),
   });
 }
@@ -104,6 +111,10 @@ function makeChain(resolveValue) {
 /** Build a Supabase client whose .from(table) returns the chain for that table. */
 function makeSupabase(tables) {
   return {
+    rpc: vi.fn().mockResolvedValue({
+      data: { consumed_at: new Date().toISOString() },
+      error: null,
+    }),
     from: vi.fn((table) => {
       const cfg = tables[table] ?? { resolve: { data: null, error: null } };
       return makeChain(cfg.resolve);
@@ -129,6 +140,10 @@ function makeProjectionAwareAuditSupabase(events) {
 
   return {
     client: {
+      rpc: vi.fn().mockResolvedValue({
+        data: { consumed_at: new Date().toISOString() },
+        error: null,
+      }),
       from: vi.fn((table) => {
         const chain = makeChain({ data: null, error: null });
         if (table === 'audit_events') chain.select = selectAuditEvents;
@@ -215,14 +230,25 @@ function makeClassASignoffEvidence({
         signature: signature.toString('base64url'),
       },
     },
-    // approver_credentials row the consume route loads to get the SPKI key.
-    credentialRow: { credential_id: credentialId, public_key_spki: spki, revoked_at: null },
+    // approver_credentials row the consume route loads to re-verify the
+    // credential is still a live, org-bound Class-A key owned by this approver.
+    credentialRow: {
+      organization_id: 'org_1',
+      approver_id: approverId,
+      credential_id: credentialId,
+      public_key_spki: spki,
+      key_class: 'A',
+      valid_from: '2020-01-01T00:00:00.000Z',
+      valid_to: '2999-01-01T00:00:00.000Z',
+      revoked_at: null,
+    },
   };
 }
 
 beforeEach(() => {
   mockGetGuardedClient.mockReset();
   mockAuthenticateRequest.mockReset();
+  mockAuthenticateCloudRequest.mockReset();
 });
 
 describe('v1 guard rail body limits', () => {
@@ -323,6 +349,79 @@ describe('POST /api/v1/trust-receipts', () => {
     expect(surfaced).toMatch(/actor[\s_]?id/i);
   });
 
+  it('lets the authenticated admin tenant key create only its exact rollout receipt', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: '33333333-3333-4333-8333-333333333333',
+      environment: 'production',
+      permissions: ['admin'],
+      keyId: 'key-abc123',
+    });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: null, error: null } },
+    }));
+    const afterState = {
+      policy_id: '11111111-1111-4111-8111-111111111111',
+      policy_key: 'strict',
+      policy_version: 2,
+      policy_rules: { deny: ['compromised'] },
+      policy_mode: 'mutual',
+      policy_status: 'active',
+      environment: 'production',
+      strategy: 'immediate',
+      canary_pct: null,
+      metadata: {},
+    };
+    const body = {
+      organization_id: '33333333-3333-4333-8333-333333333333',
+      action_type: 'policy_rollout',
+      target_resource_id: 'policy:strict',
+      executing_key_id: 'key-abc123',
+      rollout_policy_id: afterState.policy_id,
+      rollout_policy_key: afterState.policy_key,
+      rollout_policy_version: afterState.policy_version,
+      rollout_policy_rules: afterState.policy_rules,
+      rollout_policy_mode: afterState.policy_mode,
+      rollout_policy_status: afterState.policy_status,
+      rollout_environment: afterState.environment,
+      rollout_strategy: afterState.strategy,
+      rollout_canary_pct: null,
+      rollout_metadata: {},
+      before_state: { active_rollouts: [] },
+      after_state: afterState,
+      expires_in_sec: 900,
+      enforcement_mode: 'enforce',
+    };
+
+    const issued = await createReceipt(req(body, 'ept_live_admin'));
+    expect(issued.status).toBe(201);
+    const issuedBody = await issued.json();
+    expect(issuedBody).toMatchObject({
+      signoff_required: true,
+      required_assurance: 'A',
+      receipt_status: 'pending_signoff',
+    });
+    expect(issuedBody.canonical_action).toMatchObject({
+      executing_key_id: 'key-abc123',
+      rollout_policy_key: 'strict',
+      rollout_environment: 'production',
+    });
+
+    const wrongKey = await createReceipt(req({
+      ...body,
+      executing_key_id: 'key-attacker',
+    }, 'ept_live_admin'));
+    expect(wrongKey.status).toBe(403);
+    expect((await wrongKey.json()).type).toContain('executing_key_mismatch');
+
+    const wrongAction = await createReceipt(req({
+      organization_id: body.organization_id,
+      action_type: 'benefit_bank_account_change',
+      target_resource_id: 'recipient:1',
+    }, 'ept_live_admin'));
+    expect(wrongAction.status).toBe(403);
+    expect((await wrongAction.json()).type).toContain('cloud_guard_action_forbidden');
+  });
+
   it('issues a pending_signoff receipt for money-destination changes', async () => {
     authedAs('user_1');
     mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
@@ -372,6 +471,17 @@ describe('POST /api/v1/trust-receipts', () => {
       counterparty_name: 'Acme Widgets',
       target_resource_id: 'payment_1',
     });
+  });
+
+  it('rejects policy-rollout receipt creation by a normal protocol principal', async () => {
+    authedAs('user_1');
+    const res = await createReceipt(req({
+      organization_id: 'org_1',
+      action_type: 'policy_rollout',
+      target_resource_id: 'policy:strict',
+    }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('policy_rollout_cloud_key_required');
   });
 
   it('binds GovGuard destination hashes and program fields on the generic receipt path', async () => {
@@ -526,7 +636,11 @@ describe('GET /api/v1/trust-receipts/:id', () => {
 // ─── POST /api/v1/trust-receipts/:id/consume ─────────────────────────────
 
 describe('POST /api/v1/trust-receipts/:id/consume', () => {
-  function setupConsume(events, authorityRows = [], credentialRows = []) {
+  function setupConsume(events, authorityRows = [], credentialRows = [], {
+    authorityError = null,
+    credentialError = null,
+    consumeError = null,
+  } = {}) {
     const scopedEvents = events.map((e) => {
       if (e.event_type !== 'guard.trust_receipt.created') return e;
       return {
@@ -538,12 +652,152 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
         },
       };
     });
-    mockGetGuardedClient.mockReturnValue(makeSupabase({
+    const client = makeSupabase({
       audit_events: { resolve: { data: scopedEvents, error: null } },
-      authorities: { resolve: { data: authorityRows, error: null } },
-      approver_credentials: { resolve: { data: credentialRows, error: null } },
-    }));
+      authorities: { resolve: { data: authorityRows, error: authorityError } },
+      approver_credentials: { resolve: { data: credentialRows, error: credentialError } },
+    });
+    client.rpc.mockResolvedValue({
+      data: consumeError ? null : { consumed_at: new Date().toISOString() },
+      error: consumeError,
+    });
+    mockGetGuardedClient.mockReturnValue(client);
   }
+
+  function genericQuorumFixture({
+    credentialOverrides = {},
+    authorityOverrides = {},
+    authorityRows,
+  } = {}) {
+    const approverId = 'ap_controller';
+    const { approvedAfterState, credentialRow } = makeClassASignoffEvidence({
+      approverId,
+      actionHash: 'a',
+    });
+    return {
+      events: [
+        {
+          event_type: 'guard.trust_receipt.created',
+          actor_id: 'user_1',
+          after_state: {
+            organization_id: 'org_1',
+            action_type: 'deploy_production',
+            action_hash: 'a',
+            expires_at: new Date(Date.now() + 1e6).toISOString(),
+            signoff_required: false,
+            quorum_policy: {
+              mode: 'threshold',
+              required: 1,
+              approvers: [{ role: 'controller', approver: approverId }],
+            },
+          },
+        },
+        {
+          event_type: 'guard.signoff.requested',
+          actor_id: 'user_1',
+          after_state: {
+            signoff_id: 'sig_1',
+            initiator_id: 'user_1',
+            quorum: { role: 'controller', approver_id: approverId },
+            action_hash: 'a',
+            expires_at: new Date(Date.now() + 1e6).toISOString(),
+          },
+        },
+        {
+          event_type: 'guard.signoff.approved',
+          actor_id: approverId,
+          after_state: approvedAfterState,
+        },
+      ],
+      credentialRows: [{ ...credentialRow, ...credentialOverrides }],
+      authorityRows: authorityRows ?? [{
+        authority_id: 'auth_quorum_controller',
+        organization_id: 'org_1',
+        subject_type: 'human_approver',
+        subject_ref: approverId,
+        role: 'controller',
+        assurance_class: 'A',
+        action_scopes: null,
+        status: 'active',
+        valid_from: '2020-01-01T00:00:00.000Z',
+        valid_to: '2999-01-01T00:00:00.000Z',
+        revoked_at: null,
+        ...authorityOverrides,
+      }],
+    };
+  }
+
+  it('consumes a generic quorum with a live same-org Class-A credential and current roster authority', async () => {
+    authedAs('user_1');
+    const fixture = genericQuorumFixture();
+    setupConsume(fixture.events, fixture.authorityRows, fixture.credentialRows);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it.each([
+    ['another organization', { organization_id: 'org_other' }],
+    ['another approver', { approver_id: 'ap_attacker' }],
+    ['a non-Class-A key', { key_class: 'C' }],
+    ['a not-yet-valid key', { valid_from: '2999-01-01T00:00:00.000Z' }],
+    ['an expired key', { valid_to: '2020-01-01T00:00:00.000Z' }],
+    ['a revoked key', { revoked_at: '2026-07-19T00:00:00.000Z' }],
+  ])('does not count a generic quorum credential from %s', async (_case, credentialOverrides) => {
+    authedAs('user_1');
+    const fixture = genericQuorumFixture({ credentialOverrides });
+    setupConsume(fixture.events, fixture.authorityRows, fixture.credentialRows);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('quorum_not_satisfied');
+  });
+
+  it.each([
+    ['no authority', { authorityRows: [] }],
+    ['the wrong roster role', { authorityOverrides: { role: 'auditor' } }],
+    ['a future authority', { authorityOverrides: { valid_from: '2999-01-01T00:00:00.000Z' } }],
+    ['an expired authority', { authorityOverrides: { valid_to: '2020-01-01T00:00:00.000Z' } }],
+    ['a revoked authority', { authorityOverrides: { revoked_at: '2026-07-19T00:00:00.000Z' } }],
+    ['an authority outside the action scope', { authorityOverrides: { action_scopes: ['other_action'] } }],
+  ])('does not count a generic quorum approver with %s', async (_case, fixtureOptions) => {
+    authedAs('user_1');
+    const fixture = genericQuorumFixture(fixtureOptions);
+    setupConsume(fixture.events, fixture.authorityRows, fixture.credentialRows);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('quorum_not_satisfied');
+  });
+
+  it.each([
+    ['credential', { credentialError: { code: '08006', message: 'credential store unavailable' } }, 'quorum_credential_unavailable'],
+    ['authority', { authorityError: { code: '08006', message: 'authority store unavailable' } }, 'quorum_authority_unavailable'],
+  ])('fails closed when the generic quorum %s store errors', async (_store, errors, expectedType) => {
+    authedAs('user_1');
+    const fixture = genericQuorumFixture();
+    setupConsume(fixture.events, fixture.authorityRows, fixture.credentialRows, errors);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).type).toContain(expectedType);
+  });
 
   it('selects actor_id so creator-bound consume receives the creator identity', async () => {
     authedAs({ entity_id: 'user_1' });
@@ -611,6 +865,45 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     setupConsume(events);
     const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(410);
+  });
+
+  it('fails closed when receipt expiry is missing or malformed', async () => {
+    authedAs('user_1');
+    for (const expires_at of [undefined, 'not-a-timestamp']) {
+      setupConsume([{
+        event_type: 'guard.trust_receipt.created',
+        after_state: {
+          action_hash: 'a',
+          expires_at,
+          signoff_required: false,
+        },
+      }]);
+      const res = await consumeReceipt(
+        req({ action_hash: 'a', executing_system: 'sys' }),
+        { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+      );
+      expect(res.status).toBe(410);
+    }
+  });
+
+  it('refuses generic consumption of a policy-rollout receipt', async () => {
+    authedAs('user_1');
+    setupConsume([{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'user_1',
+      after_state: {
+        action_type: 'policy_rollout',
+        action_hash: 'a',
+        expires_at: new Date(Date.now() + 1e6).toISOString(),
+        signoff_required: true,
+      },
+    }]);
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+    expect(res.status).toBe(409);
+    expect((await res.json()).type).toContain('policy_rollout_activation_required');
   });
 
   it('returns 409 on action_hash mismatch', async () => {
@@ -710,7 +1003,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
   it('returns 403 when a Class-A receipt has only a Class-C approval', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_type: 'deploy_production', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
       { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
       { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'C' } },
     ];
@@ -733,12 +1026,46 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     expect((await res.json()).type).toContain('authority_invalid');
   });
 
-  it('records consume when a Class-A approval carries a real UV-verified assertion and active authority', async () => {
+  it('keeps legacy non-rollout Class-A authority valid without action_scopes', async () => {
     authedAs('user_1');
     // A genuine user-verified (UV) WebAuthn assertion bound to action_hash 'a'.
     const { approvedAfterState, credentialRow } = makeClassASignoffEvidence({ actionHash: 'a', flags: 0x05 });
     const events = [
-      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_type: 'deploy_production', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: approvedAfterState },
+    ];
+    setupConsume(events, [{
+      authority_id: 'auth_1',
+      status: 'active',
+      subject_ref: 'ap_controller',
+      role: null,
+      assurance_class: 'A',
+      // Migration 119 created these grants before action_scopes existed.
+      // Only policy_rollout requires an explicit scoped authority in this
+      // release; legacy Class-A actions must remain usable.
+      action_scopes: null,
+      valid_from: '2020-01-01T00:00:00.000Z',
+      valid_to: '2999-01-01T00:00:00.000Z',
+      revoked_at: null,
+    }], [credentialRow]);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(200);
+  });
+
+  it.each([
+    ['another approver', { approver_id: 'ap_attacker' }],
+    ['a non-Class-A key', { key_class: 'C' }],
+    ['a future key', { valid_from: '2999-01-01T00:00:00.000Z' }],
+    ['an expired key', { valid_to: '2020-01-01T00:00:00.000Z' }],
+  ])('rejects a generic single Class-A signoff backed by %s', async (_case, override) => {
+    authedAs('user_1');
+    const { approvedAfterState, credentialRow } = makeClassASignoffEvidence({
+      actionHash: 'a',
+      flags: 0x05,
+    });
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_type: 'deploy_production', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
       { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
       { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: approvedAfterState },
     ];
@@ -751,9 +1078,13 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       valid_from: '2020-01-01T00:00:00.000Z',
       valid_to: '2999-01-01T00:00:00.000Z',
       revoked_at: null,
-    }], [credentialRow]);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
-    expect(res.status).toBe(200);
+    }], [{ ...credentialRow, ...override }]);
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('credential_invalid');
   });
 
   it('refuses consume when a Class-A label lacks a real UV signal (assertion present but UV flag unset)', async () => {
@@ -846,6 +1177,34 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     const body = await res.json();
     expect(body.status).toBe('consumed');
     expect(body.consumed_by_system).toBe('benefits_core');
+  });
+
+  it.each([
+    ['23505', 'trust_receipt_already_consumed', 409, 'receipt_already_consumed'],
+    ['28000', 'trust_receipt_expired', 410, 'receipt_expired'],
+    ['28000', 'trust_receipt_registry_facts_invalid', 403, 'registry_facts_changed'],
+  ])('maps atomic consume RPC error %s/%s', async (code, message, status, type) => {
+    authedAs('user_1');
+    setupConsume(
+      [{
+        event_type: 'guard.trust_receipt.created',
+        after_state: {
+          action_type: 'deploy_production',
+          action_hash: 'a',
+          expires_at: new Date(Date.now() + 1e6).toISOString(),
+          signoff_required: false,
+        },
+      }],
+      [],
+      [],
+      { consumeError: { code, message } },
+    );
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'benefits_core' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+    expect(res.status).toBe(status);
+    expect((await res.json()).type).toContain(type);
   });
 });
 
@@ -1077,13 +1436,51 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
 // ─── POST /api/v1/signoffs/request ────────────────────────────────────────
 
 describe('POST /api/v1/signoffs/request', () => {
+  it('continues the rollout receipt flow with the same authenticated tenant key', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: '33333333-3333-4333-8333-333333333333',
+      environment: 'production',
+      permissions: ['admin'],
+      keyId: 'key-abc123',
+    });
+    const events = [{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'ep:cloud-key:key-abc123',
+      after_state: {
+        organization_id: '33333333-3333-4333-8333-333333333333',
+        action_type: 'policy_rollout',
+        signoff_required: true,
+        required_assurance: 'A',
+        action_hash: 'a',
+        expires_at: '2999-01-01T00:00:00.000Z',
+      },
+      created_at: '2026-07-19T20:00:00.000Z',
+    }];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+
+    const res = await requestSignoff(req({
+      receipt_id: VALID_RECEIPT_ID,
+      approver_id: 'approver_1',
+    }, 'ept_live_admin'));
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({
+      receipt_id: VALID_RECEIPT_ID,
+      initiator_id: 'ep:cloud-key:key-abc123',
+      approver_id: 'approver_1',
+      status: 'pending',
+    });
+  });
+
   it('selects actor_id so creator-bound signoff receives the creator identity', async () => {
     authedAs('user_1');
     const events = [
       {
         event_type: 'guard.trust_receipt.created',
         actor_id: 'user_1',
-        after_state: { signoff_required: true, action_hash: 'a' },
+        after_state: { signoff_required: true, action_hash: 'a', expires_at: '2999-01-01T00:00:00.000Z' },
         created_at: '2026-04-26T00:00:00Z',
       },
     ];
@@ -1117,7 +1514,7 @@ describe('POST /api/v1/signoffs/request', () => {
   it('returns 409 when receipt does not require signoff', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: false, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: false, action_hash: 'a', expires_at: '2999-01-01T00:00:00.000Z' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
@@ -1129,7 +1526,7 @@ describe('POST /api/v1/signoffs/request', () => {
   it('returns 409 when signoff already requested', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a', expires_at: '2999-01-01T00:00:00.000Z' } },
       { event_type: 'guard.signoff.requested', after_state: { signoff_id: 'sig_1' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
@@ -1142,7 +1539,7 @@ describe('POST /api/v1/signoffs/request', () => {
   it('returns 403 when a different actor requests signoff for someone else’s receipt', async () => {
     authedAs('attacker');
     const events = [
-      { event_type: 'guard.trust_receipt.created', actor_id: 'victim_creator', after_state: { signoff_required: true, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'victim_creator', after_state: { signoff_required: true, action_hash: 'a', expires_at: '2999-01-01T00:00:00.000Z' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
@@ -1154,7 +1551,7 @@ describe('POST /api/v1/signoffs/request', () => {
   it('returns 400 when single-signoff receipt omits intended approver_id', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a', expires_at: '2999-01-01T00:00:00.000Z' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
@@ -1166,7 +1563,7 @@ describe('POST /api/v1/signoffs/request', () => {
   it('issues signoff_id on happy path', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a', expires_at: '2999-01-01T00:00:00.000Z' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },

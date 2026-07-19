@@ -346,6 +346,23 @@ describe('evaluateGuardPolicy: action-type-specific gates', () => {
       expect(r.requiredAssurance).toBe('A');
     }
   });
+
+  it('requires Class-A Accountable Signoff for every policy rollout activation', () => {
+    const r = evaluateGuardPolicy({
+      organizationId: 'org_1',
+      actorId: 'operator_1',
+      actorRole: 'administrator',
+      actionType: GUARD_ACTION_TYPES.POLICY_ROLLOUT,
+      targetChangedFields: [],
+      riskFlags: [],
+      authStrength: 'phishing_resistant_mfa',
+    });
+
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffRequired).toBe(true);
+    expect(r.requiredAssurance).toBe('A');
+    expect(r.reasons.join(' ')).toMatch(/policy rollout/i);
+  });
 });
 
 describe('evaluateGuardPolicy: default-allow', () => {

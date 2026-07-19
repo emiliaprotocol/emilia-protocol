@@ -47,7 +47,17 @@ const ENV_ALLOWLIST = new Set([
 ]);
 
 /** Trust-bearing tables that must only be written through canonical paths. */
-const TRUST_TABLES = ['receipts', 'commits', 'disputes', 'trust_reports', 'protocol_events', 'security_events', 'entities'];
+const TRUST_TABLES = [
+  'receipts',
+  'commits',
+  'disputes',
+  'trust_reports',
+  'protocol_events',
+  'security_events',
+  'entities',
+  'authorities',
+  'policy_rollouts',
+];
 
 /** Maximum non-blank, non-comment lines in a single route handler. */
 const HANDLER_COMPLEXITY_THRESHOLD = 80;

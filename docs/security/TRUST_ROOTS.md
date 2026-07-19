@@ -33,7 +33,9 @@ New trust roots are added to the `authorities` table with:
 - `valid_from` set to the intended activation time (or `now` for immediate activation).
 - `valid_to` set to the intended expiry (or `null` for no expiry).
 
-Provisioning is a privileged operation. Only the `system` actor or authorized administrative flows may insert into `authorities` (enforced by write-guard; `authorities` is a trust table).
+Provisioning is a privileged operation. Only the `system` actor or an approved,
+tenant-scoped security-definer administration flow may mutate `authorities`
+(`authorities` is enforced as a trust table by the runtime write guard).
 
 ### 2.2 Rotation
 
@@ -113,4 +115,7 @@ policy_hash (pinned at initiation)
 
 If the trust root is invalid at verification time, the presentation fails trust evaluation, the required party condition is unmet, and the handshake is rejected. Policy hash pinning ensures that the trust requirements themselves cannot be weakened between initiation and verification.
 
-**Write protection**: The `authorities` table is listed in `TRUST_TABLES` in `lib/write-guard.js`. Direct writes from route handlers are blocked; only `protocolWrite()` and the canonical layer may modify authority records.
+**Write protection**: The `authorities` table is listed in `TRUST_TABLES` in
+`lib/write-guard.js`. Direct writes from route handlers are blocked; authority
+changes use the canonical layer or a narrowly granted, tenant-bound
+security-definer RPC that records the actor and reason in `audit_events`.
