@@ -2,6 +2,17 @@
 
 import { useState, useEffect } from 'react';
 
+/**
+ * @type {{
+ *   page: React.CSSProperties, container: React.CSSProperties, eyebrow: React.CSSProperties,
+ *   h1: React.CSSProperties, subtitle: React.CSSProperties, topBar: React.CSSProperties,
+ *   searchInput: React.CSSProperties, btn: React.CSSProperties, grid: React.CSSProperties,
+ *   card: React.CSSProperties, cardHeader: React.CSSProperties, tenantName: React.CSSProperties,
+ *   mono: React.CSSProperties, row: React.CSSProperties, rowLabel: React.CSSProperties,
+ *   rowValue: React.CSSProperties, badge: (bg: string, fg: string) => React.CSSProperties,
+ *   dot: (color: string) => React.CSSProperties, loading: React.CSSProperties, error: React.CSSProperties,
+ * }}
+ */
 const s = {
   page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },

@@ -31,10 +31,10 @@ export default function SubProcessorsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Sub-processor</th>
-                <th style={styles.tableHead}>Purpose</th>
-                <th style={styles.tableHead}>Region</th>
-                <th style={styles.tableHead}>Data category</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Sub-processor</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Purpose</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Region</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Data category</th>
               </tr>
             </thead>
             <tbody>

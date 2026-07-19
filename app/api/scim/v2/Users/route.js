@@ -18,12 +18,22 @@ const USER_FILTER_COLUMN = {
   id: 'id',
 };
 
+/**
+ * @typedef {{ tenantId: string, organizationId?: string, tokenId: string, response?: undefined } |
+ *   { tenantId?: undefined, organizationId?: undefined, tokenId?: undefined, response: import('next/server').NextResponse }} ScimAuthResult
+ */
+
+/**
+ * @typedef {{ attribute: string, operator: 'eq', value: string | boolean, unsupported?: undefined, raw?: undefined } |
+ *   { attribute?: undefined, operator?: undefined, value?: undefined, unsupported: true, raw: string }} ScimUserFilter
+ */
+
 export async function GET(request) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {ScimAuthResult} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
 
   const url = new URL(request.url);
-  const filter = parseFilter(url.searchParams.get('filter'));
+  const filter = /** @type {ScimUserFilter | null} */ (parseFilter(url.searchParams.get('filter')));
   if (filter?.unsupported) {
     return scimErrorResponse(400, `Unsupported filter: ${filter.raw}`, 'invalidFilter');
   }
@@ -68,7 +78,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {ScimAuthResult} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
 
   const parsed = await readScimJson(request);

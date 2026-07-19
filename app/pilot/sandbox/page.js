@@ -23,6 +23,11 @@ const VERTICALS = [
 
 // Browser-runnable sample actions per vertical (observe mode). amount drives
 // the FinGuard tier; the gov/health ones trip money-destination / override.
+/**
+ * @param {string} vertical
+ * @param {any} orgId
+ * @returns {Array<[string, string, Record<string, any>]>}
+ */
 function samplesFor(vertical, orgId) {
   if (vertical === 'fin') {
     return [
@@ -262,8 +267,10 @@ function ErrorNote({ text }) {
 
 const card = { background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px', marginBottom: 16 };
 const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: color.t2, margin: '0 0 6px', fontFamily: font.mono, letterSpacing: 0.5 };
+/** @type {import('react').CSSProperties} */
 const input = { width: '100%', padding: '12px 14px', borderRadius: radius.base, border: `1px solid ${color.inputBorder}`, background: color.card, color: color.t1, fontSize: 15, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 16 };
 const primary = (b) => ({ width: '100%', background: color.t1, color: '#fff', border: 'none', borderRadius: radius.sm, padding: '14px 24px', fontFamily: font.sans, fontWeight: 600, fontSize: 15, cursor: b ? 'wait' : 'pointer', opacity: b ? 0.6 : 1 });
+/** @type {import('react').CSSProperties} */
 const sampleBtn = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: color.cardHover, border: `1px solid ${color.border}`, borderRadius: radius.sm, padding: '11px 16px', fontFamily: font.mono, fontSize: 13, color: color.t1, cursor: 'pointer', textAlign: 'left' };
 const muted = { color: color.t3, marginRight: 8, display: 'inline-block', width: 110 };
 const lnk = { color: color.blue, textDecoration: 'none' };

@@ -67,11 +67,11 @@ if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
     { k: 'CrewAI / AutoGen', sub: 'Python — guard() decorator', code: '@guard("payment.release", context_fn=..., fetch=post)\ndef wire_transfer(amount, destination): ...' },
   ];
 
-  const codeBox = {
+  const codeBox = /** @type {React.CSSProperties} */ ({
     fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.7, color: '#D6D3D1',
     background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base,
     padding: '16px 18px', margin: 0, overflowX: 'auto', whiteSpace: 'pre',
-  };
+  });
 
   const cardStyle = (accent) => ({
     border: `1px solid ${color.border}`,

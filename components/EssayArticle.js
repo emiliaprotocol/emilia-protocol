@@ -9,6 +9,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { color } from '@/lib/tokens';
 import { getEssay, loadEssayBody, essayMdToHtml } from '@/lib/essays';
 
+/** @type {Intl.DateTimeFormatOptions} */
 const DATE_FMT = { year: 'numeric', month: 'long', day: 'numeric' };
 
 function formatDate(iso) {

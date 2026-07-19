@@ -15,6 +15,7 @@ const NAV_LINKS = [
   ['/pricing', 'Pricing'],
 ];
 
+/** @param {{ activePage?: string }} props */
 export default function SiteNav({ activePage }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 

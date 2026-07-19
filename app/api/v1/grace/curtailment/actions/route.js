@@ -35,7 +35,7 @@ export async function POST(request) {
     }
     const auth = await authenticateRequest(request);
     if (auth.error) return mobileProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
-    try { requirePermission(auth, 'write'); } catch {
+    try { requirePermission(/** @type {{ tenantId: string, environment: string, permissions: string[] }} */ (/** @type {unknown} */ (auth)), 'write'); } catch {
       return mobileProblem(403, 'insufficient_permission', 'A write-capable organization key is required');
     }
     const limited = await checkRateLimit(authEntityId(auth), 'protocol_write');

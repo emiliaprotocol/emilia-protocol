@@ -24,7 +24,9 @@ const MAX_BODY_BYTES = 10 * 1024;
 export async function POST(request) {
   try {
     // Host-verifier / operator only. Named identity required for the audit trail.
-    const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
+    const opAuth = /** @type {{ valid: boolean, operator_id?: string, role?: string|null, error?: string }} */ (
+      authenticateOperator(request, { requireOperatorIdentity: true })
+    );
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
     if (!hasPermission(opAuth.role, 'binding.verify')) {
       return epProblem(403, 'forbidden', 'Operator role lacks binding.verify permission');

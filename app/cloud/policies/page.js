@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from 'react';
 
+/**
+ * @typedef {import('react').CSSProperties} CSS
+ * @type {{ page: CSS, container: CSS, eyebrow: CSS, h1: CSS, subtitle: CSS, card: CSS,
+ *   topBar: CSS, searchInput: CSS, btn: CSS, mono: CSS, th: CSS, td: CSS,
+ *   badge: (bg: string, fg: string) => CSS, loading: CSS, error: CSS }}
+ */
 const s = {
   page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },

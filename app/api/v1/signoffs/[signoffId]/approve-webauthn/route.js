@@ -340,7 +340,7 @@ export async function POST(request, { params }) {
         receipt_id: loaded.receiptId,
         approver_id: body.approver_id,
         signed_at: decidedAt,
-        time_to_sign_ms: renderedAt ? Math.max(0, signedAt - renderedAt) : null,
+        time_to_sign_ms: renderedAt ? Math.max(0, /** @type {any} */ (signedAt) - /** @type {any} */ (renderedAt)) : null,
         decision,
         key_class: 'A',
         ...(renderedAt ? {} : { rendered_at: null }),

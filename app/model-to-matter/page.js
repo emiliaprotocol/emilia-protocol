@@ -245,8 +245,8 @@ export default function ModelToMatterPage() {
             <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640 }}>
               <thead>
                 <tr>
-                  <th style={{ ...styles.tableHead, width: '26%' }}>Attack</th>
-                  <th style={styles.tableHead}>What the gate does</th>
+                  <th style={/** @type {React.CSSProperties} */ ({ ...styles.tableHead, width: '26%' })}>Attack</th>
+                  <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>What the gate does</th>
                 </tr>
               </thead>
               <tbody>

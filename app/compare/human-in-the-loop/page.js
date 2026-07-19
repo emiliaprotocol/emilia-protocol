@@ -61,9 +61,9 @@ export default function CompareHumanInTheLoopPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dimension</th>
-                <th style={styles.tableHead}>DIY human-in-the-loop</th>
-                <th style={styles.tableHead}>EMILIA Protocol</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Dimension</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>DIY human-in-the-loop</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>EMILIA Protocol</th>
               </tr>
             </thead>
             <tbody>

@@ -14,6 +14,7 @@ const SIDEBAR_LINKS = [
   { href: '/cloud/settings', label: 'Settings', icon: '\u2699' },
 ];
 
+/** @type {Record<string, import('react').CSSProperties>} */
 const s = {
   wrapper: {
     display: 'flex',

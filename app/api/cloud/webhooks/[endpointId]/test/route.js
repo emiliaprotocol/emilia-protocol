@@ -52,7 +52,9 @@ export async function POST(request, { params }) {
       message: 'This is a test webhook delivery from the Emilia Protocol.',
     };
 
-    const result = await deliverWebhook(endpointId, 'webhook.test', testPayload);
+    const result = /** @type {{ delivery: any, error?: undefined, status?: undefined } | { delivery?: undefined, error: string, status: number }} */ (
+      await deliverWebhook(endpointId, 'webhook.test', testPayload)
+    );
 
     if (result.error) {
       return epProblem(result.status, 'test_delivery_failed', result.error);

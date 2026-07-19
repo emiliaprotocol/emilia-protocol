@@ -110,7 +110,7 @@ function fmtUSD(s) {
 
 // ── enrollment ────────────────────────────────────────────────────────────────
 async function enrollReal(approver, host) {
-  const cred = await navigator.credentials.create({
+  const cred = /** @type {PublicKeyCredential} */ (await navigator.credentials.create({
     publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
       rp: { name: 'EMILIA Protocol — Try It', id: host },
@@ -128,11 +128,11 @@ async function enrollReal(approver, host) {
       timeout: 60000,
       attestation: 'none',
     },
-  });
-  if (cred.response.getPublicKeyAlgorithm?.() !== -7) {
+  }));
+  if ((/** @type {AuthenticatorAttestationResponse} */ (cred.response)).getPublicKeyAlgorithm?.() !== -7) {
     throw new Error('This device did not offer an ES256 passkey.');
   }
-  const spki = cred.response.getPublicKey?.();
+  const spki = (/** @type {AuthenticatorAttestationResponse} */ (cred.response)).getPublicKey?.();
   if (!spki) throw new Error('This browser does not expose the public key (getPublicKey).');
   return { kind: 'real', spkiB64u: bytesToB64u(new Uint8Array(spki)), rawId: cred.rawId };
 }
@@ -148,7 +148,7 @@ async function enrollSim() {
 // ── signing → assemble a real EP signoff object ───────────────────────────────
 async function signReal(context, cred, host) {
   const challenge = await sha256Bytes(utf8(canonicalize(context)));
-  const assertion = await navigator.credentials.get({
+  const assertion = /** @type {PublicKeyCredential} */ (await navigator.credentials.get({
     publicKey: {
       challenge,
       allowCredentials: [{ type: 'public-key', id: cred.rawId }],
@@ -156,8 +156,8 @@ async function signReal(context, cred, host) {
       rpId: host,
       timeout: 60000,
     },
-  });
-  const r = assertion.response;
+  }));
+  const r = /** @type {AuthenticatorAssertionResponse} */ (assertion.response);
   return {
     context,
     webauthn: {
@@ -459,6 +459,7 @@ function ActionCard({ context }) {
   );
 }
 
+/** @param {{ ok: any, checks: any, title: any, meaning: any, forged?: any }} props */
 function VerifyPanel({ ok, checks, title, meaning, forged }) {
   const accent = ok ? color.green : color.red;
   const bg = ok ? '#F0FDF4' : '#FEF2F2';
@@ -501,11 +502,19 @@ function ErrorNote({ text }) {
 }
 
 // ── style atoms ───────────────────────────────────────────────────────────────
+/** @type {import('react').CSSProperties} */
 const card = { background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '24px 24px' };
+/** @type {import('react').CSSProperties} */
 const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: color.t2, marginBottom: 6, fontFamily: font.mono, letterSpacing: 0.5 };
+/** @type {import('react').CSSProperties} */
 const input = { width: '100%', padding: '12px 14px', borderRadius: radius.base, border: `1px solid ${color.inputBorder}`, background: color.card, color: color.t1, fontSize: 15, fontFamily: 'inherit', outline: 'none', marginBottom: 18, boxSizing: 'border-box' };
+/** @returns {import('react').CSSProperties} */
 const primaryBtn = (busy) => ({ width: '100%', background: color.t1, color: '#fff', border: 'none', borderRadius: radius.sm, padding: '14px 24px', fontFamily: font.sans, fontWeight: 600, fontSize: 15, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1 });
+/** @type {import('react').CSSProperties} */
 const secondaryBtn = { background: 'transparent', color: color.t1, border: `1px solid ${color.borderHover}`, borderRadius: radius.sm, padding: '11px 18px', fontFamily: font.sans, fontWeight: 600, fontSize: 14, cursor: 'pointer' };
+/** @type {import('react').CSSProperties} */
 const ghostBtn = { display: 'block', width: '100%', background: 'none', border: 'none', color: color.t3, fontSize: 13, cursor: 'pointer', fontFamily: font.sans, marginTop: 12, textAlign: 'center', textDecoration: 'underline' };
+/** @type {import('react').CSSProperties} */
 const ghostBtn2 = { background: 'none', border: 'none', color: color.t3, fontSize: 14, cursor: 'pointer', fontFamily: font.sans, padding: '11px 8px' };
+/** @type {import('react').CSSProperties} */
 const lnk = { color: color.blue, textDecoration: 'none' };

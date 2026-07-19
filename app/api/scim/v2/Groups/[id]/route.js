@@ -8,12 +8,17 @@ import {
 } from '@/lib/scim/core';
 import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
 
+/**
+ * @typedef {{ tenantId: string, organizationId?: string, tokenId: string, response?: undefined } | { response: import('next/server').NextResponse, tenantId?: undefined, organizationId?: undefined, tokenId?: undefined }} ScimAuthResult
+ * @typedef {{ resource: any, error?: undefined } | { error: { status: any, detail: any, scimType: any }, resource?: undefined }} ScimPatchResult
+ */
+
 async function loadGroup(supabase, tenantId, id) {
   return supabase.from('scim_groups').select('*').eq('tenant_id', tenantId).eq('id', id).maybeSingle();
 }
 
 export async function GET(request, { params }) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {ScimAuthResult} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
   const { id } = await params;
   const { data, error } = await loadGroup(getGuardedClient(), auth.tenantId, id);
@@ -23,7 +28,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {ScimAuthResult} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
   const { id } = await params;
   const parsed = await readScimJson(request);
@@ -46,7 +51,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {ScimAuthResult} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
   const { id } = await params;
   const parsed = await readScimJson(request);
@@ -59,7 +64,7 @@ export async function PATCH(request, { params }) {
   if (!current) return scimErrorResponse(404, `Group ${id} not found`);
 
   const base = scimBaseUrl(request);
-  const patched = applyPatch(toScimGroup(current, base), body);
+  const patched = /** @type {ScimPatchResult} */ (applyPatch(toScimGroup(current, base), body));
   if (patched.error) return scimErrorResponse(patched.error.status, patched.error.detail, patched.error.scimType);
 
   const validation = validateScimGroup(patched.resource);
@@ -72,7 +77,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const auth = await requireScimAuth(request);
+  const auth = /** @type {ScimAuthResult} */ (await requireScimAuth(request));
   if (auth.response) return auth.response;
   const { id } = await params;
   const supabase = getGuardedClient();

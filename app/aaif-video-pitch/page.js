@@ -328,6 +328,7 @@ export default function AaifVideoPitchPage() {
   );
 }
 
+/** @type {Record<string, React.CSSProperties>} */
 const s = {
   page: {
     minHeight: '100vh',

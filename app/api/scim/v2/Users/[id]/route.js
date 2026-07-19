@@ -22,6 +22,7 @@ async function loadUser(supabase, tenantId, id) {
 }
 
 export async function GET(request, { params }) {
+  /** @type {{ response?: import('next/server').NextResponse<any>, tenantId?: string, organizationId?: string, tokenId?: string }} */
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
   const { id } = await params;
@@ -36,6 +37,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
+  /** @type {{ response?: import('next/server').NextResponse<any>, tenantId?: string, organizationId?: string, tokenId?: string }} */
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
   const { id } = await params;
@@ -61,6 +63,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
+  /** @type {{ response?: import('next/server').NextResponse<any>, tenantId?: string, organizationId?: string, tokenId?: string }} */
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
   const { id } = await params;
@@ -76,6 +79,7 @@ export async function PATCH(request, { params }) {
 
   // Patch in SCIM space, then map back to columns.
   const base = scimBaseUrl(request);
+  /** @type {{ error?: { status: any, detail: any, scimType: any }, resource?: any }} */
   const patched = applyPatch(toScimUser(current, base), body);
   if (patched.error) return scimErrorResponse(patched.error.status, patched.error.detail, patched.error.scimType);
 
@@ -89,6 +93,7 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  /** @type {{ response?: import('next/server').NextResponse<any>, tenantId?: string, organizationId?: string, tokenId?: string }} */
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
   const { id } = await params;

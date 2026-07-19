@@ -23,6 +23,7 @@ import { getPublicBaseUrl } from '@/lib/env';
 const BASE = getPublicBaseUrl();
 const MAX_MCP_BYTES = 256 * 1024;
 
+/** @type {(obj: unknown) => { content: { type: 'text', text: string }[] }} */
 const text = (obj) => ({ content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] });
 
 export async function verifyReceiptTool({ document, public_key }) {
@@ -76,6 +77,7 @@ export async function verifySignoffTool({ signoff, approver_public_key, rp_id, a
   };
 }
 
+/** @type {(request: Request, context?: any) => Promise<Response>} */
 const handler = createMcpHandler(
   (server) => {
     server.registerTool(

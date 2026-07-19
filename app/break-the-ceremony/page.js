@@ -18,6 +18,7 @@ import SiteFooter from '@/components/SiteFooter';
 import ProofBlock from '@/components/ProofBlock';
 import { styles, color, font, radius, cta } from '@/lib/tokens';
 
+/** @type {[number, number, number, number]} */
 const EASE = [0.23, 1, 0.32, 1];
 const reveal = (d = 0) => ({
   initial: { opacity: 0, y: 18 },

@@ -32,7 +32,7 @@ export async function POST(request) {
     if (!limited.allowed) return mobileProblem(429, 'rate_limited', 'Too many mobile pairing requests');
     const auth = await authenticateRequest(request);
     if (auth.error) return mobileProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
-    try { requirePermission(auth, 'write'); } catch {
+    try { requirePermission(/** @type {any} */ (auth), 'write'); } catch {
       return mobileProblem(403, 'insufficient_permission', 'A write-capable organization key is required');
     }
     const parsed = await readLimitedJson(request, MAX_BODY_BYTES, { invalidValue: {} });

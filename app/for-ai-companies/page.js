@@ -27,6 +27,7 @@ const PAGE_JSONLD = {
   url: 'https://www.emiliaprotocol.ai/for-ai-companies',
 };
 
+/** @param {{ children: any, style?: React.CSSProperties }} props */
 const C = ({ children, style }) => (
   <div style={{ maxWidth: 920, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );

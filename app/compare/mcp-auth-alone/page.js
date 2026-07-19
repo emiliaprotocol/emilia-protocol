@@ -57,9 +57,9 @@ export default function CompareMcpPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dimension</th>
-                <th style={styles.tableHead}>MCP authorization (alone)</th>
-                <th style={styles.tableHead}>EP on top of MCP</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>Dimension</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>MCP authorization (alone)</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>EP on top of MCP</th>
               </tr>
             </thead>
             <tbody>

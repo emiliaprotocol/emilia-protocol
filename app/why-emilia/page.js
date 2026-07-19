@@ -23,6 +23,7 @@ export const metadata = {
   ],
 };
 
+/** @param {{ children: import('react').ReactNode, style?: import('react').CSSProperties }} props */
 const C = ({ children, style }) => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );

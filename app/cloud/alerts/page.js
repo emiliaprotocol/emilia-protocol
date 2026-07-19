@@ -21,11 +21,11 @@ const s = {
   },
   alertHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   alertTitle: { fontSize: 14, fontWeight: 600 },
-  alertMeta: { display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 },
+  alertMeta: /** @type {import('react').CSSProperties} */ ({ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }),
   mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
   badge: (bg, fg) => ({ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 0.5, padding: '3px 8px', borderRadius: 4, background: bg, color: fg }),
   btnSmall: { padding: '6px 14px', borderRadius: 6, fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: '1px solid rgba(59,130,246,0.3)', cursor: 'pointer', background: 'transparent', color: '#3B82F6' },
-  loading: { textAlign: 'center', padding: 60, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 },
+  loading: /** @type {import('react').CSSProperties} */ ({ textAlign: 'center', padding: 60, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }),
   error: { background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', color: '#f87171', fontSize: 13, marginBottom: 24 },
 };
 

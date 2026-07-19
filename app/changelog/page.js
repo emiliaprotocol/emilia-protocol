@@ -82,6 +82,7 @@ const RELEASES = [
   },
 ];
 
+/** @param {{ children: React.ReactNode, style?: React.CSSProperties }} props */
 const C = ({ children, style }) => (
   <div style={{ maxWidth: 820, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );

@@ -47,6 +47,7 @@ export async function POST(request) {
     // operator-attested path (prod has 0 SCIM rows today). Fail fast here before
     // the WebAuthn ceremony; register-verify re-checks as the authoritative gate.
     const supabase = getGuardedClient();
+    /** @type {{ error?: {status:number, code:string, detail:string}, hasDirectory?: boolean, basis?: 'directory'|'operator_attested', directoryUserId?: string|null, storedApproverId?: string }} */
     const basisResolution = await resolveEnrollmentBasis(supabase, organizationId, body.approver_id);
     if (basisResolution.error) {
       return epProblem(basisResolution.error.status, basisResolution.error.code, basisResolution.error.detail);

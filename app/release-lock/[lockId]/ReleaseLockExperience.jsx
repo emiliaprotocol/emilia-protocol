@@ -104,6 +104,7 @@ function CeremonyLedger({ lock, state }) {
   );
 }
 
+/** @param {{ approval: any, locked?: boolean }} props */
 function SeatCell({ approval, locked }) {
   if (locked) {
     return (
@@ -168,6 +169,7 @@ function PartyMatrix({ lock, state }) {
   );
 }
 
+/** @param {{ lock: any, ceremony: any, locked?: boolean, demo?: boolean }} props */
 function ActionCheck({
   lock,
   ceremony,

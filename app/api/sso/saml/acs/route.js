@@ -139,7 +139,7 @@ export async function POST(request) {
     directory,
     session: 'set',
   });
-  res.cookies.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+  res.cookies.set(SESSION_COOKIE, token, /** @type {any} */ (SESSION_COOKIE_OPTIONS));
   res.cookies.delete(SAML_STATE_COOKIE);
   return res;
 }

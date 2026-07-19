@@ -5,6 +5,7 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
+/** @type {React.CSSProperties} */
 const codeBox = {
   fontFamily: font.mono,
   fontSize: 12.5,

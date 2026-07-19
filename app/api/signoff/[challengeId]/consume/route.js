@@ -32,11 +32,11 @@ export async function POST(request, { params }) {
       return EP_ERRORS.BAD_REQUEST('Missing required field: executionRef');
     }
 
-    const result = await consumeSignoff({
+    const result = await consumeSignoff(/** @type {any} */ ({
       actor: authEntityActor(auth),
       signoffId,
       executionRef: body.executionRef,
-    });
+    }));
 
     if (result.error) {
       return epProblem(result.status || 500, 'signoff_consumption_failed', result.error);

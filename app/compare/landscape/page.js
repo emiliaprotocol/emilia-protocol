@@ -54,9 +54,9 @@ export default function CompareLandscapePage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans, minWidth: 760 }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dimension</th>
+                <th style={/** @type {import('react').CSSProperties} */ (styles.tableHead)}>Dimension</th>
                 {cols.map(c => (
-                  <th key={c.key} style={{ ...styles.tableHead, color: c.accent }}>{c.label}</th>
+                  <th key={c.key} style={/** @type {import('react').CSSProperties} */ ({ ...styles.tableHead, color: c.accent })}>{c.label}</th>
                 ))}
               </tr>
             </thead>

@@ -61,9 +61,9 @@ export default function CompareHumanLayerPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans }}>
             <thead>
               <tr>
-                <th style={styles.tableHead}>Dimension</th>
-                <th style={styles.tableHead}>Approval plumbing (e.g. HumanLayer)</th>
-                <th style={styles.tableHead}>EMILIA Protocol</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>Dimension</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>Approval plumbing (e.g. HumanLayer)</th>
+                <th style={/** @type {React.CSSProperties} */ (styles.tableHead)}>EMILIA Protocol</th>
               </tr>
             </thead>
             <tbody>

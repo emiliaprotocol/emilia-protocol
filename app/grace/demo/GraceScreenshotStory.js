@@ -194,14 +194,14 @@ export default function GraceScreenshotStory() {
       <SlideLabel number={6}>THE RELIANCE RECORD</SlideLabel>
       <h2>From human permission to physical consequence.</h2>
       <div className={styles.chain}>
-        {[
+        {(/** @type {Array<[import('react').ComponentType<any>, string]>} */ ([
           [Smartphone, 'Approve'],
           [ShieldCheck, 'Verify'],
           [Send, 'Dispatch'],
           [Gauge, 'Measure'],
           [FileCheck2, 'Record'],
           [BadgeDollarSign, 'Settle'],
-        ].map(([Icon, label]) => (
+        ])).map(([Icon, label]) => (
           <div className={styles.chainNode} key={label}>
             <Icon aria-hidden="true" size={25} />
             <span>{label}</span>
