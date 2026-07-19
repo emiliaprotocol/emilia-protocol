@@ -58,7 +58,7 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
       AUTHORIZED: expect.any(String),
       EXECUTED: expect.any(String),
     });
-    expect(llmsFull).toContain('## July 19 Post-Blackout Filing Wave');
+    expect(llmsFull).toContain('## July 19 Published Draft Set');
     expect(context.current_evidence.model_to_matter).toMatchObject({
       profile: 'EP-MODEL-TO-MATTER-v1',
       deterministic_vectors: 15,

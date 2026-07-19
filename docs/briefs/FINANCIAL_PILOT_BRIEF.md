@@ -67,7 +67,7 @@ Integration is at the API layer. No changes to core banking or payment logic.
 | Metric | Value |
 |--------|-------|
 | **Internal security review (self-administered, see docs/security/AUDIT_METHODOLOGY.md)** | **100/100** (2026-04-02, all 10 categories at maximum) |
-| Automated test cases | 6,729 across 353 files; all platform-applicable cases must pass |
+| Automated test cases | 6,746 across 354 files; all platform-applicable cases must pass |
 | TLA+ safety properties verified | 26 (TLC 2.19, 413,137 states, zero errors) — CI-enforced |
 | Alloy relational assertions verified | 35 facts + 32 assertions across four models (Alloy 6.2.0, zero counterexamples) — CI-enforced |
 | Mutation testing kill rate | ≥80% on protocol core (Stryker.js) |
