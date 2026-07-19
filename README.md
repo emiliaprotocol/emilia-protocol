@@ -32,6 +32,7 @@ fallback; it is not authority to withhold medically necessary care.
 > Current machine-readable evidence, provenance, assumptions, and exclusions are
 > published at [EMILIA-REPO-CONTEXT-v1](public/.well-known/emilia-context.json).
 > Archived or staged documents do not establish current implementation or IETF status.
+> Public due-diligence evidence and claim boundaries: [DUE_DILIGENCE.md](DUE_DILIGENCE.md).
 
 ## Engineering evidence, not architecture claims
 
