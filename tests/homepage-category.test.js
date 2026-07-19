@@ -63,8 +63,10 @@ describe('homepage category contract', () => {
     expect(proofBlock).toContain('injective_execution_with_consumption');
     expect(proofBlock).toContain('unchecked_composition_is_injective');
     expect(proofBlock).toContain('Open does not mean interchangeable.');
-    // The Alloy assertion count is now interpolated from proofStats, not a
-    // hardcoded literal — but the generated stats must still be 22.
-    expect(proofStats.alloy.assertions).toBe(22);
+    // The Alloy assertion count is interpolated from proofStats, not a hardcoded
+    // literal. It is 32 across the four models now executed headless in CI
+    // (ep_relations 15 + ep_federation 7 + ep_quorum 6 + ep_delegation 4); it was
+    // 22 when only ep_relations + ep_federation were counted.
+    expect(proofStats.alloy.assertions).toBe(32);
   });
 });

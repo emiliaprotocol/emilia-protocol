@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-19T03:18:29.716Z",
+  "evidence_snapshot_at": "2026-07-19T03:57:34.308Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "cef49d6aef456f0b63fe77bc58fd5d7e9a92fff4b62f2154477441ded9b2a8d2",
+    "input_digest_sha256": "f735ccfa4c761b04ac307f7fc480de31bd7807186a3475430c3c65b3af6ca6a7",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "3bf3e425c6405b5e3346a1400e43dd85b14e6e2bfca2662ec498685c4403dffe",
+        "sha256": "4fe492e1092dfc065ec79fb1a71d8401c4654ff6cff1ab09974bf38829ab0751",
         "bytes": 1068
       },
       {
@@ -257,8 +257,8 @@
       "tla_invariants": 26,
       "tla_checker": "TLC 2.19",
       "alloy_facts": 35,
-      "alloy_assertions": 22,
-      "alloy_version": "6.0.0 (CI)",
+      "alloy_assertions": 32,
+      "alloy_version": "6.2.0 (CI)",
       "tamarin_composed": {
         "model": "EP-RELIANCE-COMPOSED-v2",
         "verifiedObligations": 10,
