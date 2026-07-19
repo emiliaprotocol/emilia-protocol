@@ -371,6 +371,15 @@ export function auditReleaseChain(root = ROOT) {
   if (registry['@version'] !== 'EP-RELEASE-PACKAGE-REGISTRY-v1' || !Array.isArray(registry.packages)) {
     throw new Error('release package registry is malformed');
   }
+  const releaseRequirements = fs.readFileSync(
+    path.join(root, '.github/workflow-requirements/release.in'),
+    'utf8',
+  );
+  const hatchlingVersion = releaseRequirements.match(/^hatchling==([^\s]+)$/m)?.[1];
+  if (!hatchlingVersion) throw new Error('release toolchain does not pin hatchling');
+  const pinnedHatchling = new RegExp(
+    `requires\\s*=\\s*\\["hatchling==${escapeRegExp(hatchlingVersion)}"\\]`,
+  );
   const reusablePath = path.join(root, WORKFLOW_DIR, '_publish-npm-package.yml');
   validateReusableNpmWorkflowText(fs.readFileSync(reusablePath, 'utf8'));
 
@@ -438,7 +447,7 @@ export function auditReleaseChain(root = ROOT) {
       }
     } else if (entry.ecosystem === 'pypi') {
       const pyproject = fs.readFileSync(path.join(packagePath, 'pyproject.toml'), 'utf8');
-      if (!/requires\s*=\s*\["hatchling==1\.27\.0"\]/.test(pyproject)) {
+      if (!pinnedHatchling.test(pyproject)) {
         throw new Error(`${entry.package} does not pin its Python build backend`);
       }
     } else if (entry.ecosystem === 'go') {
