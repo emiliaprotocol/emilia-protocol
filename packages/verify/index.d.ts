@@ -340,6 +340,14 @@ export interface TrustReceiptVerificationOptions {
    * the software behaved.
    */
   requireInitiatorAttestation?: boolean;
+  /**
+   * DORMANT legacy opt-in: verify pre-v2 (sorted-pair, undomain-separated)
+   * Merkle inclusion. Never the default and never used by production gates;
+   * present only so callers holding pre-v2 proofs can explicitly opt in.
+   */
+  allowLegacyMerkle?: boolean;
+  /** Alias of `allowLegacyMerkle` for the Trust Receipt inclusion path. */
+  allowLegacyTrustReceiptMerkle?: boolean;
 }
 
 /**
@@ -599,3 +607,27 @@ export interface QuorumResult {
 
 /** Verify an EP-QUORUM-v1 multi-party approval (composes verifyWebAuthnSignoff; fail-closed). */
 export function verifyQuorum(quorum: object, opts?: { rpId?: string; allowedOrigins?: string[] }): QuorumResult;
+
+/**
+ * Deterministic canonical serialization (RFC 8785 JCS for the value subset EP
+ * signs) — the single canonicalization source of truth shared by every offline
+ * verifier module so signer and verifier produce byte-identical material.
+ */
+export function canonicalize(value: unknown): string;
+
+/** b64u/hex SHA-256 over `canonicalize(context)`; links each ordered signoff to its predecessor. */
+export function contextChainHash(context: unknown): string;
+
+export const TIME_ATTESTATION_VERSION: 'EP-TIME-ATTESTATION-v1';
+
+/** EP-TIME-ATTESTATION-v1: independent, pinned, offline-verifiable proof of WHEN (trusted-time anchor). */
+export function verifyTimeAttestation(
+  att: Record<string, unknown> | null | undefined,
+  opts?: {
+    pinnedTsaKeys?: string | string[] | Record<string, string>;
+    expectedHash?: string | Uint8Array;
+    notBefore?: number | string | Date;
+    notAfter?: number | string | Date;
+    [k: string]: unknown;
+  }
+): { valid: boolean; checks: Record<string, boolean>; errors: string[] };

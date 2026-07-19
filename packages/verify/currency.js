@@ -128,10 +128,10 @@ function headRevokesReceipt(freshHead, receipt) {
  * CANNOT establish and which is therefore 'unknown' by default).
  *
  * @param {object} args
- * @param {object} args.receipt  the receipt being evaluated. Used only to match
+ * @param {object} [args.receipt]  the receipt being evaluated. Used only to match
  *   a `freshHead` revocation signal to this authorization; its offline
  *   cryptography is NOT re-checked here.
- * @param {boolean} args.authentic_as_of_commit  the boolean the caller already
+ * @param {boolean} [args.authentic_as_of_commit]  the boolean the caller already
  *   computed from offline verification (e.g. verifyTrustReceipt(...).valid).
  *   Passed through verbatim. Fail-safe: anything not strictly `true` is
  *   recorded as false.
