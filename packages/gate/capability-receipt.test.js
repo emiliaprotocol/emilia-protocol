@@ -152,6 +152,103 @@ test('capability scope is mandatory, signed, exact, and operation-bound', async 
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
 });
 
+test('capability executes the exact immutable action that passed scope verification', async () => {
+  const keys = issuer();
+  const authorizedAction = scopedAction('exact-action-op', {
+    amount: 10,
+    destination: 'acct_authorized',
+    material: { invoice_id: 'invoice_1' },
+  });
+  const unverifiedAction = {
+    ...authorizedAction,
+    destination: 'acct_attacker',
+    material: { invoice_id: 'invoice_attacker' },
+  };
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'operation_id',
+      action_digests: [capabilityActionDigest(authorizedAction)],
+    },
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+
+  let verifierContext;
+  let executedAction;
+  const result = await executeWithCapability({
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action: unverifiedAction,
+    observedAction: authorizedAction,
+    operationId: authorizedAction.operation_id,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: (_receipt, context) => {
+      verifierContext = context;
+      assert.equal(Object.isFrozen(context.action), true);
+      assert.equal(Object.isFrozen(context.action.material), true);
+      return true;
+    },
+    executeAction: async (action) => {
+      executedAction = action;
+      return 'settled';
+    },
+    now: NOW,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.result, 'settled');
+  assert.deepEqual(verifierContext.action, authorizedAction);
+  assert.deepEqual(verifierContext.observedAction, authorizedAction);
+  assert.deepEqual(executedAction, authorizedAction);
+  assert.notDeepEqual(executedAction, unverifiedAction);
+  assert.equal(store.getOperation(authorizedAction.operation_id).action_digest, capabilityActionDigest(authorizedAction));
+  assert.equal(store.getOperation(authorizedAction.operation_id).amount, authorizedAction.amount);
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, authorizedAction.amount);
+});
+
+test('capability refuses an understated budget projection before execution', async () => {
+  const keys = issuer();
+  const authorizedAction = scopedAction('budget-binding-op', {
+    amount: 10,
+    destination: 'acct_authorized',
+  });
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'operation_id',
+      action_digests: [capabilityActionDigest(authorizedAction)],
+    },
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+
+  let effects = 0;
+  const result = await executeWithCapability({
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action: { ...authorizedAction, amount: 1 },
+    observedAction: authorizedAction,
+    operationId: authorizedAction.operation_id,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async () => {
+      effects += 1;
+    },
+    now: NOW,
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'capability budget projection does not match the verified action');
+  assert.equal(effects, 0);
+  assert.equal(store.getOperation(authorizedAction.operation_id), null);
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
+});
+
 test('CAID scope requires a pinned resolver and matches only an allowed CAID', async () => {
   const keys = issuer();
   const action = {
