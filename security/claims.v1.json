@@ -598,7 +598,7 @@
         { "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["actions/attest@a1948c3f048ba23858d222213b7c278aabede763", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" \"../../registry-copy/$REGISTRY_TARBALL\""] }
+        { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" \"../../registry-copy/$REGISTRY_TARBALL\""] }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Hosted CI identity, npm registry behavior, and Sigstore availability are operational trust assumptions rather than protocol-state properties." }
@@ -681,7 +681,7 @@
         { "file": "tests/release-approval.test.js", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@a1948c3f048ba23858d222213b7c278aabede763", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
         { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "gh-action-pypi-publish@", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["npm run security-case:emit", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance"] },
