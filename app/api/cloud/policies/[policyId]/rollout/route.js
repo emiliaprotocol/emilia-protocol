@@ -160,7 +160,14 @@ export async function POST(request, { params }) {
         environment: body.environment,
         strategy,
         status: 'active',
-        initiated_by: auth.operatorId || auth.principalId || 'unknown',
+        // authenticateCloudRequest() returns {tenantId, environment, permissions,
+        // keyId} — it has never returned operatorId or principalId, so the old
+        // `auth.operatorId || auth.principalId || 'unknown'` recorded 'unknown'
+        // for every rollout ever initiated. The API key IS the operator identity
+        // available at this boundary; keyId is the tenant_api_keys primary key and
+        // is always set on a successful auth. Prefixed 'key:' to match the
+        // type:id convention this column already carries (cf. 'agent:...').
+        initiated_by: auth.keyId ? `key:${auth.keyId}` : 'unknown',
         tenant_id: auth.tenantId || null,
         canary_pct: strategy === 'canary' ? body.canary_pct : null,
         initiated_at: now,

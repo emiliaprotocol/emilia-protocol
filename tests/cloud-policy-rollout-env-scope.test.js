@@ -232,3 +232,80 @@ describe('cloud policy rollout — environment-scope enforcement (Sentrix HIGH a
     expect(client.calls.inserts).toHaveLength(1);
   });
 });
+
+// ── operator attribution in the rollout audit trail ─────────────────────────
+//
+// The route recorded `initiated_by: auth.operatorId || auth.principalId ||
+// 'unknown'`, but authenticateCloudRequest() returns only {tenantId,
+// environment, permissions, keyId} — it has never returned operatorId or
+// principalId. So every rollout ever initiated was attributed to 'unknown',
+// and a policy rollout is exactly the action whose audit trail has to name who
+// initiated it.
+//
+// The bug survived because the doubles ABOVE mock auth with `operatorId:'op-1'`,
+// a field the real function never produces — a test double more generous than
+// reality. These cases deliberately mock the REAL auth shape.
+
+describe('cloud policy rollout — operator attribution', () => {
+  /** The exact object authenticateCloudRequest returns (lib/cloud/auth.js). */
+  function realAuthShape(overrides = {}) {
+    return {
+      tenantId: 'tenant-1',
+      environment: null,
+      permissions: ['admin'],
+      keyId: 'key-abc123',
+      ...overrides,
+    };
+  }
+
+  it('attributes the rollout to the authenticated API key, not "unknown"', async () => {
+    mockAuthenticate.mockResolvedValue(realAuthShape());
+    const client = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await POST(
+      req({ version: 2, environment: 'production', strategy: 'immediate' }),
+      { params },
+    );
+
+    expect(res.status).toBe(200);
+    expect(client.calls.inserts).toHaveLength(1);
+    const { initiated_by: initiatedBy } = client.calls.inserts[0].payload;
+    expect(initiatedBy).toBe('key:key-abc123');
+    expect(initiatedBy).not.toBe('unknown');
+  });
+
+  it('does not depend on operatorId/principalId, which auth never returns', async () => {
+    // Guards against a future refactor reintroducing the phantom fields: even
+    // when they are explicitly absent, attribution must still resolve.
+    const auth = realAuthShape();
+    expect(auth.operatorId).toBeUndefined();
+    expect(auth.principalId).toBeUndefined();
+
+    mockAuthenticate.mockResolvedValue(auth);
+    const client = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    await POST(
+      req({ version: 2, environment: 'staging', strategy: 'immediate' }),
+      { params },
+    );
+
+    expect(client.calls.inserts[0].payload.initiated_by).toBe('key:key-abc123');
+  });
+
+  it('falls back to "unknown" only when no key identity exists (column is NOT NULL)', async () => {
+    mockAuthenticate.mockResolvedValue(realAuthShape({ keyId: undefined }));
+    const client = makeClient();
+    mockGetGuardedClient.mockReturnValue(client);
+
+    await POST(
+      req({ version: 2, environment: 'staging', strategy: 'immediate' }),
+      { params },
+    );
+
+    // policy_rollouts.initiated_by is TEXT NOT NULL (migration 068), so the
+    // fallback must be a string rather than null/undefined.
+    expect(client.calls.inserts[0].payload.initiated_by).toBe('unknown');
+  });
+});
