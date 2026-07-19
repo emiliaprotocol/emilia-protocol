@@ -102,7 +102,7 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 | File | Format | Checks | How to Run |
 |------|--------|--------|------------|
 | `formal/ep_handshake.tla` | TLA+ | 26 safety theorems (T1–T26, all verified by TLC 2.19, including the 6 EP-IX continuity properties); 32 actions (including 9 EP-IX continuity actions); 15 variables | TLC model checker with `Handshakes = {h1}`, `Actors = {a1, a2}`, `Policies = {p1}`, `Claims = {c1}` — see `formal/PROOF_STATUS.md` |
-| `formal/ep_relations.als` | Alloy 6 | 35 facts (F1-F35), 15 assertions (A1-A15), 5 visualization predicates, 6 new signatures (Mutation, Delegation, PolicyVersion, SignoffChallenge, SignoffAttestation, SignoffConsumption) | Alloy Analyzer `check` commands (scope 6-8) |
+| `formal/ep_relations.als` | Alloy 6.2.0 | 35 facts (F1-F35), 15 assertions (A1-A15), 5 visualization predicates, 6 new signatures (Mutation, Delegation, PolicyVersion, SignoffChallenge, SignoffAttestation, SignoffConsumption) | Alloy Analyzer `check` commands (scope 6-8); repository CI now gates 32 assertions across four Alloy models |
 
 ---
 
@@ -199,7 +199,7 @@ If any critical invariant loses any coverage layer, CI fails with a detailed rep
 ## Next Steps
 
 1. ~~Run TLC on `ep_handshake.tla` with `Handshakes = {h1}`, `Actors = {a1, a2}`, `Policies = {p1}`, `Claims = {c1}`~~ — **DONE (2026-04-30)**: 413,137 states, 0 errors, all 26 theorems hold including the EP-IX continuity properties (T21–T26).
-2. ~~Run Alloy Analyzer on `ep_relations.als`~~ — **DONE (2026-04-30)**: 15 of 15 assertions pass with 0 counterexamples (including A12–A15 signoff assertions). 35 facts (F1–F35) verified. CI runs Alloy 6.0.0 on every push.
+2. ~~Run Alloy Analyzer on `ep_relations.als`~~ — **DONE (2026-04-30; CI upgraded 2026-07-18)**: 15 of 15 assertions in this model pass with 0 counterexamples (including A12–A15 signoff assertions). 35 facts (F1–F35) verified. CI now runs Alloy 6.2.0 and gates 32 assertions across all four checked models on every push.
 3. Implement signoff runtime code (`lib/signoff/challenge.js`, `lib/signoff/approve.js`, `lib/signoff/revoke.js`) to enforce S14-S19
 4. Add signoff test coverage for S14-S19
 5. Add TLA+ coverage for D3-D5 (idempotency, party uniqueness, binding hash integrity)

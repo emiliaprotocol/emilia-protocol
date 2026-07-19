@@ -1,5 +1,10 @@
 # Internal Security Audit — Methodology and Scope
 
+> Point-in-time self-assessment from April 2026. The score and model counts below
+> are historical, not a current external certification. Current executable
+> evidence is recorded in `security/security-case.json`, `lib/proof-stats.json`,
+> and the latest CI run.
+
 **Score**: 100/100 across all 10 categories
 **Date**: April 2, 2026
 **Conducted by**: Internal L99 adversarial audit (see methodology below)
@@ -17,7 +22,7 @@ The audit uses a 10-category rubric where each category is scored 0–10. A scor
 
 | # | Category | Weight | Score | Evidence |
 |---|---|---|---|---|
-| 1 | **Protocol design correctness** | 10 | 10/10 | 26 TLA+ safety properties verified by TLC 2.19 (413,137 states, 0 errors); 15 Alloy assertions verified (Alloy 6.0.0, 0 counterexamples) |
+| 1 | **Protocol design correctness** | 10 | 10/10 | At assessment time: 26 TLA+ safety properties verified by TLC 2.19 (413,137 states, 0 errors); 15 Alloy assertions verified (Alloy 6.0.0, 0 counterexamples). Current CI proof counts are in `lib/proof-stats.json`. |
 | 2 | **Replay and double-consumption prevention** | 10 | 10/10 | `SELECT ... FOR UPDATE` in `verify_handshake_writes` RPC; DB-level unique constraint on `handshake_bindings`; partial unique index on `signoff_attestations(signoff_id) WHERE status='consumed'` (migration 079, post-audit hardening); binding consumption tested in 100-way concurrent race |
 | 3 | **Nonce and binding integrity** | 10 | 10/10 | `checkBinding()` enforces symmetric nonce_required guard (mirrors payload_hash_required pattern); empty/null/undefined nonce all rejected; 9 test cases in `handshake-bind.test.js` and `protocol-hardening-v2.test.js` |
 | 4 | **Policy integrity and version pinning** | 10 | 10/10 | `policy_version_number` written atomically in `create_handshake_atomic` RPC (migration 070); `policy_version_pin_mismatch` error code added; verified in `verify.js` before binding consumption |

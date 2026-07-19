@@ -2,7 +2,7 @@
 
 ## What's new (June 2026)
 - **18 suites / 251 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
-- **Composition (EP-AEC):** EP composes delegation + policy-permit + human-authorization receipts into one offline ALLOW/DENY — the convergence layer for the emerging IETF agent-authorization standards, not one of a dozen competing formats.
+- **Composition (EP-AEC):** EP composes delegation, policy-permit, and human-authorization receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The agency's executor makes the separate authorization decision.
 - **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (the mandated independent double-check, PHI-free receipts) extend the same primitive across oversight regimes.
 
 ## Problem
@@ -38,7 +38,7 @@ Government fraud and unauthorized action often occur inside approved-looking wor
 - Atomic transactions: all endpoints use single-roundtrip atomic RPCs, no partial state; handshake p95 87ms at 500 concurrent users
 - 6,692 automated test cases across 348 files, with all platform-applicable cases required to pass; Stryker.js mutation gate ≥90%; property-based and linearizability testing included
 - 85 red team cases documented; repository security checks pass, while the live Strix retest and deployment validation remain open
-- 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 22 assertions verified (Alloy 6.0.0, 0 counterexamples) — both enforced in CI on every change
+- 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 32 assertions across four models verified (Alloy 6.2.0, 0 counterexamples) — both enforced in CI on every change
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events
 - Database: 46 EP-only tables, zero foreign artifacts
 - 27 CI quality gates across 12 automated workflows; all GitHub Actions SHA-pinned for supply chain security

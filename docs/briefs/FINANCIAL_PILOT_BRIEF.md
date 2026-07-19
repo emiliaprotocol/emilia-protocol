@@ -3,7 +3,7 @@
 ## What's new (June 2026)
 - **18 suites / 251 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
 - **Payment-redirect / BEC defense, demonstrably:** the payee account is *inside* the signed action, so swapping it after approval breaks verification. Run `npx -y @emilia-protocol/crash-test --scenario procurement` to watch it reject a post-approval account swap, offline.
-- **Composition (EP-AEC):** EP composes policy-permit and human-authorization receipts into one offline ALLOW/DENY — require both a policy check and a named human on the same action.
+- **Composition (EP-AEC):** EP composes policy-permit and human-authorization receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The transaction executor separately authorizes, and can require both evidence legs on the same action.
 
 ## Problem
 
@@ -69,7 +69,7 @@ Integration is at the API layer. No changes to core banking or payment logic.
 | **Internal security review (self-administered, see docs/security/AUDIT_METHODOLOGY.md)** | **100/100** (2026-04-02, all 10 categories at maximum) |
 | Automated test cases | 6,692 across 348 files; all platform-applicable cases must pass |
 | TLA+ safety properties verified | 26 (TLC 2.19, 413,137 states, zero errors) — CI-enforced |
-| Alloy relational assertions verified | 35 facts + 22 assertions (Alloy 6.0.0, zero counterexamples) — CI-enforced |
+| Alloy relational assertions verified | 35 facts + 32 assertions across four models (Alloy 6.2.0, zero counterexamples) — CI-enforced |
 | Mutation testing kill rate | ≥80% on protocol core (Stryker.js) |
 | Property-based tests | 19 fast-check generative tests on protocol invariants |
 | Red team attack scenarios | 85 cataloged cases |
