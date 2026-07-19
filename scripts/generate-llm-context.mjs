@@ -230,7 +230,6 @@ const context = {
     decision_vocabulary: standardsStatus.decision_vocabulary,
     layers: standardsStatus.portfolio_layers,
     july_19_2026_core_wave: standardsStatus.july_19_2026_core_wave,
-    july_27_2026_lifecycle_wave: standardsStatus.july_27_2026_lifecycle_wave,
     retired_absorbed: standardsStatus.retired_absorbed,
     partner_triggered_profiles: standardsStatus.partner_triggered_profiles,
     held: standardsStatus.held,

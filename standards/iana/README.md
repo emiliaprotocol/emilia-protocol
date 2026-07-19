@@ -16,9 +16,8 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 - `media-type-registration.md` — RFC 6838 §5.6 templates (provisional
   standard media type path) for `application/authorization-evidence-challenge+json`
   and `application/ep-receipt+json`; explicit not-prepared list.
-- `well-known-uri-registration.md` — RFC 8615 templates for
-  `agent-action-control.json` (the one registration a draft already requests)
-  and `ep-authority.json` (PROPOSED).
+- `well-known-uri-registration.md` — RFC 8615 template for
+  `agent-action-control.json`, which a published draft already requests.
 - `http-field-registration.md` — RFC 9110 §16.3.1 templates for
   `Receipt-Required` and `X-EMILIA-Receipt` (both PROPOSED; includes the
   RFC 6648 "X-" note).
@@ -30,12 +29,11 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
 | 2 | `application/authorization-evidence-challenge+json` | Media Types (provisional, standards tree) | draft-schrock-authorization-evidence-challenge-00 (§2, §5) | String specified in §2; §5 says "a future revision will register" | READY-ON-POST (provisional); permanent registration needs the -01 to carry the template | Draft live on datatracker; -01 for permanent |
 | 3 | `application/ep-receipt+json` | Media Types (provisional, standards tree) | draft-schrock-ep-authorization-receipts-05 (§12) | String specified; "may register" only | PROPOSED, requires draft text in next rev | A -06 (or later) IANA Considerations committing to it |
-| 4 | `ep-authority.json` | Well-Known URIs | draft-schrock-ep-authority-introduction-00 (§8) | String specified; "anticipated for a future revision"; -00 declares no IANA actions | PROPOSED, requires draft text in next rev | Next revision carrying the request |
-| 5 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
-| 6 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
-| 7 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10) | Illustrative only ("e.g.") | NOT PREPARED | Chain draft must pick and fix the string first |
-| 8 | `application/ep-eye-advisory+json` + SET event-type URI | Media Types / SET event URI | posted/draft-schrock-emilia-eye-00 | "may register" | NOT PREPARED | A revision committing to it |
-| 9 | JWT/CWT claim names | JWT Claims / CWT Claims | draft-schrock-human-authorization-binding-00 (§8) | "anticipated for a future revision, after host-format feedback" | NOT PREPARED | Host-format feedback, then next rev |
+| 4 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
+| 5 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
+| 6 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10) | Illustrative only ("e.g.") | NOT PREPARED | Chain draft must pick and fix the string first |
+| 7 | `application/ep-eye-advisory+json` + SET event-type URI | Media Types / SET event URI | posted/draft-schrock-emilia-eye-00 | "may register" | NOT PREPARED | A revision committing to it |
+| 8 | JWT/CWT claim names | JWT Claims / CWT Claims | draft-schrock-human-authorization-binding-00 (§8) | "anticipated for a future revision, after host-format feedback" | NOT PREPARED | Host-format feedback, then next rev |
 
 Not IANA actions (no filing anywhere): the EP **profile registry** entries the
 drafts declare — `grid.curtailment` (draft-schrock-kintzele-grid-curtailment-00),

@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-07-19T19:24:40.298Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "f5bdd7ea7d9044e12147725f4a32f159a77d20e2155e8da18c15e97dc319c2b1",
+    "input_digest_sha256": "339be4315a545629654964504b84e35800d2369a0d564cac56b8ab125e2b689d",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -12,8 +12,8 @@
       },
       {
         "path": "scripts/generate-llm-context.mjs",
-        "sha256": "e6a975bd2b9d7156f1224e133368be957860c296831e6435cdb9e9b041994b58",
-        "bytes": 25266
+        "sha256": "a0dfdecd25bcf5cd08cf20bee33bdf53bc7ad92dac1b3e23d9b03a4e7ae72dfc",
+        "bytes": 25188
       },
       {
         "path": "lib/proof-stats.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "39a87d0916fb942460bbada34d004eb05a5dcc9a1471586a34443c648e0d51be",
-        "bytes": 15765
+        "sha256": "80163ed66fde219f2d30d4ff8259d890812bb73afa8a74cd045cc022ce84136e",
+        "bytes": 15665
       },
       {
         "path": "caid/conformance/vectors.json",

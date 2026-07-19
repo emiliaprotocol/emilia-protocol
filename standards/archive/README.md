@@ -16,8 +16,8 @@ The following unfiled standalone candidates were retired on 2026-07-14:
 - `draft-schrock-ep-assurance-classes-00`: replaced by verifier-visible proof
   predicates and profile-local compatibility aliases; no shared S/H/V/Q
   taxonomy is being proposed.
-- `draft-schrock-ep-authority-registry-00`: surviving scoped-authority material
-  is assigned to the next Authority Introduction revision.
+- `draft-schrock-ep-authority-registry-00`: scoped-authority material was
+  absorbed into published Authority Introduction-01.
 - `draft-schrock-ep-pqc-00`: surviving crypto-agility and anti-stripping
   requirements are assigned to Evidence Record; no separate algorithm catalog
   is being filed.

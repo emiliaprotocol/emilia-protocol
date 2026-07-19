@@ -51,42 +51,7 @@ effect boundary is authoritative and the manifest cannot relax it.
 
 ---
 
-## 2. ep-authority.json
-
-**Status: PROPOSED, requires draft text in next rev.**
-`draft-schrock-ep-authority-introduction-00`, Section 8 (IANA Considerations):
-"This document has no IANA actions. A well-known URI registration
-(ep-authority.json) is anticipated for a future revision." The suffix string
-is draft-specified, but the -00 explicitly declares no IANA actions, so do
-**not** file this until a revision carries the registration request. The
-template below is prepared so that revision can paste it in.
-
-### Registration template (RFC 8615 §3.1)
-
-**URI suffix:** ep-authority.json
-
-**Change controller:** IETF
-
-**Specification document(s):**
-draft-schrock-ep-authority-introduction (revision carrying the registration
-request; -00 is current: "Authority Documents and Graded Introduction: Trust
-Establishment for Agent-Action Evidence Without Prior Federation", Section 2
-defines the Authority Document, `EP-AUTHORITY-DOC-v1`). An active individual
-Internet-Draft, not IETF-adopted or endorsed.
-
-**Status:** provisional *(suggested for the initial filing; move to permanent
-if the specification's standing later warrants it)*
-
-**Related information:** The document served at this location introduces an
-authority's keys and continuity chain for graded, replayable acceptance
-(draft Sections 3-5). Serving it at a well-known location is discovery, not
-trust: acceptance remains graded under the relying party's policy, and a
-fetched authority document proves nothing by itself beyond what its
-signatures and continuity checks verify.
-
----
-
-## Explicitly NOT registered
+## Explicitly not registered
 
 | Suffix | Why not |
 |---|---|
