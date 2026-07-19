@@ -39,6 +39,11 @@ function boundedText(value, maximum, { empty = false } = {}) {
     && !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value);
 }
 
+/**
+ * @param {[string, unknown]} a  [fieldName, value] entry
+ * @param {[string, unknown]} b  [fieldName, value] entry
+ * @returns {number}
+ */
 function compareFieldNames([left], [right]) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -64,7 +69,7 @@ export function projectMobileAction(action) {
     throw new TypeError('mobile action must contain 1 to 64 controlled fields');
   }
   return Object.fromEntries(fields
-    .map(([name, value]) => [name, materialText(value)])
+    .map(([name, value]) => /** @type {[string, string]} */ ([name, materialText(value)]))
     .sort(compareFieldNames));
 }
 
