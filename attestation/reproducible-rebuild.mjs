@@ -7,25 +7,78 @@
  * the artifact TWICE from a canonicalized input and refuses if the bytes differ,
  * so the sha256 it returns is a determinism-proven binary hash.
  *
- * BOUNDARY (honest): this rebuilds the package as it exists in the CURRENT
- * worktree. It does NOT itself check out an arbitrary historical commit — that is
- * the job of the build harness (git checkout <commit> && npm ci) that runs this.
- * When invoked as the rebuild link, the caller is responsible for having the
- * pinned source.commit checked out; verifyBuildAttestation compares the resulting
- * hash to the record's claimed binary hash, which is where "binary == build of
- * source" is actually enforced.
+ * This rebuilds the package from the CURRENT worktree and therefore verifies,
+ * before packaging, that the worktree is clean and that HEAD exactly equals the
+ * attested source.commit. It does not check out an arbitrary historical commit:
+ * the build harness must do that first. A caller cannot silently rebuild another
+ * revision and relabel its bytes as the pinned source.
  *
  * @license Apache-2.0
  */
 
+import { execFileSync } from 'node:child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { verifyReproduciblePackage } from '../scripts/verify-reproducible-package.mjs';
+
+const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const GIT_SHA = /^[0-9a-f]{40}$/;
+
+function runGit(args) {
+  return execFileSync('git', ['-C', REPOSITORY_ROOT, ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+/**
+ * Verify the live source state before a reproducible build.
+ *
+ * `git` is injectable only so the fail-closed checks can be tested without
+ * mutating the repository. Production callers use the real Git executable.
+ *
+ * @param {{ commit: string }} source
+ * @param {(args: string[]) => string} [git]
+ * @returns {{ source_commit: string }}
+ */
+export function assertPinnedSource(source, git = runGit) {
+  if (!source || typeof source.commit !== 'string' || !GIT_SHA.test(source.commit)) {
+    throw new Error('source_commit_invalid: expected a 40-hex git commit');
+  }
+
+  let head;
+  let status;
+  try {
+    head = git(['rev-parse', 'HEAD']).trim();
+    status = git(['status', '--porcelain=v1', '--untracked-files=normal']);
+  } catch (error) {
+    throw new Error(`source_state_unverifiable: ${error?.message || error}`);
+  }
+
+  if (!GIT_SHA.test(head)) {
+    throw new Error('source_state_unverifiable: git HEAD is not a 40-hex commit');
+  }
+  if (head !== source.commit) {
+    throw new Error(`source_commit_mismatch: checked-out HEAD ${head} != attested ${source.commit}`);
+  }
+  if (status.trim() !== '') {
+    throw new Error('source_worktree_dirty: reproducible rebuild requires a clean pinned worktree');
+  }
+  return { source_commit: head };
+}
 
 /**
  * A rebuild function suitable for verifyBuildAttestation({ rebuild }).
  * @param {{ commit: string, package_path: string }} source
- * @returns {{ sha256: string, filename: string, bytes: number }}
+ * @returns {{ source_commit: string, sha256: string, filename: string, bytes: number }}
  */
 export function reproducibleRebuild(source) {
+  const pinned = assertPinnedSource(source);
   const result = verifyReproduciblePackage(source.package_path);
-  return { sha256: result.sha256, filename: result.filename, bytes: result.bytes };
+  return {
+    source_commit: pinned.source_commit,
+    sha256: result.sha256,
+    filename: result.filename,
+    bytes: result.bytes,
+  };
 }

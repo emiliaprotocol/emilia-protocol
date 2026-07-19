@@ -183,8 +183,9 @@ function tpmQuoteStructureError(q) {
  *
  * @param {object} record - EP-BUILD-ATTESTATION-v1
  * @param {object} [opts]
- * @param {(source: {commit: string, package_path: string}) => {sha256: string, filename?: string, bytes?: number}} [opts.rebuild]
- *        Live reproducible-build function. Injected so this verifier stays pure.
+ * @param {(source: {commit: string, package_path: string}) => {source_commit: string, sha256: string, filename?: string, bytes?: number}} [opts.rebuild]
+ *        Live reproducible-build function. It MUST report the checked-out source
+ *        commit it actually built. Injected so this verifier stays pure.
  * @param {(quote: object) => {ok: boolean, reason?: string, pcrDigest?: string}} [opts.tpmHardwareVerifier]
  *        Real TPM verifier, only where hardware exists.
  * @returns {{ valid: boolean, complete: boolean, links: object, reason?: string }}
@@ -251,11 +252,32 @@ export function verifyBuildAttestation(record, opts = {}) {
       links.rebuild = { status: 'error', reason: 'rebuild did not return a 64-hex sha256' };
       return { valid: false, complete: false, links, reason: 'rebuild_error' };
     }
+    if (typeof rebuilt.source_commit !== 'string' || !GIT_SHA.test(rebuilt.source_commit)) {
+      links.rebuild = { status: 'error', reason: 'rebuild did not report the checked-out source_commit' };
+      return { valid: false, complete: false, links, reason: 'rebuild_source_unverified' };
+    }
+    if (rebuilt.source_commit !== record.source.commit) {
+      links.rebuild = {
+        status: 'source_mismatch',
+        built_source_commit: rebuilt.source_commit,
+        claimed_source_commit: record.source.commit,
+      };
+      return {
+        valid: false,
+        complete: false,
+        links,
+        reason: 'rebuild_source_mismatch: checked-out source is not record.source.commit',
+      };
+    }
     if (rebuilt.sha256 !== record.artifact.sha256) {
       links.rebuild = { status: 'mismatch', built_sha256: rebuilt.sha256, claimed_sha256: record.artifact.sha256 };
       return { valid: false, complete: true, links, reason: 'rebuild_mismatch: binary hash is not the deterministic build of the pinned source' };
     }
-    links.rebuild = { status: 'matched', sha256: rebuilt.sha256 };
+    links.rebuild = {
+      status: 'matched',
+      source_commit: rebuilt.source_commit,
+      sha256: rebuilt.sha256,
+    };
     complete = true;
   }
 

@@ -9,8 +9,8 @@
  *   node attestation/verify-cli.mjs verify <record.json> [--rebuild]
  *       Verifies a record offline (leaf binding + log inclusion). With --rebuild,
  *       also runs the live reproducible build and enforces binary == build of
- *       source (the CURRENT worktree must be the pinned commit — see
- *       reproducible-rebuild.mjs).
+ *       source. The live rebuild refuses unless the CURRENT worktree is clean
+ *       and HEAD exactly equals the pinned commit.
  *
  *   node attestation/verify-cli.mjs demo <package_path>
  *       End-to-end: builds twice (determinism proof), assembles a record, verifies
