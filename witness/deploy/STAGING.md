@@ -88,44 +88,9 @@ log and does NOT share cloud, region, and admin with another witness.
 
 ## DRAFT partner-outreach message (UNSENT)
 
-> Marked DRAFT. Do not send. One message per candidate; fill the bracket. Written
-> to permit a no. Send only on the lead's explicit go.
-
----
-
-**Subject:** Would you run a witness for the EP transparency log?
-
-[Name], you run exactly the kind of independent infrastructure this needs, which
-is why I am asking you first.
-
-Quick context, and it is a fun one. EP publishes a transparency log of
-authorization receipts. A single log operator, even an honest one, cannot prove
-to a stranger that it never showed two different histories to two different
-people. The fix is old and simple: independent witnesses that cosign whatever log
-head they see, so a split view becomes visible when their signatures are later
-compared.
-
-The witness is deliberately tiny. It is one zero-dependency Node service, a few
-tens of megabytes of memory, one endpoint that signs a checkpoint you were shown.
-You generate your own key on your own host, so the secret never touches us and we
-only pin your public key. Runs on a $4 instance. The catch, and the whole value,
-is that it runs on YOUR cloud under YOUR control, not ours.
-
-Here is the picture it buys. Two auditors each hold a log head they trust because
-independent witnesses signed it. Months later they compare notes and find the log
-had handed them two different roots at the same position. Neither could see it
-alone. Together, with your cosignature in the pile, the equivocation is
-undeniable and it points at the log, not at you.
-
-Would you be up for running one? And if you think this belongs somewhere other
-than your infrastructure, I would rather hear that than assume. You see the
-operational picture better than I do.
-
-Thank you so much either way.
-
-Iman Schrock, EMILIA Protocol
-
----
+Held OUTSIDE this public repo per opsec (outreach content never lands in tracked
+public paths). The drafted message was delivered to the lead directly; send it,
+one message per candidate, only on the lead's explicit go.
 
 ## Go / no-go
 
