@@ -134,7 +134,8 @@ export function verifyGrantHash(grant) {
  * @returns {object} the complete EP-CONSENT-GRANT-v1 grant with grant_hash and signature.
  */
 export function buildConsentGrant(spec, signer) {
-  const privateKey = signer && signer.privateKey ? signer.privateKey : signer;
+  const s = /** @type {any} */ (signer);
+  const privateKey = s && s.privateKey ? s.privateKey : s;
   const grant = {
     profile: CONSENT_GRANT_VERSION,
     ...spec,

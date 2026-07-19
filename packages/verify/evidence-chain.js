@@ -249,10 +249,10 @@ function builtinVerifiers() {
         }
       }
 
-      const r = verifyQuorum(evidence, {
+      const r = /** @type {{valid?:boolean, checks?:any}} */ (verifyQuorum(evidence, {
         rpId: profile.rp_id,
         allowedOrigins: [...allowedOrigins],
-      }) || {};
+      }) || {});
       return { valid: !!r.valid, action_digest: r.valid ? (evidence?.action_hash ?? null) : null, detail: r.checks };
     },
     // A Section 6.2 human-authorization Trust Receipt. A bare operator-signed
@@ -408,7 +408,7 @@ function evalRequirement(expr, satisfied) {
  * @param {object} opts { verifiers?: {[type]:fn}, keysByType?: object, policiesByType?: object,
  *                        requirement?: string, expectedAction?: object, expectedActionDigest?: string,
  *                        verificationTime?: string }
- * @returns {{satisfied:boolean, allow:boolean, action_digest:string|null, components:Array, reasons:string[], requirement_source:string}}
+ * @returns {{satisfied:boolean, allow:boolean, action_digest:string|null, expected_action_bound:boolean, components:Array, reasons:string[], requirement_source:string}}
  */
 function verifyAuthorizationChainInternal(aec, opts = {}) {
   opts = opts && typeof opts === 'object' ? opts : {};
@@ -520,7 +520,10 @@ function verifyAuthorizationChainInternal(aec, opts = {}) {
 
 /** Public fail-closed boundary. Parsed JSON is the intended wire input, but
  * framework callers can still supply proxies/getters that throw during shape
- * inspection. No host-language exception may turn verification into a crash. */
+ * inspection. No host-language exception may turn verification into a crash.
+ * @param {object} aec
+ * @param {{requirement?:string, [key:string]:any}} [opts]
+ */
 export function verifyAuthorizationChain(aec, opts = {}) {
   let requirementSource = 'presenter';
   try {
