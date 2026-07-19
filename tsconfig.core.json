@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "packages/verify/**/*.js",
+    "lib/handshake/**/*.js",
+    "packages/gate/**/*.js"
+  ],
+  "exclude": [
+    "**/*.test.js",
+    "**/node_modules/**"
+  ]
+}
