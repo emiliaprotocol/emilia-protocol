@@ -60,14 +60,14 @@
       "revision": "00",
       "layer": "execution_lifecycle",
       "role": "Service declaration of evidence and enforcement requirements",
-      "next_action": "Prepare -01 after the post-blackout core wave: remove the retired assurance-classes dependency and express requirements as verifier-visible proof predicates plus receipt-profile compatibility aliases"
+      "next_action": "Hold the current published revision while implementation feedback accumulates"
     },
     {
       "draft": "draft-schrock-authorization-evidence-challenge",
       "revision": "00",
       "layer": "execution_lifecycle",
       "role": "Action-bound request for missing evidence",
-      "next_action": "Conditional July 27 candidate: profile AuthZEN AARP requestable denial and PDP-verifiable approval state, adding only explicitly selected ceremony and consumption requirements"
+      "next_action": "Hold the current published revision while implementation feedback accumulates"
     },
     {
       "draft": "draft-schrock-canonical-action-identifier",
@@ -88,7 +88,7 @@
       "revision": "00",
       "layer": "evidence_satisfaction",
       "role": "Purpose-relative evidence graph and replay",
-      "next_action": "No new revision in this wave; evaluate later consolidation with AEC"
+      "next_action": "Hold the current published revision"
     },
     {
       "draft": "draft-schrock-ep-architecture",
@@ -102,7 +102,7 @@
       "revision": "01",
       "layer": "delegation_capability_policy",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Published July 19; validate the Authority Document to Authority Proof trust join before any later revision"
+      "next_action": "Published July 19; use -01 as the current trust-root and scoped-authority baseline"
     },
     {
       "draft": "draft-schrock-ep-authorization-evidence-chain",
@@ -123,7 +123,7 @@
       "revision": "00",
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published July 19; preserve the -00 snapshot, note that guard-path spend enforcement and verified-action binding subsequently landed on main, and reflect implementation feedback in a future revision"
+      "next_action": "Published July 19; guard-path spend enforcement and verified-action binding are implemented on main"
     },
     {
       "draft": "draft-schrock-ep-enforcement-point",
@@ -137,7 +137,7 @@
       "revision": "01",
       "layer": "execution_lifecycle",
       "role": "Long-term crypto-agile evidence preservation",
-      "next_action": "Next substantive revision owns crypto agility, hybrid anti-stripping, and re-anchoring; the standalone PQC draft is retired"
+      "next_action": "Hold the current published revision"
     },
     {
       "draft": "draft-schrock-ep-presentation-binding",
@@ -158,7 +158,7 @@
       "revision": "00",
       "layer": "authorization_evidence",
       "role": "Binding a human-authorization artifact into adjacent host formats",
-      "next_action": "Hold current revision and add bindings only after source-locked review"
+      "next_action": "Hold the current published revision"
     },
     {
       "draft": "draft-schrock-model-to-matter",
@@ -239,42 +239,6 @@
         "state": "published_ietf_archive_verified_exact_local_match",
         "limitations": "Reference implementation and synthetic vectors only; no wet-lab deployment, screening capability, scientific-safety determination, physical-truth claim, or external endorsement"
       }
-    ],
-    "not_filed": [
-      {
-        "draft": "draft-schrock-ep-outcome-binding-00",
-        "source": "standards/draft-schrock-ep-outcome-binding-00.xml",
-        "state": "deferred_pending_independent_verification"
-      }
-    ]
-  },
-  "july_27_2026_lifecycle_wave": {
-    "filing_date": "2026-07-27",
-    "design_freeze": "2026-07-20",
-    "hostile_review_deadline": "2026-07-24",
-    "must_file": [
-      {
-        "priority": 1,
-        "draft": "draft-schrock-ep-revocation-statement-00",
-        "source": "standards/staged/draft-schrock-ep-revocation-statement-00.xml",
-        "claim": "Permanent, exact-target revocation evidence with current non-revocation delegated to separately authenticated, policy-fresh status evidence",
-        "state": "staged_implementation_render_and_cross_language_gates_clear_pending_independent_hostile_review",
-        "required_gates": [
-          "An old authentic revocation remains effective regardless of a legacy max-age option",
-          "A future-dated revocation and a future-dated status head fail closed",
-          "JavaScript, Python, and Go agree on executable vectors",
-          "The draft composes with draft-ietf-oauth-status-list rather than claiming status mechanisms are missing",
-          "xml2rfc, claim tracing, full tests, and one independent hostile review pass"
-        ]
-      }
-    ],
-    "conditional": [
-      {
-        "priority": 2,
-        "draft": "draft-schrock-authorization-evidence-challenge-01",
-        "claim": "AARP-compatible challenge profile for missing ceremony and consumption evidence",
-        "state": "requires_source_locked_aarp_binding_review_not_staged"
-      }
     ]
   },
   "retired_absorbed": [
@@ -286,7 +250,7 @@
     {
       "draft": "draft-schrock-ep-authority-registry-00",
       "canonical_owner": "draft-schrock-ep-authority-introduction-01",
-      "reason": "The active Authority Introduction draft already owns trust-root introduction; scoped authority is folded into its next revision."
+      "reason": "The active Authority Introduction draft owns trust-root introduction and scoped authority."
     },
     {
       "draft": "draft-schrock-ep-agent-trust-stack-00",
@@ -295,7 +259,7 @@
     },
     {
       "draft": "draft-schrock-ep-pqc-00",
-      "canonical_owner": "draft-schrock-ep-evidence-record next substantive revision",
+      "canonical_owner": "draft-schrock-ep-evidence-record",
       "reason": "Crypto agility, re-anchoring, and hybrid anti-stripping belong with long-term evidence preservation rather than a standalone algorithm catalog."
     }
   ],

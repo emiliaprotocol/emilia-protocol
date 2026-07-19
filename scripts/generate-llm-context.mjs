@@ -346,21 +346,12 @@ function renderFull(web = false) {
     lines.push(`- [${standard.draft}](https://datatracker.ietf.org/doc/${standard.draft}/): ${standard.role}; snapshot revision -${standard.revision}.`);
   }
   lines.push('');
-  lines.push('## July 19 Post-Blackout Filing Wave');
+  lines.push('## July 19 Published Draft Set');
   lines.push('');
-  lines.push(`The IETF submission tool reopens after ${standardsStatus.july_19_2026_core_wave.submission_window_opens_after}; the planned filing date is ${standardsStatus.july_19_2026_core_wave.filing_date}.`);
+  lines.push(`Published ${standardsStatus.july_19_2026_core_wave.filing_date}; each repository snapshot is verified against the IETF archive.`);
   lines.push('');
   for (const item of standardsStatus.july_19_2026_core_wave.items) {
     lines.push(`- **${item.state}:** \`${item.draft}\` - ${item.claim}.`);
-  }
-  lines.push('');
-  lines.push('## July 27 Lifecycle Wave');
-  lines.push('');
-  for (const item of standardsStatus.july_27_2026_lifecycle_wave.must_file) {
-    lines.push(`- **Must file:** \`${item.draft}\` - ${item.claim}.`);
-  }
-  for (const item of standardsStatus.july_27_2026_lifecycle_wave.conditional) {
-    lines.push(`- **Conditional:** \`${item.draft}\` - ${item.claim}.`);
   }
   lines.push('');
   lines.push('## Retired And Partner-Triggered Work');

@@ -3,17 +3,17 @@
   "evidence_snapshot_at": "2026-07-19T19:24:40.298Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "46f7ea339640d2b08eec003bda074164046ff036a19b5688466cf95c65a3705e",
+    "input_digest_sha256": "f5bdd7ea7d9044e12147725f4a32f159a77d20e2155e8da18c15e97dc319c2b1",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "7159fc4137a6eebab5eeba84c48c80ce44007579d9529f36a315424bd68a91d8",
-        "bytes": 37789
+        "sha256": "e4391a3a794c8e5d7de8fa682848ca5d31052c91d5441583f45e7e544abce035",
+        "bytes": 37669
       },
       {
         "path": "scripts/generate-llm-context.mjs",
-        "sha256": "15311def9dbeb13c32f5544404aea55a7fcfbe495d787ecd71d7d3b79c46ac0e",
-        "bytes": 25727
+        "sha256": "e6a975bd2b9d7156f1224e133368be957860c296831e6435cdb9e9b041994b58",
+        "bytes": 25266
       },
       {
         "path": "lib/proof-stats.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "086581647dfe1f8e7fe4caf76ede071d2d469f1859c789cfee5a4b507832986c",
-        "bytes": 17993
+        "sha256": "39a87d0916fb942460bbada34d004eb05a5dcc9a1471586a34443c648e0d51be",
+        "bytes": 15765
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -2553,7 +2553,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "CAID -00 is a render-clean private filing candidate, not a posted standard. Bounded Capability is implemented architecture, not a posted standard. AEC is different: revision -02 is already an active individual Internet-Draft and -03 is staged.",
+    "CAID -00, Bounded Capability Receipts -00, and AEC -03 are published individual Internet-Drafts. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -2611,7 +2611,7 @@
   "excluded_as_current_authority": [
     "standards/archive/** contains superseded revisions.",
     "docs/strategy-private/** and gitignored drafts are private working material, not public project status.",
-    "A filename under standards/staged/** or standards/posted/** does not establish live IETF status; check Datatracker.",
+    "A filename under standards/posted/** does not establish live IETF status by itself; check Datatracker.",
     "Decks, outreach drafts, comparison pages, and compliance crosswalks are secondary narrative, not proof.",
     "Generated output from an earlier commit remains historical unless its input digest matches the current manifest."
   ],
@@ -2620,7 +2620,7 @@
       "identifier": "draft-schrock-agent-action-manifest",
       "revision_at_snapshot": "00",
       "role": "Service declaration of evidence and enforcement requirements",
-      "next_action": "Prepare -01 after the post-blackout core wave: remove the retired assurance-classes dependency and express requirements as verifier-visible proof predicates plus receipt-profile compatibility aliases",
+      "next_action": "Hold the current published revision while implementation feedback accumulates",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-agent-action-manifest/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2628,7 +2628,7 @@
       "identifier": "draft-schrock-authorization-evidence-challenge",
       "revision_at_snapshot": "00",
       "role": "Action-bound request for missing evidence",
-      "next_action": "Conditional July 27 candidate: profile AuthZEN AARP requestable denial and PDP-verifiable approval state, adding only explicitly selected ceremony and consumption requirements",
+      "next_action": "Hold the current published revision while implementation feedback accumulates",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2652,7 +2652,7 @@
       "identifier": "draft-schrock-ep-action-evidence-graph",
       "revision_at_snapshot": "00",
       "role": "Purpose-relative evidence graph and replay",
-      "next_action": "No new revision in this wave; evaluate later consolidation with AEC",
+      "next_action": "Hold the current published revision",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2668,7 +2668,7 @@
       "identifier": "draft-schrock-ep-authority-introduction",
       "revision_at_snapshot": "01",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Published July 19; validate the Authority Document to Authority Proof trust join before any later revision",
+      "next_action": "Published July 19; use -01 as the current trust-root and scoped-authority baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2692,7 +2692,7 @@
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
       "revision_at_snapshot": "00",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published July 19; preserve the -00 snapshot, note that guard-path spend enforcement and verified-action binding subsequently landed on main, and reflect implementation feedback in a future revision",
+      "next_action": "Published July 19; guard-path spend enforcement and verified-action binding are implemented on main",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2708,7 +2708,7 @@
       "identifier": "draft-schrock-ep-evidence-record",
       "revision_at_snapshot": "01",
       "role": "Long-term crypto-agile evidence preservation",
-      "next_action": "Next substantive revision owns crypto agility, hybrid anti-stripping, and re-anchoring; the standalone PQC draft is retired",
+      "next_action": "Hold the current published revision",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2732,7 +2732,7 @@
       "identifier": "draft-schrock-human-authorization-binding",
       "revision_at_snapshot": "00",
       "role": "Binding a human-authorization artifact into adjacent host formats",
-      "next_action": "Hold current revision and add bindings only after source-locked review",
+      "next_action": "Hold the current published revision",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -2864,42 +2864,6 @@
           "state": "published_ietf_archive_verified_exact_local_match",
           "limitations": "Reference implementation and synthetic vectors only; no wet-lab deployment, screening capability, scientific-safety determination, physical-truth claim, or external endorsement"
         }
-      ],
-      "not_filed": [
-        {
-          "draft": "draft-schrock-ep-outcome-binding-00",
-          "source": "standards/draft-schrock-ep-outcome-binding-00.xml",
-          "state": "deferred_pending_independent_verification"
-        }
-      ]
-    },
-    "july_27_2026_lifecycle_wave": {
-      "filing_date": "2026-07-27",
-      "design_freeze": "2026-07-20",
-      "hostile_review_deadline": "2026-07-24",
-      "must_file": [
-        {
-          "priority": 1,
-          "draft": "draft-schrock-ep-revocation-statement-00",
-          "source": "standards/staged/draft-schrock-ep-revocation-statement-00.xml",
-          "claim": "Permanent, exact-target revocation evidence with current non-revocation delegated to separately authenticated, policy-fresh status evidence",
-          "state": "staged_implementation_render_and_cross_language_gates_clear_pending_independent_hostile_review",
-          "required_gates": [
-            "An old authentic revocation remains effective regardless of a legacy max-age option",
-            "A future-dated revocation and a future-dated status head fail closed",
-            "JavaScript, Python, and Go agree on executable vectors",
-            "The draft composes with draft-ietf-oauth-status-list rather than claiming status mechanisms are missing",
-            "xml2rfc, claim tracing, full tests, and one independent hostile review pass"
-          ]
-        }
-      ],
-      "conditional": [
-        {
-          "priority": 2,
-          "draft": "draft-schrock-authorization-evidence-challenge-01",
-          "claim": "AARP-compatible challenge profile for missing ceremony and consumption evidence",
-          "state": "requires_source_locked_aarp_binding_review_not_staged"
-        }
       ]
     },
     "retired_absorbed": [
@@ -2911,7 +2875,7 @@
       {
         "draft": "draft-schrock-ep-authority-registry-00",
         "canonical_owner": "draft-schrock-ep-authority-introduction-01",
-        "reason": "The active Authority Introduction draft already owns trust-root introduction; scoped authority is folded into its next revision."
+        "reason": "The active Authority Introduction draft owns trust-root introduction and scoped authority."
       },
       {
         "draft": "draft-schrock-ep-agent-trust-stack-00",
@@ -2920,7 +2884,7 @@
       },
       {
         "draft": "draft-schrock-ep-pqc-00",
-        "canonical_owner": "draft-schrock-ep-evidence-record next substantive revision",
+        "canonical_owner": "draft-schrock-ep-evidence-record",
         "reason": "Crypto agility, re-anchoring, and hybrid anti-stripping belong with long-term evidence preservation rather than a standalone algorithm catalog."
       }
     ],
@@ -3222,7 +3186,7 @@
     "Use the interoperability line: AgentROA governs what an agent may call; ORPRG verifies that policy permitted the effect; EMILIA proves who authorized the exact material action and controls the protected consequence. Do not market EMILIA as another general agent-authorization gateway.",
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe CAID -00 as a private render-clean filing candidate and Bounded Capability as implemented architecture, not posted standards. Describe AEC -02 as an active individual Internet-Draft and -03 as staged.",
+    "Describe CAID -00, Bounded Capability Receipts -00, and AEC -03 as published individual Internet-Drafts, never as RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",
