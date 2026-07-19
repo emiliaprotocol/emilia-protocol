@@ -773,10 +773,16 @@ function verifySecret(capability, secret) {
   return equalHash(capability.secret_hash, normalized.hash);
 }
 
-function capabilityAmount(action, capability) {
+function capabilityAmount(action, capability, verifiedAction = action) {
   const amount = validateAmount(action?.amount, 'action.amount');
   const currency = validateCurrency(action?.currency);
   if (currency !== capability.budget.currency) throw new TypeError('capability action currency does not match the budget');
+  const verifiedAmount = Number.isSafeInteger(verifiedAction?.amount)
+    ? verifiedAction.amount
+    : verifiedAction?.amount_usd;
+  if (verifiedAmount !== amount || verifiedAction?.currency !== currency) {
+    throw new TypeError('capability budget projection does not match the verified action');
+  }
   if (amount <= 0) throw new TypeError('capability action amount must be greater than zero');
   return { amount, currency };
 }
@@ -826,14 +832,6 @@ export async function executeWithCapability({
     return { ok: false, reason: 'capability_action_invalid' };
   }
   if (!scope.ok) return { ok: false, reason: scope.reason, scope };
-  let spend;
-  try {
-    // `action` is the budget projection used by Gate integrations; the exact
-    // verified action below remains the only object that can reach the effect.
-    spend = capabilityAmount(action, verified.capability);
-  } catch (error) {
-    return { ok: false, reason: error?.message || 'capability_action_invalid' };
-  }
   let authorization = null;
   if (gate && typeof gate.check === 'function') {
     authorization = await gate.check({
@@ -854,6 +852,14 @@ export async function executeWithCapability({
     if (result !== true && result?.ok !== true) return { ok: false, reason: 'base_receipt_rejected', authorization: result };
   } else {
     return { ok: false, reason: 'base_receipt_verifier_required' };
+  }
+  let spend;
+  try {
+    // `action` is the budget projection used by Gate integrations; it must
+    // match the verified action and can never reach the effect.
+    spend = capabilityAmount(action, verified.capability, immutableAction);
+  } catch (error) {
+    return { ok: false, reason: error?.message || 'capability_action_invalid', authorization };
   }
   const reserved = await store.reserveSpend({
     capabilityId: verified.capability.id,

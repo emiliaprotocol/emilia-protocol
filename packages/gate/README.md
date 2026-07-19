@@ -371,9 +371,10 @@ store owns replay and budget state for each explicitly supplied operation ID.
 The verifier requires a pinned capability issuer key. Every operation must
 match one exact signed action digest, and the caller's stable operation ID must
 equal the signed scope's field in the executor-observed action. The same digest
-is persisted with the reservation, and the effect callback receives a clone of
-that same verified action—not the separate budget projection. A new operation
-ID therefore cannot relabel the same payment instruction after a timeout.
+is persisted with the reservation. The separate budget projection must match
+the amount and currency in that verified action, and the effect callback
+receives a clone of the verified action—not the projection. A new operation ID
+therefore cannot relabel the same payment instruction after a timeout.
 
 The built-in `urn:emilia:scope:action-digest-set-v1` profile is exact-byte
 scope. `urn:emilia:scope:caid-set-v1` is also supported for interoperable

@@ -552,7 +552,7 @@
       "package": "@emilia-protocol/gate",
       "version": "0.12.0",
       "filename": "emilia-protocol-gate-0.12.0.tgz",
-      "sha256": "38fbf655f9ad3d5d243116805380d118360d920fa135730e3ce8813602a33e8b",
+      "sha256": "92711c0563ebb893902769ae2aef1327485a07ec3bf98ec8ac784e691dc8465c",
       "file_count": 107
     },
     "mobile-sdk": {
@@ -2028,7 +2028,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "38fbf655f9ad3d5d243116805380d118360d920fa135730e3ce8813602a33e8b"
+          "sha256": "92711c0563ebb893902769ae2aef1327485a07ec3bf98ec8ac784e691dc8465c"
         },
         {
           "artifact_id": "security-evidence",
@@ -2135,7 +2135,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "38fbf655f9ad3d5d243116805380d118360d920fa135730e3ce8813602a33e8b"
+          "sha256": "92711c0563ebb893902769ae2aef1327485a07ec3bf98ec8ac784e691dc8465c"
         },
         {
           "artifact_id": "security-evidence",
@@ -2259,7 +2259,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "38fbf655f9ad3d5d243116805380d118360d920fa135730e3ce8813602a33e8b"
+          "sha256": "92711c0563ebb893902769ae2aef1327485a07ec3bf98ec8ac784e691dc8465c"
         },
         {
           "artifact_id": "security-evidence",
@@ -2388,7 +2388,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "38fbf655f9ad3d5d243116805380d118360d920fa135730e3ce8813602a33e8b"
+          "sha256": "92711c0563ebb893902769ae2aef1327485a07ec3bf98ec8ac784e691dc8465c"
         },
         {
           "artifact_id": "security-evidence",
@@ -2562,7 +2562,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "38fbf655f9ad3d5d243116805380d118360d920fa135730e3ce8813602a33e8b"
+          "sha256": "92711c0563ebb893902769ae2aef1327485a07ec3bf98ec8ac784e691dc8465c"
         },
         {
           "artifact_id": "security-evidence",
@@ -4859,7 +4859,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "38fbf655f9ad3d5d243116805380d118360d920fa135730e3ce8813602a33e8b"
+          "sha256": "92711c0563ebb893902769ae2aef1327485a07ec3bf98ec8ac784e691dc8465c"
         },
         {
           "artifact_id": "security-evidence",
