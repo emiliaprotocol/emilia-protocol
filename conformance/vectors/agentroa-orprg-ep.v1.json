@@ -1,0 +1,2952 @@
+{
+  "suite": "AGENTROA-ORPRG-EP-CAID-v1",
+  "vectors_version": "1.0.0",
+  "generated_from": {
+    "agentroa": "draft-nivalto-agentroa-route-authorization-01",
+    "orprg": "draft-lee-orprg-permit-receipts-00 with ORPRG-JSON-JCS-ED25519-v1",
+    "ep": "EP-QUORUM-v1 and CAID-MAPPING-PROFILE-v1"
+  },
+  "algorithm": "Ed25519/JCS for AgentROA and ORPRG; P-256 WebAuthn assertions for EP quorum; SHA-256/JCS CAID mapping",
+  "security_boundary": "Native verification, material-action matching, human evidence, and relying-party sufficiency are independently fail-closed.",
+  "required_component_types": [
+    "agentroa",
+    "orprg-json-jcs",
+    "ep-quorum"
+  ],
+  "count": 7,
+  "definitions": [
+    {
+      "action_type": "agent.capability.invoke.1",
+      "status": "active",
+      "risk_class": "consequential-external-effect",
+      "summary": "Invoke one exact capability with one exact input commitment.",
+      "required_fields": [
+        {
+          "name": "capability",
+          "type": "string"
+        },
+        {
+          "name": "target_service_id",
+          "type": "string"
+        },
+        {
+          "name": "operation",
+          "type": "string"
+        },
+        {
+          "name": "input_hash",
+          "type": "digest"
+        }
+      ],
+      "optional_fields": [],
+      "digest_notes": "input_hash is the native input commitment; no semantic expansion is inferred.",
+      "references": []
+    }
+  ],
+  "vectors": [
+    {
+      "id": "accept_agentroa_orprg_ep_same_caid",
+      "description": "A real AgentROA AER, concrete ORPRG PermitReceipt, and two-device EP quorum verify natively and bind the same relying-party-pinned CAID.",
+      "expected_action": {
+        "action_type": "agent.capability.invoke.1",
+        "capability": "api:payments.transfer",
+        "target_service_id": "payments-service",
+        "operation": "transfer",
+        "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected_caid": {
+        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
+      },
+      "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
+      "presentations": 1,
+      "agentroa": {
+        "evidence": {
+          "chain": [
+            {
+              "schema_version": "1.0",
+              "envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "issued_at": "2026-07-19T11:55:00Z",
+              "expires_at": "2026-07-19T12:05:00Z",
+              "session": {
+                "session_id": "sess:8b3d0e7f2a1c9b4e",
+                "channel": "api",
+                "agent_id": "aha:acme/ops/root-agent"
+              },
+              "authorized_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 1,
+                "cross_org_permitted": false
+              },
+              "policy": {
+                "policy_id": "payments-v4",
+                "policy_version": "4.2.1",
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authorization": {
+                "auth_strength": "dual_control",
+                "approval_state": "granted",
+                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+              },
+              "evidence": {
+                "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "model_provenance": [
+                  "example:model:v1"
+                ]
+              },
+              "signatures": [
+                {
+                  "signer": "policy-engine:prod",
+                  "alg": "EdDSA",
+                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                }
+              ]
+            },
+            {
+              "schema_version": "1.0",
+              "ara_id": "ara:9c4e1f8a2b7d3e0f",
+              "issued_at": "2026-07-19T11:57:00Z",
+              "upstream_ref": {
+                "ref_type": "roa_envelope",
+                "ref_id": "env:4a7c9f2b1e8d3a6f",
+                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+              },
+              "delegating_agent": {
+                "agent_id": "aha:acme/ops/root-agent",
+                "session_id": "sess:8b3d0e7f2a1c9b4e"
+              },
+              "delegated_agent": {
+                "agent_id": "aha:acme/ops/payment-agent"
+              },
+              "delegated_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 0
+              },
+              "policy": {
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "policy_version": "4.2.1"
+              },
+              "signatures": [
+                {
+                  "signer": "aha:acme/ops/root-agent",
+                  "alg": "EdDSA",
+                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                }
+              ]
+            }
+          ],
+          "aer": {
+            "schema_version": "1.0",
+            "aer_id": "aer:2f5a8c1d4e7b0f3a",
+            "produced_at": "2026-07-19T11:58:00Z",
+            "enforcement_outcome": "permit",
+            "enforcement_mode": "normal",
+            "deployment_topology": "topology_d_domain_boundary",
+            "session": {
+              "session_id": "sess:8b3d0e7f2a1c9b4e",
+              "agent_id": "aha:acme/ops/payment-agent"
+            },
+            "action": {
+              "capability": "api:payments.transfer",
+              "target_service_id": "payments-service",
+              "operation": "transfer",
+              "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "policy": {
+              "policy_id": "payments-v4",
+              "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "chain_summary": {
+              "chain_depth": 1,
+              "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+            },
+            "border_gateway": {
+              "gateway_id": "gateway:prod-us-east-1",
+              "gateway_version": "1.1.0"
+            },
+            "signatures": [
+              {
+                "signer": "gateway:prod-us-east-1",
+                "alg": "EdDSA",
+                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+              }
+            ]
+          }
+        },
+        "keys_by_type": {
+          "agentroa": {
+            "roa": {
+              "policy-engine:prod": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "ara": {
+              "aha:acme/ops/root-agent": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "aer": {
+              "gateway:prod-us-east-1": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+            }
+          }
+        },
+        "policies_by_type": {
+          "agentroa": {
+            "expected_policy_id": "payments-v4",
+            "expected_policy_version": "4.2.1",
+            "expected_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "allow_degraded": false,
+            "allowed_topologies": [
+              "topology_d_domain_boundary"
+            ],
+            "capability_manifest": {}
+          }
+        }
+      },
+      "orprg": {
+        "action": {
+          "effect_type": "api:payments.transfer",
+          "interface_id": "payments-service",
+          "target_id": "transfer",
+          "audience": "https://payments.example/commit",
+          "request": {
+            "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        "receipt": {
+          "@version": "ORPRG-JSON-JCS-ED25519-v1",
+          "receipt_core": {
+            "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "epoch_id": "policy-epoch-42",
+            "valid_from": "2026-07-19T11:55:00Z",
+            "valid_to": "2026-07-19T12:05:00Z",
+            "action_digest": "sha256:1b85efaef607897b045f76bc05c385ab95d525bf6c58b5de7f8108a26dfde0ed",
+            "canonicalization_profile": "ORPRG-JCS-ACTION-v1",
+            "scope": {
+              "effect_type": "api:payments.transfer",
+              "interface_id": "payments-service",
+              "target_id": "transfer",
+              "audience": "https://payments.example/commit"
+            },
+            "anti_replay": {
+              "mode": "single-use",
+              "nonce": "S1ngleUseNonce_20260719_0001"
+            }
+          },
+          "status": {
+            "state": "good",
+            "checked_at": "2026-07-19T11:59:00Z",
+            "next_update": "2026-07-19T12:03:00Z"
+          },
+          "authenticity": {
+            "issuer_id": "https://policy.example/issuers/primary",
+            "key_id": "orprg-ed25519-2026-07",
+            "algorithm": "Ed25519",
+            "signature": "YXFch5qb7ZelgAKZ37La8dO-XWcpmIVVgq3mhPu0bz2W1UvoRk5nLXGbvTb2y3fCHmEjn7N77ep5dkCKe_ScDA"
+          }
+        },
+        "issuer_keys": {
+          "https://policy.example/issuers/primary": {
+            "orprg-ed25519-2026-07": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        },
+        "options": {
+          "expectedPolicyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expectedEpoch": "policy-epoch-42",
+          "verificationTime": "2026-07-19T12:00:00Z",
+          "maxReceiptAgeSeconds": 600,
+          "maxStatusAgeSeconds": 180
+        }
+      },
+      "ep": {
+        "quorum": {
+          "@type": "ep.quorum",
+          "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "members": [
+            {
+              "role": "treasury_controller",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_rivera_20260719",
+                  "approver": "ep:approver:rivera",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEYCIQCkDgI1v2duDxot3T67-9BpwPviN8ECCJR4O_ICqj-EOQIhAIR0addwSxT-FzXNoh2htPlikVtHXElWcWVVHwH1OrJQ"
+                }
+              }
+            },
+            {
+              "role": "risk_officer",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_chen_20260719",
+                  "approver": "ep:approver:chen",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEYCIQDMTFUa4QPMKuO-JCuHavH5jXy6h4HLVuVHOnoK7Q4qGAIhAP94293Dr7QvPk1-bGlkGf6y8iWSD6T8v9PCiWPGaM9O"
+                }
+              }
+            }
+          ]
+        },
+        "profile": {
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "rp_id": "rp.emilia.example",
+          "allowed_origins": [
+            "https://rp.emilia.example"
+          ],
+          "approvers": {
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg": {
+              "approver_id": "ep:approver:rivera",
+              "roles": [
+                "treasury_controller"
+              ],
+              "status": "active"
+            },
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ": {
+              "approver_id": "ep:approver:chen",
+              "roles": [
+                "risk_officer"
+              ],
+              "status": "active"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "agentroa": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "agentroa-aer-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/agentroa-aer+json",
+              "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+              "version": "1.0"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/capability",
+              "/target_service_id",
+              "/operation",
+              "/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/capability",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_service_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/operation",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/agentroa-aer+json",
+            "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+            "version": "1.0"
+          },
+          "expected_profile_hash": "sha256:5600e1bad1a30d4d5ae7061d7848ab9016695e1ba3360adbd8ec148ae0324079"
+        },
+        "orprg": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "orprg-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/orprg-action+json",
+              "schema": "ORPRG-JCS-ACTION-v1",
+              "version": "1"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/effect_type",
+              "/interface_id",
+              "/target_id",
+              "/request/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/effect_type",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/interface_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_id",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/request/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/orprg-action+json",
+            "schema": "ORPRG-JCS-ACTION-v1",
+            "version": "1"
+          },
+          "expected_profile_hash": "sha256:f36eb092392de72dd5f2f13d23ce5003b5ba9598e9ff108fc4028f46ff9a624d"
+        }
+      },
+      "expect": {
+        "valid": true,
+        "first_valid": true,
+        "reason": null
+      }
+    },
+    {
+      "id": "reject_action_substitution",
+      "description": "The ORPRG receipt is genuinely reissued for a different invocation input; native verification succeeds but CAID correlation refuses the splice.",
+      "expected_action": {
+        "action_type": "agent.capability.invoke.1",
+        "capability": "api:payments.transfer",
+        "target_service_id": "payments-service",
+        "operation": "transfer",
+        "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected_caid": {
+        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
+      },
+      "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
+      "presentations": 1,
+      "agentroa": {
+        "evidence": {
+          "chain": [
+            {
+              "schema_version": "1.0",
+              "envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "issued_at": "2026-07-19T11:55:00Z",
+              "expires_at": "2026-07-19T12:05:00Z",
+              "session": {
+                "session_id": "sess:8b3d0e7f2a1c9b4e",
+                "channel": "api",
+                "agent_id": "aha:acme/ops/root-agent"
+              },
+              "authorized_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 1,
+                "cross_org_permitted": false
+              },
+              "policy": {
+                "policy_id": "payments-v4",
+                "policy_version": "4.2.1",
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authorization": {
+                "auth_strength": "dual_control",
+                "approval_state": "granted",
+                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+              },
+              "evidence": {
+                "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "model_provenance": [
+                  "example:model:v1"
+                ]
+              },
+              "signatures": [
+                {
+                  "signer": "policy-engine:prod",
+                  "alg": "EdDSA",
+                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                }
+              ]
+            },
+            {
+              "schema_version": "1.0",
+              "ara_id": "ara:9c4e1f8a2b7d3e0f",
+              "issued_at": "2026-07-19T11:57:00Z",
+              "upstream_ref": {
+                "ref_type": "roa_envelope",
+                "ref_id": "env:4a7c9f2b1e8d3a6f",
+                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+              },
+              "delegating_agent": {
+                "agent_id": "aha:acme/ops/root-agent",
+                "session_id": "sess:8b3d0e7f2a1c9b4e"
+              },
+              "delegated_agent": {
+                "agent_id": "aha:acme/ops/payment-agent"
+              },
+              "delegated_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 0
+              },
+              "policy": {
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "policy_version": "4.2.1"
+              },
+              "signatures": [
+                {
+                  "signer": "aha:acme/ops/root-agent",
+                  "alg": "EdDSA",
+                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                }
+              ]
+            }
+          ],
+          "aer": {
+            "schema_version": "1.0",
+            "aer_id": "aer:2f5a8c1d4e7b0f3a",
+            "produced_at": "2026-07-19T11:58:00Z",
+            "enforcement_outcome": "permit",
+            "enforcement_mode": "normal",
+            "deployment_topology": "topology_d_domain_boundary",
+            "session": {
+              "session_id": "sess:8b3d0e7f2a1c9b4e",
+              "agent_id": "aha:acme/ops/payment-agent"
+            },
+            "action": {
+              "capability": "api:payments.transfer",
+              "target_service_id": "payments-service",
+              "operation": "transfer",
+              "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "policy": {
+              "policy_id": "payments-v4",
+              "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "chain_summary": {
+              "chain_depth": 1,
+              "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+            },
+            "border_gateway": {
+              "gateway_id": "gateway:prod-us-east-1",
+              "gateway_version": "1.1.0"
+            },
+            "signatures": [
+              {
+                "signer": "gateway:prod-us-east-1",
+                "alg": "EdDSA",
+                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+              }
+            ]
+          }
+        },
+        "keys_by_type": {
+          "agentroa": {
+            "roa": {
+              "policy-engine:prod": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "ara": {
+              "aha:acme/ops/root-agent": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "aer": {
+              "gateway:prod-us-east-1": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+            }
+          }
+        },
+        "policies_by_type": {
+          "agentroa": {
+            "expected_policy_id": "payments-v4",
+            "expected_policy_version": "4.2.1",
+            "expected_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "allow_degraded": false,
+            "allowed_topologies": [
+              "topology_d_domain_boundary"
+            ],
+            "capability_manifest": {}
+          }
+        }
+      },
+      "orprg": {
+        "action": {
+          "effect_type": "api:payments.transfer",
+          "interface_id": "payments-service",
+          "target_id": "transfer",
+          "audience": "https://payments.example/commit",
+          "request": {
+            "input_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        },
+        "receipt": {
+          "@version": "ORPRG-JSON-JCS-ED25519-v1",
+          "receipt_core": {
+            "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "epoch_id": "policy-epoch-42",
+            "valid_from": "2026-07-19T11:55:00Z",
+            "valid_to": "2026-07-19T12:05:00Z",
+            "action_digest": "sha256:ba8dabaede0f0303f9e03e25994031d35b1a74a942af291912f1f5963d0df9b7",
+            "canonicalization_profile": "ORPRG-JCS-ACTION-v1",
+            "scope": {
+              "effect_type": "api:payments.transfer",
+              "interface_id": "payments-service",
+              "target_id": "transfer",
+              "audience": "https://payments.example/commit"
+            },
+            "anti_replay": {
+              "mode": "single-use",
+              "nonce": "S1ngleUseNonce_20260719_0001"
+            }
+          },
+          "status": {
+            "state": "good",
+            "checked_at": "2026-07-19T11:59:00Z",
+            "next_update": "2026-07-19T12:03:00Z"
+          },
+          "authenticity": {
+            "issuer_id": "https://policy.example/issuers/primary",
+            "key_id": "orprg-ed25519-2026-07",
+            "algorithm": "Ed25519",
+            "signature": "ArhT_vfm7AdlPiFfHeKp95FHiNDb8ATL_x2UI6vJMsZoG9IQg9N8wrolYirhwnmYs87GWZb2pXnVi2E5wEMyCA"
+          }
+        },
+        "issuer_keys": {
+          "https://policy.example/issuers/primary": {
+            "orprg-ed25519-2026-07": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        },
+        "options": {
+          "expectedPolicyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expectedEpoch": "policy-epoch-42",
+          "verificationTime": "2026-07-19T12:00:00Z",
+          "maxReceiptAgeSeconds": 600,
+          "maxStatusAgeSeconds": 180
+        }
+      },
+      "ep": {
+        "quorum": {
+          "@type": "ep.quorum",
+          "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "members": [
+            {
+              "role": "treasury_controller",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_rivera_20260719",
+                  "approver": "ep:approver:rivera",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEQCIF10YM-uE8gio7WQkbuY31J82Um92cF1FTyiA_Ax3ITZAiBWP2dYKZx-ecjjDTIb_bzbVYkm8qLUHSbR3c_2SOdZgg"
+                }
+              }
+            },
+            {
+              "role": "risk_officer",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_chen_20260719",
+                  "approver": "ep:approver:chen",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEUCIQDbZ7CSWTdN19f-AoiCi58a2ywnB1VAh2gZvhUySHHjRgIgOI-GqWLl6pYRGMWBV4VUbHIVNx5DvJ94Yxjfr0jxJ5A"
+                }
+              }
+            }
+          ]
+        },
+        "profile": {
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "rp_id": "rp.emilia.example",
+          "allowed_origins": [
+            "https://rp.emilia.example"
+          ],
+          "approvers": {
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg": {
+              "approver_id": "ep:approver:rivera",
+              "roles": [
+                "treasury_controller"
+              ],
+              "status": "active"
+            },
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ": {
+              "approver_id": "ep:approver:chen",
+              "roles": [
+                "risk_officer"
+              ],
+              "status": "active"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "agentroa": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "agentroa-aer-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/agentroa-aer+json",
+              "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+              "version": "1.0"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/capability",
+              "/target_service_id",
+              "/operation",
+              "/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/capability",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_service_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/operation",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/agentroa-aer+json",
+            "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+            "version": "1.0"
+          },
+          "expected_profile_hash": "sha256:5600e1bad1a30d4d5ae7061d7848ab9016695e1ba3360adbd8ec148ae0324079"
+        },
+        "orprg": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "orprg-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/orprg-action+json",
+              "schema": "ORPRG-JCS-ACTION-v1",
+              "version": "1"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/effect_type",
+              "/interface_id",
+              "/target_id",
+              "/request/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/effect_type",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/interface_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_id",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/request/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/orprg-action+json",
+            "schema": "ORPRG-JCS-ACTION-v1",
+            "version": "1"
+          },
+          "expected_profile_hash": "sha256:f36eb092392de72dd5f2f13d23ce5003b5ba9598e9ff108fc4028f46ff9a624d"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "first_valid": false,
+        "reason": "material_action_mismatch"
+      }
+    },
+    {
+      "id": "reject_wrong_mapping_profile",
+      "description": "All native signatures verify, but the relying party pins a different ORPRG-to-CAID mapping profile hash.",
+      "expected_action": {
+        "action_type": "agent.capability.invoke.1",
+        "capability": "api:payments.transfer",
+        "target_service_id": "payments-service",
+        "operation": "transfer",
+        "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected_caid": {
+        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
+      },
+      "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
+      "presentations": 1,
+      "agentroa": {
+        "evidence": {
+          "chain": [
+            {
+              "schema_version": "1.0",
+              "envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "issued_at": "2026-07-19T11:55:00Z",
+              "expires_at": "2026-07-19T12:05:00Z",
+              "session": {
+                "session_id": "sess:8b3d0e7f2a1c9b4e",
+                "channel": "api",
+                "agent_id": "aha:acme/ops/root-agent"
+              },
+              "authorized_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 1,
+                "cross_org_permitted": false
+              },
+              "policy": {
+                "policy_id": "payments-v4",
+                "policy_version": "4.2.1",
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authorization": {
+                "auth_strength": "dual_control",
+                "approval_state": "granted",
+                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+              },
+              "evidence": {
+                "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "model_provenance": [
+                  "example:model:v1"
+                ]
+              },
+              "signatures": [
+                {
+                  "signer": "policy-engine:prod",
+                  "alg": "EdDSA",
+                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                }
+              ]
+            },
+            {
+              "schema_version": "1.0",
+              "ara_id": "ara:9c4e1f8a2b7d3e0f",
+              "issued_at": "2026-07-19T11:57:00Z",
+              "upstream_ref": {
+                "ref_type": "roa_envelope",
+                "ref_id": "env:4a7c9f2b1e8d3a6f",
+                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+              },
+              "delegating_agent": {
+                "agent_id": "aha:acme/ops/root-agent",
+                "session_id": "sess:8b3d0e7f2a1c9b4e"
+              },
+              "delegated_agent": {
+                "agent_id": "aha:acme/ops/payment-agent"
+              },
+              "delegated_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 0
+              },
+              "policy": {
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "policy_version": "4.2.1"
+              },
+              "signatures": [
+                {
+                  "signer": "aha:acme/ops/root-agent",
+                  "alg": "EdDSA",
+                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                }
+              ]
+            }
+          ],
+          "aer": {
+            "schema_version": "1.0",
+            "aer_id": "aer:2f5a8c1d4e7b0f3a",
+            "produced_at": "2026-07-19T11:58:00Z",
+            "enforcement_outcome": "permit",
+            "enforcement_mode": "normal",
+            "deployment_topology": "topology_d_domain_boundary",
+            "session": {
+              "session_id": "sess:8b3d0e7f2a1c9b4e",
+              "agent_id": "aha:acme/ops/payment-agent"
+            },
+            "action": {
+              "capability": "api:payments.transfer",
+              "target_service_id": "payments-service",
+              "operation": "transfer",
+              "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "policy": {
+              "policy_id": "payments-v4",
+              "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "chain_summary": {
+              "chain_depth": 1,
+              "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+            },
+            "border_gateway": {
+              "gateway_id": "gateway:prod-us-east-1",
+              "gateway_version": "1.1.0"
+            },
+            "signatures": [
+              {
+                "signer": "gateway:prod-us-east-1",
+                "alg": "EdDSA",
+                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+              }
+            ]
+          }
+        },
+        "keys_by_type": {
+          "agentroa": {
+            "roa": {
+              "policy-engine:prod": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "ara": {
+              "aha:acme/ops/root-agent": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "aer": {
+              "gateway:prod-us-east-1": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+            }
+          }
+        },
+        "policies_by_type": {
+          "agentroa": {
+            "expected_policy_id": "payments-v4",
+            "expected_policy_version": "4.2.1",
+            "expected_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "allow_degraded": false,
+            "allowed_topologies": [
+              "topology_d_domain_boundary"
+            ],
+            "capability_manifest": {}
+          }
+        }
+      },
+      "orprg": {
+        "action": {
+          "effect_type": "api:payments.transfer",
+          "interface_id": "payments-service",
+          "target_id": "transfer",
+          "audience": "https://payments.example/commit",
+          "request": {
+            "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        "receipt": {
+          "@version": "ORPRG-JSON-JCS-ED25519-v1",
+          "receipt_core": {
+            "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "epoch_id": "policy-epoch-42",
+            "valid_from": "2026-07-19T11:55:00Z",
+            "valid_to": "2026-07-19T12:05:00Z",
+            "action_digest": "sha256:1b85efaef607897b045f76bc05c385ab95d525bf6c58b5de7f8108a26dfde0ed",
+            "canonicalization_profile": "ORPRG-JCS-ACTION-v1",
+            "scope": {
+              "effect_type": "api:payments.transfer",
+              "interface_id": "payments-service",
+              "target_id": "transfer",
+              "audience": "https://payments.example/commit"
+            },
+            "anti_replay": {
+              "mode": "single-use",
+              "nonce": "S1ngleUseNonce_20260719_0001"
+            }
+          },
+          "status": {
+            "state": "good",
+            "checked_at": "2026-07-19T11:59:00Z",
+            "next_update": "2026-07-19T12:03:00Z"
+          },
+          "authenticity": {
+            "issuer_id": "https://policy.example/issuers/primary",
+            "key_id": "orprg-ed25519-2026-07",
+            "algorithm": "Ed25519",
+            "signature": "YXFch5qb7ZelgAKZ37La8dO-XWcpmIVVgq3mhPu0bz2W1UvoRk5nLXGbvTb2y3fCHmEjn7N77ep5dkCKe_ScDA"
+          }
+        },
+        "issuer_keys": {
+          "https://policy.example/issuers/primary": {
+            "orprg-ed25519-2026-07": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        },
+        "options": {
+          "expectedPolicyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expectedEpoch": "policy-epoch-42",
+          "verificationTime": "2026-07-19T12:00:00Z",
+          "maxReceiptAgeSeconds": 600,
+          "maxStatusAgeSeconds": 180
+        }
+      },
+      "ep": {
+        "quorum": {
+          "@type": "ep.quorum",
+          "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "members": [
+            {
+              "role": "treasury_controller",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_rivera_20260719",
+                  "approver": "ep:approver:rivera",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEYCIQCPHK61NE4A_HwHMmTCvrSxMc_5F3K5bxDhmAM-vdu3ngIhAKwjXPuk5116b5w1OCb_FL2NesEJY_urnZ2jnTa7IwP7"
+                }
+              }
+            },
+            {
+              "role": "risk_officer",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_chen_20260719",
+                  "approver": "ep:approver:chen",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEQCIGqtttkBRY4lvQzH-L5T6rzGJp1-Dwvhu-f_JQvYFQCMAiB8UNvSokIl4BvkA_wjFRKUWpOKBIq0TBWvsVxEYYJv8Q"
+                }
+              }
+            }
+          ]
+        },
+        "profile": {
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "rp_id": "rp.emilia.example",
+          "allowed_origins": [
+            "https://rp.emilia.example"
+          ],
+          "approvers": {
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg": {
+              "approver_id": "ep:approver:rivera",
+              "roles": [
+                "treasury_controller"
+              ],
+              "status": "active"
+            },
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ": {
+              "approver_id": "ep:approver:chen",
+              "roles": [
+                "risk_officer"
+              ],
+              "status": "active"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "agentroa": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "agentroa-aer-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/agentroa-aer+json",
+              "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+              "version": "1.0"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/capability",
+              "/target_service_id",
+              "/operation",
+              "/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/capability",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_service_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/operation",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/agentroa-aer+json",
+            "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+            "version": "1.0"
+          },
+          "expected_profile_hash": "sha256:5600e1bad1a30d4d5ae7061d7848ab9016695e1ba3360adbd8ec148ae0324079"
+        },
+        "orprg": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "orprg-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/orprg-action+json",
+              "schema": "ORPRG-JCS-ACTION-v1",
+              "version": "1"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/effect_type",
+              "/interface_id",
+              "/target_id",
+              "/request/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/effect_type",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/interface_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_id",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/request/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/orprg-action+json",
+            "schema": "ORPRG-JCS-ACTION-v1",
+            "version": "1"
+          },
+          "expected_profile_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "first_valid": false,
+        "reason": "mapping_profile_refused"
+      }
+    },
+    {
+      "id": "reject_untrusted_issuer",
+      "description": "The ORPRG receipt carries a mathematically valid Ed25519 signature, but its issuer key is not in the relying party trust pins.",
+      "expected_action": {
+        "action_type": "agent.capability.invoke.1",
+        "capability": "api:payments.transfer",
+        "target_service_id": "payments-service",
+        "operation": "transfer",
+        "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected_caid": {
+        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
+      },
+      "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
+      "presentations": 1,
+      "agentroa": {
+        "evidence": {
+          "chain": [
+            {
+              "schema_version": "1.0",
+              "envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "issued_at": "2026-07-19T11:55:00Z",
+              "expires_at": "2026-07-19T12:05:00Z",
+              "session": {
+                "session_id": "sess:8b3d0e7f2a1c9b4e",
+                "channel": "api",
+                "agent_id": "aha:acme/ops/root-agent"
+              },
+              "authorized_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 1,
+                "cross_org_permitted": false
+              },
+              "policy": {
+                "policy_id": "payments-v4",
+                "policy_version": "4.2.1",
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authorization": {
+                "auth_strength": "dual_control",
+                "approval_state": "granted",
+                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+              },
+              "evidence": {
+                "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "model_provenance": [
+                  "example:model:v1"
+                ]
+              },
+              "signatures": [
+                {
+                  "signer": "policy-engine:prod",
+                  "alg": "EdDSA",
+                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                }
+              ]
+            },
+            {
+              "schema_version": "1.0",
+              "ara_id": "ara:9c4e1f8a2b7d3e0f",
+              "issued_at": "2026-07-19T11:57:00Z",
+              "upstream_ref": {
+                "ref_type": "roa_envelope",
+                "ref_id": "env:4a7c9f2b1e8d3a6f",
+                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+              },
+              "delegating_agent": {
+                "agent_id": "aha:acme/ops/root-agent",
+                "session_id": "sess:8b3d0e7f2a1c9b4e"
+              },
+              "delegated_agent": {
+                "agent_id": "aha:acme/ops/payment-agent"
+              },
+              "delegated_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 0
+              },
+              "policy": {
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "policy_version": "4.2.1"
+              },
+              "signatures": [
+                {
+                  "signer": "aha:acme/ops/root-agent",
+                  "alg": "EdDSA",
+                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                }
+              ]
+            }
+          ],
+          "aer": {
+            "schema_version": "1.0",
+            "aer_id": "aer:2f5a8c1d4e7b0f3a",
+            "produced_at": "2026-07-19T11:58:00Z",
+            "enforcement_outcome": "permit",
+            "enforcement_mode": "normal",
+            "deployment_topology": "topology_d_domain_boundary",
+            "session": {
+              "session_id": "sess:8b3d0e7f2a1c9b4e",
+              "agent_id": "aha:acme/ops/payment-agent"
+            },
+            "action": {
+              "capability": "api:payments.transfer",
+              "target_service_id": "payments-service",
+              "operation": "transfer",
+              "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "policy": {
+              "policy_id": "payments-v4",
+              "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "chain_summary": {
+              "chain_depth": 1,
+              "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+            },
+            "border_gateway": {
+              "gateway_id": "gateway:prod-us-east-1",
+              "gateway_version": "1.1.0"
+            },
+            "signatures": [
+              {
+                "signer": "gateway:prod-us-east-1",
+                "alg": "EdDSA",
+                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+              }
+            ]
+          }
+        },
+        "keys_by_type": {
+          "agentroa": {
+            "roa": {
+              "policy-engine:prod": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "ara": {
+              "aha:acme/ops/root-agent": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "aer": {
+              "gateway:prod-us-east-1": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+            }
+          }
+        },
+        "policies_by_type": {
+          "agentroa": {
+            "expected_policy_id": "payments-v4",
+            "expected_policy_version": "4.2.1",
+            "expected_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "allow_degraded": false,
+            "allowed_topologies": [
+              "topology_d_domain_boundary"
+            ],
+            "capability_manifest": {}
+          }
+        }
+      },
+      "orprg": {
+        "action": {
+          "effect_type": "api:payments.transfer",
+          "interface_id": "payments-service",
+          "target_id": "transfer",
+          "audience": "https://payments.example/commit",
+          "request": {
+            "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        "receipt": {
+          "@version": "ORPRG-JSON-JCS-ED25519-v1",
+          "receipt_core": {
+            "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "epoch_id": "policy-epoch-42",
+            "valid_from": "2026-07-19T11:55:00Z",
+            "valid_to": "2026-07-19T12:05:00Z",
+            "action_digest": "sha256:1b85efaef607897b045f76bc05c385ab95d525bf6c58b5de7f8108a26dfde0ed",
+            "canonicalization_profile": "ORPRG-JCS-ACTION-v1",
+            "scope": {
+              "effect_type": "api:payments.transfer",
+              "interface_id": "payments-service",
+              "target_id": "transfer",
+              "audience": "https://payments.example/commit"
+            },
+            "anti_replay": {
+              "mode": "single-use",
+              "nonce": "S1ngleUseNonce_20260719_0001"
+            }
+          },
+          "status": {
+            "state": "good",
+            "checked_at": "2026-07-19T11:59:00Z",
+            "next_update": "2026-07-19T12:03:00Z"
+          },
+          "authenticity": {
+            "issuer_id": "https://policy.example/issuers/primary",
+            "key_id": "orprg-ed25519-2026-07",
+            "algorithm": "Ed25519",
+            "signature": "YXFch5qb7ZelgAKZ37La8dO-XWcpmIVVgq3mhPu0bz2W1UvoRk5nLXGbvTb2y3fCHmEjn7N77ep5dkCKe_ScDA"
+          }
+        },
+        "issuer_keys": {},
+        "options": {
+          "expectedPolicyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expectedEpoch": "policy-epoch-42",
+          "verificationTime": "2026-07-19T12:00:00Z",
+          "maxReceiptAgeSeconds": 600,
+          "maxStatusAgeSeconds": 180
+        }
+      },
+      "ep": {
+        "quorum": {
+          "@type": "ep.quorum",
+          "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "members": [
+            {
+              "role": "treasury_controller",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_rivera_20260719",
+                  "approver": "ep:approver:rivera",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEUCIQCJHokNuRbCTXZKneak9QNGFlDYJJ_DgZkDOB5bua8lQwIgD2-xzQkJwJJAwxLqXdeVihn2TAE584ay_a5AxoQx4y8"
+                }
+              }
+            },
+            {
+              "role": "risk_officer",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_chen_20260719",
+                  "approver": "ep:approver:chen",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEYCIQCTftciVeqCc2EV3YVFPIEAQWg3hQogmCrrOExAQ1tDnAIhAJfMs03Chtuhb4KbwbpdFv3dSmZ718sZU0BGvG7vfZEY"
+                }
+              }
+            }
+          ]
+        },
+        "profile": {
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "rp_id": "rp.emilia.example",
+          "allowed_origins": [
+            "https://rp.emilia.example"
+          ],
+          "approvers": {
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg": {
+              "approver_id": "ep:approver:rivera",
+              "roles": [
+                "treasury_controller"
+              ],
+              "status": "active"
+            },
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ": {
+              "approver_id": "ep:approver:chen",
+              "roles": [
+                "risk_officer"
+              ],
+              "status": "active"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "agentroa": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "agentroa-aer-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/agentroa-aer+json",
+              "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+              "version": "1.0"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/capability",
+              "/target_service_id",
+              "/operation",
+              "/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/capability",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_service_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/operation",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/agentroa-aer+json",
+            "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+            "version": "1.0"
+          },
+          "expected_profile_hash": "sha256:5600e1bad1a30d4d5ae7061d7848ab9016695e1ba3360adbd8ec148ae0324079"
+        },
+        "orprg": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "orprg-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/orprg-action+json",
+              "schema": "ORPRG-JCS-ACTION-v1",
+              "version": "1"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/effect_type",
+              "/interface_id",
+              "/target_id",
+              "/request/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/effect_type",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/interface_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_id",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/request/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/orprg-action+json",
+            "schema": "ORPRG-JCS-ACTION-v1",
+            "version": "1"
+          },
+          "expected_profile_hash": "sha256:f36eb092392de72dd5f2f13d23ce5003b5ba9598e9ff108fc4028f46ff9a624d"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "first_valid": false,
+        "reason": "untrusted_issuer"
+      }
+    },
+    {
+      "id": "reject_approval_state_only_substitution",
+      "description": "The signed AgentROA root says approval_state=granted, but no EP Class-A/quorum artifact is present to fill the human requirement.",
+      "expected_action": {
+        "action_type": "agent.capability.invoke.1",
+        "capability": "api:payments.transfer",
+        "target_service_id": "payments-service",
+        "operation": "transfer",
+        "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected_caid": {
+        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
+      },
+      "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
+      "presentations": 1,
+      "agentroa": {
+        "evidence": {
+          "chain": [
+            {
+              "schema_version": "1.0",
+              "envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "issued_at": "2026-07-19T11:55:00Z",
+              "expires_at": "2026-07-19T12:05:00Z",
+              "session": {
+                "session_id": "sess:8b3d0e7f2a1c9b4e",
+                "channel": "api",
+                "agent_id": "aha:acme/ops/root-agent"
+              },
+              "authorized_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 1,
+                "cross_org_permitted": false
+              },
+              "policy": {
+                "policy_id": "payments-v4",
+                "policy_version": "4.2.1",
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authorization": {
+                "auth_strength": "dual_control",
+                "approval_state": "granted",
+                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+              },
+              "evidence": {
+                "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "model_provenance": [
+                  "example:model:v1"
+                ]
+              },
+              "signatures": [
+                {
+                  "signer": "policy-engine:prod",
+                  "alg": "EdDSA",
+                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                }
+              ]
+            },
+            {
+              "schema_version": "1.0",
+              "ara_id": "ara:9c4e1f8a2b7d3e0f",
+              "issued_at": "2026-07-19T11:57:00Z",
+              "upstream_ref": {
+                "ref_type": "roa_envelope",
+                "ref_id": "env:4a7c9f2b1e8d3a6f",
+                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+              },
+              "delegating_agent": {
+                "agent_id": "aha:acme/ops/root-agent",
+                "session_id": "sess:8b3d0e7f2a1c9b4e"
+              },
+              "delegated_agent": {
+                "agent_id": "aha:acme/ops/payment-agent"
+              },
+              "delegated_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 0
+              },
+              "policy": {
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "policy_version": "4.2.1"
+              },
+              "signatures": [
+                {
+                  "signer": "aha:acme/ops/root-agent",
+                  "alg": "EdDSA",
+                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                }
+              ]
+            }
+          ],
+          "aer": {
+            "schema_version": "1.0",
+            "aer_id": "aer:2f5a8c1d4e7b0f3a",
+            "produced_at": "2026-07-19T11:58:00Z",
+            "enforcement_outcome": "permit",
+            "enforcement_mode": "normal",
+            "deployment_topology": "topology_d_domain_boundary",
+            "session": {
+              "session_id": "sess:8b3d0e7f2a1c9b4e",
+              "agent_id": "aha:acme/ops/payment-agent"
+            },
+            "action": {
+              "capability": "api:payments.transfer",
+              "target_service_id": "payments-service",
+              "operation": "transfer",
+              "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "policy": {
+              "policy_id": "payments-v4",
+              "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "chain_summary": {
+              "chain_depth": 1,
+              "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+            },
+            "border_gateway": {
+              "gateway_id": "gateway:prod-us-east-1",
+              "gateway_version": "1.1.0"
+            },
+            "signatures": [
+              {
+                "signer": "gateway:prod-us-east-1",
+                "alg": "EdDSA",
+                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+              }
+            ]
+          }
+        },
+        "keys_by_type": {
+          "agentroa": {
+            "roa": {
+              "policy-engine:prod": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "ara": {
+              "aha:acme/ops/root-agent": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "aer": {
+              "gateway:prod-us-east-1": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+            }
+          }
+        },
+        "policies_by_type": {
+          "agentroa": {
+            "expected_policy_id": "payments-v4",
+            "expected_policy_version": "4.2.1",
+            "expected_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "allow_degraded": false,
+            "allowed_topologies": [
+              "topology_d_domain_boundary"
+            ],
+            "capability_manifest": {}
+          }
+        }
+      },
+      "orprg": {
+        "action": {
+          "effect_type": "api:payments.transfer",
+          "interface_id": "payments-service",
+          "target_id": "transfer",
+          "audience": "https://payments.example/commit",
+          "request": {
+            "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        "receipt": {
+          "@version": "ORPRG-JSON-JCS-ED25519-v1",
+          "receipt_core": {
+            "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "epoch_id": "policy-epoch-42",
+            "valid_from": "2026-07-19T11:55:00Z",
+            "valid_to": "2026-07-19T12:05:00Z",
+            "action_digest": "sha256:1b85efaef607897b045f76bc05c385ab95d525bf6c58b5de7f8108a26dfde0ed",
+            "canonicalization_profile": "ORPRG-JCS-ACTION-v1",
+            "scope": {
+              "effect_type": "api:payments.transfer",
+              "interface_id": "payments-service",
+              "target_id": "transfer",
+              "audience": "https://payments.example/commit"
+            },
+            "anti_replay": {
+              "mode": "single-use",
+              "nonce": "S1ngleUseNonce_20260719_0001"
+            }
+          },
+          "status": {
+            "state": "good",
+            "checked_at": "2026-07-19T11:59:00Z",
+            "next_update": "2026-07-19T12:03:00Z"
+          },
+          "authenticity": {
+            "issuer_id": "https://policy.example/issuers/primary",
+            "key_id": "orprg-ed25519-2026-07",
+            "algorithm": "Ed25519",
+            "signature": "YXFch5qb7ZelgAKZ37La8dO-XWcpmIVVgq3mhPu0bz2W1UvoRk5nLXGbvTb2y3fCHmEjn7N77ep5dkCKe_ScDA"
+          }
+        },
+        "issuer_keys": {
+          "https://policy.example/issuers/primary": {
+            "orprg-ed25519-2026-07": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        },
+        "options": {
+          "expectedPolicyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expectedEpoch": "policy-epoch-42",
+          "verificationTime": "2026-07-19T12:00:00Z",
+          "maxReceiptAgeSeconds": 600,
+          "maxStatusAgeSeconds": 180
+        }
+      },
+      "ep": {
+        "quorum": null,
+        "profile": {
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "rp_id": "rp.emilia.example",
+          "allowed_origins": [
+            "https://rp.emilia.example"
+          ],
+          "approvers": {
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg": {
+              "approver_id": "ep:approver:rivera",
+              "roles": [
+                "treasury_controller"
+              ],
+              "status": "active"
+            },
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ": {
+              "approver_id": "ep:approver:chen",
+              "roles": [
+                "risk_officer"
+              ],
+              "status": "active"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "agentroa": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "agentroa-aer-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/agentroa-aer+json",
+              "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+              "version": "1.0"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/capability",
+              "/target_service_id",
+              "/operation",
+              "/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/capability",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_service_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/operation",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/agentroa-aer+json",
+            "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+            "version": "1.0"
+          },
+          "expected_profile_hash": "sha256:5600e1bad1a30d4d5ae7061d7848ab9016695e1ba3360adbd8ec148ae0324079"
+        },
+        "orprg": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "orprg-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/orprg-action+json",
+              "schema": "ORPRG-JCS-ACTION-v1",
+              "version": "1"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/effect_type",
+              "/interface_id",
+              "/target_id",
+              "/request/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/effect_type",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/interface_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_id",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/request/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/orprg-action+json",
+            "schema": "ORPRG-JCS-ACTION-v1",
+            "version": "1"
+          },
+          "expected_profile_hash": "sha256:f36eb092392de72dd5f2f13d23ce5003b5ba9598e9ff108fc4028f46ff9a624d"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "first_valid": false,
+        "reason": "human_evidence_missing"
+      }
+    },
+    {
+      "id": "reject_orprg_replay",
+      "description": "The exact same ORPRG single-use nonce is presented twice to one atomic durable replay domain; only the first presentation can verify.",
+      "expected_action": {
+        "action_type": "agent.capability.invoke.1",
+        "capability": "api:payments.transfer",
+        "target_service_id": "payments-service",
+        "operation": "transfer",
+        "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected_caid": {
+        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
+      },
+      "relying_party_requirement": "agentroa AND orprg-json-jcs AND ep-quorum",
+      "presentations": 2,
+      "agentroa": {
+        "evidence": {
+          "chain": [
+            {
+              "schema_version": "1.0",
+              "envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "issued_at": "2026-07-19T11:55:00Z",
+              "expires_at": "2026-07-19T12:05:00Z",
+              "session": {
+                "session_id": "sess:8b3d0e7f2a1c9b4e",
+                "channel": "api",
+                "agent_id": "aha:acme/ops/root-agent"
+              },
+              "authorized_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 1,
+                "cross_org_permitted": false
+              },
+              "policy": {
+                "policy_id": "payments-v4",
+                "policy_version": "4.2.1",
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authorization": {
+                "auth_strength": "dual_control",
+                "approval_state": "granted",
+                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+              },
+              "evidence": {
+                "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "model_provenance": [
+                  "example:model:v1"
+                ]
+              },
+              "signatures": [
+                {
+                  "signer": "policy-engine:prod",
+                  "alg": "EdDSA",
+                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                }
+              ]
+            },
+            {
+              "schema_version": "1.0",
+              "ara_id": "ara:9c4e1f8a2b7d3e0f",
+              "issued_at": "2026-07-19T11:57:00Z",
+              "upstream_ref": {
+                "ref_type": "roa_envelope",
+                "ref_id": "env:4a7c9f2b1e8d3a6f",
+                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+              },
+              "delegating_agent": {
+                "agent_id": "aha:acme/ops/root-agent",
+                "session_id": "sess:8b3d0e7f2a1c9b4e"
+              },
+              "delegated_agent": {
+                "agent_id": "aha:acme/ops/payment-agent"
+              },
+              "delegated_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 0
+              },
+              "policy": {
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "policy_version": "4.2.1"
+              },
+              "signatures": [
+                {
+                  "signer": "aha:acme/ops/root-agent",
+                  "alg": "EdDSA",
+                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                }
+              ]
+            }
+          ],
+          "aer": {
+            "schema_version": "1.0",
+            "aer_id": "aer:2f5a8c1d4e7b0f3a",
+            "produced_at": "2026-07-19T11:58:00Z",
+            "enforcement_outcome": "permit",
+            "enforcement_mode": "normal",
+            "deployment_topology": "topology_d_domain_boundary",
+            "session": {
+              "session_id": "sess:8b3d0e7f2a1c9b4e",
+              "agent_id": "aha:acme/ops/payment-agent"
+            },
+            "action": {
+              "capability": "api:payments.transfer",
+              "target_service_id": "payments-service",
+              "operation": "transfer",
+              "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "policy": {
+              "policy_id": "payments-v4",
+              "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "chain_summary": {
+              "chain_depth": 1,
+              "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+            },
+            "border_gateway": {
+              "gateway_id": "gateway:prod-us-east-1",
+              "gateway_version": "1.1.0"
+            },
+            "signatures": [
+              {
+                "signer": "gateway:prod-us-east-1",
+                "alg": "EdDSA",
+                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+              }
+            ]
+          }
+        },
+        "keys_by_type": {
+          "agentroa": {
+            "roa": {
+              "policy-engine:prod": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "ara": {
+              "aha:acme/ops/root-agent": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "aer": {
+              "gateway:prod-us-east-1": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+            }
+          }
+        },
+        "policies_by_type": {
+          "agentroa": {
+            "expected_policy_id": "payments-v4",
+            "expected_policy_version": "4.2.1",
+            "expected_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "allow_degraded": false,
+            "allowed_topologies": [
+              "topology_d_domain_boundary"
+            ],
+            "capability_manifest": {}
+          }
+        }
+      },
+      "orprg": {
+        "action": {
+          "effect_type": "api:payments.transfer",
+          "interface_id": "payments-service",
+          "target_id": "transfer",
+          "audience": "https://payments.example/commit",
+          "request": {
+            "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        "receipt": {
+          "@version": "ORPRG-JSON-JCS-ED25519-v1",
+          "receipt_core": {
+            "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "epoch_id": "policy-epoch-42",
+            "valid_from": "2026-07-19T11:55:00Z",
+            "valid_to": "2026-07-19T12:05:00Z",
+            "action_digest": "sha256:1b85efaef607897b045f76bc05c385ab95d525bf6c58b5de7f8108a26dfde0ed",
+            "canonicalization_profile": "ORPRG-JCS-ACTION-v1",
+            "scope": {
+              "effect_type": "api:payments.transfer",
+              "interface_id": "payments-service",
+              "target_id": "transfer",
+              "audience": "https://payments.example/commit"
+            },
+            "anti_replay": {
+              "mode": "single-use",
+              "nonce": "S1ngleUseNonce_20260719_0001"
+            }
+          },
+          "status": {
+            "state": "good",
+            "checked_at": "2026-07-19T11:59:00Z",
+            "next_update": "2026-07-19T12:03:00Z"
+          },
+          "authenticity": {
+            "issuer_id": "https://policy.example/issuers/primary",
+            "key_id": "orprg-ed25519-2026-07",
+            "algorithm": "Ed25519",
+            "signature": "YXFch5qb7ZelgAKZ37La8dO-XWcpmIVVgq3mhPu0bz2W1UvoRk5nLXGbvTb2y3fCHmEjn7N77ep5dkCKe_ScDA"
+          }
+        },
+        "issuer_keys": {
+          "https://policy.example/issuers/primary": {
+            "orprg-ed25519-2026-07": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        },
+        "options": {
+          "expectedPolicyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expectedEpoch": "policy-epoch-42",
+          "verificationTime": "2026-07-19T12:00:00Z",
+          "maxReceiptAgeSeconds": 600,
+          "maxStatusAgeSeconds": 180
+        }
+      },
+      "ep": {
+        "quorum": {
+          "@type": "ep.quorum",
+          "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "members": [
+            {
+              "role": "treasury_controller",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_rivera_20260719",
+                  "approver": "ep:approver:rivera",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEQCIFZqgCv-F5AL5Y-DTZlYj0p9-AClFV1-SQ50CyaXHcoPAiAEzb8uWuOCXsnemlQt8fA2zDz3SkDVIaR4I9cq119MTg"
+                }
+              }
+            },
+            {
+              "role": "risk_officer",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_chen_20260719",
+                  "approver": "ep:approver:chen",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEQCIE7xzJzJ63OZC4ZoldL8ZwUTdHdj36040ONljZblOeh3AiB5y0k1K5ozlFEFbjIK_g_DZ9SM6FSmY4rvFPPdVuUbcw"
+                }
+              }
+            }
+          ]
+        },
+        "profile": {
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "rp_id": "rp.emilia.example",
+          "allowed_origins": [
+            "https://rp.emilia.example"
+          ],
+          "approvers": {
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg": {
+              "approver_id": "ep:approver:rivera",
+              "roles": [
+                "treasury_controller"
+              ],
+              "status": "active"
+            },
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ": {
+              "approver_id": "ep:approver:chen",
+              "roles": [
+                "risk_officer"
+              ],
+              "status": "active"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "agentroa": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "agentroa-aer-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/agentroa-aer+json",
+              "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+              "version": "1.0"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/capability",
+              "/target_service_id",
+              "/operation",
+              "/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/capability",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_service_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/operation",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/agentroa-aer+json",
+            "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+            "version": "1.0"
+          },
+          "expected_profile_hash": "sha256:5600e1bad1a30d4d5ae7061d7848ab9016695e1ba3360adbd8ec148ae0324079"
+        },
+        "orprg": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "orprg-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/orprg-action+json",
+              "schema": "ORPRG-JCS-ACTION-v1",
+              "version": "1"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/effect_type",
+              "/interface_id",
+              "/target_id",
+              "/request/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/effect_type",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/interface_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_id",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/request/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/orprg-action+json",
+            "schema": "ORPRG-JCS-ACTION-v1",
+            "version": "1"
+          },
+          "expected_profile_hash": "sha256:f36eb092392de72dd5f2f13d23ce5003b5ba9598e9ff108fc4028f46ff9a624d"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "first_valid": true,
+        "reason": "replay_refused"
+      }
+    },
+    {
+      "id": "reject_missing_relying_party_requirement",
+      "description": "All artifacts verify and match, but presenter-carried evidence cannot choose its own sufficiency bar when the relying party supplied no requirement.",
+      "expected_action": {
+        "action_type": "agent.capability.invoke.1",
+        "capability": "api:payments.transfer",
+        "target_service_id": "payments-service",
+        "operation": "transfer",
+        "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "expected_caid": {
+        "value": "caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc",
+        "digest": "sha256:99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77"
+      },
+      "relying_party_requirement": null,
+      "presentations": 1,
+      "agentroa": {
+        "evidence": {
+          "chain": [
+            {
+              "schema_version": "1.0",
+              "envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "issued_at": "2026-07-19T11:55:00Z",
+              "expires_at": "2026-07-19T12:05:00Z",
+              "session": {
+                "session_id": "sess:8b3d0e7f2a1c9b4e",
+                "channel": "api",
+                "agent_id": "aha:acme/ops/root-agent"
+              },
+              "authorized_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 1,
+                "cross_org_permitted": false
+              },
+              "policy": {
+                "policy_id": "payments-v4",
+                "policy_version": "4.2.1",
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              },
+              "authorization": {
+                "auth_strength": "dual_control",
+                "approval_state": "granted",
+                "approval_artifact_ref": "caid:caid:1:agent.capability.invoke.1:jcs-sha256:mfla99ARfPLwhfMkjSTJNO-ozrbKEUJ31CKT6MyAfnc"
+              },
+              "evidence": {
+                "session_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "model_provenance": [
+                  "example:model:v1"
+                ]
+              },
+              "signatures": [
+                {
+                  "signer": "policy-engine:prod",
+                  "alg": "EdDSA",
+                  "sig": "9Dv4YSTfCfBXkrskGdI4sz_JNQ2VPTBdQFo-krWZFH0pygRql5XrntMN07vhaOobfRcdeZPCQAUQP0IH8Z7zCw"
+                }
+              ]
+            },
+            {
+              "schema_version": "1.0",
+              "ara_id": "ara:9c4e1f8a2b7d3e0f",
+              "issued_at": "2026-07-19T11:57:00Z",
+              "upstream_ref": {
+                "ref_type": "roa_envelope",
+                "ref_id": "env:4a7c9f2b1e8d3a6f",
+                "ref_digest": "sha256:070adec1356783ef45f9d27005295cc898783d6685a045b690e40ddaac7a919d"
+              },
+              "delegating_agent": {
+                "agent_id": "aha:acme/ops/root-agent",
+                "session_id": "sess:8b3d0e7f2a1c9b4e"
+              },
+              "delegated_agent": {
+                "agent_id": "aha:acme/ops/payment-agent"
+              },
+              "delegated_scope": {
+                "capabilities": [
+                  "api:payments.transfer"
+                ],
+                "max_delegation_depth": 0
+              },
+              "policy": {
+                "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "policy_version": "4.2.1"
+              },
+              "signatures": [
+                {
+                  "signer": "aha:acme/ops/root-agent",
+                  "alg": "EdDSA",
+                  "sig": "En-SY20oSTPOq274G79BtAURMR3oqIVSKIRFHXAtDNGLqVEFjo5jzs9iGNaKBlO4nYf-m3Go6o2SCvDSqBn9Cg"
+                }
+              ]
+            }
+          ],
+          "aer": {
+            "schema_version": "1.0",
+            "aer_id": "aer:2f5a8c1d4e7b0f3a",
+            "produced_at": "2026-07-19T11:58:00Z",
+            "enforcement_outcome": "permit",
+            "enforcement_mode": "normal",
+            "deployment_topology": "topology_d_domain_boundary",
+            "session": {
+              "session_id": "sess:8b3d0e7f2a1c9b4e",
+              "agent_id": "aha:acme/ops/payment-agent"
+            },
+            "action": {
+              "capability": "api:payments.transfer",
+              "target_service_id": "payments-service",
+              "operation": "transfer",
+              "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "policy": {
+              "policy_id": "payments-v4",
+              "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            "chain_summary": {
+              "chain_depth": 1,
+              "root_envelope_id": "env:4a7c9f2b1e8d3a6f",
+              "chain_digest": "sha256:55f34a445236c8fbd54a0cd98abd93d1b6843ff1881912b8b365b7800845c435"
+            },
+            "border_gateway": {
+              "gateway_id": "gateway:prod-us-east-1",
+              "gateway_version": "1.1.0"
+            },
+            "signatures": [
+              {
+                "signer": "gateway:prod-us-east-1",
+                "alg": "EdDSA",
+                "sig": "cO8a2VPhSKArJ5L_jB43oUO5q4Y1pG2v5ePknaIMs-ADvk851SeSfRWBUHcDJuKoec3B8k8QdTr6vlo22-7VBA"
+              }
+            ]
+          }
+        },
+        "keys_by_type": {
+          "agentroa": {
+            "roa": {
+              "policy-engine:prod": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "ara": {
+              "aha:acme/ops/root-agent": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+            },
+            "aer": {
+              "gateway:prod-us-east-1": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+            }
+          }
+        },
+        "policies_by_type": {
+          "agentroa": {
+            "expected_policy_id": "payments-v4",
+            "expected_policy_version": "4.2.1",
+            "expected_policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "allow_degraded": false,
+            "allowed_topologies": [
+              "topology_d_domain_boundary"
+            ],
+            "capability_manifest": {}
+          }
+        }
+      },
+      "orprg": {
+        "action": {
+          "effect_type": "api:payments.transfer",
+          "interface_id": "payments-service",
+          "target_id": "transfer",
+          "audience": "https://payments.example/commit",
+          "request": {
+            "input_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        "receipt": {
+          "@version": "ORPRG-JSON-JCS-ED25519-v1",
+          "receipt_core": {
+            "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "epoch_id": "policy-epoch-42",
+            "valid_from": "2026-07-19T11:55:00Z",
+            "valid_to": "2026-07-19T12:05:00Z",
+            "action_digest": "sha256:1b85efaef607897b045f76bc05c385ab95d525bf6c58b5de7f8108a26dfde0ed",
+            "canonicalization_profile": "ORPRG-JCS-ACTION-v1",
+            "scope": {
+              "effect_type": "api:payments.transfer",
+              "interface_id": "payments-service",
+              "target_id": "transfer",
+              "audience": "https://payments.example/commit"
+            },
+            "anti_replay": {
+              "mode": "single-use",
+              "nonce": "S1ngleUseNonce_20260719_0001"
+            }
+          },
+          "status": {
+            "state": "good",
+            "checked_at": "2026-07-19T11:59:00Z",
+            "next_update": "2026-07-19T12:03:00Z"
+          },
+          "authenticity": {
+            "issuer_id": "https://policy.example/issuers/primary",
+            "key_id": "orprg-ed25519-2026-07",
+            "algorithm": "Ed25519",
+            "signature": "YXFch5qb7ZelgAKZ37La8dO-XWcpmIVVgq3mhPu0bz2W1UvoRk5nLXGbvTb2y3fCHmEjn7N77ep5dkCKe_ScDA"
+          }
+        },
+        "issuer_keys": {
+          "https://policy.example/issuers/primary": {
+            "orprg-ed25519-2026-07": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        },
+        "options": {
+          "expectedPolicyDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "expectedEpoch": "policy-epoch-42",
+          "verificationTime": "2026-07-19T12:00:00Z",
+          "maxReceiptAgeSeconds": 600,
+          "maxStatusAgeSeconds": 180
+        }
+      },
+      "ep": {
+        "quorum": {
+          "@type": "ep.quorum",
+          "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "members": [
+            {
+              "role": "treasury_controller",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_rivera_20260719",
+                  "approver": "ep:approver:rivera",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSnZvS2F0Y29iZl9NdVJjZXZXamZ5RkZoRW5fdkRfLU50bUlwRks1QzVESSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEYCIQDIUYWjGk7eYwijQFJ8zjt5LpEtcIKcrIsJygd3_eZx3QIhALZiABPQr2qds5gqnnQbr_iWzYzHisOqQe78mP9y_aGi"
+                }
+              }
+            },
+            {
+              "role": "risk_officer",
+              "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ",
+              "signoff": {
+                "@type": "ep.signoff",
+                "context": {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "99f95af7d0117cf2f085f3248d24c934efa8ceb6ca114277d42293e8cc807e77",
+                  "policy": "policy_cross_standard_quorum",
+                  "nonce": "class_a_chen_20260719",
+                  "approver": "ep:approver:chen",
+                  "initiator": "aha:acme/ops/payment-agent",
+                  "issued_at": "2026-07-19T11:58:30.000Z",
+                  "expires_at": "2026-07-19T12:03:30.000Z"
+                },
+                "webauthn": {
+                  "authenticator_data": "Xqbd_1ZolK98UodqjkDqvEweIjvw8ZL8fl-PDtcfexMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1hXelEtOXRlU2NNYUd4Wl9wM094elAxcDFmbWpGakZadHpfdnhYXzJOWSIsIm9yaWdpbiI6Imh0dHBzOi8vcnAuZW1pbGlhLmV4YW1wbGUifQ",
+                  "signature": "MEUCIQDR50JKsq6s-OdoPznIjwDpq_J5Mwuj4IZTETWvE8u1cAIgZ-rXDQWjoZ6_4D7JL60BdExmyLuuqDXMpmng2HIdFs0"
+                }
+              }
+            }
+          ]
+        },
+        "profile": {
+          "policy": {
+            "mode": "threshold",
+            "required": 2,
+            "approvers": [
+              {
+                "role": "treasury_controller",
+                "approver": "ep:approver:rivera"
+              },
+              {
+                "role": "risk_officer",
+                "approver": "ep:approver:chen"
+              }
+            ],
+            "distinct_humans": true,
+            "window_sec": 300
+          },
+          "rp_id": "rp.emilia.example",
+          "allowed_origins": [
+            "https://rp.emilia.example"
+          ],
+          "approvers": {
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZpI3VGYrivhlu_KoncHtr3sZZHVE_Vse1PFOL4htit-HdH_JfpmjR67vlmMY7Bok5yHXzvc3HCDFCt9TWNgDCg": {
+              "approver_id": "ep:approver:rivera",
+              "roles": [
+                "treasury_controller"
+              ],
+              "status": "active"
+            },
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOtOGGpViE5JRa7WT7wVYPtLlhm9ctiYKMBcjf9ibkK_Qlhx-NwdaZ5GjnGH1YpWwK20mVnthXmCqQe4cjoM4jQ": {
+              "approver_id": "ep:approver:chen",
+              "roles": [
+                "risk_officer"
+              ],
+              "status": "active"
+            }
+          }
+        }
+      },
+      "mapping": {
+        "agentroa": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "agentroa-aer-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/agentroa-aer+json",
+              "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+              "version": "1.0"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/capability",
+              "/target_service_id",
+              "/operation",
+              "/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/capability",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_service_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/operation",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/agentroa-aer+json",
+            "schema": "draft-nivalto-agentroa-route-authorization-01#aer-action",
+            "version": "1.0"
+          },
+          "expected_profile_hash": "sha256:5600e1bad1a30d4d5ae7061d7848ab9016695e1ba3360adbd8ec148ae0324079"
+        },
+        "orprg": {
+          "profile": {
+            "@version": "CAID-MAPPING-PROFILE-v1",
+            "profile_id": "orprg-action-to-agent-capability-invoke-v1",
+            "source_format": {
+              "media_type": "application/orprg-action+json",
+              "schema": "ORPRG-JCS-ACTION-v1",
+              "version": "1"
+            },
+            "target_action_type": "agent.capability.invoke.1",
+            "loss_policy": "no-material-field-loss",
+            "material_source_paths": [
+              "/effect_type",
+              "/interface_id",
+              "/target_id",
+              "/request/input_hash"
+            ],
+            "rules": [
+              {
+                "source_path": "/effect_type",
+                "target_field": "capability",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/interface_id",
+                "target_field": "target_service_id",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/target_id",
+                "target_field": "operation",
+                "transform": "copy"
+              },
+              {
+                "source_path": "/request/input_hash",
+                "target_field": "input_hash",
+                "transform": "copy"
+              }
+            ]
+          },
+          "source_descriptor": {
+            "media_type": "application/orprg-action+json",
+            "schema": "ORPRG-JCS-ACTION-v1",
+            "version": "1"
+          },
+          "expected_profile_hash": "sha256:f36eb092392de72dd5f2f13d23ce5003b5ba9598e9ff108fc4028f46ff9a624d"
+        }
+      },
+      "expect": {
+        "valid": false,
+        "first_valid": false,
+        "reason": "relying_party_requirement_missing"
+      }
+    }
+  ]
+}
