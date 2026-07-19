@@ -44,3 +44,57 @@ jobs:
             formal/tamarin/composed-output.txt
             formal/tamarin/run-output/*.txt
           retention-days: 90
+
+  receipt-core:
+    # Same pinned arm64-only prover digest as composed-reliance; runs the
+    # standalone receipt-core component model so it is gated independently of
+    # the composition (audit GAP 10).
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Verify pinned model bytes
+        working-directory: formal/tamarin
+        run: |
+          echo 'de5eee9b40790baadb22d42cdfff921c5fb2edf10ac6e041d3f8a786f0f0343e  ep_receipt_core.spthy' | sha256sum -c -
+          echo 'd1e46b6ba20f845e93342e1118a1d42f087c174902e1634870adb05159a6b063  run-receipt-core.sh' | sha256sum -c -
+      - name: Run every receipt-core proof obligation independently
+        working-directory: formal/tamarin
+        shell: bash
+        run: sh ./run-receipt-core.sh | tee receipt-output.txt
+      - name: Upload complete prover output
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: tamarin-receipt-core-output
+          path: |
+            formal/tamarin/receipt-output.txt
+            formal/tamarin/run-output-receipt/*.txt
+          retention-days: 90
+
+  quorum-core:
+    # Same pinned arm64-only prover digest as composed-reliance; runs the
+    # standalone quorum-core component model so it is gated independently of
+    # the composition (audit GAP 10).
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Verify pinned model bytes
+        working-directory: formal/tamarin
+        run: |
+          echo '399e4f739b6bfbecb9a7fc83bdbe12ecb0f900dc77aaecaf790b8cb36d152dbb  ep_quorum_core.spthy' | sha256sum -c -
+          echo '3dcaf37a0d1fa047bc655319ee35959b3f4ee6fc6afde358b7487eb5227691d7  run-quorum.sh' | sha256sum -c -
+      - name: Run every quorum-core proof obligation independently
+        working-directory: formal/tamarin
+        shell: bash
+        run: sh ./run-quorum.sh | tee quorum-output.txt
+      - name: Upload complete prover output
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: tamarin-quorum-core-output
+          path: |
+            formal/tamarin/quorum-output.txt
+            formal/tamarin/run-output-quorum/*.txt
+          retention-days: 90
