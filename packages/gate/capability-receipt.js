@@ -609,7 +609,13 @@ export async function executeWithCapability({
   }
   let authorization = null;
   if (gate && typeof gate.check === 'function') {
-    authorization = await gate.check({ selector, receipt: verified.receipt, observedAction, consumptionMode: 'none' });
+    authorization = await gate.check({
+      selector,
+      receipt: verified.receipt,
+      observedAction,
+      consumptionMode: 'none',
+      capability: { capabilityReceipt, action, operationId },
+    });
     if (!authorization?.allow) return { ok: false, reason: 'base_receipt_rejected', authorization };
   } else if (typeof verifyBaseReceipt === 'function') {
     const result = await verifyBaseReceipt(verified.receipt, { action, selector, observedAction });
