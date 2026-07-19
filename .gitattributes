@@ -10,6 +10,12 @@ examples/external-verification/statements/** -text
 # Everything else: normalize to LF in the repo and on checkout.
 * text=auto eol=lf
 
+# Source files are always reviewable as text, including cleanup commits that
+# remove accidental control bytes from an older blob.
+*.js diff
+*.mjs diff
+*.cjs diff
+
 # Binaries: never touch.
 *.pdf binary
 *.png binary

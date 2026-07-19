@@ -98,6 +98,16 @@ export class GithubConnectorError extends Error {
   }
 }
 
+/**
+ * @param {{
+ *   token?: string,
+ *   baseUrl?: string,
+ *   apiVersion?: string,
+ *   userAgent?: string,
+ *   fetchImpl?: typeof fetch,
+ *   maxResponseBytes?: number
+ * }} [options]
+ */
 export function createGithubRestConnector({
   token,
   baseUrl = DEFAULT_BASE_URL,
@@ -139,6 +149,7 @@ export function createGithubRestConnector({
   }
 
   return Object.freeze({
+    /** @param {{owner?: string, repo?: string, signal?: AbortSignal}} [request] */
     async getRepository({ owner, repo, signal } = {}) {
       requirePathSegment(owner, 'owner');
       requirePathSegment(repo, 'repo');
@@ -161,6 +172,15 @@ export function createGithubRestConnector({
       }
     },
 
+    /**
+     * @param {{
+     *   owner?: string,
+     *   repo?: string,
+     *   idempotencyKey?: string,
+     *   actionId?: string,
+     *   signal?: AbortSignal
+     * }} [request]
+     */
     async deleteRepository({ owner, repo, idempotencyKey, actionId, signal } = {}) {
       requirePathSegment(owner, 'owner');
       requirePathSegment(repo, 'repo');

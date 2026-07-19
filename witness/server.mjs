@@ -82,7 +82,9 @@ function loadIdentity() {
   }
 
   // Derive the public key + id from the private key so they can never drift.
-  const publicKey = crypto.createPublicKey(privateKey);
+  const publicKey = crypto.createPublicKey(
+    privateKey.export({ type: 'pkcs8', format: 'pem' }),
+  );
   const public_key = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const witness_id = deriveWitnessId(public_key);
 

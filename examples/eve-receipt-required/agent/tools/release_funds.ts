@@ -40,7 +40,7 @@ export default defineTool({
       },
     );
 
-    if (!result.ok) {
+    if (result.ok === false) {
       // Receipt missing/invalid/replayed → do NOT mutate. Hand the model a
       // machine-readable challenge (HTTP 428-shaped) describing what to bring.
       return { ok: false, receipt_required: true, status: result.status, challenge: result.body };

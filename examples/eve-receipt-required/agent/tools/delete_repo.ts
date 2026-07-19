@@ -25,7 +25,7 @@ export default defineTool({
       return { deleted: true, repo: target };
     });
 
-    if (!result.ok) {
+    if (result.ok === false) {
       return { ok: false, receipt_required: true, status: result.status, challenge: result.body };
     }
     return { ok: true, ...result.result, receipt: result.receiptId };

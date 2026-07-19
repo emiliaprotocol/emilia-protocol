@@ -189,6 +189,22 @@ function tpmQuoteStructureError(q) {
  * @returns {{ valid: boolean, complete: boolean, links: object, reason?: string }}
  */
 export function verifyBuildAttestation(record, opts = {}) {
+  /** @type {{
+   *   record_shape: boolean,
+   *   leaf_binding: boolean,
+   *   log_inclusion: boolean | {status: string, checkpoint_root_matched: boolean},
+   *   rebuild: {
+   *     status: string,
+   *     reason?: string,
+   *     built_source_commit?: string,
+   *     claimed_source_commit?: string,
+   *     built_sha256?: string,
+   *     claimed_sha256?: string,
+   *     source_commit?: string,
+   *     sha256?: string
+   *   },
+   *   tpm_quote: {status: string, reason?: string}
+   * }} */
   const links = {
     record_shape: false,
     leaf_binding: false,

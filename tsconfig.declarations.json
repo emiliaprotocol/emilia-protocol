@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": false
+  },
+  "include": ["**/*.d.ts"],
+  "exclude": ["**/dist/**", "**/node_modules/**"]
+}

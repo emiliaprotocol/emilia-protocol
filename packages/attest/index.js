@@ -55,7 +55,7 @@ function hexEqual(a, b) {
 
 /**
  * Verify an agent identity against a known-good SHA-256.
- * @param {{ identity: Buffer|Uint8Array|string, knownGoodHash: string }} args
+ * @param {{ identity?: Buffer|Uint8Array|string, knownGoodHash?: string }} args
  * @returns {{ verified: boolean, computedHash: string }}
  */
 export function verifyIdentity({ identity, knownGoodHash } = {}) {
@@ -71,13 +71,13 @@ export function verifyIdentity({ identity, knownGoodHash } = {}) {
  * Fail-closed: throws if the identity does not match knownGoodHash.
  *
  * @param {object} args
- * @param {Buffer|Uint8Array|string} args.identity        identity-file bytes
- * @param {string} args.knownGoodHash                     SHA-256 hex (e.g. from Keeper)
- * @param {string} args.knownGoodSubject                  identity id pinned with that hash
- * @param {Buffer|Uint8Array|string} args.work            the work-product bytes
- * @param {crypto.KeyObject|string} args.signerPrivateKey Ed25519 key (KeyObject or b64u PKCS#8)
- * @param {string} args.subject                           identity id (e.g. ep:approver:cfo)
- * @param {string} args.issuedAt                          ISO-8601 (caller-supplied — no Date.now lock-in)
+ * @param {Buffer|Uint8Array|string} [args.identity]        identity-file bytes
+ * @param {string} [args.knownGoodHash]                     SHA-256 hex (e.g. from Keeper)
+ * @param {string} [args.knownGoodSubject]                  identity id pinned with that hash
+ * @param {Buffer|Uint8Array|string} [args.work]            the work-product bytes
+ * @param {crypto.KeyObject|string} [args.signerPrivateKey] Ed25519 key (KeyObject or b64u PKCS#8)
+ * @param {string} [args.subject]                           identity id (e.g. ep:approver:cfo)
+ * @param {string} [args.issuedAt]                          ISO-8601 (caller-supplied — no Date.now lock-in)
  * @param {string} [args.workName]
  * @param {string} [args.receiptId]
  * @param {boolean} [args.anchor=false]                   attach an EP-MERKLE-v2 anchor
@@ -122,9 +122,13 @@ export function signWorkReceipt({
   const privateKey = typeof signerPrivateKey === 'string'
     ? privateKeyFromPkcs8B64u(signerPrivateKey)
     : signerPrivateKey;
-  if (!privateKey) throw new Error('attest: signerPrivateKey is required');
-  const publicKey = crypto.createPublicKey(privateKey);
-  if (privateKey.asymmetricKeyType !== 'ed25519' || publicKey.asymmetricKeyType !== 'ed25519') {
+  if (!privateKey || privateKey.type !== 'private' || privateKey.asymmetricKeyType !== 'ed25519') {
+    throw new Error('attest: signerPrivateKey must be Ed25519');
+  }
+  const publicKey = crypto.createPublicKey(
+    privateKey.export({ type: 'pkcs8', format: 'pem' }),
+  );
+  if (publicKey.asymmetricKeyType !== 'ed25519') {
     throw new Error('attest: signerPrivateKey must be Ed25519');
   }
 

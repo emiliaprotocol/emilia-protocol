@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { color, font, radius } from '@/lib/tokens';
 
+/** @type {[number, number, number, number]} */
 const EASE = [0.23, 1, 0.32, 1];
 
 export default function CrashTestDemo() {

@@ -5,6 +5,17 @@
     "jsx": "preserve", "skipLibCheck": true, "noImplicitAny": false,
     "baseUrl": ".", "paths": { "@/*": ["./*"] }, "types": ["react", "node"]
   },
-  "include": ["app/**/*.js", "app/**/*.jsx", "app/**/*.d.ts"],
+  "include": [
+    "app/**/*",
+    "app/.well-known/**/*",
+    "components/**/*",
+    "middleware.js",
+    "instrumentation.js",
+    "next.config.js",
+    "sentry.client.config.js",
+    "sentry.edge.config.js",
+    "sentry.server.config.js",
+    "public/embed.js"
+  ],
   "exclude": ["**/*.test.js", "**/*.test.jsx", "**/node_modules/**"]
 }

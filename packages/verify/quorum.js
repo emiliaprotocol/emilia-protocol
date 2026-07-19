@@ -36,6 +36,10 @@
 import crypto from 'node:crypto';
 import { verifyWebAuthnSignoff, contextChainHash } from './index.js';
 
+function rosterSlotKey(role, approver) {
+  return JSON.stringify([role, approver]);
+}
+
 function spkiFingerprint(value) {
   try {
     const key = crypto.createPublicKey({
@@ -159,14 +163,14 @@ export function verifyQuorum(quorum, opts = {}) {
       && !countedApprovers.includes(initiator);
 
     // 4. Roles admitted: each counted member's (role, approver) is an eligible slot.
-    const eligibleSet = new Set(eligible.map((e) => `${e.role} ${e.approver}`));
+    const eligibleSet = new Set(eligible.map((e) => rosterSlotKey(e.role, e.approver)));
     checks.roles_admitted = counted.length > 0 && counted.every((x) =>
-      eligibleSet.has(`${x.m?.role} ${x.m?.signoff?.context?.approver}`));
+      eligibleSet.has(rosterSlotKey(x.m?.role, x.m?.signoff?.context?.approver)));
 
     // 5. Threshold: enough distinct, valid, eligible approvers.
     const distinctEligible = new Set(
       counted
-        .filter((x) => eligibleSet.has(`${x.m?.role} ${x.m?.signoff?.context?.approver}`))
+        .filter((x) => eligibleSet.has(rosterSlotKey(x.m?.role, x.m?.signoff?.context?.approver)))
         .map((x) => x.m?.signoff?.context?.approver),
     );
     checks.threshold_met = distinctEligible.size >= required;

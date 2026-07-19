@@ -181,8 +181,8 @@ Sentry.init({
     },
   },
 
-  beforeSend: sanitizeSentryEvent,
-  beforeSendTransaction: sanitizeSentryEvent,
+  beforeSend: (event, hint) => /** @type {typeof event} */ (sanitizeSentryEvent(event, hint)),
+  beforeSendTransaction: (event, hint) => /** @type {typeof event} */ (sanitizeSentryEvent(event, hint)),
   beforeSendSpan: sanitizeSentrySpan,
   beforeBreadcrumb: () => null,
   beforeSendLog: () => null,

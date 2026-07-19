@@ -77,7 +77,10 @@ export function policyHash(policy) {
 
 // ── key material helpers ─────────────────────────────────────────────────────
 
-/** Export an Ed25519/EC public key to base64url SPKI DER (the verifier's input form). */
+/**
+ * Export an Ed25519/EC public key to base64url SPKI DER.
+ * @param {crypto.KeyObject} publicKey
+ */
 export function publicKeyToSpkiB64u(publicKey) {
   return publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
 }
@@ -277,6 +280,7 @@ export function validateAgentBinding(binding) {
   if (typeof agentId !== 'string' || agentId.length === 0) {
     throw new Error('agentBinding.agent_id is required and must be a non-empty string (PIP-008 §1)');
   }
+  /** @type {{scheme: string, ref: string, hash?: string, observed_at?: string} | undefined} */
   let validatedDelegation;
   if (delegation !== undefined) {
     if (!delegation || typeof delegation !== 'object' || Array.isArray(delegation)) {
@@ -315,6 +319,7 @@ export function validateAgentBinding(binding) {
       throw new Error(`agentBinding.statement exceeds the ${ATTESTATION_STATEMENT_MAX}-character cap (PIP-008 §1)`);
     }
   }
+  /** @type {{agent_id: string, delegation?: object, statement?: string}} */
   const validated = { agent_id: agentId };
   if (validatedDelegation !== undefined) validated.delegation = validatedDelegation;
   if (statement !== undefined) validated.statement = statement;
@@ -335,6 +340,7 @@ export function validateAgentBinding(binding) {
  * @param {object} [args.initiatorAttestation] - PIP-007 §1 attestation. When
  *   present it is validated and copied verbatim — the IDENTICAL object — into
  *   every context, so its canonical form is identical across all of them.
+ * @param {object} [args.agentBinding] - PIP-008 agent attribution claim.
  * @returns {object[]} contexts
  */
 export function buildContexts({ action, policyHash, approvers, requiredApprovals, issuedAt, expiresAt, prevReceiptHash, initiatorAttestation, agentBinding }) {
@@ -394,7 +400,7 @@ export function contextDigest(context) {
  * @param {string} [args.privateKeyB64u]        - base64url PKCS#8 DER of it
  * @param {string} args.approverKeyId           - the approver key id (ep:key:…#1)
  * @param {string} args.signedAt                - ISO-8601 signoff time
- * @param {'B'|'C'} [args.keyClass='B']
+ * @param {'A'|'B'|'C'} [args.keyClass='B']
  * @returns {object} a signer for collectSignoffs()
  */
 export function softwareSignerFromPrivateKey({ privateKey, privateKeyB64u, approverKeyId, signedAt, keyClass = 'B' }) {
@@ -662,6 +668,22 @@ export function assembleAuthorizationReceiptLegacyV1({ receiptId, action, contex
 
 /**
  * One-call issuance: contexts → signoffs → assembled, log-signed receipt.
+ * @param {object} args
+ * @param {string} [args.receiptId]
+ * @param {object} args.action
+ * @param {object} [args.policy]
+ * @param {string} [args.policyHash]
+ * @param {string[]} args.approvers
+ * @param {number} [args.requiredApprovals]
+ * @param {string} [args.issuedAt]
+ * @param {string} [args.expiresAt]
+ * @param {number} [args.expiresInSeconds]
+ * @param {string} [args.prevReceiptHash]
+ * @param {object} [args.initiatorAttestation]
+ * @param {object} [args.agentBinding]
+ * @param {Array<object>} args.signers
+ * @param {string} [args.committedAt]
+ * @param {object} args.log
  */
 export async function issueAuthorizationReceipt({
   receiptId,
@@ -724,6 +746,7 @@ export async function issueAuthorizationReceipt({
  * @param {number} [args.expiresInSeconds=3600]
  * @param {object} [args.initiatorAttestation] - PIP-007 §1 attestation, copied
  *   into the (single) context.
+ * @param {object} [args.agentBinding] - PIP-008 agent attribution claim.
  * @returns {Promise<{ receipt: object, verification: object }>}
  */
 export async function issueFromKeyBundle({

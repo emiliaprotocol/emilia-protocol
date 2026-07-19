@@ -184,3 +184,31 @@ test('EP-QUORUM-v1: a non-canonical SPKI encoding cannot fill a seat', () => {
   assert.equal(valid, false);
   assert.equal(checks.all_signatures_valid, false);
 });
+
+test('EP-QUORUM-v1: roster fields containing separators cannot alias another seat', () => {
+  const k = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const signoff = mintSignoff(
+    ctx('admin\u0000bob', 'ent_agent_7', '2026-06-11T00:01:00.000Z', 'n1'),
+    k.privateKey,
+  );
+  const quorum = {
+    '@type': 'ep.quorum',
+    action_hash: ACTION_HASH,
+    policy: {
+      mode: 'threshold',
+      required: 1,
+      distinct_humans: true,
+      window_sec: 900,
+      approvers: [{ role: 'finance\u0000admin', approver: 'bob' }],
+    },
+    members: [{
+      role: 'finance',
+      approver_public_key: spkiB64u(k.publicKey),
+      signoff,
+    }],
+  };
+
+  const { valid, checks } = verifyQuorum(quorum, OPTS);
+  assert.equal(valid, false);
+  assert.equal(checks.roles_admitted, false);
+});

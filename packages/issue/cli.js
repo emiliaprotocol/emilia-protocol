@@ -175,6 +175,7 @@ async function cmdDemo() {
   // for asking a human, carried verbatim in every context and so covered by the
   // approver's signature.
   const initiatorAttestation = {
+    /** @type {'irreversibility'} */
     escalation_trigger: 'irreversibility',
     policy_basis: action.policy_id,
     statement: 'Vendor bank-account change is irreversible; policy requires a named human approval.',

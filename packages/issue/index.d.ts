@@ -45,6 +45,8 @@ export interface AgentDelegationRef {
   ref: string;
   /** Optional content hash of the referenced artifact: "sha256:<64-hex>". */
   hash?: string;
+  /** RFC 3339 instant when the external delegation evidence was observed. */
+  observed_at?: string;
 }
 
 /**

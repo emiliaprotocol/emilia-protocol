@@ -21,8 +21,9 @@
 (function () {
   'use strict';
 
-  var EP_BASE = (document.currentScript && document.currentScript.src)
-    ? new URL(document.currentScript.src).origin
+  var currentScript = /** @type {HTMLScriptElement|null} */ (document.currentScript);
+  var EP_BASE = (currentScript && currentScript.src)
+    ? new URL(currentScript.src).origin
     : 'https://ep.emiliaprotocol.ai';
 
   var STYLES = [
@@ -44,11 +45,11 @@
 
   /**
    * Create the shield SVG element safely via DOM APIs.
-   * @returns {SVGElement}
+   * @returns {SVGSVGElement}
    */
   function createShieldSVG() {
     var ns = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(ns, 'svg');
+    var svg = /** @type {SVGSVGElement} */ (document.createElementNS(ns, 'svg'));
     svg.setAttribute('class', 'ep-shield');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'none');
@@ -70,11 +71,11 @@
 
   /**
    * Create a checkmark dot SVG element safely.
-   * @returns {SVGElement}
+   * @returns {SVGSVGElement}
    */
   function createCheckDot() {
     var ns = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(ns, 'svg');
+    var svg = /** @type {SVGSVGElement} */ (document.createElementNS(ns, 'svg'));
     svg.setAttribute('width', '10');
     svg.setAttribute('height', '10');
     svg.setAttribute('viewBox', '0 0 16 16');

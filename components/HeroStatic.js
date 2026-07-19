@@ -13,6 +13,7 @@ import { color } from '@/lib/tokens';
 
 const FONT_SANS = "'IBM Plex Sans', -apple-system, sans-serif";
 const FONT_MONO = "'IBM Plex Mono', 'Menlo', monospace";
+/** @type {[number, number, number, number]} */
 const EASE = [0.23, 1, 0.32, 1];
 
 const PHASES = [

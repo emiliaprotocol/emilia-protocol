@@ -131,6 +131,14 @@ export function shutdownGateService(
   return operation;
 }
 
+/**
+ * @param {Awaited<ReturnType<typeof startGateService>>} started
+ * @param {{
+ *   processLike?: NodeJS.Process,
+ *   graceMs?: number,
+ *   adapterCloseTimeoutMs?: number
+ * }} [options]
+ */
 export function installShutdownHandlers(
   started,
   {

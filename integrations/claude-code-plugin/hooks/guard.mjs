@@ -42,6 +42,10 @@ const passThrough = () => process.exit(0); // emit nothing → normal permission
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── HTTP (no deps; Node 18+ global fetch) ────────────────────────────────────
+/**
+ * @param {string} path
+ * @param {{method?: string, body?: unknown}} [options]
+ */
 async function ep(path, { method = 'GET', body } = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
