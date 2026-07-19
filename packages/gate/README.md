@@ -342,6 +342,11 @@ const minted = mintCapabilityReceipt(baseReceipt, {
   issuerPrivateKey,
   budget: { amount: 1_000_000, currency: 'USD' },
   expiry: '2026-12-31T00:00:00.000Z',
+  scope: {
+    profile: CAPABILITY_SCOPE_PROFILE,
+    operation_id_field: 'payment_instruction_id',
+    action_digests: allowedPaymentActions.map(capabilityActionDigest),
+  },
 });
 const store = createMemoryCapabilityStore(); // tests only; use Postgres in production
 store.registerCapability(minted.capabilityReceipt);
@@ -349,6 +354,7 @@ await executeWithCapability({
   capabilityReceipt: minted.capabilityReceipt,
   secret: minted.secret,
   action: { amount: 10_000, currency: 'USD' },
+  observedAction: actionFromTheSystemOfRecord,
   store,
   gate,
   trustedIssuerKeys: [capabilityIssuerPublicKey],
@@ -362,10 +368,11 @@ state row before reserving budget. If the external effect throws, the reserved
 amount is committed as indeterminate; it is never silently reopened. The
 capability path is separate from ordinary receipt consumption: the capability
 store owns replay and budget state for each explicitly supplied operation ID.
-The verifier requires a pinned capability issuer key. Integrations must not
-turn a one-off action approval into a general budget grant; the signed base
-authorization and every observed operation must remain within the capability's
-intended action scope.
+The verifier requires a pinned capability issuer key. Every operation must
+match one exact signed action digest, and the caller's stable operation ID must
+equal the signed scope's field in the executor-observed action. The same digest
+is persisted with the reservation. A new operation ID therefore cannot relabel
+the same payment instruction after a timeout.
 
 ### Gate-integrated capability enforcement
 
@@ -389,17 +396,22 @@ const result = await gate.run({
     action: { amount: 10_000, currency: 'USD' },
     operationId: 'provider-idempotency-key',
   },
-}, (authorization) => sendPayment(actionFromTheSystemOfRecord, authorization));
+}, (authorization, operation) => sendPayment(actionFromTheSystemOfRecord, {
+  idempotencyKey: operation.providerIdempotencyKey,
+  authorization,
+}));
 ```
 
 The Gate verifies the ordinary receipt first without consuming it, requires the
 capability amount and currency to equal the observed action's `amount` or
-`amount_usd` and `currency`, reserves the budget before calling `sendPayment`,
-and commits it only after the effect returns. A replay, overspend, missing
-registration, or envelope mismatch never enters the effect. An exception after
-the effect begins commits the amount as `indeterminate` and keeps the operation
-closed for reconciliation. Capability issuer keys are pinned separately from
-the ordinary receipt trust list when the two issuers differ.
+`amount_usd` and `currency`, checks the signed exact-action scope, reserves the
+budget and action digest before calling `sendPayment`, and passes the stable
+operation ID to the provider adapter as its idempotency key. A replay,
+out-of-scope action, operation relabel, overspend, missing registration, or
+envelope mismatch never enters the effect. An exception after the effect begins
+commits the amount as `indeterminate` and keeps the operation closed for
+authenticated reconciliation. Capability issuer keys are pinned separately
+from the ordinary receipt trust list.
 
 Delegation is issuer-authorized and budget-backed: `delegateCapabilityReceipt`
 atomically reserves and commits the child budget against the parent before the

@@ -143,7 +143,7 @@ export const contract = {
     scim_provisioning_tokens: ['tenant_id', 'token_hash', 'token_prefix', 'revoked_at'],
     ep_capability_state: ['capability_id', 'capability_fingerprint', 'budget_amount',
       'currency', 'consumed_amount', 'reserved_amount', 'expires_at'],
-    ep_capability_operations: ['operation_id', 'capability_id', 'amount', 'currency',
+    ep_capability_operations: ['operation_id', 'capability_id', 'action_digest', 'amount', 'currency',
       'status', 'reservation_token', 'reserved_at', 'committed_at'],
     // enrollment_basis records whether an approver credential was bound against
     // the org's provisioned directory or operator-attested; directory_user_id

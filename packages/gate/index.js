@@ -71,8 +71,11 @@ import {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityActionDigest,
+  verifyCapabilityScope,
   mintCapabilityReceipt,
   verifyCapabilityReceipt,
   splitCapabilitySecret,
@@ -165,8 +168,11 @@ export {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityActionDigest,
+  verifyCapabilityScope,
   mintCapabilityReceipt,
   verifyCapabilityReceipt,
   splitCapabilitySecret,
@@ -1308,7 +1314,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       }
       effectStarted = true;
       try {
-        const value = await fn(authorization);
+        const value = await fn(authorization, {
+          operationId,
+          providerIdempotencyKey: operationId,
+          actionDigest: executionContext.action_digest,
+          observedAction: executionContext.observed_action,
+        });
         runtimeMonitor?.effectReturned(runtimeCycleId);
         return value;
       } catch (error) {
@@ -1695,8 +1706,11 @@ export default {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityActionDigest,
+  verifyCapabilityScope,
   mintCapabilityReceipt,
   verifyCapabilityReceipt,
   splitCapabilitySecret,

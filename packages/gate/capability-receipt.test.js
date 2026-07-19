@@ -16,6 +16,8 @@ import {
   splitCapabilitySecret,
   verifyCapabilityReceipt,
   CAPABILITY_RECEIPT_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
+  capabilityActionDigest,
 } from './capability-receipt.js';
 
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
@@ -40,11 +42,31 @@ function issuer() {
   return { ...keys, receipt: baseReceipt({ privateKey: keys.privateKey, publicKey: keys.publicKey }) };
 }
 
+function scopedAction(operation_id, overrides = {}) {
+  return { amount: 1, currency: 'USD', operation_id, ...overrides };
+}
+
+const DEFAULT_SCOPE_ACTIONS = [
+  scopedAction('op_1', { amount: 30, destination: 'acct_a' }),
+  scopedAction('op_2', { amount: 60 }),
+  scopedAction('op_3', { amount: 60 }),
+  scopedAction('op_4', { amount: 10 }),
+  scopedAction('bad_1'),
+  scopedAction('bad_1', { currency: 'EUR' }),
+  scopedAction('threshold_op_1', { amount: 25 }),
+  scopedAction('envelope_collision_spend'),
+];
+
 function options(overrides = {}) {
   return {
     budget: { amount: 100, currency: 'USD' },
     expiry: NOW + 60_000,
     issuerPrivateKey: overrides.issuerPrivateKey,
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'operation_id',
+      action_digests: DEFAULT_SCOPE_ACTIONS.map(capabilityActionDigest),
+    },
     ...overrides,
   };
 }
@@ -60,6 +82,53 @@ test('capability metadata is issuer-signed and tamper-evident', () => {
   tampered.capability.budget.amount = 1_000_000;
   assert.equal(verifyCapabilityReceipt(tampered, { trustedIssuerKeys: [trusted] }).ok, false);
   assert.equal(verifyCapabilityReceipt(minted.capabilityReceipt, { trustedIssuerKeys: ['wrong'] }).reason, 'capability_issuer_not_trusted');
+});
+
+test('capability scope is mandatory, signed, exact, and operation-bound', async () => {
+  const keys = issuer();
+  assert.throws(
+    () => mintCapabilityReceipt(keys.receipt, {
+      issuerPrivateKey: keys.privateKey,
+      budget: { amount: 10, currency: 'USD' },
+      expiry: NOW + 60_000,
+    }),
+    /scope.profile/,
+  );
+
+  const allowed = scopedAction('scope-op', { amount: 10, destination: 'acct_allowed' });
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'operation_id',
+      action_digests: [capabilityActionDigest(allowed)],
+    },
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  const common = {
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async () => assert.fail('out-of-scope effect must not run'),
+    now: NOW,
+  };
+  const substituted = await executeWithCapability({
+    ...common,
+    operationId: 'scope-op',
+    action: { ...allowed, destination: 'acct_attacker' },
+  });
+  assert.equal(substituted.reason, 'capability_action_out_of_scope');
+
+  const relabelled = await executeWithCapability({
+    ...common,
+    operationId: 'scope-op-attacker',
+    action: allowed,
+  });
+  assert.equal(relabelled.reason, 'capability_operation_binding_failed');
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
 });
 
 test('atomic capability spending enforces the budget and consumes indeterminate effects', async () => {
@@ -79,16 +148,17 @@ test('atomic capability spending enforces the budget and consumes indeterminate 
   const first = await executeWithCapability({
     ...common,
     operationId: 'op_1',
-    action: { amount: 30, currency: 'USD', destination: 'acct_a' },
+    action: scopedAction('op_1', { amount: 30, destination: 'acct_a' }),
     executeAction: async () => 'settled',
   });
   assert.equal(first.ok, true);
   assert.equal(first.result, 'settled');
+  assert.equal(store.getOperation('op_1').action_digest, capabilityActionDigest(scopedAction('op_1', { amount: 30, destination: 'acct_a' })));
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 30);
 
   const [left, right] = await Promise.all([
-    executeWithCapability({ ...common, operationId: 'op_2', action: { amount: 60, currency: 'USD' }, executeAction: async () => 'left' }),
-    executeWithCapability({ ...common, operationId: 'op_3', action: { amount: 60, currency: 'USD' }, executeAction: async () => 'right' }),
+    executeWithCapability({ ...common, operationId: 'op_2', action: scopedAction('op_2', { amount: 60 }), executeAction: async () => 'left' }),
+    executeWithCapability({ ...common, operationId: 'op_3', action: scopedAction('op_3', { amount: 60 }), executeAction: async () => 'right' }),
   ]);
   assert.equal([left.ok, right.ok].filter(Boolean).length, 1);
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 90);
@@ -96,7 +166,7 @@ test('atomic capability spending enforces the budget and consumes indeterminate 
   const indeterminate = await executeWithCapability({
     ...common,
     operationId: 'op_4',
-    action: { amount: 10, currency: 'USD' },
+    action: scopedAction('op_4', { amount: 10 }),
     executeAction: async () => { throw new Error('provider response lost'); },
   });
   assert.equal(indeterminate.ok, false);
@@ -118,14 +188,14 @@ test('capability refuses invalid secret, currency, and unverified base authority
     operationId: 'bad_1',
     executeAction: async () => assert.fail('effect must not run'),
   };
-  assert.equal((await executeWithCapability({ ...common, secret: Buffer.alloc(32), action: { amount: 1, currency: 'USD' } })).reason, 'invalid_secret');
-  assert.equal((await executeWithCapability({ ...common, secret: minted.secret, action: { amount: 1, currency: 'EUR' } })).reason, 'capability action currency does not match the budget');
-  assert.equal((await executeWithCapability({ ...common, secret: minted.secret, verifyBaseReceipt: () => false, action: { amount: 1, currency: 'USD' } })).reason, 'base_receipt_rejected');
+  assert.equal((await executeWithCapability({ ...common, secret: Buffer.alloc(32), action: scopedAction('bad_1') })).reason, 'invalid_secret');
+  assert.equal((await executeWithCapability({ ...common, secret: minted.secret, action: scopedAction('bad_1', { currency: 'EUR' }) })).reason, 'capability action currency does not match the budget');
+  assert.equal((await executeWithCapability({ ...common, secret: minted.secret, verifyBaseReceipt: () => false, action: scopedAction('bad_1') })).reason, 'base_receipt_rejected');
   assert.equal((await executeWithCapability({
     ...common,
     secret: minted.secret,
     operationId: null,
-    action: { amount: 1, currency: 'USD' },
+    action: scopedAction('bad_1'),
   })).reason, 'capability_operation_id_required');
 });
 
@@ -148,7 +218,7 @@ test('threshold capability uses unique Shamir shares and requires m-of-n', async
   const result = await executeWithThreshold({
     capabilityReceipt: minted.capabilityReceipt,
     shares: minted.shares.slice(0, 2),
-    action: { amount: 25, currency: 'USD' },
+    action: scopedAction('threshold_op_1', { amount: 25 }),
     store,
     trustedIssuerKeys: [keys.receipt.public_key],
     verifyBaseReceipt: () => true,
@@ -289,7 +359,7 @@ test('capability stores bind an id to the complete signed envelope', async () =>
   const spend = await executeWithCapability({
     capabilityReceipt: conflicting.capabilityReceipt,
     secret: conflicting.secret,
-    action: { amount: 1, currency: 'USD' },
+    action: scopedAction('envelope_collision_spend'),
     store,
     trustedIssuerKeys: [keys.receipt.public_key],
     verifyBaseReceipt: () => true,

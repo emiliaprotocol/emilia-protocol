@@ -10,6 +10,8 @@ import {
   createMemoryCapabilityStore,
   createRuntimeMonitor,
   mintCapabilityReceipt,
+  CAPABILITY_SCOPE_PROFILE,
+  capabilityActionDigest,
 } from './index.js';
 
 const NOW = Date.now();
@@ -33,6 +35,11 @@ function fixture({ budget = 100, baseAction = ACTION } = {}) {
     expiry: NOW + 60_000,
     secret: Buffer.alloc(32, 7),
     capabilityId: `cap_${budget}`,
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'payment_instruction_id',
+      action_digests: [capabilityActionDigest(baseAction)],
+    },
   });
   const capabilityStore = createMemoryCapabilityStore();
   assert.equal(capabilityStore.registerCapability(capability.capabilityReceipt), true);
@@ -69,16 +76,19 @@ function request(fixtureValue, { operationId, amount = 40, action = fixtureValue
 test('gate capability path reserves and commits budget around the effect', async () => {
   const f = fixture();
   let effects = 0;
-  const first = await f.gate.run(request(f, { operationId: 'cap-op-1' }), async () => {
+  let providerKey = null;
+  const first = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async (_authorization, operation) => {
     effects += 1;
+    providerKey = operation.providerIdempotencyKey;
     return 'settled';
   });
 
   assert.equal(first.ok, true, first.capability?.reason || first.authorization?.reason);
   assert.equal(first.result, 'settled');
   assert.equal(effects, 1);
+  assert.equal(providerKey, ACTION.payment_instruction_id);
   assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 40);
-  assert.equal(f.capabilityStore.getOperation('cap-op-1').outcome, 'executed');
+  assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).outcome, 'executed');
   assert.equal(first.authorization.evidence.consumption_mode, 'none');
   assert.equal(f.gate.evidence.verify().ok, true);
 });
@@ -86,7 +96,7 @@ test('gate capability path reserves and commits budget around the effect', async
 test('gate capability path refuses overspend before the effect', async () => {
   const f = fixture({ budget: 30 });
   let effects = 0;
-  const out = await f.gate.run(request(f, { operationId: 'cap-op-too-large' }), async () => {
+  const out = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => {
     effects += 1;
   });
 
@@ -128,7 +138,7 @@ test('capability-enabled gate requires an explicit role-scoped issuer pin', () =
   );
 });
 
-test('gate capability path refuses operation replay while allowing a new bounded spend', async () => {
+test('gate capability path refuses replay and a new id cannot relabel the same exact action', async () => {
   const f = fixture();
   let effects = 0;
   const run = (operationId) => f.gate.run(request(f, { operationId, amount: 40 }), async () => {
@@ -136,22 +146,23 @@ test('gate capability path refuses operation replay while allowing a new bounded
     return effects;
   });
 
-  const first = await run('cap-replay');
-  const replay = await run('cap-replay');
-  const secondOperation = await run('cap-second');
+  const first = await run(ACTION.payment_instruction_id);
+  const replay = await run(ACTION.payment_instruction_id);
+  const relabelled = await run('attacker-new-operation');
 
   assert.equal(first.ok, true);
   assert.equal(replay.ok, false);
   assert.equal(replay.capability.reason, 'operation_already_committed');
-  assert.equal(secondOperation.ok, true);
-  assert.equal(effects, 2);
-  assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 80);
+  assert.equal(relabelled.ok, false);
+  assert.equal(relabelled.capability.reason, 'capability_operation_binding_failed');
+  assert.equal(effects, 1);
+  assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 40);
 });
 
 test('gate capability path binds the spend amount to the observed action', async () => {
   const f = fixture({ baseAction: { ...ACTION, amount_usd: 41 } });
   let effects = 0;
-  const out = await f.gate.run(request(f, { operationId: 'cap-binding', amount: 40 }), async () => {
+  const out = await f.gate.run(request(f, { operationId: ACTION.payment_instruction_id, amount: 40 }), async () => {
     effects += 1;
   });
 
@@ -165,7 +176,7 @@ test('gate capability path burns an indeterminate spend if the effect throws', a
   const f = fixture();
   let effects = 0;
   await assert.rejects(
-    () => f.gate.run(request(f, { operationId: 'cap-indeterminate' }), async () => {
+    () => f.gate.run(request(f, { operationId: ACTION.payment_instruction_id }), async () => {
       effects += 1;
       throw new Error('provider response lost');
     }),
@@ -174,7 +185,7 @@ test('gate capability path burns an indeterminate spend if the effect throws', a
 
   assert.equal(effects, 1);
   assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 40);
-  assert.equal(f.capabilityStore.getOperation('cap-indeterminate').outcome, 'indeterminate');
+  assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).outcome, 'indeterminate');
   assert.equal(f.gate.evidence.all().find((entry) => entry.kind === 'execution')?.outcome, 'indeterminate');
 });
 
@@ -191,7 +202,7 @@ test('guard() can source a capability and still refuses its replay', async () =>
       capabilityReceipt: f.capability.capabilityReceipt,
       secret: f.capability.secret,
       action: { amount: 40, currency: 'USD' },
-      operationId: 'cap-guard-replay',
+      operationId: ACTION.payment_instruction_id,
     }),
   });
 

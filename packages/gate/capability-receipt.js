@@ -29,6 +29,7 @@ export const CAPABILITY_RECEIPT_VERSION = 'EP-CAPABILITY-RECEIPT-v1';
 export const CAPABILITY_STATE_VERSION = 'EP-CAPABILITY-STATE-v1';
 export const CAPABILITY_SHARE_VERSION = 'EP-CAPABILITY-SHARE-v1';
 export const CAPABILITY_HASH_ALGORITHM = 'sha256';
+export const CAPABILITY_SCOPE_PROFILE = 'urn:emilia:scope:action-digest-set-v1';
 
 // 2^521 - 1 is a prime and is comfortably larger than a 256-bit secret.
 const FIELD = (2n ** 521n) - 1n;
@@ -37,6 +38,8 @@ const HASH_BYTES = 32;
 const MAX_CURRENCY_BYTES = 32;
 const MAX_OPERATION_ID_BYTES = 128;
 const MAX_DELEGATES = 64;
+const MAX_SCOPE_ACTIONS = 256;
+const ACTION_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -114,6 +117,69 @@ function validateOperationId(operationId) {
     throw new TypeError('operation_id must be a short non-empty string');
   }
   return operationId;
+}
+
+/** Digest the exact immutable action snapshot exercised under a capability. */
+export function capabilityActionDigest(action) {
+  return `sha256:${sha256Hex(Buffer.from(canonicalize(action), 'utf8'))}`;
+}
+
+function normalizeCapabilityScope(scope) {
+  if (!isRecord(scope) || scope.profile !== CAPABILITY_SCOPE_PROFILE) {
+    throw new TypeError(`capability scope.profile must be ${CAPABILITY_SCOPE_PROFILE}`);
+  }
+  if (!Array.isArray(scope.action_digests)
+      || scope.action_digests.length < 1
+      || scope.action_digests.length > MAX_SCOPE_ACTIONS
+      || scope.action_digests.some((digest) => typeof digest !== 'string' || !ACTION_DIGEST_RE.test(digest))) {
+    throw new TypeError('capability scope.action_digests must be a bounded non-empty array of SHA-256 digests');
+  }
+  if (new Set(scope.action_digests).size !== scope.action_digests.length) {
+    throw new TypeError('capability scope.action_digests must not contain duplicates');
+  }
+  if (typeof scope.operation_id_field !== 'string'
+      || !/^[A-Za-z_][A-Za-z0-9_.-]{0,127}$/.test(scope.operation_id_field)) {
+    throw new TypeError('capability scope.operation_id_field must name a closed action field');
+  }
+  return {
+    profile: CAPABILITY_SCOPE_PROFILE,
+    action_digests: [...scope.action_digests].sort(),
+    operation_id_field: scope.operation_id_field,
+  };
+}
+
+function valueAtPath(action, path) {
+  let value = action;
+  for (const segment of path.split('.')) {
+    if (!isRecord(value) || !Object.hasOwn(value, segment)) return undefined;
+    value = value[segment];
+  }
+  return value;
+}
+
+export function verifyCapabilityScope(capability, action, operationId) {
+  try {
+    const scope = normalizeCapabilityScope(capability?.scope);
+    const actionDigest = capabilityActionDigest(action);
+    if (!scope.action_digests.includes(actionDigest)) {
+      return { ok: false, reason: 'capability_action_out_of_scope', action_digest: actionDigest };
+    }
+    if (valueAtPath(action, scope.operation_id_field) !== operationId) {
+      return {
+        ok: false,
+        reason: 'capability_operation_binding_failed',
+        action_digest: actionDigest,
+        operation_id_field: scope.operation_id_field,
+      };
+    }
+    return {
+      ok: true,
+      action_digest: actionDigest,
+      operation_id_field: scope.operation_id_field,
+    };
+  } catch (error) {
+    return { ok: false, reason: 'capability_scope_invalid', detail: error?.message || 'invalid capability scope' };
+  }
 }
 
 function validateCapabilityId(capabilityId) {
@@ -233,6 +299,7 @@ function assertCapabilityShape(capability) {
   validateCurrency(capability.budget.currency);
   validateExpiry(capability.expiry);
   validateThreshold(capability.threshold);
+  normalizeCapabilityScope(capability.scope);
   assertDelegationChain(capability.delegation_chain, capability.id);
   if (capability.consumed !== 0) throw new TypeError('capability consumed is issuer-initialized and must be zero');
   return true;
@@ -256,6 +323,7 @@ export function mintCapabilityReceipt(baseReceipt, {
   budget,
   expiry,
   threshold = { m: 1, n: 1 },
+  scope,
   delegationChain = [],
   capabilityId = randomUUID(),
   secret = randomBytes(HASH_BYTES),
@@ -274,6 +342,7 @@ export function mintCapabilityReceipt(baseReceipt, {
     budget: { amount: validateAmount(budget.amount, 'budget.amount'), currency: validateCurrency(budget.currency) },
     consumed: 0,
     threshold: normalizedThreshold,
+    scope: normalizeCapabilityScope(scope),
     delegation_chain: assertDelegationChain(delegationChain),
     expiry: validateExpiry(expiry),
   };
@@ -454,8 +523,9 @@ export function createMemoryCapabilityStore() {
       states.set(state.capability_id, { ...state, consumed_amount: 0, reserved_amount: 0 });
       return true;
     },
-    async reserveSpend({ capabilityId, capabilityFingerprint, operationId, amount, currency, now = Date.now } = {}) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationId, actionDigest, amount, currency, now = Date.now } = {}) {
       validateOperationId(operationId);
+      if (typeof actionDigest !== 'string' || !ACTION_DIGEST_RE.test(actionDigest)) throw new TypeError('action_digest must be SHA-256');
       validateAmount(amount);
       validateCurrency(currency);
       const state = states.get(capabilityId);
@@ -468,7 +538,7 @@ export function createMemoryCapabilityStore() {
       if (currency !== state.currency) return { ok: false, reason: 'currency_mismatch' };
       if (state.consumed_amount + state.reserved_amount + amount > state.budget_amount) return { ok: false, reason: 'budget_exceeded' };
       const reservationToken = randomUUID();
-      operations.set(operationId, { capability_id: capabilityId, amount, currency, status: 'reserved', reservation_token: reservationToken, reserved_at: at });
+      operations.set(operationId, { capability_id: capabilityId, action_digest: actionDigest, amount, currency, status: 'reserved', reservation_token: reservationToken, reserved_at: at });
       state.reserved_amount += amount;
       return { ok: true, operation_id: operationId, reservation_token: reservationToken, remaining: state.budget_amount - state.consumed_amount - state.reserved_amount };
     },
@@ -512,6 +582,7 @@ ALTER TABLE ${CAPABILITY_STATE_TABLE} ADD COLUMN IF NOT EXISTS capability_finger
 CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   operation_id TEXT PRIMARY KEY,
   capability_id TEXT NOT NULL REFERENCES ${CAPABILITY_STATE_TABLE}(capability_id),
+  action_digest TEXT NOT NULL CHECK (action_digest ~ '^sha256:[0-9a-f]{64}$'),
   amount BIGINT NOT NULL CHECK (amount > 0),
   currency TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('reserved', 'committed')),
@@ -525,8 +596,8 @@ CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_capability_idx ON ${CAP
 export const CAPABILITY_SQL = Object.freeze({
   register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at`,
   readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
-  readOperation: `SELECT operation_id, capability_id, amount, currency, status, reservation_token FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_id = $1 FOR UPDATE`,
-  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_id, capability_id, amount, currency, status, reservation_token, reserved_at) VALUES ($1, $2, $3, $4, 'reserved', $5, $6)`,
+  readOperation: `SELECT operation_id, capability_id, action_digest, amount, currency, status, reservation_token FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_id = $1 FOR UPDATE`,
+  insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_id, capability_id, action_digest, amount, currency, status, reservation_token, reserved_at) VALUES ($1, $2, $3, $4, $5, 'reserved', $6, $7)`,
   reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
   commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $3, committed_at = $4 WHERE operation_id = $1 AND capability_id = $2 AND status = 'reserved' AND reservation_token = $5`,
   commitState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2`,
@@ -557,8 +628,9 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
           && Date.parse(row.expires_at) === state.expires_at;
       });
     },
-    async reserveSpend({ capabilityId, capabilityFingerprint, operationId, amount, currency, now = Date.now } = {}) {
+    async reserveSpend({ capabilityId, capabilityFingerprint, operationId, actionDigest, amount, currency, now = Date.now } = {}) {
       validateOperationId(operationId); validateAmount(amount); validateCurrency(currency);
+      if (typeof actionDigest !== 'string' || !ACTION_DIGEST_RE.test(actionDigest)) throw new TypeError('action_digest must be SHA-256');
       const at = nowMs(now);
       return transaction(async (query) => {
         const stateResult = await query(CAPABILITY_SQL.readState, [capabilityId]);
@@ -574,7 +646,7 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
         const token = randomUUID();
         const reserved = await query(CAPABILITY_SQL.reserveState, [capabilityId, amount]);
         if (reserved?.rowCount !== 1) return { ok: false, reason: 'budget_reservation_conflict' };
-        await query(CAPABILITY_SQL.insertOperation, [operationId, capabilityId, amount, currency, token, new Date(at).toISOString()]);
+        await query(CAPABILITY_SQL.insertOperation, [operationId, capabilityId, actionDigest, amount, currency, token, new Date(at).toISOString()]);
         return { ok: true, operation_id: operationId, reservation_token: token, remaining: available - amount };
       });
     },
@@ -644,6 +716,15 @@ export async function executeWithCapability({
   } catch {
     return { ok: false, reason: 'capability_operation_id_required' };
   }
+  let immutableAction;
+  let scope;
+  try {
+    immutableAction = structuredClone(observedAction ?? action);
+    scope = verifyCapabilityScope(verified.capability, immutableAction, operationId);
+  } catch {
+    return { ok: false, reason: 'capability_action_invalid' };
+  }
+  if (!scope.ok) return { ok: false, reason: scope.reason, scope };
   let spend;
   try {
     spend = capabilityAmount(action, verified.capability);
@@ -655,21 +736,36 @@ export async function executeWithCapability({
     authorization = await gate.check({
       selector,
       receipt: verified.receipt,
-      observedAction,
+      observedAction: immutableAction,
       consumptionMode: 'none',
       capability: { capabilityReceipt, action, operationId },
     });
     if (!authorization?.allow) return { ok: false, reason: 'base_receipt_rejected', authorization };
   } else if (typeof verifyBaseReceipt === 'function') {
-    const result = await verifyBaseReceipt(verified.receipt, { action, selector, observedAction });
+    const result = await verifyBaseReceipt(verified.receipt, { action, selector, observedAction: immutableAction, scope });
     if (result !== true && result?.ok !== true) return { ok: false, reason: 'base_receipt_rejected', authorization: result };
   } else {
     return { ok: false, reason: 'base_receipt_verifier_required' };
   }
-  const reserved = await store.reserveSpend({ capabilityId: verified.capability.id, capabilityFingerprint: capabilityEnvelopeFingerprint(capabilityReceipt), operationId, amount: spend.amount, currency: spend.currency, now });
+  const reserved = await store.reserveSpend({
+    capabilityId: verified.capability.id,
+    capabilityFingerprint: capabilityEnvelopeFingerprint(capabilityReceipt),
+    operationId,
+    actionDigest: scope.action_digest,
+    amount: spend.amount,
+    currency: spend.currency,
+    now,
+  });
   if (!reserved?.ok) return { ok: false, reason: reserved?.reason || 'capability_reservation_refused', authorization };
   try {
-    const result = await executeAction(action, { capabilityReceipt, authorization, operation_id: operationId, reservation: reserved });
+    const result = await executeAction(structuredClone(action), {
+      capabilityReceipt,
+      authorization,
+      operation_id: operationId,
+      action_digest: scope.action_digest,
+      observed_action: immutableAction,
+      reservation: reserved,
+    });
     const committed = await store.commitSpend({ capabilityId: verified.capability.id, operationId, reservationToken: reserved.reservation_token, outcome: 'executed', now });
     if (!committed?.ok) return { ok: false, reason: 'capability_commit_indeterminate', authorization, result, operation_id: operationId };
     return { ok: true, result, authorization, operation_id: operationId, remaining: committed.remaining };
@@ -706,6 +802,7 @@ export async function delegateCapabilityReceipt({
   budget,
   expiry,
   threshold = { m: 1, n: 1 },
+  scope = null,
   delegateId,
   capabilityId = randomUUID(),
   secret = randomBytes(HASH_BYTES),
@@ -731,12 +828,19 @@ export async function delegateCapabilityReceipt({
     const childExpiry = validateExpiry(expiry);
     const parentExpiry = validateExpiry(verified.capability.expiry);
     if (Date.parse(childExpiry) > Date.parse(parentExpiry)) return { ok: false, reason: 'delegated_capability_expiry_exceeds_parent' };
+    const parentScope = normalizeCapabilityScope(verified.capability.scope);
+    const childScope = normalizeCapabilityScope(scope ?? parentScope);
+    if (childScope.operation_id_field !== parentScope.operation_id_field
+        || childScope.action_digests.some((digest) => !parentScope.action_digests.includes(digest))) {
+      return { ok: false, reason: 'delegated_capability_scope_broadened' };
+    }
     const parentOperationId = validateOperationId(operationId || `delegation:${childId}`);
     const child = mintCapabilityReceipt(verified.receipt, {
       issuerPrivateKey,
       budget: { amount: childAmount, currency },
       expiry: childExpiry,
       threshold,
+      scope: childScope,
       capabilityId: childId,
       secret,
       delegationChain: [
@@ -755,6 +859,13 @@ export async function delegateCapabilityReceipt({
       capabilityId: verified.capability.id,
       capabilityFingerprint: capabilityEnvelopeFingerprint(parentCapabilityReceipt),
       operationId: parentOperationId,
+      actionDigest: capabilityActionDigest({
+        action_type: 'capability.delegate',
+        operation_id: parentOperationId,
+        parent_capability_id: verified.capability.id,
+        child_capability_id: childId,
+        child_capability_fingerprint: capabilityEnvelopeFingerprint(child.capabilityReceipt),
+      }),
       amount: childAmount,
       currency,
       now,
@@ -787,8 +898,11 @@ export default {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityActionDigest,
+  verifyCapabilityScope,
   mintCapabilityReceipt,
   verifyCapabilityReceipt,
   splitCapabilitySecret,
