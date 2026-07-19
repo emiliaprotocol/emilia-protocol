@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-19T03:18:29.716Z",
+  "generatedAt": "2026-07-19T03:57:34.308Z",
   "tests": {
     "total": 6692,
     "files": 348,
@@ -11,7 +11,7 @@
   },
   "alloy": {
     "facts": 35,
-    "assertions": 22,
+    "assertions": 32,
     "version": "6.2.0 (CI)"
   },
   "tamarin": {

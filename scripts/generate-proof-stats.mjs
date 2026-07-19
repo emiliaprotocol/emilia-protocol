@@ -26,6 +26,8 @@ if (execution.status !== 0) {
 const cfg = readFileSync('formal/ep_handshake.cfg', 'utf8');
 const als = readFileSync('formal/ep_relations.als', 'utf8');
 const fedAls = readFileSync('formal/ep_federation.als', 'utf8');
+const quorumAls = readFileSync('formal/ep_quorum.als', 'utf8');
+const delegationAls = readFileSync('formal/ep_delegation.als', 'utf8');
 const redTeam = readFileSync('docs/conformance/RED_TEAM_CASES.md', 'utf8');
 const tamarinSummary = readFileSync('formal/tamarin/results/ep_reliance_composed.summary.txt', 'utf8');
 const conformance = JSON.parse(readFileSync('conformance/conformance-manifest.json', 'utf8'));
@@ -71,10 +73,16 @@ const stats = {
     checker: 'TLC 2.19',
   },
   alloy: {
-    // facts: the core relational model (ep_relations); assertions: total across
-    // both models (ep_relations + ep_federation) — the convention used in docs.
+    // facts: the core relational model (ep_relations). assertions: total across
+    // ALL FOUR models that execute headless in CI (ep_relations + ep_federation
+    // + ep_quorum + ep_delegation, via formal/AlloyCheck.java in alloy.yml). The
+    // count was ep_relations+ep_federation only before ep_quorum/ep_delegation
+    // were CI-gated; docs state it as a floor, so widening it needs no doc edit.
     facts: (als.match(/^fact/gm) || []).length,
-    assertions: (als.match(/^assert/gm) || []).length + (fedAls.match(/^assert/gm) || []).length,
+    assertions: (als.match(/^assert/gm) || []).length
+      + (fedAls.match(/^assert/gm) || []).length
+      + (quorumAls.match(/^assert/gm) || []).length
+      + (delegationAls.match(/^assert/gm) || []).length,
     version: '6.2.0 (CI)',
   },
   tamarin: {
