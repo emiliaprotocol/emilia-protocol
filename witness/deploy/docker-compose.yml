@@ -1,0 +1,57 @@
+# EP Witness: THREE local test operators, each an independent cosigner.
+#
+# This compose stands up 3 witnesses on one host for TESTING the mechanism (each
+# with its OWN key, its OWN port). It is NOT a production deployment: real
+# independence means separate operators, clouds, regions, and administrative
+# control (see STAGING.md). Co-locating 3 witnesses on one host proves the
+# emit/quorum/gossip loop; it does not deliver the security property.
+#
+# Usage (from repo root, the build context must include packages/verify/):
+#   node witness/deploy/gen-operator-keys.mjs        # -> witness/deploy/keys/op{1,2,3}
+#   docker compose -f witness/deploy/docker-compose.yml up --build
+# Then:
+#   curl localhost:8801/witness-key
+#   curl -s localhost:8801/cosign -d '{"tree_size":1,"root_hash":"sha256:aa","log_key_id":"ep:log:x"}'
+#
+# The equivocation-detection proof does NOT need Docker, it runs in-process:
+#   node witness/deploy/equivocation-demo.mjs
+
+name: ep-witness-testnet
+
+x-witness: &witness
+  build:
+    context: ../..            # repo root: image needs witness/ AND packages/verify/
+    dockerfile: witness/Dockerfile
+  restart: unless-stopped
+  read_only: true             # the service writes nothing; keys are mounted ro
+  environment:
+    WITNESS_PRIVATE_KEY_FILE: /keys/witness-private.pem
+    WITNESS_PUBLIC_FILE: /keys/witness-public.json
+  healthcheck:
+    # zero-dependency image: use node itself, not curl/wget
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+    interval: 10s
+    timeout: 3s
+    retries: 3
+
+services:
+  witness-op1:
+    <<: *witness
+    container_name: ep-witness-op1
+    ports: ["8801:8787"]
+    volumes:
+      - ./keys/op1:/keys:ro
+
+  witness-op2:
+    <<: *witness
+    container_name: ep-witness-op2
+    ports: ["8802:8787"]
+    volumes:
+      - ./keys/op2:/keys:ro
+
+  witness-op3:
+    <<: *witness
+    container_name: ep-witness-op3
+    ports: ["8803:8787"]
+    volumes:
+      - ./keys/op3:/keys:ro
