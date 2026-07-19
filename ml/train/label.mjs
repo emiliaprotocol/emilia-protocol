@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { evaluateGuardPolicy } from '../../lib/guard-policies.js';
+import { extractSignals } from '../risk-eval/classifiers/heuristic.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const corpusPath = process.argv[2] || path.join(HERE, 'sample-actions.jsonl');
@@ -35,10 +36,13 @@ let review = 0;
 for (const line of lines) {
   const input = JSON.parse(line);
   const decision = evaluateGuardPolicy(input).decision;
+  const { injectionSuspected } = extractSignals(input);
   const needsReview = decision === 'allow' && looksSuspicious(input);
   const example = {
     input,
     label: needsReview ? null : decision, // null = hold for human review
+    injection_suspected: injectionSuspected,
+    injection_source: needsReview ? 'human_review_required' : 'deterministic_heuristic',
     source: needsReview ? 'human_review' : 'rule_oracle',
   };
   if (needsReview) review += 1; else auto += 1;

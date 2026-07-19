@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Self-test for the advisory heuristic classifier. Plain node:test (run with
-// `node --test ml/risk-eval/classifiers/heuristic.selftest.mjs`). Named
-// `.selftest.mjs`, NOT `.test.mjs`, so the vitest gate does not collect it —
-// this suite uses node:test blocks, run separately, same convention as
-// packages/** and examples/**.
+// Self-test for the advisory heuristic classifier. Plain node:test, collected
+// explicitly by `npm run ml:selftest` and the aggregate `npm run ml:gate`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, extractSignals } from './heuristic.mjs';
