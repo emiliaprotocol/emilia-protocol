@@ -1,0 +1,3741 @@
+{
+  "suite": "EP-AUTHORITY-DOC-PROOF-JOIN-v1",
+  "vectors_version": "1.1.0",
+  "profile": "Fixed serialized Authority Document, Authority Proof, relying-party pin, and complete typed result/check/reason/input/result-digest fixtures. A passing join accepts the registry issuer only; grant/action and delegation evaluation remain separate.",
+  "count": 26,
+  "vectors": [
+    {
+      "id": "accept_anchored_document_key_at_issuance",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": true,
+        "accepted": true,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": true,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": true,
+          "epoch_fresh": true
+        },
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+        "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965"
+      }
+    },
+    {
+      "id": "reject_no_document_anchor",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": false,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_anchor_required",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1"
+      }
+    },
+    {
+      "id": "reject_wrong_document_head",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": false,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_anchor_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:cfd4fbcfe6832cc27b1c44dc5fe1a8a1ac406975c414f58b19894de4402675ca"
+      }
+    },
+    {
+      "id": "reject_continuity_break",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "dYRw63eKZ1mQ8H0dcd2tL9Tsmz3P55WZbdao2QlC28t4TvqclqBs6SSOsjbbDR_UojUQuLtXiTjPdqQcCgZpBg"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": false,
+          "document_anchor": false,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_continuity_break",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:ba265b0888b7ab52762bab9e29d01edb2bb11dc85a4a8477741760424adac405",
+        "result_digest": "sha256:a5f51a713cfb577082db66356f3131e2a880d6fcd1251600c0e2131400beb26d"
+      }
+    },
+    {
+      "id": "reject_non_rotation_issuer_signs_successor",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "eQA90KWThRUpL0RHbL0mbaE7JkDw1ezyoS-21duUeJrqSG3lTQOQrMHJrD7Q_ryiwnHcJfliPEbIpRUOQ6D4Aw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": false,
+          "document_anchor": false,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_continuity_break",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:15eaac2c7885fae864a4e970e6d8aa6337f0fee3c65015a4e3e41bca086896c6",
+        "result_digest": "sha256:df9d64c8080104bf3e8282b33d5cc96989d7c0dfc867169c0e08f35a9cec875a"
+      }
+    },
+    {
+      "id": "accept_explicit_rotation_issuer_signs_successor",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:147f861ad588be365c10dab5d4315c20b64f98668b222f5b42d4d32818068bec",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:05f421438b1ba1613155358aa3a1ee074bda7bd1c4a492b3c6c3a0cb74e4ef1a",
+          "signature_b64u": "XSwvf67M1xlTYfu01xkrpvTEPB4tzU4xXLetfyM_kR1W7kKma6ER97W1o3LAgC9MxqxTNxiUkO_YRcQlxhe-DA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer",
+                "authority_doc_rotation"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "Bg5EdFhU7pvi0lI3ciGFMxVW1CF5TBTkAityMl_d1ETICrMBiu0B6Ku2G9Gm9OJ62SNf6T_5ZkDUdVvy_7K_Dw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:4b36d002503ae70086e3a611fa0f1d6b2948254fb4c6eaf790b036906e1d49af",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer",
+                "authority_doc_rotation"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "58uQqK51-veCHKQG30_FomFmuG7p2NS-829DUwxb6Gol94rNzSgvcvnhxLiTstH-OnMd0lEhyOM9MtuAaanACw",
+          "continuity_sig": "iCCdKmXp3rOrPpEvAEGVOZWsDV6_Q4gpv1J_MIznsjkb_hQEVOVojUde0SIhBbZtEOEyS-JGzqs54Mn1PGs2BQ"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:147f861ad588be365c10dab5d4315c20b64f98668b222f5b42d4d32818068bec",
+        "expectedBootstrapDigest": "sha256:4b36d002503ae70086e3a611fa0f1d6b2948254fb4c6eaf790b036906e1d49af",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": true,
+        "accepted": true,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": true,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": true,
+          "epoch_fresh": true
+        },
+        "document_head": "sha256:147f861ad588be365c10dab5d4315c20b64f98668b222f5b42d4d32818068bec",
+        "proof_document_head": "sha256:147f861ad588be365c10dab5d4315c20b64f98668b222f5b42d4d32818068bec",
+        "bootstrap_digest": "sha256:4b36d002503ae70086e3a611fa0f1d6b2948254fb4c6eaf790b036906e1d49af",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "proof_digest": "sha256:05f421438b1ba1613155358aa3a1ee074bda7bd1c4a492b3c6c3a0cb74e4ef1a",
+        "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+        "proof_input_digest": "sha256:2457afb9f85669c984939b124dc00f14ffa7bba9b26f59486050961c66c77b74",
+        "document_chain_digest": "sha256:824b14e18625b56455500404e2b0fe8b012bb0771f054e6789a32df5145a7ba2",
+        "result_digest": "sha256:77a5a228d27878c6388d8302bc99aa37dabe6169ae9c4e1df25cdcbbe9cee09e"
+      }
+    },
+    {
+      "id": "reject_expired_rotation_issuer_signs_successor",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:13b9d7a97c5734e88f16be2482e4388e5f05f22db95be5060d85637d104358c2",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:22eb071d4d32a887c6ee14c900b9994b3a8e22a66cc25b6f4a8931250af19532",
+          "signature_b64u": "c8575zMpFQELqIYA9672HsQHyCdsSBNzGyt72Qf3P1Ul0NCvmfqcQBqF4aMUrEroXUZApW_eYw4XH38DXcF0Cw"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer",
+                "authority_doc_rotation"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2026-05-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "SLNG7sHc-_9ej5caz0n2rmgMOLMT5iAXRDAvTUPOG6221RMwlcsIT1TGduvhVAkUppkIY-UPmGGh5kd3Hz-5Cg"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb07a60ca2ef40f06707fd341cac1aad7853e3770040f15452e2a9a6a4150055",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer",
+                "authority_doc_rotation"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2026-05-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "EO8iwwO2L9INLPEJD1d0E1mqMIcPgWoDy4trjxdZz6l0PLxhlrsudhpHx-1AfMtRdYRN3DGEeyoSsDMSA5rNBg",
+          "continuity_sig": "r6S4VQ8ZyOVvkTmvdhoq9WqYDQOzgKTftNiQQozjTxX-93BL-GVkboMUVcjEacnWAwTKR3pJhaQCXF8Uev6iCg"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:13b9d7a97c5734e88f16be2482e4388e5f05f22db95be5060d85637d104358c2",
+        "expectedBootstrapDigest": "sha256:bb07a60ca2ef40f06707fd341cac1aad7853e3770040f15452e2a9a6a4150055",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": false,
+          "document_anchor": false,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_continuity_break",
+        "document_head": "sha256:13b9d7a97c5734e88f16be2482e4388e5f05f22db95be5060d85637d104358c2",
+        "bootstrap_digest": "sha256:bb07a60ca2ef40f06707fd341cac1aad7853e3770040f15452e2a9a6a4150055",
+        "proof_input_digest": "sha256:4bea6f286362541e5efc4deb0f7adb14b1e5b5cf9140eeb3db5ca2cb15e66570",
+        "document_chain_digest": "sha256:a9384488e22d0230482f545c2d2a7b04cd6cf7523d273dc8368872842437534f",
+        "result_digest": "sha256:d0102b0e478f40b28b235421c54b645e140e9650a21fa413f39b53a9c819f095"
+      }
+    },
+    {
+      "id": "reject_non_monotonic_document_time",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:0cf404fad5525e15b8a8dddda5dc5092e40fa20445b0f3622594d1ea4106c245",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:63b826c0460368a29a6af8e809934d5830d87a4a9385c291c9da9af32526a33b",
+          "signature_b64u": "uqAANM8OPsu_lnxV5t0yGcDAkKKVkq1cqENsWWKyVB-fYYNm-7JNPGS2653GnM9lw2yltKr9-8J_IzIZ0WCwDA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2025-12-01T00:00:00.000Z",
+          "sig": "IYRk_Bx5SEfy9eJ6jHHQqbbjR0571mPAlBUS_xQaThMTacsoyifhQ9FcJjuhBS7lLkhwgnjJQGWHyPO7sXJABg",
+          "continuity_sig": "yTHOln9mp0mqucmwL3-UzWfQHgvIorlt4G1patRSinBwTZIbPoPbWBsm__ZAvBTxM2H7eQpLONERzHNBXbTFBA"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:0cf404fad5525e15b8a8dddda5dc5092e40fa20445b0f3622594d1ea4106c245",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": false,
+          "continuity": false,
+          "document_anchor": false,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_chain_invalid",
+        "proof_input_digest": "sha256:0fd72c5d965970dd64b248b01e88210e80c0c8fe355d7b2e1b483917f0e3c50e",
+        "document_chain_digest": "sha256:f465d14f5470be8a828dff32bfa57a2551cb61c365c7613855a48b6e354131cd",
+        "result_digest": "sha256:31219650594ff69a1f3690882a019e6e0499bacc6e0f185eb9088f208b9a4c2d"
+      }
+    },
+    {
+      "id": "reject_proof_organization_substitution",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org-attacker",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": false,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_organization_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:2fe340a00f0c429bc564805f67189d88b6b29c649e5c0be21e4323d1b813c415",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:82047f8a54fd5b763d22756d39f6da3988b437b6061cf2d8911e1686b67d056a"
+      }
+    },
+    {
+      "id": "reject_document_domain_substitution",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "evil.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "evil.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": false,
+          "continuity": false,
+          "document_anchor": false,
+          "organization_binding": false,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_document_chain_invalid",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:57ab1bf42973c94750d091c6f59c5a47b01c97381f891ece0b46e2e207e316b7",
+        "result_digest": "sha256:ecd0dc8065fc82f41b64cbb916e6ed9667a142f509f1aee113953dccdf56bf9c"
+      }
+    },
+    {
+      "id": "reject_key_absent_from_document",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:f98d04c078515fd84c171fd3bb49a676cf3731d990aca999176b4f8796bac3a4",
+          "public_key": "MCowBQYDK2VwAyEA11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "h8xAL9jftEpSh5CE0TGrrwNFu2brvk4fc9YQOb236dV0F-njZpR7rW0gZBKTe2Pbc1R14Ch5BreoMGM3FtTMBg"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_key_unresolvable",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:42107f35f29f9d0fe9a36dd59d2f04ee2e7b77de478e7bc3dcbdc5f48fd05516",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:a351e6e9e8de0af4bd3903aa7eecb597f6847f9a119347057a7cc6bd28d1c156"
+      }
+    },
+    {
+      "id": "reject_key_wrong_usage",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:4752016e5206545454b62ade9f1b74b6fd391b96e46920f45e3d9b8d0581031b",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:c2e8303b95ef657aaf4dd98087a27c9593affe56ceb7bb194e04af5a76b1b81a",
+          "signature_b64u": "OWQXyMV_ZNIY_rTb-JYXbvSD9UEZ_kTILCw7Qu_maNJzx6HlXv5H5LWapyfc8uxs6-PjeHqXaSkbaSpgRjgeAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "nDaOSEoOBuz_5X1E5ZHVLZTeyKL5gnAtl6PIcxaFlAHtVw8bHfA9erL4hRsulqZDJXTSkMJ-rxO5TzZ3l2OMAA"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bcd45e03f132850954ffc9a03e7304b53676c43d783cc61ee1136b434276bde5",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "aH6FwgzSwMUH6YAvODCdcTXdLxulWKKzRQ5mvzTthfg4wRRw0xCbaYKjEy0xWG4SOgSHogLOyIn7OEW9To6rCw",
+          "continuity_sig": "ForRsKQIV8UUVVVugtIu9ERklsKojgUZezLbfCD9eSqHme7xqKNOr8LNCtZF2DGEaXqzDHcWZtGsyRIqHpNNCw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:4752016e5206545454b62ade9f1b74b6fd391b96e46920f45e3d9b8d0581031b",
+        "expectedBootstrapDigest": "sha256:bcd45e03f132850954ffc9a03e7304b53676c43d783cc61ee1136b434276bde5",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_key_wrong_usage",
+        "document_head": "sha256:4752016e5206545454b62ade9f1b74b6fd391b96e46920f45e3d9b8d0581031b",
+        "bootstrap_digest": "sha256:bcd45e03f132850954ffc9a03e7304b53676c43d783cc61ee1136b434276bde5",
+        "proof_input_digest": "sha256:9acc3d3cb0d0b8307bc0d268d143208eaaf0b336bbf5eef9508d819da3824e88",
+        "document_chain_digest": "sha256:821d6f48732a6926502df30bcf50dc7503f378e02c4a219b87b2bee4f2393de6",
+        "result_digest": "sha256:6112aae2a195bacdcf8ce09ee0bd523f01359348ff5842d764a3ea71ef2346cd"
+      }
+    },
+    {
+      "id": "reject_later_document_adds_usage_retroactively",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:bcd45e03f132850954ffc9a03e7304b53676c43d783cc61ee1136b434276bde5",
+          "head_seq": 0,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-05-01T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:dde104e4e16bcc7b1d2864102a8a709a5906d29b58ab3f3a620cf9c42eb9d1df",
+          "signature_b64u": "WZ1fA-MFDBiYzpsF8rfDX3ifkyDcRo5iEhx2pCEuhhAqdosmCATfSWPsvuXC63x-S-DRIG08WhyYebE07Tz9DQ"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "nDaOSEoOBuz_5X1E5ZHVLZTeyKL5gnAtl6PIcxaFlAHtVw8bHfA9erL4hRsulqZDJXTSkMJ-rxO5TzZ3l2OMAA"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bcd45e03f132850954ffc9a03e7304b53676c43d783cc61ee1136b434276bde5",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "kcj-4EwR2xqWoUnUBqb-xDNO5r4CQu2OjxEA7sOTmImp5lsUD7v5RSZl5Na3ttycgHOfvePhqDnKAEz1CEpODQ",
+          "continuity_sig": "q94XMKqn65DcdZlFi_gkWny-Bi9_NUDdvffAp2WbadGiNm8iX7UvdrVc13-gw4H0PIRk7T35vCTOv9MRUVX3CQ"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:e0033077d5e8cdb8a99c5e194e77fc414caf1a5a3fee0d7ca3c7b3c7d5ee4aa5",
+        "expectedBootstrapDigest": "sha256:bcd45e03f132850954ffc9a03e7304b53676c43d783cc61ee1136b434276bde5",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-05-01T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_key_wrong_usage",
+        "document_head": "sha256:e0033077d5e8cdb8a99c5e194e77fc414caf1a5a3fee0d7ca3c7b3c7d5ee4aa5",
+        "bootstrap_digest": "sha256:bcd45e03f132850954ffc9a03e7304b53676c43d783cc61ee1136b434276bde5",
+        "proof_input_digest": "sha256:0c6a6b1434d35e0e4f8109293d72f3892f79ef51928b3e2bd73dfeb4ff0ef93e",
+        "document_chain_digest": "sha256:53be432dac2178dd06f42aa60f549a80f4f8315313e2224f0d42b2e31b2fb6d7",
+        "result_digest": "sha256:53f0b468c2bc315cdb6fbad522fef76f9ef9d9ece2b7bc911873350f508413e3"
+      }
+    },
+    {
+      "id": "reject_key_not_yet_valid_at_proof_time",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:82587f89e9b80f630c224d6797ef98c9480ac25de245d6f67a9923534dc4e444",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:a8621c90f252c3528ac54d1e82b5247d77512abaa95e4289282b318655817570",
+          "signature_b64u": "Y2y3Z2CoudGxHI9R_KTLxmxhSW3ti2H0sYEHJQ2skEG6f0CVbgYSCJLE16Msh4H3x-fv2jwfo-Zq8n-H0N7UBw"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-08-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "TezInZmEUnzYNnBtXsJt10UaRgZoE1MrrQR8Vzsk1OdNNzS9E6AHIyIpmqDeJ_MZaQdvH312eTDMFvcPQQCdDQ"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:73c7992433cbd94108e518b09041bc81e1b13f7509ff779723a43372910fcc0e",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-08-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "FDSbN2oeaH84RY-nSDRt4CgNcsDT9r7TsLNdCZ-0Pcbpo-UUMqX8HUbMReOC_ygdxWiMf70T2CeWJjzayiBJCA",
+          "continuity_sig": "vleYQezfKvvalMc9o45f2DVCPoKDaVJwHEpiMPgrtxCxUMS1B-ilnCLvlJvo1FlOny-1GNOoK8PwIunlhEFvBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:82587f89e9b80f630c224d6797ef98c9480ac25de245d6f67a9923534dc4e444",
+        "expectedBootstrapDigest": "sha256:73c7992433cbd94108e518b09041bc81e1b13f7509ff779723a43372910fcc0e",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_key_unresolvable",
+        "document_head": "sha256:82587f89e9b80f630c224d6797ef98c9480ac25de245d6f67a9923534dc4e444",
+        "bootstrap_digest": "sha256:73c7992433cbd94108e518b09041bc81e1b13f7509ff779723a43372910fcc0e",
+        "proof_input_digest": "sha256:6ebda9e16051837bf99454ba25dc2a0e0f7d1c0d57b4232815d0c88271bb549a",
+        "document_chain_digest": "sha256:638b552aa7f2b2612351be927cd2ccc4b4c8ad761441ec8844ef81b6b7c3a1a5",
+        "result_digest": "sha256:f15432c449913e58876b5d403d45927e1054135d3d87028b5e0ecc054281dd5e"
+      }
+    },
+    {
+      "id": "reject_key_revoked_at_proof_time",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:143b8ff917b5afe8974291e1335235b684876e92917369583405b7bae972e17a",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:7ac3982b706b5120659ef856ac18185c05c45810d005d8dc45ccfa9a5aa661c0",
+          "signature_b64u": "0sFeWORxsjbjSrrZC0Vr8H-s7cCLctpo3LXdZuwlETZqHytn7BVmKPL_VWWBQ3THzzsNbEQfGFSjkiSATTCRDA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z",
+              "revoked_at": "2026-07-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "OoCyxa2zvHt3yQ2wJiHTsSBXheycUfhzhnMWJPvEBakGp1sjtwtKsI9Qs_0lEkfYwV_OADWcEr6GJeXLF9e0DA"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:b8ed973491607915e7e54652f13b235cc641bb8d3bc9f2c9a5fcd50109172fa4",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z",
+              "revoked_at": "2026-07-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "rnnkrXhxEUm9dEaNSDv8WK8pUy95FwA4BHR2_UbGIygOK-SanQ2cJu6CkK89vH0Qx67fkTHiLr8TGH-bUQG2Cw",
+          "continuity_sig": "cbjeBgdMixqovlxiU6SmAtZRuJo1rqK7nPEPdDoTuHsEIfNBoaez4sRj71DAFHroF16dsyvDE32ZwAYHn-uvCg"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 2,
+          "prev_doc_digest": "sha256:143b8ff917b5afe8974291e1335235b684876e92917369583405b7bae972e17a",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z",
+              "revoked_at": "2026-07-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-07-01T00:00:00.000Z",
+          "sig": "XuVYpWGbBjgpzdWIACNIETCrchv8VjFdqtNE1CYGSznnwyNfkkVnHcbb3hYWu9AKtE63ttwMok14yce5SV5JCw",
+          "continuity_sig": "QKvGFOph7B-U0-fm6w3OANFZON8LnLQXWWzGXfBK-wTFRnG-UjC8Z7R4FnA2ESRC1TOJkqa0-XbxUExqPllHBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:43482938c4d3802f00789fc32bb5b3921e21f19a1ff23318ab4186cec43c0d20",
+        "expectedBootstrapDigest": "sha256:b8ed973491607915e7e54652f13b235cc641bb8d3bc9f2c9a5fcd50109172fa4",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_key_unresolvable",
+        "document_head": "sha256:43482938c4d3802f00789fc32bb5b3921e21f19a1ff23318ab4186cec43c0d20",
+        "bootstrap_digest": "sha256:b8ed973491607915e7e54652f13b235cc641bb8d3bc9f2c9a5fcd50109172fa4",
+        "proof_input_digest": "sha256:b7ce5f89d3f952e438bcfe92863f218ee421cd4a6d456243a896b7fe9dd487e3",
+        "document_chain_digest": "sha256:cd347a8822a9b1c77671b2c01add9c548597919dcdcf8a0eb0f3b1e9cab9f9e0",
+        "result_digest": "sha256:aecd12381bf2b11c5b25f8566c40675bcf9a94bc10746ad34815388c5f939f0a"
+      }
+    },
+    {
+      "id": "accept_historical_proof_before_later_revocation",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:ca39f65b7df9720172cfd961801f6f5ca296a11dc651ddc00f0c53ca8fe9b4eb",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:4def22c06a6dd127944dc58853f7af46c2c676bfff689e2fe69dfa7b4e8c58a5",
+          "signature_b64u": "RpUSkvAmN9mn5zpfx81DNtMr58f3q5jarglE850QW7L4ih6R2THpWwn5Jusc59mnpbMLQyq8GNUSfbYpsKdQCg"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z",
+              "revoked_at": "2026-08-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "O4u6RUe2RgUQFu1IhPnyfltHbn1EpWXl-XIqKl1ai8IHDyalUIfWAa3tadvgApljGO_vPHaQbI3okou3tcuIAg"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:5f4658f625773df4085cc9c53f275d37c4de0ac10d8abe408a4511a18eb11f22",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z",
+              "revoked_at": "2026-08-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "NKYbE6Ig6Y3DulCdCgcnuXg7qPts1m5YbT_rfc-p2pDjWPQEsO8s11qx2mQlZ2c8IZSrUA8jhEHBGNJKmg8yDw",
+          "continuity_sig": "IX1mlxPiBLoGRULq4bJ__83I7ve6ovcTaY5gpTPfHmRQdFcxNnqByGUKd9wEa8GsQ-sb53mEyGGCEiIbzHwBDg"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 2,
+          "prev_doc_digest": "sha256:ca39f65b7df9720172cfd961801f6f5ca296a11dc651ddc00f0c53ca8fe9b4eb",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z",
+              "revoked_at": "2026-08-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-08-01T00:00:00.000Z",
+          "sig": "3kqZVrhBBva_X1arRto33sGrYsaeNHgZQPmvRbQWur1j2cxbrhH4j-k9CC9UumTIkej7w0GO6NViY-mF2XgrBg",
+          "continuity_sig": "4d1GGcghpQ7xMeMle681JEAihNQ85E7wf8ECnNPs12OHpu3Nd4US_6NO3qM9eLFtz1oJu0Wd-3pSZUsiDpYQBA"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:11fd2d0d7dc8b8a01d13f4f3e91f5526a9e722e16f50adde3508ee6654a49270",
+        "expectedBootstrapDigest": "sha256:5f4658f625773df4085cc9c53f275d37c4de0ac10d8abe408a4511a18eb11f22",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": true,
+        "accepted": true,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": true,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": true,
+          "epoch_fresh": true
+        },
+        "document_head": "sha256:11fd2d0d7dc8b8a01d13f4f3e91f5526a9e722e16f50adde3508ee6654a49270",
+        "proof_document_head": "sha256:ca39f65b7df9720172cfd961801f6f5ca296a11dc651ddc00f0c53ca8fe9b4eb",
+        "bootstrap_digest": "sha256:5f4658f625773df4085cc9c53f275d37c4de0ac10d8abe408a4511a18eb11f22",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "proof_digest": "sha256:4def22c06a6dd127944dc58853f7af46c2c676bfff689e2fe69dfa7b4e8c58a5",
+        "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+        "proof_input_digest": "sha256:d07c773a7fa3396373de1712942b9257546d49573d83b48b08c15fc5a8528ebc",
+        "document_chain_digest": "sha256:50e3732114ea9003732bb45c390bef42e2c78ae2edccb247e93c30464a9f0791",
+        "result_digest": "sha256:9634c96f873617b7dc6893f5489a3c95801d316827386f3059d12c5e42b5e292"
+      }
+    },
+    {
+      "id": "reject_missing_proof_time_anchor",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_time_anchor_required",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:86a06bdcc0ed946bca66abd511e84c78015d56fe65d5e3a5fa43ac6174027fc7"
+      }
+    },
+    {
+      "id": "reject_mismatched_proof_time_anchor",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-11T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": false,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_time_anchor_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:581c66b6977616a482287b5063c1f09e67a44312e1a07a406afd00ef187e7f7d"
+      }
+    },
+    {
+      "id": "reject_missing_registry_snapshot_pins",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z"
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": true,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "registry_snapshot_pins_required",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:6f2ea1c421ae267f04ff5363a8ac022e83b20fb2bc0b1b6255285220ca748a2a"
+      }
+    },
+    {
+      "id": "reject_registry_head_mismatch",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": true,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "registry_head_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:5a15fffaa0bdbeb8b23f6a47bd3a39ebb44f394c6734c69c7af76f62ed093698"
+      }
+    },
+    {
+      "id": "reject_stale_registry_epoch",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 18
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": true,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": true,
+          "epoch_fresh": false
+        },
+        "reason": "stale_registry",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+        "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:828815b2d4b2031c81cd821db4d9af25ab40d3f9e553c978a10cdea23b69000b"
+      }
+    },
+    {
+      "id": "reject_tampered_proof",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "admin:*"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": true,
+          "issuer_key_resolved": true,
+          "issuer_key_usage": true,
+          "proof_signature": false,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "proof_digest_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_digest": "sha256:1351ac07172e53285a73a378571a6449584c677fc7211be76a6cf453c57809de",
+        "proof_input_digest": "sha256:752e0253ee8749ca963ee2727d9df1af46649fb888657b02170b2106a29ee052",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:fed735ca556b20d62b36fd815e19213203e1b770162d244057424f791d7beced"
+      }
+    },
+    {
+      "id": "reject_proof_registry_issuer_substitution",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:attacker",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": false,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_registry_issuer_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:f56048c8b5373b9cd5e3bcf705625757f7166c12f574026f516f7eabc352aa2e",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:39e6b1976a01e5fd526a97bc26c99dd9d9e41c62691228d21d3f5f794ae82993"
+      }
+    },
+    {
+      "id": "reject_document_registry_issuer_substitution",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:293eab3e5497cfc34a0fc3700263588660067b148e0be64717c52d877b4fde36",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:e5583aeec176029b08c69da09c1432899209f31c478c00837c8cee1b54800610",
+          "signature_b64u": "an8GVHX3F73G2rzkinb-5zZlQkI9YgR8uu73OsXa0B9t_pW3ThTafcRvtuiQ0E0TabvyUNaeNQE7PmbUtCmjCQ"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:attacker",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "u0xL-tUtCvA_Sy-YXXxtoH-6VJyx2bg8VI14Fpd212aglIRC2xqBSVKZJmw4FFoXwCCFfRC2TQrhTVifexNxDw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:915b55a21e1cf46a83a893d6d51fec773c8025ac167725161928df2c78e34d76",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:attacker",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "tuhIwjdSq8bBmo_Mak2c-Sz4x0fiuguS-S5Nv5pkzNyFrFhHT8RiWGmD7GszaDcJM_9Hhp6YiL2jb1pnQFqMBA",
+          "continuity_sig": "7imNDw7RtTj-3GAXkjfZLfVUEFtVjRowNdorfOiRGrTZpbJRz1nU8Q838gp9LZkzatql9N7fQ2CtmYlOu1EaAw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:293eab3e5497cfc34a0fc3700263588660067b148e0be64717c52d877b4fde36",
+        "expectedBootstrapDigest": "sha256:915b55a21e1cf46a83a893d6d51fec773c8025ac167725161928df2c78e34d76",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": true,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": true,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_registry_issuer_mismatch",
+        "document_head": "sha256:293eab3e5497cfc34a0fc3700263588660067b148e0be64717c52d877b4fde36",
+        "bootstrap_digest": "sha256:915b55a21e1cf46a83a893d6d51fec773c8025ac167725161928df2c78e34d76",
+        "proof_input_digest": "sha256:f015c820f70326f4c0f33f89bc3d16c529c6cdcba3306598d6d4fb8f9dcd9037",
+        "document_chain_digest": "sha256:ff60f06180e800c6039b413fa329ce727b9688bf343dcf64eb9d44ff91c4061b",
+        "result_digest": "sha256:66e2b0f4fa7a137b86121a6b89540a082f266436f4d045335f4f23fea522d162"
+      }
+    },
+    {
+      "id": "reject_document_head_registry_head_confusion",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": false,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": false,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_proof_document_head_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:95b52b7c8186d8a0278b2eb8b0cb8c05cf05c3ab71e0cc0309e3f4bd6d0eeacf",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:531b761c633cd77bd12fd67e20cd076a480b8beb3a9d5157917e8070c34e90fb"
+      }
+    },
+    {
+      "id": "reject_full_issuer_key_id_mismatch",
+      "proof": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_cfo",
+        "subject": "ep:approver:ada",
+        "organization_id": "org1",
+        "registry_issuer_id": "ep:authority-registry:acme-payments",
+        "authority_document": {
+          "head_digest": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "head_seq": 1,
+          "issuer_kid": "ep:authority-issuer-key:sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "role": "cfo",
+        "scope": [
+          "payment.release"
+        ],
+        "limits": {
+          "max_amount_usd": 50000,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-10T00:00:00.000Z"
+        },
+        "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "registry_epoch": 17,
+        "policy_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "issued_at": "2026-07-10T00:00:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "public_key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "signature_b64u": "57VbPvO7SOKbZ6XsKu7duhbZ7ja_LyCZyvYKEk-hZj2Km_4DG-y9CQER718WaAWBAyehd1G2AqTFJGmSUTfkAA"
+        }
+      },
+      "docs": [
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 0,
+          "prev_doc_digest": null,
+          "root_key": "MCowBQYDK2VwAyEA25lf4lFp0UHKubu6krqgH58uHs599MsqwFGQ83_MH50",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-01-01T00:00:00.000Z",
+          "sig": "v0QgffzQ1GqGP5C9OjbwS_FKjL48OOWBBHVXb44fGMpD8HjPjBVYKb0XSlQSfVWUJu6LI8qGULZd1_02U2G9Cw"
+        },
+        {
+          "@version": "EP-AUTHORITY-DOC-v1",
+          "org": {
+            "id": "org1",
+            "name": "Acme Payments",
+            "domain": "acme.example"
+          },
+          "seq": 1,
+          "prev_doc_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "root_key": "MCowBQYDK2VwAyEAIVL40Zt5HSRFMkLhXy6rbLfP-ntqXtMAl5YOBpiB2xI",
+          "issuer_keys": [
+            {
+              "kid": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+              "key": "MCowBQYDK2VwAyEAIvwpd5Lwtv_Av8_bftsMCqFOAlo2XsDjQuhuOCnLdLY",
+              "registry_issuer_id": "ep:authority-registry:acme-payments",
+              "usages": [
+                "evidence_issuer",
+                "authority_proof_issuer"
+              ],
+              "custody_class": "A",
+              "valid_from": "2026-01-01T00:00:00.000Z",
+              "valid_to": "2027-01-01T00:00:00.000Z"
+            }
+          ],
+          "issued_at": "2026-06-01T00:00:00.000Z",
+          "sig": "eKdRug0bT0vMHVESX08rF2lmwG-xpj0it-_MjkbCyuy-tQYmwjzfN2uKAqvAcacPTfOuBy07eAKCerjRAVhlDw",
+          "continuity_sig": "36ny3ZjMh0QgxMKUpFFKzNox2eNUY6soDyTF6CQAPAQ2LIyIuxo0--JZtBhohPCVFIn24u_xNI0rQpjdCFfGBw"
+        }
+      ],
+      "opts": {
+        "expectedDocumentHead": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "expectedBootstrapDigest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "expectedOrganizationId": "org1",
+        "expectedOrganizationDomain": "acme.example",
+        "expectedRegistryIssuerId": "ep:authority-registry:acme-payments",
+        "expectedProofIssuedAt": "2026-07-10T00:00:00.000Z",
+        "expectRegistryHead": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "expectMinEpoch": 17
+      },
+      "expect": {
+        "verified": false,
+        "issuer_accepted": false,
+        "accepted": false,
+        "authority_evaluated": false,
+        "delegation_evaluated": false,
+        "checks": {
+          "document_chain": true,
+          "continuity": true,
+          "document_anchor": true,
+          "organization_binding": true,
+          "proof_document_binding": true,
+          "registry_issuer_binding": false,
+          "issuer_key_resolved": false,
+          "issuer_key_usage": false,
+          "proof_signature": false,
+          "proof_time_anchor": true,
+          "registry_head": false,
+          "epoch_fresh": false
+        },
+        "reason": "authority_registry_issuer_mismatch",
+        "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+        "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+        "proof_input_digest": "sha256:7d77decb606874ba255f7db10e600cf60e70843196c77cfab9bf058bfe08f023",
+        "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+        "result_digest": "sha256:12e61e724b1b7c6c174e57212f7c81987588b8df4943bd3533b148e15d1944d2"
+      }
+    }
+  ]
+}

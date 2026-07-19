@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-revocation.schema.json",
+  "title": "EP-REVOCATION-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "target_type",
+    "target_id",
+    "action_hash",
+    "revoker_id",
+    "revoked_at",
+    "reason",
+    "proof"
+  ],
+  "properties": {
+    "@version": {
+      "const": "EP-REVOCATION-v1"
+    },
+    "target_type": {
+      "enum": ["receipt", "commit", "delegation"]
+    },
+    "target_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "action_hash": {
+      "type": "string",
+      "pattern": "^(?:sha256:)?[0-9A-Fa-f]{64}$"
+    },
+    "revoker_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "revoked_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "reason": {
+      "type": ["string", "null"]
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "revoker_key_id",
+        "signature_b64u",
+        "public_key"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "revoker_key_id": {
+          "type": "string",
+          "anyOf": [
+            {
+              "pattern": "^ep:revoker-key:sha256:[0-9a-f]{64}$"
+            },
+            {
+              "description": "Historical EP-REVOCATION-v1 local label; accepted only when the verifier separately pins the exact proof SPKI.",
+              "pattern": "^(?!ep:revoker-key:sha256:)[A-Za-z0-9._:#-]{1,128}$"
+            }
+          ]
+        },
+        "signature_b64u": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        },
+        "public_key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

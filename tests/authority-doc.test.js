@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {
   AUTHORITY_DOC_VERSION, createAuthorityDoc, endorseAuthorityDoc,
   verifyAuthorityChain, resolveIssuerKeyAt, verifyEndorsement,
-  evaluateIntroduction, docCoreDigest,
+  evaluateIntroduction, docCoreDigest, isStableAuthorityIdentifier,
 } from '../lib/authority/authority-doc.js';
 
 const kp = () => crypto.generateKeyPairSync('ed25519');
@@ -31,6 +31,13 @@ function buildChain() {
 }
 
 describe('EP-AUTHORITY-DOC — chain, rotation, compromise', () => {
+  it('fails closed without throwing on malformed native document entries', () => {
+    for (const docs of [[null], [42], [[]], [{ '@version': AUTHORITY_DOC_VERSION }]]) {
+      expect(() => verifyAuthorityChain(docs)).not.toThrow();
+      expect(verifyAuthorityChain(docs).verified).toBe(false);
+    }
+  });
+
   it('a well-formed rotated chain verifies with no continuity breaks', () => {
     const r = verifyAuthorityChain(buildChain());
     expect(r.verified).toBe(true);
@@ -84,12 +91,144 @@ describe('EP-AUTHORITY-DOC — chain, rotation, compromise', () => {
     expect(resolveIssuerKeyAt(chain, kidA, '2026-08-01T00:00:00Z')).toBeNull();     // future is voided
   });
 
+  it('does not resurrect an issuer key omitted by the newest effective document', () => {
+    const [doc0, doc1] = buildChain();
+    const kidA = doc0.issuer_keys[0].kid;
+    const doc2 = createAuthorityDoc({
+      org: { name: 'Acme Payments', domain: 'acme.example' },
+      issuer_keys: [
+        { key: pub(issuerB.privateKey), custody_class: 'A', valid_from: '2026-06-01T00:00:00Z', valid_to: '2027-06-01T00:00:00Z' },
+      ],
+      issued_at: '2026-07-01T00:00:00Z',
+    }, root1.privateKey, { doc: doc1, continuityPrivateKey: root1.privateKey });
+    const chain = [doc0, doc1, doc2];
+
+    expect(resolveIssuerKeyAt(chain, kidA, '2026-06-30T23:59:59Z')).not.toBeNull();
+    expect(resolveIssuerKeyAt(chain, kidA, '2026-07-01T00:00:00Z')).toBeNull();
+  });
+
+  it('does not accept a rotation issuer revoked at the successor issuance time', () => {
+    const org = { id: 'org1', name: 'Acme Payments', domain: 'acme.example' };
+    const rotationEntry = {
+      key: pub(issuerA.privateKey),
+      registry_issuer_id: 'ep:authority-registry:acme-payments',
+      usages: ['authority_doc_rotation'],
+      valid_from: '2026-01-01T00:00:00Z',
+      valid_to: '2027-01-01T00:00:00Z',
+    };
+    const doc0 = createAuthorityDoc({
+      org,
+      issuer_keys: [rotationEntry],
+      issued_at: '2026-01-01T00:00:00Z',
+    }, root0.privateKey);
+    const doc1 = createAuthorityDoc({
+      org,
+      issuer_keys: [{ ...rotationEntry, revoked_at: '2026-06-01T00:00:00Z' }],
+      issued_at: '2026-06-01T00:00:00Z',
+    }, root1.privateKey, { doc: doc0, continuityPrivateKey: issuerA.privateKey });
+
+    const result = verifyAuthorityChain([doc0, doc1]);
+    expect(result.verified).toBe(true);
+    expect(result.breaks).toEqual([1]);
+  });
+
+  it('rejects a registry issuer identity change for the same issuer key', () => {
+    const org = { id: 'org1', name: 'Acme Payments', domain: 'acme.example' };
+    const issuerEntry = {
+      key: pub(issuerA.privateKey),
+      registry_issuer_id: 'ep:authority-registry:acme-payments',
+      usages: ['authority_proof_issuer'],
+      valid_from: '2026-01-01T00:00:00Z',
+      valid_to: '2027-01-01T00:00:00Z',
+    };
+    const doc0 = createAuthorityDoc({
+      org,
+      issuer_keys: [issuerEntry],
+      issued_at: '2026-01-01T00:00:00Z',
+    }, root0.privateKey);
+    const doc1 = createAuthorityDoc({
+      org,
+      issuer_keys: [{ ...issuerEntry, registry_issuer_id: 'ep:authority-registry:attacker' }],
+      issued_at: '2026-06-01T00:00:00Z',
+    }, root1.privateKey, { doc: doc0, continuityPrivateKey: root0.privateKey });
+
+    const result = verifyAuthorityChain([doc0, doc1]);
+    expect(result.verified).toBe(false);
+    expect(result.reasons.join(' ')).toContain('registry issuer identity changed');
+  });
+
   it('endorsements verify against the exact doc digest and nothing else', () => {
     const [, doc1] = buildChain();
     const e = endorseAuthorityDoc(doc1, 'Meridian Audit LLP', endorser.privateKey);
     expect(verifyEndorsement(e, doc1)).toBe(true);
     const tampered = { ...doc1, org: { ...doc1.org, name: 'Acme Totally Real' } };
     expect(verifyEndorsement(e, tampered)).toBe(false);
+  });
+
+  it('refuses duplicate issuer key identifiers even when the document is validly signed', () => {
+    const duplicate = createAuthorityDoc({
+      org: { id: 'org1', name: 'Acme Payments', domain: 'acme.example' },
+      issuer_keys: [
+        { kid: 'duplicate', key: pub(issuerA.privateKey), valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+        { kid: 'duplicate', key: pub(issuerB.privateKey), valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+      ],
+      issued_at: '2026-01-01T00:00:00Z',
+    }, root0.privateKey);
+    expect(verifyAuthorityChain([duplicate]).verified).toBe(false);
+  });
+
+  it('refuses a kid that is not the full digest-derived issuer key identifier', () => {
+    const mismatched = createAuthorityDoc({
+      org: { id: 'org1', name: 'Acme Payments', domain: 'acme.example' },
+      issuer_keys: [{
+        kid: 'ep:authority-issuer-key:sha256:' + '00'.repeat(32),
+        key: pub(issuerA.privateKey),
+        valid_from: '2026-01-01T00:00:00Z',
+        valid_to: '2027-01-01T00:00:00Z',
+      }],
+      issued_at: '2026-01-01T00:00:00Z',
+    }, root0.privateKey);
+    expect(verifyAuthorityChain([mismatched]).verified).toBe(false);
+  });
+
+  it('refuses malformed or inverted issuer-key time windows', () => {
+    for (const entry of [
+      { valid_from: '2026-99-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+      { valid_from: '2027-01-01T00:00:00Z', valid_to: '2026-01-01T00:00:00Z' },
+    ]) {
+      const doc = createAuthorityDoc({
+        org: { id: 'org1', name: 'Acme Payments', domain: 'acme.example' },
+        issuer_keys: [{ key: pub(issuerA.privateKey), ...entry }],
+        issued_at: '2026-01-01T00:00:00Z',
+      }, root0.privateKey);
+      expect(verifyAuthorityChain([doc]).verified).toBe(false);
+    }
+  });
+
+  it('refuses unstable organization and registry identifiers', () => {
+    for (const mutation of [
+      { org: { id: ' org1', name: 'Acme Payments', domain: 'acme.example' } },
+      { org: { id: 'org1', name: 'Acme Payments', domain: ' acme.example' } },
+      { registry_issuer_id: 'ep:authority-registry:acme payments' },
+    ]) {
+      const doc = createAuthorityDoc({
+        org: mutation.org ?? { id: 'org1', name: 'Acme Payments', domain: 'acme.example' },
+        issuer_keys: [{
+          key: pub(issuerA.privateKey),
+          registry_issuer_id: mutation.registry_issuer_id ?? 'ep:authority-registry:acme-payments',
+          usages: ['authority_proof_issuer'],
+          valid_from: '2026-01-01T00:00:00Z',
+          valid_to: '2027-01-01T00:00:00Z',
+        }],
+        issued_at: '2026-01-01T00:00:00Z',
+      }, root0.privateKey);
+      expect(verifyAuthorityChain([doc]).verified).toBe(false);
+    }
+  });
+
+  it('bounds stable identifiers by Unicode code points', () => {
+    expect(isStableAuthorityIdentifier('😀'.repeat(512))).toBe(true);
+    expect(isStableAuthorityIdentifier('😀'.repeat(513))).toBe(false);
   });
 });
 

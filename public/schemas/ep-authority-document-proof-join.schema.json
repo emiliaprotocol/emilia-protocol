@@ -1,0 +1,701 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-authority-document-proof-join.schema.json",
+  "title": "EP-AUTHORITY-DOC-PROOF-JOIN-v1",
+  "description": "Closed input and output schemas for joining an EP-AUTHORITY-PROOF-v1 signing key to a relying-party-anchored EP-AUTHORITY-DOC-v1 chain. A successful output establishes issuer acceptance only; authority scope, delegation, and registry membership remain unevaluated.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/joinInput"
+    },
+    {
+      "$ref": "#/$defs/joinOutput"
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "stableIdentifier": {
+      "description": "A non-empty, bounded identifier with no whitespace or ASCII control characters.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "not": {
+        "pattern": "[\\s\\u0000-\\u001f\\u007f]"
+      }
+    },
+    "boundedString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "base64url": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "ed25519Signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
+    },
+    "instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "safeEpoch": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "authorityIssuerKeyId": {
+      "type": "string",
+      "pattern": "^ep:authority-issuer-key:sha256:[0-9a-f]{64}$"
+    },
+    "authorityRegistryKeyId": {
+      "type": "string",
+      "pattern": "^ep:authority-registry-key:sha256:[0-9a-f]{64}$"
+    },
+    "organization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "domain"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "name": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "domain": {
+          "$ref": "#/$defs/stableIdentifier"
+        }
+      }
+    },
+    "issuerKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kid", "key", "valid_from", "valid_to"],
+      "properties": {
+        "kid": {
+          "$ref": "#/$defs/authorityIssuerKeyId"
+        },
+        "key": {
+          "$ref": "#/$defs/base64url"
+        },
+        "registry_issuer_id": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "usages": {
+          "description": "Declared issuer-key usages. The join requires authority_proof_issuer on the proof-time-effective bound key.",
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableIdentifier"
+          }
+        },
+        "custody_class": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "roles": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableIdentifier"
+          }
+        },
+        "valid_from": {
+          "$ref": "#/$defs/instant"
+        },
+        "valid_to": {
+          "$ref": "#/$defs/instant"
+        },
+        "revoked_at": {
+          "$ref": "#/$defs/instant"
+        }
+      }
+    },
+    "endorsement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["by_org", "by_key", "doc_digest", "sig"],
+      "properties": {
+        "by_org": {
+          "$ref": "#/$defs/boundedString"
+        },
+        "by_key": {
+          "$ref": "#/$defs/base64url"
+        },
+        "doc_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sig": {
+          "$ref": "#/$defs/ed25519Signature"
+        }
+      }
+    },
+    "authorityDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "org",
+        "seq",
+        "prev_doc_digest",
+        "root_key",
+        "issuer_keys",
+        "issued_at",
+        "sig"
+      ],
+      "properties": {
+        "@version": {
+          "const": "EP-AUTHORITY-DOC-v1"
+        },
+        "org": {
+          "$ref": "#/$defs/organization"
+        },
+        "seq": {
+          "$ref": "#/$defs/safeEpoch"
+        },
+        "prev_doc_digest": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "root_key": {
+          "$ref": "#/$defs/base64url"
+        },
+        "issuer_keys": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/issuerKey"
+          }
+        },
+        "issued_at": {
+          "$ref": "#/$defs/instant"
+        },
+        "sig": {
+          "$ref": "#/$defs/ed25519Signature"
+        },
+        "continuity_sig": {
+          "$ref": "#/$defs/ed25519Signature"
+        },
+        "endorsements": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/endorsement"
+          }
+        }
+      }
+    },
+    "authorityDocumentBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["head_digest", "head_seq", "issuer_kid"],
+      "properties": {
+        "head_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "head_seq": {
+          "$ref": "#/$defs/safeEpoch"
+        },
+        "issuer_kid": {
+          "$ref": "#/$defs/authorityIssuerKeyId"
+        }
+      }
+    },
+    "authorityProofSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "public_key", "proof_digest", "signature_b64u"],
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "key_id": {
+          "$ref": "#/$defs/authorityRegistryKeyId"
+        },
+        "public_key": {
+          "$ref": "#/$defs/base64url"
+        },
+        "proof_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "signature_b64u": {
+          "$ref": "#/$defs/ed25519Signature"
+        }
+      }
+    },
+    "authorityProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@type",
+        "authority_id",
+        "subject",
+        "organization_id",
+        "registry_issuer_id",
+        "authority_document",
+        "role",
+        "scope",
+        "limits",
+        "validity",
+        "revocation",
+        "registry_head",
+        "registry_epoch",
+        "issued_at",
+        "limitations",
+        "signature"
+      ],
+      "properties": {
+        "@type": {
+          "const": "EP-AUTHORITY-PROOF-v1"
+        },
+        "authority_id": {
+          "description": "Stable identifier of the scoped authority grant represented by the proof.",
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "subject": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "organization_id": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "registry_issuer_id": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "authority_document": {
+          "$ref": "#/$defs/authorityDocumentBinding"
+        },
+        "role": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "scope": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableIdentifier"
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_amount_usd", "currency"],
+          "properties": {
+            "max_amount_usd": {
+              "type": ["number", "null"],
+              "minimum": 0
+            },
+            "currency": {
+              "$ref": "#/$defs/stableIdentifier"
+            }
+          }
+        },
+        "validity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "to"],
+          "properties": {
+            "from": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/instant"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "to": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/instant"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "revocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "checked_at"],
+          "properties": {
+            "status": {
+              "enum": ["not_revoked", "revoked"]
+            },
+            "checked_at": {
+              "$ref": "#/$defs/instant"
+            },
+            "revoked_at": {
+              "$ref": "#/$defs/instant"
+            }
+          }
+        },
+        "registry_head": {
+          "$ref": "#/$defs/sha256"
+        },
+        "registry_epoch": {
+          "$ref": "#/$defs/safeEpoch"
+        },
+        "policy_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "issued_at": {
+          "$ref": "#/$defs/instant"
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/boundedString"
+          }
+        },
+        "signature": {
+          "$ref": "#/$defs/authorityProofSignature"
+        }
+      }
+    },
+    "trustOptions": {
+      "description": "Relying-party inputs. expectedProofIssuedAt must come from independently authenticated evidence and must not be copied from the proof merely to satisfy the join.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expectedOrganizationId",
+        "expectedOrganizationDomain",
+        "expectedRegistryIssuerId",
+        "expectedProofIssuedAt",
+        "expectRegistryHead",
+        "expectMinEpoch"
+      ],
+      "anyOf": [
+        {
+          "required": ["expectedDocumentHead"]
+        },
+        {
+          "required": ["expectedBootstrapDigest"]
+        }
+      ],
+      "properties": {
+        "expectedDocumentHead": {
+          "$ref": "#/$defs/sha256"
+        },
+        "expectedBootstrapDigest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "expectedOrganizationId": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "expectedOrganizationDomain": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "expectedRegistryIssuerId": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "expectedProofIssuedAt": {
+          "$ref": "#/$defs/instant"
+        },
+        "expectRegistryHead": {
+          "$ref": "#/$defs/sha256"
+        },
+        "expectMinEpoch": {
+          "$ref": "#/$defs/safeEpoch"
+        }
+      }
+    },
+    "joinInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proof", "docs", "opts"],
+      "properties": {
+        "proof": {
+          "$ref": "#/$defs/authorityProof"
+        },
+        "docs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/authorityDocument"
+          }
+        },
+        "opts": {
+          "$ref": "#/$defs/trustOptions"
+        }
+      }
+    },
+    "joinChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_chain",
+        "continuity",
+        "document_anchor",
+        "organization_binding",
+        "proof_document_binding",
+        "registry_issuer_binding",
+        "issuer_key_resolved",
+        "issuer_key_usage",
+        "proof_signature",
+        "proof_time_anchor",
+        "registry_head",
+        "epoch_fresh"
+      ],
+      "properties": {
+        "document_chain": {
+          "type": "boolean"
+        },
+        "continuity": {
+          "type": "boolean"
+        },
+        "document_anchor": {
+          "type": "boolean"
+        },
+        "organization_binding": {
+          "type": "boolean"
+        },
+        "proof_document_binding": {
+          "type": "boolean"
+        },
+        "registry_issuer_binding": {
+          "type": "boolean"
+        },
+        "issuer_key_resolved": {
+          "type": "boolean"
+        },
+        "issuer_key_usage": {
+          "type": "boolean"
+        },
+        "proof_signature": {
+          "type": "boolean"
+        },
+        "proof_time_anchor": {
+          "type": "boolean"
+        },
+        "registry_head": {
+          "type": "boolean"
+        },
+        "epoch_fresh": {
+          "type": "boolean"
+        }
+      }
+    },
+    "acceptedChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_chain",
+        "continuity",
+        "document_anchor",
+        "organization_binding",
+        "proof_document_binding",
+        "registry_issuer_binding",
+        "issuer_key_resolved",
+        "issuer_key_usage",
+        "proof_signature",
+        "proof_time_anchor",
+        "registry_head",
+        "epoch_fresh"
+      ],
+      "properties": {
+        "document_chain": {
+          "const": true
+        },
+        "continuity": {
+          "const": true
+        },
+        "document_anchor": {
+          "const": true
+        },
+        "organization_binding": {
+          "const": true
+        },
+        "proof_document_binding": {
+          "const": true
+        },
+        "registry_issuer_binding": {
+          "const": true
+        },
+        "issuer_key_resolved": {
+          "const": true
+        },
+        "issuer_key_usage": {
+          "const": true
+        },
+        "proof_signature": {
+          "const": true
+        },
+        "proof_time_anchor": {
+          "const": true
+        },
+        "registry_head": {
+          "const": true
+        },
+        "epoch_fresh": {
+          "const": true
+        }
+      }
+    },
+    "refusalReason": {
+      "enum": [
+        "authority_document_chain_invalid",
+        "authority_document_continuity_break",
+        "authority_document_anchor_required",
+        "authority_document_anchor_mismatch",
+        "authority_document_organization_mismatch",
+        "authority_proof_time_anchor_required",
+        "authority_proof_time_anchor_invalid",
+        "authority_proof_time_anchor_mismatch",
+        "authority_proof_document_binding_missing_or_malformed",
+        "authority_proof_document_head_mismatch",
+        "authority_registry_issuer_mismatch",
+        "authority_proof_key_unresolvable",
+        "authority_proof_key_wrong_usage",
+        "unsupported_version",
+        "signature_missing_or_malformed",
+        "proof_uncanonicalizable",
+        "proof_digest_mismatch",
+        "key_id_mismatch",
+        "signature_invalid",
+        "authority_proof_invalid",
+        "registry_snapshot_pins_required",
+        "registry_head_mismatch",
+        "stale_registry"
+      ]
+    },
+    "acceptedOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verified",
+        "issuer_accepted",
+        "accepted",
+        "authority_evaluated",
+        "delegation_evaluated",
+        "checks",
+        "document_head",
+        "proof_document_head",
+        "bootstrap_digest",
+        "registry_issuer_id",
+        "proof_digest",
+        "key_id",
+        "limitations"
+      ],
+      "properties": {
+        "verified": {
+          "const": true
+        },
+        "issuer_accepted": {
+          "const": true
+        },
+        "accepted": {
+          "const": true
+        },
+        "authority_evaluated": {
+          "const": false
+        },
+        "delegation_evaluated": {
+          "const": false
+        },
+        "checks": {
+          "$ref": "#/$defs/acceptedChecks"
+        },
+        "document_head": {
+          "$ref": "#/$defs/sha256"
+        },
+        "proof_document_head": {
+          "$ref": "#/$defs/sha256"
+        },
+        "bootstrap_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "registry_issuer_id": {
+          "$ref": "#/$defs/stableIdentifier"
+        },
+        "proof_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "key_id": {
+          "$ref": "#/$defs/authorityIssuerKeyId"
+        },
+        "limitations": {
+          "const": [
+            "Issuer acceptance is not a decision that the grant authorizes an action.",
+            "Grant scope, limits, validity, revocation freshness, and delegation require separate evaluation.",
+            "Authority-registry membership requires independently verified snapshot or inclusion evidence."
+          ]
+        }
+      }
+    },
+    "refusedOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verified",
+        "issuer_accepted",
+        "accepted",
+        "authority_evaluated",
+        "delegation_evaluated",
+        "checks",
+        "reason"
+      ],
+      "properties": {
+        "verified": {
+          "type": "boolean"
+        },
+        "issuer_accepted": {
+          "const": false
+        },
+        "accepted": {
+          "const": false
+        },
+        "authority_evaluated": {
+          "const": false
+        },
+        "delegation_evaluated": {
+          "const": false
+        },
+        "checks": {
+          "$ref": "#/$defs/joinChecks"
+        },
+        "reason": {
+          "$ref": "#/$defs/refusalReason"
+        },
+        "document_head": {
+          "$ref": "#/$defs/sha256"
+        },
+        "bootstrap_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "proof_digest": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "joinOutput": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/acceptedOutput"
+        },
+        {
+          "$ref": "#/$defs/refusedOutput"
+        }
+      ]
+    }
+  }
+}

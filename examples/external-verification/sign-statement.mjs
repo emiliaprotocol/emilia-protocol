@@ -7,11 +7,12 @@
 // MODE A (default, the meaningful one): --results <dir-or-files>
 //   You ran YOUR OWN verifier over suites in conformance/vectors/ and saved
 //   its per-vector output as <suite-file-name>.results.json files following
-//   the plugfest contract: a JSON array of { "id": ..., "valid": ... }, one
-//   entry per vector. This script compares your reported results against each
-//   vector's expect.valid and signs a statement in your name.
+//   the plugfest contract: a JSON array of { "id": ..., ...typedResult }, one
+//   entry per vector. Exact-result suites require every published check,
+//   reason, and digest field, not only the primary outcome/valid/accepted
+//   value. This script compares the results and signs a statement in your name.
 //     procedure.id      = ep-conformance-own-implementation
-//     procedure.version = EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v1
+//     procedure.version = EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v2
 //
 // MODE B (--run-reference): executes this repository's own reference runner
 //   (node conformance/run.mjs) and signs over its outcome. That is a
@@ -19,7 +20,7 @@
 //   machine. It is NOT an independent implementation, and the statement says
 //   so in its limitations.
 //     procedure.id      = ep-conformance-reference-runner
-//     procedure.version = EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v1
+//     procedure.version = EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v2
 //
 // A statement is signed even when results diverge from expectations
 // (result.status = 'divergent'): a signed divergence is a valid finding.
@@ -31,6 +32,10 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  EXACT_EXTERNAL_RESULT_KINDS,
+  LIVE_SUITE_FILES,
+} from '../../conformance/suites.mjs';
 import { signExternalVerificationStatement } from '../../packages/gate/reports/external-verification.js';
 import { canonicalize } from '../../packages/gate/execution-binding.js';
 
@@ -65,7 +70,7 @@ const BASE_LIMITATIONS = [
 const MODE_A_LIMITATION =
   'Per-vector results were produced by the named implementation outside this '
   + 'harness and are self-reported; this harness only compared them against each '
-  + 'suite vector\'s expect.valid.';
+  + 'suite vector\'s published typed expectation.';
 
 /** Fail-closed refusal with a distinct machine-readable reason. */
 export class Refusal extends Error {
@@ -77,6 +82,53 @@ export class Refusal extends Error {
 
 function sha256hexOf(bytes) {
   return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+const RESULT_KIND_TYPES = Object.freeze({
+  valid: 'boolean',
+  outcome: 'string',
+  verdict: 'string',
+  accepted: 'boolean',
+});
+const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
+
+class ResultMap extends Map {
+  constructor() {
+    super();
+    this.kinds = new Map();
+    this.typedValues = new Map();
+    this.reasons = new Map();
+    this.objects = new Map();
+  }
+}
+
+function resultKinds(value) {
+  return Object.entries(RESULT_KIND_TYPES)
+    .filter(([key, type]) => typeof value?.[key] === type)
+    .map(([key]) => key);
+}
+
+function typedResultFieldsValid(value) {
+  if (Object.hasOwn(value, 'reason')
+      && value.reason !== null && typeof value.reason !== 'string') return false;
+  for (const key of ['reasons', 'errors']) {
+    if (Object.hasOwn(value, key)
+        && (!Array.isArray(value[key]) || !value[key].every((item) => typeof item === 'string'))) {
+      return false;
+    }
+  }
+  if (Object.hasOwn(value, 'checks')
+      && (!value.checks || typeof value.checks !== 'object' || Array.isArray(value.checks)
+        || !Object.values(value.checks).every((item) => typeof item === 'boolean'))) {
+    return false;
+  }
+  for (const [key, item] of Object.entries(value)) {
+    if ((key.endsWith('_digest') || key.endsWith('_head'))
+        && item !== null && (typeof item !== 'string' || !DIGEST_RE.test(item))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export function gitCommit(root = REPO_ROOT) {
@@ -93,6 +145,9 @@ export function gitCommit(root = REPO_ROOT) {
 /**
  * Load and structurally validate one suite file from conformance/vectors/.
  * Returns { file, digest, vectors: Map<id, expectValid>, json }.
+ * Typed suites may express their pass condition as expect.outcome,
+ * expect.verdict, or expect.accepted; those are normalized to a boolean
+ * result without discarding the typed expectation in the suite digest.
  */
 export function loadSuite(suiteFile, vectorsDir = VECTORS_DIR) {
   const p = path.join(vectorsDir, suiteFile);
@@ -111,14 +166,38 @@ export function loadSuite(suiteFile, vectorsDir = VECTORS_DIR) {
     throw new Refusal('malformed_suite', `${suiteFile}: missing vectors array`);
   }
   const vectors = new Map();
+  const expectationKinds = new Map();
+  const expectationValues = new Map();
+  const expectationReasons = new Map();
+  const expectationObjects = new Map();
+  const exactResultKind = Object.hasOwn(EXACT_EXTERNAL_RESULT_KINDS, suiteFile)
+    ? EXACT_EXTERNAL_RESULT_KINDS[suiteFile]
+    : null;
   for (const v of json.vectors) {
-    if (!v || typeof v.id !== 'string' || !v.id || typeof v?.expect?.valid !== 'boolean') {
-      throw new Refusal('malformed_suite', `${suiteFile}: every vector needs a string id and boolean expect.valid`);
+    const inferredKind = typeof v?.expect?.valid === 'boolean' ? 'valid'
+      : typeof v?.expect?.outcome === 'string' ? 'outcome'
+        : typeof v?.expect?.verdict === 'string' ? 'verdict'
+          : typeof v?.expect?.accepted === 'boolean' ? 'accepted' : null;
+    const kind = exactResultKind ?? inferredKind;
+    const expectedValue = kind ? v.expect[kind] : null;
+    const expectedValid = kind === 'valid' ? expectedValue
+      : kind === 'outcome' ? expectedValue === 'in_bounds'
+        : kind === 'verdict' ? expectedValue === 'admissible'
+          : kind === 'accepted' ? expectedValue : null;
+    if (!v || typeof v.id !== 'string' || !v.id || typeof expectedValid !== 'boolean') {
+      throw new Refusal(
+        'malformed_suite',
+        `${suiteFile}: every vector needs a string id and expect.valid, expect.outcome, expect.verdict, or expect.accepted`,
+      );
     }
     if (vectors.has(v.id)) {
       throw new Refusal('malformed_suite', `${suiteFile}: duplicate vector id ${v.id}`);
     }
-    vectors.set(v.id, v.expect.valid);
+    vectors.set(v.id, expectedValid);
+    expectationKinds.set(v.id, kind);
+    expectationValues.set(v.id, expectedValue);
+    expectationReasons.set(v.id, typeof v.expect.reason === 'string' ? v.expect.reason : null);
+    expectationObjects.set(v.id, v.expect);
   }
   if (vectors.size === 0) {
     throw new Refusal('malformed_suite', `${suiteFile}: zero vectors`);
@@ -129,7 +208,17 @@ export function loadSuite(suiteFile, vectorsDir = VECTORS_DIR) {
   // invariant to line endings, indentation, and key order, and leans on the same
   // JCS every EP verifier already implements. (v1 of this procedure hashed raw
   // bytes; v2 hashes the canonical value.)
-  return { file: suiteFile, digest: sha256hexOf(canonicalize(json)), vectors, json };
+  return {
+    file: suiteFile,
+    digest: sha256hexOf(canonicalize(json)),
+    vectors,
+    expectationKinds,
+    expectationValues,
+    expectationReasons,
+    expectationObjects,
+    exactResults: exactResultKind !== null,
+    json,
+  };
 }
 
 /** Map a results file name to its suite file name in conformance/vectors/. */
@@ -144,8 +233,10 @@ export function suiteNameForResultsFile(resultsFileName) {
 }
 
 /**
- * Load one plugfest-contract results file: a JSON array of {id, valid}.
- * Returns { digest, results: Map<id, valid> }.
+ * Load one results file. Each row carries id plus at least one typed result
+ * discriminator (valid, outcome, verdict, or accepted). Exact-result suites
+ * may carry checks, reasons, and digests alongside that discriminator.
+ * Returns { digest, results: Map<id, normalized-valid> }.
  */
 export function loadResults(resultsPath) {
   let raw;
@@ -158,20 +249,37 @@ export function loadResults(resultsPath) {
   }
   if (!Array.isArray(json)) {
     throw new Refusal('results_not_array',
-      `${resultsPath}: a results file is a JSON array of {"id": ..., "valid": ...}`);
+      `${resultsPath}: a results file is a JSON array of typed result rows`);
   }
-  const results = new Map();
+  const results = new ResultMap();
   for (let i = 0; i < json.length; i++) {
     const entry = json[i];
+    const kinds = resultKinds(entry);
+    const invalidTypedKind = entry && typeof entry === 'object' && !Array.isArray(entry)
+      && Object.entries(RESULT_KIND_TYPES)
+        .some(([key, type]) => Object.hasOwn(entry, key) && typeof entry[key] !== type);
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)
-      || typeof entry.id !== 'string' || !entry.id || typeof entry.valid !== 'boolean') {
+      || typeof entry.id !== 'string' || !entry.id
+      || kinds.length === 0 || invalidTypedKind || !typedResultFieldsValid(entry)) {
       throw new Refusal('malformed_results_entry',
-        `${resultsPath}: entry ${i} must be {"id": <string>, "valid": <boolean>}`);
+        `${resultsPath}: entry ${i} must carry a typed result and well-typed checks/reasons/digests`);
     }
     if (results.has(entry.id)) {
       throw new Refusal('duplicate_result_ids', `${resultsPath}: duplicate id ${entry.id}`);
     }
-    results.set(entry.id, entry.valid);
+    const resultObject = { ...entry };
+    delete resultObject.id;
+    const kind = ['valid', 'outcome', 'verdict', 'accepted'].find((name) => kinds.includes(name));
+    const value = entry[kind];
+    const normalized = kind === 'valid' ? value
+      : kind === 'outcome' ? value === 'in_bounds'
+        : kind === 'verdict' ? value === 'admissible'
+          : value;
+    results.set(entry.id, normalized);
+    results.kinds.set(entry.id, kinds);
+    results.typedValues.set(entry.id, value);
+    results.reasons.set(entry.id, typeof entry.reason === 'string' ? entry.reason : null);
+    results.objects.set(entry.id, resultObject);
   }
   // Canonical (JCS) digest, same reasoning as suite_digest above.
   return { digest: sha256hexOf(canonicalize(json)), results };
@@ -193,7 +301,40 @@ export function compareSuiteResults(suite, results) {
   }
   let passed = 0;
   for (const [id, expected] of suite.vectors) {
-    if (results.get(id) === expected) passed++;
+    const expectedKind = suite.expectationKinds.get(id);
+    const resultObject = results.objects?.get(id);
+    const hasExpectedKind = resultObject
+      && typeof resultObject[expectedKind] === RESULT_KIND_TYPES[expectedKind];
+    if (suite.exactResults || expectedKind !== 'valid') {
+      if (!hasExpectedKind) {
+        throw new Refusal(
+          'typed_result_required',
+          `${suite.file}#${id}: expected a ${expectedKind} result, not a normalized boolean`,
+        );
+      }
+    }
+    if (!suite.exactResults && resultObject) {
+      const allowed = expectedKind === 'accepted'
+        ? new Set(['accepted', 'reason'])
+        : new Set([expectedKind]);
+      const unexpected = Object.keys(resultObject).filter((key) => !allowed.has(key));
+      if (unexpected.length > 0) {
+        throw new Refusal(
+          'malformed_results_entry',
+          `${suite.file}#${id}: unexpected result fields ${unexpected.join(', ')}`,
+        );
+      }
+    }
+    if (suite.exactResults) {
+      if (canonicalize(resultObject) === canonicalize(suite.expectationObjects.get(id))) passed++;
+    } else if (expectedKind !== 'valid') {
+      const valueMatches = resultObject[expectedKind] === suite.expectationValues.get(id);
+      const reasonMatches = expectedKind !== 'accepted'
+        || (results.reasons?.get(id) ?? null) === (suite.expectationReasons?.get(id) ?? null);
+      if (valueMatches && reasonMatches) passed++;
+    } else if (results.get(id) === expected) {
+      passed++;
+    }
   }
   const total = suite.vectors.size;
   return { passed, total, ok: passed === total };
@@ -266,20 +407,9 @@ export function buildModeAStatementArgs({ suiteEntries, verifier, implementation
   };
 }
 
-/** Read the authoritative SUITES list out of conformance/run.mjs. */
-export function referenceRunnerSuites(repoRoot = REPO_ROOT) {
-  let src;
-  try {
-    src = fs.readFileSync(path.join(repoRoot, 'conformance', 'run.mjs'), 'utf8');
-  } catch (e) {
-    throw new Refusal('reference_runner_suites_unreadable', e.message);
-  }
-  const m = src.match(/const SUITES = \[([^\]]*)\]/);
-  const names = m ? [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : [];
-  if (names.length === 0) {
-    throw new Refusal('reference_runner_suites_unreadable', 'could not locate the SUITES list in conformance/run.mjs');
-  }
-  return names;
+/** Return the same authoritative suite catalog consumed by conformance/run.mjs. */
+export function referenceRunnerSuites() {
+  return [...LIVE_SUITE_FILES];
 }
 
 /**

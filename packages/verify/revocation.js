@@ -28,6 +28,15 @@ import { canonicalize } from './index.js';
 export const REVOCATION_VERSION = 'EP-REVOCATION-v1';
 const TARGET_TYPES = Object.freeze(['receipt', 'commit', 'delegation']);
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+const STATEMENT_KEYS = new Set([
+  '@version', 'target_type', 'target_id', 'action_hash', 'revoker_id',
+  'revoked_at', 'reason', 'proof',
+]);
+const PROOF_KEYS = new Set([
+  'algorithm', 'revoker_key_id', 'signature_b64u', 'public_key',
+]);
+const FULL_REVOKER_KEY_ID = /^ep:revoker-key:sha256:[0-9a-f]{64}$/;
+const LEGACY_REVOKER_KEY_ID = /^(?!ep:revoker-key:sha256:)[A-Za-z0-9._:#-]{1,128}$/;
 
 // Validate to a well-formed 64-char SHA-256; malformed -> '' so comparisons
 // fail closed (never match a real digest) and stay cross-language consistent. (HI-2)
@@ -93,6 +102,30 @@ function isWellFormedSignature(sigB64u) {
   catch { return false; }
 }
 
+function exactKeys(value, allowed) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).length === allowed.size
+    && Object.keys(value).every((key) => allowed.has(key));
+}
+
+function revokerKeyId(publicKeyB64u) {
+  try {
+    if (typeof publicKeyB64u !== 'string' || publicKeyB64u.length === 0) return '';
+    const der = Buffer.from(publicKeyB64u, 'base64url');
+    if (der.length === 0 || der.toString('base64url') !== publicKeyB64u) return '';
+    const key = crypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
+    if (key.asymmetricKeyType !== 'ed25519') return '';
+    return `ep:revoker-key:sha256:${crypto.createHash('sha256')
+      .update(der).digest('hex')}`;
+  } catch {
+    return '';
+  }
+}
+
+function isLegacyRevokerKeyId(value) {
+  return typeof value === 'string' && LEGACY_REVOKER_KEY_ID.test(value);
+}
+
 /**
  * @param {{target_type:string, target_id:string, action_hash:string}} target
  *   the authorization the relying party HOLDS and wants to know the status of.
@@ -110,8 +143,10 @@ export function verifyRevocation(target, statement, opts = {}) {
   const revokerKeys = opts.revokerKeys || {};
   const checks = {
     version: true,
+    structure: true,
     target_bound: true,
     revoker_key_pinned: true,
+    revoker_key_bound: true,
     revoked_at_present: true,
     effective_at_or_before_T: true,
     revoker_signature_valid: true,
@@ -128,6 +163,10 @@ export function verifyRevocation(target, statement, opts = {}) {
 
   if (statement['@version'] !== REVOCATION_VERSION) {
     fail('version', `unsupported version: ${statement['@version']}`);
+  }
+  const proof = statement.proof || null;
+  if (!exactKeys(statement, STATEMENT_KEYS) || !exactKeys(proof, PROOF_KEYS)) {
+    fail('structure', 'revocation statement and proof must use the exact closed EP-REVOCATION-v1 schema');
   }
 
   if (!target || typeof target !== 'object' || Array.isArray(target)) {
@@ -157,14 +196,33 @@ export function verifyRevocation(target, statement, opts = {}) {
     }
   }
 
-  const proof = statement.proof || null;
   const revokerId = statement.revoker_id;
-  const pinned = revokerKeys[revokerId]?.public_key;
+  const revokerIdValid = typeof revokerId === 'string' && revokerId.length > 0;
+  /** @type {{public_key?: string, key_id?: string}} */
+  const pin = revokerIdValid && revokerKeys && typeof revokerKeys === 'object'
+    ? revokerKeys[revokerId] || {}
+    : {};
+  const pinned = pin.public_key;
   const presentedKey = proof?.public_key ?? null;
-  if (!pinned) {
+  if (!revokerIdValid) {
+    fail('revoker_key_pinned', 'revoker_id must be a non-empty string');
+  } else if (!pinned) {
     fail('revoker_key_pinned', `no pinned key for revoker "${revokerId}" (identified but not trusted)`);
-  } else if (presentedKey && pinned !== presentedKey) {
+  } else if (typeof presentedKey !== 'string' || presentedKey.length === 0 || pinned !== presentedKey) {
     fail('revoker_key_pinned', `presented revoker key != pinned key for "${revokerId}" (key substitution)`);
+  }
+  const derivedKeyId = revokerKeyId(presentedKey);
+  const proofKeyId = proof?.revoker_key_id;
+  const fullProfile = FULL_REVOKER_KEY_ID.test(proofKeyId || '')
+    && proofKeyId === derivedKeyId
+    && (pin.key_id === undefined || pin.key_id === derivedKeyId);
+  const legacyProfile = isLegacyRevokerKeyId(proofKeyId)
+    && typeof presentedKey === 'string' && presentedKey.length > 0
+    && pinned === presentedKey
+    && (pin.key_id === undefined || pin.key_id === proofKeyId);
+  if (!derivedKeyId || (!fullProfile && !legacyProfile)) {
+    fail('revoker_key_bound',
+      'revoker_key_id must be the full SPKI digest, or a historical v1 label bound to the exact pinned SPKI');
   }
   if (proof?.algorithm !== 'Ed25519') {
     fail('revoker_signature_valid', 'revocation proof algorithm must be Ed25519');

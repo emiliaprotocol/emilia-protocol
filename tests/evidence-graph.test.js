@@ -149,16 +149,16 @@ const CEREMONY_VERIFIER = (a) => ({
   approved_at: a.approved_at,
 });
 // An effect_attestation is executor-signed {receipt_id, observed_effect_digest}.
-// The verifier reports the observed effect and (when it could read it out of the
-// referenced authorization) the approved committed effect. valid:false models a
-// bad executor signature or an unpinned executor key — fail-closed at source.
+// The verifier reports only executor-signed observations. The approved side is
+// resolved separately from relying-party-controlled input; otherwise the
+// executor could choose both sides of the comparison. valid:false models a bad
+// executor signature or an unpinned executor key — fail-closed at source.
 const EFFECT_VERIFIER = (a) => ({
   valid: a.bad_sig !== true && a.unpinned_key !== true,
   action_digest: a.action,
   issued_at: a.issued_at,
   receipt_id: a.receipt_id,
   observed_effect_digest: a.observed_effect_digest,
-  committed_effect_digest: a.committed_effect_digest,
 });
 
 // A ceremony-only policy: require the ceremony node, set a review-latency floor.
@@ -202,6 +202,12 @@ function effectGraph({ observed, committed, bad_sig = false, unpinned_key = fals
 }
 const EFFECT_X = 'sha256:' + 'e'.repeat(64); // approved effect
 const EFFECT_Y = 'sha256:' + 'f'.repeat(64); // executed-but-different effect
+const approvedEffectResolver = (committed) => (receiptId) => ({
+  valid: receiptId === 'tr_effect_1',
+  receipt_id: receiptId,
+  action_digest: ACTION,
+  committed_effect_digest: committed,
+});
 
 describe('EP-AEG — ceremony_evidence (review-latency floor)', () => {
   const V = { ...verifiers, ceremony_evidence: CEREMONY_VERIFIER };
@@ -245,28 +251,52 @@ describe('EP-AEG — effect_attestation (approved X, executed Y)', () => {
 
   it('an effect digest matching the approved committed effect admits', () => {
     const doc = effectGraph({ observed: EFFECT_X, committed: EFFECT_X });
-    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), {
+      verifiers: V, resolveApprovedEffect: approvedEffectResolver(EFFECT_X), as_of: AS_OF,
+    });
     expect(r.verdict).toBe('admissible');
+  });
+
+  it('refuses an attestation for action B inside a graph that claims action A', () => {
+    const doc = effectGraph({ observed: EFFECT_X, committed: EFFECT_X });
+    doc.nodes[0].artifact.action = 'sha256:' + 'b'.repeat(64);
+    doc.nodes[0].id = artifactDigest(doc.nodes[0].artifact);
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), {
+      verifiers: V, resolveApprovedEffect: approvedEffectResolver(EFFECT_X), as_of: AS_OF,
+    });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('different from the graph action');
   });
 
   it('a diverging effect digest surfaces conflict (approved X, executed Y)', () => {
     const doc = effectGraph({ observed: EFFECT_Y, committed: EFFECT_X });
-    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), {
+      verifiers: V, resolveApprovedEffect: approvedEffectResolver(EFFECT_X), as_of: AS_OF,
+    });
     expect(r.verdict).toBe('conflicted');
     expect(r.reasons.join(' ')).toContain('effect_divergence');
   });
 
-  it('a relying-party-pinned expected effect overrides the verifier-read committed digest', () => {
-    // Verifier reports committed==observed==X, but the relying party pins Y as
-    // the effect it approved: divergence still surfaces (pinned bar wins).
+  it('a relying-party-pinned expected effect overrides the approved-effect resolver', () => {
+    // Resolver reports committed==observed==X, but the relying party pins Y as
+    // the effect it approved: divergence still surfaces (the pinned bar wins).
     const doc = effectGraph({ observed: EFFECT_X, committed: EFFECT_X });
-    const r = evaluateEvidenceGraph(doc, effectPolicy(EFFECT_Y), { verifiers: V, as_of: AS_OF });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(EFFECT_Y), {
+      verifiers: V, resolveApprovedEffect: approvedEffectResolver(EFFECT_X), as_of: AS_OF,
+    });
     expect(r.verdict).toBe('conflicted');
     expect(r.reasons.join(' ')).toContain('effect_divergence');
   });
 
   it('a verified effect with no committed effect to compare fails closed (conflicted)', () => {
     const doc = effectGraph({ observed: EFFECT_X, committed: undefined });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('effect_commitment_missing');
+  });
+
+  it('never accepts an executor-presented committed digest as the approved side', () => {
+    const doc = effectGraph({ observed: EFFECT_X, committed: EFFECT_X });
     const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
     expect(r.verdict).toBe('conflicted');
     expect(r.reasons.join(' ')).toContain('effect_commitment_missing');
@@ -317,6 +347,20 @@ describe('EP-RELIANCE-RESULT — the verdict as signed evidence', () => {
     const { doc: g } = buildGraph();
     const recomputed = evaluateEvidenceGraph(g, wirePack, { verifiers, as_of: AS_OF });
     expect(doc.payload.replay_digest).toBe(recomputed.replay_digest);
+  });
+
+  it('preserves and digests the complete structured decision result', () => {
+    const { doc: graph } = buildGraph();
+    const result = evaluateEvidenceGraph(graph, wirePack, { verifiers, as_of: AS_OF });
+    const signedResult = signRelianceResult(result, wirePack, privateKey, { evaluated_at: AS_OF });
+    expect(signedResult.payload.result).toEqual(result);
+    expect(signedResult.payload.result_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(verifyRelianceResult(signedResult, [signedResult.verifier_key]).accepted).toBe(true);
+
+    signedResult.payload.result.verdict = 'conflicted';
+    const tampered = verifyRelianceResult(signedResult, [signedResult.verifier_key]);
+    expect(tampered.checks.result_digest).toBe(false);
+    expect(tampered.accepted).toBe(false);
   });
 
   it('fails closed on a structurally-invalid doc, before any crypto (every guard branch)', () => {
@@ -408,6 +452,21 @@ describe('evaluateEvidenceGraph — structural failures fail closed', () => {
     expect(r.reasons.join(' ')).toContain('unexpected @version');
   });
 
+  it('malformed graph-policy extension fields are unverifiable instead of ignored or thrown', () => {
+    const { doc } = buildGraph();
+    const malformedPolicies = [
+      { ...wirePack, required_edges: {} },
+      { ...wirePack, required_edges: [null] },
+      { ...wirePack, ceremony_min_review_sec: -1 },
+      { ...wirePack, expected_effect_digest: 'sha256:not-a-digest' },
+    ];
+    for (const policy of malformedPolicies) {
+      const result = evaluateEvidenceGraph(doc, policy, { verifiers, as_of: AS_OF });
+      expect(result.verdict).toBe('unverifiable');
+      expect(result.reasons.join(' ')).toContain('malformed_graph');
+    }
+  });
+
   it('a graph with a non-array / empty nodes is malformed_graph', () => {
     const noNodes = { '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION, nodes: [], edges: [] };
     const r = evaluateEvidenceGraph(noNodes, wirePack, { verifiers, as_of: AS_OF });
@@ -471,7 +530,9 @@ describe('EP-AEG — ceremony / effect defensive telemetry branches', () => {
 
   it('an effect_attestation with NO observed_effect_digest fails closed (effect_divergence)', () => {
     const doc = effectGraph({ observed: undefined, committed: EFFECT_X });
-    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: VE, as_of: AS_OF });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), {
+      verifiers: VE, resolveApprovedEffect: approvedEffectResolver(EFFECT_X), as_of: AS_OF,
+    });
     expect(r.verdict).toBe('conflicted');
     expect(r.reasons.join(' ')).toContain('carries no observed_effect_digest');
   });
@@ -505,7 +566,12 @@ describe('EP-AEG — ceremony / effect defensive telemetry branches', () => {
       policy_id: 'ep:test:effect-plus', reliance_purpose: 'regulated_execution',
       requirement: 'effect_attestation AND authorization_receipt AND workload_identity',
     };
-    const r = evaluateEvidenceGraph(doc, policy, { verifiers: VE, as_of: AS_OF });
+    const r = evaluateEvidenceGraph(doc, policy, {
+      verifiers: VE, resolveApprovedEffect: () => ({
+        valid: true, receipt_id: 'tr_x', action_digest: ACTION,
+        committed_effect_digest: EFFECT_X,
+      }), as_of: AS_OF,
+    });
     expect(r.verdict).toBe('unverifiable');
     expect(r.reasons.join(' ')).toContain('unbacked_edge_claim');
     // The verified diverging effect is present but did NOT downgrade past unverifiable.

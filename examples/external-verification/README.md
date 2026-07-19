@@ -16,7 +16,7 @@ issuing one implies no endorsement in either direction.
 
 - **MODE A (default, the one that matters):** you run YOUR OWN verifier over
   the public conformance vectors and this harness signs over your results.
-  Procedure: `EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v1`.
+  Procedure: `EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v2`.
 - **MODE B (`--run-reference`):** the harness re-executes this repository's
   own reference runner on your machine and signs over its outcome. That only
   shows the repository's own verifiers behave the same on your machine. It is
@@ -59,9 +59,9 @@ silently). Implementing `receipts.v1.json` alone is already a meaningful
 result. For each suite, run your own verifier over every vector and write the
 outcome to a results file.
 
-**Results-file contract** (the same contract as
-[`conformance/plugfest-pack/`](../../conformance/plugfest-pack/README.md)):
-a JSON array with exactly one entry per vector in the suite:
+**Results-file contract:** a JSON array with exactly one entry per vector in
+the suite. For ordinary validity suites, use the same `valid` contract as
+[`conformance/plugfest-pack/`](../../conformance/plugfest-pack/README.md):
 
 ```json
 [
@@ -73,6 +73,36 @@ a JSON array with exactly one entry per vector in the suite:
 `id` is the vector's `id` from the suite file and `valid` is what YOUR
 verifier concluded. Name each file `<suite-file-name>.results.json`, so for
 the suite `receipts.v1.json` the file is `receipts.v1.json.results.json`.
+
+Typed suites must preserve their published result type instead of collapsing it
+to a boolean:
+
+```json
+[
+  { "id": "eq_pass", "outcome": "in_bounds" },
+  { "id": "graph_predicates_in_bounds_admissible", "verdict": "admissible" }
+]
+```
+
+- `expect.outcome` requires an `outcome` result.
+- `expect.verdict` requires a `verdict` result.
+- `expect.accepted` requires an `accepted` boolean result and, when the vector
+  carries `expect.reason`, the exact `reason` string.
+- `expect.valid` requires a `valid` boolean result.
+
+Each row must contain only `id` and its one matching result field; an
+`accepted` row also carries `reason` when the vector requires it. The harness
+refuses normalized booleans for typed vectors, preserving the exact result in
+the signed `results_digest`. Outcome Binding uses `outcome` and `verdict`;
+Authority Introduction's serialized join suite uses `accepted` plus exact
+refusal reasons.
+
+Outcome Binding's filing packet contains two suites that must be run together:
+`outcome-binding.v1.json` covers semantic predicate and evidence-graph replay,
+while `outcome-binding.exec.v1.json` carries a real signed Trust Receipt, real
+v2 log proof, and real executor attestations. Both require typed results;
+testing only one suite does not clear that draft's independent-verification
+gate.
 
 For example, if your verifier binary is called `cosa-verify` and prints that
 JSON array (replace with your real command):
@@ -93,8 +123,8 @@ node examples/external-verification/sign-statement.mjs --results examples/extern
 
 The harness derives each suite name from its results file's name (that is why
 the `<suite-file-name>.results.json` naming in Step 3 matters), loads that
-suite from `conformance/vectors/`, compares your reported `valid` against
-every vector's `expect.valid`, and writes the signed statement to
+suite from `conformance/vectors/`, compares each reported value and type
+against the vector's published expectation, and writes the signed statement to
 `examples/external-verification/out/statement.json`, printing its
 `statement_digest`.
 
@@ -149,7 +179,7 @@ statement over a re-execution of the repository's own cross-language runner
 node examples/external-verification/sign-statement.mjs --run-reference --verifier-id ext:verifier:yourname --verifier-name "Your name"
 ```
 
-This is a DIFFERENT procedure (`EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v1`) and
+This is a DIFFERENT procedure (`EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v2`) and
 the statement carries a limitation saying it re-executed the repository's own
 reference runner and is not an independent implementation. Do not present a
 MODE B statement as an interop result.
@@ -162,7 +192,7 @@ wisdom, and is not an endorsement by or of anyone. It says only that this
 verifier, under this key, ran this exact procedure over these exact inputs
 and got this result, with these limitations. MODE A additionally records that
 the per-vector results came from your own verifier and are self-reported; the
-harness only compared them to the published expectations.
+harness only compared them to the published typed expectations.
 
 ## Self-test
 

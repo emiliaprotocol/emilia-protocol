@@ -157,7 +157,7 @@
         ],
         "signature": {
           "algorithm": "Ed25519",
-          "key_id": "ep:authority-registry-key:sha256:b7930d6b9678bdda",
+          "key_id": "ep:authority-registry-key:sha256:b7930d6b9678bddad0fd0b7e641c42882e70fa8591bb311c75286e6913042c91",
           "public_key": "MCowBQYDK2VwAyEA1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
           "proof_digest": "sha256:15ff776efb4b795bf8a718d9c66c131bd81c8bdfb80730e6f78329b2eaeb29db",
           "signature_b64u": "mH-rE7YSSKVuSkb9uolS3BK6rsrnbxCHB_bH9qSEJvj9zHtMixEG5OrZ1MTSQRO-40haylVRfUh3Hfw3S3mKCg"

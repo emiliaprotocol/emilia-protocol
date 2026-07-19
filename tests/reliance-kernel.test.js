@@ -144,6 +144,8 @@ function pinQuorum(input, opts, options) {
 }
 
 function buildRevocationStatement(target, signer) {
+  const revokerKeyId = `ep:revoker-key:sha256:${crypto.createHash('sha256')
+    .update(Buffer.from(signer.pub, 'base64url')).digest('hex')}`;
   const fields = {
     '@version': 'EP-REVOCATION-v1', action_hash: target.action_hash,
     reason: 'authority withdrawn', revoked_at: '2026-07-06T23:59:30.000Z',
@@ -152,7 +154,7 @@ function buildRevocationStatement(target, signer) {
   return {
     ...fields,
     proof: {
-      algorithm: 'Ed25519', revoker_key_id: 'revoker-key-1', public_key: signer.pub,
+      algorithm: 'Ed25519', revoker_key_id: revokerKeyId, public_key: signer.pub,
       signature_b64u: crypto.sign(null, Buffer.from(canonicalize(fields), 'utf8'), signer.privateKey).toString('base64url'),
     },
   };

@@ -22,12 +22,13 @@ export const AUTHORITY_PROOF_VERSION = 'EP-AUTHORITY-PROOF-v1';
 export const AUTHORITY_PROOF_DOMAIN = 'EP-AUTHORITY-PROOF-v1\0';
 
 const SHA256_RE = /^sha256:[0-9a-f]{64}$/i;
+const AUTHORITY_PROOF_KEY_ID_RE = /^ep:authority-registry-key:sha256:[0-9a-f]{64}$/;
 
 function sha256hex(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
 }
 function keyIdFor(publicKeyB64u) {
-  return `ep:authority-registry-key:sha256:${sha256hex(Buffer.from(publicKeyB64u, 'base64url')).slice(0, 16)}`;
+  return `ep:authority-registry-key:sha256:${sha256hex(Buffer.from(publicKeyB64u, 'base64url'))}`;
 }
 function signingBytes(unsignedProof) {
   return Buffer.from(AUTHORITY_PROOF_DOMAIN + canonicalize(unsignedProof), 'utf8');
@@ -68,7 +69,11 @@ export function verifyAuthorityProof(proof, opts = {}) {
   if (proof?.['@type'] !== AUTHORITY_PROOF_VERSION) return fail('unsupported_version');
 
   const sig = proof.signature;
-  if (!sig || sig.algorithm !== 'Ed25519' || typeof sig.public_key !== 'string' || typeof sig.signature_b64u !== 'string') {
+  if (!sig || sig.algorithm !== 'Ed25519'
+      || typeof sig.public_key !== 'string'
+      || typeof sig.signature_b64u !== 'string'
+      || typeof sig.key_id !== 'string'
+      || !AUTHORITY_PROOF_KEY_ID_RE.test(sig.key_id)) {
     return fail('signature_missing_or_malformed');
   }
   if (typeof sig.proof_digest !== 'string' || !SHA256_RE.test(sig.proof_digest)) {

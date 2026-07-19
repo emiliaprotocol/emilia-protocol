@@ -725,6 +725,9 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
 REVOCATION_VERSION = "EP-REVOCATION-v1"
 TIME_ATTESTATION_VERSION = "EP-TIME-ATTESTATION-v1"
 _TARGET_TYPES = ("receipt", "commit", "delegation")
+_REVOCATION_KEYS = {"@version", "target_type", "target_id", "action_hash",
+                    "revoker_id", "revoked_at", "reason", "proof"}
+_REVOCATION_PROOF_KEYS = {"algorithm", "revoker_key_id", "signature_b64u", "public_key"}
 import re as _re
 _SHA256_HEX = _re.compile(r"^[0-9a-f]{64}$")
 
@@ -741,7 +744,9 @@ def _hex_of(h: Any) -> str:
 # ±hh:mm). No-timezone ("2026-07-01T12:00:00") and date-only ("2026-07-01") forms
 # are REJECTED — they are ambiguous (UTC vs local) and must never satisfy a
 # validity window. Single profile, parsed and rejected identically by JS/Py/Go.
-_RFC3339_OFFSET = _re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+_RFC3339_OFFSET = _re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$")
+_FULL_REVOKER_KEY_ID = _re.compile(r"^ep:revoker-key:sha256:[0-9a-f]{64}$")
+_LEGACY_REVOKER_KEY_ID = _re.compile(r"^(?!ep:revoker-key:sha256:)[A-Za-z0-9._:#-]{1,128}$")
 
 
 def _instant_ms(s: Any):
@@ -765,6 +770,22 @@ def _ed25519_verify(data: bytes, pub_b64u: Any, sig_b64u: Any) -> bool:
         return False
 
 
+def _revoker_key_id(public_key_b64u: Any) -> str:
+    try:
+        if not isinstance(public_key_b64u, str) or not public_key_b64u:
+            return ""
+        der = _b64url_decode(public_key_b64u)
+        canonical = base64.urlsafe_b64encode(der).rstrip(b"=").decode("ascii")
+        if not der or canonical != public_key_b64u:
+            return ""
+        key = load_der_public_key(der)
+        if not isinstance(key, Ed25519PublicKey):
+            return ""
+        return "ep:revoker-key:sha256:" + hashlib.sha256(der).hexdigest()
+    except Exception:
+        return ""
+
+
 def _revocation_signed_payload(stmt: dict) -> bytes:
     return canonicalize({
         "@version": REVOCATION_VERSION,
@@ -782,7 +803,8 @@ def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) 
     opts = opts if isinstance(opts, dict) else {}
     revoker_keys = opts.get("revokerKeys")
     revoker_keys = revoker_keys if isinstance(revoker_keys, dict) else {}
-    checks = {"version": True, "target_bound": True, "revoker_key_pinned": True,
+    checks = {"version": True, "structure": True, "target_bound": True,
+              "revoker_key_pinned": True, "revoker_key_bound": True,
               "revoked_at_present": True, "revoker_signature_valid": True,
               "effective_at_or_before_T": True,
               "signature_binds_statement": True}
@@ -799,6 +821,10 @@ def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) 
 
     if statement.get("@version") != REVOCATION_VERSION:
         fail("version", f"unsupported version: {statement.get('@version')}")
+    raw_proof = statement.get("proof")
+    proof = raw_proof if isinstance(raw_proof, dict) else {}
+    if set(statement.keys()) != _REVOCATION_KEYS or set(proof.keys()) != _REVOCATION_PROOF_KEYS:
+        fail("structure", "revocation statement and proof must use the exact closed EP-REVOCATION-v1 schema")
 
     if not isinstance(target, dict):
         fail("target_bound", "no target handed to the verifier (fail-closed)")
@@ -820,17 +846,33 @@ def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) 
         elif statement_hash != held_hash:
             fail("target_bound", "action_hash mismatch (revoke-A-presented-for-B)")
 
-    raw_proof = statement.get("proof")
-    proof = raw_proof if isinstance(raw_proof, dict) else {}
     revoker_id = statement.get("revoker_id")
-    pin_entry = revoker_keys.get(revoker_id)
+    revoker_id_valid = isinstance(revoker_id, str) and bool(revoker_id)
+    pin_entry = revoker_keys.get(revoker_id) if revoker_id_valid else None
     pin_entry = pin_entry if isinstance(pin_entry, dict) else {}
     pinned = pin_entry.get("public_key")
     presented = proof.get("public_key")
-    if not pinned:
+    if not revoker_id_valid or not pinned:
         fail("revoker_key_pinned", f"no pinned key for revoker {revoker_id}")
-    elif presented and pinned != presented:
+    elif not isinstance(presented, str) or not presented or pinned != presented:
         fail("revoker_key_pinned", "presented revoker key != pinned key")
+    derived_key_id = _revoker_key_id(presented)
+    proof_key_id = proof.get("revoker_key_id")
+    full_profile = (
+        isinstance(proof_key_id, str)
+        and bool(_FULL_REVOKER_KEY_ID.fullmatch(proof_key_id))
+        and proof_key_id == derived_key_id
+        and (pin_entry.get("key_id") is None or pin_entry.get("key_id") == derived_key_id)
+    )
+    legacy_profile = (
+        isinstance(proof_key_id, str)
+        and bool(_LEGACY_REVOKER_KEY_ID.fullmatch(proof_key_id))
+        and isinstance(presented, str) and bool(presented)
+        and pinned == presented
+        and (pin_entry.get("key_id") is None or pin_entry.get("key_id") == proof_key_id)
+    )
+    if not derived_key_id or not (full_profile or legacy_profile):
+        fail("revoker_key_bound", "revoker_key_id is neither a full SPKI digest nor an exact-pinned historical v1 label")
     if proof.get("algorithm") != "Ed25519":
         fail("revoker_signature_valid", "revocation proof algorithm must be Ed25519")
     if statement.get("reason") is not None and not isinstance(statement.get("reason"), str):
@@ -854,10 +896,20 @@ def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) 
     if revoked_ms is None or now_ms is None or revoked_ms > now_ms:
         fail("effective_at_or_before_T", "revoked_at must be at or before decision time")
 
-    recomputed = _revocation_signed_payload(statement)
+    recomputed = None
+    try:
+        recomputed = _revocation_signed_payload(statement)
+    except Exception:
+        fail("signature_binds_statement", "revocation statement fields cannot be canonicalized")
     sig = proof.get("signature_b64u")
-    sig_binds_pinned = bool(pinned) and _ed25519_verify(recomputed, pinned, sig)
-    if not sig_binds_pinned:
+    sig_binds_pinned = (
+        recomputed is not None
+        and bool(pinned)
+        and _ed25519_verify(recomputed, pinned, sig)
+    )
+    if recomputed is None:
+        fail("revoker_signature_valid", "revocation statement cannot be verified without canonical signed bytes")
+    elif not sig_binds_pinned:
         verify_key = pinned or presented
         sig_over_recomputed = bool(verify_key) and _ed25519_verify(recomputed, verify_key, sig)
         if not sig or not verify_key:
@@ -3517,3 +3569,50 @@ def verify_timestamp_proof(timestamp_proof: Any, expected_digest: Any, pinned_ts
 
 __all__.append("verify_timestamp_proof")
 __all__.append("TIMESTAMP_PROOF_ALG")
+
+# EP-AUTHORITY-DOC-PROOF-JOIN-v1 lives in a focused module so the trust join,
+# document-chain state machine, and proof-signature split remain reviewable.
+from .authority_join import (  # noqa: E402
+    AUTHORITY_DOCUMENT_VERSION,
+    AUTHORITY_PROOF_DOMAIN,
+    AUTHORITY_PROOF_VERSION,
+    authority_document_core_digest,
+    authority_issuer_key_id,
+    verify_authority_proof_via_document,
+)
+
+__all__.extend([
+    "AUTHORITY_DOCUMENT_VERSION",
+    "AUTHORITY_PROOF_DOMAIN",
+    "AUTHORITY_PROOF_VERSION",
+    "authority_document_core_digest",
+    "authority_issuer_key_id",
+    "verify_authority_proof_via_document",
+])
+
+# EP-OUTCOME-ATTESTATION-v1 + EP-OUTCOME-BINDING-v1. Imported last so the
+# dedicated module can reuse this package's canonicalizer and Trust Receipt
+# verifier without creating an initialization cycle.
+from .outcome_binding import (  # noqa: E402,F401
+    MAX_EFFECT_STRING_LENGTH,
+    MAX_OBSERVED_EFFECTS,
+    MAX_PREDICTED_EFFECTS,
+    OUTCOME_ATTESTATION_DOMAIN,
+    OUTCOME_ATTESTATION_VERSION,
+    OUTCOME_BINDING_OUTCOMES,
+    OUTCOME_BINDING_VERSION,
+    PREDICATE_OPS,
+    compare_decimal_strings,
+    evaluate_predicted_effects,
+    is_decimal_string,
+    observed_effects_digest,
+    predicted_effects_digest,
+    trust_receipt_digest,
+    validate_predicted_effects,
+    verify_outcome_attestation,
+    verify_outcome_binding,
+    verify_outcome_binding_core,
+)
+from .outcome_binding import __all__ as _outcome_binding_exports  # noqa: E402
+
+__all__.extend(_outcome_binding_exports)

@@ -12,8 +12,19 @@
 
 import crypto from 'crypto';
 import { strictJsonGate } from './strict-json.js';
+import { verifyOutcomeBindingCore } from './outcome-binding.js';
 
 export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
+export {
+  OUTCOME_ATTESTATION_VERSION,
+  OUTCOME_ATTESTATION_DOMAIN,
+  OUTCOME_BINDING_VERSION,
+  OUTCOME_BINDING_OUTCOMES,
+  buildOutcomeAttestation,
+  verifyOutcomeAttestation,
+  observedEffectsDigest,
+  trustReceiptDigest,
+} from './outcome-binding.js';
 export {
   ORPRG_JSON_JCS_PROFILE,
   ORPRG_ACTION_PROFILE,
@@ -1541,6 +1552,14 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   // knob option was supplied, so with no new options the returned object is
   // byte-for-byte { valid, checks, errors, attestation, strict } as before.
   return { valid, checks, errors, attestation, strict, ...optionalResults };
+}
+
+/**
+ * Verify a signed Outcome Attestation against the exact, fully verified Trust
+ * Receipt whose signed Action Object carries predicted_effects.
+ */
+export function verifyOutcomeBinding(receipt, attestation, opts = {}) {
+  return verifyOutcomeBindingCore(receipt, attestation, opts, verifyTrustReceipt);
 }
 
 // =============================================================================

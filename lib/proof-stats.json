@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-19T20:31:00.123Z",
+  "generatedAt": "2026-07-19T21:14:50.023Z",
   "tests": {
-    "total": 6746,
-    "files": 354,
+    "total": 6869,
+    "files": 359,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
@@ -23,13 +23,13 @@
   },
   "securityCase": {
     "status": "passed",
-    "claims": 26,
-    "evidenceFiles": 121,
-    "evidenceBundleSha256": "398da690772bb870cac8b516dfc69ac43617119a97d9a1e35924169f201e4f11"
+    "claims": 28,
+    "evidenceFiles": 140,
+    "evidenceBundleSha256": "6de16970df6b49a167e7ad73be4952f9edfe218c9032fd1f99ee03596732c1c0"
   },
   "conformance": {
-    "suites": 18,
-    "vectors": 251,
+    "suites": 21,
+    "vectors": 329,
     "referencePorts": 3,
     "relationship": "same_team_ports"
   },

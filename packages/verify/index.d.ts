@@ -635,6 +635,52 @@ export function createOrprgAecVerifier(
   action_digest?: string;
 };
 
+export const OUTCOME_ATTESTATION_VERSION: 'EP-OUTCOME-ATTESTATION-v1';
+export const OUTCOME_ATTESTATION_DOMAIN: 'EP-OUTCOME-ATTESTATION-v1\0';
+export const OUTCOME_BINDING_VERSION: 'EP-OUTCOME-BINDING-v1';
+export const OUTCOME_BINDING_OUTCOMES: readonly ['in_bounds', 'divergent', 'incomparable'];
+export function observedEffectsDigest(observedEffects: unknown[]): string;
+export function trustReceiptDigest(receipt: Record<string, unknown>): string;
+export function buildOutcomeAttestation(input: {
+  receipt_id: string;
+  receipt_digest: string;
+  action_hash: string;
+  consumption_nonce: string;
+  execution_id: string;
+  executor_id: string;
+  executed_at: string;
+  observed_effects: Array<Record<string, unknown>>;
+  signer: { privateKey: object; publicKey?: string; key_id?: string };
+}): Record<string, unknown>;
+export function verifyOutcomeAttestation(
+  attestation: Record<string, unknown>,
+  opts?: {
+    executorKeys?: Record<string, { public_key: string; key_id?: string }>;
+    now?: string;
+  }
+): { valid: boolean; checks: Record<string, boolean>; errors: string[] };
+export function verifyOutcomeBinding(
+  receipt: Record<string, unknown>,
+  attestation: Record<string, unknown>,
+  opts?: {
+    receiptOptions?: Record<string, unknown>;
+    executorKeys?: Record<string, { public_key: string; key_id?: string }>;
+    policyPredictedEffects?: Array<Record<string, unknown>>;
+    now?: string;
+  }
+): {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+  outcome_binding: {
+    '@version': 'EP-OUTCOME-BINDING-v1';
+    outcome: 'in_bounds' | 'divergent' | 'incomparable';
+    evaluations: unknown[];
+    reasons: string[];
+  };
+  result_digest: string;
+};
+
 /**
  * Deterministic canonical serialization (RFC 8785 JCS for the value subset EP
  * signs) — the single canonicalization source of truth shared by every offline
@@ -661,7 +707,7 @@ export function verifyRevocation(
   target: { target_type: string; target_id: string; action_hash: string },
   statement: object,
   opts?: {
-    revokerKeys?: Record<string, { public_key: string }>;
+    revokerKeys?: Record<string, { public_key: string; key_id?: string }>;
     maxAgeSeconds?: number;
     now?: number | string | Date;
     [k: string]: unknown;

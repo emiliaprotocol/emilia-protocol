@@ -146,6 +146,52 @@ checks and:
 
 Without `strict: true`, `strict` is `{ enabled: false, valid: true, checks: {}, errors: [] }`, so existing verification and conformance semantics are unchanged.
 
+### `verifyOutcomeBinding(receipt, attestation, opts)` — experimental
+
+Verify an executor-signed `EP-OUTCOME-ATTESTATION-v1` against the exact Trust
+Receipt, signed predicted effects, action hash, receipt bytes, and consumption
+nonce it names:
+
+```js
+import {
+  buildOutcomeAttestation,
+  trustReceiptDigest,
+  verifyOutcomeBinding,
+} from '@emilia-protocol/verify';
+
+const attestation = buildOutcomeAttestation({
+  receipt_id: receipt.receipt_id,
+  receipt_digest: trustReceiptDigest(receipt),
+  action_hash: receipt.action_hash,
+  consumption_nonce: receipt.consumption.nonce,
+  execution_id: 'exec_123',
+  executor_id: 'ep:executor:payments',
+  executed_at: new Date().toISOString(),
+  observed_effects,
+  signer: executorSigner,
+});
+
+const result = verifyOutcomeBinding(receipt, attestation, {
+  receiptOptions: { approverKeys, logPublicKey },
+  executorKeys: {
+    'ep:executor:payments': { public_key: executorPublicKey },
+  },
+  policyPredictedEffects: optionalAdditionalConstraints,
+});
+```
+
+The executor signs observations, never the human-approved prediction. Signed
+predictions come only from the fully verified receipt; relying-party policy may
+add constraints but cannot replace or loosen them. If the policy field is
+supplied but is not an array, verification refuses instead of treating it as
+absent. `result.outcome_binding`
+preserves `in_bounds`, `divergent`, and `incomparable` as distinct results, and
+`valid` is true only for a fully bound, verified, in-bounds result.
+`result.result_digest` commits to the exact receipt, attestation, signed
+predictions, supplied policy predictions, checks, reasons, and typed outcome;
+two different signed inputs do not share a digest merely because they reach the
+same reduced verdict.
+
 #### Advisory: the PIP-007 initiator escalation attestation — *requires 1.4.0*
 
 When the contexts carry a [PIP-007](https://github.com/emiliaprotocol/emilia-protocol/blob/main/PIPs/PIP-007-initiator-attestation.md) `initiator_attestation`, the result includes an **advisory** report:

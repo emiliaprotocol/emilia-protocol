@@ -23,6 +23,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { LIVE_SUITE_FILES } from './suites.mjs';
+import {
+  buildSuiteContract,
+  compareResultRow,
+  executionSuiteFile,
+  validateResultRows,
+} from './result-contract.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SUITES = LIVE_SUITE_FILES;
@@ -34,6 +40,13 @@ const IMPLS = [
 ];
 
 const pad = (s, n) => String(s).padEnd(n);
+const expectationLabel = (expect) => {
+  if (typeof expect.valid === 'boolean') return expect.valid ? 'valid' : 'reject';
+  if (typeof expect.outcome === 'string') return expect.outcome;
+  if (typeof expect.verdict === 'string') return expect.verdict;
+  if (typeof expect.accepted === 'boolean') return expect.accepted ? 'accepted' : 'refused';
+  return 'typed';
+};
 const ALL_IMPLS = IMPLS.map((i) => i.lang);
 let totalFailures = 0;
 let anyRan = false;
@@ -46,16 +59,27 @@ const missingImpls = new Set();
 
 for (const suiteFile of SUITES) {
   const vectorsPath = resolve(root, 'conformance/vectors', suiteFile);
+  const executionFile = executionSuiteFile(suiteFile);
+  const executionPath = resolve(root, 'conformance/vectors', executionFile);
   let suite;
-  try { suite = JSON.parse(readFileSync(vectorsPath, 'utf8')); }
+  let executionSuite;
+  try {
+    suite = JSON.parse(readFileSync(vectorsPath, 'utf8'));
+    executionSuite = executionFile === suiteFile
+      ? suite
+      : JSON.parse(readFileSync(executionPath, 'utf8'));
+  }
   catch { console.log(`\n⚠ ${suiteFile}: not found — skipped`); continue; }
-  const expected = new Map(suite.vectors.map((v) => [v.id, v.expect.valid]));
+  const contract = buildSuiteContract(suiteFile, suite, executionSuite);
 
   const results = {};
   const ran = [];
   for (const impl of IMPLS) {
     try {
-      results[impl.lang] = new Map(JSON.parse(impl.run(vectorsPath)).map((r) => [r.id, r.valid]));
+      results[impl.lang] = validateResultRows(
+        contract,
+        JSON.parse(impl.run(executionPath)),
+      );
       ran.push(impl.lang);
     } catch (e) {
       console.log(`  ⚠ ${impl.lang}: skipped (${(e.message || '').split('\n')[0]})`);
@@ -67,14 +91,17 @@ for (const suiteFile of SUITES) {
   if (ran.length === 0) { console.log('  (no implementations ran)'); totalFailures++; continue; }
   anyRan = true;
   completedSuites.push(suite.suite || suiteFile);
-  const head = `  ${pad('vector', 36)}${pad('expect', 8)}${ran.map((l) => pad(l, 12)).join('')}`;
+  const head = `  ${pad('vector', 48)}${pad('expect', 16)}${ran.map((l) => pad(l, 12)).join('')}`;
   console.log(head);
   console.log('  ' + '─'.repeat(head.length - 2));
   for (const v of suite.vectors) {
-    const exp = expected.get(v.id);
-    const cells = ran.map((lang) => { const got = results[lang].get(v.id); return got === exp ? '✓' : `✗(${got})`; });
+    const exp = contract.expectations.get(v.id);
+    const cells = ran.map((lang) => {
+      const comparison = compareResultRow(contract, results[lang].get(v.id));
+      return comparison.ok ? '✓' : `✗(${comparison.detail})`;
+    });
     if (!cells.every((c) => c === '✓')) totalFailures++;
-    console.log(`  ${pad(v.id, 36)}${pad(exp ? 'valid' : 'reject', 8)}${ran.map((l, i) => pad(cells[i], 12)).join('')}`);
+    console.log(`  ${pad(v.id, 48)}${pad(expectationLabel(exp), 16)}${ran.map((l, i) => pad(cells[i], 12)).join('')}`);
   }
 }
 

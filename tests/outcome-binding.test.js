@@ -24,9 +24,10 @@ const suite = JSON.parse(fs.readFileSync(
 const ACTION = 'sha256:' + 'a'.repeat(64);
 const AS_OF = '2026-07-08T00:02:00Z';
 
-// Graph harness: a one-node EP-AEG-v1 graph whose effect_attestation verifier
-// surfaces exactly the fields the vector's attestation carries — the same
-// shape the real executor-attestation verifier reports.
+// Graph harness: the effect-attestation verifier surfaces ONLY executor-signed
+// observations. Approved commitments come from a separate relying-party
+// resolver keyed by receipt_id, so the presenter cannot choose both sides of
+// the comparison.
 function runGraphVector(v) {
   const att = {
     typ: 'effect_attestation', action: ACTION,
@@ -43,17 +44,25 @@ function runGraphVector(v) {
       valid: true, action_digest: a.action, issued_at: a.issued_at,
       receipt_id: a.receipt_id,
       observed_effect_digest: a.observed_effect_digest,
-      committed_effect_digest: a.committed_effect_digest,
       observed_effects: a.observed_effects,
-      predicted_effects: a.predicted_effects,
-      predicted_effects_digest: a.predicted_effects_digest,
+      ...(a.receipt_digest === undefined ? {} : { receipt_digest: a.receipt_digest }),
+      ...(a.consumption_nonce === undefined ? {} : { consumption_nonce: a.consumption_nonce }),
+      ...(a.verifier_checks === undefined ? {} : { checks: a.verifier_checks }),
     }),
   };
   const policy = {
     policy_id: 'ep:test:outcome-binding', reliance_purpose: 'regulated_execution',
     requirement: 'effect_attestation', ...(v.policy || {}),
   };
-  return evaluateEvidenceGraph(doc, policy, { verifiers, as_of: AS_OF });
+  const resolveApprovedEffect = v.approved
+    ? (receiptId) => ({
+      valid: receiptId === att.receipt_id,
+      receipt_id: att.receipt_id,
+      action_digest: ACTION,
+      ...v.approved,
+    })
+    : undefined;
+  return evaluateEvidenceGraph(doc, policy, { verifiers, resolveApprovedEffect, as_of: AS_OF });
 }
 
 describe(`conformance suite ${suite.suite} (${suite.vectors.length} vectors)`, () => {
@@ -150,9 +159,11 @@ describe('graph wiring — fail-closed guards beyond the suite', () => {
 
   it('predicted effects that do not hash to the bound digest are refused (effect_incomparable)', () => {
     const r = runGraphVector({
-      attestation: {
+      approved: {
         predicted_effects: PREDICTED,
         predicted_effects_digest: 'sha256:' + '1'.repeat(64), // wrong digest
+      },
+      attestation: {
         observed_effects: [{ effect_type: 'payment', target: 'acct:vendor-9', value: '1.00' }],
       },
     });
@@ -162,9 +173,11 @@ describe('graph wiring — fail-closed guards beyond the suite', () => {
 
   it('a correctly bound predicted_effects_digest passes through to predicate evaluation', () => {
     const r = runGraphVector({
-      attestation: {
+      approved: {
         predicted_effects: PREDICTED,
         predicted_effects_digest: predictedEffectsDigest(PREDICTED),
+      },
+      attestation: {
         observed_effects: [{ effect_type: 'payment', target: 'acct:vendor-9', value: '1.00' }],
       },
     });
@@ -173,15 +186,164 @@ describe('graph wiring — fail-closed guards beyond the suite', () => {
 
   it('an in-bounds predicate result never masks a diverging exact digest (both paths run)', () => {
     const r = runGraphVector({
-      attestation: {
+      approved: {
         predicted_effects: PREDICTED,
+        predicted_effects_digest: predictedEffectsDigest(PREDICTED),
+        committed_effect_digest: 'sha256:' + 'e'.repeat(64),
+      },
+      attestation: {
         observed_effects: [{ effect_type: 'payment', target: 'acct:vendor-9', value: '1.00' }],
         observed_effect_digest: 'sha256:' + 'f'.repeat(64),
-        committed_effect_digest: 'sha256:' + 'e'.repeat(64),
       },
     });
     expect(r.verdict).toBe('conflicted');
     expect(r.reasons.join(' ')).toContain('approved X, executed Y');
+  });
+
+  it('replay_digest binds exact commitments and the final verdict', () => {
+    const attestation = {
+      observed_effect_digest: 'sha256:' + 'e'.repeat(64),
+    };
+    const admitted = runGraphVector({
+      approved: { committed_effect_digest: 'sha256:' + 'e'.repeat(64) },
+      attestation,
+    });
+    const conflicted = runGraphVector({
+      approved: { committed_effect_digest: 'sha256:' + 'f'.repeat(64) },
+      attestation,
+    });
+    expect(admitted.verdict).toBe('admissible');
+    expect(conflicted.verdict).toBe('conflicted');
+    expect(admitted.replay_digest).not.toBe(conflicted.replay_digest);
+    expect(admitted.outcome_binding.evaluations[0]).toMatchObject({
+      source: 'exact_effect_digest',
+      outcome: 'in_bounds',
+    });
+  });
+
+  it('relying-party policy cannot loosen the signed receipt prediction', () => {
+    const signed = [
+      { effect_type: 'payment', target: 'acct:vendor-9', predicate: { op: 'lte', value: '10.00' } },
+    ];
+    const policy = [
+      { effect_type: 'payment', target: 'acct:vendor-9', predicate: { op: 'lte', value: '1000.00' } },
+    ];
+    const r = runGraphVector({
+      approved: {
+        predicted_effects: signed,
+        predicted_effects_digest: predictedEffectsDigest(signed),
+      },
+      attestation: {
+        observed_effects: [{ effect_type: 'payment', target: 'acct:vendor-9', value: '500.00' }],
+      },
+      policy: { predicted_effects: policy },
+    });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.outcome_binding.evaluations.map((item) => [item.source, item.outcome])).toEqual([
+      ['signed_receipt', 'divergent'],
+      ['relying_party_policy', 'in_bounds'],
+    ]);
+  });
+
+  it('matches the graph action across equivalent bare and sha256-prefixed forms', () => {
+    const r = runGraphVector({
+      approved: { committed_effect_digest: 'sha256:' + 'e'.repeat(64) },
+      attestation: {
+        action: 'a'.repeat(64),
+        observed_effect_digest: 'sha256:' + 'e'.repeat(64),
+      },
+    });
+    expect(r.verdict).toBe('admissible');
+  });
+
+  it('requires the approved source to bind the exact referenced receipt', () => {
+    const r = runGraphVector({
+      approved: {
+        receipt_id: undefined,
+        committed_effect_digest: 'sha256:' + 'e'.repeat(64),
+      },
+      attestation: { observed_effect_digest: 'sha256:' + 'e'.repeat(64) },
+    });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('receipt');
+  });
+
+  it('a matching policy-pinned effect cannot mask failed resolver linkage', () => {
+    const effect = 'sha256:' + 'e'.repeat(64);
+    const r = runGraphVector({
+      approved: { receipt_id: undefined, committed_effect_digest: effect },
+      attestation: { observed_effect_digest: effect },
+      policy: { expected_effect_digest: effect },
+    });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.outcome_binding.evaluations).toContainEqual(expect.objectContaining({
+      source: 'approved_effect_linkage', outcome: 'incomparable',
+    }));
+  });
+
+  it('refuses receipt-digest and consumption-nonce substitutions when both APIs expose them', () => {
+    const r = runGraphVector({
+      approved: {
+        receipt_digest: 'sha256:' + 'b'.repeat(64),
+        consumption_nonce: 'nonce:approved',
+        committed_effect_digest: 'sha256:' + 'e'.repeat(64),
+      },
+      attestation: {
+        receipt_digest: 'sha256:' + 'c'.repeat(64),
+        consumption_nonce: 'nonce:attested',
+        observed_effect_digest: 'sha256:' + 'e'.repeat(64),
+      },
+    });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toMatch(/receipt_digest|consumption_nonce/);
+  });
+
+  it('does not accept valid:true over explicit failed signature or executor-pin checks', () => {
+    const r = runGraphVector({
+      approved: { committed_effect_digest: 'sha256:' + 'e'.repeat(64) },
+      attestation: {
+        observed_effect_digest: 'sha256:' + 'e'.repeat(64),
+        verifier_checks: { signature: false, executor_key_pinned: false },
+      },
+    });
+    expect(r.verdict).toBe('unverifiable');
+    expect(r.reasons.join(' ')).toMatch(/signature|executor/);
+  });
+
+  it('fails closed on a structurally malformed relying-party prediction array', () => {
+    const r = runGraphVector({
+      approved: {
+        predicted_effects: PREDICTED,
+        predicted_effects_digest: predictedEffectsDigest(PREDICTED),
+      },
+      attestation: {
+        observed_effects: [{ effect_type: 'payment', target: 'acct:vendor-9', value: '1.00' }],
+      },
+      policy: {
+        predicted_effects: [{
+          effect_type: 'payment', target: 'acct:vendor-9',
+          predicate: { op: 'lte', value: '10.00', ignored_tolerance: '999.00' },
+        }],
+      },
+    });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.outcome_binding.evaluations.find((row) => row.source === 'relying_party_policy'))
+      .toMatchObject({ outcome: 'incomparable' });
+    expect(r.reasons.join(' ')).toContain('unknown member');
+  });
+
+  it('ignores presenter-supplied predictions and refuses without an approved source', () => {
+    const r = runGraphVector({
+      attestation: {
+        predicted_effects: [
+          { effect_type: 'payment', target: 'acct:vendor-9', predicate: { op: 'lte', value: '999999.00' } },
+        ],
+        predicted_effects_digest: predictedEffectsDigest(PREDICTED),
+        observed_effects: [{ effect_type: 'payment', target: 'acct:vendor-9', value: '26000.00' }],
+      },
+    });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('effect_commitment_missing');
   });
 
   it('effect_incomparable is a registered reason code', () => {

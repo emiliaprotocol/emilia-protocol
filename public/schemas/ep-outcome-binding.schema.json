@@ -1,0 +1,389 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-outcome-binding.schema.json",
+  "title": "EP Outcome Binding v1",
+  "description": "Closed schemas for an executor-signed EP-OUTCOME-ATTESTATION-v1 and the typed EP-OUTCOME-BINDING-v1 result. Predicted effects remain independently sourced from a verified Trust Receipt or relying-party policy; their closed component schemas are exposed in $defs and are never presenter-controlled attestation members.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/outcomeAttestation"
+    },
+    {
+      "$ref": "#/$defs/outcomeBindingResult"
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "boundedString": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "literalIdentifier": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/identifier"
+        },
+        {
+          "not": {
+            "pattern": "\\*"
+          }
+        }
+      ]
+    },
+    "decimalString": {
+      "description": "Canonical decimal string: no exponent form and no leading zeroes except zero itself.",
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+    },
+    "nonNegativeIntegerString": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^(?:0|[1-9][0-9]*)$"
+    },
+    "instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "predicateOp": {
+      "enum": ["eq", "lte", "gte", "range", "set_eq", "count_lte", "absent"]
+    },
+    "outcome": {
+      "enum": ["in_bounds", "divergent", "incomparable"]
+    },
+    "predictedEffects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/predictedEffect"
+      }
+    },
+    "predictedEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect_type", "target", "predicate"],
+      "properties": {
+        "effect_type": {
+          "$ref": "#/$defs/identifier"
+        },
+        "target": {
+          "$ref": "#/$defs/literalIdentifier"
+        },
+        "predicate": {
+          "$ref": "#/$defs/predicate"
+        }
+      }
+    },
+    "predicate": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": {
+              "const": "eq"
+            },
+            "value": {
+              "$ref": "#/$defs/boundedString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": {
+              "const": "lte"
+            },
+            "value": {
+              "$ref": "#/$defs/decimalString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": {
+              "const": "gte"
+            },
+            "value": {
+              "$ref": "#/$defs/decimalString"
+            }
+          }
+        },
+        {
+          "description": "The schema fixes exact members and decimal grammar. A verifier additionally refuses a semantic min greater than max.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "min", "max"],
+          "properties": {
+            "op": {
+              "const": "range"
+            },
+            "min": {
+              "$ref": "#/$defs/decimalString"
+            },
+            "max": {
+              "$ref": "#/$defs/decimalString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "values"],
+          "properties": {
+            "op": {
+              "const": "set_eq"
+            },
+            "values": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/boundedString"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op", "value"],
+          "properties": {
+            "op": {
+              "const": "count_lte"
+            },
+            "value": {
+              "$ref": "#/$defs/nonNegativeIntegerString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["op"],
+          "properties": {
+            "op": {
+              "const": "absent"
+            }
+          }
+        }
+      ]
+    },
+    "observedEffects": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "$ref": "#/$defs/observedEffect"
+      }
+    },
+    "observedEffect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["effect_type", "target", "value"],
+          "properties": {
+            "effect_type": {
+              "$ref": "#/$defs/identifier"
+            },
+            "target": {
+              "$ref": "#/$defs/literalIdentifier"
+            },
+            "value": {
+              "$ref": "#/$defs/boundedString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["effect_type", "target", "values"],
+          "properties": {
+            "effect_type": {
+              "$ref": "#/$defs/identifier"
+            },
+            "target": {
+              "$ref": "#/$defs/literalIdentifier"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 512
+              },
+              "maxItems": 256
+            }
+          }
+        }
+      ]
+    },
+    "executorProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "public_key", "signature_b64u"],
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "key_id": {
+          "type": "string",
+          "pattern": "^ep:executor-key:sha256:[0-9a-f]{64}$"
+        },
+        "public_key": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "signature_b64u": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      }
+    },
+    "outcomeAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "receipt_id",
+        "receipt_digest",
+        "action_hash",
+        "consumption_nonce",
+        "execution_id",
+        "executor_id",
+        "executed_at",
+        "observed_effects",
+        "observed_effects_digest",
+        "proof"
+      ],
+      "properties": {
+        "@version": {
+          "const": "EP-OUTCOME-ATTESTATION-v1"
+        },
+        "receipt_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "receipt_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "action_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "consumption_nonce": {
+          "$ref": "#/$defs/identifier"
+        },
+        "execution_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "executor_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "executed_at": {
+          "$ref": "#/$defs/instant"
+        },
+        "observed_effects": {
+          "$ref": "#/$defs/observedEffects"
+        },
+        "observed_effects_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "proof": {
+          "$ref": "#/$defs/executorProof"
+        }
+      }
+    },
+    "effectResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect_type", "target", "op", "outcome", "reason"],
+      "properties": {
+        "effect_type": {
+          "$ref": "#/$defs/identifier"
+        },
+        "target": {
+          "$ref": "#/$defs/literalIdentifier"
+        },
+        "op": {
+          "$ref": "#/$defs/predicateOp"
+        },
+        "outcome": {
+          "$ref": "#/$defs/outcome"
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "maxLength": 4096
+        }
+      }
+    },
+    "effectEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "outcome", "results", "reasons"],
+      "properties": {
+        "source": {
+          "enum": ["signed_receipt", "relying_party_policy"]
+        },
+        "outcome": {
+          "$ref": "#/$defs/outcome"
+        },
+        "results": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/effectResult"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        }
+      }
+    },
+    "outcomeBindingResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["@version", "outcome", "evaluations", "reasons"],
+      "properties": {
+        "@version": {
+          "const": "EP-OUTCOME-BINDING-v1"
+        },
+        "outcome": {
+          "$ref": "#/$defs/outcome"
+        },
+        "evaluations": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/effectEvaluation"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        }
+      }
+    }
+  }
+}

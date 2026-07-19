@@ -1,22 +1,22 @@
 {
   "suite": "EP-OUTCOME-BINDING-v1",
   "profile": "predicted-effects+divergence",
-  "vectors_version": "2026-07-08",
-  "note": "Outcome binding: approval over PREDICTED effects with tolerance bounds, executor attestation of OBSERVED effects, machine-detectable divergence. Two kinds. kind=predicate runs evaluatePredictedEffects(predicted_effects, observed_effects) and checks the closed outcome set {in_bounds, divergent, incomparable}; 'incomparable' is a refusal with a reason, NEVER a pass. kind=graph builds a one-node EP-AEG-v1 graph whose effect_attestation verifier surfaces the attestation fields, evaluates it against the given policy (requirement: effect_attestation), and checks the verdict: divergent/incomparable MUST drive 'conflicted' exactly as the pre-existing exact-digest path does. All comparison values are STRINGS (canonicalization malleability); numbers are rejected as incomparable.",
+  "vectors_version": "2026-07-19.1",
+  "note": "Outcome binding: approval over PREDICTED effects with tolerance bounds, executor attestation of OBSERVED effects, machine-detectable divergence. Two kinds. kind=predicate runs evaluatePredictedEffects(predicted_effects, observed_effects) and checks the closed outcome set {in_bounds, divergent, incomparable}; 'incomparable' is a refusal with a reason, NEVER a pass. kind=graph separates the executor-signed attestation from the relying-party-resolved approved payload. Structured observations MUST have an action-bound signed prediction baseline from the approved source; relying-party policy is additive and can tighten but never replace that baseline. Approved commitments never come from attestation fields. Divergent/incomparable MUST drive 'conflicted' exactly as the exact-digest path does. All comparison values are STRINGS (canonicalization malleability); numbers and unknown members are rejected as incomparable.",
   "vectors": [
     { "id": "in_bounds_mixed_ops_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
       "predicted_effects": [
         { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } },
         { "effect_type": "record_update", "target": "crm:contact-113", "predicate": { "op": "eq", "value": "status=closed" } },
-        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "predicate": { "op": "count_lte", "value": "3" } },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025", "predicate": { "op": "count_lte", "value": "3" } },
         { "effect_type": "role_grant", "target": "iam:svc-deploy", "predicate": { "op": "set_eq", "values": ["deploy:staging", "read:logs"] } },
-        { "effect_type": "account_close", "target": "acct:*", "predicate": { "op": "absent" } }
+        { "effect_type": "account_close", "target": "acct:vendor-9", "predicate": { "op": "absent" } }
       ],
       "observed_effects": [
         { "effect_type": "payment", "target": "acct:vendor-9", "value": "24999.99" },
         { "effect_type": "record_update", "target": "crm:contact-113", "value": "status=closed" },
-        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "reports/2025/q1.pdf" },
-        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "reports/2025/q2.pdf" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025", "value": "reports/2025/q1.pdf" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025", "value": "reports/2025/q2.pdf" },
         { "effect_type": "role_grant", "target": "iam:svc-deploy", "values": ["read:logs", "deploy:staging"] }
       ] },
 
@@ -65,30 +65,30 @@
       "observed_effects": [ { "effect_type": "role_grant", "target": "iam:svc-deploy", "values": ["deploy:staging", "read:logs", "admin:*"] } ] },
 
     { "id": "count_lte_pass_zero_matches_is_valid_count", "kind": "predicate", "expect": { "outcome": "in_bounds" },
-      "predicted_effects": [ { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "predicate": { "op": "count_lte", "value": "3" } } ],
+      "predicted_effects": [ { "effect_type": "file_delete", "target": "bucket:reports/2025", "predicate": { "op": "count_lte", "value": "3" } } ],
       "observed_effects": [] },
 
     { "id": "count_lte_fail_divergent", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted count <= 3" },
-      "predicted_effects": [ { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "predicate": { "op": "count_lte", "value": "3" } } ],
+      "predicted_effects": [ { "effect_type": "file_delete", "target": "bucket:reports/2025", "predicate": { "op": "count_lte", "value": "3" } } ],
       "observed_effects": [
-        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "a" },
-        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "b" },
-        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "c" },
-        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "d" }
+        { "effect_type": "file_delete", "target": "bucket:reports/2025", "value": "a" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025", "value": "b" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025", "value": "c" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025", "value": "d" }
       ] },
 
     { "id": "absent_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
-      "predicted_effects": [ { "effect_type": "account_close", "target": "acct:*", "predicate": { "op": "absent" } } ],
+      "predicted_effects": [ { "effect_type": "account_close", "target": "acct:vendor-9", "predicate": { "op": "absent" } } ],
       "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "1.00" } ] },
 
     { "id": "absent_fail_unpredicted_destructive_effect", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted absent" },
       "predicted_effects": [
         { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } },
-        { "effect_type": "account_close", "target": "acct:*", "predicate": { "op": "absent" } }
+        { "effect_type": "account_close", "target": "acct:vendor-9", "predicate": { "op": "absent" } }
       ],
       "observed_effects": [
         { "effect_type": "payment", "target": "acct:vendor-9", "value": "100.00" },
-        { "effect_type": "account_close", "target": "acct:*", "value": "acct:vendor-9" }
+        { "effect_type": "account_close", "target": "acct:vendor-9", "value": "acct:vendor-9" }
       ] },
 
     { "id": "amount_as_number_in_predicate_rejected", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "MUST be strings" },
@@ -118,6 +118,10 @@
       "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
       "observed_effects": null },
 
+    { "id": "unknown_observed_member_incomparable", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "unknown member" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "100.00", "ignored_limit": "999999.00" } ] },
+
     { "id": "divergent_takes_precedence_over_incomparable", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted eq" },
       "predicted_effects": [
         { "effect_type": "record_update", "target": "crm:contact-113", "predicate": { "op": "eq", "value": "status=closed" } },
@@ -127,36 +131,60 @@
 
     { "id": "graph_degenerate_exact_digest_match_backcompat", "kind": "graph", "expect": { "verdict": "admissible" },
       "attestation": {
-        "observed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "observed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "approved": {
         "committed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "policy": {} },
 
     { "id": "graph_degenerate_exact_digest_divergent_backcompat", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_divergence" },
       "attestation": {
-        "observed_effect_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "observed_effect_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "approved": {
         "committed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
       },
       "policy": {} },
 
     { "id": "graph_predicates_in_bounds_admissible", "kind": "graph", "expect": { "verdict": "admissible" },
       "attestation": {
-        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
         "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "24000.00" } ]
+      },
+      "approved": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "predicted_effects_digest": "sha256:f26b78837da76f4ca061dd3209221f0280ac65caf7cf8bee90c4b4e67f66bc0f"
       },
       "policy": {} },
 
     { "id": "graph_predicate_divergence_drives_conflicted", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_divergence" },
       "attestation": {
-        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
         "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "26000.00" } ]
+      },
+      "approved": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "predicted_effects_digest": "sha256:f26b78837da76f4ca061dd3209221f0280ac65caf7cf8bee90c4b4e67f66bc0f"
       },
       "policy": {} },
 
     { "id": "graph_predicate_incomparable_drives_conflicted", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_incomparable" },
       "attestation": {
-        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
         "observed_effects": []
+      },
+      "approved": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "predicted_effects_digest": "sha256:f26b78837da76f4ca061dd3209221f0280ac65caf7cf8bee90c4b4e67f66bc0f"
+      },
+      "policy": {} },
+
+    { "id": "graph_signed_predictions_for_different_action_refused", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_commitment_missing" },
+      "attestation": {
+        "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "12000.00" } ]
+      },
+      "approved": {
+        "action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "predicted_effects_digest": "sha256:f26b78837da76f4ca061dd3209221f0280ac65caf7cf8bee90c4b4e67f66bc0f"
       },
       "policy": {} },
 
@@ -167,6 +195,42 @@
       },
       "policy": {
         "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ]
+      } },
+
+    { "id": "graph_presenter_predictions_without_approved_source_refused", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_commitment_missing" },
+      "attestation": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "999999.00" } } ],
+        "predicted_effects_digest": "sha256:f26b78837da76f4ca061dd3209221f0280ac65caf7cf8bee90c4b4e67f66bc0f",
+        "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "26000.00" } ]
+      },
+      "policy": {} }
+
+    ,{ "id": "graph_policy_only_in_bounds_cannot_replace_signed_baseline", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_commitment_missing" },
+      "attestation": {
+        "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "1.00" } ]
+      },
+      "policy": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ]
       } }
+
+    ,{ "id": "graph_exact_digest_resolver_for_different_action_refused", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_commitment_missing" },
+      "attestation": {
+        "observed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "approved": {
+        "action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "committed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "policy": {} }
+
+    ,{ "id": "graph_malformed_policy_prediction_refused", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_incomparable" },
+      "attestation": {
+        "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "1.00" } ]
+      },
+      "approved": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "predicted_effects_digest": "sha256:f26b78837da76f4ca061dd3209221f0280ac65caf7cf8bee90c4b4e67f66bc0f"
+      },
+      "policy": { "predicted_effects": { "allow": true } } }
   ]
 }
