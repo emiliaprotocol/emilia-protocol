@@ -95,7 +95,7 @@ describe('homepage category contract', () => {
     expect(homepage).toContain('The Assurance Plane then re-performs the record');
     expect(gate).toContain('A match is not authorization');
     expect(gate).toContain('consumes the reservation as indeterminate: no blind retry or refund');
-    expect(investors).toContain('none is an adopted standard.');
+    expect(investors).toContain('none is an RFC or adopted standard.');
     expect(investors).toContain('No physical hardware attestation in production or independently operated witness network is claimed today.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');
     expect(productBrief).toContain('they do not prove the deployed service, provider, or physical world.');
