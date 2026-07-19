@@ -37,6 +37,8 @@ reports/mutation/
 /release-artifacts/
 /registry-copy/
 formal/tamarin/run-output/
+formal/tamarin/run-output-receipt/
+formal/tamarin/run-output-quorum/
 
 # Supabase CLI local cache — these change per-developer and per-link
 supabase/.temp/
