@@ -615,8 +615,49 @@ export function verifyQuorum(quorum: object, opts?: { rpId?: string; allowedOrig
  */
 export function canonicalize(value: unknown): string;
 
+/**
+ * True if `value` serializes within the EP canonicalization profile
+ * (JSON scalars, arrays, and plain objects of canonicalizable values).
+ */
+export function isCanonicalizable(value: unknown): boolean;
+
 /** b64u/hex SHA-256 over `canonicalize(context)`; links each ordered signoff to its predecessor. */
 export function contextChainHash(context: unknown): string;
+
+export const REVOCATION_VERSION: 'EP-REVOCATION-v1';
+
+/**
+ * Verify an EP-REVOCATION-v1 statement against the authorization the relying
+ * party holds. Fail-closed: a missing or malformed statement returns valid:false.
+ */
+export function verifyRevocation(
+  target: { target_type: string; target_id: string; action_hash: string },
+  statement: object,
+  opts?: {
+    revokerKeys?: Record<string, { public_key: string }>;
+    maxAgeSeconds?: number;
+    now?: number | string | Date;
+    [k: string]: unknown;
+  }
+): { valid: boolean; checks: Record<string, boolean>; errors: string[] };
+
+/** True if any statement in `statements` validly revokes `target`. */
+export function isRevoked(target: object, statements: unknown, opts?: object): boolean;
+
+export const PROVENANCE_VERSION: 'EP-PROVENANCE-CHAIN-v1';
+
+/** Verify an EP-PROVENANCE-CHAIN-v1 document fully offline. Fail-closed. */
+export function verifyProvenanceOffline(
+  doc: unknown,
+  opts?: Record<string, unknown>
+): {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+  links: unknown[];
+  agent_identity: unknown;
+  liability: unknown;
+};
 
 export const TIME_ATTESTATION_VERSION: 'EP-TIME-ATTESTATION-v1';
 
