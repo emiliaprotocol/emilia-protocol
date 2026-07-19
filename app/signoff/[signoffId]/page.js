@@ -9,6 +9,7 @@
 import { getServiceClient } from '@/lib/supabase';
 import { SIGNOFF_ID_PATTERN } from '@/lib/webauthn';
 import { creatorBoundSignoffRequests, decisionMatchesRequest } from '@/lib/guard-signoff-binding.js';
+import { renderAction } from '@/lib/wysiwys/render.js';
 import SignoffSigner from './signer';
 
 export const dynamic = 'force-dynamic';
@@ -101,6 +102,11 @@ export default async function SignoffPage({ params, searchParams }) {
     : null;
   const base = created?.after_state || {};
   const action = base.canonical_action || null;
+  const rolloutLines = action
+    ? renderAction(action).lines.filter(
+        ({ label: lineLabel }) => lineLabel === 'Executing key ID' || lineLabel.startsWith('Rollout '),
+      )
+    : [];
   const expired = new Date(requestEvent.after_state.expires_at) < new Date();
   const status = decided
     ? (decided.event_type === 'guard.signoff.approved' ? 'approved' : 'rejected')
@@ -141,6 +147,9 @@ export default async function SignoffPage({ params, searchParams }) {
               <Row k="Initiator (agent)" v={action.actor_id} monoVal />
               <Row k="Policy" v={action.policy_id} monoVal />
               <Row k="Requested" v={action.requested_at} monoVal />
+              {rolloutLines.map(({ label: lineLabel, value }) => (
+                <Row key={lineLabel} k={lineLabel} v={value} monoVal />
+              ))}
               <Row k="Expires" v={requestEvent.after_state.expires_at} monoVal />
               {(base.risk_flags || []).length > 0 && (
                 <Row k="Risk signals" v={(base.risk_flags || []).join(' · ')} />
