@@ -188,9 +188,57 @@ export {
 } from './zk-range-proof.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
+const CAPABILITY_FAILURE_STATUS = 409;
 
 function safeCanonicalHash(value) {
   try { return hashCanonical(value); } catch { return null; }
+}
+
+/**
+ * Capability spending is intentionally bound to the executor's observed
+ * monetary action, not to a presenter-selected amount. The default action
+ * packs use `amount_usd`; integrations that use the generic `amount` field
+ * are supported as well. A missing or mismatched amount/currency fails closed
+ * before the capability store is touched.
+ */
+function verifyCapabilityActionBinding({ capability, observedAction } = {}) {
+  if (capability === null || capability === undefined) return { ok: true, required: false };
+  const action = capability?.action;
+  if (!action || typeof action !== 'object' || Array.isArray(action)
+      || !Number.isSafeInteger(action.amount) || action.amount <= 0
+      || typeof action.currency !== 'string' || action.currency.length === 0) {
+    return { ok: false, reason: 'capability_action_invalid', required: true };
+  }
+  const observedAmount = Number.isSafeInteger(observedAction?.amount)
+    ? observedAction.amount
+    : observedAction?.amount_usd;
+  const observedCurrency = observedAction?.currency;
+  if (observedAmount !== action.amount || observedCurrency !== action.currency) {
+    return {
+      ok: false,
+      reason: 'capability_action_binding_failed',
+      required: true,
+      capability_amount: action.amount,
+      capability_currency: action.currency,
+      observed_amount: observedAmount ?? null,
+      observed_currency: observedCurrency ?? null,
+    };
+  }
+  return {
+    ok: true,
+    required: true,
+    amount: action.amount,
+    currency: action.currency,
+  };
+}
+
+function capabilitySummary(capability, operationId = null) {
+  return {
+    capability_id: capability?.capabilityReceipt?.capability?.id ?? null,
+    operation_id: operationId ?? capability?.operationId ?? null,
+    amount: capability?.action?.amount ?? null,
+    currency: capability?.action?.currency ?? null,
+  };
 }
 
 /**
@@ -645,6 +693,10 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  * @param {string[]} [opts.trustedKeys] base64url SPKI-DER issuer keys you trust
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this
  * @param {object} [opts.store]         durable, ownership-fenced, permanent consumption store
+ * @param {object} [opts.capabilityStore] Marvel capability budget store. A
+ *   capability run reserves here before the effect and commits after it.
+ * @param {string[]} [opts.capabilityTrustedIssuerKeys] pinned capability
+ *   envelope issuer keys. Defaults to trustedKeys when omitted.
  * @param {boolean} [opts.allowEphemeralStore=false] explicit test/demo opt-in for in-memory state
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
  * @param {boolean} [opts.allowInlineKey=false] accept the receipt's own key (integrity, NOT trust)
@@ -666,7 +718,7 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  *   Required whenever an admissibility profile is pinned. It must authenticate
  *   the presented packet or recompute the verdict and return the trusted block.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -686,6 +738,14 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // eslint-disable-next-line no-console
     console.warn('EMILIA Gate: allowInlineKey=true accepts a receipt\'s OWN key. This proves INTEGRITY (the receipt was not tampered with) but NOT issuer TRUST (anyone can mint a receipt with their own key). Use for demos only; pin trustedKeys in production.');
   }
+  if (capabilityStore && (typeof capabilityStore.registerCapability !== 'function'
+      || typeof capabilityStore.reserveSpend !== 'function'
+      || typeof capabilityStore.commitSpend !== 'function')) {
+    throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), and commitSpend()');
+  }
+  const effectiveCapabilityTrustedIssuerKeys = Array.isArray(capabilityTrustedIssuerKeys) && capabilityTrustedIssuerKeys.length > 0
+    ? [...capabilityTrustedIssuerKeys]
+    : [...trustedKeys];
   // Replay defense is only sound if the store is shared, ownership-fenced, and
   // permanent. This is a security property in every environment; NODE_ENV must
   // never silently decide whether a receipt can be replayed.
@@ -710,7 +770,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
   const evidence = log || createEvidenceLog({ strict: strictEvidence });
 
-  async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null } = {}) {
+  async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}) {
     const requirement = manifest ? findActionRequirement(manifest, selector) : null;
     const action = requirement?.action_type || selector.action_type || selector.action || null;
     const guarded = Boolean(requirement && requirement.receipt_required !== false);
@@ -977,6 +1037,17 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         });
       }
     }
+    const capabilityBinding = verifyCapabilityActionBinding({ capability, observedAction: observed });
+    if (!capabilityBinding.ok) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, capabilityBinding.reason, {
+        capability: {
+          ...capabilitySummary(capability, capability?.operationId),
+          ...capabilityBinding,
+        },
+        have_tier: have,
+        assurance_tier_source: 'cryptographic_verification',
+      });
+    }
     // One-time consumption (replay defense). Require a stable, issuer-generated
     // receipt_id — never fall back to a content hash, whose canonicalization can
     // differ across language implementations and silently break replay detection
@@ -999,7 +1070,15 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!fresh) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
     }
-    const allowExtra = { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'cryptographic_verification', execution_binding: executionBinding, consumption_mode: consumptionMode };
+    const allowExtra = {
+      signer: v.signer,
+      outcome: v.outcome,
+      have_tier: have,
+      assurance_tier_source: 'cryptographic_verification',
+      execution_binding: executionBinding,
+      consumption_mode: consumptionMode,
+      ...(capability ? { capability: { ...capabilitySummary(capability, capability?.operationId), ...capabilityBinding } } : {}),
+    };
     // Carry the admissibility block (from the presented packet) onto the decision
     // so a reliance packet built from this decision embeds the verdict the relying
     // party's evaluator computed. Only when something was actually presented.
@@ -1036,7 +1115,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     const presentedPacket = typeof opts.reliancePacket === 'function'
       ? await opts.reliancePacket(req)
       : (opts.reliancePacket ?? opts.admissibility ?? null);
-    return { selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket };
+    const capability = typeof opts.capability === 'function'
+      ? await opts.capability(req)
+      : (opts.capability ?? req.emiliaCapability ?? req.body?.emilia_capability ?? null);
+    return { selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, capability };
   }
 
   function sendRefusal(res, authorization) {
@@ -1067,7 +1149,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         req.emiliaGate = authorization;
         return handler(req, res, authorization);
       });
-      if (!out.ok) return sendRefusal(res, out.authorization);
+      if (!out.ok) return sendRefusal(res, out.refusal || out.authorization);
       req.emiliaGate = out.authorization;
       req.emiliaGateExecution = out.execution;
       req.emiliaReliancePacket = out.packet;
@@ -1137,6 +1219,174 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     });
   }
 
+  async function recordCapabilityEvent({ authorization, capability, outcome, reason = null } = {}) {
+    return evidence.record({
+      kind: 'capability',
+      at: new Date(typeof now === 'function' ? now() : now).toISOString(),
+      authorizes_decision: authorization?.evidence?.hash ?? null,
+      action: authorization?.action ?? null,
+      ...capabilitySummary(capability, capability?.operationId),
+      outcome,
+      ...(reason ? { reason } : {}),
+    });
+  }
+
+  function capabilityRefusal({ authorization = null, capability = null, reason, status = CAPABILITY_FAILURE_STATUS, event = null } = {}) {
+    const body = {
+      rejected: {
+        type: 'capability',
+        reason,
+        ...capabilitySummary(capability, capability?.operationId),
+      },
+    };
+    return {
+      ok: false,
+      status,
+      body,
+      authorization,
+      refusal: {
+        allow: false,
+        status,
+        reason,
+        action: authorization?.action ?? null,
+        challenge: body,
+        header: null,
+      },
+      capability: { reason, ...capabilitySummary(capability, capability?.operationId) },
+      evidence: event,
+    };
+  }
+
+  /**
+   * Capability-backed execution is the real Marvel guard path. The ordinary
+   * EP receipt is verified first without consuming it; the capability store
+   * then reserves the exact observed monetary amount before the effect. A
+   * successful effect commits the reservation, while an exception commits it
+   * as indeterminate so the budget can never silently reopen.
+   */
+  async function runCapability({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
+    if (!capabilityStore) return capabilityRefusal({ capability, reason: 'capability_store_required', status: 500 });
+    if (!capability || typeof capability !== 'object' || Array.isArray(capability)
+        || !capability.capabilityReceipt || !capability.action) {
+      return capabilityRefusal({ capability, reason: 'capability_request_invalid' });
+    }
+    const operationId = capability.operationId || crypto.randomUUID();
+    const context = { ...capability, operationId };
+    const baseReceipt = capability.capabilityReceipt.receipt;
+    if (receipt && safeCanonicalHash(receipt) !== safeCanonicalHash(baseReceipt)) {
+      return capabilityRefusal({ capability: context, reason: 'capability_receipt_mismatch' });
+    }
+
+    let authorization = null;
+    let effectError = null;
+    let effectStarted = false;
+    const capabilityGate = {
+      check: (input = {}) => check({
+        ...input,
+        capability: {
+          capabilityReceipt: context.capabilityReceipt,
+          action: context.action,
+          operationId,
+        },
+      }),
+    };
+    const executeAction = async (_action, executionContext) => {
+      authorization = executionContext.authorization;
+      const runtimeCycleId = authorization?._runtime_cycle_id;
+      const runtimeStart = runtimeMonitor?.beginExecution(runtimeCycleId, authorization);
+      if (runtimeStart && !runtimeStart.ok) {
+        const error = new Error(`EMILIA Gate runtime monitor refused capability execution (${runtimeStart.reason})`);
+        error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
+        throw error;
+      }
+      effectStarted = true;
+      try {
+        const value = await fn(authorization);
+        runtimeMonitor?.effectReturned(runtimeCycleId);
+        return value;
+      } catch (error) {
+        effectError = error;
+        runtimeMonitor?.effectFailed(runtimeCycleId);
+        throw error;
+      }
+    };
+    const executorInput = {
+      capabilityReceipt: context.capabilityReceipt,
+      action: context.action,
+      store: capabilityStore,
+      gate: capabilityGate,
+      selector,
+      observedAction,
+      trustedIssuerKeys: effectiveCapabilityTrustedIssuerKeys,
+      operationId,
+      now,
+      executeAction,
+    };
+    const capabilityResult = Array.isArray(context.shares)
+      ? await executeWithThreshold({ ...executorInput, shares: context.shares })
+      : await executeWithCapability({ ...executorInput, secret: context.secret });
+
+    authorization = authorization || capabilityResult.authorization || null;
+    const runtimeCycleId = authorization?._runtime_cycle_id;
+    if (capabilityResult.ok) {
+      runtimeMonitor?.consumptionCommitted(runtimeCycleId);
+      if (opts.recordExecution === false) {
+        runtimeMonitor?.executionSkipped(runtimeCycleId);
+        return { ok: true, result: capabilityResult.result, authorization, execution: null, packet: null, capability: capabilityResult };
+      }
+      const execution = await recordExecution({
+        authorization,
+        outcome: 'executed',
+        observedAction,
+        detail: { capability: { ...capabilitySummary(context, operationId), outcome: 'executed' } },
+      });
+      runtimeMonitor?.executionRecorded(runtimeCycleId);
+      const packet = await reliancePacket({ authorization, execution });
+      return { ok: true, result: capabilityResult.result, authorization, execution, packet, capability: capabilityResult };
+    }
+
+    if (effectStarted && (capabilityResult.reason === 'effect_indeterminate'
+      || capabilityResult.reason === 'capability_commit_indeterminate')) {
+      if (capabilityResult.reason === 'effect_indeterminate') runtimeMonitor?.consumptionCommitted(runtimeCycleId);
+      const execution = opts.recordExecution === false ? null : await recordExecution({
+        authorization,
+        outcome: 'indeterminate',
+        observedAction,
+        detail: {
+          code: 'effect_attempted_outcome_unknown',
+          capability: { ...capabilitySummary(context, operationId), outcome: 'indeterminate' },
+        },
+      });
+      if (capabilityResult.reason === 'effect_indeterminate' && opts.recordExecution !== false) {
+        runtimeMonitor?.executionRecorded(runtimeCycleId);
+      }
+      if (effectError) throw effectError;
+      return capabilityRefusal({ authorization, capability: context, reason: capabilityResult.reason, event: execution });
+    }
+
+    if (authorization?.allow === true) {
+      const event = await recordCapabilityEvent({
+        authorization,
+        capability: context,
+        outcome: 'refused',
+        reason: capabilityResult.reason,
+      });
+      runtimeMonitor?.capabilityRefused(runtimeCycleId);
+      return capabilityRefusal({ authorization, capability: context, reason: capabilityResult.reason, event });
+    }
+    if (authorization) {
+      return {
+        ok: false,
+        status: authorization.status,
+        body: authorization.challenge,
+        authorization,
+        refusal: authorization,
+        capability: { reason: capabilityResult.reason, ...capabilitySummary(context, operationId) },
+      };
+    }
+    return capabilityRefusal({ authorization, capability: context, reason: capabilityResult.reason, status: RECEIPT_REQUIRED_STATUS });
+  }
+
   /**
    * Recommended end-to-end path. Reserves the receipt, runs the side effect,
    * commits one-time consumption after the effect attempt, and records execution.
@@ -1146,8 +1396,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
    * never released automatically. Callers that need retries must make the
    * downstream effect idempotent under the receipt id and reconcile its result.
    */
-  async function run({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null } = {}, fn, opts = {}) {
+  async function run({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
     if (typeof fn !== 'function') throw new Error('EMILIA Gate run(): fn is required');
+    if (capability) {
+      return runCapability({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }, fn, opts);
+    }
     const authorization = await check({ selector, receipt, observedAction, consumptionMode: 'reserve', admissibilityProfile, reliancePacket: presentedPacket, admissibility });
     if (!authorization.allow) {
       return { ok: false, status: authorization.status, body: authorization.challenge, authorization };
@@ -1252,11 +1505,15 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       const presentedPacket = typeof opts.reliancePacket === 'function'
         ? await opts.reliancePacket(...args)
         : (opts.reliancePacket ?? opts.admissibility ?? null);
-      const out = await run({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket }, () => fn(...args), { recordExecution: opts.recordExecution });
+      const capability = typeof opts.capability === 'function'
+        ? await opts.capability(...args)
+        : (opts.capability ?? null);
+      const out = await run({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, capability }, () => fn(...args), { recordExecution: opts.recordExecution });
       if (!out.ok) {
-        const e = new Error(`EMILIA Gate refused (${out.authorization.reason})`);
+        const refusal = out.refusal || out.authorization;
+        const e = new Error(`EMILIA Gate refused (${refusal.reason})`);
         e.code = 'EMILIA_RECEIPT_REQUIRED';
-        e.gate = out.authorization;
+        e.gate = refusal;
         throw e;
       }
       return out.result;
@@ -1293,7 +1550,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
 
   return {
     check, run, recordExecution, route, wrapRoute: route, middleware, guard, reliancePacket, evidence,
-    store: consumption, keyRegistry: registry, retention, retentionExport,
+    store: consumption, capabilityStore, keyRegistry: registry, retention, retentionExport,
   };
 }
 

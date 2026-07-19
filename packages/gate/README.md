@@ -362,6 +362,40 @@ capability path is separate from the ordinary one-time receipt consumption
 path, so a signed base receipt can authorize multiple bounded spends without
 turning replay defense off.
 
+### Gate-integrated capability enforcement
+
+For an action that must be both human-authorized and budget-limited, pass the
+capability store when constructing the Gate and supply a capability to `run()`
+or `guard()`:
+
+```js
+const gate = createTrustedActionFirewall({
+  capabilityStore: postgresCapabilityStore,
+  capabilityTrustedIssuerKeys: [capabilityIssuerPublicKey],
+  // ...the ordinary Gate trust and durable evidence configuration
+});
+
+const result = await gate.run({
+  selector: { protocol: 'mcp', tool: 'release_payment' },
+  observedAction: actionFromTheSystemOfRecord,
+  capability: {
+    capabilityReceipt,
+    secret,
+    action: { amount: 10_000, currency: 'USD' },
+    operationId: 'provider-idempotency-key',
+  },
+}, (authorization) => sendPayment(actionFromTheSystemOfRecord, authorization));
+```
+
+The Gate verifies the ordinary receipt first without consuming it, requires the
+capability amount and currency to equal the observed action's `amount` or
+`amount_usd` and `currency`, reserves the budget before calling `sendPayment`,
+and commits it only after the effect returns. A replay, overspend, missing
+registration, or envelope mismatch never enters the effect. An exception after
+the effect begins commits the amount as `indeterminate` and keeps the operation
+closed for reconciliation. Capability issuer keys are pinned separately from
+the ordinary receipt trust list when the two issuers differ.
+
 Delegation is issuer-authorized and budget-backed: `delegateCapabilityReceipt`
 atomically reserves and commits the child budget against the parent before the
 child is registered. A failed child registration is reported for

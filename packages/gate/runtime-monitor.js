@@ -121,6 +121,7 @@ export function createRuntimeMonitor({ now = Date.now, onDivergence = null, auth
       effect_attempted: ['authorized'],
       effect_returned: ['effect_attempted'],
       effect_failed: ['effect_attempted', 'effect_returned'],
+      capability_refused: ['authorized'],
       consumed: ['effect_returned', 'effect_failed'],
       execution_recorded: ['consumed'],
     }[event];
@@ -167,6 +168,7 @@ export function createRuntimeMonitor({ now = Date.now, onDivergence = null, auth
     },
     effectReturned(cycleId) { return transition(cycleId, 'effect_returned'); },
     effectFailed(cycleId) { return transition(cycleId, 'effect_failed'); },
+    capabilityRefused(cycleId) { return transition(cycleId, 'capability_refused'); },
     consumptionCommitted(cycleId) { return transition(cycleId, 'consumed'); },
     executionRecorded(cycleId) { return transition(cycleId, 'execution_recorded'); },
     executionSkipped(cycleId) {
