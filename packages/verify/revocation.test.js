@@ -9,10 +9,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { canonicalize } from './index.js';
 import { verifyRevocation, isRevoked, REVOCATION_VERSION } from './revocation.js';
 
 const TARGET = { target_type: 'receipt', target_id: 'rcpt_abc123', action_hash: 'sha256:' + 'a'.repeat(64) };
+const keyIdFor = (publicKeyB64u) => `ep:revoker-key:sha256:${crypto
+  .createHash('sha256').update(Buffer.from(publicKeyB64u, 'base64url')).digest('hex')}`;
 
 function sign(payloadObj, privateKey) {
   const bytes = Buffer.from(canonicalize(payloadObj), 'utf8');
@@ -40,7 +43,7 @@ function buildStatement({ revokerId = 'ep:revoker:ig_okafor', revokedAt = '2026-
     reason,
     proof: {
       algorithm: 'Ed25519',
-      revoker_key_id: 'rk1',
+      revoker_key_id: keyIdFor(signer.publicKeyB64u),
       public_key: signer.publicKeyB64u,
       signature_b64u: sign(signedFields, signer.privateKey),
     },
@@ -58,6 +61,28 @@ test('accepts an authentic, pinned, exactly-bound revocation', () => {
   const r = verifyRevocation(TARGET, stmt, { revokerKeys: { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } } });
   assert.strictEqual(r.valid, true, JSON.stringify(r.errors));
   assert.ok(isRevoked(TARGET, [stmt], { revokerKeys: { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } } }));
+});
+
+test('accepts the historical v1 local key label only with the exact pinned SPKI', () => {
+  const historical = JSON.parse(readFileSync(
+    new URL('../../conformance/vectors/revocation.exec.v1.json', import.meta.url),
+    'utf8',
+  )).vectors.find((vector) => vector.id === 'accept_pinned_exact_binding');
+  const result = verifyRevocation(historical.target, historical.revocation, {
+    revokerKeys: historical.revoker_keys,
+  });
+  assert.strictEqual(result.valid, true, JSON.stringify(result.errors));
+
+  const mismatchedPin = {
+    ...historical.revoker_keys,
+    'ep:revoker:ig_okafor': {
+      ...historical.revoker_keys['ep:revoker:ig_okafor'],
+      key_id: 'different-local-label',
+    },
+  };
+  assert.strictEqual(verifyRevocation(historical.target, historical.revocation, {
+    revokerKeys: mismatchedPin,
+  }).valid, false);
 });
 
 test('rejects an unpinned revoker (identified but not trusted)', () => {
@@ -157,4 +182,96 @@ test('rejects a mismatched signature algorithm label', () => {
   });
   assert.strictEqual(r.valid, false);
   assert.strictEqual(r.checks.revoker_signature_valid, false);
+});
+
+test('rejects a substituted revoker key id', () => {
+  const s = newSigner();
+  const stmt = buildStatement({ signer: s });
+  stmt.proof.revoker_key_id = 'ep:revoker-key:sha256:' + 'ff'.repeat(32);
+  const r = verifyRevocation(TARGET, stmt, {
+    revokerKeys: { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } },
+  });
+  assert.strictEqual(r.valid, false);
+  assert.strictEqual(r.checks.revoker_key_bound, false);
+});
+
+test('rejects an empty presented key even when the signature verifies under the pin', () => {
+  const s = newSigner();
+  const stmt = buildStatement({ signer: s });
+  stmt.proof.public_key = '';
+  stmt.proof.revoker_key_id = `ep:revoker-key:sha256:${crypto
+    .createHash('sha256').digest('hex')}`;
+  const result = verifyRevocation(TARGET, stmt, {
+    revokerKeys: { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } },
+  });
+  assert.strictEqual(result.valid, false);
+  assert.strictEqual(result.checks.revoker_key_pinned, false);
+});
+
+test('rejects a non-string revoker id and over-precise timestamp without throwing', () => {
+  const s = newSigner();
+  const badId = buildStatement({ signer: s });
+  badId.revoker_id = { tenant: 'ep:revoker:ig_okafor' };
+  assert.doesNotThrow(() => verifyRevocation(TARGET, badId, {
+    revokerKeys: { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } },
+  }));
+  assert.strictEqual(verifyRevocation(TARGET, badId, { revokerKeys: {} }).valid, false);
+
+  const overPrecise = buildStatement({
+    signer: s,
+    revokedAt: '2026-06-20T12:00:00.1234567890Z',
+  });
+  const result = verifyRevocation(TARGET, overPrecise, {
+    revokerKeys: { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } },
+  });
+  assert.strictEqual(result.valid, false);
+  assert.strictEqual(result.checks.revoked_at_present, false);
+});
+
+test('accepts one through nine fractional-second digits and schema enforces the same bounds', () => {
+  const s = newSigner();
+  const pin = { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } };
+  for (const revokedAt of [
+    '2026-06-20T12:00:00.1Z',
+    '2026-06-20T12:00:00.123456789Z',
+  ]) {
+    const result = verifyRevocation(TARGET, buildStatement({ signer: s, revokedAt }), {
+      revokerKeys: pin,
+      now: '2026-06-20T12:00:01Z',
+    });
+    assert.strictEqual(result.valid, true, `${revokedAt}: ${JSON.stringify(result.errors)}`);
+  }
+
+  const schema = JSON.parse(readFileSync(
+    new URL('../../public/schemas/ep-revocation.schema.json', import.meta.url),
+    'utf8',
+  ));
+  const revokedAtPattern = new RegExp(schema.properties.revoked_at.pattern);
+  assert.match('2026-06-20T12:00:00.1Z', revokedAtPattern);
+  assert.match('2026-06-20T12:00:00.123456789Z', revokedAtPattern);
+  assert.doesNotMatch('2026-06-20T12:00:00.1234567890Z', revokedAtPattern);
+  assert.doesNotMatch('', new RegExp(schema.properties.proof.properties.public_key.pattern));
+});
+
+test('fails closed when malformed revoker_id cannot be converted to a string', () => {
+  const s = newSigner();
+  const malformed = buildStatement({ signer: s });
+  malformed.revoker_id = Object.create(null);
+  assert.doesNotThrow(() => {
+    const result = verifyRevocation(TARGET, malformed, {
+      revokerKeys: { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } },
+    });
+    assert.strictEqual(result.valid, false);
+    assert.strictEqual(result.checks.revoker_key_pinned, false);
+  });
+});
+
+test('rejects unsigned fields at the statement or proof level', () => {
+  const s = newSigner();
+  const pin = { 'ep:revoker:ig_okafor': { public_key: s.publicKeyB64u } };
+  const top = { ...buildStatement({ signer: s }), scope_note: 'unsigned' };
+  assert.strictEqual(verifyRevocation(TARGET, top, { revokerKeys: pin }).checks.structure, false);
+  const proof = buildStatement({ signer: s });
+  proof.proof.signed_payload_b64u = Buffer.from('unsigned').toString('base64url');
+  assert.strictEqual(verifyRevocation(TARGET, proof, { revokerKeys: pin }).checks.structure, false);
 });

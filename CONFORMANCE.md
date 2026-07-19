@@ -46,7 +46,10 @@ EP-RECEIPT-v1                   — 13 vectors   JavaScript ✓   Python ✓   G
 EP-SIGNOFF-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-RESOLUTION-v1                — 33 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-QUORUM-v1                    — 15 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-REVOCATION-v1               — 12 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-REVOCATION-v1               — 19 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-OUTCOME-BINDING-v1 semantic — 35 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-OUTCOME-BINDING-v1 real-crypto — 10 vectors JavaScript ✓   Python ✓   Go ✓
+EP-AUTHORITY-DOC-PROOF-JOIN-v1 — 26 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIME-ATTESTATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TRUST-RECEIPT-v1 (§6.2)     — 14 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TRUST-RECEIPT-v1 ts-profile —  7 vectors   JavaScript ✓   Python ✓   Go ✓
@@ -61,7 +64,7 @@ EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 251 vectors · 18 suites — JavaScript, Python, and Go verifiers agree.
+✅ 329 vectors · 21 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations.)
 ```
@@ -96,7 +99,9 @@ The three cross-language verifiers agree across the core artifact surface:
 not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 **signoffs**, **EP-QUORUM-v1 multi-party approval** (M-of-N / ordered — the
 "two-person rule," with a strong cryptographic ordering chain and distinct-key
-checks, fail-closed), portable **revocation** statements, **trusted-time
+checks, fail-closed), portable **revocation** statements, typed semantic and
+real-crypto **Outcome Binding**, document-anchored **Authority Proof issuer
+joins**, **trusted-time
 attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
 inclusion + Ed25519-signed checkpoint), **provenance chains** (human-authority
 root → delegation chain → action, with scope containment), **EP-AEC acceptance**

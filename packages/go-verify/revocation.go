@@ -7,9 +7,11 @@ package emiliaverify
 
 import (
 	"crypto/ed25519"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -18,6 +20,16 @@ const RevocationVersion = "EP-REVOCATION-v1"
 const TimeAttestationVersion = "EP-TIME-ATTESTATION-v1"
 
 var revocationTargetTypes = map[string]bool{"receipt": true, "commit": true, "delegation": true}
+var revocationStatementKeys = map[string]bool{
+	"@version": true, "target_type": true, "target_id": true, "action_hash": true,
+	"revoker_id": true, "revoked_at": true, "reason": true, "proof": true,
+}
+var revocationProofKeys = map[string]bool{
+	"algorithm": true, "revoker_key_id": true, "signature_b64u": true, "public_key": true,
+}
+var revocationInstantProfile = regexp.MustCompile(
+	`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`,
+)
 
 // CheckResult mirrors the JS { valid, checks } shape for the portable statements.
 type CheckResult struct {
@@ -72,6 +84,58 @@ func allTrue(checks map[string]bool) bool {
 	return true
 }
 
+func exactMapKeys(value map[string]any, allowed map[string]bool) bool {
+	if len(value) != len(allowed) {
+		return false
+	}
+	for key := range value {
+		if !allowed[key] {
+			return false
+		}
+	}
+	return true
+}
+
+func revokerKeyID(publicKeyB64u string) string {
+	der, err := b64urlDecode(publicKeyB64u)
+	if err != nil || len(der) == 0 {
+		return ""
+	}
+	pubAny, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return ""
+	}
+	if _, ok := pubAny.(ed25519.PublicKey); !ok {
+		return ""
+	}
+	digest := sha256.Sum256(der)
+	return "ep:revoker-key:sha256:" + hex.EncodeToString(digest[:])
+}
+
+func fullRevokerKeyID(value string) bool {
+	const prefix = "ep:revoker-key:sha256:"
+	if !strings.HasPrefix(value, prefix) || len(value) != len(prefix)+64 {
+		return false
+	}
+	_, err := hex.DecodeString(value[len(prefix):])
+	return err == nil && value == strings.ToLower(value)
+}
+
+func legacyRevokerKeyID(value string) bool {
+	if value == "" || len(value) > 128 || strings.HasPrefix(value, "ep:revoker-key:sha256:") {
+		return false
+	}
+	for _, char := range value {
+		if !((char >= 'a' && char <= 'z') ||
+			(char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') ||
+			strings.ContainsRune("._:#-", char)) {
+			return false
+		}
+	}
+	return true
+}
+
 func revocationSignedPayload(stmt map[string]any) []byte {
 	return []byte(Canonicalize(map[string]any{
 		"@version":    RevocationVersion,
@@ -89,7 +153,8 @@ func revocationSignedPayload(stmt map[string]any) []byte {
 // accepted for API compatibility but ignored: terminal revocations do not age out.
 func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 	checks := map[string]bool{
-		"version": true, "target_bound": true, "revoker_key_pinned": true,
+		"version": true, "structure": true, "target_bound": true,
+		"revoker_key_pinned": true, "revoker_key_bound": true,
 		"revoked_at_present": true, "revoker_signature_valid": true,
 		"effective_at_or_before_T": true, "signature_binds_statement": true,
 	}
@@ -103,6 +168,10 @@ func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 	}
 	if getStr(statement, "@version") != RevocationVersion {
 		fail("version")
+	}
+	proof := getMap(statement["proof"])
+	if !exactMapKeys(statement, revocationStatementKeys) || !exactMapKeys(proof, revocationProofKeys) {
+		fail("structure")
 	}
 	if target == nil {
 		fail("target_bound")
@@ -127,14 +196,32 @@ func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 		}
 	}
 
-	proof := getMap(statement["proof"])
 	revokerID := getStr(statement, "revoker_id")
-	pinned := getStr(getMap(revokerKeys[revokerID]), "public_key")
+	pin := map[string]any{}
+	if revokerID != "" {
+		pin = getMap(revokerKeys[revokerID])
+	}
+	pinned := getStr(pin, "public_key")
 	presented := getStr(proof, "public_key")
-	if pinned == "" {
+	if revokerID == "" || pinned == "" {
 		fail("revoker_key_pinned")
-	} else if presented != "" && pinned != presented {
+	} else if presented == "" || pinned != presented {
 		fail("revoker_key_pinned")
+	}
+	derivedKeyID := revokerKeyID(presented)
+	proofKeyID := getStr(proof, "revoker_key_id")
+	rawPinKeyID, pinKeyIDPresent := pin["key_id"]
+	pinKeyID := getStr(pin, "key_id")
+	fullProfile := fullRevokerKeyID(proofKeyID) && proofKeyID == derivedKeyID
+	if pinKeyIDPresent {
+		fullProfile = fullProfile && rawPinKeyID != nil && pinKeyID == derivedKeyID
+	}
+	legacyProfile := legacyRevokerKeyID(proofKeyID) && presented != "" && pinned == presented
+	if pinKeyIDPresent {
+		legacyProfile = legacyProfile && rawPinKeyID != nil && pinKeyID == proofKeyID
+	}
+	if derivedKeyID == "" || (!fullProfile && !legacyProfile) {
+		fail("revoker_key_bound")
 	}
 	if getStr(proof, "algorithm") != "Ed25519" {
 		fail("revoker_signature_valid")
@@ -145,7 +232,9 @@ func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 		}
 	}
 
-	revokedMs, revokedOK := parseMillis(getStr(statement, "revoked_at"))
+	revokedAt := getStr(statement, "revoked_at")
+	revokedMs, revokedOK := parseMillis(revokedAt)
+	revokedOK = revokedOK && revocationInstantProfile.MatchString(revokedAt)
 	if !revokedOK {
 		fail("revoked_at_present")
 	}

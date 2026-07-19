@@ -53,9 +53,11 @@ const TARGET_A_OTHER_ACTION = {
 
 const REVOKER_ID = "ep:key:revoker#1";
 const revokerKp = generateEd25519KeyPair();
+const keyIdFor = (publicKeyB64u) => `ep:revoker-key:sha256:${crypto
+  .createHash("sha256").update(Buffer.from(publicKeyB64u, "base64url")).digest("hex")}`;
 
 /** The revoker signer: signs the canonical statement bytes with its own key. */
-function revokerSigner(kp = revokerKp, revokerKeyId = REVOKER_ID) {
+function revokerSigner(kp = revokerKp, revokerKeyId = keyIdFor(kp.publicKeyB64u)) {
   return {
     revoker_key_id: revokerKeyId,
     privateKey: kp.privateKey,
@@ -65,7 +67,12 @@ function revokerSigner(kp = revokerKp, revokerKeyId = REVOKER_ID) {
 
 /** Pinned revoker-key map the verifier trusts (identified-AND-pinned). */
 function pinnedKeys(kp = revokerKp, revokerId = REVOKER_ID) {
-  return { [revokerId]: { public_key: kp.publicKeyB64u } };
+  return {
+    [revokerId]: {
+      public_key: kp.publicKeyB64u,
+      key_id: keyIdFor(kp.publicKeyB64u),
+    },
+  };
 }
 
 const REVOKED_AT = "2026-06-14T20:41:00.000Z";
@@ -106,8 +113,7 @@ function reSign(stmt, kp) {
     proof: {
       ...(stmt.proof || {}),
       algorithm: "Ed25519",
-      revoker_key_id: stmt.proof?.revoker_key_id ?? stmt.revoker_id ?? REVOKER_ID,
-      signed_payload_b64u: bytes.toString("base64url"),
+      revoker_key_id: keyIdFor(kp.publicKeyB64u),
       signature_b64u: sig,
       public_key: kp.publicKeyB64u,
     },
@@ -154,14 +160,15 @@ describe("EP-REVOCATION-v1 — version + assembly", () => {
     ).toThrow(); // no signer
   });
 
-  it("uses a custom revoker_key_id when supplied to the signer", () => {
-    const stmt = buildRevocation({
+  it("derives the full revoker_key_id and refuses a caller-supplied mismatch", () => {
+    const stmt = freshStatement();
+    expect(stmt.proof.revoker_key_id).toBe(keyIdFor(revokerKp.publicKeyB64u));
+    expect(() => buildRevocation({
       target: TARGET_A,
       revoker_id: REVOKER_ID,
       revoked_at: REVOKED_AT,
-      signer: revokerSigner(revokerKp, "ep:key:revoker#custom"),
-    });
-    expect(stmt.proof.revoker_key_id).toBe("ep:key:revoker#custom");
+      signer: revokerSigner(revokerKp, "ep:revoker-key:sha256:" + "00".repeat(32)),
+    })).toThrow(/does not match/);
   });
 
   it("buildRevocation defaults revoked_at to now when omitted", () => {
@@ -365,6 +372,82 @@ describe("EP-REVOCATION-v1 — must_reject vectors", () => {
     expect(r.checks.revoker_signature_valid).toBe(false);
     expect(r.checks.signature_binds_statement).toBe(true);
   });
+
+  it("l_revoker_key_id_substitution -> revoker_key_bound:false", () => {
+    const v = byId(VECTORS.must_reject, "l_revoker_key_id_substitution");
+    expect(v.expected.failing_check).toBe("revoker_key_bound");
+    const stmt = freshStatement();
+    stmt.proof = {
+      ...stmt.proof,
+      revoker_key_id: "ep:revoker-key:sha256:" + "ff".repeat(32),
+    };
+    const r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.revoker_key_bound).toBe(false);
+    expect(r.checks.revoker_signature_valid).toBe(true);
+  });
+
+  it("m_unsigned_top_level_injection -> structure:false", () => {
+    const v = byId(VECTORS.must_reject, "m_unsigned_top_level_injection");
+    expect(v.expected.failing_check).toBe("structure");
+    const stmt = { ...freshStatement(), scope_note: "attacker-controlled" };
+    const r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.structure).toBe(false);
+    expect(r.checks.revoker_signature_valid).toBe(true);
+  });
+
+  it("n_unsigned_proof_payload_injection -> structure:false", () => {
+    const v = byId(VECTORS.must_reject, "n_unsigned_proof_payload_injection");
+    expect(v.expected.failing_check).toBe("structure");
+    const stmt = freshStatement();
+    stmt.proof = {
+      ...stmt.proof,
+      signed_payload_b64u: Buffer.from("attacker-controlled").toString("base64url"),
+    };
+    const r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.structure).toBe(false);
+    expect(r.checks.revoker_signature_valid).toBe(true);
+  });
+
+  it("o_empty_presented_key_with_valid_pinned_signature -> revoker_key_pinned:false", () => {
+    const v = byId(VECTORS.must_reject, "o_empty_presented_key_with_valid_pinned_signature");
+    expect(v.expected.failing_check).toBe("revoker_key_pinned");
+    const stmt = freshStatement();
+    stmt.proof = {
+      ...stmt.proof,
+      public_key: "",
+      revoker_key_id: `ep:revoker-key:sha256:${crypto.createHash("sha256").digest("hex")}`,
+    };
+    const r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.revoker_key_pinned).toBe(false);
+  });
+
+  it("p_non_string_revoker_id -> revoker_key_pinned:false without throwing", () => {
+    const v = byId(VECTORS.must_reject, "p_non_string_revoker_id");
+    expect(v.expected.failing_check).toBe("revoker_key_pinned");
+    const stmt = reSign({ ...freshStatement(), revoker_id: { id: REVOKER_ID } }, revokerKp);
+    let r;
+    expect(() => {
+      r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    }).not.toThrow();
+    expect(r.valid).toBe(false);
+    expect(r.checks.revoker_key_pinned).toBe(false);
+  });
+
+  it("q_timestamp_over_precision -> revoked_at_present:false", () => {
+    const v = byId(VECTORS.must_reject, "q_timestamp_over_precision");
+    expect(v.expected.failing_check).toBe("revoked_at_present");
+    const stmt = reSign({
+      ...freshStatement(),
+      revoked_at: "2026-06-14T20:41:00.1234567890Z",
+    }, revokerKp);
+    const r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.revoked_at_present).toBe(false);
+  });
 });
 
 // ── must_accept vectors (each asserted by id) ────────────────────────────────
@@ -429,6 +512,18 @@ describe("EP-REVOCATION-v1 — must_accept vectors", () => {
       maxAgeSeconds: 1,
       now: "2036-06-14T20:41:00.000Z",
     })).toBe(true);
+  });
+
+  it("z4_historical_v1_key_label_exact_pin -> valid:true only under the exact SPKI", () => {
+    const v = byId(VECTORS.must_accept, "z4_historical_v1_key_label_exact_pin");
+    expect(v.expected.valid).toBe(true);
+    const stmt = freshStatement();
+    stmt.proof = { ...stmt.proof, revoker_key_id: "rk1" };
+    const exactPin = { [REVOKER_ID]: { public_key: revokerKp.publicKeyB64u, key_id: "rk1" } };
+    expect(verifyRevocation(TARGET_A, stmt, { revokerKeys: exactPin }).valid).toBe(true);
+    expect(verifyRevocation(TARGET_A, stmt, {
+      revokerKeys: { [REVOKER_ID]: { public_key: revokerKp.publicKeyB64u, key_id: "other" } },
+    }).valid).toBe(false);
   });
 });
 
@@ -550,9 +645,16 @@ describe("EP-REVOCATION-v1 — catalogue parity", () => {
     "i_future_effective_instant",
     "j_malformed_target_shape",
     "k_algorithm_label_mismatch",
+    "l_revoker_key_id_substitution",
+    "m_unsigned_top_level_injection",
+    "n_unsigned_proof_payload_injection",
+    "o_empty_presented_key_with_valid_pinned_signature",
+    "p_non_string_revoker_id",
+    "q_timestamp_over_precision",
     "z_well_formed_binding_revocation",
     "z2_is_revoked_true_among_unrelated",
     "z3_old_terminal_revocation_remains_valid",
+    "z4_historical_v1_key_label_exact_pin",
   ]);
 
   it("every must_reject + must_accept vector id is asserted by name", () => {
@@ -583,11 +685,18 @@ describe("EP-REVOCATION-v1 — catalogue parity", () => {
       "i_future_effective_instant",
       "j_malformed_target_shape",
       "k_algorithm_label_mismatch",
+      "l_revoker_key_id_substitution",
+      "m_unsigned_top_level_injection",
+      "n_unsigned_proof_payload_injection",
+      "o_empty_presented_key_with_valid_pinned_signature",
+      "p_non_string_revoker_id",
+      "q_timestamp_over_precision",
     ]);
     expect(VECTORS.must_accept.map((v) => v.id)).toEqual([
       "z_well_formed_binding_revocation",
       "z2_is_revoked_true_among_unrelated",
       "z3_old_terminal_revocation_remains_valid",
+      "z4_historical_v1_key_label_exact_pin",
     ]);
   });
 });

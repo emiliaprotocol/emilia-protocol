@@ -1,0 +1,17 @@
+EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1
+Method: bounded_exhaustive_state_exploration
+Execution date: 2026-07-19
+Model SHA-256: 4432adf2297621cce7d92b1ad1c4d28eae9c068722dce42f7760d3310da8f65a
+Runner SHA-256: 8926897f9a71a3436cca5a2c81e0d4d440629d116ea77c24926b352c50710794
+
+ExactActionReceiptBinding (1536 outcome states; weakened binding mutant rejected): verified
+PolicyCannotWidenSignedPredictions (1536 outcome states; policy-replacement mutant rejected): verified
+ReplayResultDigestCommitsVerdict (4608 result encodings; verdict-omission mutant rejected): verified
+NewestAuthorityDocumentPreventsKeyResurrection (32768 authority states; older-document fallback mutant rejected): verified
+RevokedRotationAndProofKeysFailClosed (32768 authority states plus 64 rotation states; revocation-bypass mutants rejected): verified
+RegistryPinsMandatory (32768 authority states; optional-pin mutant rejected): verified
+
+Result: 6 of 6 bounded obligations verified; 6 of 6 deliberately weakened variants produced counterexamples.
+
+Scope: same-team bounded exhaustive exploration of the finite abstraction in the bound model bytes above. Signatures and SHA-256 are ideal constructors. This is partial formal evidence, not an unbounded protocol proof and not independent implementation evidence.
+Exclusions: no physical-truth claim, no trusted time source, no external witness or transparency operator, and no independent implementation claim.

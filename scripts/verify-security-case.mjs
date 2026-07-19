@@ -10,6 +10,12 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyReproduciblePackage } from './verify-reproducible-package.mjs';
 import { strictParseGate } from '../conformance/runners/strict-json.mjs';
+import {
+  buildSuiteContract,
+  compareResultRow,
+  executionSuiteFile,
+  validateResultRows,
+} from '../conformance/result-contract.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = path.join(ROOT, 'security', 'claims.v1.json');
@@ -25,10 +31,13 @@ const errors = [];
 const evidenceFiles = new Set([
   path.relative(ROOT, SOURCE),
   path.relative(ROOT, SELF),
+  'conformance/result-contract.mjs',
   'conformance/runners/strict-json.mjs',
+  'conformance/suites.mjs',
 ]);
 const executionPlan = new Map();
 const crossLanguageCases = new Map();
+const boundedFormalPlan = new Map();
 const executionEvidence = [];
 const fail = (id, message) => errors.push(`[${id}] ${message}`);
 const nonEmpty = (value) => typeof value === 'string' && value.trim().length > 0;
@@ -87,6 +96,13 @@ function hasFormalLemma(source, lemma) {
 
 function hasVerifiedResult(source, lemma) {
   return new RegExp(`^\\s*${escaped(lemma)}\\s+\\([^\\n]*\\):\\s+verified\\b`, 'm').test(source);
+}
+
+function hasBoundedFormalResult(source, obligation) {
+  return new RegExp(
+    `^\\s*${escaped(obligation)}\\s+\\([^\\n]*\\):\\s+verified\\b`,
+    'm',
+  ).test(source);
 }
 
 function planTest(id, executionSpec, suitePath = null) {
@@ -152,35 +168,86 @@ function executeCrossLanguage() {
   ];
   for (const [suite, cases] of [...crossLanguageCases.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const suiteAbsolute = path.resolve(ROOT, suite);
+    const suiteFile = path.basename(suiteAbsolute);
+    const suiteDocument = parseStrictJson(
+      fs.readFileSync(suiteAbsolute, 'utf8'),
+      `invalid conformance suite ${suite}`,
+    );
+    const executionFile = executionSuiteFile(suiteFile);
+    const executionAbsolute = executionFile === suiteFile
+      ? suiteAbsolute
+      : path.join(path.dirname(suiteAbsolute), executionFile);
+    evidenceFiles.add(path.relative(ROOT, executionAbsolute));
+    const executionDocument = executionFile === suiteFile
+      ? suiteDocument
+      : parseStrictJson(
+        fs.readFileSync(executionAbsolute, 'utf8'),
+        `invalid conformance execution suite ${executionFile}`,
+      );
+    const contract = buildSuiteContract(suiteFile, suiteDocument, executionDocument);
     const languages = [];
     for (const implementation of implementations) {
       const stdout = runChecked(
         implementation.command,
-        implementation.args(suiteAbsolute),
+        implementation.args(executionAbsolute),
         { cwd: implementation.cwd },
         `${implementation.language} conformance ${suite}`,
       );
       const results = parseStrictJson(stdout, `${implementation.language} emitted invalid JSON for ${suite}`);
       if (!Array.isArray(results)) throw new Error(`${implementation.language} emitted a non-array result for ${suite}`);
-      const byId = new Map();
+      const byId = validateResultRows(contract, results);
       for (const result of results) {
-        if (!result || typeof result !== 'object' || Array.isArray(result)
-          || Object.keys(result).length !== 2 || !Object.hasOwn(result, 'id') || !Object.hasOwn(result, 'valid')
-          || typeof result.id !== 'string' || typeof result.valid !== 'boolean') {
-          throw new Error(`${implementation.language} emitted a malformed result for ${suite}`);
+        const comparison = compareResultRow(contract, result);
+        if (!comparison.ok) {
+          throw new Error(
+            `${implementation.language} emitted ${comparison.detail} for ${suite}#${result.id}`,
+          );
         }
-        if (byId.has(result.id)) throw new Error(`${implementation.language} emitted duplicate result ${result.id} for ${suite}`);
-        byId.set(result.id, result.valid);
       }
       for (const [caseId, ref] of cases) {
         if (!byId.has(caseId)) throw new Error(`${implementation.language} omitted ${suite}#${caseId}`);
-        if (byId.get(caseId) !== ref.expect.valid) {
-          throw new Error(`${implementation.language} returned ${byId.get(caseId)} for ${suite}#${caseId}; expected ${ref.expect.valid}`);
+        const result = byId.get(caseId);
+        if (typeof ref.expect.valid === 'boolean' && result.valid !== ref.expect.valid) {
+          throw new Error(`${implementation.language} returned ${result.valid} for ${suite}#${caseId}; expected ${ref.expect.valid}`);
         }
       }
       languages.push(implementation.language);
     }
     executionEvidence.push({ runner: 'cross-language', suite, cases: [...cases.keys()].sort(), languages, result: 'passed' });
+  }
+}
+
+function executeBoundedFormal() {
+  for (const planned of [...boundedFormalPlan.values()].sort(
+    (a, b) => a.runner.localeCompare(b.runner),
+  )) {
+    const stdout = runChecked(
+      process.execPath,
+      [planned.runner, '--json'],
+      {},
+      `bounded formal checker ${planned.runner}`,
+    );
+    const result = parseStrictJson(stdout, `${planned.runner} emitted invalid JSON`);
+    if (result?.verified !== true
+        || result?.method !== 'bounded_exhaustive_state_exploration') {
+      throw new Error(`${planned.runner} did not report a verified bounded exploration`);
+    }
+    for (const obligation of planned.obligations) {
+      const row = result.obligations?.[obligation];
+      if (row?.verified !== true || row?.counterexample !== null
+          || row?.mutation_counterexample === null
+          || row?.mutation_counterexample === undefined) {
+        throw new Error(
+          `${planned.runner} did not verify ${obligation} with a mutation counterexample`,
+        );
+      }
+    }
+    executionEvidence.push({
+      runner: 'bounded-formal',
+      file: planned.runner,
+      obligations: [...planned.obligations].sort(),
+      result: 'passed',
+    });
   }
 }
 
@@ -329,6 +396,43 @@ for (const claim of sourceCase.claims ?? []) {
     const runnerSha256 = crypto.createHash('sha256').update(fs.readFileSync(runnerFile)).digest('hex');
     if (!resultSource.includes(`Model SHA-256: ${modelSha256}`)) fail(id, `${formal.result_evidence} is not bound to the current ${formal.model} bytes`);
     if (!resultSource.includes(`Runner SHA-256: ${runnerSha256}`)) fail(id, `${formal.result_evidence} is not bound to the current ${formal.runner} bytes`);
+    if (formal.method === 'bounded_exhaustive_state_exploration') {
+      if (formal.status !== 'partial') {
+        fail(id, 'bounded exhaustive formal evidence must remain status partial');
+      }
+      if (!Array.isArray(formal.obligations) || formal.obligations.length === 0
+          || formal.obligations.some((obligation) => !nonEmpty(obligation))
+          || new Set(formal.obligations).size !== formal.obligations.length) {
+        fail(id, 'bounded exhaustive formal evidence requires unique named obligations');
+      }
+      for (const obligation of formal.obligations ?? []) {
+        if (!modelSource.includes(`'${obligation}'`)
+            && !modelSource.includes(`"${obligation}"`)) {
+          fail(id, `${formal.model} does not declare exact obligation ${obligation}`);
+        }
+        if (!runnerSource.includes(`${obligation}:`)) {
+          fail(id, `${formal.runner} does not execute exact obligation ${obligation}`);
+        }
+        if (!hasBoundedFormalResult(resultSource, obligation)) {
+          fail(id, `${formal.result_evidence} has no verified bounded result for ${obligation}`);
+        }
+      }
+      if (!nonEmpty(formal.scope)
+          || !formal.scope.toLowerCase().includes('bounded')
+          || !formal.scope.toLowerCase().includes('same-team')) {
+        fail(id, 'bounded exhaustive formal evidence requires explicit bounded and same-team scope');
+      }
+      const key = path.relative(ROOT, runnerFile);
+      const planned = boundedFormalPlan.get(key) ?? {
+        runner: key,
+        obligations: new Set(),
+      };
+      for (const obligation of formal.obligations ?? []) {
+        planned.obligations.add(obligation);
+      }
+      boundedFormalPlan.set(key, planned);
+      continue;
+    }
     if (!nonEmpty(formal.lemma) || !hasFormalLemma(modelSource, formal.lemma)) fail(id, `${formal.model} has no exact lemma ${formal.lemma}`);
     if (!runnerSource.includes(formal.lemma)) fail(id, `${formal.runner} does not execute exact lemma ${formal.lemma}`);
     if (!hasVerifiedResult(resultSource, formal.lemma)) fail(id, `${formal.result_evidence} has no verified result for ${formal.lemma}`);
@@ -349,6 +453,7 @@ if (errors.length) {
 
 if (execute) {
   try {
+    executeBoundedFormal();
     executeCrossLanguage();
     executePlannedTests();
   } catch (error) {

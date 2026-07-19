@@ -20,9 +20,15 @@ import {
   Refusal,
   buildModeBStatementArgs,
   compareSuiteResults,
+  loadResults,
   loadSuite,
+  referenceRunnerSuites,
   suiteNameForResultsFile,
 } from './sign-statement.mjs';
+import {
+  EXACT_EXTERNAL_RESULT_KINDS,
+  LIVE_SUITE_FILES,
+} from '../../conformance/suites.mjs';
 import { externalVerificationDigest } from '../../packages/gate/reports/external-verification.js';
 import {
   signExternalVerificationStatement,
@@ -138,7 +144,76 @@ try {
   assert.throws(() => compareSuiteResults(suite, extra), (e) => e instanceof Refusal && e.reason === 'unknown_vector_ids');
   assert.throws(() => loadSuite('no-such-suite.v1.json'), (e) => e instanceof Refusal && e.reason === 'unknown_suite');
   assert.throws(() => suiteNameForResultsFile('receipts.v1.json'), (e) => e instanceof Refusal && e.reason === 'results_filename_invalid');
-  ok('MODE A refuses with distinct reasons: missing ids, extra ids, unknown suite, bad filename');
+  const typedOutcomeSuite = loadSuite('outcome-binding.v1.json');
+  assert.equal(typedOutcomeSuite.vectors.get('eq_pass'), true);
+  assert.equal(typedOutcomeSuite.vectors.get('eq_fail_divergent'), false);
+  assert.equal(typedOutcomeSuite.vectors.get('graph_predicates_in_bounds_admissible'), true);
+  const typedResultsPath = path.join(tmp, 'outcome-binding.v1.json.results.json');
+  const typedRows = typedOutcomeSuite.json.vectors.map((vector) => ({
+    id: vector.id,
+    ...(typeof vector.expect.outcome === 'string'
+      ? { outcome: vector.expect.outcome }
+      : typeof vector.expect.verdict === 'string'
+        ? { verdict: vector.expect.verdict }
+        : { valid: vector.expect.valid }),
+  }));
+  fs.writeFileSync(typedResultsPath, JSON.stringify(typedRows, null, 2));
+  const typedResults = loadResults(typedResultsPath).results;
+  assert.equal(compareSuiteResults(typedOutcomeSuite, typedResults).ok, true);
+  const normalizedOnly = new Map(
+    [...typedOutcomeSuite.vectors.entries()].map(([id, valid]) => [id, valid]),
+  );
+  assert.throws(
+    () => compareSuiteResults(typedOutcomeSuite, normalizedOnly),
+    (e) => e instanceof Refusal && e.reason === 'typed_result_required',
+  );
+  for (const [suiteFile, kind] of Object.entries(EXACT_EXTERNAL_RESULT_KINDS)) {
+    const exactSuite = loadSuite(suiteFile);
+    const exactResultsPath = path.join(tmp, `${suiteFile}.results.json`);
+    const exactRows = exactSuite.json.vectors.map((vector) => ({
+      id: vector.id,
+      ...vector.expect,
+    }));
+    fs.writeFileSync(exactResultsPath, JSON.stringify(exactRows, null, 2));
+    assert.equal(
+      compareSuiteResults(exactSuite, loadResults(exactResultsPath).results).ok,
+      true,
+      suiteFile,
+    );
+
+    const reducedRows = exactSuite.json.vectors.map((vector) => ({
+      id: vector.id,
+      [kind]: vector.expect[kind],
+    }));
+    fs.writeFileSync(exactResultsPath, JSON.stringify(reducedRows, null, 2));
+    assert.equal(
+      compareSuiteResults(exactSuite, loadResults(exactResultsPath).results).ok,
+      false,
+      `${suiteFile}: reduced primary result must diverge`,
+    );
+
+    const malformedRows = structuredClone(exactRows);
+    malformedRows[0].result_digest = 'not-a-digest';
+    fs.writeFileSync(exactResultsPath, JSON.stringify(malformedRows, null, 2));
+    assert.throws(
+      () => loadResults(exactResultsPath),
+      (e) => e instanceof Refusal && e.reason === 'malformed_results_entry',
+      `${suiteFile}: malformed digest must refuse`,
+    );
+  }
+  const exactOutcomeSuite = loadSuite('outcome-binding.exec.v1.json');
+  const booleanOnlyOutcomePath = path.join(tmp, 'outcome-binding.exec.v1.json.results.json');
+  fs.writeFileSync(booleanOnlyOutcomePath, JSON.stringify(
+    exactOutcomeSuite.json.vectors.map((vector) => ({ id: vector.id, valid: vector.expect.valid })),
+    null,
+    2,
+  ));
+  assert.throws(
+    () => compareSuiteResults(exactOutcomeSuite, loadResults(booleanOnlyOutcomePath).results),
+    (e) => e instanceof Refusal && e.reason === 'typed_result_required',
+  );
+  assert.deepEqual(referenceRunnerSuites(), [...LIVE_SUITE_FILES]);
+  ok('MODE A requires complete typed checks, reasons, and digests for exact-result suites');
 
   // 8. MODE B labeling, WITHOUT executing the reference runner: the factored
   //    builder is fed a fabricated green runner outcome and must carry the

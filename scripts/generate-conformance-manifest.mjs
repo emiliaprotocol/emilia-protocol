@@ -8,6 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { canonicalize } from '../packages/verify/index.js';
 import { strictParseGate } from '../conformance/runners/strict-json.mjs';
 import { LIVE_SUITE_FILES } from '../conformance/suites.mjs';
+import {
+  buildSuiteContract,
+  compareResultRow,
+  executionSuiteFile,
+  validateResultRows,
+} from '../conformance/result-contract.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_PATH = path.join(ROOT, 'conformance/clean-room/bundle.v1.json');
@@ -71,7 +77,12 @@ const implementations = [
     id: 'emilia-javascript-reference', language: 'javascript', relationship: 'one_team_port',
     command: process.execPath, args: (suite) => ['conformance/runners/run-js.mjs', suite], cwd: ROOT,
     runner: path.join(ROOT, 'conformance/runners/run-js.mjs'),
-    sources: [path.join(ROOT, 'packages/verify')],
+    sources: [
+      path.join(ROOT, 'packages/verify'),
+      path.join(ROOT, 'lib/authority'),
+      path.join(ROOT, 'lib/evidence/effect-predicates.js'),
+      path.join(ROOT, 'lib/evidence/evidence-graph.js'),
+    ],
   },
   {
     id: 'emilia-python-reference', language: 'python', relationship: 'one_team_port',
@@ -114,7 +125,15 @@ for (const suiteRef of suiteRefs) {
   const suite = parseStrictJson(bytes.toString('utf8'), `suite ${suiteRef.path}`);
   if (!Array.isArray(suite.vectors)) throw new Error(`suite has no vectors: ${suiteRef.path}`);
   vectorCount += suite.vectors.length;
-  suites.push({ path: suiteRef.path, sha256: suiteSha256, vectors: suite.vectors.length });
+  const suiteFile = path.basename(suiteRef.path);
+  const executionFile = cleanRoom ? suiteFile : executionSuiteFile(suiteFile);
+  const executionPath = path.resolve(ROOT, 'conformance/vectors', executionFile);
+  const manifestSuite = { path: suiteRef.path, sha256: suiteSha256, vectors: suite.vectors.length };
+  if (executionFile !== suiteFile) {
+    manifestSuite.execution_path = relative(executionPath);
+    manifestSuite.execution_sha256 = sha256(fs.readFileSync(executionPath));
+  }
+  suites.push(manifestSuite);
 }
 
 const implementationResults = [];
@@ -122,9 +141,13 @@ for (const implementation of implementations) {
   const normalized = [];
   for (const suite of suites) {
     const suitePath = path.resolve(ROOT, suite.path);
+    const suiteFile = path.basename(suite.path);
+    const executionPath = suite.execution_path
+      ? path.resolve(ROOT, suite.execution_path)
+      : suitePath;
     let stdout;
     try {
-      stdout = execFileSync(implementation.command, implementation.args(suitePath), {
+      stdout = execFileSync(implementation.command, implementation.args(executionPath), {
         cwd: implementation.cwd,
         encoding: 'utf8',
         timeout: 180_000,
@@ -136,20 +159,18 @@ for (const implementation of implementations) {
     }
     const results = parseStrictJson(stdout, `${implementation.id} output for ${suite.path}`);
     const sourceSuite = parseStrictJson(fs.readFileSync(suitePath, 'utf8'), `suite ${suite.path}`);
-    const expected = new Map(sourceSuite.vectors.map((vector) => [vector.id, vector.expect.valid]));
-    if (!Array.isArray(results) || results.length !== expected.size) throw new Error(`${implementation.id} returned wrong result count for ${suite.path}`);
-    const seen = new Set();
-    for (const result of results) {
-      if (!result || typeof result !== 'object' || Array.isArray(result)
-        || Object.keys(result).length !== 2 || !Object.hasOwn(result, 'id') || !Object.hasOwn(result, 'valid')
-        || typeof result.id !== 'string' || typeof result.valid !== 'boolean' || seen.has(result.id)) {
-        throw new Error(`${implementation.id} emitted a malformed result for ${suite.path}`);
+    const executionSuite = executionPath === suitePath
+      ? sourceSuite
+      : parseStrictJson(fs.readFileSync(executionPath, 'utf8'), `suite ${relative(executionPath)}`);
+    const contract = buildSuiteContract(suiteFile, sourceSuite, executionSuite);
+    const byID = validateResultRows(contract, results);
+    for (const id of contract.expectations.keys()) {
+      const result = byID.get(id);
+      const comparison = compareResultRow(contract, result);
+      if (!comparison.ok) {
+        throw new Error(`${implementation.id} disagreed on ${suite.path}#${id}: ${comparison.detail}`);
       }
-      seen.add(result.id);
-      if (!expected.has(result.id) || expected.get(result.id) !== result.valid) {
-        throw new Error(`${implementation.id} disagreed on ${suite.path}#${result.id}`);
-      }
-      normalized.push({ suite: suite.path, id: result.id, valid: result.valid });
+      normalized.push({ suite: suite.path, ...result });
     }
   }
   normalized.sort((a, b) => a.suite.localeCompare(b.suite) || a.id.localeCompare(b.id));

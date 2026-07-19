@@ -38,6 +38,17 @@ describe('the sufficiency policy is relying-party-supplied, never bundle-chosen'
     expect(r.verdict).toBe('unverifiable');
     expect(r.reasons.join(' ')).toMatch(/never read from the bundle/i);
   });
+
+  it('malformed freshness and revocation policy shapes are unverifiable, never ignored', () => {
+    const malformed = {
+      ...POLICIES.audit,
+      freshness_sec: 'forever',
+      revocation_required: 'authorization_receipt',
+    };
+    const result = evaluateAdmissibility(bundle(baseComponents()), malformed, AT);
+    expect(result.verdict).toBe('unverifiable');
+    expect(result.reasons.join(' ')).toContain('malformed relying-party policy');
+  });
 });
 
 describe('verdict precedence: unverifiable > conflicted > stale > missing > admissible', () => {
@@ -79,6 +90,18 @@ describe('determinism / policy replay', () => {
     const a = evaluateAdmissibility(bundle(baseComponents()), POLICIES.money_movement, AT);
     const c = evaluateAdmissibility(bundle(baseComponents()), POLICIES.audit, AT);
     expect(a.replay_digest).not.toBe(c.replay_digest);
+  });
+
+  it('the replay digest binds the exact bundle action and classified verdict record', () => {
+    const policy = {
+      policy_id: 'ep:test:empty', reliance_purpose: 'audit', requirement: 'authorization_receipt',
+    };
+    const a = evaluateAdmissibility({ action_digest: 'sha256:' + 'a'.repeat(64), components: [] }, policy, AT);
+    const b = evaluateAdmissibility({ action_digest: 'sha256:' + 'b'.repeat(64), components: [] }, policy, AT);
+    expect(a.verdict).toBe('missing_evidence');
+    expect(b.verdict).toBe('missing_evidence');
+    expect(a.replay_digest).not.toBe(b.replay_digest);
+    expect(a.replay).toMatchObject({ verdict: a.verdict, action_digest: a.action_digest });
   });
 });
 
@@ -152,5 +175,6 @@ describe('requirement expression evaluator is fail-closed', () => {
     expect(evalRequirement('a AND', new Set(['a']))).toBe(false);
     expect(evalRequirement('AND a', new Set(['a']))).toBe(false);
     expect(evalRequirement('a )( b', new Set(['a', 'b']))).toBe(false);
+    expect(evalRequirement('a!', new Set(['a']))).toBe(false);
   });
 });

@@ -1,0 +1,609 @@
+{
+  "suite": "EP-OUTCOME-BINDING-v1-real-crypto",
+  "profile": "Executable full-protocol vectors: real Trust Receipt bytes, pinned approver/log/executor keys, signed observed-effects attestations, and exact typed outcome/check/reason/input/result-digest expectations.",
+  "vectors_version": "1.1.0",
+  "count": 10,
+  "common": {
+    "receipt": {
+      "receipt_id": "ep:receipt:outcome-vector-1",
+      "action": {
+        "ep_version": "1.0",
+        "action_type": "payment.release",
+        "target": {
+          "system": "treasury.example",
+          "resource": "payment/991"
+        },
+        "parameters": {
+          "amount": "10.00",
+          "currency": "USD"
+        },
+        "initiator": "ep:entity:agent-7",
+        "policy_id": "ep:policy:payment@v1",
+        "requested_at": "2026-07-19T16:00:00.000Z",
+        "predicted_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "predicate": {
+              "op": "lte",
+              "value": "10.00"
+            }
+          }
+        ],
+        "predicted_effects_digest": "sha256:ce7c46fb046939fba4788f2eefd11f07aa0c16a17ed327a2c7a65779bf3b6b2a"
+      },
+      "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+      "contexts": [
+        {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+          "policy_id": "ep:policy:payment@v1",
+          "policy_hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+          "initiator": "ep:entity:agent-7",
+          "approver": "ep:approver:alice",
+          "approver_index": 1,
+          "required_approvals": 2,
+          "nonce": "outcome-vector-approver-a",
+          "issued_at": "2026-07-19T16:00:00.000Z",
+          "expires_at": "2026-07-19T17:00:00.000Z"
+        },
+        {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+          "policy_id": "ep:policy:payment@v1",
+          "policy_hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+          "initiator": "ep:entity:agent-7",
+          "approver": "ep:approver:bob",
+          "approver_index": 2,
+          "required_approvals": 2,
+          "nonce": "outcome-vector-approver-b",
+          "issued_at": "2026-07-19T16:00:00.000Z",
+          "expires_at": "2026-07-19T17:00:00.000Z"
+        }
+      ],
+      "signoffs": [
+        {
+          "context_hash": "sha256:6df3c97b5a3a1877cc2d903ef5d718095526e852b0ea56ff4f4b78d9114151b2",
+          "key_class": "B",
+          "approver_key_id": "ep:key:approver-a#1",
+          "signed_at": "2026-07-19T16:00:00.000Z",
+          "signature": "4SLEoZSVUZn-DgDgG5MM88jIjBSw9kG1a7FmM2bBR2QdAE64f1WRx0xE2HzSHSV2dOVDe-2voG_9Vtu7RiCOCQ"
+        },
+        {
+          "context_hash": "sha256:9f342f46896a023b1f337f43e9eca1973d1bcbaa35466aff01284e0a43bd0897",
+          "key_class": "B",
+          "approver_key_id": "ep:key:approver-b#1",
+          "signed_at": "2026-07-19T16:00:00.000Z",
+          "signature": "BGM5af_KVgoJ-wjMx-7WLC5jdufROD6TW2S7TTyhG5oOnF8nJ6oEgERbECEWtNZMFg0PhWzg3pF0nOGmBgWaDw"
+        }
+      ],
+      "consumption": {
+        "nonce": "outcome-vector-consumption",
+        "state": "COMMITTED",
+        "committed_at": "2026-07-19T16:00:00.000Z"
+      },
+      "log_proof": {
+        "alg": "EP-MERKLE-v2",
+        "leaf_hash": "58d32b4492dcd994139b24c7cb154f9b6e2f8af686b0eee23854bff16dc3c3f7",
+        "leaf_index": 0,
+        "inclusion_path": [],
+        "checkpoint": {
+          "tree_size": 1,
+          "root_hash": "58d32b4492dcd994139b24c7cb154f9b6e2f8af686b0eee23854bff16dc3c3f7",
+          "log_key_id": "ep:log:outcome-vector#1",
+          "merkle_alg": "EP-MERKLE-v2",
+          "log_signature": "yYM3AQ4ZSdE--OB3OcIt5aM8-puBul_8G6RM3_Zoj2GS3KjaDMKw7iLr6Ly9uabmkc8Im4CKVlsdrHh2NERIDw"
+        }
+      }
+    },
+    "receipt_options": {
+      "approverKeys": {
+        "ep:key:approver-a#1": {
+          "approver_id": "ep:approver:alice",
+          "public_key": "MCowBQYDK2VwAyEArwaj4ykXFOTzVsGcmxXNGVHsbmZiqne-B1R_KJODNB0",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00.000Z",
+          "valid_to": "2027-01-01T00:00:00.000Z"
+        },
+        "ep:key:approver-b#1": {
+          "approver_id": "ep:approver:bob",
+          "public_key": "MCowBQYDK2VwAyEALfBBJfABWvtHzoU674dyCU_5SYwUyxueEpc8KSfaD6Y",
+          "key_class": "B",
+          "valid_from": "2026-01-01T00:00:00.000Z",
+          "valid_to": "2027-01-01T00:00:00.000Z"
+        }
+      },
+      "logPublicKey": "MCowBQYDK2VwAyEAp_bfr484uJuozmSbWU-R5NAf3Ff5yUk99DteUKmYc2c"
+    },
+    "executor_keys": {
+      "ep:executor:payments-1": {
+        "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM"
+      }
+    },
+    "now": "2026-07-19T16:02:00.000Z"
+  },
+  "vectors": [
+    {
+      "id": "accept_real_receipt_and_executor_attestation",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "xrGeEQIS1t7OqvqIE5eFMcTRgo8lKgPIWgixVzW8t3Xnfn7v99DSn6LqWzmBHqmIuFDQR29sWTiBIiNz9syqAw"
+        }
+      },
+      "expect": {
+        "outcome": "in_bounds",
+        "valid": true,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": true,
+          "receipt_digest_bound": true,
+          "action_bound": true,
+          "consumption_bound": true,
+          "attestation_verified": true
+        },
+        "reasons": [],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:8e1eec7e6536e8497301452329d1271a6f6cf33fb2696430b6e88f7ff070a5b8",
+        "result_digest": "sha256:5e3fd60afc436bd2d576e4d43448cdf116750e45122a7c9239b393e21b4b171c"
+      }
+    },
+    {
+      "id": "reject_signed_effect_divergence",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "11.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:d2dcdaf8d2ccf480f98d3eb56c388f306f30cbf7769aefc1cde37650f264b6ba",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "rP2tZzbQquyCWe6bL1zv9vvVXAjz_WRXdeUbbuQl4U5sVs8t2RrFLh5HRYx6kwxWhFB-xUq4R28hhe7yTVigCw"
+        }
+      },
+      "expect": {
+        "outcome": "divergent",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": true,
+          "receipt_digest_bound": true,
+          "action_bound": true,
+          "consumption_bound": true,
+          "attestation_verified": true
+        },
+        "reasons": [
+          "signed_receipt: predicted <= 10.00 for payment on acct:vendor-9, observed 11.00"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:7246401cebc9429648c64b0c9dd6bfdc4a8ca4736019692335eed966ba18e972",
+        "result_digest": "sha256:e6dae41d24fb539a3e4aa653d15ee331d375b5a5d0db68df9b91ad5d2e1826ae"
+      }
+    },
+    {
+      "id": "reject_policy_tightening_divergence",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "xrGeEQIS1t7OqvqIE5eFMcTRgo8lKgPIWgixVzW8t3Xnfn7v99DSn6LqWzmBHqmIuFDQR29sWTiBIiNz9syqAw"
+        }
+      },
+      "policy_predicted_effects": [
+        {
+          "effect_type": "payment",
+          "target": "acct:vendor-9",
+          "predicate": {
+            "op": "lte",
+            "value": "5.00"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "divergent",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": true,
+          "receipt_digest_bound": true,
+          "action_bound": true,
+          "consumption_bound": true,
+          "attestation_verified": true
+        },
+        "reasons": [
+          "relying_party_policy: predicted <= 5.00 for payment on acct:vendor-9, observed 9.00"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:8e1eec7e6536e8497301452329d1271a6f6cf33fb2696430b6e88f7ff070a5b8",
+        "result_digest": "sha256:d1f1a9d67d14c81a3595c6f269fab372808aa070ae0ef28af872220fac3cab17"
+      }
+    },
+    {
+      "id": "reject_resigned_receipt_id_swap",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:other",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "OIurMWyVprDeSay6S-1gD-qmoUkPdYEx9OYK77uQmumL3OURRr0qewRMAiCG_eanTNvexFDQLxrgIkX_pBsQAg"
+        }
+      },
+      "expect": {
+        "outcome": "incomparable",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": false,
+          "receipt_digest_bound": true,
+          "action_bound": true,
+          "consumption_bound": true,
+          "attestation_verified": true
+        },
+        "reasons": [
+          "receipt_id_mismatch",
+          "attestation_not_bound_to_verified_receipt"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:ba3917ab460e06253534ff0d06cb85441e040ea8fbe6808a0af52f0e5a14ec41",
+        "result_digest": "sha256:a9c37e993131672b4e2c4b8a044bd7a675a2017516d4089f659008efb58fa95d"
+      }
+    },
+    {
+      "id": "reject_resigned_receipt_bytes_swap",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "jh2BW4MxrrV-uXgbNFAtUy1EbI-L5voo20Fu2YUc881g-h164BUSWtGP5cXMXNKDa8TUMqDJKlTgjba7Wq0eDg"
+        }
+      },
+      "expect": {
+        "outcome": "incomparable",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": true,
+          "receipt_digest_bound": false,
+          "action_bound": true,
+          "consumption_bound": true,
+          "attestation_verified": true
+        },
+        "reasons": [
+          "receipt_digest_mismatch",
+          "attestation_not_bound_to_verified_receipt"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:d0de3cdfc051b0926afbabd05e6d23054d1918b047a39f1811778118db9a1fec",
+        "result_digest": "sha256:b8f73f2ac6801c6fc7608a2ca33ba2a7154b315a07f9cd763e07869d643dce4e"
+      }
+    },
+    {
+      "id": "reject_resigned_action_swap",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "jqurERXACHTj5ezRvzQyuAdAb7K-s_2q19-4edaF40SBuO8OOmbTRvWkOlapNq-v2H4OWBYlScWR3jF4LE3iAg"
+        }
+      },
+      "expect": {
+        "outcome": "incomparable",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": true,
+          "receipt_digest_bound": true,
+          "action_bound": false,
+          "consumption_bound": true,
+          "attestation_verified": true
+        },
+        "reasons": [
+          "action_hash_mismatch",
+          "attestation_not_bound_to_verified_receipt"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:0d2658e49efa4eab7a385fffe94c2ffba22e51c148534dc26e14529af5a7a4e9",
+        "result_digest": "sha256:87030511a07ca76b6df4691d1f997d08b5a2495769fe6bb2e8fc0eb0cdd323d2"
+      }
+    },
+    {
+      "id": "reject_resigned_consumption_nonce_swap",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "other-consumption-nonce",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "DrXhe5AOdaiZ0gE6UJ_wFkwylg9z8sZgQ6efFPppjtZHo5tvxZ2d_c0UwdEDZ-ck-bfQ3Zl1589jHtmsB0IyAw"
+        }
+      },
+      "expect": {
+        "outcome": "incomparable",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": true,
+          "receipt_digest_bound": true,
+          "action_bound": true,
+          "consumption_bound": false,
+          "attestation_verified": true
+        },
+        "reasons": [
+          "consumption_nonce_mismatch",
+          "attestation_not_bound_to_verified_receipt"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:b1c612168450cec2bed6778443d731610468d0b181b3af8ae8750e3cae382525",
+        "result_digest": "sha256:35cb59d0810ca91acd91ae5ba5ca997333372f3de40605837f6105f82d8d3983"
+      }
+    },
+    {
+      "id": "reject_post_signature_observation_tamper",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "0.01"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "xrGeEQIS1t7OqvqIE5eFMcTRgo8lKgPIWgixVzW8t3Xnfn7v99DSn6LqWzmBHqmIuFDQR29sWTiBIiNz9syqAw"
+        }
+      },
+      "expect": {
+        "outcome": "incomparable",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": false,
+          "receipt_digest_bound": false,
+          "action_bound": false,
+          "consumption_bound": false,
+          "attestation_verified": false
+        },
+        "reasons": [
+          "observed_effects_digest_mismatch",
+          "executor_signature_invalid",
+          "outcome_attestation_verification_failed"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:8ec55456d09958e6f78b8f7a0f9d75270e762374be92967269a90a4df3c21a40",
+        "result_digest": "sha256:d2084fbead54cabc2897df923fa8aa7940e9092bc97b94b0f1afaf6240157ea3"
+      }
+    },
+    {
+      "id": "reject_unpinned_executor",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "xrGeEQIS1t7OqvqIE5eFMcTRgo8lKgPIWgixVzW8t3Xnfn7v99DSn6LqWzmBHqmIuFDQR29sWTiBIiNz9syqAw"
+        }
+      },
+      "executor_keys": {},
+      "expect": {
+        "outcome": "incomparable",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": false,
+          "receipt_digest_bound": false,
+          "action_bound": false,
+          "consumption_bound": false,
+          "attestation_verified": false
+        },
+        "reasons": [
+          "executor_key_not_pinned",
+          "executor_signature_invalid",
+          "outcome_attestation_verification_failed"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:8e1eec7e6536e8497301452329d1271a6f6cf33fb2696430b6e88f7ff070a5b8",
+        "result_digest": "sha256:b097cf0df613e690b682fb442623025935ca61e9cc39ad4f6435c25856532dfc"
+      }
+    },
+    {
+      "id": "reject_malformed_policy_predictions",
+      "attestation": {
+        "@version": "EP-OUTCOME-ATTESTATION-v1",
+        "receipt_id": "ep:receipt:outcome-vector-1",
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "action_hash": "sha256:d5332018e3e0caa454b9a5391a33fa57f58fcbb645ff443e112236caee4bf51a",
+        "consumption_nonce": "outcome-vector-consumption",
+        "execution_id": "ep:execution:outcome-vector-1",
+        "executor_id": "ep:executor:payments-1",
+        "executed_at": "2026-07-19T16:01:00.000Z",
+        "observed_effects": [
+          {
+            "effect_type": "payment",
+            "target": "acct:vendor-9",
+            "value": "9.00"
+          }
+        ],
+        "observed_effects_digest": "sha256:9f743dd41ee3e572e44c0d0ceb7244e5d6f3feda34a665bbfecd50fed42ad1bc",
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:executor-key:sha256:388c2c3d36281df10058e1ae630c3fd833a9f33375b7a8a266c448c369a79791",
+          "public_key": "MCowBQYDK2VwAyEAK8KACzMW4Akgn_11fasZzPCuhLx66QZU4egXEtJw9lM",
+          "signature_b64u": "xrGeEQIS1t7OqvqIE5eFMcTRgo8lKgPIWgixVzW8t3Xnfn7v99DSn6LqWzmBHqmIuFDQR29sWTiBIiNz9syqAw"
+        }
+      },
+      "policy_predicted_effects": {
+        "allow": true
+      },
+      "expect": {
+        "outcome": "incomparable",
+        "valid": false,
+        "checks": {
+          "receipt_verified": true,
+          "signed_predictions": true,
+          "receipt_bound": false,
+          "receipt_digest_bound": false,
+          "action_bound": false,
+          "consumption_bound": false,
+          "attestation_verified": false
+        },
+        "reasons": [
+          "policy_predictions_present_but_not_array"
+        ],
+        "receipt_digest": "sha256:75ac23c83295051f72a366fbac2773abb488e11ae9377bfd7859574fbada4d45",
+        "attestation_digest": "sha256:8e1eec7e6536e8497301452329d1271a6f6cf33fb2696430b6e88f7ff070a5b8",
+        "result_digest": "sha256:effe77cb4e8bb6962aabbb892c6bb820eb788b688b2db590c9fc27b3ae7149e4"
+      }
+    }
+  ]
+}

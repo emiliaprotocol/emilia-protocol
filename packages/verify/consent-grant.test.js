@@ -66,6 +66,8 @@ function makeReceipt(grant, actionOverrides = {}) {
 
 const revokerSigner = newSigner();
 function makeRevocation(grant, { revokerId = 'ep:revoker:site3_ciso', revokedAt = NOW } = {}) {
+  const revokerKeyId = `ep:revoker-key:sha256:${crypto.createHash('sha256')
+    .update(Buffer.from(revokerSigner.publicKeyB64u, 'base64url')).digest('hex')}`;
   const signedFields = {
     '@version': REVOCATION_VERSION,
     action_hash: grant.grant_hash,
@@ -88,7 +90,7 @@ function makeRevocation(grant, { revokerId = 'ep:revoker:site3_ciso', revokedAt 
     reason: 'authority withdrawn',
     proof: {
       algorithm: 'Ed25519',
-      revoker_key_id: 'rk1',
+      revoker_key_id: revokerKeyId,
       public_key: revokerSigner.publicKeyB64u,
       signature_b64u: signature,
     },
@@ -232,18 +234,28 @@ test('rejects a revoked grant (grant_revoked)', () => {
   assert.strictEqual(c.reason, 'grant_revoked');
 });
 
-test('an unpinned revoker cannot revoke (fail-closed on the revoker, grant stays valid)', () => {
+test('a supplied revocation from an unpinned revoker refuses as invalid evidence', () => {
   const grant = makeGrant();
   const revocation = makeRevocation(grant);
   const r = verifyConsentGrant(grant, PRINCIPAL.publicKeyB64u, {
     now: NOW,
     revocation,
-    revokerKeys: {}, // revoker not pinned => revocation does not bind => grant valid
+    revokerKeys: {},
   });
-  assert.strictEqual(r.valid, true, r.reason);
+  assert.strictEqual(r.valid, false);
+  assert.strictEqual(r.reason, 'revocation_invalid');
+
+  const composed = verifyReceiptUnderGrant(makeReceipt(grant), grant, {
+    now: NOW,
+    pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+    revocation,
+    revokerKeys: {},
+  });
+  assert.strictEqual(composed.ok, false);
+  assert.strictEqual(composed.reason, 'revocation_invalid');
 });
 
-test('a revocation bound to a DIFFERENT grant does not revoke (revoke-A-for-B)', () => {
+test('a supplied revocation bound to a different grant refuses as invalid evidence', () => {
   const grant = makeGrant();
   const otherGrant = makeGrant({ grant_id: 'grant_other' });
   const revocationForOther = makeRevocation(otherGrant);
@@ -252,7 +264,8 @@ test('a revocation bound to a DIFFERENT grant does not revoke (revoke-A-for-B)',
     revocation: revocationForOther,
     revokerKeys: { 'ep:revoker:site3_ciso': { public_key: revokerSigner.publicKeyB64u } },
   });
-  assert.strictEqual(r.valid, true, r.reason);
+  assert.strictEqual(r.valid, false);
+  assert.strictEqual(r.reason, 'revocation_invalid');
 });
 
 // ── native grant_hash in the SIGNED Action Object ────────────────────────────

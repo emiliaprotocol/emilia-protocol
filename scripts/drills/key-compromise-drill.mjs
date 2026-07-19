@@ -26,7 +26,6 @@ export function runKeyCompromiseDrill({ now = '2026-06-28T12:00:00.000Z' } = {})
     revoked_at: now,
     reason: 'drill: signing key compromise',
     signer: {
-      revoker_key_id: revokerId,
       privateKey: compromised.privateKey,
       publicKeyB64u: compromised.publicKeyB64u,
     },

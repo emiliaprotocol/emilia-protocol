@@ -5,6 +5,7 @@
 // Run: node generate-revtime.mjs
 import crypto from 'node:crypto';
 import { writeFileSync } from 'node:fs';
+import { verifyRevocation } from '../../packages/verify/index.js';
 
 const canon = (v) => v === null || v === undefined ? JSON.stringify(v)
   : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
@@ -26,6 +27,10 @@ function newSigner() {
   return { privateKey, pub: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 }
 const sign = (obj, priv) => crypto.sign(null, Buffer.from(canon(obj), 'utf8'), priv).toString('base64url');
+const digest = (value) => `sha256:${crypto.createHash('sha256')
+  .update(Buffer.from(canon(value), 'utf8')).digest('hex')}`;
+const revokerKeyId = (publicKeyB64u) => `ep:revoker-key:sha256:${crypto
+  .createHash('sha256').update(Buffer.from(publicKeyB64u, 'base64url')).digest('hex')}`;
 
 // ── EP-REVOCATION-v1 ─────────────────────────────────────────────────────────
 const RV = 'EP-REVOCATION-v1';
@@ -33,11 +38,18 @@ const TARGET = { target_type: 'receipt', target_id: 'rcpt_x', action_hash: 'sha2
 const REVOKER = 'ep:revoker:ig_okafor';
 const REVOKED_AT = '2026-06-20T12:00:00.000Z';
 
-function revStatement({ signer, target = TARGET, actionHash = target.action_hash, reason = 'authority withdrawn', revokedAt = REVOKED_AT }) {
-  const signed = { '@version': RV, action_hash: actionHash ?? null, reason, revoked_at: revokedAt ?? null, revoker_id: REVOKER, target_id: target.target_id ?? null, target_type: target.target_type ?? null };
-  return { '@version': RV, target_type: target.target_type, target_id: target.target_id, action_hash: actionHash, revoker_id: REVOKER, revoked_at: revokedAt, reason, proof: { algorithm: 'Ed25519', revoker_key_id: 'rk1', public_key: signer.pub, signature_b64u: sign(signed, signer.privateKey) } };
+function revStatement({
+  signer,
+  target = TARGET,
+  actionHash = target.action_hash,
+  reason = 'authority withdrawn',
+  revokedAt = REVOKED_AT,
+  revokerId = REVOKER,
+}) {
+  const signed = { '@version': RV, action_hash: actionHash ?? null, reason, revoked_at: revokedAt ?? null, revoker_id: revokerId, target_id: target.target_id ?? null, target_type: target.target_type ?? null };
+  return { '@version': RV, target_type: target.target_type, target_id: target.target_id, action_hash: actionHash, revoker_id: revokerId, revoked_at: revokedAt, reason, proof: { algorithm: 'Ed25519', revoker_key_id: revokerKeyId(signer.pub), public_key: signer.pub, signature_b64u: sign(signed, signer.privateKey) } };
 }
-const pinR = (s) => ({ [REVOKER]: { public_key: s.pub } });
+const pinR = (s) => ({ [REVOKER]: { public_key: s.pub, key_id: revokerKeyId(s.pub) } });
 
 const RVEC = [];
 const addR = (id, expectValid, vec) => RVEC.push({ id, expect: { valid: expectValid }, ...vec });
@@ -55,12 +67,77 @@ const addR = (id, expectValid, vec) => RVEC.push({ id, expect: { valid: expectVa
 { const s = newSigner(); addR('reject_future_effective_instant', false, { target: TARGET, revocation: revStatement({ signer: s, revokedAt: '2026-06-21T12:00:00.000Z' }), revoker_keys: pinR(s), now: '2026-06-20T12:00:00.000Z' }); }
 { const s = newSigner(); const malformed = { target_type: 'receipt', target_id: '', action_hash: 'not-a-digest' }; addR('reject_malformed_target_shape', false, { target: malformed, revocation: revStatement({ signer: s, target: malformed }), revoker_keys: pinR(s) }); }
 { const s = newSigner(); const st = revStatement({ signer: s }); st.proof.algorithm = 'ES256'; addR('reject_algorithm_label_mismatch', false, { target: TARGET, revocation: st, revoker_keys: pinR(s) }); }
+{ const s = newSigner(); const st = revStatement({ signer: s }); st.proof.revoker_key_id = 'ep:revoker-key:sha256:' + 'f'.repeat(64); addR('reject_revoker_key_id_substitution', false, { target: TARGET, revocation: st, revoker_keys: pinR(s) }); }
+{ const s = newSigner(); const st = revStatement({ signer: s }); st.scope_note = 'unsigned'; addR('reject_unsigned_top_level_member', false, { target: TARGET, revocation: st, revoker_keys: pinR(s) }); }
+{ const s = newSigner(); const st = revStatement({ signer: s }); st.proof.signed_payload_b64u = Buffer.from('unsigned').toString('base64url'); addR('reject_unsigned_proof_member', false, { target: TARGET, revocation: st, revoker_keys: pinR(s) }); }
 { const s = newSigner(); addR('accept_old_terminal_revocation', true, { target: TARGET, revocation: revStatement({ signer: s, revokedAt: '2020-01-01T00:00:00.000Z' }), revoker_keys: pinR(s), max_age_seconds: 3600, now: '2026-06-20T12:00:00.000Z' }); }
+{
+  const s = newSigner();
+  const st = revStatement({ signer: s });
+  st.proof.revoker_key_id = 'rk1';
+  addR('accept_historical_v1_key_label_with_exact_pinned_spki', true, {
+    target: TARGET,
+    revocation: st,
+    revoker_keys: { [REVOKER]: { public_key: s.pub } },
+  });
+}
+{
+  const s = newSigner();
+  const st = revStatement({ signer: s });
+  st.proof.public_key = '';
+  st.proof.revoker_key_id = `ep:revoker-key:sha256:${crypto.createHash('sha256').digest('hex')}`;
+  addR('reject_empty_presented_key_even_when_signature_matches_pin', false, {
+    target: TARGET,
+    revocation: st,
+    revoker_keys: { [REVOKER]: { public_key: s.pub } },
+  });
+}
+{
+  const s = newSigner();
+  const hostileRevokerId = /** @type {any} */ ({ tenant: REVOKER });
+  addR('reject_non_string_revoker_id_without_crash', false, {
+    target: TARGET,
+    revocation: revStatement({ signer: s, revokerId: hostileRevokerId }),
+    revoker_keys: { [REVOKER]: { public_key: s.pub } },
+  });
+}
+{
+  const s = newSigner();
+  addR('reject_timestamp_with_more_than_nine_fractional_digits', false, {
+    target: TARGET,
+    revocation: revStatement({ signer: s, revokedAt: '2026-06-20T12:00:00.1234567890Z' }),
+    revoker_keys: pinR(s),
+  });
+}
+
+for (const vector of RVEC) {
+  const result = verifyRevocation(vector.target, vector.revocation, {
+    revokerKeys: vector.revoker_keys,
+    maxAgeSeconds: vector.max_age_seconds,
+    now: vector.now,
+  });
+  if (result.valid !== vector.expect.valid) {
+    throw new Error(`${vector.id}: generator self-check failed: ${JSON.stringify(result)}`);
+  }
+  const exactResult = {
+    valid: result.valid,
+    checks: result.checks,
+    reasons: Object.entries(result.checks)
+      .filter(([, passed]) => !passed)
+      .map(([check]) => check),
+    target_digest: digest(vector.target),
+    revocation_digest: digest(vector.revocation),
+  };
+  vector.expect = {
+    ...exactResult,
+    result_digest: digest(exactResult),
+  };
+}
 
 const revSuite = {
   suite: 'EP-REVOCATION-v1',
-  profile: 'Executable revocation-statement vectors (real Ed25519). verifyRevocation(target, statement, opts) must return expect.valid.',
-  vectors_version: '2.0.0',
+  profile: 'Executable revocation-statement vectors (real Ed25519, closed schema, full digest-derived revoker key identifiers, exact-pinned historical-v1 compatibility). Conformance requires the complete typed valid/check/reason/input/result-digest expectation.',
+  vectors_version: '2.3.0',
   count: RVEC.length,
   vectors: RVEC,
 };

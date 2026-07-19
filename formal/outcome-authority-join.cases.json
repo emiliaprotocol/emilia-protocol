@@ -1,0 +1,105 @@
+{
+  "@version": "EP-OUTCOME-AUTHORITY-BOUNDED-CASES-v1",
+  "model": "EP-OUTCOME-AUTHORITY-BOUNDED-MODEL-v1",
+  "vectors": [
+    {
+      "id": "outcome_accept_exact_in_bounds",
+      "kind": "outcome",
+      "state": {},
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "id": "outcome_reject_action_digest_substitution",
+      "kind": "outcome",
+      "state": {
+        "action_digest_match": false
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "outcome_reject_receipt_digest_substitution",
+      "kind": "outcome",
+      "state": {
+        "receipt_digest_match": false
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "outcome_reject_policy_widening_signed_divergence",
+      "kind": "outcome",
+      "state": {
+        "signed_outcome": "divergent",
+        "policy_present": true,
+        "policy_outcome": "in_bounds"
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "authority_accept_newest_key_with_registry_pins",
+      "kind": "authority_join",
+      "state": {},
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "id": "authority_reject_key_omitted_by_newest_document",
+      "kind": "authority_join",
+      "state": {
+        "proof_key_present_in_older": true,
+        "proof_key_present_in_newest": false
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "authority_reject_revoked_proof_key",
+      "kind": "authority_join",
+      "state": {
+        "proof_key_revoked": true
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "authority_reject_revoked_rotation_key",
+      "kind": "authority_rotation",
+      "state": {
+        "rotation_key_revoked": true
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "authority_reject_missing_registry_head_pin",
+      "kind": "authority_join",
+      "state": {
+        "registry_head_pin_present": false
+      },
+      "expect": {
+        "valid": false
+      }
+    },
+    {
+      "id": "authority_reject_missing_registry_epoch_pin",
+      "kind": "authority_join",
+      "state": {
+        "registry_epoch_pin_present": false
+      },
+      "expect": {
+        "valid": false
+      }
+    }
+  ]
+}

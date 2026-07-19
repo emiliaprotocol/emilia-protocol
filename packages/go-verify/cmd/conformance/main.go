@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Go conformance runner: emits [{id, valid}] for each vector. os.Args[1] = vectors path.
+// Go conformance runner: emits exact typed result rows. os.Args[1] = vectors path.
 // Polymorphic: receipt (document) | signoff | quorum.
 package main
 
@@ -46,6 +46,18 @@ type witnessVec struct {
 
 type vec struct {
 	ID                      string                       `json:"id"`
+	AuthorityProof          map[string]any               `json:"proof"`
+	AuthorityDocuments      []map[string]any             `json:"docs"`
+	AuthorityOptions        map[string]any               `json:"opts"`
+	Kind                    string                       `json:"kind"`
+	Expect                  map[string]any               `json:"expect"`
+	PredictedEffects        any                          `json:"predicted_effects"`
+	ObservedEffects         any                          `json:"observed_effects"`
+	Attestation             map[string]any               `json:"attestation"`
+	Approved                map[string]any               `json:"approved"`
+	Policy                  map[string]any               `json:"policy"`
+	ExecutorKeys            map[string]any               `json:"executor_keys"`
+	PolicyPredictedEffects  json.RawMessage              `json:"policy_predicted_effects"`
 	PublicKey               string                       `json:"public_key"`
 	Document                map[string]any               `json:"document"`
 	ResolutionReceipt       map[string]any               `json:"resolution_receipt"`
@@ -354,6 +366,139 @@ func witnessKFromRaw(raw json.RawMessage) (int, bool) {
 	return int(f), true
 }
 
+func resultDigest(value any) string {
+	sum := sha256.Sum256([]byte(emiliaverify.Canonicalize(value)))
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+func mapString(value map[string]any, key string) string {
+	text, _ := value[key].(string)
+	return text
+}
+
+func authorityResult(v vec) map[string]any {
+	result := emiliaverify.VerifyAuthorityProofViaDocument(
+		v.AuthorityProof,
+		v.AuthorityDocuments,
+		v.AuthorityOptions,
+	)
+	encoded, _ := json.Marshal(result)
+	var exact map[string]any
+	_ = json.Unmarshal(encoded, &exact)
+	delete(exact, "limitations")
+	exact["proof_input_digest"] = resultDigest(v.AuthorityProof)
+	exact["document_chain_digest"] = resultDigest(v.AuthorityDocuments)
+	exact["result_digest"] = resultDigest(exact)
+	return exact
+}
+
+var revocationCheckOrder = []string{
+	"version", "structure", "target_bound", "revoker_key_pinned",
+	"revoker_key_bound", "revoked_at_present", "effective_at_or_before_T",
+	"revoker_signature_valid", "signature_binds_statement",
+}
+
+func revocationResult(v vec) map[string]any {
+	opts := map[string]any{"revokerKeys": v.RevokerKeys}
+	if v.Now != "" {
+		opts["now"] = v.Now
+	}
+	if v.MaxAgeSeconds != nil {
+		opts["maxAgeSeconds"] = *v.MaxAgeSeconds
+	}
+	result := emiliaverify.VerifyRevocation(v.Target, v.Revocation, opts)
+	reasons := []string{}
+	for _, check := range revocationCheckOrder {
+		if !result.Checks[check] {
+			reasons = append(reasons, check)
+		}
+	}
+	exact := map[string]any{
+		"valid": result.Valid, "checks": result.Checks, "reasons": reasons,
+		"target_digest":     resultDigest(v.Target),
+		"revocation_digest": resultDigest(v.Revocation),
+	}
+	exact["result_digest"] = resultDigest(exact)
+	return exact
+}
+
+func outcomeExecResult(v vec, common map[string]any) map[string]any {
+	executorKeys := common["executor_keys"]
+	if v.ExecutorKeys != nil {
+		executorKeys = v.ExecutorKeys
+	}
+	options := map[string]any{
+		"receiptOptions": common["receipt_options"],
+		"executorKeys":   executorKeys,
+		"now":            common["now"],
+	}
+	if len(v.PolicyPredictedEffects) > 0 {
+		var policy any
+		_ = json.Unmarshal(v.PolicyPredictedEffects, &policy)
+		options["policyPredictedEffects"] = policy
+	}
+	receipt, _ := common["receipt"].(map[string]any)
+	result := emiliaverify.VerifyOutcomeBinding(receipt, v.Attestation, options)
+	return map[string]any{
+		"outcome": result.OutcomeBinding.Outcome,
+		"valid":   result.Valid, "checks": result.Checks,
+		"reasons":            result.OutcomeBinding.Reasons,
+		"receipt_digest":     emiliaverify.TrustReceiptDigest(receipt),
+		"attestation_digest": resultDigest(v.Attestation),
+		"result_digest":      result.ResultDigest,
+	}
+}
+
+const graphAction = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+func outcomeGraphResult(v vec) map[string]any {
+	reasons := []string{}
+	approvalBound := v.Approved != nil
+	if action, present := v.Approved["action_digest"]; present && action != graphAction {
+		approvalBound = false
+	}
+	if observed, present := v.Attestation["observed_effects"]; present {
+		predictions, predictionsPresent := v.Approved["predicted_effects"]
+		if !approvalBound || !predictionsPresent {
+			reasons = append(reasons, "effect_commitment_missing")
+		} else if v.Approved["predicted_effects_digest"] != emiliaverify.PredictedEffectsDigest(predictions) {
+			reasons = append(reasons, "effect_incomparable")
+		} else {
+			evaluated := emiliaverify.EvaluatePredictedEffects(predictions, observed)
+			if evaluated.Outcome == "divergent" {
+				reasons = append(reasons, "effect_divergence")
+			} else if evaluated.Outcome == "incomparable" {
+				reasons = append(reasons, "effect_incomparable")
+			}
+		}
+		if policyPredictions, policyPresent := v.Policy["predicted_effects"]; policyPresent {
+			evaluated := emiliaverify.EvaluatePredictedEffects(policyPredictions, observed)
+			if evaluated.Outcome == "divergent" {
+				reasons = append(reasons, "effect_divergence")
+			} else if evaluated.Outcome == "incomparable" {
+				reasons = append(reasons, "effect_incomparable")
+			}
+		}
+	}
+	if observed, present := v.Attestation["observed_effect_digest"]; present {
+		committed, committedPresent := v.Approved["committed_effect_digest"]
+		if !approvalBound || !committedPresent {
+			reasons = append(reasons, "effect_commitment_missing")
+		} else if strings.ToLower(fmt.Sprint(committed)) != strings.ToLower(fmt.Sprint(observed)) {
+			reasons = append(reasons, "effect_divergence")
+		}
+	}
+	verdict := "admissible"
+	if len(reasons) > 0 {
+		verdict = "conflicted"
+	}
+	result := map[string]any{"verdict": verdict}
+	if mapString(v.Expect, "reason_contains") != "" {
+		result["reasons"] = reasons
+	}
+	return result
+}
+
 func main() {
 	data, err := os.ReadFile(os.Args[1])
 	if err != nil {
@@ -366,6 +511,7 @@ func main() {
 	}
 	var f struct {
 		Vectors []json.RawMessage `json:"vectors"`
+		Common  map[string]any    `json:"common"`
 	}
 	if err := json.Unmarshal(data, &f); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -389,7 +535,20 @@ func main() {
 			continue
 		}
 		var valid bool
+		var typed map[string]any
 		switch {
+		case v.AuthorityProof != nil && v.AuthorityDocuments != nil && v.AuthorityOptions != nil:
+			typed = authorityResult(v)
+		case v.Kind == "predicate" && v.PredictedEffects != nil:
+			evaluated := emiliaverify.EvaluatePredictedEffects(v.PredictedEffects, v.ObservedEffects)
+			typed = map[string]any{"outcome": evaluated.Outcome}
+			if mapString(v.Expect, "reason_contains") != "" {
+				typed["reasons"] = evaluated.Reasons
+			}
+		case v.Kind == "graph":
+			typed = outcomeGraphResult(v)
+		case v.Attestation != nil && f.Common != nil:
+			typed = outcomeExecResult(v, f.Common)
 		case v.Document != nil:
 			valid = emiliaverify.VerifyReceipt(v.Document, v.PublicKey).Valid
 		case v.ResolutionReceipt != nil || v.ResolutionAuthorization != nil:
@@ -415,14 +574,18 @@ func main() {
 		case v.Quorum != nil:
 			valid = emiliaverify.VerifyQuorumWithOrigins(v.Quorum, "emiliaprotocol.ai", []string{"https://www.emiliaprotocol.ai"}).Valid
 		case v.Revocation != nil:
-			opts := map[string]any{"revokerKeys": v.RevokerKeys}
-			if v.Now != "" {
-				opts["now"] = v.Now
+			if _, exact := v.Expect["result_digest"]; exact {
+				typed = revocationResult(v)
+			} else {
+				opts := map[string]any{"revokerKeys": v.RevokerKeys}
+				if v.Now != "" {
+					opts["now"] = v.Now
+				}
+				if v.MaxAgeSeconds != nil {
+					opts["maxAgeSeconds"] = *v.MaxAgeSeconds
+				}
+				valid = emiliaverify.VerifyRevocation(v.Target, v.Revocation, opts).Valid
 			}
-			if v.MaxAgeSeconds != nil {
-				opts["maxAgeSeconds"] = *v.MaxAgeSeconds
-			}
-			valid = emiliaverify.VerifyRevocation(v.Target, v.Revocation, opts).Valid
 		case v.TimeAttestation != nil:
 			opts := map[string]any{"tsaKeys": v.TSAKeys, "notBefore": v.NotBefore, "notAfter": v.NotAfter}
 			if v.ExpectedHash != "" {
@@ -511,7 +674,15 @@ func main() {
 				VerificationTime: v.VerificationTime, PoliciesByType: v.PoliciesByType,
 			}).Satisfied
 		}
-		out = append(out, map[string]any{"id": v.ID, "valid": valid})
+		row := map[string]any{"id": v.ID}
+		if typed == nil {
+			row["valid"] = valid
+		} else {
+			for key, value := range typed {
+				row[key] = value
+			}
+		}
+		out = append(out, row)
 	}
 	b, _ := json.Marshal(out)
 	fmt.Println(string(b))

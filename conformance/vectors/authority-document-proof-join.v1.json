@@ -1,0 +1,33 @@
+{
+  "suite": "EP-AUTHORITY-DOC-PROOF-JOIN-v1",
+  "vectors_version": "2026-07-19",
+  "note": "Language-neutral scenario catalogue for joining an EP-AUTHORITY-PROOF-v1 signing key to a relying-party-anchored EP-AUTHORITY-DOC-v1 chain. The join accepts only the registry issuer, not the proof grant for an action. Implementations construct the deterministic base fixture, apply the named mutation, and must return the exact accepted/reason result. Exact serialized fixtures are published separately in authority-document-proof-join.exec.v1.json.",
+  "vectors": [
+    { "id": "accept_anchored_document_key_at_issuance", "mutation": "none", "expect": { "accepted": true } },
+    { "id": "reject_no_document_anchor", "mutation": "remove_document_anchors", "expect": { "accepted": false, "reason": "authority_document_anchor_required" } },
+    { "id": "reject_wrong_document_head", "mutation": "wrong_document_head", "expect": { "accepted": false, "reason": "authority_document_anchor_mismatch" } },
+    { "id": "reject_continuity_break", "mutation": "break_continuity", "expect": { "accepted": false, "reason": "authority_document_continuity_break" } },
+    { "id": "reject_non_rotation_issuer_signs_successor", "mutation": "non_rotation_issuer_signs_successor", "expect": { "accepted": false, "reason": "authority_document_continuity_break" } },
+    { "id": "accept_explicit_rotation_issuer_signs_successor", "mutation": "explicit_rotation_issuer_signs_successor", "expect": { "accepted": true } },
+    { "id": "reject_expired_rotation_issuer_signs_successor", "mutation": "expired_rotation_issuer_signs_successor", "expect": { "accepted": false, "reason": "authority_document_continuity_break" } },
+    { "id": "reject_non_monotonic_document_time", "mutation": "non_monotonic_document_time", "expect": { "accepted": false, "reason": "authority_document_chain_invalid" } },
+    { "id": "reject_proof_organization_substitution", "mutation": "proof_organization_substitution", "expect": { "accepted": false, "reason": "authority_document_organization_mismatch" } },
+    { "id": "reject_document_domain_substitution", "mutation": "document_domain_substitution", "expect": { "accepted": false, "reason": "authority_document_chain_invalid" } },
+    { "id": "reject_key_absent_from_document", "mutation": "proof_key_absent", "expect": { "accepted": false, "reason": "authority_proof_key_unresolvable" } },
+    { "id": "reject_key_wrong_usage", "mutation": "wrong_key_usage", "expect": { "accepted": false, "reason": "authority_proof_key_wrong_usage" } },
+    { "id": "reject_later_document_adds_usage_retroactively", "mutation": "later_document_adds_usage_retroactively", "expect": { "accepted": false, "reason": "authority_proof_key_wrong_usage" } },
+    { "id": "reject_key_not_yet_valid_at_proof_time", "mutation": "key_not_yet_valid", "expect": { "accepted": false, "reason": "authority_proof_key_unresolvable" } },
+    { "id": "reject_key_revoked_at_proof_time", "mutation": "key_revoked_at_proof_time", "expect": { "accepted": false, "reason": "authority_proof_key_unresolvable" } },
+    { "id": "accept_historical_proof_before_later_revocation", "mutation": "later_key_revocation", "expect": { "accepted": true } },
+    { "id": "reject_missing_proof_time_anchor", "mutation": "missing_proof_time_anchor", "expect": { "accepted": false, "reason": "authority_proof_time_anchor_required" } },
+    { "id": "reject_mismatched_proof_time_anchor", "mutation": "mismatched_proof_time_anchor", "expect": { "accepted": false, "reason": "authority_proof_time_anchor_mismatch" } },
+    { "id": "reject_missing_registry_snapshot_pins", "mutation": "missing_registry_snapshot_pins", "expect": { "accepted": false, "reason": "registry_snapshot_pins_required" } },
+    { "id": "reject_registry_head_mismatch", "mutation": "wrong_registry_head_pin", "expect": { "accepted": false, "reason": "registry_head_mismatch" } },
+    { "id": "reject_stale_registry_epoch", "mutation": "stale_registry_epoch", "expect": { "accepted": false, "reason": "stale_registry" } },
+    { "id": "reject_tampered_proof", "mutation": "tamper_proof_scope", "expect": { "accepted": false, "reason": "proof_digest_mismatch" } },
+    { "id": "reject_proof_registry_issuer_substitution", "mutation": "proof_registry_issuer_substitution", "expect": { "accepted": false, "reason": "authority_registry_issuer_mismatch" } },
+    { "id": "reject_document_registry_issuer_substitution", "mutation": "document_registry_issuer_substitution", "expect": { "accepted": false, "reason": "authority_registry_issuer_mismatch" } },
+    { "id": "reject_document_head_registry_head_confusion", "mutation": "document_head_registry_head_confusion", "expect": { "accepted": false, "reason": "authority_proof_document_head_mismatch" } },
+    { "id": "reject_full_issuer_key_id_mismatch", "mutation": "full_issuer_kid_mismatch", "expect": { "accepted": false, "reason": "authority_registry_issuer_mismatch" } }
+  ]
+}

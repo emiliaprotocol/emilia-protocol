@@ -46,7 +46,8 @@ who is handed the statement plus the target it concerns can verify, with no
 network and no trust in the bearer, that:
 
 1. a **named, pinned** revoker signed it (identified-but-not-trusted), and
-2. it binds the **exact** target the relying party is reasoning about.
+2. it binds the same **logical target identifier and action commitment** the
+   relying party is reasoning about.
 
 It composes the **frozen** `canonicalize()` from `@emilia-protocol/issue` for the
 signed bytes and touches no Core object. It does **not** replace server-state
@@ -100,9 +101,8 @@ revoked.
   "reason": "policy change — key compromise suspected",
   "proof": {
     "algorithm": "Ed25519",
-    "revoker_key_id": "ep:key:revoker#1",
-    "signed_payload_b64u": "<b64u canonicalize(SIGNED_FIELDS)>",
-    "signature_b64u": "<b64u Ed25519 signature over signed_payload>",
+    "revoker_key_id": "ep:revoker-key:sha256:<64-hex>",
+    "signature_b64u": "<b64u Ed25519 signature over canonical SIGNED_FIELDS>",
     "public_key": "<b64u SPKI DER>"
   }
 }
@@ -114,7 +114,7 @@ revoked.
 | ------------- | ------- |
 | `target_type` | One of `receipt` \| `commit` \| `delegation`. |
 | `target_id`   | The identifier of the thing being revoked (receipt id, commit id, delegation id). |
-| `action_hash` | The `action_hash` the receipt committed to (the **frozen** `actionHash`, I-D §3), or the commit hash for a `commit` target. Binds the statement to the **exact** authorization, so a statement for action A cannot be replayed against action B. |
+| `action_hash` | The action commitment the receipt carries (the **frozen** `actionHash`, I-D §3), or the commit hash for a `commit` target. It is not a digest of arbitrary wrapper serialization. It binds the logical authorization instance so a statement for action A cannot be replayed against action B. |
 
 Both `target_id` **and** `action_hash` are part of the binding (§5). A statement
 revokes the **(target_id, action_hash)** pair, never just an id.
@@ -147,9 +147,22 @@ revokes the **(target_id, action_hash)** pair, never just an id.
   **independently recomputes** these bytes from the **presented** fields and
   rejects a signature over any other bytes (§5.5), so `revoked_at` / `reason` /
   the target cannot be edited after signing.
-- `revoker_key_id` is diagnostic in v1. Trust is selected by
-  `opts.revokerKeys[revoker_id]`; the verifier checks the signature under that
-  pinned public key and never grants authority from the carried key id.
+- New emitters MUST set `revoker_key_id` to
+  `ep:revoker-key:sha256:<64-hex>`, where the digest is computed over the
+  base64url-decoded SPKI DER bytes. The verifier re-derives the identifier,
+  requires it to match the proof and any key id in the relying-party pin, and
+  still selects trust only through `opts.revokerKeys[revoker_id]`.
+- Closed-profile EP-REVOCATION-v1 statements carrying a historical bounded local
+  key label
+  (for example `rk1`) remain verifiable only when the proof key is a non-empty,
+  parseable Ed25519 SPKI that exactly equals the relying-party pin and any pin
+  `key_id` exactly repeats the same local label. A value beginning with
+  `ep:revoker-key:sha256:` never enters this compatibility path unless it is
+  the complete derived identifier. This exception applies only to key-identifier
+  syntax; it does not grandfather old open layouts or extra unsigned members.
+- The statement and proof are closed objects. Unknown members are refused.
+  There is no producer-supplied `signed_payload_b64u` and no unsigned
+  `scope_note`; the verifier has one canonical signed representation.
 
 The signing-side helper is `buildRevocation({ target, revoker_id, revoked_at,
 reason, signer })`; it refuses to mint a statement that does not bind a complete
@@ -192,8 +205,14 @@ verifier evaluates the following gating checks. **Any one false ⇒ `valid:false
 other tag is rejected (vector `f`) — a forked/future tag may carry different
 semantics and is never honored as this version.
 
-### 5.2 `target_bound`
-The statement MUST bind the **exact** target the verifier was handed: both
+### 5.2 `structure`
+The statement and proof MUST contain exactly the members shown in §3. Unknown
+top-level or proof members are refused even when the Ed25519 signature still
+verifies over SIGNED_FIELDS. This prevents unsigned fields from acquiring
+accidental semantics in downstream implementations.
+
+### 5.3 `target_bound`
+The statement MUST bind the same logical target the verifier was handed: both
 `statement.target_type === target.target_type`,
 `statement.target_id === target.target_id`, **and**
 `hexOf(statement.action_hash) === hexOf(target.action_hash)`. A statement for a
@@ -203,11 +222,15 @@ revoke B.** Both sides MUST first contain a recognized target type, a non-empty
 target id, and a valid 64-hex SHA-256 digest; two malformed values never match
 merely because they normalize to the same empty value (vector `j`).
 
-### 5.3 `revoker_key_pinned` (identified-but-not-trusted)
+### 5.4 `revoker_key_pinned` and `revoker_key_bound`
 `revoker_id` MUST resolve to a key the verifier has **pinned** via
 `opts.revokerKeys[revoker_id].public_key`. The proof's carried `public_key` is
-optional; when present, it MUST equal that pinned key. Verification always uses
-the pinned key.
+REQUIRED and MUST equal that pinned key. Verification always uses the pinned
+key. New artifacts use the full digest-derived identifier. A verifier MUST
+derive it from the SPKI and require exact agreement with
+`proof.revoker_key_id` and any `key_id` supplied by the pin, except for the
+narrow historical-v1 compatibility rule in §3. Under that rule the exact
+pinned SPKI remains the cryptographic identity; the local label adds no trust.
 
 - No pin (or no registry supplied) ⇒ **reject** (vector `b`). An unpinned,
   self-asserted key confers **nothing** — anyone can mint a keypair and sign "X
@@ -219,28 +242,26 @@ the pinned key.
   (vector `c`, key substitution): the signature may verify under the substituted
   key, but the key binding fails.
 
-### 5.4 `revoked_at_present` and `effective_at_or_before_T`
+### 5.5 `revoked_at_present` and `effective_at_or_before_T`
 `revoked_at` MUST be present and a strict RFC 3339 instant (vector `h`). Invalid
 calendar dates such as 30 February are rejected rather than normalized by a
 permissive runtime parser. The instant MUST be at or before the verifier's
 decision time `opts.now` (default: wall clock); a signed future revocation does
 not establish that the target is revoked yet (vector `i`).
 
-### 5.5 `revoker_signature_valid` + `signature_binds_statement`
+### 5.6 `revoker_signature_valid` + `signature_binds_statement`
 The verifier **recomputes** the SIGNED_FIELDS canonical bytes from the
 **presented** statement fields, then requires the proof to:
 
 - (a) declare `Ed25519` and verify under the **pinned** key over **exactly** those recomputed bytes
   (`revoker_signature_valid`) — a forged or broken signature is rejected
   (vector `a`), and a mismatched algorithm label is rejected (vector `k`); and
-- (b) be a signature over the **recomputed** bytes, not a producer-supplied
-  `signed_payload` blob (`signature_binds_statement`) — if `revoked_at` or
+- (b) be a signature over the **recomputed** bytes
+  (`signature_binds_statement`) — if `revoked_at` or
   `reason` (or any signed field) was edited after signing, the recomputed bytes
   differ from what was signed and the statement is rejected (vector `g`).
 
-The verifier never trusts `proof.signed_payload_b64u`; it is recomputed.
-
-### 5.6 Terminality and current status
+### 5.7 Terminality and current status
 A valid revocation is a terminal negative fact. Once `revoked_at` has been
 reached, passage of time MUST NOT make the statement invalid. The legacy
 `opts.maxAgeSeconds` parameter is ignored for compatibility; implementations
@@ -255,13 +276,18 @@ binding may profile it for action artifacts. Missing, stale,
 rolled-back, or incomplete status evidence MUST NOT be interpreted as
 "not revoked."
 
-### 5.7 Fail-closed obligations (any one ⇒ `valid:false`)
+### 5.8 Fail-closed obligations (any one ⇒ `valid:false`)
 
 - `@version` is not `EP-REVOCATION-v1`.
-- The statement does not bind the **exact** `(target_type, target_id,
+- The statement or proof carries a missing or unknown member.
+- The statement does not bind the same `(target_type, target_id,
   action_hash)` the verifier holds.
 - Either target has an unknown type, empty id, or malformed SHA-256 digest.
 - `revoker_id` is unpinned, or a proof-carried key is not the pinned key.
+- `revoker_key_id` or a pinned key id matches neither the full SPKI digest nor
+  the exact-pinned historical-v1 compatibility rule.
+- `revoker_id` is not a non-empty string, the proof key is empty or not an
+  Ed25519 SPKI, or `revoked_at` exceeds nine fractional digits.
 - `revoked_at` is absent or malformed.
 - The proof is absent, forged, or signs bytes other than the recomputed
   SIGNED_FIELDS.
@@ -294,9 +320,16 @@ that fails for an unrelated reason.
 | `i_future_effective_instant` | `revoked_at` is later than the decision time | reject | `effective_at_or_before_T` |
 | `j_malformed_target_shape` | Both sides carry an empty id or malformed digest | reject | `target_bound` |
 | `k_algorithm_label_mismatch` | Genuine Ed25519 bytes labeled as another algorithm | reject | `revoker_signature_valid` |
-| `z_well_formed_binding_revocation` | Pinned revoker, exact target binding, real proof | accept | — |
+| `l_revoker_key_id_substitution` | Full proof key id does not match the SPKI | reject | `revoker_key_bound` |
+| `m_unsigned_top_level_injection` | Unsigned top-level member injected | reject | `structure` |
+| `n_unsigned_proof_payload_injection` | Second unsigned payload representation injected | reject | `structure` |
+| `o_empty_presented_key_with_valid_pinned_signature` | Empty proof key tries to borrow a signature verified under the pin | reject | `revoker_key_pinned` |
+| `p_non_string_revoker_id` | Structured `revoker_id` attempts map-key confusion or a crash | reject | `revoker_key_pinned` |
+| `q_timestamp_over_precision` | `revoked_at` has more than nine fractional digits | reject | `revoked_at_present` |
+| `z_well_formed_binding_revocation` | Pinned revoker, logical target binding, real proof | accept | — |
 | `z2_is_revoked_true_among_unrelated` | One valid binding statement among unrelated ones | accept | — |
 | `z3_old_terminal_revocation_remains_valid` | Old revocation presented with a legacy max-age option | accept | — |
+| `z4_historical_v1_key_label_exact_pin` | Historical local key label with the exact pinned SPKI | accept | — |
 
 Run: `npx vitest run tests/revocation.test.js`.
 
@@ -312,7 +345,7 @@ What this profile **does** prove (offline, no network):
 
 - The statement was **signed by a named, pinned revoker** — an unpinned or
   self-asserted key confers nothing.
-- The statement **binds the exact `(target_id, action_hash)`** the relying party
+- The statement **binds the same logical `(target_id, action_hash)`** the relying party
   is reasoning about — a revocation for action A cannot revoke action B.
 - The signed fields (target, `revoker_id`, `revoked_at`, `reason`) were **not
   edited after signing**.
@@ -336,6 +369,10 @@ What this profile **does NOT** prove, and what is **out of scope**:
   target is an authorization-policy question for the relying party's pinning
   policy (who you pin as a revoker for a given target), not a property of the
   signature.
+- **Artifact-byte identity beyond the action commitment.** `action_hash`
+  commits to the action (or commit hash under that target profile); it does not
+  hash arbitrary unsigned wrapper bytes. If byte-for-byte artifact identity is
+  required, the target profile must supply and bind a separate artifact digest.
 
 > **Framing (reuse this language).** "An EP-REVOCATION-v1 statement is a portable,
 > offline-verifiable proof that a named, pinned revoker revoked *this specific
@@ -360,9 +397,10 @@ What this profile **does NOT** prove, and what is **out of scope**:
 - **Bind both target_id and action_hash.** Binding only an id would let a
   revocation for one action be replayed against a re-issued authorization with
   the same id but a different action; the `action_hash` closes that.
-- **Recompute the signed payload.** The verifier never trusts a producer-supplied
-  `signed_payload_b64u`; tampered `revoked_at`/`reason` fail because the
-  recomputed bytes differ from what was signed.
+- **One closed representation.** The verifier refuses unknown statement and
+  proof members and recomputes the signed payload. Tampered
+  `revoked_at`/`reason` fail because the recomputed bytes differ from what was
+  signed.
 - **Terminality is monotonic.** Never apply a freshness window to a revocation
   fact. Freshness belongs to a separate non-revocation/status assertion. Do not
   read absence of a valid revocation statement as "not revoked elsewhere."

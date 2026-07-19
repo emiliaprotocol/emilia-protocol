@@ -42,7 +42,7 @@ const COMPLETE_RESULT_DIGESTS = Object.freeze({
   reject_unknown_assurance_label: '1f91e6b55be9d28ad267a8012a3bc9b4f1a35c2651e20bd99f6d1395b8dca9a6',
   reject_registry_unavailable: '2e50aba2187b40466a59db11c2548e545e308e84419007728dbd169da673fd77',
   reject_stale_registry: 'ce36cab7a58887bb480e4ee0d139a9c143a85cc2dd3eedbbe53fa7b4d9640b46',
-  proof_accepted_when_pinned: 'a9f64e8d766bf15d9a367722683a9f8573fc90ebaf69302dc8f416c03ca8df36',
+  proof_accepted_when_pinned: '3b2a55f1124a685238f71219d1640ef222d568789e6727c7c7bb55bcda8d1d32',
   reject_proof_unpinned_key: '75c1017fd5d55710afc1b191364da0490066e8a3df1325d1717d0dd5954476c1',
   reject_proof_tampered_role: 'bbd3599e3b2898e1b37e54dd2591a771fb22df77cac5857513f28ca92350c5db',
   reject_proof_registry_head_mismatch: '3bf462f69cd4ee1ebf36ccfee53ec42deeea6c7428604c3070e33b12f13139e3',

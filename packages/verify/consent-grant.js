@@ -182,8 +182,9 @@ function refuseGrant(reason, checks) {
  * @param {object} [opts.revocation]  a PRESENTED EP-REVOCATION-v1 statement to
  *   check against this grant_hash (target_type 'commit', target_id = grant_id).
  * @param {Object<string,{public_key:string}>} [opts.revokerKeys]  pinned revoker
- *   keys by revoker_id, passed through to verifyRevocation (a revocation under an
- *   unpinned revoker is ignored — it cannot revoke, fail-closed on the REVOKER).
+ *   keys by revoker_id, passed through to verifyRevocation. If a revocation
+ *   artifact is supplied but cannot be verified, the grant refuses with
+ *   revocation_invalid; malformed negative evidence is never treated as absent.
  * @param {number} [opts.revocationMaxAgeSeconds]  DEPRECATED compatibility
  *   option; terminal revocation statements do not age out.
  * @returns {{ valid:boolean, checks:{hash:boolean, signature:boolean, within_window:boolean}, reason?:string }}
@@ -261,9 +262,11 @@ export function verifyConsentGrant(grant, pinnedPrincipalKey, opts = {}) {
   }
   checks.within_window = true;
 
-  // Revocation (optional): a presented statement that VALIDLY binds this
-  // grant_hash under its OWN pinned revoker key refuses the grant. Reuses the
-  // revocation.js verifier against a 'commit'-typed target keyed on grant_hash.
+  // Revocation (optional): once the caller supplies a statement, it becomes a
+  // required security input. A valid binding statement refuses as revoked; an
+  // invalid, unpinned, malformed, or wrong-target statement refuses as
+  // revocation_invalid. Silently treating bad negative evidence as absence
+  // would revive the grant.
   if (opts.revocation !== undefined) {
     const target = {
       target_type: 'commit',
@@ -272,13 +275,15 @@ export function verifyConsentGrant(grant, pinnedPrincipalKey, opts = {}) {
     };
     const rev = verifyRevocation(target, opts.revocation, {
       revokerKeys: opts.revokerKeys || {},
+      now: opts.now,
       ...(typeof opts.revocationMaxAgeSeconds === 'number'
-        ? { maxAgeSeconds: opts.revocationMaxAgeSeconds, now: opts.now }
+        ? { maxAgeSeconds: opts.revocationMaxAgeSeconds }
         : {}),
     });
     if (rev.valid) {
       return refuseGrant('grant_revoked', checks);
     }
+    return refuseGrant('revocation_invalid', checks);
   }
 
   return { valid: true, checks };
@@ -398,7 +403,7 @@ function refuseComposition(reason, checks) {
  *
  * Refusal reasons (distinct, fail-closed):
  *   'grant_signature_invalid' | 'grant_not_yet_valid' | 'grant_expired' | 'grant_revoked'
- *   | 'asset_mismatch' | 'verb_mismatch' | 'grant_binding_mismatch'
+ *   | 'revocation_invalid' | 'asset_mismatch' | 'verb_mismatch' | 'grant_binding_mismatch'
  *   plus structural refusals ('missing_receipt', 'missing_action',
  *   'missing_grant_reference').
  *
@@ -448,6 +453,7 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
   if (!grantResult.valid) {
     let reason = 'grant_signature_invalid';
     if (grantResult.reason === 'grant_revoked') reason = 'grant_revoked';
+    else if (grantResult.reason === 'revocation_invalid') reason = 'revocation_invalid';
     else if (grantResult.checks.within_window === false && grantResult.checks.hash && grantResult.checks.signature) {
       reason = (grantResult.reason && grantResult.reason.includes('not yet valid'))
         ? 'grant_not_yet_valid'
