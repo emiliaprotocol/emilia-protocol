@@ -86,7 +86,7 @@ describe('release byte reproducibility', () => {
     expect(workflow).toContain('subject-path: release-artifacts/${{ steps.pack.outputs.tarball }}');
     expect(workflow).toContain('npm publish "../../release-artifacts/${{ steps.pack.outputs.tarball }}" --access public --provenance');
     expect(workflow).toContain('cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"');
-    expect(workflow).toContain('actions/attest@a1948c3f048ba23858d222213b7c278aabede763');
+    expect(workflow).toContain('actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6');
   });
 
   it('PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist', () => {
