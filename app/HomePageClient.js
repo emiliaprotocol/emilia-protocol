@@ -83,7 +83,7 @@ const STACK_LAYERS = [
 const HOW_IT_WORKS = [
   { step: '01', accent: color.green, label: 'Observe',  body: 'Start in observe mode: see which configured actions would require stronger approval — payments, overrides, vendor changes, autonomous AI actions — without blocking them.' },
   { step: '02', accent: color.blue,  label: 'Verify',   body: 'EMILIA Gate sits between approval and execution. Before a high-risk write reaches the system of record, it binds verified actor identity, authority chain, policy-pinned action context, and a one-time nonce.' },
-  { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a named, accountable human signs off on the exact action — on their own device, bound to the exact action hash. Profiles can require initiator exclusion and an ordered, distinct-human quorum before execution.' },
+  { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a directory-bound approver signs off on the exact action — on an enrolled device, bound to the exact action hash. Profiles can require initiator exclusion and an ordered, distinct-human quorum before execution.' },
   { step: '04', accent: color.t2,    label: 'Seal',     body: 'Signed, portable authorization evidence is produced for offline verification under the relying party’s pinned inputs with `npm install @emilia-protocol/verify`; deployments can add transparency anchoring when required.' },
 ];
 
@@ -341,8 +341,9 @@ export default function HomePage() {
               Three distinct proofs. One controlled outcome.
             </h2>
             <p style={{ fontSize: 18, color: color.t1, lineHeight: 1.7, maxWidth: 780, marginTop: 22 }}>
-              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact
-              human authorization and safely controls consequential outcomes.
+              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves
+              exact authorization by an enrolled approver under the relying party&apos;s pinned
+              directory, then safely controls consequential outcomes.
             </p>
             <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72, maxWidth: 700, marginTop: 16 }}>
               CAID correlates native action descriptions only under exact, relying-party-pinned
@@ -425,7 +426,7 @@ export default function HomePage() {
                   Who approved this? In every case, no one could say.
                 </p>
                 <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, margin: '8px 0 0' }}>
-                  EMILIA can require a named human owner <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>before</em> the
+                  EMILIA can require a directory-bound, accountable approver <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>before</em> the
                   protected action runs, then preserve a record an outside party can verify under pinned trust inputs.
                 </p>
               </div>

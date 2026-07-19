@@ -56,8 +56,9 @@ export default function InvestorsPage() {
         </h1>
         <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
           AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact
-          human authorization and safely controls consequential outcomes. Gate enforces that
-          separation at the protected executor.
+          authorization by an enrolled approver under the relying party&apos;s pinned directory,
+          then safely controls consequential outcomes. Gate enforces that separation at the
+          protected executor.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
           Gate turns that hierarchy into a product boundary. Action Escrow demonstrates the whole
@@ -73,10 +74,10 @@ export default function InvestorsPage() {
           that re-performs evidence instead of trusting a dashboard.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
-          CAID -00 is a private filing candidate, Bounded Capability is implemented architecture,
-          and AEC is an individual Internet-Draft; none is an adopted standard. No
-          physical hardware attestation in production or independently operated witness network
-          is claimed today.
+          CAID -00 is a private filing candidate and Bounded Capability is implemented
+          architecture. Authorization Receipts, EP-QUORUM, EP-AEC, and EP-EVIDENCE-RECORD are
+          active individual Internet-Drafts; none is an adopted standard. No physical hardware
+          attestation in production or independently operated witness network is claimed today.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560 }}>
           The round materials, business model, and commercial detail are shared directly under NDA. Tell us a little below, or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.

@@ -71,6 +71,11 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@sentry/nextjs"
         update-types: ["version-update:semver-major"]
+      # ESLint 10 is not yet supported by the plugin versions resolved by
+      # eslint-config-next 16.2.9. CI fails inside scope analysis, so hold the
+      # major line until the upstream Next.js lint stack declares support.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   # ── npm (MCP server) ────────────────────────────────────────────────────────
   - package-ecosystem: npm

@@ -19,7 +19,7 @@ const GATED = [
 const LOOP = [
   { n: '1', title: 'Request', body: 'An agent or system requests a consequential action at the actuator boundary.' },
   { n: '2', title: 'Challenge', body: 'If the action is guarded and no valid receipt is present, the gate returns 428 Receipt Required and tells the agent exactly what to bring.' },
-  { n: '3', title: 'Authorize', body: 'A named human — or a quorum, for hard cuts — signs the exact action on a device-bound authenticator.' },
+  { n: '3', title: 'Authorize', body: 'A directory-bound approver — or a quorum, for hard cuts — signs the exact action on an enrolled device-bound authenticator.' },
   { n: '4', title: 'Verify', body: 'Offline, fail-closed: authority (pinned key), action-binding, assurance tier, freshness, one-time consumption — no trust in the operator.' },
   { n: '5', title: 'Execute', body: 'Only a passing check reaches the actuator. Deny by default; absence of a receipt is the anomaly, not the default.' },
   { n: '6', title: 'Execution receipt', body: 'On execution the gate emits proof bound to the exact authorization decision — the artifact an auditor, regulator, or incident review replays.' },
@@ -257,14 +257,15 @@ export default function GatePage() {
               A distinct job at each authorization layer.
             </h2>
             <p style={{ ...styles.lead, maxWidth: 820, marginTop: 18 }}>
-              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact
-              human authorization and safely controls consequential outcomes.
+              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves
+              exact authorization by an enrolled approver under the relying party&rsquo;s pinned
+              directory, then safely controls consequential outcomes.
             </p>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
               {[
                 ['Call governance', 'AgentROA', 'Does the call remain inside the agent’s verified delegated scope?'],
                 ['Policy permit', 'ORPRG', 'Does the native policy evidence prove this effect was permitted?'],
-                ['Human authorization + control', 'EMILIA', 'Did the accountable human authorize this exact action, and may the protected executor mutate now?'],
+                ['Approver authorization + control', 'EMILIA', 'Did the directory-bound approver authorize this exact action, and may the protected executor mutate now?'],
               ].map(([label, title, body]) => (
                 <div key={title} style={{ ...styles.card, padding: 24 }}>
                   <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.2, textTransform: 'uppercase' }}>{label}</div>

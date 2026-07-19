@@ -32,7 +32,7 @@ const PILLARS = [
     title: 'Machine attestation — RATS (RFC 9334) + EAT (RFC 9711), SPIFFE/SPIRE, WIMSE',
     body:
       'Attestation answers "is this agent’s platform trustworthy / which workload is this." ' +
-      'EMILIA answers the orthogonal question: "did a NAMED HUMAN authorize THIS exact irreversible action." ' +
+      'EMILIA answers the orthogonal question: "did the DIRECTORY-BOUND APPROVER authorize THIS exact irreversible action." ' +
       'Same evidence bundle, different trust root.',
   },
   {
@@ -49,7 +49,7 @@ const PILLARS = [
 
 // Tier 1 — published RFCs / deployed. Anchor here.
 const TIER1 = [
-  ['OAuth 2.0 / OIDC — RFC 6749', 'Published · ubiquitous', 'Grants access. EMILIA proves a named human authorized the exact act.'],
+  ['OAuth 2.0 / OIDC — RFC 6749', 'Published · ubiquitous', 'Grants access. EMILIA proves an enrolled approver authorized the exact act under the relying party’s pinned directory.'],
   ['Step-Up Authentication — RFC 9470', 'Proposed Standard', 'The trigger. EMILIA is the durable proof that the step-up happened.'],
   ['Rich Authorization Requests (RAR) — RFC 9396', 'Proposed Standard', 'EMILIA signs the human approval of the same authorization_details (RAR = request schema; EMILIA = evidence over it).'],
   ['RATS — RFC 9334 + EAT — RFC 9711', 'Published', 'Machine attestation (platform / workload). EMILIA = human authorization. Orthogonal trust roots, same bundle.'],
@@ -119,8 +119,9 @@ export default function StandardsPage() {
               EMILIA Protocol is the <b>human-authorization-receipt layer</b>. It composes with the accepted standards the
               ecosystem already runs &mdash; it rides inside them, sits beside them, and is logged by them &mdash; rather
               than replacing any of them. The receipt EMILIA produces is the one durable artifact none of these standards
-              emit on their own: portable, offline-verifiable proof that a named human authorized one exact irreversible
-              action.
+              emit on their own: portable, offline-verifiable proof that a directory-bound approver authorized one exact
+              irreversible action. Attribution to a real-world person is only as strong as the independently trusted
+              enrollment and directory binding.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
               <Link href="/fire-drill/rr-1" style={cta.primary}>See it on a real action</Link>
@@ -244,11 +245,22 @@ export default function StandardsPage() {
         <section style={{ ...styles.section, paddingTop: 0 }}>
           <div style={styles.container}>
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, maxWidth: 760 }}>
-              <b>Honest framing.</b> EMILIA is an active individual Internet-Draft,{' '}
-              <code style={{ fontFamily: font.mono }}>draft-schrock-ep-authorization-receipts</code>, licensed Apache-2.0.
-              It is <b>not</b> an IETF standard and <b>not</b> an endorsement by any working group. The relationships above
-              are <b>complement relationships</b> &mdash; how EMILIA composes with these standards &mdash; not claims of
-              adoption by the OAuth, RATS, SCITT, WIMSE, or any other WG.
+              <b>Honest framing.</b> EMILIA currently has four active individual Internet-Drafts:{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" style={{ color: color.gold }}>
+                Authorization Receipts -06
+              </a>,{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" style={{ color: color.gold }}>
+                EP-QUORUM -02
+              </a>, and{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" style={{ color: color.gold }}>
+                EP-AEC -02
+              </a>, and{' '}
+              <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/" style={{ color: color.gold }}>
+                EP-EVIDENCE-RECORD -01
+              </a>. They are licensed Apache-2.0 where applicable, are <b>not</b> IETF standards, and do <b>not</b> imply
+              endorsement by any working group. The relationships above are <b>complement relationships</b> &mdash; how
+              EMILIA composes with these standards &mdash; not claims of adoption by the OAuth, RATS, SCITT, WIMSE, or
+              any other WG.
             </p>
           </div>
         </section>

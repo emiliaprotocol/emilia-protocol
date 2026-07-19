@@ -807,7 +807,8 @@ jobs:
           echo "openapi.yaml paths: $spec_paths"
           echo "core app/api route.js files (excl. scim, sso, pilot): $route_files"
           # Enforce minimum 75% coverage — cloud/operational routes may be documented separately.
-          # Full parity target: Q2 2026 (tracked in GOVERNANCE.md).
+          # Full parity remains an open hardening milestone. The enforced
+          # current floor is 75%; no completed full-parity claim is made.
           min_paths=$(( route_files * 75 / 100 ))
           if [ "$spec_paths" -lt "$min_paths" ]; then
             echo "::error::OpenAPI coverage too low: $spec_paths/$route_files paths documented (minimum: $min_paths)"

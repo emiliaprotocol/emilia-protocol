@@ -5,7 +5,7 @@ This is a point-in-time map of evidence a technical, security, standards, or
 procurement reviewer can inspect without treating repository claims as
 certification.
 
-- **Source snapshot:** [`origin/main` at `9ed9063c`](https://github.com/emiliaprotocol/emilia-protocol/commit/9ed9063c07ba1766a4e40689599f03b1ad8ddefb)
+- **Source snapshot:** [`origin/main` at `1832dd0c`](https://github.com/emiliaprotocol/emilia-protocol/commit/1832dd0ce17e747ea8371d54d7e2752111b691cc)
 - **Reviewed:** 2026-07-18 PDT / 2026-07-19 UTC
 - **Scope:** public source, tests, conformance, formal models, security evidence,
   production migration state, and public releases
@@ -17,10 +17,11 @@ certification.
 
 | Area | Evidence established | Boundary |
 | --- | --- | --- |
-| Source and CI | The reviewed commit is on `main`. Its [CI run](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29675664571), [security scan](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29675664557), [secret scan](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29675664559), [CodeQL](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29675664562), [Scorecard](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29675664558), [schema-security](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29675664572), and [security-kernel mutation gate](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29675664540) completed successfully. | Green repository checks do not prove that the same commit, configuration, or schema is serving every production request. |
-| Automated tests | The checked-in Linux CI evidence records **6,721 tests across 351 files**. The head CI test, conformance, security-case, integration, build, E2E, and generated-proof-stat jobs passed. | A local macOS rerun measured 6,722 total tests and reached the proof-stat comparison with no failed test; `npm run check:proof-stats` then exited 1 because the checked-in CI count is 6,721. The one-case environment-dependent count difference is disclosed rather than silently normalized. |
+| Source and CI | The reviewed commit is on `main`. Its [CI run](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618048), [security scan](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618050), [secret scan](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618016), [CodeQL](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618029), [Scorecard](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618011), [schema-security](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618042), and [security-kernel mutation gate](https://github.com/emiliaprotocol/emilia-protocol/actions/runs/29679618025) completed successfully. | Green repository checks do not prove that the same commit, configuration, or schema is serving every production request. |
+| Automated tests | The checked-in Linux CI evidence records **6,729 tests across 353 files**. The head CI test, conformance, security-case, integration, build, E2E, and generated-proof-stat jobs passed. | Test counts and passing suites are scoped regression evidence, not proof that every possible input, deployment configuration, or downstream effect is safe. |
 | Executable security case | [`security/security-case.json`](security/security-case.json) resolves **26 claims** over **121 hashed evidence files** and records a passing executed evidence set. The head CI `security-case` job passed. | This is a repository-defined assurance case with explicit assumptions and exclusions, not an accredited certification or a substitute for deployment testing. |
 | Production database | A read-only check of the linked production migration ledger found **135 applied migrations**, latest `20260719043735_capability_operation_action_binding`. The corresponding `ep_capability_operations` columns and four named constraints were present in the production catalog. | This is maintainer-verifiable operational evidence, not publicly reproducible from GitHub alone. It proves migration/catalog state, not application deployment, secrets/configuration, data correctness, or closure of an external attack-chain retest. |
+| GitHub security and governance | `main` requires 16 strict status checks, one approval, Code Owner review, approval of the latest push, stale-review dismissal, and conversation resolution. Force-pushes and branch deletion are disabled. Release-tag families are covered by an active immutable-tag ruleset. At review time, open CodeQL, Dependabot, and secret-scanning alert counts were all zero. | Administrator enforcement remains disabled while the organization has one owner. A genuine second owner/reviewer and verified organization domain remain open governance milestones; zero open platform alerts is not a guarantee that no vulnerability exists. |
 | Releases | Public package registries and GitHub releases were checked separately from `main`; see [Release state](#release-state). | A package version in source, a candidate tarball hash, a Git tag, and a registry publication are four different states. |
 | Standards | Public Datatracker documents are active **individual Internet-Drafts**. | They are not RFCs, working-group-adopted documents, standards-track approvals, or IETF endorsement. Staged repository drafts are not filings. |
 | External milestones | A separately authored Rust verifier has pinned interoperability results, and two separately deployed EMILIA-operated federation endpoints exercise the cross-operator mechanism. | Strict independently attested clean-room acceptance is still zero, both federation operators have the same owner, and no independent third-party operator is established. |
@@ -32,8 +33,7 @@ The repository's generated test count is in
 [`lib/proof-stats.json`](lib/proof-stats.json). The reviewed head CI independently
 ran the Vitest suite, package tests, cross-language conformance, Postgres
 integration, schema contracts, fuzzing, E2E smoke tests, secret scanning, and a
-production build. The local proof-stat rerun described above completed the test
-phase successfully before reporting the 6,721-versus-6,722 count difference.
+production build.
 
 The current same-team reference ports are JavaScript, Python, and Go. They agree
 over **18 suites and 251 vectors** according to
@@ -112,6 +112,32 @@ report or accreditation artifact. It should be described as a recorded
 framework assessment and remediation campaign unless independent provenance is
 provided separately.
 
+## Repository security and governance
+
+The following settings were read from the live GitHub repository during this
+review:
+
+- `main` uses strict branch protection with 16 required checks;
+- pull requests require one approval, Code Owner review, approval after the
+  latest push, dismissal of stale approvals, and resolution of conversations;
+- force-pushes and deletion of `main` are disabled;
+- workflow tokens default to read-only and cannot approve pull requests;
+- secret scanning, push protection, Dependabot security updates, and code
+  scanning are enabled;
+- open CodeQL, Dependabot, and secret-scanning alert counts were all zero; and
+- the active release-tag ruleset blocks updates and deletion across every
+  release/evidence tag family present at the time of review.
+
+These are strong repository controls, not a claim of independent governance.
+Administrator enforcement is not enabled because the organization currently
+has one owner. The open governance milestone is to add a genuine independent
+second owner/reviewer, then require administrator compliance and consider two
+approvals. GitHub organization-domain verification also remains pending the
+required DNS proof. The organization and repository descriptions, homepage,
+license, and discoverability topics were updated to identify EMILIA as an
+open-protocol consequence firewall without claiming certification, adoption, or
+standards endorsement.
+
 ## Production-applied migrations
 
 Repository migration files establish intended database changes; they do not by
@@ -145,7 +171,7 @@ The root repository's latest full GitHub Release is
 [`v1.0.0`](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/v1.0.0),
 published 2026-03-27. The
 [`clean-room-kit-v1`](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/clean-room-kit-v1)
-release is marked prerelease. The reviewed `main` is 1,395 commits ahead of the
+release is marked prerelease. The reviewed `main` is 1,438 commits ahead of the
 root `v1.0.0` tag, so the root release must not be used as evidence that all
 current `main` features are released.
 

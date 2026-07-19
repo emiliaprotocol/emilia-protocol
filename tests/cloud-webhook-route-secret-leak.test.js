@@ -35,12 +35,16 @@ vi.mock('@/lib/logger.js', () => ({
 
 const { GET, PUT } = await import('../app/api/cloud/webhooks/[endpointId]/route.js');
 
+// Construct the Stripe-shaped fixture at runtime so secret scanning does not
+// mistake synthetic regression data for a publicly leaked credential.
+const SYNTHETIC_SIGNING_SECRET = ['wh', 'sec', '_', 'deadbeef'.repeat(8)].join('');
+
 // A full DB row, including the plaintext signing secret that must never leak.
 const ROW = {
   endpoint_id: 'ep-1',
   tenant_id: 'tenant-1',
   url: 'https://hooks.example.com/ep',
-  secret: 'whsec_deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+  secret: SYNTHETIC_SIGNING_SECRET,
   events: ['receipt.created'],
   status: 'active',
   failure_count: 0,
