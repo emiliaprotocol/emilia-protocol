@@ -7,15 +7,25 @@ sensitive surfaces of the protocol.
 
 The async-guard bypass was a **parallel-consumption race**: a check-then-act
 window between reading a budget / consumption record and mutating it, so two
-concurrent attempts could both pass the check. A property fuzzer that drives
-many interleaved reserve/commit and consume-once attempts against the real
-stores and asserts the safety invariants after every scenario catches that bug
-class before it ships.
+concurrent attempts could both pass the check.
 
-The harness is **not** a no-op. Its `invariant()` primitive was verified to fire
-on a deliberately-broken store with exactly this race (an `await` between the
-budget read and the mutation): 50 concurrent bids of 60 against a budget of 100
-committed a total of 3000, and the check flagged `committed-sum=3000 > budget`.
+Two complementary drivers, honest about what each covers:
+
+- **`concurrent-race`** (the real race detector). Fires every op via
+  `Promise.all` true concurrency. If a store method ever has an internal
+  check-then-act `await`, concurrent calls interleave INSIDE it and over-commit.
+  Against the shipped atomic store it passes — it is a **regression guard**: a
+  reintroduced non-atomic reserve/commit would make it fail in CI. Its teeth are
+  proven in `race-teeth.selftest.mjs`: the same driver run against a deliberately
+  non-atomic store (an `await` between the budget read and the mutation) fires
+  the over-budget invariant, and against the real store it stays clean.
+- **`capability-race`** / **`handshake-consume`** (invariant regression tests).
+  These interleave at whole-METHOD boundaries under `interleave()`, which awaits
+  each step. Because the store methods are run-to-completion atomic, this does
+  NOT manufacture an intra-method race; it is a deterministic accounting /
+  linearizability guard over the real stores plus adversarial ops (double-commit,
+  forged token, over-budget bids). Stated plainly so no one mistakes it for a
+  concurrency race detector — that is `concurrent-race`'s job.
 
 ## Determinism
 
@@ -23,6 +33,9 @@ committed a total of 3000, and the check flagged `committed-sum=3000 > budget`.
 - The interleaving scheduler (`interleave`) draws every scheduling decision from
   that same seeded RNG and awaits each step to completion, so interleaving
   happens only at operation-step boundaries and the whole run is reproducible.
+  The `concurrent` driver (used by `concurrent-race`) instead fires all op
+  sequences via `Promise.all`; it is deterministic in verdict because the store
+  methods are atomic, and its teeth are proven by the self-test.
 - No `Math.random`, no `Date.now`: the stores take an injectable `now`, and the
   batch pins it to a fixed logical clock.
 - Capability ids and reservation tokens are `node:crypto` UUIDs and so differ

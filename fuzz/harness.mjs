@@ -111,8 +111,28 @@ export async function interleave(ops, rng) {
   return stepCount;
 }
 
+/**
+ * TRUE-concurrency driver. Unlike interleave() (which advances one op-step at a
+ * time and awaits each, so a store method runs atomically to completion),
+ * concurrent() fires every op-sequence at once via Promise.all. If any store
+ * method has an internal check-then-act `await` (the async-guard bug class),
+ * concurrent calls interleave INSIDE that method and can violate an invariant.
+ * Against a correctly-atomic store this simply passes; its value is as a
+ * regression guard — a reintroduced non-atomic reserve/commit would be caught.
+ * fuzz/race-teeth.selftest.mjs proves this driver DOES catch a non-atomic store.
+ *
+ * `opSequences` is an array of arrays of async step thunks; each sequence runs
+ * its steps in order, all sequences run concurrently.
+ */
+export async function concurrent(opSequences) {
+  await Promise.all(opSequences.map(async (steps) => {
+    for (const step of steps) await step();
+  }));
+}
+
 const TARGETS = {
   'capability-race': './targets/capability-race.mjs',
+  'concurrent-race': './targets/concurrent-race.mjs',
   'handshake-consume': './targets/handshake-consume.mjs',
 };
 

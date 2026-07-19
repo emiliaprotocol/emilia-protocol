@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Fuzz target: parallel-consumption race against the capability budget store.
+// Fuzz target: interleaved-consumption invariant regression test.
 //
-// This is the exact class of bug the async-guard bypass belonged to: many
-// concurrent reserve/commit attempts against ONE capability, where a
-// check-then-act window between the budget read and its mutation could let the
-// total committed spend exceed the immutable budget, or let a single
-// reservation commit twice.
+// HONEST SCOPE: this target interleaves reserve/commit calls at whole-METHOD
+// boundaries under the harness's interleave() scheduler, which awaits each step
+// to completion. Because the shipped store methods are synchronous bodies under
+// async (run-to-completion atomic in single-threaded JS), this does NOT
+// manufacture an intra-method check-then-act race — it is a deterministic
+// linearizability/accounting regression guard over the real store: many
+// interleaved spend operations plus adversarial ops (double-commit, forged
+// token, over-budget bids) must never violate the budget/consumption invariants.
+//
+// The TRUE-concurrency race detector (the async-guard bug class) is the sibling
+// target concurrent-race.mjs, whose teeth are proven in race-teeth.selftest.mjs.
 //
 // The target imports and drives the ACTUAL createMemoryCapabilityStore and
 // mintCapabilityReceipt exported from packages/gate/capability-receipt.js — no

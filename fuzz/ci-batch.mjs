@@ -21,6 +21,7 @@ const harness = join(HERE, 'harness.mjs');
 // [target, seedsSpec, iterationsPerSeed]
 const BATCH = [
   ['capability-race', '1..24', 250],
+  ['concurrent-race', '1..24', 250],
   ['handshake-consume', '1..24', 250],
 ];
 
