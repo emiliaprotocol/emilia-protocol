@@ -6,9 +6,16 @@ import { evaluateAuthority, resolveGuardAuthority } from '../lib/guard-authority
 
 // Chainable mock matching resolveGuardAuthority's query:
 // .from().select().eq().eq().eq().limit() -> Promise<{ data, error }>
-function mockClient({ data = null, error = null } = {}) {
+function mockClient({ data = null, error = null, onSelect } = {}) {
   const result = Promise.resolve({ data, error });
-  const chain = { select: () => chain, eq: () => chain, limit: () => result };
+  const chain = {
+    select: (columns) => {
+      onSelect?.(columns);
+      return chain;
+    },
+    eq: () => chain,
+    limit: () => result,
+  };
   return { from: () => chain };
 }
 
@@ -22,6 +29,7 @@ const active = {
   valid_to: '2026-12-31T00:00:00.000Z',
   revoked_at: null,
   organization_id: 'org_1',
+  action_scopes: null,
 };
 
 describe('evaluateAuthority — fail closed unless a valid authority proves permission', () => {
@@ -63,6 +71,53 @@ describe('evaluateAuthority — fail closed unless a valid authority proves perm
   it('rejects a non-active status', () => {
     expect(evaluateAuthority({ ...active, status: 'retired' }, { at: NOW }).reason).toBe('authority_retired');
   });
+
+  it('rejects an action omitted from a present authority scope', () => {
+    const r = evaluateAuthority(
+      { ...active, action_scopes: ['payment.release'] },
+      { actionType: 'policy_rollout', at: NOW },
+    );
+    expect(r.authorized).toBe(false);
+    expect(r.reason).toBe('action_not_in_scope');
+  });
+
+  it('preserves unscoped authority behavior unless the caller requires an explicit scope', () => {
+    const r = evaluateAuthority(active, { actionType: 'policy_rollout', at: NOW });
+    expect(r.authorized).toBe(true);
+  });
+
+  it('rejects an unscoped authority when the caller requires an explicit scope', () => {
+    const r = evaluateAuthority(active, {
+      actionType: 'policy_rollout',
+      requireExplicitScope: true,
+      at: NOW,
+    });
+    expect(r.authorized).toBe(false);
+    expect(r.reason).toBe('explicit_scope_required');
+  });
+
+  it('fails closed when strict scope evaluation has no action type', () => {
+    const r = evaluateAuthority(
+      { ...active, action_scopes: ['policy_rollout'] },
+      { requireExplicitScope: true, at: NOW },
+    );
+    expect(r.authorized).toBe(false);
+    expect(r.reason).toBe('action_type_required');
+  });
+
+  it('accepts one of the allowed roles and precisely rejects a role outside the set', () => {
+    expect(evaluateAuthority(
+      { ...active, role: 'control_plane_approver' },
+      { allowedRoles: ['policy_admin', 'control_plane_approver'], at: NOW },
+    ).authorized).toBe(true);
+
+    const rejected = evaluateAuthority(
+      active,
+      { allowedRoles: ['policy_admin', 'control_plane_approver'], at: NOW },
+    );
+    expect(rejected.authorized).toBe(false);
+    expect(rejected.reason).toBe('role_not_allowed');
+  });
 });
 
 describe('resolveGuardAuthority — missing/empty/bad authority never resolves authorized (regression)', () => {
@@ -92,6 +147,28 @@ describe('resolveGuardAuthority — missing/empty/bad authority never resolves a
 
   it('authorizes a valid, active, in-window, sufficient-assurance row', async () => {
     const r = await resolveGuardAuthority(mockClient({ data: [active] }), { ...ctx, role: 'controller' });
+    expect(r.authorized).toBe(true);
+  });
+
+  it('selects action_scopes and applies strict action and role requirements', async () => {
+    let selectedColumns = '';
+    const r = await resolveGuardAuthority(mockClient({
+      data: [{
+        ...active,
+        role: 'control_plane_approver',
+        action_scopes: ['policy_rollout'],
+      }],
+      onSelect: (columns) => {
+        selectedColumns = columns;
+      },
+    }), {
+      ...ctx,
+      actionType: 'policy_rollout',
+      requireExplicitScope: true,
+      allowedRoles: ['policy_admin', 'control_plane_approver'],
+    });
+
+    expect(selectedColumns.split(',').map((column) => column.trim())).toContain('action_scopes');
     expect(r.authorized).toBe(true);
   });
 });
