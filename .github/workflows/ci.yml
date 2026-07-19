@@ -78,7 +78,7 @@ jobs:
         with:
           terraform_version: 1.10.5
           terraform_wrapper: false
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4  # v4
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
         with:
           version: v3.16.4
       - run: npm ci --ignore-scripts
