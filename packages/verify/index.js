@@ -13,6 +13,16 @@
 import crypto from 'crypto';
 import { strictJsonGate } from './strict-json.js';
 
+export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
+export {
+  ORPRG_JSON_JCS_PROFILE,
+  ORPRG_ACTION_PROFILE,
+  computeOrprgActionDigest,
+  verifyOrprgJsonJcsPermit,
+  verifyOrprgJsonJcsPermitAsync,
+  createOrprgAecVerifier,
+} from './orprg.js';
+
 const FATAL_UTF8 = new TextDecoder('utf-8', { fatal: true });
 
 function decodeBase64url(value) {

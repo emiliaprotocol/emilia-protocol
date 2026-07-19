@@ -2,14 +2,14 @@
 
 ## What's new (June 2026)
 - **18 suites / 251 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
-- **Composition (EP-AEC):** EP now composes delegation, policy-permit, and human-authorization receipts into one offline ALLOW/DENY — the convergence layer for the emerging IETF agent-authorization standards, not one of a dozen competing formats. Strong basis for vertical packs that combine a policy gate with a named-human gate.
+- **Composition (EP-AEC):** EP composes delegation, policy-permit, and human-authorization receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The executor separately authorizes the action. This gives vertical packs one evidence join for a machine-policy gate and a named-human gate.
 - **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (mandated double-check, PHI-free) extend the same primitive across verticals.
 
 ## Open Protocol Layer
 
 Emilia Protocol is open source, forkable, and has no vendor lock-in.
 
-- MIT-licensed protocol specification and reference implementation
+- Apache-2.0-licensed protocol specification and reference implementation
 - Organizations can self-host, fork, or build on top without licensing fees
 - No proprietary wire formats, token structures, or policy languages
 - Interoperable by design: any conforming implementation works with any other

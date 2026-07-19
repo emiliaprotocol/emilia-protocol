@@ -32,6 +32,19 @@ on proof that a named, accountable human (or quorum) authorized *this exact acti
 authentication, not permissions, not anomaly detection — **pre-execution authorization proof.** No
 model, no signatures-of-badness, no false positives: receipt or no execution.
 
+## How it composes with the authorization stack
+
+> **AgentROA governs what an agent may call. ORPRG verifies that policy permitted the effect.
+> EMILIA proves who authorized the exact material action — and safely controls the consequence
+> when money, infrastructure, regulated records, or irreversible state is involved.**
+
+This is an interoperability position, not a replacement claim. EMILIA verifies
+AgentROA and the concrete `ORPRG-JSON-JCS-ED25519-v1` profile under separate
+relying-party pins, maps their native action descriptions to one CAID only under
+exact pinned mapping profiles, and can require them beside EP Class-A or quorum
+evidence. Native verification, material-action matching, evidence satisfaction,
+local authorization, and execution are five separate steps.
+
 ## What it gates (consequences, not prompts)
 
 money movement · database export · production deploy · permission/role change · repo or resource
@@ -48,6 +61,12 @@ evidence log** — the compliance/insurance artifact.
 
 Assurance tiers: `software` < `class_a` (device signoff / WebAuthn) < `quorum` (m-of-n, two-person
 rule). The action's risk sets the floor.
+
+For a bounded capability, Gate also reserves the exact action and spend before
+entering the provider boundary. Overspend and replay fail closed. Success
+commits the operation. If the provider executes but its response is lost, Gate
+records `indeterminate`, does not refund or blindly replay, and reconciles only
+authenticated provider evidence bound to the same operation and action.
 
 ## The EP-to-EP handshake (this is the protocol)
 
@@ -83,8 +102,10 @@ certs).
 | **Unified gate core: assurance tiers + one-time consumption + evidence log + `check`/`middleware`/`guard`** | **`@emilia-protocol/gate`** | **built and hardened; covered by the package, mutation, and release suites** |
 | **BYOC Gate service: complete mediation for GitHub repository deletion** | **`apps/gate-service`** | **built; exact system-of-record binding, replay refusal, indeterminate outcomes, and authenticated access** |
 | **Durable replay + evidence state** | **Postgres consumption and atomic evidence backends** | **built; ownership-fenced consumption, tenant/gate scoping, fork detection, and database immutability controls** |
+| **Bounded capability enforcement** | **Exact-action/CAID scope, atomic budget reservation, operation binding, replay refusal, authenticated reconciliation** | **built in the Gate path with memory and PostgreSQL stores; executable provider-timeout scenario and negative evidence tests** |
+| **Adjacent authorization adapters** | **AgentROA native verifier + concrete ORPRG JCS/Ed25519 verifier** | **built fail closed; shared-CAID suite composes both with genuine EP Class-A quorum evidence** |
 | **Attested Gate + coverage inventory** | **Pinned deployment verifier + signed active probes + five-state coverage kernel** | **built; `gated` requires both fresh attestation and a verified 428 canary; a passive observer is `witness_only`** |
-| **Independent network witness** | **Signed, privacy-minimized observation profile with durable sequence ingestion** | **built; pinned sensor/capture/config, action binding, freshness, replay/rollback/equivocation refusal; explicitly not enforcement** |
+| **Network witness profile** | **Signed, privacy-minimized observation profile with durable sequence ingestion** | **built; pinned sensor/capture/config, action binding, freshness, replay/rollback/equivocation refusal; explicitly not enforcement and not evidence that an independent operator exists** |
 | **Control plane + settlement eligibility** | **Coverage, evidence joins, outcome verification, metering, and closed settlement verdicts** | **built reference kernel and operator view; managed operation and real partner adapters remain deployment work** |
 | MCP gateway | `@emilia-protocol/mcp-guard` | shipped |
 | Framework and actuator adapters | GitHub, Stripe, AWS, Supabase, OpenAI, LangChain, MCP | adapter libraries built; GitHub has the deployable reference service |
@@ -119,10 +140,12 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 
 ## Standards
 
-The mechanism is the IETF work, not a new draft: `draft-schrock-ep-enforcement-point` (the
-Receipt-Required rail) over `draft-schrock-ep-authorization-receipts`, with assurance tiers via the
-quorum and signoff specs. Conformance is **RR-1** (`receiptRequiredConformance()`), earned not
-asserted. EMILIA Gate is the *productization* of the enforcement point — no new I-D required.
+The public standards basis includes the individual Internet-Drafts for the
+Enforcement Point, Authorization Receipts, Quorum, and AEC. They are not RFCs,
+working-group-adopted documents, or IETF endorsement. CAID -00 is a render-clean
+filing candidate but is not posted. Bounded Capability is implemented EMILIA
+architecture and must not be represented as a posted standard. Conformance is
+earned by executable harnesses, not asserted by draft status.
 
 ## Boundary (state it honestly)
 

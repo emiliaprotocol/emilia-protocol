@@ -25,7 +25,7 @@ function baseRecord(overrides = {}) {
 // A rebuild stub that returns a fixed hash — no npm/git, so tests are fast and
 // deterministic. The real reproducible build is exercised separately (CLI/demo).
 function rebuildReturning(sha256) {
-  return () => ({ sha256, filename: 'pkg-1.0.0.tgz', bytes: 1024 });
+  return () => ({ source_commit: COMMIT_A, sha256, filename: 'pkg-1.0.0.tgz', bytes: 1024 });
 }
 
 describe('attestation subject + leaf binding', () => {
@@ -92,6 +92,21 @@ describe('verifyBuildAttestation — rebuild link', () => {
     expect(result.links.rebuild.status).toBe('mismatch');
   });
 
+  it('FAIL-CLOSED: matching bytes cannot be relabeled as a different source commit', () => {
+    const result = verifyBuildAttestation(baseRecord(), {
+      rebuild: () => ({
+        source_commit: COMMIT_B,
+        sha256: HASH_H,
+        filename: 'pkg-1.0.0.tgz',
+        bytes: 1024,
+      }),
+    });
+    expect(result.valid).toBe(false);
+    expect(result.complete).toBe(false);
+    expect(result.reason).toMatch(/rebuild_source_mismatch/);
+    expect(result.links.rebuild.status).toBe('source_mismatch');
+  });
+
   it('FAIL-CLOSED: a throwing rebuild is caught, not propagated', () => {
     const result = verifyBuildAttestation(baseRecord(), {
       rebuild: () => { throw new Error('npm exploded'); },
@@ -102,9 +117,19 @@ describe('verifyBuildAttestation — rebuild link', () => {
   });
 
   it('FAIL-CLOSED: a rebuild returning a non-hex hash is rejected', () => {
-    const result = verifyBuildAttestation(baseRecord(), { rebuild: () => ({ sha256: 'not-a-hash' }) });
+    const result = verifyBuildAttestation(baseRecord(), {
+      rebuild: () => ({ source_commit: COMMIT_A, sha256: 'not-a-hash' }),
+    });
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('rebuild_error');
+  });
+
+  it('FAIL-CLOSED: a rebuild that omits its actual source commit is rejected', () => {
+    const result = verifyBuildAttestation(baseRecord(), {
+      rebuild: () => ({ sha256: HASH_H, filename: 'pkg-1.0.0.tgz', bytes: 1024 }),
+    });
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('rebuild_source_unverified');
   });
 });
 
@@ -166,7 +191,7 @@ describe('verifyBuildAttestation — tamper / malformed input (fail-closed)', ()
   });
 });
 
-describe('TPM quote — hardware boundary (honest stub)', () => {
+describe('TPM quote — fail-closed deployment verifier boundary', () => {
   const goodQuote = {
     '@format': TPM_QUOTE_FORMAT,
     quoted: 'base64-tpms-attest',

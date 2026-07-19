@@ -18,8 +18,9 @@ describe('homepage category contract', () => {
     expect(layout).toContain('secure agent actions');
     expect(layout).toContain('AI agent firewall');
     expect(page).toContain('EMILIA Gate <span>· The Consequence Firewall</span>');
-    expect(page).toContain('Before a machine changes the world, make it prove the action was authorized.');
-    expect(page).toContain('On a fully mediated protected path: no valid receipt, no movement of money, code,');
+    expect(page).toContain('Stop consequential machine actions before they become irreversible.');
+    expect(page).toContain('Protocol proves. Gate prevents.');
+    expect(page).toContain('On every protected path the resource owner fully mediates: no valid evidence, no');
     expect(css).toContain('hero-human-machine-shoreline-v1.webp');
     expect(page).toContain('Proof, not promises');
     expect(page).toContain('IETF Internet-Drafts');

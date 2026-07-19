@@ -52,10 +52,19 @@ export default function InvestorsPage() {
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56, maxWidth: 640 }}>
         <div className="ep-tag" style={{ color: color.gold, fontFamily: font.mono || font.sans, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 20 }}>Investor Inquiries</div>
         <h1 style={{ fontFamily: font.sans, fontSize: 40, fontWeight: 700, color: '#0C0A09', lineHeight: 1.1, marginBottom: 20, maxWidth: 560 }}>
-          Building the trust layer for a world humans and machines share.
+          The durable-consequence layer for machines that can change the world.
         </h1>
         <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
-          The protocol, the running verifiers, and the standards work are open and public. If you invest in infrastructure and open standards, or you can open a pilot door, we would like to talk.
+          Agent identity, delegation, and policy can say who the agent is and what it may call.
+          EMILIA sits at the protected executor: it proves who authorized the exact material action,
+          consumes that authority once, and preserves what happened when money, infrastructure,
+          regulated records, or irreversible state is involved.
+        </p>
+        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
+          The open protocol, fail-closed verifiers, cross-standard CAID vectors, bounded-capability
+          enforcement, provider-timeout reconciliation, and Gate topology profile are inspectable.
+          Physical-hardware attestation and independent witness operation are partner milestones,
+          not claims hidden behind the word “built.”
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560 }}>
           The round materials, business model, and commercial detail are shared directly under NDA. Tell us a little below, or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.

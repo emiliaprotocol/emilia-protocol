@@ -35,6 +35,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { canonicalize } from '../../packages/gate/execution-binding.js';
 import {
+  CAPABILITY_SCOPE_PROFILE,
+  capabilityActionDigest,
   mintCapabilityReceipt,
   createMemoryCapabilityStore,
 } from '../../packages/gate/capability-receipt.js';
@@ -69,7 +71,7 @@ function mintAndRegister(store, { budget, expiryMs }) {
     receipt_id: `base_${Math.random().toString(36).slice(2)}`,
     created_at: new Date(NOW - 1000).toISOString(),
     subject: 'operator@conformance.test',
-    claim: { action_type: 'payment.release', outcome: 'allow' },
+    claim: { action_type: 'payment.release', outcome: 'allow', capability_only: true },
   };
   const base = {
     '@version': 'EP-RECEIPT-v1',
@@ -84,6 +86,11 @@ function mintAndRegister(store, { budget, expiryMs }) {
     budget: { amount: budget, currency: 'USD' },
     expiry: NOW + expiryMs,
     issuerPrivateKey: keys.privateKey,
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'operation_id',
+      action_digests: [capabilityActionDigest({ operation_id: 'conformance-template' })],
+    },
   });
   const registered = store.registerCapability(minted.capabilityReceipt);
   if (!registered) throw new Error('capability registration failed in harness setup');
@@ -125,6 +132,7 @@ async function runCapabilityCase(kase) {
         capabilityId: cap.capabilityId,
         capabilityFingerprint: cap.fingerprint,
         operationId: a.operation,
+        actionDigest: capabilityActionDigest({ operation_id: a.operation }),
         amount: a.amount,
         currency: a.currency || 'USD',
         now: at,

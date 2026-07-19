@@ -29,7 +29,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:42876de1113c6248
+//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:6ce04a19ad572d41
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -536,12 +536,13 @@ export function receiptRequiredHeader(opts = {}) {
  * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own inline key (proves integrity, NOT trust)
  * @param {string|null} [opts.action] require the receipt to be bound to this action_type
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this
+ * @param {()=>number} [opts.now=Date.now] trusted clock used for freshness
  * @param {string[]} [opts.allowedOutcomes] acceptable claim.outcome values
  * @returns {{ok:boolean, reason?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
  */
 export function verifyEmiliaReceipt(doc, opts = {}) {
   const { trustedKeys = [], allowInlineKey = false, action = null, maxAgeSec = 900,
-    allowedOutcomes = ['allow', 'allow_with_signoff'] } = opts;
+    now = Date.now, allowedOutcomes = ['allow', 'allow_with_signoff'] } = opts;
 
   if (!doc || doc['@version'] !== 'EP-RECEIPT-v1' || !doc.payload || !doc.signature?.value) {
     return { ok: false, reason: 'malformed_receipt' };
@@ -574,7 +575,8 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
   // EXPIRED (not skipped) so an undated receipt can never slip past the age
   // gate — matching what /api/v1/guarded enforces on the demand side.
   if (maxAgeSec) {
-    const ageSec = (Date.now() - Date.parse(payload.created_at)) / 1000;
+    const nowMs = typeof now === 'function' ? now() : Number.NaN;
+    const ageSec = (nowMs - Date.parse(payload.created_at)) / 1000;
     if (!Number.isFinite(ageSec) || ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
   }
   if (action && payload.claim?.action_type !== action) {

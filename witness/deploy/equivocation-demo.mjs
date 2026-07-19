@@ -2,7 +2,7 @@
 /**
  * EP Witness: real local equivocation-detection test.
  *
- * Stands up THREE independent witness cosigners in-process (each with its own
+ * Stands up THREE distinct local witness instances in-process (each with its own
  * Ed25519 key, each the real witness/server.mjs over HTTP), then:
  *
  *   PHASE 1 (honest)      one head at tree_size N. All 3 witnesses /cosign it.
@@ -74,7 +74,7 @@ function assert(cond, msg) {
 }
 
 async function main() {
-  // --- Stand up 3 independent witnesses (distinct keys, distinct ports) ---
+  // --- Stand up 3 distinct local witnesses (distinct keys, distinct ports) ---
   const identities = [makeIdentity(), makeIdentity(), makeIdentity()];
   const servers = identities.map((id) => createServer(id));
   const ports = [];
@@ -83,7 +83,7 @@ async function main() {
   const pinned = identities.map((id) => ({ witness_id: id.witness_id, public_key: id.public_key }));
   const K = 2; // quorum: 2 of 3 distinct witnesses
 
-  console.log('=== 3 independent witnesses up ===');
+  console.log('=== 3 distinct local witness instances up ===');
   identities.forEach((id, i) => console.log(`  witness ${i + 1}: ${id.witness_id}  @127.0.0.1:${ports[i]}`));
   console.log(`  quorum threshold k=${K} of ${identities.length}\n`);
 

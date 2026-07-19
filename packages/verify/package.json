@@ -53,6 +53,12 @@
     },
     "./evidence-chain": {
       "import": "./evidence-chain.js"
+    },
+    "./agentroa": {
+      "import": "./agentroa.js"
+    },
+    "./orprg": {
+      "import": "./orprg.js"
     }
   },
   "files": [
@@ -82,6 +88,8 @@
     "reliance-profile-registry.js",
     "reliance-gap.js",
     "evidence-chain.js",
+    "agentroa.js",
+    "orprg.js",
     "cli.js",
     "index.d.ts",
     "README.md",
@@ -113,7 +121,7 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
-    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js agent-binding.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js agent-binding.test.js agentroa.test.js orprg.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"

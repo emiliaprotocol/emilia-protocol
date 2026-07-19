@@ -31,8 +31,6 @@ const SURFACES = [
   { type: 'FRAMEWORKS', label: 'Agent runtimes', body: 'OpenAI, LangChain, CrewAI, AutoGen — guard tool calls in one wrap().', status: 'Shipped' },
   { type: 'CLOUD', label: 'Infra & platforms', body: 'System-of-record adapters shipped for GitHub, Stripe, Supabase/Postgres, AWS, Kubernetes, Terraform, GCP, Vercel, Cloudflare, Linear, Jira, and Salesforce.', status: 'Shipped' },
   { type: 'ROBOTS', label: 'Actuator sidecar', body: 'A local daemon before motion/tool commands. Pre-authorize a bounded envelope; verify each act offline.', status: 'Reference' },
-  { type: 'ATTESTED', label: 'Attested gate', body: 'Pinned device/workload attestation plus an independent active refusal probe proves the declared surface is actually mediated.', status: 'Built' },
-  { type: 'WITNESS', label: 'Network witness', body: 'Pinned TAP or packet-broker observations compose as independent evidence without being mistaken for enforcement.', status: 'Built' },
 ];
 
 const TIERS = [
@@ -111,20 +109,20 @@ export default function GatePage() {
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.container}>
             <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GATE · THE CONSEQUENCE FIREWALL</div>
-            <h1 style={{ ...styles.h1, marginTop: 16 }}>The firewall for machine action.</h1>
+            <h1 style={{ ...styles.h1, marginTop: 16 }}>Stop consequential machine action before it becomes irreversible.</h1>
             <p style={{ fontFamily: font.mono, color: color.gold, fontSize: 14, fontWeight: 600, marginTop: 18 }}>
               Protocol proves. Gate prevents.
             </p>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
-              EMILIA makes agent accountability independently checkable. Before an agent changes
-              money, code, permissions, records, or regulated state on a protected path, the system
-              requires a receipt. A relying party with the pinned trust inputs can later verify who
-              approved the exact action and under which policy, without trusting EMILIA&apos;s server.
+              EMILIA Gate sits immediately before protected execution. Before money moves,
+              infrastructure changes, regulated records update, or irreversible state changes, Gate
+              verifies the exact authority and evidence the resource owner requires, consumes
+              accepted authorization once, and records the result.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 12, fontSize: 15, color: color.t2 }}>
-              Not authentication, not permissions, not anomaly detection. A policy-enforcement point
-              that requires portable proof of human authorization before the world is mutated. Deny
-              by default. Fail closed.
+              On a fully mediated path, missing, stale, mismatched, or replayed evidence never
+              reaches mutation. The open Protocol lets the relying party reproduce why the exact
+              action passed or failed under its own pinned trust inputs.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="/gate/live" style={cta.primary}>Open live Gate</a>
@@ -143,8 +141,7 @@ export default function GatePage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>THE INVARIANT</div>
             <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 820 }}>
-              If an agent cannot produce a valid receipt, it cannot change money, code, permissions,
-              data, infrastructure, energy, or physical state.
+              If the required evidence does not verify, the protected system does not mutate.
             </h2>
             <p style={{ ...styles.body, maxWidth: 680, marginTop: 16 }}>
               The gate is deployed by the resource owner — the bank, the cloud API, the database, the
@@ -251,6 +248,41 @@ export default function GatePage() {
           </div>
         </section>
 
+        {/* Standards composition */}
+        <section style={styles.section}>
+          <div style={styles.container}>
+            <div style={styles.eyebrow}>COMPOSE, DON&apos;T REPLACE</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 800 }}>
+              A distinct job at each authorization layer.
+            </h2>
+            <p style={{ ...styles.lead, maxWidth: 820, marginTop: 18 }}>
+              AgentROA governs what an agent may call. ORPRG verifies that policy permitted the
+              effect. EMILIA proves who authorized the exact material action — and safely controls
+              the consequence when money, infrastructure, regulated records, or irreversible state
+              is involved.
+            </p>
+            <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
+              {[
+                ['Delegated route', 'AgentROA', 'What may this agent call under its delegated scope?'],
+                ['Policy permit', 'ORPRG', 'Did machine policy permit this effect at the boundary?'],
+                ['Accountable consequence', 'EMILIA', 'Who authorized this exact material action, and may the protected executor mutate now?'],
+              ].map(([label, title, body]) => (
+                <div key={title} style={{ ...styles.card, padding: 24 }}>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.2, textTransform: 'uppercase' }}>{label}</div>
+                  <div style={{ ...styles.h3, fontSize: 18, marginTop: 9 }}>{title}</div>
+                  <div style={{ ...styles.body, fontSize: 14, marginTop: 10, color: color.t2 }}>{body}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ ...styles.body, maxWidth: 760, marginTop: 24, fontSize: 14, color: color.t2 }}>
+              EMILIA does not collapse machine delegation, machine policy, and human authorization
+              into one verdict. A deployment selects and pins the native evidence it trusts; an
+              adjacent format composes only when its native verifier and action binding are
+              configured.
+            </p>
+          </div>
+        </section>
+
         {/* API */}
         <section style={styles.section}>
           <div style={styles.container}>
@@ -260,6 +292,12 @@ export default function GatePage() {
               `gate.run()` makes the ordering hard to get wrong. It reserves the receipt while the
               action is in flight, commits one-time consumption only after success, releases on
               pre-mutation failure, and returns the reliance packet.
+            </p>
+            <p style={{ ...styles.body, maxWidth: 720, marginTop: 12 }}>
+              When an action carries a bounded capability, Gate also reserves the observed spend
+              before the effect, refuses overspend or operation replay, commits after success, and
+              records an exception after effect entry as indeterminate instead of refunding it
+              blindly.
             </p>
             <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: '28px 0 0', overflowX: 'auto', whiteSpace: 'pre' }}>{CODE}</pre>
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

@@ -4,7 +4,7 @@
     "name": "EMILIA",
     "category": "consequence firewall for consequential machine actions",
     "core_line": "Protocol proves. Gate prevents.",
-    "summary": "EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
+    "summary": "EMILIA Gate is the commercial consequence firewall that prevents consequential machine actions on protected executor paths without verifiable authority. It consumes native delegation and machine-policy evidence as independently verified inputs, joins them to exact-action human authority, reserves bounded capabilities before provider entry, and preserves executed or indeterminate outcomes. EMILIA Protocol is the open verification and evidence substrate underneath it; EMILIA Approver captures device-bound exact-action human decisions; EMILIA Assurance Plane provides scoped verification, re-performance, conformance reports, and deployment evidence without acting as an auditor or accredited certifier.",
     "message_order": [
       "Lead with EMILIA Gate and the consequential action it prevents.",
       "Explain EMILIA Protocol as the open, customer-pinned substrate underneath Gate.",
@@ -92,6 +92,18 @@
       "definition": "MATCH means independently verified artifacts denote the same material action, either by direct CAID equality or under exact relying-party-pinned Action-Mapping Profiles. Matching is content correlation, never authority."
     },
     {
+      "term": "adjacent authorization composition",
+      "definition": "AgentROA governs delegated agent scope and emits gateway evidence. The concrete ORPRG JSON/JCS/Ed25519 profile proves a machine-policy permit under its native rules. EMILIA verifies those artifacts under separate relying-party pins, correlates their material action through exact CAID mapping profiles, and can require them beside EP human evidence. None substitutes for another."
+    },
+    {
+      "term": "bounded capability",
+      "definition": "A signed, budget-limited, exact-action or CAID-scoped authority consumed through Gate. Gate requires a stable operation identifier, binds amount and currency to observed executor facts, reserves atomically before provider entry, commits after success, refuses overspend and replay, and treats post-entry uncertainty as indeterminate rather than refundable."
+    },
+    {
+      "term": "indeterminate effect",
+      "definition": "The provider boundary was entered but the executor cannot safely prove whether the effect happened, for example because the provider committed and the response was lost. EMILIA consumes the operation, refuses blind replay, and permits reconciliation only from authenticated provider evidence bound to the same provider, operation, and material action."
+    },
+    {
       "term": "evidence satisfaction versus authorization",
       "definition": "SATISFIED means verified and matched evidence fills every slot in the relying party's evidence requirement. AUTHORIZED is the separate local policy decision to permit execution. AEC computes satisfaction; the executor authorizes."
     },
@@ -142,8 +154,8 @@
     {
       "layer": "delegation, capability, and policy",
       "question": "What authority, capability, or machine policy applies?",
-      "ep_role": "Verifies native artifacts and keeps policy ALLOW distinct from human approval.",
-      "adjacent_examples": "DRP, OAuth, AuthZEN, ACTA signed decision receipts, AGTP, AgentROA"
+      "ep_role": "Verifies native artifacts under distinct relying-party pins, including AgentROA and the concrete ORPRG JSON/JCS/Ed25519 profile, and keeps delegated scope and machine-policy ALLOW distinct from human approval.",
+      "adjacent_examples": "DRP, OAuth, AuthZEN, ACTA signed decision receipts, AGTP, AgentROA, ORPRG"
     },
     {
       "layer": "material action identity and mapping",
@@ -166,8 +178,8 @@
     {
       "layer": "execution lifecycle",
       "question": "Was evidence demanded, consumed, executed, observed, revoked, and preserved correctly?",
-      "ep_role": "Separates challenge, local authorization, enforcement, outcome, revocation, and preservation.",
-      "adjacent_examples": "Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft, system-of-record gate, SCITT, evidence records"
+      "ep_role": "Separates challenge, native verification, matching, evidence satisfaction, local authorization, bounded reserve, provider invocation, executed or indeterminate outcome, authenticated reconciliation, revocation, and preservation.",
+      "adjacent_examples": "Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft, system-of-record gate, bounded capability, provider evidence, SCITT, evidence records"
     }
   ],
   "non_claims": [
@@ -189,6 +201,11 @@
     "EQUIVALENT_UNDER_PROFILE is valid only under the exact mapping profiles and type-definition sources pinned by the relying party; missing or lossy mappings are INDETERMINATE.",
     "AEC SATISFIED is evidence sufficiency under one relying-party requirement, not a universal ALLOW or legal authorization decision.",
     "An offline receipt cannot prove global non-replay across independent executors; one-time enforcement requires a shared atomic consumption domain.",
+    "An indeterminate operation is not proof that the provider effect succeeded or failed. It is a safety state that consumes replay authority until authenticated, action-bound provider evidence reconciles the outcome.",
+    "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
+    "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
+    "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
+    "CAID -00 is a render-clean private filing candidate, not a posted standard. Bounded Capability is implemented architecture, not a posted standard. AEC is different: revision -02 is already an active individual Internet-Draft and -03 is staged.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -313,6 +330,38 @@
       "purpose": "EMILIA Protocol typed material-action identity, pinned cross-format mapping, registry, and tri-language shared vectors"
     },
     {
+      "path": "packages/verify/agentroa.js",
+      "purpose": "fail-closed native verification of AgentROA envelopes, monotone delegation chains, and AER evidence under relying-party issuer and policy pins"
+    },
+    {
+      "path": "packages/verify/orprg.js",
+      "purpose": "fail-closed verifier for the concrete ORPRG-JSON-JCS-ED25519-v1 PermitReceipt profile; not a universal ORPRG wire-format claim"
+    },
+    {
+      "path": "conformance/vectors/agentroa-orprg-ep.v1.json",
+      "purpose": "seven real-crypto vectors joining AgentROA AER, ORPRG PermitReceipt, and genuine EP Class-A quorum evidence to one CAID, with fail-closed substitution, trust, policy, replay, and requirement negatives"
+    },
+    {
+      "path": "packages/gate/capability-receipt.js",
+      "purpose": "bounded capability issuance, exact-action or CAID scope, monotone delegation, atomic memory/PostgreSQL spend state, operation binding, and authenticated reconciliation"
+    },
+    {
+      "path": "examples/indeterminate-effect-reconciliation",
+      "purpose": "executable provider-committed/response-lost scenario proving indeterminate consumption, replay refusal, and authenticated no-reexecution reconciliation"
+    },
+    {
+      "path": "docs/architecture/GATE-ENFORCEMENT-PROFILE.md",
+      "purpose": "canonical Gate operation order and executor, gateway, dual-enforcement, and witness topologies"
+    },
+    {
+      "path": "attestation/tpm-quote-verifier.js",
+      "purpose": "strict offline TPM 2.0 quote verification under verifier nonce, PCR allowlist, known-good PCR values, safe clock, quote signature, and pinned AK SPKI"
+    },
+    {
+      "path": "witness/deploy",
+      "purpose": "reference witness emitter, quorum, and cross-view gossip kit; local instances prove protocol behavior but not independent operation"
+    },
+    {
       "path": "packages/verify/index.js",
       "purpose": "EMILIA Protocol receipt, signoff, trust-receipt, and core verification exports"
     },
@@ -431,6 +480,22 @@
       "purpose": "run the offline oversight receipt report and its tamper and unpinned-approver refusals"
     },
     {
+      "command": "node conformance/vectors/generate-agentroa-orprg-ep.mjs --check && npx vitest run tests/agentroa-orprg-ep-caid.test.js",
+      "purpose": "check the cross-standard corpus without rewriting it, then verify AgentROA, ORPRG, EP quorum, pinned CAID mappings, replay refusal, and substitution negatives"
+    },
+    {
+      "command": "node --test examples/indeterminate-effect-reconciliation/scenario.test.mjs",
+      "purpose": "prove provider-commit/response-loss is recorded indeterminate, cannot be blindly replayed, and reconciles only authenticated same-action provider evidence"
+    },
+    {
+      "command": "npx vitest run attestation/build-attestation.test.js attestation/tpm-quote-verifier.test.js",
+      "purpose": "run the source-pinned rebuild, transparency-log, and strict software-TPM interoperability verification suites"
+    },
+    {
+      "command": "node --test witness/deploy/equivocation.node-test.mjs",
+      "purpose": "prove local witness emit, pinned quorum, and cross-view equivocation detection without claiming independent operators"
+    },
+    {
       "command": "npm run sync:llm-context",
       "purpose": "regenerate every LLM-facing context artifact"
     },
@@ -449,6 +514,10 @@
     "Lead buyers and general readers with the prevented consequence and deployable product. Put open-substrate neutrality one beat behind it, engineering proof third, and standards status after the product and claim boundary are clear.",
     "Start with standards/STATUS.json and standards/PORTFOLIO.md before characterizing the draft portfolio; local archive names are not current architecture.",
     "Keep VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED separate in every explanation.",
+    "Use the interoperability line: AgentROA governs what an agent may call; ORPRG verifies that policy permitted the effect; EMILIA proves who authorized the exact material action and controls the protected consequence. Do not market EMILIA as another general agent-authorization gateway.",
+    "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
+    "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
+    "Describe CAID -00 as a private render-clean filing candidate and Bounded Capability as implemented architecture, not posted standards. Describe AEC -02 as an active individual Internet-Draft and -03 as staged.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

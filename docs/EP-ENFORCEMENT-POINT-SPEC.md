@@ -277,7 +277,18 @@ An enforcement point self-certifies by asserting each item below. Each row is on
 
 ## 7. Formal-Verification Scope (honest boundary)
 
-The PDP's pure decision function `evaluateGuardPolicy()` is the only part covered by formal proofs: **26 TLA+ safety properties (413,137 states, 0 errors)** and **35 Alloy facts + 22 assertions** (see `formal/PROOF_STATUS.md`). The proofs cover the policy-engine logic that maps `(organizationId, actorId, actionType, amount, riskFlags, aml)` → `(decision, signoffRequired, reasons)` — including no-self-approval at decision time, no-replay binding to the issued `action_hash`, money-destination escalation, large-payment tiering, AML fail-closed, and non-overridable hard-deny flags.
+The PDP's pure decision function `evaluateGuardPolicy()` is covered only by the
+model properties that actually describe that decision path. The wider formal
+portfolio currently contains **26 TLA+ invariants** and **32 Alloy assertions
+across four models**, all run in CI; the machine-generated counts in
+`lib/proof-stats.json` and the per-model scopes in `formal/PROOF_STATUS.md` are
+authoritative. The relevant policy-engine model covers the mapping
+`(organizationId, actorId, actionType, amount, riskFlags, aml)` →
+`(decision, signoffRequired, reasons)`, including no-self-approval at decision
+time, no-replay binding to the issued `action_hash`, money-destination
+escalation, large-payment tiering, AML fail-closed, and non-overridable
+hard-deny flags. The separate quorum, federation, and capability-delegation
+models must not be used to widen that PDP claim.
 
 The proofs do **not** cover: cryptographic verification, signer pinning, replay detection via store, web endpoint routing, audit logging, database I/O, the signoff approval process itself, or the `agent-gate` non-formal rules (`rm -rf`, `git push --force`, `DROP TABLE`, destructive Supabase ops in `scripts/emilia-gate.mjs`). An EP-EP MUST NOT represent the proofs as covering deployment topologies or steps they do not model (C-24).
 

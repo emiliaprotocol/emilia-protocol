@@ -22,6 +22,7 @@ staging plan to stand up three *genuinely independent* operators.
 | `gen-operator-keys.mjs` | Generate N operator key sets + `pinned-witnesses.json` (the `pinnedWitnessKeys` array). |
 | `docker-compose.yml` | 3 local witnesses (op1/op2/op3) on ports 8801-8803 for **testing** the wire protocol. Not a production topology. |
 | `operator.env.template` | Per-operator config for a **real, independent** deployment (distinct cloud/region/admin). |
+| `OPERATOR-HANDOFF.md` | Exact third-party deployment, public-key handoff, and acceptance procedure; private keys never transit EMILIA. |
 | `STAGING.md` | Cost to stand up 3 independent operators, candidate partner types, and a **DRAFT** (unsent) partner-outreach message. |
 
 ## The 60-second proof (no Docker needed)

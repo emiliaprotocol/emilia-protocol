@@ -46,6 +46,19 @@ test('receipt older than maxAgeSec is rejected as expired', () => {
   assert.equal(v.reason, 'receipt_expired');
 });
 
+test('freshness uses the caller-supplied trusted clock', () => {
+  const nowMs = Date.parse('2026-07-19T04:00:00.000Z');
+  const { doc, pub } = mint({
+    createdAt: new Date(nowMs - 1_000).toISOString(),
+  });
+  const v = verifyEmiliaReceipt(doc, {
+    trustedKeys: [pub],
+    maxAgeSec: 900,
+    now: () => nowMs,
+  });
+  assert.equal(v.ok, true, `expected deterministic freshness, got ${JSON.stringify(v)}`);
+});
+
 test('FAIL-CLOSED: missing created_at is rejected as expired when maxAgeSec set', () => {
   const { doc, pub } = mint({ omitCreatedAt: true });
   assert.equal(doc.payload.created_at, undefined, 'fixture must omit created_at');

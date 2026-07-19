@@ -19,11 +19,11 @@
  *                       hash equals the deterministic build of the pinned source.
  *                       See attestation/reproducible-rebuild.mjs for the real one.
  *
- * The FOURTH link — the TPM 2.0 quote proving the measured binary is what the
- * host actually runs — requires real TPM hardware (a physical attestation key in
- * a discrete/firmware TPM). It is a clearly-stubbed, OPTIONAL field here. See
- * verifyTpmQuote() and attestation/STAGING.md for the exact hardware boundary.
- * This module does NOT claim TPM attestation works.
+ * The FOURTH link is optional TPM 2.0 quote evidence. This record verifier keeps
+ * the deployment's TPM policy injected; the strict repository adapter lives in
+ * tpm-quote-verifier.js. Physical hardware, AK/EK enrollment, measured boot,
+ * known-good PCR policy, and manufacturer trust remain deployment inputs. See
+ * attestation/STAGING.md for the exact evidence boundary.
  *
  * Design notes:
  *   - Pure and dependency-light: the record verifier does NOT shell out to npm or
@@ -113,14 +113,14 @@ function structuralError(record) {
 }
 
 /**
- * STUBBED TPM 2.0 quote verification (HARDWARE-REQUIRED).
+ * TPM 2.0 verifier boundary.
  *
  * A real implementation verifies that a TPM Attestation Key (AK) signed a
  * TPM2_Quote over a PCR set whose value equals the measurement of the running
  * binary, with the record's nonce for freshness, and that the AK chains to an
  * Endorsement Key credential the buyer trusts. NONE of that is possible in a
- * CI/dev environment without a physical or firmware TPM, an EK certificate, and
- * an AK enrollment. This function therefore refuses, HONESTLY, by default.
+ * CI/dev environment without deployment-owned trust inputs. This function
+ * therefore refuses by default unless a strict verifier is injected.
  *
  * The interface is defined so a defense buyer can drop in a hardware-backed
  * verifier (e.g. tpm2-tools / go-attestation) without changing the record
@@ -133,8 +133,6 @@ function structuralError(record) {
  * @returns {{ supported: boolean, ok: boolean, reason: string, pcrDigest?: string }}
  */
 export function verifyTpmQuote(_quote, opts = {}) {
-  // TODO(hardware-required): implement with a real TPM 2.0 AK/EK chain. Blocked
-  // on physical TPM + EK certificate + AK enrollment — unavailable in CI/dev.
   if (typeof opts.hardwareVerifier === 'function') {
     const r = opts.hardwareVerifier(_quote);
     return {
@@ -147,7 +145,7 @@ export function verifyTpmQuote(_quote, opts = {}) {
   return {
     supported: false,
     ok: false,
-    reason: 'tpm-hardware-required: no TPM 2.0 AK/EK verifier available in this environment (see attestation/STAGING.md)',
+    reason: 'tpm-hardware-required: no TPM 2.0 verifier and deployment trust policy were supplied (see attestation/STAGING.md)',
   };
 }
 
@@ -183,8 +181,9 @@ function tpmQuoteStructureError(q) {
  *
  * @param {object} record - EP-BUILD-ATTESTATION-v1
  * @param {object} [opts]
- * @param {(source: {commit: string, package_path: string}) => {sha256: string, filename?: string, bytes?: number}} [opts.rebuild]
- *        Live reproducible-build function. Injected so this verifier stays pure.
+ * @param {(source: {commit: string, package_path: string}) => {source_commit: string, sha256: string, filename?: string, bytes?: number}} [opts.rebuild]
+ *        Live reproducible-build function. It MUST report the checked-out source
+ *        commit it actually built. Injected so this verifier stays pure.
  * @param {(quote: object) => {ok: boolean, reason?: string, pcrDigest?: string}} [opts.tpmHardwareVerifier]
  *        Real TPM verifier, only where hardware exists.
  * @returns {{ valid: boolean, complete: boolean, links: object, reason?: string }}
@@ -251,11 +250,32 @@ export function verifyBuildAttestation(record, opts = {}) {
       links.rebuild = { status: 'error', reason: 'rebuild did not return a 64-hex sha256' };
       return { valid: false, complete: false, links, reason: 'rebuild_error' };
     }
+    if (typeof rebuilt.source_commit !== 'string' || !GIT_SHA.test(rebuilt.source_commit)) {
+      links.rebuild = { status: 'error', reason: 'rebuild did not report the checked-out source_commit' };
+      return { valid: false, complete: false, links, reason: 'rebuild_source_unverified' };
+    }
+    if (rebuilt.source_commit !== record.source.commit) {
+      links.rebuild = {
+        status: 'source_mismatch',
+        built_source_commit: rebuilt.source_commit,
+        claimed_source_commit: record.source.commit,
+      };
+      return {
+        valid: false,
+        complete: false,
+        links,
+        reason: 'rebuild_source_mismatch: checked-out source is not record.source.commit',
+      };
+    }
     if (rebuilt.sha256 !== record.artifact.sha256) {
       links.rebuild = { status: 'mismatch', built_sha256: rebuilt.sha256, claimed_sha256: record.artifact.sha256 };
       return { valid: false, complete: true, links, reason: 'rebuild_mismatch: binary hash is not the deterministic build of the pinned source' };
     }
-    links.rebuild = { status: 'matched', sha256: rebuilt.sha256 };
+    links.rebuild = {
+      status: 'matched',
+      source_commit: rebuilt.source_commit,
+      sha256: rebuilt.sha256,
+    };
     complete = true;
   }
 

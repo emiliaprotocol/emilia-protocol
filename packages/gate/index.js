@@ -71,8 +71,13 @@ import {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityBaseReceiptDigest,
+  capabilityActionDigest,
+  verifyCapabilityScope,
   mintCapabilityReceipt,
   verifyCapabilityReceipt,
   splitCapabilitySecret,
@@ -81,6 +86,7 @@ import {
   createPostgresCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   delegateCapabilityReceipt,
 } from './capability-receipt.js';
 import {
@@ -165,8 +171,13 @@ export {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityBaseReceiptDigest,
+  capabilityActionDigest,
+  verifyCapabilityScope,
   mintCapabilityReceipt,
   verifyCapabilityReceipt,
   splitCapabilitySecret,
@@ -175,6 +186,7 @@ export {
   createPostgresCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   delegateCapabilityReceipt,
 } from './capability-receipt.js';
 export {
@@ -696,7 +708,9 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  * @param {object} [opts.capabilityStore] Marvel capability budget store. A
  *   capability run reserves here before the effect and commits after it.
  * @param {string[]} [opts.capabilityTrustedIssuerKeys] pinned capability
- *   envelope issuer keys. Defaults to trustedKeys when omitted.
+ *   envelope issuer keys. Required when capabilityStore is configured.
+ * @param {function} [opts.capabilityCaidResolver] relying-party-pinned resolver
+ *   for `urn:emilia:scope:caid-set-v1`. Missing resolver fails CAID scope closed.
  * @param {boolean} [opts.allowEphemeralStore=false] explicit test/demo opt-in for in-memory state
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
  * @param {boolean} [opts.allowInlineKey=false] accept the receipt's own key (integrity, NOT trust)
@@ -718,7 +732,7 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  *   Required whenever an admissibility profile is pinned. It must authenticate
  *   the presented packet or recompute the verdict and return the trusted block.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -743,9 +757,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       || typeof capabilityStore.commitSpend !== 'function')) {
     throw new Error('EMILIA Gate capabilityStore must implement registerCapability(), reserveSpend(), and commitSpend()');
   }
-  const effectiveCapabilityTrustedIssuerKeys = Array.isArray(capabilityTrustedIssuerKeys) && capabilityTrustedIssuerKeys.length > 0
-    ? [...capabilityTrustedIssuerKeys]
-    : [...trustedKeys];
+  if (capabilityStore && (!Array.isArray(capabilityTrustedIssuerKeys)
+      || capabilityTrustedIssuerKeys.length === 0
+      || capabilityTrustedIssuerKeys.some((key) => typeof key !== 'string' || key.length === 0))) {
+    throw new Error('EMILIA Gate capabilityTrustedIssuerKeys must explicitly pin at least one capability issuer');
+  }
+  const effectiveCapabilityTrustedIssuerKeys = [...capabilityTrustedIssuerKeys];
   // Replay defense is only sound if the store is shared, ownership-fenced, and
   // permanent. This is a security property in every environment; NODE_ENV must
   // never silently decide whether a receipt can be replayed.
@@ -887,6 +904,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!receipt) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'receipt_required');
     }
+    // A capability issuance receipt is not a bearer bypass around the budget
+    // path. The marker is inside the signed claim; stripping it breaks the
+    // receipt signature. Such a receipt is accepted only while the capability
+    // executor supplies the signed envelope and durable budget context.
+    if (receipt?.payload?.claim?.capability_only === true && !capability) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'capability_required');
+    }
     // A manifest-guarded action that declares no assurance_class is a
     // misconfiguration. Fail CLOSED rather than defaulting to the weakest tier
     // (which would accept a bare machine-signed receipt for a guarded action).
@@ -902,7 +926,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     const effectiveKeys = registry
       ? registry.keysValidAt(receipt?.payload?.created_at)
       : trustedKeys;
-    const v = verifyEmiliaReceipt(receipt, { trustedKeys: effectiveKeys, allowInlineKey, action, maxAgeSec });
+    const v = verifyEmiliaReceipt(receipt, {
+      trustedKeys: effectiveKeys,
+      allowInlineKey,
+      action,
+      maxAgeSec,
+      now,
+    });
     if (!v.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, `receipt_rejected:${v.reason}`, { rejected: v });
     }
@@ -1270,7 +1300,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         || !capability.capabilityReceipt || !capability.action) {
       return capabilityRefusal({ capability, reason: 'capability_request_invalid' });
     }
-    const operationId = capability.operationId || crypto.randomUUID();
+    if (typeof capability.operationId !== 'string' || capability.operationId.length === 0
+        || Buffer.byteLength(capability.operationId, 'utf8') > 128) {
+      return capabilityRefusal({ capability, reason: 'capability_operation_id_required' });
+    }
+    const operationId = capability.operationId;
     const context = { ...capability, operationId };
     const baseReceipt = capability.capabilityReceipt.receipt;
     if (receipt && safeCanonicalHash(receipt) !== safeCanonicalHash(baseReceipt)) {
@@ -1301,7 +1335,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       }
       effectStarted = true;
       try {
-        const value = await fn(authorization);
+        const value = await fn(authorization, {
+          operationId,
+          providerIdempotencyKey: operationId,
+          actionDigest: executionContext.action_digest,
+          observedAction: executionContext.observed_action,
+        });
         runtimeMonitor?.effectReturned(runtimeCycleId);
         return value;
       } catch (error) {
@@ -1318,6 +1357,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       selector,
       observedAction,
       trustedIssuerKeys: effectiveCapabilityTrustedIssuerKeys,
+      resolveCaid: capabilityCaidResolver,
       operationId,
       now,
       executeAction,
@@ -1688,8 +1728,13 @@ export default {
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
+  CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityBaseReceiptDigest,
+  capabilityActionDigest,
+  verifyCapabilityScope,
   mintCapabilityReceipt,
   verifyCapabilityReceipt,
   splitCapabilitySecret,
@@ -1698,6 +1743,7 @@ export default {
   createPostgresCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   ZK_RANGE_RECEIPT_VERSION,
   ZK_RANGE_SCHEME,
   ZK_RANGE_BACKEND_PACKAGE,

@@ -19,6 +19,8 @@
 
 import { generateKeyPairSync } from 'node:crypto';
 import {
+  CAPABILITY_SCOPE_PROFILE,
+  capabilityActionDigest,
   createMemoryCapabilityStore,
   mintCapabilityReceipt,
 } from '../../packages/gate/capability-receipt.js';
@@ -31,8 +33,14 @@ const clock = () => NOW;
 const EXPIRY = new Date(NOW + 86_400_000).toISOString();
 
 function baseReceipt(receiptId) {
-  return { '@version': 'EP-RECEIPT-v1', payload: { receipt_id: receiptId } };
+  return { '@version': 'EP-RECEIPT-v1', payload: { receipt_id: receiptId, claim: { capability_only: true } } };
 }
+const STORE_ACTION_DIGEST = capabilityActionDigest({ operation_id: 'fuzz-store-template' });
+const STORE_SCOPE = {
+  profile: CAPABILITY_SCOPE_PROFILE,
+  operation_id_field: 'operation_id',
+  action_digests: [STORE_ACTION_DIGEST],
+};
 
 // Build a capability + registered store; return the store, id, fingerprint.
 export function freshCapability(store, capabilityId, budget) {
@@ -41,6 +49,7 @@ export function freshCapability(store, capabilityId, budget) {
     budget: { amount: budget, currency: CURRENCY },
     expiry: EXPIRY,
     capabilityId,
+    scope: STORE_SCOPE,
   });
   invariant(store.registerCapability(capabilityReceipt), 'registration', 'capability failed to register');
   return store.getState(capabilityId).capability_fingerprint;
@@ -53,7 +62,7 @@ export function spendSequence({ store, capabilityId, fingerprint, operationId, a
   return [
     async () => {
       const r = await store.reserveSpend({
-        capabilityId, capabilityFingerprint: fingerprint, operationId, amount, currency: CURRENCY, now: clock,
+        capabilityId, capabilityFingerprint: fingerprint, operationId, actionDigest: STORE_ACTION_DIGEST, amount, currency: CURRENCY, now: clock,
       });
       if (r.ok) state.token = r.reservation_token;
     },

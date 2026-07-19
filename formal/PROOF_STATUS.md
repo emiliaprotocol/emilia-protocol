@@ -131,21 +131,21 @@ were fixed in this commit.
 
 | ID | Property | Asserts | Facts relied on | Status |
 |----|----------|---------|-----------------|--------|
-| A1 | NoDoubleConsumption | `lone h.consumption` per handshake | F3, F5 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A2 | RevokedNeverConsumed | `no h: Revoked \| some h.consumption` | F9 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A3 | ConsumedWasVerified | Every consumed handshake has a VerifiedEvent | F16, F25 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A4 | BindingHashIsolation | Binding hashes unique across handshakes | F7, F2 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A5 | TerminalStateIntegrity | Revoked/Expired/Rejected → no consumption | F9, F10, F11 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A6 | WritePathExclusive | All mutations go through CanonicalWrite | F17, F18 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A7 | DelegationScopeRespected | Delegate scope ⊆ principal scope | F19 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A8 | NoDelegationCycles | No entity reachable from itself via delegations | F20, F21 (fixed) | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A9 | PolicyHashConsistency | Binding policy hash = policy.policyHash | F23 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A10 | MultiActorNoDoubleConsume | At most one consumption per handshake_id | F24 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A11 | EventStateExactCorrespondence | Terminal event appears exactly once | F25 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A12 | SignoffBindingIntegrity | Signoff chain binding hash is consistent | F27, F28 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A13 | SignoffConsumeOnce | At most one consumption per attestation | F29 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A14 | SignoffRequiresHandshake | No signoff without a verified handshake | F26 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A15 | FullChainIntegrity | handshake=challenge=attestation=consumption binding | F26, F27, F28 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A1 | NoDoubleConsumption | `lone h.consumption` per handshake | F3, F5 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A2 | RevokedNeverConsumed | `no h: Revoked \| some h.consumption` | F9 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A3 | ConsumedWasVerified | Every consumed handshake has a VerifiedEvent | F16, F25 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A4 | BindingHashIsolation | Binding hashes unique across handshakes | F7, F2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A5 | TerminalStateIntegrity | Revoked/Expired/Rejected → no consumption | F9, F10, F11 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A6 | WritePathExclusive | All mutations go through CanonicalWrite | F17, F18 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A7 | DelegationScopeRespected | Delegate scope ⊆ principal scope | F19 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A8 | NoDelegationCycles | No entity reachable from itself via delegations | F20, F21 (fixed) | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A9 | PolicyHashConsistency | Binding policy hash = policy.policyHash | F23 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A10 | MultiActorNoDoubleConsume | At most one consumption per handshake_id | F24 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A11 | EventStateExactCorrespondence | Terminal event appears exactly once | F25 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A12 | SignoffBindingIntegrity | Signoff chain binding hash is consistent | F27, F28 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A13 | SignoffConsumeOnce | At most one consumption per attestation | F29 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A14 | SignoffRequiresHandshake | No signoff without a verified handshake | F26 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A15 | FullChainIntegrity | handshake=challenge=attestation=consumption binding | F26, F27, F28 | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 
@@ -168,13 +168,13 @@ with no counterexample.
 
 | ID | Property | Asserts | Facts relied on | Status |
 |----|----------|---------|-----------------|--------|
-| S1 | AcceptedIsAuthentic | accepted ⇒ signed by an advertised key over an untampered payload | C1, C2 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S2 | TamperedNeverAccepted | a tampered receipt is never accepted | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S3 | UnadvertisedKeyRejected | a receipt signed by a key the operator does not advertise is rejected | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S4 | HistoricalKeyStillVerifies | a pre-rotation receipt (advertised historical key) is still accepted | C1, C3 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S5 | RevokedNeverAccepted | a receipt the issuer revoked is never accepted | C4 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S6 | NoTrustLaundering | acceptance routes only through a key owned by the receipt's own signer | C1, C2 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S7 | PortabilityIsObserverIndependent | acceptance depends only on the receipt + its signer's surfaces, not on who verifies | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S1 | AcceptedIsAuthentic | accepted ⇒ signed by an advertised key over an untampered payload | C1, C2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S2 | TamperedNeverAccepted | a tampered receipt is never accepted | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S3 | UnadvertisedKeyRejected | a receipt signed by a key the operator does not advertise is rejected | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S4 | HistoricalKeyStillVerifies | a pre-rotation receipt (advertised historical key) is still accepted | C1, C3 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S5 | RevokedNeverAccepted | a receipt the issuer revoked is never accepted | C4 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S6 | NoTrustLaundering | acceptance routes only through a key owned by the receipt's own signer | C1, C2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S7 | PortabilityIsObserverIndependent | acceptance depends only on the receipt + its signer's surfaces, not on who verifies | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 

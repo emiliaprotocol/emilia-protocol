@@ -154,18 +154,18 @@ export default function HomePage() {
             <div className="ep-home-calm-kicker">
               EMILIA Gate <span>· The Consequence Firewall</span>
             </div>
-            <h1 id="home-trust-thesis">Before a machine changes the world, make it prove the action was authorized.</h1>
+            <h1 id="home-trust-thesis">Stop consequential machine actions before they become irreversible.</h1>
             <p style={{ fontFamily: font.mono, fontSize: 14, fontWeight: 600, color: color.gold, margin: '22px 0 0' }}>
               Protocol proves. Gate prevents.
             </p>
             <p className="ep-home-calm-lede">
-              EMILIA Gate sits immediately before consequential execution. It verifies a portable
-              receipt bound to the exact action, enforces the required human or quorum approval,
-              and consumes the authorization once.
+              EMILIA Gate sits immediately before money moves, infrastructure changes, regulated
+              records update, or irreversible state changes. It verifies the exact authority and
+              evidence the resource owner requires, then consumes accepted authorization once.
             </p>
             <p className="ep-home-calm-detail">
-              On a fully mediated protected path: no valid receipt, no movement of money, code,
-              permissions, data, energy, or physical state.
+              On every protected path the resource owner fully mediates: no valid evidence, no
+              mutation.
             </p>
             <div className="ep-home-calm-actions">
               <Link href="/gate/live" className="ep-home-hero-primary">Open the live Gate</Link>
@@ -329,6 +329,32 @@ export default function HomePage() {
               </motion.a>
             ))}
           </div>
+        </C>
+      </section>
+
+      {/* ── STANDARDS COMPOSITION — adjacent layers, not rival claims ─ */}
+      <section style={{ padding: '88px 0 0' }}>
+        <C>
+          <motion.div {...reveal()} style={{ maxWidth: 820 }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>Fits the authorization stack</div>
+            <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
+              Keep delegation, policy, and accountable authorization separate.
+            </h2>
+            <p style={{ fontSize: 18, color: color.t1, lineHeight: 1.7, maxWidth: 780, marginTop: 22 }}>
+              AgentROA governs what an agent may call. ORPRG verifies that policy permitted the
+              effect. EMILIA proves who authorized the exact material action — and safely controls
+              the consequence when money, infrastructure, regulated records, or irreversible state
+              is involved.
+            </p>
+            <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72, maxWidth: 700, marginTop: 16 }}>
+              These are complementary layers. A deployment pins the native evidence and verifiers
+              it trusts; EMILIA keeps those inputs distinct from exact-action human authorization
+              and executor-side enforcement.
+            </p>
+            <div style={{ marginTop: 24 }}>
+              <Link href="/observatory" className="ep-cta-secondary" style={cta.secondary}>Review the standards map →</Link>
+            </div>
+          </motion.div>
         </C>
       </section>
 

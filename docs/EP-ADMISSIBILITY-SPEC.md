@@ -88,18 +88,20 @@ classified, purpose-parameterized, replayable decision, not re-doing crypto.
 ## Relationship to EP-AEC
 
 EP-AEC (`verifyAuthorizationChain`) already binds heterogeneous legs to one
-action digest and evaluates a boolean requirement — it *is* the composition seam.
-Admissibility sharpens it in exactly three ways, and one was a security fix that
-has now ALSO been applied to AEC itself: an AEC document's `requirement` is
+action digest and evaluates a relying-party evidence requirement — it *is* the
+composition seam. An AEC document's `requirement` is
 **presenter-supplied** — a claim of what the bundle satisfies, never the relying
 party's bar — so the verifier accepts a relying-party-pinned requirement
 (`opts.requirement` in JS, `requirement=` in Python, trailing argument in Go)
 that takes precedence, with `requirement_source` recorded; conformance vectors in
 `conformance/vectors/aec.json` pin this in all three languages. Admissibility
 goes further: it takes the whole sufficiency policy as a relying-party argument
-and refuses to proceed without one. AEC returns binary `allow`; admissibility
-returns the five-state verdict. AEC has no freshness/replay; admissibility adds
-both.
+and refuses to proceed without one. AEC returns `SATISFIED` or `UNSATISFIED`
+(`allow` remains only a compatibility alias, not an authorization decision).
+Admissibility returns the five-state purpose-relative verdict and adds its own
+policy replay digest and classified treatment of stale, conflicted, missing, and
+unverifiable evidence. Stateful one-time execution remains the executor Gate's
+job, not a property inferred from either offline verdict.
 
 The two compose directly: **`evaluateChainAdmissibility(aec, policy, opts)`**
 runs the AEC composition verifier with the relying party's requirement pinned,
