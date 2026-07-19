@@ -63,6 +63,8 @@
 
 import { verifyReceipt } from './index.js';
 
+/** @typedef {import('./index.js').IssuerPin} IssuerPin */
+
 // =============================================================================
 // KEY RESOLUTION
 // =============================================================================
@@ -81,6 +83,7 @@ import { verifyReceipt } from './index.js';
  * @returns {Array<{ public_key: string, status: 'current'|'historical', algorithm: string, retired_at?: string }>}
  */
 export function resolveOperatorKeys(discoveryDoc, signerId) {
+  /** @type {Array<{ public_key: string, status: 'current'|'historical', algorithm: string, retired_at?: string }>} */
   const candidates = [];
   if (!discoveryDoc || typeof discoveryDoc !== 'object' || !signerId) return candidates;
 
@@ -382,7 +385,7 @@ function normalizeStringSet(input) {
  *   like a bare-id trustedIssuers entry, it does not bind the key source, so it
  *   does not by itself authorize fetching a receipt-supplied key_discovery)
  * @param {boolean} [opts.allowInsecureFetch=false] - test-only escape hatch to skip the SSRF guard
- * @returns {Promise<ReturnType<typeof verifyFederatedReceiptOffline> & { fetched: object }>}
+ * @returns {Promise<ReturnType<typeof verifyFederatedReceiptOffline> & { fetched: object, revocation_confirmed?: boolean, revocation_status?: string }>}
  */
 export async function verifyFederatedReceipt(receipt, opts = {}) {
   const signer = receipt?.signature?.signer || null;

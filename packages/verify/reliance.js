@@ -221,14 +221,14 @@ function signedActionMaterial(receipt, approvalContexts) {
  * Evaluate whether a relying party may rely on an evidence packet under its own
  * pinned profile. Returns a single closed verdict, fail-closed, deterministic.
  *
- * @param {object} input
- * @param {object} input.action               { action_type, amount?, currency?, policy_hash?, action_hash? }
- * @param {object} input.receipt              the EP trust receipt (verifyTrustReceipt input)
+ * @param {object} [input]
+ * @param {object} [input.action]             { action_type, amount?, currency?, policy_hash?, action_hash? }
+ * @param {object} [input.receipt]            the EP trust receipt (verifyTrustReceipt input)
  * @param {object} [input.quorum]             EP-QUORUM-v1 doc (required when required_assurance==='quorum')
  * @param {object} [input.authority_proof]    EP-AUTHORITY-PROOF-v1
  * @param {object} [input.revocation_state]   { checked_at, statement?, target? } freshness attestation
  * @param {object} [input.consumption]        { consumed:boolean, proof?:<EP-SMT-CONSUME bundle> }
- * @param {object} input.relying_party_profile EP-RELIANCE-PROFILE-v1 (the pins)
+ * @param {object} [input.relying_party_profile] EP-RELIANCE-PROFILE-v1 (the pins)
  * @param {number|string|Date} [input.now]
  * @param {object} [opts]                     { approverKeys, logPublicKey, rpId, revokerKeys,
  *                                              isConsumed({receipt_id, action_hash}): boolean }

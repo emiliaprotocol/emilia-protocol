@@ -47,10 +47,10 @@ export function authorityProofDigest(proof) {
  * Verify an EP-AUTHORITY-PROOF-v1 against pinned registry issuer keys.
  * @param {object} proof
  * @param {object} opts
- * @param {Array<{issuer_id:string,key_id?:string,public_key:string}>} opts.pinnedRegistryKeys
+ * @param {Array<{issuer_id:string,key_id?:string,public_key:string}>} [opts.pinnedRegistryKeys]
  * @param {string} [opts.expectRegistryHead]  proof.registry_head must equal this (equivocation)
  * @param {number} [opts.expectMinEpoch]      proof.registry_epoch must be >= this (staleness)
- * @returns {{verified:boolean, accepted:boolean, checks:object, reason?:string, proof_digest?:string}}
+ * @returns {{verified:boolean, accepted:boolean, checks:object, reason?:string, proof_digest?:string, key_id?:string}}
  */
 export function verifyAuthorityProof(proof, opts = {}) {
   opts = opts && typeof opts === 'object' ? opts : {};
@@ -62,6 +62,7 @@ export function verifyAuthorityProof(proof, opts = {}) {
     registry_head: true,
     epoch_fresh: true,
   };
+  /** @param {string} reason @param {{checks?:object, proof_digest?:string}} [extra] */
   const fail = (reason, extra = {}) => ({ verified: false, accepted: false, checks: { ...checks, ...extra.checks }, reason, ...('proof_digest' in extra ? { proof_digest: extra.proof_digest } : {}) });
 
   if (proof?.['@type'] !== AUTHORITY_PROOF_VERSION) return fail('unsupported_version');
