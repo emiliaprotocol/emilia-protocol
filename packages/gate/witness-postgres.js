@@ -60,6 +60,7 @@ function definitiveRow(result) {
 /**
  * Create the durable store expected by acceptNetworkWitnessStatement().
  * `query` is a node-postgres style function such as pool.query.bind(pool).
+ * @param {{ query?: Function, tenantId?: string|number, gateId?: string|number }} [o]
  */
 export function createPostgresWitnessSequenceStore({ query, tenantId, gateId } = {}) {
   if (typeof query !== 'function') {

@@ -196,15 +196,15 @@ function testItem(e) {
  * population size selects the full population ("100% examination").
  *
  * @param {Array<object>} entries  evidence.all() (or a durable export of it)
- * @param {object} o
- * @param {string} o.client       audit client / deploying organization (required)
- * @param {string} o.engagement   engagement reference (required)
- * @param {string} o.controlRef   control identifier under test (required)
- * @param {string|number} o.periodStart  inclusive window start (ISO or epoch ms)
- * @param {string|number} o.periodEnd    EXCLUSIVE window end (ISO or epoch ms)
- * @param {number} o.sampleSize   positive integer sample size (required)
- * @param {string} o.sampleSeed   seed pinning the sample selection (required)
- * @param {number|function} [o.now=Date.now]  clock for generated_at (pin for determinism)
+ * @param {object} [o]
+ * @param {string} [o.client]       audit client / deploying organization (required)
+ * @param {string} [o.engagement]   engagement reference (required)
+ * @param {string} [o.controlRef]   control identifier under test (required)
+ * @param {string|number} [o.periodStart]  inclusive window start (ISO or epoch ms)
+ * @param {string|number} [o.periodEnd]    EXCLUSIVE window end (ISO or epoch ms)
+ * @param {number} [o.sampleSize]   positive integer sample size (required)
+ * @param {string} [o.sampleSeed]   seed pinning the sample selection (required)
+ * @param {number|Function} [o.now=Date.now]  clock for generated_at (pin for determinism)
  * @returns {object} EP-GATE-AUDIT-WORKPAPER-v1 document
  */
 export function buildAuditWorkpaper(entries = [], {

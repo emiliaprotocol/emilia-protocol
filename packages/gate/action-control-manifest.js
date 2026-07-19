@@ -125,6 +125,12 @@ export function toActionControl(action) {
   return out;
 }
 
+/**
+ * @param {object} [o]
+ * @param {{ name?: string, issuer?: string, manifest_url?: string }} [o.service]
+ * @param {boolean} [o.includePassThrough]
+ * @param {Array<object>} [o.extraActions]
+ */
 export function createDefaultActionControlManifest({
   service = {},
   includePassThrough = true,

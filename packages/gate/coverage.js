@@ -351,6 +351,11 @@ function verifiedWitnessPositionKey(result) {
  * Evaluate coverage of a relying-party-declared inventory. Inventory
  * completeness remains an explicit external assumption and is never inferred.
  */
+/**
+ * @param {object} [input]
+ * @param {object} [options]
+ * @returns {Promise<Record<string, any>>}
+ */
 export async function evaluateGateCoverage(input = {}, options = {}) {
   let inventory;
   let invalid;
@@ -596,7 +601,7 @@ export async function evaluateGateCoverage(input = {}, options = {}) {
       allowEphemeralStore: allowEphemeralWitnessStore,
     });
     recordWitnessResult(trusted);
-    if (trusted.accepted === true) trustedByDigest.set(trusted.statement_digest, trusted);
+    if (trusted.accepted === true) trustedByDigest.set(/** @type {any} */ (trusted).statement_digest, trusted);
   }
   for (const statement of witnesses) {
     let previouslyAccepted = null;

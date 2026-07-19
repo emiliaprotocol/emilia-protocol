@@ -40,7 +40,7 @@ function resolveReceipt(args, opts) {
  * Wrap a single MCP tool handler so it runs only behind a passing gate check.
  * @param {object} gate     an EMILIA Gate (createGate/createTrustedActionFirewall)
  * @param {object} o
- * @param {string} o.tool   the MCP tool name (matched against the manifest)
+ * @param {string} [o.tool]   the MCP tool name (matched against the manifest)
  * @param {string} [o.protocol='mcp']
  * @param {string} [o.action] explicit action_type (else resolved by the manifest from {protocol,tool})
  * @param {object|function} [o.observedAction] the system-of-record facts to bind (default: the tool args)

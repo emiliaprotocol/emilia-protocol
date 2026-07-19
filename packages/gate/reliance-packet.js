@@ -85,6 +85,9 @@ function check(id, ok, detail = null) {
   return { id, ok, ...(detail ? { detail } : {}) };
 }
 
+/**
+ * @param {{ decision?: any, execution?: any, evidence?: any, manifest?: any, binding?: any, admissibility?: any, verifier?: string }} [o]
+ */
 export async function buildReliancePacket({
   decision,
   execution = null,

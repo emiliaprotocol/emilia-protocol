@@ -28,8 +28,8 @@ export const ROSTER_VERSION = 'EP-GATE-ROSTER-v1';
 /**
  * Import a SCIM-like IdP user export into a signer roster.
  * @param {Array<{id:string, userName:string, active:boolean, emails?:any, keys?:Array<{kid:string, publicKey:string}>}>} idpUsers
- * @param {object} o
- * @param {string} o.source        IdP provenance, e.g. 'scim:okta:acme' (required)
+ * @param {object} [o]
+ * @param {string} [o.source]        IdP provenance, e.g. 'scim:okta:acme' (required)
  * @param {string|number} [o.importedAt]  import time (ISO or ms); the caller's clock
  * @param {boolean} [o.allowEmpty=false]  acknowledge an import with zero active signers
  * @returns {{version:string, source:string, imported_at:string, signers:Array<{principal:string, kid:string, publicKey:string, active:boolean}>, integrity_warnings:object[]}}
