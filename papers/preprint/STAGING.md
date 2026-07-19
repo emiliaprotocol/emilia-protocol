@@ -1,7 +1,9 @@
 # Preprint staging: Authorization Receipts
 
-**Status: READY to post. NOTHING has been posted.** Prepared preprint package.
-Posting is the lead's call (account, author metadata, upload).
+**Status: LOCALLY REPRODUCIBLE; NOT APPROVED TO POST. NOTHING has been
+posted.** The source, PDF, and repository evidence claims are checker-gated.
+Publication remains the lead's call (venue account, author metadata, license,
+final review, and upload).
 
 **Venue:** arXiv (cs.CR) is locked for this topic for us and requires an
 endorsement we do not have, so this package targets the **IACR Cryptology ePrint
@@ -16,12 +18,31 @@ mints a DOI, no scope moderation).
 
 | File | What it is | State |
 |---|---|---|
-| `main.tex` | Full LaTeX source, faithful to `papers/authorization-receipts-preprint.md` | Built |
-| `main.pdf` | Compiled PDF (~22 pages), built from `main.tex` with `tectonic` | Built |
+| `main.tex` | Full LaTeX source synchronized to the canonical Markdown and current repo evidence | Checker-gated |
+| `main.pdf` | Compiled PDF (~22 pages), built from `main.tex` with `tectonic` | Rebuilt and checker-gated |
 | `STAGING.md` | This checklist | — |
 
 The PDF is the artifact IACR ePrint and Zenodo both host directly (they do not
 compile source). `main.tex` is kept for provenance.
+
+## Reproduce and verify locally
+
+Prerequisites: Node.js 20 or newer, Tectonic 0.16.9 or compatible, and Poppler's
+`pdftotext`. From the repository root:
+
+```sh
+npm run preprint:build
+npm run check:preprint
+npm run test:preprint
+```
+
+`check:preprint` derives claims from the live conformance manifest, proof ledger,
+proof statistics, standards status, and pinned external-verifier evidence. It
+checks the canonical Markdown fingerprint and rejects drift in `main.tex`,
+extracted `main.pdf` text, or this staging record. Passing the checker establishes
+local synchronization only; it is not publication approval or venue acceptance.
+The build command fixes `SOURCE_DATE_EPOCH` to `2026-07-19T00:00:00Z`; repeated
+builds from identical source with the same Tectonic toolchain are byte-identical.
 
 ## Primary venue — IACR Cryptology ePrint Archive (eprint.iacr.org)
 
@@ -55,6 +76,8 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 ## Numbers all trace to repo artifacts (no invented figures)
 
 - Conformance 21 suites / 329 vectors → `conformance/conformance-manifest.json`.
+- Current cited drafts → `standards/STATUS.json`: Authorization Receipts -07,
+  Quorum -03, Authorization Evidence Chain -03, Evidence Record -01.
 - Tamarin core/quorum/composed lemma blocks → `formal/PROOF_STATUS.md` (verbatim);
   10 composed obligations + 2 deliberate falsifications → `lib/proof-stats.json`.
 - TLA+ 413,137 states / 26 invariants → `formal/PROOF_STATUS.md`.
