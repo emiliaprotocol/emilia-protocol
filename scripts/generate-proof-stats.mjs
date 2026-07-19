@@ -75,7 +75,7 @@ const stats = {
     // both models (ep_relations + ep_federation) — the convention used in docs.
     facts: (als.match(/^fact/gm) || []).length,
     assertions: (als.match(/^assert/gm) || []).length + (fedAls.match(/^assert/gm) || []).length,
-    version: '6.0.0 (CI)',
+    version: '6.2.0 (CI)',
   },
   tamarin: {
     model: 'EP-RELIANCE-COMPOSED-v2',

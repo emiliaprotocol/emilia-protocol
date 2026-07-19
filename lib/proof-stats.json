@@ -12,7 +12,7 @@
   "alloy": {
     "facts": 35,
     "assertions": 22,
-    "version": "6.0.0 (CI)"
+    "version": "6.2.0 (CI)"
   },
   "tamarin": {
     "model": "EP-RELIANCE-COMPOSED-v2",
