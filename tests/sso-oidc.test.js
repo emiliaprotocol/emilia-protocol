@@ -57,6 +57,21 @@ describe('OIDC ID-token validation', () => {
     expect(r.email).toBe('approver@example.com');
   });
 
+  it('rejects a token with no sub claim (OIDC requires it; would mint an undefined-subject session)', async () => {
+    // jose verifies sig/iss/aud/exp but not sub presence, so a signed token
+    // lacking sub used to validate and flow subject:undefined into mintSession.
+    const token = await new jose.SignJWT({ email: 'approver@example.com', nonce: 'n1' })
+      .setProtectedHeader({ alg: 'RS256', kid: 'fixture-key-1' })
+      .setIssuedAt()
+      .setIssuer(ISSUER)
+      .setAudience(CLIENT_ID)
+      .setExpirationTime('1h')
+      .sign(privateKey); // deliberately no setSubject
+    const r = await validateIdToken(token, { issuer: ISSUER, clientId: CLIENT_ID, jwks, nonce: 'n1' });
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/sub/i);
+  });
+
   it('rejects a wrong audience', async () => {
     const token = await signIdToken({ aud: 'some-other-client' });
     const r = await validateIdToken(token, { issuer: ISSUER, clientId: CLIENT_ID, jwks });

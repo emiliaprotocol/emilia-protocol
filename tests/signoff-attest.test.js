@@ -55,6 +55,7 @@ function validChallenge(overrides = {}) {
     required_assurance: 'substantial',
     allowed_methods: ['passkey', 'secure_app'],
     status: 'challenge_issued',
+    expires_at: '2030-06-01T00:00:00Z',
     ...overrides,
   };
 }
@@ -244,6 +245,23 @@ describe('createAttestation — RPC errors and happy path', () => {
       p_channel: 'web',
       p_expires_at: '2099-01-01T00:00:00Z',
     }));
+  });
+
+  it('inherits the challenge expiry when no expiresAt is provided (never sends null)', async () => {
+    // The attest route strips any client expiresAt (not in validateSignoffAttest),
+    // so createAttestation is the sole authority. Before the fix, expiresAt
+    // defaulted to null: consume.js:81 then skipped the approval-expiry check and
+    // a NOT NULL database rejected the insert. It must inherit challenge.expires_at.
+    const challenge = validChallenge({ expires_at: '2031-03-04T05:06:07Z' });
+    const rpcData = { signoff_id: 'sig-exp', status: 'approved' };
+    const supabase = makeMockSupabase({ challenge, rpcData });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await createAttestation(validParams()); // no expiresAt supplied
+
+    const [, rpcArgs] = supabase.rpc.mock.calls.find(([name]) => name === 'approve_attestation_atomic');
+    expect(rpcArgs.p_expires_at).toBe('2031-03-04T05:06:07Z');
+    expect(rpcArgs.p_expires_at).not.toBeNull();
   });
 
   it('derives handshakeId and bindingHash from challenge when not explicitly provided', async () => {

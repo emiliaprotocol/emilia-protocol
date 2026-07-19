@@ -70,6 +70,9 @@ export async function reconcileIndeterminateEffect({
   if (!ledger || typeof ledger.append !== 'function') {
     throw new Error('reconciliation ledger required');
   }
+  if (!action || typeof action !== 'object') {
+    throw new Error('expected action required to reconcile against the committed spend');
+  }
 
   const operation = capabilityStore.getOperation(operationId);
   if (!operation

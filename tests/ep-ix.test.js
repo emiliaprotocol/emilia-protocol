@@ -547,6 +547,36 @@ describe('challengeContinuity', () => {
     expect(result.challenge).toEqual(challenge);
   });
 
+  it('fails closed (503) when the open-challenge count is indeterminate', async () => {
+    // A stripped/mangled Content-Range leaves postgrest count = null. `null >= 5`
+    // is false, so the old code silently skipped the anti-abuse cap and let the
+    // challenge through. Now it must refuse rather than disable the limit.
+    const claim = makeClaim();
+    let callCount = 0;
+    mockSupabase.from.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        const chain = makeChain({ data: claim, error: null });
+        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
+        return chain;
+      }
+      // rate-limit count query: successful response, but count is null
+      const chain = makeChain({ data: null, error: null, count: null });
+      chain.in = vi.fn().mockReturnThis();
+      return chain;
+    });
+
+    const result = await challengeContinuity({
+      continuity_id: 'ep_ix_aabbccdd',
+      challenger_type: 'operator',
+      challenger_id: 'op_1',
+      reason: 'evidence of fraud',
+    });
+
+    expect(result.status).toBe(503);
+    expect(callCount).toBe(2); // stopped before ownership lookup / insert
+  });
+
   it('fails closed when ownership lookup is unavailable', async () => {
     const claim = makeClaim();
     let callCount = 0;

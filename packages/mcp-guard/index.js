@@ -760,10 +760,20 @@ function stripEpFields(args = {}) {
   return rest;
 }
 
-/** Content hash of a receipt DOCUMENT for the provenance reference (not a re-sign). */
+/** Content hash of a receipt DOCUMENT for the provenance reference (not a re-sign).
+ * Fingerprints only the validated receipt fields. verifyEmiliaReceipt signs and
+ * checks payload alone, so an unsigned, non-canonicalizable extra top-level field
+ * (e.g. a float or non-plain-object) would make canonicalize() throw and this
+ * would silently record a null hash into the append-only provenance ledger,
+ * breaking the auditor's re-hash link even though authorization succeeded. Both
+ * callers reach here only after successful verification, so these fields are
+ * guaranteed canonicalizable; for a well-formed receipt the hash is unchanged. */
 function receiptHashOf(doc) {
+  if (!doc || typeof doc !== 'object') return null;
+  const core = { '@version': doc['@version'], payload: doc.payload, signature: doc.signature };
+  if (doc.public_key !== undefined) core.public_key = doc.public_key;
   try {
-    return hashObject(doc);
+    return hashObject(core);
   } catch {
     return null;
   }
