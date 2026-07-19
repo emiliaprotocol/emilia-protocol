@@ -101,10 +101,10 @@ function portableJsonCopy(value, active = new Set()) {
  *
  * @param {Array<object>} decisions  each: { decision_id, action, receipt, quorum?,
  *   authority_proof?, revocation_state?, consumption?, stated_verdict? }
- * @param {object} opts
- * @param {object} opts.profile       the pinned EP-RELIANCE-PROFILE-v1 the org operated under
+ * @param {object} [opts]
+ * @param {object} [opts.profile]       the pinned EP-RELIANCE-PROFILE-v1 the org operated under
  * @param {object} [opts.organization] { id, name } (no PHI)
- * @param {number|function} [opts.now]
+ * @param {number|Function} [opts.now]
  * @returns {object} EP-ASSURANCE-PACKAGE-v1
  */
 export function buildAssurancePackage(decisions = [], { profile, organization = null, now = 0 } = {}) {
@@ -168,7 +168,7 @@ export function buildAssurancePackage(decisions = [], { profile, organization = 
  * @param {string[]} [opts.allowedOrigins]
  * @param {object} [opts.revokerKeys]
  * @param {(key:object)=>boolean} [opts.isConsumed] auditor-owned consumption lookup
- * @param {number|string|Date} [opts.now]  reliance-evaluation clock (pin for determinism)
+ * @param {number|string|Date|Function} [opts.now]  reliance-evaluation clock (pin for determinism)
  * @returns {object} EP-ASSURANCE-REPERFORMANCE-v1
  */
 export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey = null, rpId = null, allowedOrigins = [], revokerKeys = {}, isConsumed, now = 0 } = {}) {

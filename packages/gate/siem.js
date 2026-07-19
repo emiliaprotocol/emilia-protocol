@@ -196,9 +196,9 @@ export function toCEF(entry) {
  * Configuration errors (unknown format, missing sink) DO throw — at
  * construction time, before anything is on the gate path.
  *
- * @param {object} o
+ * @param {object} [o]
  * @param {'ocsf'|'cef'} [o.format='ocsf']
- * @param {function} o.sink  receives the mapped event (object for ocsf, string for cef); may be async
+ * @param {function} [o.sink]  receives the mapped event (object for ocsf, string for cef); may be async
  * @returns {{ forward(entry): Promise<{delivered:boolean, event:object|string|null}>, stats(): object }}
  */
 export function createSiemForwarder({ format = 'ocsf', sink } = {}) {

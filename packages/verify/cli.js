@@ -189,7 +189,9 @@ if (args[0] === 'revocation') {
     process.exit(1);
   }
   const load = loadStrictJson;
-  let statement; let target; let revokerKeys = {};
+  let statement; let target;
+  /** @type {Record<string, { public_key: string }>} */
+  let revokerKeys = {};
   try {
     statement = load(statementPath);
     target = load(targetPath);
@@ -272,6 +274,12 @@ for (const file of files) {
   }
 
   let kind = null;
+  /**
+   * Heterogeneous verification result; the branches below assign one of several
+   * verify-function shapes and the reporting code duck-types the fields it reads
+   * (guarded by Array.isArray / typeof checks). Typed as an open map accordingly.
+   * @type {Record<string, any>}
+   */
   let result = null;
 
   if (doc?.['@version'] === 'EP-PROVENANCE-CHAIN-v1') {

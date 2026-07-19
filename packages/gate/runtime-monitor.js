@@ -55,6 +55,7 @@ function copyEvent(event) {
  * only a bounded diagnostic buffer.
  */
 export function createRuntimeMonitor({ now = Date.now, onDivergence = null, authorizeRecovery = null } = {}) {
+  /** @type {string} */
   let mode = RUNTIME_MONITOR_MODES.NORMAL;
   let sequence = 0;
   const cycles = new Map();
@@ -148,7 +149,7 @@ export function createRuntimeMonitor({ now = Date.now, onDivergence = null, auth
       while (cycles.size > MAX_CYCLES) cycles.delete(cycles.keys().next().value);
       return cycle_id;
     },
-    preflight({ hasReceipt } = {}) {
+    preflight(/** @type {{ hasReceipt?: boolean }} */ { hasReceipt } = {}) {
       if (mode === RUNTIME_MONITOR_MODES.NORMAL || hasReceipt === true) return { ok: true };
       return { ok: false, reason: 'runtime_safe_mode_signoff_required', mode };
     },

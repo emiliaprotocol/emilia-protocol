@@ -143,6 +143,7 @@ export async function evaluateGateControlPlane(input = {}, options = {}) {
     configurationError = 'rp_configuration_invalid';
   }
 
+  /** @type {readonly any[]} */
   let settlementItems = [];
   let settlementError = null;
   try {

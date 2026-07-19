@@ -102,6 +102,10 @@ const CORE_REQUIRED = new Set([
   'validity',
 ]);
 
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, any>}
+ */
 function isRecord(value) {
   return value !== null
     && typeof value === 'object'

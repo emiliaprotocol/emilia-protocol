@@ -36,10 +36,10 @@ export const CF1_CHECKS = Object.freeze([
 
 /**
  * Drive a subject through the CF-1 checks and return a JSON report.
- * @param {object} o
- * @param {(scenario:object)=>Promise<object>} o.invoke   the gate under test
+ * @param {object} [o]
+ * @param {(scenario:object)=>Promise<object>} [o.invoke]   the gate under test
  * @param {(scenario:object)=>Promise<object>} [o.wrongInvoke] a sibling gate pinned to a DIFFERENT (wrong) issuer key
- * @param {object} o.harness      from createEg1Harness()
+ * @param {object} [o.harness]      from createEg1Harness()
  * @param {object} [o.action]     the high-risk action (defaults to the harness action)
  * @param {object} [o.requirement] the manifest requirement resolved for this action (findActionRequirement)
  */
@@ -68,6 +68,7 @@ export async function runCf1({ invoke, wrongInvoke, harness, action, requirement
   // wrong_authority_refused — a gate pinned to a different key rejects a valid
   // receipt. Proves trust is pinned by the relying party, not receipt-carried.
   let wrongPass = false;
+  /** @type {{ skipped: boolean } | { allowed: boolean, status: any, reason: any }} */
   let wrongObserved = { skipped: true };
   if (typeof wrongInvoke === 'function') {
     const rr = await wrongInvoke({ receipt: harness.mint({ outcome: 'allow_with_signoff' }), observedAction: act });

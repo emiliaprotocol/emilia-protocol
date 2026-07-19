@@ -106,7 +106,9 @@ export function mintBreakGlassAuthorization(signers, {
   let signerFingerprints;
   try {
     signerFingerprints = signers.map((s) => {
-      const publicKey = crypto.createPublicKey(s.privateKey);
+      // @types/node's createPublicKey overloads omit KeyObject input even
+      // though Node derives a public key from a private KeyObject at runtime.
+      const publicKey = crypto.createPublicKey(/** @type {any} */ (s.privateKey));
       if (publicKey.asymmetricKeyType !== 'ed25519') throw new Error('not Ed25519');
       const spki = publicKey.export({ type: 'spki', format: 'der' });
       return sha256hex(spki);
@@ -148,7 +150,7 @@ export function mintBreakGlassAuthorization(signers, {
   const msg = Buffer.from(canonical(payload), 'utf8');
   const signatures = signers.map(({ privateKey, kid }) => ({
     kid,
-    algorithm: 'Ed25519',
+    algorithm: /** @type {'Ed25519'} */ ('Ed25519'),
     value: crypto.sign(null, msg, privateKey).toString('base64url'),
   }));
   return { '@version': BREAKGLASS_VERSION, payload, signatures };
@@ -244,12 +246,12 @@ function normalizePinnedPolicy(policy, issuerKeys) {
  * only AFTER the signatures, so the timestamps themselves are authenticated.
  *
  * @param {object|string|null} grantJson the artifact (object or JSON string)
- * @param {object} o
- * @param {{minimum_threshold:number,roster:Array<{kid:string,principal_id:string,key?:string}>}} o.policy relying-party policy
+ * @param {object} [o]
+ * @param {{minimum_threshold:number,roster:Array<{kid:string,principal_id:string,key?:string}>}} [o.policy] relying-party policy (a missing policy refuses, never throws)
  * @param {object|Array<{kid:string,key:string}>} [o.issuerKeys] optional pinned keys when roster entries omit key
  * @param {number|string|function} [o.now=Date.now] injected clock (ms, ISO, or () => ms)
- * @param {string} o.actionType the action the caller wants to override — REQUIRED (scope cannot be checked without it)
- * @returns {{ valid: boolean, reason: string, grant_id?: string, incident_ref?: string, scope?: object, window?: object, threshold?: number, signer_kids?: string[] }}
+ * @param {string} [o.actionType] the action the caller wants to override (a missing actionType refuses, never throws)
+ * @returns {{ valid: boolean, reason: string, grant_id?: string, incident_ref?: string, scope?: object, window?: object, threshold?: number, required_threshold?: number, policy_minimum_threshold?: number, signer_kids?: string[], signer_principal_ids?: string[], signer_spki_fingerprints?: string[] }}
  */
 function verifyBreakGlassInternal(grantJson, { policy, issuerKeys, now = Date.now, actionType } = {}) {
   if (grantJson == null || grantJson === '') return refuse('no_grant');
@@ -488,6 +490,16 @@ export function buildBreakGlassEvidence(grant, decision, options = {}) {
  * artifact, verifies it against relying-party policy, atomically consumes the
  * grant in a capability-marked permanent store, validates a strict evidence
  * acknowledgement, and only then invokes `effect`.
+ *
+ * @param {object} [args]
+ * @param {object|string} [args.grant] the presented break-glass artifact
+ * @param {{minimum_threshold:number,roster:Array<{kid:string,principal_id:string,key?:string}>}} [args.policy]
+ * @param {object|Array<{kid:string,key:string}>} [args.issuerKeys]
+ * @param {string} [args.actionType]
+ * @param {{ consume(key: string): Promise<boolean> }} [args.store]
+ * @param {{ strict?: boolean, atomicAppend?: boolean, record?: Function }} [args.evidence]
+ * @param {number|string|function} [args.now=Date.now]
+ * @param {Function} [effect] required at runtime; a missing effect throws
  */
 export async function runBreakGlass({
   grant,
@@ -547,10 +559,10 @@ export async function runBreakGlass({
   let evidenceRecord;
   try {
     evidenceRecord = await record(entry);
-    if (!verifyEvidenceRecord(evidenceRecord, {
+    if (!verifyEvidenceRecord(evidenceRecord, /** @type {{atomicRequired?: boolean, expectedEntry?: object}} */ ({
       atomicRequired: evidence.atomicAppend === true,
       expectedEntry: entry,
-    })) throw new Error('malformed evidence acknowledgement');
+    }))) throw new Error('malformed evidence acknowledgement');
   } catch {
     return {
       ok: false,

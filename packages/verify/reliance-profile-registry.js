@@ -78,11 +78,11 @@ export function signRelianceProfileEntry({ registry_id, profile_id, profile, reg
 /**
  * Verify a registry entry against pinned registrar keys.
  * @param {object} entry
- * @param {object} opts
- * @param {Array<{registry_id:string,key_id?:string,public_key:string}>} opts.pinnedRegistryKeys
+ * @param {object} [opts]
+ * @param {Array<{registry_id:string,key_id?:string,public_key:string}>} [opts.pinnedRegistryKeys]
  * @param {string} [opts.expectProfileId]
  * @param {number} [opts.expectMinEpoch]
- * @returns {{verified:boolean, accepted:boolean, profile:(object|null), checks:object, reason?:string, entry_digest?:string}}
+ * @returns {{verified:boolean, accepted:boolean, profile:(object|null), checks:object, reason?:string, entry_digest?:string, key_id?:string, registry_id?:string, profile_id?:string, registry_epoch?:number}}
  */
 export function verifyRelianceProfileEntry(entry, opts = {}) {
   const checks = { version: false, signature: false, entry_digest: false, profile_hash: false, pinned_registry_key: false, profile_id: true, epoch_fresh: true, profile_wellformed: false };

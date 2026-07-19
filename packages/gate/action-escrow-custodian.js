@@ -168,6 +168,8 @@ function normalizePrivateKey(value) {
 /**
  * The bridge implements the kernel's release/getRelease contract. It never
  * claims that EMILIA holds funds or that the external provider is licensed.
+ *
+ * @param {{ adapter?: any, observationSigner?: any, now?: () => string }} [options]
  */
 export function createActionEscrowCustodianBridge({
   adapter,
@@ -304,6 +306,9 @@ export function createActionEscrowCustodianBridge({
   });
 }
 
+/**
+ * @param {{ operatorKeys?: any, providerId?: any, environment?: any }} [options]
+ */
 export function createActionEscrowCustodianStatementVerifier({
   operatorKeys,
   providerId,

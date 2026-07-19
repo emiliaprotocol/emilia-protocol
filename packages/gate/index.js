@@ -212,6 +212,7 @@ function safeCanonicalHash(value) {
  * packs use `amount_usd`; integrations that use the generic `amount` field
  * are supported as well. A missing or mismatched amount/currency fails closed
  * before the capability store is touched.
+ * @param {{capability?: any, observedAction?: any}} [arg]
  */
 function verifyCapabilityActionBinding({ capability, observedAction } = {}) {
   if (capability === null || capability === undefined) return { ok: true, required: false };
@@ -378,6 +379,8 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
  * @param {object} [opts.quorumPolicy] relying-party-pinned organizational rule
  * @param {function} [opts.verifyAssurance] custom assurance verifier for path (a)
  * @param {string} [opts.rpId]  bind embedded device assertions to this WebAuthn RP id (path b)
+ * @param {string[]} [opts.allowedOrigins] exact WebAuthn origins accepted for embedded-evidence verification (path b)
+ * @param {object} [opts.quorum_policy] legacy snake_case alias for opts.quorumPolicy
  * @param {boolean} [opts.detail] return a {tier, quorum, signoff} object instead of the string
  * @returns {'software'|'class_a'|'quorum'|object} the highest tier proven
  */
@@ -650,6 +653,7 @@ function verifiedApproverSubjects(assurance, tierResult) {
 /**
  * Verify signed business-policy and tenant fields plus the cryptographically
  * credited human approvers against one action's relying-party pins.
+ * @param {{requirement?: any, receipt?: any, assurance?: any, tierResult?: any}} [arg]
  */
 export function verifyBusinessAuthorization({ requirement, receipt, assurance, tierResult } = {}) {
   const expected = businessAuthorizationRequirement(requirement);
@@ -731,6 +735,12 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  * @param {function} [opts.verifyAdmissibilityPacket] trusted relying-party hook.
  *   Required whenever an admissibility profile is pinned. It must authenticate
  *   the presented packet or recompute the verdict and return the trusted block.
+ * @param {boolean} [opts.strictEvidence=true] make the evidence log strict (fail on record errors)
+ * @param {() => number} [opts.now] clock source (defaults to Date.now)
+ * @param {object|null} [opts.approver_keys] legacy snake_case alias for opts.approverKeys
+ * @param {function} [opts.verifyAssurance] caller-supplied assurance verifier (assurance-proof path a)
+ * @param {object} [opts.requiredAdmissibilityProfile] gate-level pinned admissibility profile {id, profile_hash}
+ * @param {object} [opts.runtimeMonitor] runtime invariant monitor (defaults to createRuntimeMonitor)
  */
 export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
@@ -787,8 +797,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
   const evidence = log || createEvidenceLog({ strict: strictEvidence });
 
+  /**
+   * @param {{selector?: any, receipt?: any, observedAction?: any, consumptionMode?: string, admissibilityProfile?: any, reliancePacket?: any, admissibility?: any, capability?: any}} [arg]
+   */
   async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}) {
-    const requirement = manifest ? findActionRequirement(manifest, selector) : null;
+    const requirement = /** @type {any} */ (manifest ? findActionRequirement(manifest, selector) : null);
     const action = requirement?.action_type || selector.action_type || selector.action || null;
     const guarded = Boolean(requirement && requirement.receipt_required !== false);
     const runtimeCycleId = runtimeMonitor?.beginCheck({
@@ -1100,6 +1113,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!fresh) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
     }
+    /** @type {Record<string, any>} */
     const allowExtra = {
       signer: v.signer,
       outcome: v.outcome,
@@ -1224,6 +1238,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
    * "execution emits proof" half of the loop (maps to the EP Commit seal). It
    * commits to the exact authorization decision (`authorizes_decision` = that
    * decision's evidence hash), so authorization and execution are one chain.
+   * @param {{authorization?: any, outcome?: string, detail?: any, observedAction?: any, executionBinding?: any}} [arg]
    */
   async function recordExecution({ authorization, outcome = 'executed', detail, observedAction = null, executionBinding = null } = {}) {
     const auth = authorization?.evidence || authorization || {};
@@ -1249,6 +1264,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     });
   }
 
+  /**
+   * @param {{authorization?: any, capability?: any, outcome?: string, reason?: any}} [arg]
+   */
   async function recordCapabilityEvent({ authorization, capability, outcome, reason = null } = {}) {
     return evidence.record({
       kind: 'capability',
@@ -1261,6 +1279,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     });
   }
 
+  /**
+   * @param {{authorization?: any, capability?: any, reason?: any, status?: number, event?: any}} [arg]
+   */
   function capabilityRefusal({ authorization = null, capability = null, reason, status = CAPABILITY_FAILURE_STATUS, event = null } = {}) {
     const body = {
       rejected: {
@@ -1329,7 +1350,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       const runtimeCycleId = authorization?._runtime_cycle_id;
       const runtimeStart = runtimeMonitor?.beginExecution(runtimeCycleId, authorization);
       if (runtimeStart && !runtimeStart.ok) {
-        const error = new Error(`EMILIA Gate runtime monitor refused capability execution (${runtimeStart.reason})`);
+        const error = /** @type {Error & {code?: string}} */ (new Error(`EMILIA Gate runtime monitor refused capability execution (${runtimeStart.reason})`));
         error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
         throw error;
       }
@@ -1364,7 +1385,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     };
     const capabilityResult = Array.isArray(context.shares)
       ? await executeWithThreshold({ ...executorInput, shares: context.shares })
-      : await executeWithCapability({ ...executorInput, secret: context.secret });
+      : await executeWithCapability(/** @type {any} */ ({ ...executorInput, secret: context.secret }));
 
     authorization = authorization || capabilityResult.authorization || null;
     const runtimeCycleId = authorization?._runtime_cycle_id;
@@ -1450,7 +1471,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (runtimeMonitor && runtimeCycleId) {
       const runtimeStart = runtimeMonitor.beginExecution(runtimeCycleId, authorization);
       if (!runtimeStart.ok) {
-        const error = new Error(`EMILIA Gate runtime monitor refused execution (${runtimeStart.reason})`);
+        const error = /** @type {Error & {code?: string}} */ (new Error(`EMILIA Gate runtime monitor refused execution (${runtimeStart.reason})`));
         error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
         throw error;
       }
@@ -1551,7 +1572,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       const out = await run({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, capability }, () => fn(...args), { recordExecution: opts.recordExecution });
       if (!out.ok) {
         const refusal = out.refusal || out.authorization;
-        const e = new Error(`EMILIA Gate refused (${refusal.reason})`);
+        const e = /** @type {Error & {code?: string, gate?: any}} */ (new Error(`EMILIA Gate refused (${refusal.reason})`));
         e.code = 'EMILIA_RECEIPT_REQUIRED';
         e.gate = refusal;
         throw e;
@@ -1560,6 +1581,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     };
   }
 
+  /**
+   * @param {{authorization?: any, execution?: any, binding?: any, admissibility?: any}} [arg]
+   */
   async function reliancePacket({ authorization, execution = null, binding = null, admissibility = null } = {}) {
     // The admissibility block rides on the authorization decision's evidence when
     // a reliance packet was presented at check() time; an explicit `admissibility`
@@ -1569,14 +1593,14 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       ?? authorization?.evidence?.admissibility
       ?? authorization?.admissibility
       ?? null;
-    return buildReliancePacket({
+    return buildReliancePacket(/** @type {any} */ ({
       decision: authorization,
       execution,
       evidence,
       manifest,
       binding: binding || execution?.execution_binding || null,
       admissibility: adm,
-    });
+    }));
   }
 
   /** Retention classification over this gate's evidence log (hot/cold/expired/legal-hold). */
@@ -1603,9 +1627,9 @@ export function createTrustedActionFirewall(opts = {}) {
  * EG-1 conformance for an existing gate. The gate MUST have been built trusting
  * `harness.publicKey` (otherwise every valid receipt is rejected and the gate
  * cannot earn EG-1). Returns the EG-1 JSON report.
- * @param {object} o
- * @param {object} o.gate     an EMILIA Gate (createGate/createTrustedActionFirewall)
- * @param {object} o.harness  the harness whose key the gate trusts (createEg1Harness)
+ * @param {object} [o]
+ * @param {object} [o.gate]     an EMILIA Gate (createGate/createTrustedActionFirewall)
+ * @param {object} [o.harness]  the harness whose key the gate trusts (createEg1Harness)
  * @param {object} [o.action] the high-risk action to exercise
  * @param {object} [o.selector] the manifest selector for that action
  */
@@ -1624,6 +1648,7 @@ export async function gateConformance({ gate, harness, action, selector = EG1_DE
  * trusts a fresh EG-1 harness key, then run all eight checks. This is the
  * canonical "EMILIA Gate earns EG-1" proof — runnable as a CLI (`eg1.mjs`),
  * shown on /gate, and the template an adopter copies for their integration.
+ * @param {{now?: any}} [o]
  */
 export async function gateConformanceSelfTest({ now } = {}) {
   const harness = createEg1Harness({ now });
@@ -1642,10 +1667,10 @@ export async function gateConformanceSelfTest({ now } = {}) {
  * refuses a valid receipt, and the allowed run emits offline-verifiable reliance
  * evidence. The `gate` MUST trust `harness.publicKey`; `wrongGate` MUST trust a
  * DIFFERENT key (otherwise wrong_authority_refused cannot be demonstrated).
- * @param {object} o
- * @param {object} o.gate       an EMILIA Gate trusting harness.publicKey
+ * @param {object} [o]
+ * @param {object} [o.gate]       an EMILIA Gate trusting harness.publicKey
  * @param {object} [o.wrongGate] a sibling gate trusting a different (wrong) key
- * @param {object} o.harness    from createEg1Harness()
+ * @param {object} [o.harness]    from createEg1Harness()
  * @param {object} [o.manifest] the action-risk manifest (to resolve the requirement)
  * @param {object} [o.selector] the manifest selector for the action
  * @param {object} [o.action]   the high-risk action to exercise
@@ -1667,6 +1692,7 @@ export async function cf1Conformance({ gate, wrongGate, harness, manifest = null
  * key (for wrong_authority_refused), and the default action-risk manifest (for
  * consequential_action_declared). The canonical "reference gate earns CF-1"
  * proof — runnable as a CLI (`cf1.mjs`).
+ * @param {{now?: any}} [o]
  */
 export async function cf1ConformanceSelfTest({ now } = {}) {
   const harness = createEg1Harness({ now });

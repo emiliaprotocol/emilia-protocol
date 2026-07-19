@@ -23,7 +23,7 @@ function ageDays(atISO, nowMs) {
 
 /**
  * Classify evidence entries into retention buckets.
- * @param {Array<{at:string, hash?:string}>} entries  evidence.all()
+ * @param {Array<{at:string, hash?:string, kind?:string}>} entries  evidence.all()
  * @param {object} o
  * @param {number} [o.hotDays=365]
  * @param {number} [o.coldDays=2190]   (6y)

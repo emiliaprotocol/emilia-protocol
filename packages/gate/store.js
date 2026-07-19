@@ -102,6 +102,10 @@ function defaultReservationToken() {
  * reservations. `ttlSeconds` applies only after a value is committed, when the
  * receipt's own freshness window independently prevents reuse.
  */
+/**
+ * @param {any} backend
+ * @param {{ ttlSeconds?: number, reservationTokenFactory?: () => string }} [options]
+ */
 export function createDurableConsumptionStore(backend, { ttlSeconds, reservationTokenFactory = defaultReservationToken } = {}) {
   for (const m of ['addIfAbsent', 'compareAndSet', 'deleteIfValue', 'has']) {
     if (typeof backend?.[m] !== 'function') {

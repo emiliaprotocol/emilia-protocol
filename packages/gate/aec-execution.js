@@ -83,12 +83,12 @@ function instant(now) {
 }
 
 /**
- * @param {object} config
- * @param {string} config.requirement relying-party AEC requirement
- * @param {object} config.policiesByType relying-party human acceptance profiles
+ * @param {object} [config]
+ * @param {string} [config.requirement] relying-party AEC requirement (required at runtime)
+ * @param {object} [config.policiesByType] relying-party human acceptance profiles (required at runtime)
  * @param {object} [config.verifiers] relying-party-pinned custom component verifiers
  * @param {object} [config.keysByType] relying-party-pinned custom verifier keys
- * @param {'class_a'|'quorum'|'class_a_or_quorum'} config.humanFloor
+ * @param {'class_a'|'quorum'|'class_a_or_quorum'} [config.humanFloor] (required at runtime)
  * @param {object} [config.store] ownership-fenced consumption store
  * @param {object} [config.log] tamper-evident evidence log
  * @param {boolean} [config.allowEphemeralState=false] test/demo opt-in only
@@ -194,6 +194,10 @@ export function createAECExecutionGate({
     return { ok: false, allow: false, reason, result, decision };
   }
 
+  /**
+   * @param {any} request
+   * @param {Function} effect
+   */
   async function run(request = {}, effect) {
     if (typeof effect !== 'function') throw new Error('AEC execution gate run() requires an effect function');
     let chain;
