@@ -109,7 +109,7 @@ export function createSupabaseManifest(extraActions = []) {
  * Guard a destructive Supabase/Postgres mutation behind the gate.
  * @param {object} gate    a gate built with createSupabaseManifest()
  * @param {object} client  a client exposing { query(sql), export(table,recipient), alterPolicy(table,policy,def) }
- * @param {object} o       { op:'sql.destructive'|'data.export'|'rls.change', params, receipt }
+ * @param {object} args    { op:'sql.destructive'|'data.export'|'rls.change', params, receipt }
  * @throws Error{code:'EMILIA_RECEIPT_REQUIRED'} if refused — the statement never executes
  */
 export function guardSupabaseMutation(gate, client, args) {

@@ -124,8 +124,8 @@ export function signExternalVerificationStatement(args, privateKey) {
  * Verify a signed external-verifier statement against pinned verifier keys.
  *
  * @param {object} statement
- * @param {{pinnedVerifierKeys:Array<{verifier_id?:string,key_id?:string,public_key:string}>}} opts
- * @returns {{verified:boolean, accepted:boolean, checks:object, reason?:string, statement_digest?:string}}
+ * @param {{pinnedVerifierKeys?:Array<{verifier_id?:string,key_id?:string,public_key:string}>}} [opts]
+ * @returns {{verified:boolean, accepted:boolean, checks:object, reason?:string, statement_digest?:string, verifier_id?:string, key_id?:string}}
  */
 export function verifyExternalVerificationStatement(statement, opts = {}) {
   const fail = (reason, extra = {}) => ({
