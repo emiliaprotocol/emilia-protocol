@@ -45,7 +45,7 @@ export async function POST(request) {
 
     const { data: events, error } = await supabase
       .from('audit_events')
-      .select('event_type, after_state, created_at')
+      .select('event_type, actor_id, after_state, created_at')
       .eq('target_type', 'trust_receipt')
       .eq('target_id', body.receipt_id)
       .order('created_at', { ascending: true });

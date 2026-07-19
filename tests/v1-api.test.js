@@ -111,6 +111,34 @@ function makeSupabase(tables) {
   };
 }
 
+/**
+ * Build an audit-events client that returns only the columns named by
+ * `.select(...)`, matching Supabase projection behavior. This keeps
+ * creator-bound route tests from receiving actor_id unless the route asks for it.
+ */
+function makeProjectionAwareAuditSupabase(events) {
+  const selectAuditEvents = vi.fn((projection) => {
+    const columns = projection.split(',').map((column) => column.trim());
+    const projectedEvents = events.map((event) => Object.fromEntries(
+      columns
+        .filter((column) => Object.prototype.hasOwnProperty.call(event, column))
+        .map((column) => [column, event[column]]),
+    ));
+    return makeChain({ data: projectedEvents, error: null });
+  });
+
+  return {
+    client: {
+      from: vi.fn((table) => {
+        const chain = makeChain({ data: null, error: null });
+        if (table === 'audit_events') chain.select = selectAuditEvents;
+        return chain;
+      }),
+    },
+    selectAuditEvents,
+  };
+}
+
 /** Authenticate as a given entity. */
 function authedAs(entity, extra = {}) {
   const normalized = typeof entity === 'string'
@@ -516,6 +544,33 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       approver_credentials: { resolve: { data: credentialRows, error: null } },
     }));
   }
+
+  it('selects actor_id so creator-bound consume receives the creator identity', async () => {
+    authedAs({ entity_id: 'user_1' });
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_1',
+        after_state: {
+          organization_id: 'org_1',
+          action_hash: 'a',
+          expires_at: new Date(Date.now() + 1e6).toISOString(),
+          signoff_required: false,
+        },
+        created_at: '2026-04-26T00:00:00Z',
+      },
+    ];
+    const { client, selectAuditEvents } = makeProjectionAwareAuditSupabase(events);
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(selectAuditEvents).toHaveBeenCalledWith('event_type, actor_id, after_state, created_at');
+    expect(res.status).toBe(200);
+  });
 
   it('returns 400 when action_hash missing', async () => {
     authedAs('user_1');
@@ -1022,6 +1077,28 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
 // ─── POST /api/v1/signoffs/request ────────────────────────────────────────
 
 describe('POST /api/v1/signoffs/request', () => {
+  it('selects actor_id so creator-bound signoff receives the creator identity', async () => {
+    authedAs('user_1');
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_1',
+        after_state: { signoff_required: true, action_hash: 'a' },
+        created_at: '2026-04-26T00:00:00Z',
+      },
+    ];
+    const { client, selectAuditEvents } = makeProjectionAwareAuditSupabase(events);
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await requestSignoff(req({
+      receipt_id: 'tr_' + 'a'.repeat(32),
+      approver_id: 'user_approver',
+    }));
+
+    expect(selectAuditEvents).toHaveBeenCalledWith('event_type, actor_id, after_state, created_at');
+    expect(res.status).toBe(201);
+  });
+
   it('returns 400 when receipt_id missing', async () => {
     authedAs('user_1');
     const res = await requestSignoff(req({}));
