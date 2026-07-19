@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run test suite with coverage (vitest)
@@ -144,7 +144,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Next.js production build
@@ -225,6 +225,28 @@ jobs:
       - name: Type-check app/ (checkJs)
         run: npx tsc -p tsconfig.app.json
 
+  # ── Job 2g: remaining production compiler surfaces ───────────────
+  # The secure mobile app has its own dependency graph. Declaration files and
+  # the public TypeScript SDK use strict TypeScript. Together with the four
+  # checkJs jobs above, this closes every production implementation surface;
+  # only test-runner/linter/mutation-test configuration files are intentionally
+  # excluded from the production compiler programs.
+  typecheck-production-surfaces:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm ci --prefix apps/secure-app --ignore-scripts
+      - name: Type-check secure app, declarations, and TypeScript SDK
+        run: |
+          npm run typecheck:secure-app
+          npm run typecheck:declarations
+          npm run typecheck:sdk
+
   # ── Job 2b: Continuous adversarial fuzzing (audit GAP 7) ─────────
   # A seeded, deterministic property fuzzer for the concurrency-sensitive
   # surfaces. The async-guard bypass was a parallel-consumption race; this
@@ -242,6 +264,40 @@ jobs:
           node-version: 20
       - name: Run the bounded fixed-seed fuzz batch (<60s)
         run: node fuzz/ci-batch.mjs
+
+  # ── Job 2c: Witness equivocation proof ───────────────────────────
+  # Starts three real witness HTTP servers, proves an honest 2-of-3 quorum,
+  # then presents two quorum-backed roots at the same tree size and requires
+  # cross-view gossip to identify the split view. This continuously proves the
+  # deploy-kit mechanism; independent administration remains an external
+  # operational property and is not claimed by this in-process test.
+  witness-equivocation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 20
+      - name: Prove quorum and gossip equivocation detection
+        run: node --test witness/deploy/equivocation.node-test.mjs
+
+  # ── Job 2d: Preprint evidence synchronization ────────────────────
+  # The paper is not published by CI. This checks the declared source
+  # fingerprints and evidence-bearing claims in source and rendered PDF.
+  # Full TeX -> PDF derivation is separately reproducible with preprint:build.
+  preprint-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Verify source, PDF, standards, conformance, and proof evidence agree
+        run: npm run check:preprint
+      - name: Exercise preprint drift refusals
+        run: npm run test:preprint
 
   # ── Job 3: Write discipline ──────────────────────────────────────
   write-discipline:
@@ -277,16 +333,16 @@ jobs:
           go-version: '1.22'
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - run: npm ci --ignore-scripts
-      - name: Execute exact claims and bind reproducible release artifacts
-        run: npm run security-case:emit
+      - name: Execute exact claims and require the checked-in security case to be current
+        run: npm run check:security-case
       - name: Run deterministic cross-language hostile corpus
         run: npm run conformance:hostility
       - name: Run Model-to-Matter executor profile vectors
         run: npm run m2m:conformance
       - name: Exercise external implementation intake protocol
         run: npm run conformance:clean-room:contract
-      - name: Resolve exact cross-language conformance manifest
-        run: npm run conformance:manifest
+      - name: Require the checked-in cross-language conformance manifest to be current
+        run: npm run conformance:manifest:check
       - name: Verify exact frozen clean-room evidence baseline
         run: npm run conformance:manifest:clean-room
       - name: Attest exact security case on protected-branch runs
@@ -387,33 +443,6 @@ jobs:
           node-version: 20
       - name: Secure App signoff verifies under @emilia-protocol/verify
         run: node --test apps/secure-app/lib/ep-signoff.test.mjs
-
-  # ── Job 6b: Type check (conditional — only if tsconfig exists) ───
-  type-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Check for tsconfig
-        id: tsconfig
-        run: |
-          if [ -f tsconfig.json ] || [ -f tsconfig.ts ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
-        if: steps.tsconfig.outputs.exists == 'true'
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci --ignore-scripts
-        if: steps.tsconfig.outputs.exists == 'true'
-      - name: TypeScript type check
-        if: steps.tsconfig.outputs.exists == 'true'
-        run: npx tsc --noEmit
-      - name: Skip — no tsconfig found
-        if: steps.tsconfig.outputs.exists == 'false'
-        run: echo "No tsconfig.json found — skipping type check."
 
   # ── Job 7: Lint — Next.js lint must pass or warn only ────────────
   lint:
@@ -936,7 +965,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Install Playwright browsers
@@ -972,7 +1001,7 @@ jobs:
         # AWS Public ECR mirror of the official image — identical bits, but not
         # subject to Docker Hub's anonymous pull rate limits, which were
         # intermittently failing this job on shared GitHub runners.
-        image: public.ecr.aws/docker/library/postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:17-alpine
         env:
           POSTGRES_USER:     ep_test
           # Per-run password (never reused) for this ephemeral, network-isolated
@@ -990,7 +1019,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run Postgres integration tests

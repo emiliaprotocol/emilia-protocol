@@ -1,18 +1,23 @@
 name: risk-eval
 
-# Regression gate for the deterministic policy engine: a high-risk action must
-# never be classified as safe. Runs the eval harness against lib/guard-policies.js.
-# Zero deps — pure Node + the engine (node:crypto only).
+# Regression gate for the deterministic floor plus advisory ML perimeter. A
+# high-risk action must never be classified as safe, the heuristic must cover
+# every current perimeter case, and malformed/unavailable remote inference must
+# fail closed without allowing a model to lower the deterministic verdict.
 on:
   push:
     paths:
       - 'ml/risk-eval/**'
+      - 'ml/train/**'
       - 'lib/guard-policies.js'
+      - 'package.json'
       - '.github/workflows/risk-eval.yml'
   pull_request:
     paths:
       - 'ml/risk-eval/**'
+      - 'ml/train/**'
       - 'lib/guard-policies.js'
+      - 'package.json'
       - '.github/workflows/risk-eval.yml'
 
 permissions:
@@ -29,4 +34,7 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: '24'
-      - run: node ml/risk-eval/eval.mjs
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        with:
+          python-version: '3.12'
+      - run: npm run ml:gate

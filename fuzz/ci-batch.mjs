@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const harness = join(HERE, 'harness.mjs');
+const raceTeethSelftest = join(HERE, 'race-teeth.selftest.mjs');
 
 // [target, seedsSpec, iterationsPerSeed]
 /** @type {Array<[string, string, number]>} */
@@ -29,7 +30,17 @@ const BATCH = [
 const startedAt = process.hrtime.bigint();
 let failed = false;
 
+// Prove the concurrency driver can actually detect the check-then-act bug
+// class before trusting a green run against the hardened implementation.
+const teeth = spawnSync(
+  process.execPath,
+  ['--test', raceTeethSelftest],
+  { stdio: 'inherit' },
+);
+if (teeth.status !== 0) failed = true;
+
 for (const [target, seeds, iterations] of BATCH) {
+  if (failed) break;
   const result = spawnSync(
     process.execPath,
     [harness, target, '--seeds', seeds, '--iterations', String(iterations)],

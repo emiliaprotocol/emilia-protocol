@@ -1,6 +1,6 @@
 # EMILIA Protocol — Test Database
 #
-# Spins up a plain Postgres 16 instance for running integration tests
+# Spins up a plain Postgres 17 instance for running integration tests
 # against real DB constraints (triggers, unique indexes, check constraints).
 #
 # Usage:
@@ -10,7 +10,7 @@
 
 services:
   postgres-test:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER:     ep_test
       POSTGRES_PASSWORD: ep_test
