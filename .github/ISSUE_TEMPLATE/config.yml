@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/emiliaprotocol/emilia-protocol/security/policy
+    about: Report exploitable security issues privately; do not open a public issue.
+  - name: Contribution guidance
+    url: https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONTRIBUTING.md
+    about: Review contribution, testing, DCO, and governance requirements before proposing changes.
