@@ -1,0 +1,111 @@
+name: Feature request
+description: Propose a scoped capability, protocol improvement, or integration.
+title: "[Feature]: "
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for public product and protocol proposals. If the request is motivated by an undisclosed vulnerability or would reveal an exploitable weakness, use our [private security reporting process](https://github.com/emiliaprotocol/emilia-protocol/security/policy) instead.
+
+        Describe the guarantee you need, its trust boundary, and how the system should fail. Do not include secrets, credentials, private data, or confidential partner information.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Proposed area
+      options:
+        - Protocol or specification
+        - Conformance or verification
+        - Gate or enforcement
+        - Approver or mobile
+        - Assurance or re-performance
+        - SDK or integration
+        - Hosted service or API
+        - Developer tooling or release
+        - Documentation
+        - Other or cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and use case
+      description: Describe the concrete problem, affected users, and why current behavior is insufficient.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: State the observable result or guarantee you want, without prescribing implementation unless necessary.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Outline the API, data model, protocol, workflow, or integration you have in mind.
+
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and trust boundaries
+      description: Explain effects on identity, delegated scope, authorization, key handling, replay, tenant isolation, privacy, and enforcement. Write "No known impact" only after considering each applicable boundary.
+    validations:
+      required: true
+
+  - type: textarea
+    id: failure
+    attributes:
+      label: Failure and refusal behavior
+      description: Describe unsafe, ambiguous, stale, replayed, unauthorized, or partially deployed states and how the feature should fail.
+    validations:
+      required: true
+
+  - type: textarea
+    id: data_migrations
+    attributes:
+      label: Data, secrets, and migrations
+      description: Identify new sensitive data, credentials, retention, schema changes, backfills, deployment ordering, or migration risks. State "None" if not applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: claims
+    attributes:
+      label: Claims and interoperability
+      description: Identify any public capability, security, conformance, standards-status, adoption, or interoperability claim this would add or change. Name the evidence and assumptions that would be required. State "None" if not applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance evidence
+      description: List positive, negative, refusal, adversarial, conformance, migration, or deployment checks that would demonstrate the feature works within its claimed scope.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe workarounds, adjacent standards, or simpler approaches you considered.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched existing issues and proposals for related work.
+          required: true
+        - label: I did not include secrets, credentials, personal data, confidential partner information, or undisclosed vulnerability details.
+          required: true
+        - label: I have not represented staged work, implementation intent, or a proposed standard as shipped, deployed, adopted, or independently validated.
+          required: true
+        - label: I agree to follow the repository's Code of Conduct.
+          required: true

@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizeStandardsText } from './lib/standards-text.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG_PATH = path.join(ROOT, 'standards/observatory/catalog.source.v1.json');
@@ -12,31 +13,6 @@ const OUTPUT_PATH = path.join(ROOT, 'standards/observatory/source-lock.v1.json')
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function decodeEntities(value) {
-  const named = new Map([
-    ['amp', '&'], ['lt', '<'], ['gt', '>'], ['quot', '"'], ['apos', "'"], ['nbsp', ' '],
-    ['ndash', '-'], ['mdash', '-'], ['lsquo', "'"], ['rsquo', "'"], ['ldquo', '"'], ['rdquo', '"'],
-  ]);
-  return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity) => {
-    if (entity.startsWith('#x')) return String.fromCodePoint(Number.parseInt(entity.slice(2), 16));
-    if (entity.startsWith('#')) return String.fromCodePoint(Number.parseInt(entity.slice(1), 10));
-    return named.get(entity.toLowerCase()) ?? match;
-  });
-}
-
-function normalizeText(value) {
-  return decodeEntities(value)
-    .replace(/-\s*\r?\n\s*(?=[a-z])/g, '-')
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201c\u201d]/g, '"')
-    .replace(/[\u2013\u2014]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 async function fetchSource(source) {
@@ -58,8 +34,8 @@ async function fetchSource(source) {
   if (!response.ok) throw new Error(`${source.id}: HTTP ${response.status} from ${source.source_url}`);
 
   const bytes = Buffer.from(await response.arrayBuffer());
-  const normalizedBody = normalizeText(bytes.toString('utf8'));
-  const normalizedQuote = normalizeText(source.quote.text);
+  const normalizedBody = normalizeStandardsText(bytes.toString('utf8'));
+  const normalizedQuote = normalizeStandardsText(source.quote.text);
   const quoteVerified = normalizedBody.includes(normalizedQuote);
   if (!quoteVerified) {
     throw new Error(`${source.id}: locked quote not found in fetched source: ${JSON.stringify(source.quote.text)}`);

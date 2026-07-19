@@ -8,6 +8,10 @@ function read(relPath) {
   return fs.readFileSync(path.join(ROOT, relPath), 'utf8');
 }
 
+function compact(value) {
+  return value.replace(/^\s*>\s?/gm, '').replace(/\s+/g, ' ');
+}
+
 describe('homepage category contract', () => {
   it('leads with the Consequence Firewall product and keeps technical proof in a restrained band', () => {
     const page = read('app/HomePageClient.js');
@@ -69,5 +73,28 @@ describe('homepage category contract', () => {
     // (ep_relations 15 + ep_federation 7 + ep_quorum 6 + ep_delegation 4); it was
     // 22 when only ep_relations + ep_federation were counted.
     expect(proofStats.alloy.assertions).toBe(32);
+  });
+
+  it('keeps the investor hierarchy exact and the assurance claims bounded', () => {
+    const hierarchy =
+      'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact human authorization and safely controls consequential outcomes.';
+    const homepage = compact(read('app/HomePageClient.js'));
+    const gate = compact(read('app/gate/page.js'));
+    const investors = compact(read('app/investors/page.js'));
+    const productBrief = compact(read('docs/EMILIA-GATE-PRODUCT-BRIEF.md'));
+
+    for (const surface of [homepage, gate, investors, productBrief]) {
+      expect(surface).toContain(hierarchy);
+    }
+
+    expect(homepage).toContain('CAID correlates native action descriptions only under exact, relying-party-pinned mapping profiles.');
+    expect(homepage).toContain('Action Escrow shows the chain on one exact release.');
+    expect(homepage).toContain('The Assurance Plane then re-performs the record');
+    expect(gate).toContain('A match is not authorization');
+    expect(gate).toContain('consumes the reservation as indeterminate: no blind retry or refund');
+    expect(investors).toContain('none is an adopted standard.');
+    expect(investors).toContain('No physical hardware attestation in production or independently operated witness network is claimed today.');
+    expect(productBrief).toContain('No independently administered operator has produced external witness evidence');
+    expect(productBrief).toContain('they do not prove the deployed service, provider, or physical world.');
   });
 });

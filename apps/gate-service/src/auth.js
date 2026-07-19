@@ -3,23 +3,40 @@ import crypto from 'node:crypto';
 
 const MIN_TOKEN_LENGTH = 32;
 const MAX_TOKEN_LENGTH = 1024;
+const TOKEN_LENGTH_BYTES = 2;
+const TOKEN_COMPARISON_BYTES = TOKEN_LENGTH_BYTES + MAX_TOKEN_LENGTH;
 const MAX_PRINCIPAL_ID_LENGTH = 256;
 
 function validToken(value) {
   return typeof value === 'string'
     && value.length >= MIN_TOKEN_LENGTH
     && value.length <= MAX_TOKEN_LENGTH
-    && !/[\u0000-\u0020\u007f]/.test(value);
+    && /^[\x21-\x7e]+$/.test(value);
+}
+
+function comparableToken(value) {
+  if (!validToken(value)) return null;
+  const tokenBytes = Buffer.from(value, 'ascii');
+  const comparison = Buffer.alloc(TOKEN_COMPARISON_BYTES);
+  comparison.writeUInt16BE(tokenBytes.length, 0);
+  tokenBytes.copy(comparison, TOKEN_LENGTH_BYTES);
+  return comparison;
 }
 
 function oneAuthorizationHeader(request) {
-  if (!request || !Array.isArray(request.rawHeaders)) return null;
+  if (!request || !Array.isArray(request.rawHeaders) || request.rawHeaders.length % 2 !== 0) {
+    return null;
+  }
   let count = 0;
+  let rawValue = null;
   for (let index = 0; index < request.rawHeaders.length; index += 2) {
-    if (String(request.rawHeaders[index]).toLowerCase() === 'authorization') count += 1;
+    if (String(request.rawHeaders[index]).toLowerCase() === 'authorization') {
+      count += 1;
+      rawValue = request.rawHeaders[index + 1];
+    }
   }
   const value = request.headers?.authorization;
-  return count === 1 && typeof value === 'string' ? value : null;
+  return count === 1 && typeof rawValue === 'string' && value === rawValue ? value : null;
 }
 
 export function normalizePrincipal(value) {
@@ -38,20 +55,20 @@ export function normalizePrincipal(value) {
 
 /** Create a constant-time bearer-token authenticator for a BYOC Gate service. */
 export function createStaticBearerAuthenticator(token, principal) {
-  if (!validToken(token)) {
-    throw new Error(`Gate API token must be ${MIN_TOKEN_LENGTH}-${MAX_TOKEN_LENGTH} visible non-space characters`);
+  const expected = comparableToken(token);
+  if (!expected) {
+    throw new Error(`Gate API token must be ${MIN_TOKEN_LENGTH}-${MAX_TOKEN_LENGTH} printable ASCII characters`);
   }
   const authenticatedPrincipal = normalizePrincipal(principal);
   if (!authenticatedPrincipal) {
     throw new Error('Gate API principal must be a plain object with a visible non-space id of 1-256 characters');
   }
-  const expected = crypto.createHash('sha256').update(token, 'utf8').digest();
   return async function authenticateRequest(request) {
     const header = oneAuthorizationHeader(request);
     if (!header?.startsWith('Bearer ')) return null;
     const candidate = header.slice('Bearer '.length);
-    if (!validToken(candidate)) return null;
-    const actual = crypto.createHash('sha256').update(candidate, 'utf8').digest();
+    const actual = comparableToken(candidate);
+    if (!actual) return null;
     return crypto.timingSafeEqual(actual, expected) ? authenticatedPrincipal : null;
   };
 }

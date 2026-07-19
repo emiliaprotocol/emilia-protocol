@@ -235,8 +235,9 @@ export default function GatePage() {
             <div style={{ marginTop: 32, borderTop: `1px solid ${color.border}` }}>
               {[
                 ['/product/accountable-signoff', 'Approver Apps', 'Show the exact material action and capture the device-bound human decision.'],
+                ['/action-escrow', 'Action Escrow', 'Keep document execution, exact release approval, custodian state, and one-time consequence control as separate verifiable rows.'],
                 ['/protocol', 'EMILIA Protocol', 'Define the portable evidence and open verification rules beneath Gate.'],
-                ['/assurance', 'Assurance Plane', 'Re-perform the evidence, record drift, and prepare the technical handoff for an auditor or underwriter.'],
+                ['/assurance', 'Assurance Plane', 'Re-perform exact-action evidence, conformance results, and stated formal-model scope; record drift and prepare the technical handoff.'],
               ].map(([href, title, body]) => (
                 <a key={title} href={href} className="ep-gate-stack-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 0.7fr) minmax(280px, 1.3fr) auto', gap: 24, alignItems: 'center', padding: '20px 0', borderBottom: `1px solid ${color.border}`, textDecoration: 'none' }}>
                   <strong style={{ ...styles.h3, fontSize: 16 }}>{title}</strong>
@@ -256,16 +257,14 @@ export default function GatePage() {
               A distinct job at each authorization layer.
             </h2>
             <p style={{ ...styles.lead, maxWidth: 820, marginTop: 18 }}>
-              AgentROA governs what an agent may call. ORPRG verifies that policy permitted the
-              effect. EMILIA proves who authorized the exact material action — and safely controls
-              the consequence when money, infrastructure, regulated records, or irreversible state
-              is involved.
+              AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact
+              human authorization and safely controls consequential outcomes.
             </p>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
               {[
-                ['Delegated route', 'AgentROA', 'What may this agent call under its delegated scope?'],
-                ['Policy permit', 'ORPRG', 'Did machine policy permit this effect at the boundary?'],
-                ['Accountable consequence', 'EMILIA', 'Who authorized this exact material action, and may the protected executor mutate now?'],
+                ['Call governance', 'AgentROA', 'Does the call remain inside the agent’s verified delegated scope?'],
+                ['Policy permit', 'ORPRG', 'Does the native policy evidence prove this effect was permitted?'],
+                ['Human authorization + control', 'EMILIA', 'Did the accountable human authorize this exact action, and may the protected executor mutate now?'],
               ].map(([label, title, body]) => (
                 <div key={title} style={{ ...styles.card, padding: 24 }}>
                   <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.2, textTransform: 'uppercase' }}>{label}</div>
@@ -276,9 +275,9 @@ export default function GatePage() {
             </div>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 24, fontSize: 14, color: color.t2 }}>
               EMILIA does not collapse machine delegation, machine policy, and human authorization
-              into one verdict. A deployment selects and pins the native evidence it trusts; an
-              adjacent format composes only when its native verifier and action binding are
-              configured.
+              into one verdict. CAID can correlate their native action descriptions only under the
+              exact mapping profiles the relying party pins. A match is not authorization, and a
+              missing or lossy mapping returns <code>INDETERMINATE</code> instead of guessing.
             </p>
           </div>
         </section>
@@ -294,10 +293,12 @@ export default function GatePage() {
               pre-mutation failure, and returns the reliance packet.
             </p>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 12 }}>
-              When an action carries a bounded capability, Gate also reserves the observed spend
-              before the effect, refuses overspend or operation replay, commits after success, and
-              records an exception after effect entry as indeterminate instead of refunding it
-              blindly.
+              When an action carries a bounded capability, Gate reserves exact-action or
+              CAID-scoped spend before provider entry, refuses overspend and replay, and commits
+              after success. If provider entry occurred but the result cannot be established, Gate
+              consumes the reservation as indeterminate: no blind retry or refund, and
+              reconciliation only from authenticated evidence bound to the same provider,
+              operation, and action.
             </p>
             <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: '28px 0 0', overflowX: 'auto', whiteSpace: 'pre' }}>{CODE}</pre>
             <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

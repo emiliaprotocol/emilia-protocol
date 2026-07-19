@@ -1,5 +1,7 @@
 name: Dependabot Auto-Merge
 
+permissions: read-all
+
 # Opt every JavaScript-based action into the Node.js 24 runner.
 # GitHub forces this default in June 2026; doing it now eliminates the
 # deprecation-warning noise on every run and surfaces any Node-24 incompat
@@ -28,14 +30,13 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Fetch Dependabot metadata
         id: meta
