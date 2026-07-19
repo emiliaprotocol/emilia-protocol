@@ -170,7 +170,7 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 |---|---|
 | **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/) · [authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/) · [evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/). |
 | **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations. Separately, an externally authored from-spec Rust implementation ([source public](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier)) passes the pinned 16-suite/164-vector bundle and the pinned 359-case hostility campaign under an evaluator-controlled rebuild from an immutable source tree. Its checked-in construction evidence remains implementer-signed, not third-party-attested ([signed statement](examples/external-verification/statements/rust-cleanroom/)); strict clean-room acceptance waits for the corrected third-party-attested manifest and independently pinned attestor key. |
-| **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 22 assertions · a composed symbolic Dolev-Yao model covering challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution. Ten strict Tamarin lemmas verify; deliberately removing consumption or exact registry-view binding produces replay and stale/equivocating-view traces ([formal/tamarin/](formal/tamarin/)). |
+| **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 32 assertions across four models · a composed symbolic Dolev-Yao model covering challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution. Ten strict Tamarin lemmas verify; deliberately removing consumption or exact registry-view binding produces replay and stale/equivocating-view traces ([formal/tamarin/](formal/tamarin/)). |
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
 | **License** | Apache-2.0 |
 
@@ -199,9 +199,9 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 |---|---|
 | Automated test cases | 6,719 across 351 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 verified (T1–T26), 0 errors — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
-| Alloy relational assertions | 35 facts + 22 assertions across two models — verified in CI |
+| Alloy relational assertions | 35 facts + 32 assertions across four models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
-| Release security status | Repository security checks pass; live Strix retest and deployment validation remain open |
+| Release security status | Repository security checks pass; every Strix finding on the Marvel changes is remediated with regression coverage and its review thread resolved |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
 | Cross-language conformance | 251 vectors · 18 suites: receipts · device signoffs · four-outcome resolution · multi-party quorum · revocation · time-attestation · trust-receipt (x2 profiles) · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`). The external Rust baseline remains 164 vectors / 16 suites. See [CONFORMANCE.md](CONFORMANCE.md). |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |

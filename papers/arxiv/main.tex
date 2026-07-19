@@ -11,12 +11,9 @@
 %      1285c269b3d58e325c2432d59a95e598761abf3cf3c8f2933b82f21b59214888)
 %   - all Tamarin lemma output blocks -> formal/PROOF_STATUS.md (verbatim)
 %   - TLA+ 413,137 states / 45,342 distinct / 26 invariants -> formal/PROOF_STATUS.md
-%   - Alloy 15 + 7 = 22 assertions -> formal/PROOF_STATUS.md
+%   - Alloy 15 + 7 + 6 + 4 = 32 assertions -> formal/PROOF_STATUS.md
 %   - Rust external verifier commit 7faba360..., 164 vectors, 353+6 hostility
 %     -> conformance/external/rust-cleanroom-jdieselny.v1.json
-% NOTE: lib/proof-stats.json currently reports conformance.vectors=232, which is
-% stale relative to the authoritative conformance-manifest.json (251). This .tex
-% uses 251 (the manifest), matching the source preprint. Flagged for the lead.
 %
 \documentclass[11pt]{article}
 
@@ -964,8 +961,9 @@ composed, concurrent case is exactly the kind of question better suited to the
 symbolic prover than to TLC brute force, which is one reason the Tamarin models
 exist.
 
-The quorum construction and the protocol's relational structure are separately
-checked in Alloy (6.1.0, SAT4J). One model proves fifteen assertions over the
+The quorum construction, capability delegation, and the protocol's relational
+structure are separately checked in four Alloy models (6.2.0, SAT4J), with
+32 assertions holding without counterexample. One model proves fifteen assertions over the
 receipt and signoff relations (no double consumption, revoked-never-consumed,
 consumed-was-verified, terminal-state integrity, write-path exclusivity, delegation
 scope containment and acyclicity, signoff binding integrity and consume-once, and
@@ -973,7 +971,11 @@ full-chain integrity). A federation model proves seven assertions about the
 cross-operator verification path (an accepted receipt is signed by an advertised
 key over an untampered payload, a tampered or unadvertised-key or revoked receipt
 is never accepted, historical keys still verify, no trust laundering, and
-observer-independent portability). These relational checks treat Ed25519
+observer-independent portability). A quorum model proves six assertions covering
+requester exclusion, distinct humans and keys, the two-person rule, and ordered-chain
+acyclicity and linearity. A capability-delegation model proves four assertions
+covering acyclicity, unique delegation identifiers, leaf ancestry, and
+non-increasing authority. These relational checks treat Ed25519
 unforgeability as an abstract fact; they are structural, not cryptographic, which
 is precisely the gap the Tamarin models close.
 
