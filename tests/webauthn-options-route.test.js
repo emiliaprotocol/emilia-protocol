@@ -93,6 +93,16 @@ describe('POST /api/v1/signoffs/:id/webauthn-options — WYSIWYS fail-closed', (
     expect(mockGenerateAuthenticationOptions).not.toHaveBeenCalled();
   });
 
+  it('rejects an unknown terminal decision before issuing a challenge', async () => {
+    const res = await POST(req({ approver_id: 'ap_controller', decision: 'maybe' }), {
+      params: Promise.resolve({ signoffId: SIGNOFF_ID }),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).type).toContain('invalid_decision');
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
   it('binds display_hash into the Class-A signing context when canonical_action renders', async () => {
     mockLoadSignoffForSigning.mockResolvedValue(loaded({
       policy_id: 'p1',
@@ -119,6 +129,23 @@ describe('POST /api/v1/signoffs/:id/webauthn-options — WYSIWYS fail-closed', (
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.context.display_hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(body.context.decision).toBe('approved');
     expect(mockGenerateAuthenticationOptions).toHaveBeenCalled();
+  });
+
+  it('binds a rejection as canonical decision denied before the authenticator signs', async () => {
+    mockLoadSignoffForSigning.mockResolvedValue(loaded({
+      policy_id: 'p1',
+      policy_hash: 'sha256:policy',
+      required_assurance: 'C',
+      organization_id: 'org_1',
+    }));
+
+    const res = await POST(req({ approver_id: 'ap_controller', decision: 'rejected' }), {
+      params: Promise.resolve({ signoffId: SIGNOFF_ID }),
+    });
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).context.decision).toBe('denied');
   });
 });

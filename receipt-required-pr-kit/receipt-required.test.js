@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { receiptRequiredConformance } from '@emilia-protocol/require-receipt';
-import { dispatch } from './example-dangerous-action.js';
+import { createDemoClassAAssuranceProof, dispatch } from './example-dangerous-action.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(readFileSync(resolve(HERE, 'agent-actions.json'), 'utf8'));
@@ -36,15 +36,21 @@ const canonicalize = (v) => (v === null || v === undefined ? JSON.stringify(v)
 // Mint a FRESH valid EP-RECEIPT-v1 bound to `action`, signed by a named human's
 // device key. (In production this is a real Face ID / passkey signoff; here it's
 // node:crypto so the test is self-contained and needs no EMILIA backend.)
-function issueReceipt(action) {
+function issueReceipt(action, { withAssurance = true, claimExtras = {} } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
-    claim: { action_type: action, outcome: 'allow_with_signoff', approver: 'jane.doe@yourco.example' },
+    claim: {
+      action_type: action,
+      outcome: 'allow_with_signoff',
+      approver: 'jane.doe@yourco.example',
+      ...claimExtras,
+    },
   };
+  if (withAssurance) payload.assurance_proof = createDemoClassAAssuranceProof(payload);
   const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
 }
@@ -84,7 +90,7 @@ test('cross-target binding: a receipt for one table cannot wipe another', async 
   assert.deepEqual(Object.keys(offTarget.body.rejected), ['reason'], 'rejection must be sanitized to { reason } only');
 });
 
-test('consume-after-success: a failed action leaves the receipt retryable', async () => {
+test('one-time consumption: a completed action cannot reuse its receipt', async () => {
   const receipt = issueReceipt('db.records.delete_all:inventory');
   // First call succeeds and consumes the receipt.
   const first = await dispatch('delete_all_records', { table: 'inventory' }, receipt);
@@ -112,5 +118,49 @@ test('secure default: enforcement on with NO trusted key fails closed (does not 
   } finally {
     if (prevInline === undefined) delete process.env.EMILIA_ALLOW_INLINE_KEY; else process.env.EMILIA_ALLOW_INLINE_KEY = prevInline;
     if (prevKeys === undefined) delete process.env.EMILIA_TRUSTED_KEYS; else process.env.EMILIA_TRUSTED_KEYS = prevKeys;
+  }
+});
+
+test('presenter labels cannot elevate a software receipt to Class-A', async () => {
+  const receipt = issueReceipt('db.records.delete_all:label-test', {
+    withAssurance: false,
+    claimExtras: {
+      assurance_class: 'class_a',
+      human_present: true,
+      quorum: { threshold: 2, signers: ['alice', 'bob'] },
+    },
+  });
+  const res = await dispatch('delete_all_records', { table: 'label-test' }, receipt);
+  assert.notEqual(res.status, 200, 'receipt-supplied assurance labels must not run the action');
+  assert.equal(res.body.rejected.reason, 'assurance_proof_required');
+});
+
+test('production posture fails closed when the approver trust inputs are absent', async () => {
+  const receipt = issueReceipt('db.records.delete_all:assurance-config');
+  const previous = {
+    inline: process.env.EMILIA_ALLOW_INLINE_KEY,
+    keys: process.env.EMILIA_TRUSTED_KEYS,
+    approvers: process.env.EMILIA_APPROVER_KEYS_JSON,
+    rpId: process.env.EMILIA_RP_ID,
+    origins: process.env.EMILIA_ALLOWED_ORIGINS,
+  };
+  delete process.env.EMILIA_ALLOW_INLINE_KEY;
+  process.env.EMILIA_TRUSTED_KEYS = receipt.public_key;
+  delete process.env.EMILIA_APPROVER_KEYS_JSON;
+  delete process.env.EMILIA_RP_ID;
+  delete process.env.EMILIA_ALLOWED_ORIGINS;
+  try {
+    const res = await dispatch('delete_all_records', { table: 'assurance-config' }, receipt);
+    assert.notEqual(res.status, 200, 'missing approver trust inputs must refuse');
+    assert.equal(res.body.rejected.reason, 'receipt_assurance_misconfigured');
+  } finally {
+    const restore = (name, value) => {
+      if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    };
+    restore('EMILIA_ALLOW_INLINE_KEY', previous.inline);
+    restore('EMILIA_TRUSTED_KEYS', previous.keys);
+    restore('EMILIA_APPROVER_KEYS_JSON', previous.approvers);
+    restore('EMILIA_RP_ID', previous.rpId);
+    restore('EMILIA_ALLOWED_ORIGINS', previous.origins);
   }
 });

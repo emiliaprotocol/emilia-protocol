@@ -89,6 +89,12 @@ func TestAECVectors(t *testing.T) {
 			req, _ := chain["requirement"].(string)
 			res = VerifyAuthorizationChain(chain, verifiers, nil, req, "sha256:"+digest)
 		}
+		if res.Satisfied != v.ExpectAllow {
+			t.Errorf("%s: satisfied=%v want %v; reasons=%v", v.Name, res.Satisfied, v.ExpectAllow, res.Reasons)
+		}
+		if res.Allow != res.Satisfied {
+			t.Errorf("%s: legacy allow alias diverged from satisfied", v.Name)
+		}
 		if res.Allow != v.ExpectAllow {
 			t.Errorf("%s: allow=%v want %v; reasons=%v", v.Name, res.Allow, v.ExpectAllow, res.Reasons)
 		}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityReceiptSubmitter } from '@/lib/auth-projections.js';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
@@ -80,7 +81,7 @@ export async function POST(request) {
     const result = await protocolWrite({
       type: COMMAND_TYPES.SUBMIT_RECEIPT,
       input: body,
-      actor: auth.entity,
+      actor: authEntityReceiptSubmitter(auth),
     });
 
     if (result.error) {

@@ -18,7 +18,9 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
+import { resolveVerifiedAuthStrength } from '@/lib/auth-strength.js';
 import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
@@ -109,8 +111,9 @@ export async function POST(request) {
     // ── CRITICAL INVARIANT (per MD §2.4 + §12.2.1) ───────────────────────
     // Actor identity NEVER comes from the request body alone. The
     // authenticated context is the source of truth; body actor_id must
-    // match the auth.entity (or be absent).
+    // match the authenticated entity id (or be absent).
     const actor_id = authEntityId(auth);
+    const authStrength = resolveVerifiedAuthStrength(auth);
     if (body.actor_id && body.actor_id !== actor_id) {
       return epProblem(
         403,
@@ -235,13 +238,9 @@ export async function POST(request) {
     const actionHash = hashCanonicalAction(canonicalAction);
 
     // ── Policy evaluation ─────────────────────────────────────────────────
-    // authenticateRequest returns { entity, permissions } — actorRole and
-    // authStrength are NOT on the auth shape today, and no current policy branches
-    // on authStrength. We therefore pass the WEAKEST credible value ('password')
-    // as a fail-SAFE default: if/when a policy starts gating on auth strength, an
-    // unproven request escalates to signoff rather than being assumed MFA. Never
-    // trust a body-supplied strength (the agent controls it). Replace with the
-    // verified value when the auth layer exposes role/strength.
+    // actor_role is caller-supplied policy context; authentication strength is
+    // the server-derived credential projection and cannot be raised by the
+    // request body.
     const baseDecision = evaluateGuardPolicy({
       organizationId: body.organization_id,
       actorId: actor_id,
@@ -251,7 +250,7 @@ export async function POST(request) {
       amount: body.amount,
       currency: body.currency,
       riskFlags: body.risk_flags || [],
-      authStrength: 'password',  // fail-safe default (weakest); NOT verified MFA
+      authStrength,
       initiatorId: actor_id,
     });
 

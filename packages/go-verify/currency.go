@@ -27,6 +27,7 @@
 package emiliaverify
 
 import (
+	"math"
 	"regexp"
 	"strings"
 	"time"
@@ -49,6 +50,7 @@ const (
 	CurrencyReasonNowInvalid             = "now_invalid"
 	// status: "stale"
 	CurrencyReasonFreshHeadStale             = "fresh_head_stale"
+	CurrencyReasonFreshHeadInFuture          = "fresh_head_in_future"
 	CurrencyReasonFreshHeadRequiredButAbsent = "fresh_head_required_but_absent"
 	CurrencyReasonRevokedByFreshHead         = "revoked_by_fresh_head"
 	CurrencyReasonMaxStalenessInvalid        = "max_staleness_invalid"
@@ -240,8 +242,15 @@ func EvaluateCurrency(args CurrencyArgs) CurrencyResult {
 
 	// MaxStalenessSeconds is the action-policy bound. Without a valid bound we
 	// refuse to certify freshness: fail-safe to "stale".
-	if args.MaxStalenessSeconds == nil || *args.MaxStalenessSeconds < 0 {
+	if args.MaxStalenessSeconds == nil || math.IsNaN(*args.MaxStalenessSeconds) ||
+		math.IsInf(*args.MaxStalenessSeconds, 0) || *args.MaxStalenessSeconds < 0 {
 		return result("stale", CurrencyReasonMaxStalenessInvalid)
+	}
+
+	// A future-dated head cannot certify current status.
+	ageSeconds := float64(nowMs-headMs) / 1000.0
+	if ageSeconds < 0 {
+		return result("stale", CurrencyReasonFreshHeadInFuture)
 	}
 
 	// Revocation shown by the head dominates: a revoked authorization is not
@@ -250,9 +259,7 @@ func EvaluateCurrency(args CurrencyArgs) CurrencyResult {
 		return result("stale", CurrencyReasonRevokedByFreshHead)
 	}
 
-	// Age gate. A future-dated head has a negative age; that is within any
-	// non-negative window, so it is not stale on age alone.
-	ageSeconds := float64(nowMs-headMs) / 1000.0
+	// Age gate.
 	if ageSeconds > *args.MaxStalenessSeconds {
 		return result("stale", CurrencyReasonFreshHeadStale)
 	}

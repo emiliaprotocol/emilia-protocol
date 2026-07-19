@@ -43,10 +43,11 @@ export default function CloudPage() {
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={styles.eyebrowBlue}>Product / Cloud</div>
-        <h1 style={styles.h1}>EP Cloud</h1>
+        <div style={styles.eyebrowBlue}>EMILIA Gate / Managed Cloud</div>
+        <h1 style={styles.h1}>EMILIA Gate Cloud</h1>
         <p style={{ ...styles.body, maxWidth: 640 }}>
-          Managed trust-control plane for teams that need policy management, signoff orchestration, and audit evidence without running infrastructure.
+          Managed policy, approval orchestration, durable consumption, and evidence operations
+          around the enforcement adapter at your consequential execution boundary.
         </p>
         <a href="#pilot" className="ep-cta" style={cta.primary}>Request Cloud Access</a>
       </section>
@@ -56,7 +57,9 @@ export default function CloudPage() {
         <div style={styles.section}>
           <h2 style={styles.h2}>Capabilities</h2>
           <p style={styles.body}>
-            EP Cloud provides the full trust-control plane as a managed service. You define policies, configure signoff requirements, and consume audit evidence. We run the infrastructure.
+            Gate Cloud operates the coordination plane as a managed service. You keep control of
+            the protected executor, accepted keys, profiles, and trust sources; we operate the
+            policy, ceremony, evidence, and monitoring services.
           </p>
           <div style={grid.auto(280)}>
             {FEATURES.map((f, i) => (
@@ -71,13 +74,17 @@ export default function CloudPage() {
 
       {/* How it fits */}
       <section style={styles.section}>
-        <h2 style={styles.h2}>How EP Cloud fits your stack</h2>
-        <p style={styles.body}>EP Cloud is a control plane, not an inline proxy. Your applications call the EP SDK at action decision points. The SDK communicates with the cloud control plane for policy evaluation and signoff orchestration. Your data path is unchanged.</p>
+        <h2 style={styles.h2}>How Gate Cloud fits your stack</h2>
+        <p style={styles.body}>
+          The enforcement adapter remains immediately before your mutating system. It calls the
+          managed control plane for policy, challenge, approval, and evidence operations, then
+          refuses locally unless the required authorization can be consumed for that exact action.
+        </p>
         <div style={grid.stack}>
           {[
-            { title: 'SDK integration', body: 'Instrument your application at action decision points. The SDK handles policy evaluation, signoff orchestration, and event emission. Typical integration is under 20 lines of code per action surface.' },
+            { title: 'Executor integration', body: 'Place the Gate adapter at each supported mutating path. Coverage is limited to the paths you fully mediate, and every uncovered path remains explicitly outside the guarantee.' },
             { title: 'Control plane', body: 'Policy registry, signoff orchestration, and event storage run as a managed service. You configure policies and consume evidence. We handle availability, scaling, and key management.' },
-            { title: 'Evidence consumption', body: 'Audit exports, event explorer, and compliance reports are available through the dashboard and API. Integrate evidence into existing GRC tooling or export for external auditors.' },
+            { title: 'Evidence handoff', body: 'Export portable evidence and re-performance packages through the dashboard and API. Your auditor, underwriter, or internal assurer keeps the conclusion.' },
           ].map((item, i) => (
             <div key={i} style={styles.card}>
               <div style={styles.cardTitle}>{item.title}</div>

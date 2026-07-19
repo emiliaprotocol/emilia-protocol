@@ -7,6 +7,7 @@ const context = readJson('public/.well-known/emilia-context.json');
 const manifest = readJson('conformance/conformance-manifest.json');
 const external = readJson('conformance/external/rust-cleanroom-jdieselny.v1.json');
 const securityCase = readJson('security/security-case.json');
+const standardsStatus = readJson('standards/STATUS.json');
 const llms = fs.readFileSync(new URL('../public/llms.txt', import.meta.url), 'utf8');
 const llmsFull = fs.readFileSync(new URL('../public/llms-full.txt', import.meta.url), 'utf8');
 
@@ -45,6 +46,36 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
     expect(context.canonical_definitions.some((entry) =>
       entry.term === 'machine policy decision versus human authorization')).toBe(true);
     expect(llmsFull).toContain('machine policy decision versus human authorization');
+  });
+
+  it('keeps standards inventory and the non-collapsing vocabulary machine-readable', () => {
+    expect(context.standards).toHaveLength(standardsStatus.active_datatracker.length);
+    expect(context.standards_portfolio.source).toBe('standards/STATUS.json');
+    expect(context.standards_portfolio.decision_vocabulary).toMatchObject({
+      VERIFIED: expect.any(String),
+      MATCH: expect.any(String),
+      SATISFIED: expect.any(String),
+      AUTHORIZED: expect.any(String),
+      EXECUTED: expect.any(String),
+    });
+    expect(llmsFull).toContain('## July 19 Post-Blackout Filing Wave');
+    expect(context.current_evidence.model_to_matter).toMatchObject({
+      profile: 'EP-MODEL-TO-MATTER-v1',
+      deterministic_vectors: 15,
+      implementation_languages: ['javascript'],
+      command: 'npm run m2m:conformance',
+    });
+    expect(llmsFull).toContain('No biological screening, scientific-safety, physical-truth, deployment, or endorsement claim is made.');
+  });
+
+  it('surfaces the executable CAID mapping boundary', () => {
+    expect(context.current_evidence.caid).toMatchObject({
+      core_vectors: 48,
+      mapping_vectors: 13,
+      same_team_ports: ['javascript', 'python', 'go'],
+    });
+    expect(context.current_evidence.caid.mapping_verdicts).toContain('INDETERMINATE');
+    expect(llmsFull).toContain('material-action matching');
   });
 
   it('exposes both concise and machine-readable discovery targets', () => {

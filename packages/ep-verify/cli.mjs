@@ -22,15 +22,24 @@
  * about whether the authorized action was appropriate, lawful, or wise, and it
  * is not a revocation or freshness check.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 
 // Prefer the published sibling package; fall back to the in-repo source so the
 // monorepo test/build works without a node_modules link (same resolution
 // pattern as packages/gate/index.js).
 const { verifyReceipt } = await import('@emilia-protocol/verify')
   .catch(() => import('../verify/index.js'));
+const { strictJsonGate } = await import('@emilia-protocol/verify/strict-json')
+  .catch(() => import('../verify/strict-json.js'));
 
 const USAGE = 'usage: ep-verify <receipt.json> [--keys keys.json]';
+const MAX_INPUT_BYTES = 8 * 1024 * 1024;
+
+function readBounded(path) {
+  const size = statSync(path).size;
+  if (!Number.isSafeInteger(size) || size > MAX_INPUT_BYTES) throw new Error('input exceeds 8 MiB limit');
+  return readFileSync(path, 'utf8');
+}
 
 function emit(result, detail) {
   process.stdout.write(`${result}\n${JSON.stringify({ result, ...detail })}\n`);
@@ -90,12 +99,14 @@ Output: line 1 is VERIFIED or REFUSED; line 2 is machine-readable JSON
 
   let rawReceipt;
   try {
-    rawReceipt = readFileSync(receiptPath, 'utf8');
+    rawReceipt = readBounded(receiptPath);
   } catch (e) {
     return refuse('unreadable_receipt', { error: e.message });
   }
   let doc;
   try {
+    const strict = strictJsonGate(rawReceipt);
+    if (!strict.ok) return refuse('malformed_json', { error: strict.reason });
     doc = JSON.parse(rawReceipt);
   } catch (e) {
     return refuse('malformed_json', { error: e.message });
@@ -108,12 +119,14 @@ Output: line 1 is VERIFIED or REFUSED; line 2 is machine-readable JSON
   }
   let rawKeys;
   try {
-    rawKeys = readFileSync(keysPath, 'utf8');
+    rawKeys = readBounded(keysPath);
   } catch (e) {
     return refuse('unreadable_keys', { error: e.message });
   }
   let keysDoc;
   try {
+    const strict = strictJsonGate(rawKeys);
+    if (!strict.ok) return refuse('malformed_keys', { error: strict.reason });
     keysDoc = JSON.parse(rawKeys);
   } catch (e) {
     return refuse('malformed_keys', { error: e.message });

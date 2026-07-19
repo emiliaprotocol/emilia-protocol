@@ -28,7 +28,7 @@ We are EMILIA Protocol, an open standards effort (Apache-2.0, published as IETF 
 
 **Multi-party human-in-the-loop.** EP-QUORUM (draft-schrock-ep-quorum) expresses M-of-N approval over *distinct* humans — a cryptographic two-person rule for high-consequence agent actions.
 
-**Composing the full authorization story.** EP-AEC (Authorization Evidence Chain) composes delegation, policy-permit, and human-authorization receipts into a single artifact that yields an offline ALLOW/DENY decision — letting a verifier reconstruct the complete chain from "this human authorized" through "this policy permitted" to "this agent acted."
+**Composing the full authorization story.** EP-AEC (Authorization Evidence Chain) composes delegation, policy-permit, and human-authorization receipts into a single artifact that yields an offline SATISFIED/UNSATISFIED evidence verdict — letting a verifier reconstruct the complete chain from "this human authorized" through "this policy permitted" to "this agent acted." The executor makes the separate authorization decision.
 
 **Long-term non-repudiation.** EP-EVIDENCE-RECORD provides RFC 4998-style, crypto-agile long-term retention, so receipts remain verifiable as algorithms age — relevant to audit and retention obligations long after an action occurs.
 

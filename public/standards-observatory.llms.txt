@@ -1,6 +1,6 @@
 # EMILIA Standards Observatory
 
-Source-locked snapshot as of July 12, 2026. Snapshot sha256:23efb7e98b88176a069fb83cdd5425b7dc12745dd6c288e0b7e63130b9b54d17.
+Source-locked snapshot as of July 14, 2026. Snapshot sha256:57e513998be693a30060be0dc9d8d2388caa86d04bfc954e004ba31a4f462c72.
 
 ## Truth Rules
 
@@ -22,7 +22,7 @@ Source-locked snapshot as of July 12, 2026. Snapshot sha256:23efb7e98b88176a069f
 
 - agentproto merged charter | git:29837db3271195f43eee0e6da321252286f75ab4 | operative | host_socket | https://raw.githubusercontent.com/jdrosen/aiproto-wg/29837db3271195f43eee0e6da321252286f75ab4/Charter_Merge.md | quote sha256:5c3b4d3f67729976f5cfa6237c46cccc093f8f8859606e297cdcd3f4839f8a9b
 - agentproto original charter | git:8046314f089600e635232d5f020fda86a1af4038 | historical_nonoperative | historical_precedent | https://raw.githubusercontent.com/jdrosen/aiproto-wg/8046314f089600e635232d5f020fda86a1af4038/charter.md | quote sha256:1e119cc22183222b9b3aa96570750c3a6251adfb8c1c90310ed66ab9bea03426
-- FIDO Verifiable Intent | web-snapshot:2026-07-12 | current_primary | overlap_competitor | https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/ | quote sha256:5f44d2f40d0e1b58ddb0ab41c0d5be5d7de9d87e3429f7b547aef836d334343c
+- Mastercard Verifiable Intent contribution | web-snapshot:2026-07-12 | current_primary | overlap_competitor | https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/ | quote sha256:5f44d2f40d0e1b58ddb0ab41c0d5be5d7de9d87e3429f7b547aef836d334343c
 - AP2 Checkout Mandate | v0.2:web-snapshot:2026-07-12 | current_primary | complement_overlap | https://ap2-protocol.org/ap2/checkout_mandate/ | quote sha256:dfdbaa112e0a11b088da90037fafecd5d487d1efbbe199814f6bf8b928e3b17e
 - WIMSE Workload Credentials | draft-ietf-wimse-workload-creds-02 | current_draft | complement | https://www.ietf.org/archive/id/draft-ietf-wimse-workload-creds-02.txt | quote sha256:115be423eb5385929e65c42e3752a3ab5affd6f836c5356375ce1b494f549ba6
 - WIMSE Condition-Bounded Credentials | draft-winmagic-wimse-condition-bounded-credentials-01 | current_draft | complement_socket | https://www.ietf.org/archive/id/draft-winmagic-wimse-condition-bounded-credentials-01.txt | quote sha256:b612f80a6fbfa97352218a93f2c23d7d915cab0054a0b51303a3b7d412be196c
@@ -37,6 +37,9 @@ Source-locked snapshot as of July 12, 2026. Snapshot sha256:23efb7e98b88176a069f
 - EP Authorization Receipts | draft-schrock-ep-authorization-receipts-06 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-authorization-receipts-06.txt | quote sha256:61d929717d649d11b769243ac09de5d075b8a98a8db8927a3d2f0b4a3d4897f7
 - EP-QUORUM | draft-schrock-ep-quorum-02 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-quorum-02.txt | quote sha256:29ba746cab0e8fc1ff6d1b0c6ff072ef99eb0a62f6c7627a5e67f98f842b21ef
 - EP-AEC | draft-schrock-ep-authorization-evidence-chain-02 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-02.txt | quote sha256:c507e982338a7801af91426ec60cf87d4aa31a7cf36a6fed901ddd8bef49cbd1
+- DMSC Gateway Gap Analysis | draft-dunbar-dmsc-gw-scenarios-gap-analysis-02 | current_draft | host_socket | https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt | quote sha256:003d4e02995719c0e83d5505cfd0b41b0de173af93d3f976b35f7a55596608b2
+- AuthZEN AARP | draft-1:2026-07-09 | current_draft | adjacent_profile | https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html | quote sha256:6b94dde2480c6021c3fd47b05b48dbc26a26832fe012a2ff4229f7439c6d1097
+- AGTP | draft-hood-independent-agtp-09 | current_draft | transport_neighbor | https://www.ietf.org/archive/id/draft-hood-independent-agtp-09.txt | quote sha256:63ffea9867d02af8704b95d9cefa80cdd652be707dfb2d080a85a17aa9d9a239
 
 ## Open Frontiers
 

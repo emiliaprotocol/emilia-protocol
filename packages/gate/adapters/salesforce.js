@@ -34,6 +34,7 @@ const OPS = {
   'records.bulk_delete': {
     selector: { protocol: 'salesforce', tool: 'bulk_delete' },
     observed: (p) => ({ action_type: 'salesforce.records.bulk_delete', object: p.object, soql_hash: hashCanonical(String(p.soql || '').trim()) }),
+    actuator: (p, observed) => ({ ...observed, soql: p.soql }),
     perform: (c, p) => c.bulkDelete({ object: p.object, soql: p.soql }),
   },
   'data.export': {

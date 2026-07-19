@@ -9,7 +9,8 @@ from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quoru
                             canonicalize, is_canonicalizable,
                             evaluate_currency, validate_initiator_attestation,
                             verify_consumption_proof, require_witness_quorum,
-                            verify_timestamp_proof, verify_authorization_chain)
+                            verify_timestamp_proof, verify_authorization_chain,
+                            verify_resolution_receipt)
 # EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
 # (conformance/runners/strict-json.mjs) and the Go runner: standard parse, then
 # duplicate member names / unpaired surrogates / depth > 64 reject, then the EP
@@ -70,12 +71,31 @@ def run_canonicalization(c):
     return digest == c.get("expected_digest")
 def _run(v):
     if "document" in v: return verify_receipt(v["document"], v["public_key"]).valid
-    if "signoff" in v: return verify_webauthn_signoff(v["signoff"], v["approver_public_key"], {"rpId": v.get("rp_id")})["valid"]
-    if "quorum" in v: return verify_quorum(v["quorum"], {"rpId": "emiliaprotocol.ai"})["valid"]
+    if "resolution_receipt" in v or "resolution_authorization" in v:
+        receipt = v.get("resolution_receipt", v.get("resolution_authorization"))
+        resolution_opts = {
+            "bindingMoment": v.get("binding_moment"),
+            "expectedActionHash": v.get("expected_action_hash"),
+            "principalKeys": v.get("principal_keys"),
+            "rpId": v.get("rp_id"),
+            "allowedOrigins": v.get("allowed_origins"),
+        }
+        for wire_name, option_name in (
+            ("expected_selected_option", "expectedSelectedOption"),
+            ("expected_nonce", "expectedNonce"),
+            ("expected_initiator", "expectedInitiator"),
+            ("evaluation_time", "evaluationTime"),
+        ):
+            if wire_name in v:
+                resolution_opts[option_name] = v.get(wire_name)
+        result = verify_resolution_receipt(receipt, resolution_opts)
+        return bool(result["valid"] and result["authorizes_action"]) if "resolution_authorization" in v else result["valid"]
+    if "signoff" in v: return verify_webauthn_signoff(v["signoff"], v["approver_public_key"], {"rpId": v.get("rp_id"), "allowedOrigins": v.get("allowed_origins")})["valid"]
+    if "quorum" in v: return verify_quorum(v["quorum"], {"rpId": "emiliaprotocol.ai", "allowedOrigins": ["https://www.emiliaprotocol.ai"]})["valid"]
     if "revocation" in v: return verify_revocation(v["target"], v["revocation"], {"revokerKeys": v.get("revoker_keys"), "maxAgeSeconds": v.get("max_age_seconds"), "now": v.get("now")})["valid"]
     if "time_attestation" in v: return verify_time_attestation(v["time_attestation"], {"tsaKeys": v.get("tsa_keys"), "expectedHash": v.get("expected_hash"), "notBefore": v.get("not_before"), "notAfter": v.get("not_after")})["valid"]
     if "trust_receipt" in v: return verify_trust_receipt(v["trust_receipt"], {"approverKeys": v["verification"]["approver_keys"], "logPublicKey": v["verification"]["log_public_key"], **(v.get("verify_opts") or {})})["valid"]
-    if "provenance_chain" in v: return verify_provenance_offline(v["provenance_chain"], {"delegationKeys": v.get("delegation_keys"), "now": v.get("now_ms")})["valid"]
+    if "provenance_chain" in v: return verify_provenance_offline(v["provenance_chain"], {"delegationKeys": v.get("delegation_keys"), "rootVerification": v.get("root_verification"), "actionVerification": v.get("action_verification"), "now": v.get("now_ms")})["valid"]
     if "evidence_record" in v: return verify_evidence_record(v["evidence_record"], {"tsaKeys": v.get("tsa_keys"), "protectedHash": v.get("protected_hash")})["valid"]
     if "canonicalization" in v: return run_canonicalization(v["canonicalization"])
     # EP-CURRENCY-v1: valid iff the two-valued currency status equals expect_status.
@@ -92,7 +112,7 @@ def _run(v):
     # verifies over the expected digest (fail-closed on any refusal).
     if "timestamp_proof" in v:
         return verify_timestamp_proof(v["timestamp_proof"], v.get("expected_digest"), v.get("pinned_tsa_keys"))["verified"]
-    # EP-AEC-ROLE-v1: valid iff verify_authorization_chain ALLOWs, with the built-in
+    # EP-AEC-ROLE-v1: valid iff the evidence requirement is SATISFIED, with the built-in
     # ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for each
     # stub_type. Exercises real signatures, role scoping, and signed action binding.
     if "aec_chain" in v:
@@ -104,7 +124,7 @@ def _run(v):
                                           policies_by_type=v.get("policies_by_type"),
                                           requirement=v.get("requirement"),
                                           expected_action_digest=v.get("expected_action_digest"),
-                                          verification_time=v.get("verification_time"))["allow"]
+                                          verification_time=v.get("verification_time"))["satisfied"]
     return False
 
 def run(v):

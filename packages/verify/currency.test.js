@@ -86,6 +86,18 @@ test("head older than maxStalenessSeconds => 'stale'", () => {
   assert.strictEqual(r.currency_at_T.reason, CURRENCY_REASON.fresh_head_stale);
 });
 
+test("future-dated status head => 'stale', never 'fresh'", () => {
+  const r = evaluateCurrency({
+    receipt,
+    authentic_as_of_commit: true,
+    now: NOW,
+    maxStalenessSeconds: 300,
+    freshHead: headAt(-60),
+  });
+  assert.strictEqual(r.currency_at_T.status, 'stale');
+  assert.strictEqual(r.currency_at_T.reason, CURRENCY_REASON.fresh_head_in_future);
+});
+
 // ── status: 'stale' — head shows revocation ──────────────────────────────────
 test("head with scalar revoked:true => 'stale' (revoked), even if recent", () => {
   const r = evaluateCurrency({
@@ -155,6 +167,20 @@ test("negative maxStalenessSeconds is not a valid bound => 'stale'", () => {
   });
   assert.strictEqual(r.currency_at_T.status, 'stale');
   assert.strictEqual(r.currency_at_T.reason, CURRENCY_REASON.max_staleness_invalid);
+});
+
+test("non-finite maxStalenessSeconds is not a valid bound => 'stale'", () => {
+  for (const bound of [Number.NaN, Number.POSITIVE_INFINITY]) {
+    const r = evaluateCurrency({
+      receipt,
+      authentic_as_of_commit: true,
+      now: NOW,
+      maxStalenessSeconds: bound,
+      freshHead: headAt(1),
+    });
+    assert.strictEqual(r.currency_at_T.status, 'stale');
+    assert.strictEqual(r.currency_at_T.reason, CURRENCY_REASON.max_staleness_invalid);
+  }
 });
 
 test("unparseable now => 'unknown' (won't measure age against a bad clock)", () => {

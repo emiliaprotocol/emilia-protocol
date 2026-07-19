@@ -7,7 +7,11 @@
 
 import { describe, it, expect } from 'vitest';
 import crypto from 'crypto';
-import { verifyReceiptSignature, resolveProvenanceTier } from '../lib/signatures.js';
+import {
+  buildIdentifiedSubmissionDigest,
+  verifyReceiptSignature,
+  resolveProvenanceTier,
+} from '../lib/signatures.js';
 
 // ---------------------------------------------------------------------------
 // Helpers: generate real Ed25519 keypairs for positive-path testing
@@ -28,6 +32,10 @@ function exportPublicKeyBase64(publicKey) {
   const der = publicKey.export({ type: 'spki', format: 'der' });
   // Last 32 bytes of a 44-byte Ed25519 SPKI DER are the raw key
   return der.slice(der.length - 32).toString('base64');
+}
+
+function exportPublicKeySpkiBase64url(publicKey) {
+  return publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
 }
 
 function makeFakeHash() {
@@ -75,7 +83,7 @@ describe('verifyReceiptSignature — input validation', () => {
     const keyShort = Buffer.alloc(16).toString('base64');
     const r = verifyReceiptSignature(makeFakeHash(), sig, keyShort);
     expect(r.valid).toBe(false);
-    expect(r.reason).toMatch(/32 bytes/);
+    expect(r.reason).toMatch(/32-byte raw key/i);
   });
 
   it('random 64-byte garbage signature against real pubkey is rejected', () => {
@@ -180,16 +188,19 @@ describe('resolveProvenanceTier — pass-through for non-identified_signed tiers
 
 describe('resolveProvenanceTier — identified_signed downgrade paths', () => {
   it('downgrades to self_attested when evidence has no signature', () => {
-    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { public_key: 'abc' });
+    const { publicKey } = generateKeypair();
+    const r = resolveProvenanceTier(
+      'identified_signed', makeFakeHash(), {}, exportPublicKeySpkiBase64url(publicKey),
+    );
     expect(r.tier).toBe('self_attested');
     expect(r.warning).toMatch(/signature/i);
     expect(r.warning).toMatch(/downgraded/i);
   });
 
-  it('downgrades to self_attested when evidence has no public_key', () => {
+  it('downgrades to self_attested when the authenticated submitter has no enrolled key', () => {
     const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: 'abc' });
     expect(r.tier).toBe('self_attested');
-    expect(r.warning).toMatch(/public_key/i);
+    expect(r.warning).toMatch(/enrolled submitter key/i);
   });
 
   it('downgrades to self_attested when evidence is null', () => {
@@ -200,18 +211,23 @@ describe('resolveProvenanceTier — identified_signed downgrade paths', () => {
 
   it('downgrades when signature has wrong byte length', () => {
     const shortSig = Buffer.alloc(10).toString('base64');
-    const pub = Buffer.alloc(32).toString('base64');
-    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: shortSig, public_key: pub });
+    const { publicKey } = generateKeypair();
+    const trusted = exportPublicKeySpkiBase64url(publicKey);
+    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: shortSig }, trusted);
     expect(r.tier).toBe('self_attested');
-    expect(r.warning).toMatch(/invalid length/i);
+    expect(r.warning).toMatch(/invalid signature length/i);
   });
 
-  it('downgrades when public_key has wrong byte length', () => {
+  it('downgrades when the evidence public_key is malformed', () => {
     const sig = Buffer.alloc(64).toString('base64');
     const shortPub = Buffer.alloc(16).toString('base64');
-    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: sig, public_key: shortPub });
+    const { publicKey } = generateKeypair();
+    const trusted = exportPublicKeySpkiBase64url(publicKey);
+    const r = resolveProvenanceTier(
+      'identified_signed', makeFakeHash(), { signature: sig, public_key: shortPub }, trusted,
+    );
     expect(r.tier).toBe('self_attested');
-    expect(r.warning).toMatch(/invalid length/i);
+    expect(r.warning).toMatch(/key verification error/i);
   });
 
   it('downgrades when signature does not verify against hash', () => {
@@ -221,7 +237,7 @@ describe('resolveProvenanceTier — identified_signed downgrade paths', () => {
     const sig = signHash(privateKey, hash); // signed wrong hash
     const pub = exportPublicKeyBase64(publicKey);
 
-    const r = resolveProvenanceTier('identified_signed', wrongHash, { signature: sig, public_key: pub });
+    const r = resolveProvenanceTier('identified_signed', wrongHash, { signature: sig }, pub);
     expect(r.tier).toBe('self_attested');
     expect(r.warning).toMatch(/failed/i);
   });
@@ -232,9 +248,19 @@ describe('resolveProvenanceTier — identified_signed downgrade paths', () => {
     const sig = signHash(privateKey, hash);
     const pub = exportPublicKeyBase64(publicKey);
 
-    const r = resolveProvenanceTier('identified_signed', hash, { signature: sig, public_key: pub });
+    const r = resolveProvenanceTier('identified_signed', hash, { signature: sig }, pub);
     expect(r.tier).toBe('identified_signed');
     expect(r.warning).toBeUndefined();
+  });
+
+  it('accepts the entity registry SPKI encoding used by authenticateRequest', () => {
+    const { privateKey, publicKey } = generateKeypair();
+    const hash = makeFakeHash();
+    const signature = signHash(privateKey, hash);
+    const trustedSpki = exportPublicKeySpkiBase64url(publicKey);
+
+    expect(resolveProvenanceTier('identified_signed', hash, { signature }, trustedSpki).tier)
+      .toBe('identified_signed');
   });
 });
 
@@ -244,8 +270,9 @@ describe('resolveProvenanceTier — identified_signed downgrade paths', () => {
 
 describe('ADVERSARIAL: Signature attacks — cannot claim identified_signed without proof', () => {
   it('empty string signature is rejected', () => {
-    const pub = Buffer.alloc(32).toString('base64');
-    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: '', public_key: pub });
+    const { publicKey } = generateKeypair();
+    const pub = exportPublicKeyBase64(publicKey);
+    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: '' }, pub);
     expect(r.tier).toBe('self_attested');
   });
 
@@ -253,7 +280,7 @@ describe('ADVERSARIAL: Signature attacks — cannot claim identified_signed with
     const { publicKey } = generateKeypair();
     const pub = exportPublicKeyBase64(publicKey);
     const garbageSig = crypto.randomBytes(64).toString('base64');
-    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: garbageSig, public_key: pub });
+    const r = resolveProvenanceTier('identified_signed', makeFakeHash(), { signature: garbageSig }, pub);
     expect(r.tier).toBe('self_attested');
   });
 
@@ -263,7 +290,7 @@ describe('ADVERSARIAL: Signature attacks — cannot claim identified_signed with
     const garbageSig = crypto.randomBytes(64).toString('base64');
     const pub = exportPublicKeyBase64(publicKey);
 
-    const r = resolveProvenanceTier('identified_signed', hash, { signature: garbageSig, public_key: pub });
+    const r = resolveProvenanceTier('identified_signed', hash, { signature: garbageSig }, pub);
     expect(r.tier).toBe('self_attested');
   });
 
@@ -278,8 +305,7 @@ describe('ADVERSARIAL: Signature attacks — cannot claim identified_signed with
     for (let i = 0; i < 5; i++) {
       const attempt = resolveProvenanceTier('identified_signed', hash, {
         signature: crypto.randomBytes(64).toString('base64'),
-        public_key: pub,
-      });
+      }, pub);
       expect(attempt.tier).toBe('self_attested');
     }
   });
@@ -293,11 +319,61 @@ describe('ADVERSARIAL: Signature attacks — cannot claim identified_signed with
     const pubBExported = exportPublicKeyBase64(pubB);
 
     // Entity A's signature is valid for A's key
-    expect(resolveProvenanceTier('identified_signed', hash, { signature: sigA, public_key: pubAExported }).tier)
+    expect(resolveProvenanceTier('identified_signed', hash, { signature: sigA }, pubAExported).tier)
       .toBe('identified_signed');
 
     // But entity A's signature against entity B's public key → invalid
-    expect(resolveProvenanceTier('identified_signed', hash, { signature: sigA, public_key: pubBExported }).tier)
+    expect(resolveProvenanceTier('identified_signed', hash, { signature: sigA }, pubBExported).tier)
       .toBe('self_attested');
+  });
+
+  it('does not let a submitter establish identity with an inline self-generated key', () => {
+    const { publicKey: enrolledKey } = generateKeypair();
+    const { privateKey: attackerPrivate, publicKey: attackerPublic } = generateKeypair();
+    const hash = makeFakeHash();
+    const signature = signHash(attackerPrivate, hash);
+
+    const result = resolveProvenanceTier('identified_signed', hash, {
+      signature,
+      public_key: exportPublicKeyBase64(attackerPublic),
+    }, exportPublicKeySpkiBase64url(enrolledKey));
+
+    expect(result.tier).toBe('self_attested');
+    expect(result.warning).toMatch(/does not match the authenticated submitter key/i);
+  });
+});
+
+describe('buildIdentifiedSubmissionDigest — non-circular exact binding', () => {
+  const base = {
+    targetEntityRef: 'merchant.example',
+    transactionRef: 'order-7',
+    transactionType: 'purchase',
+    signals: { price_integrity: 100 },
+    claims: { price_honored: true },
+    evidence: { invoice_hash: 'sha256:abc', signature: 'ignored', public_key: 'ignored' },
+    context: { currency: 'USD' },
+  };
+
+  it('excludes authentication envelope fields from the signed payload', () => {
+    const first = buildIdentifiedSubmissionDigest(base);
+    const second = buildIdentifiedSubmissionDigest({
+      ...base,
+      evidence: { ...base.evidence, signature: 'different', public_key: 'different' },
+    });
+    expect(first.digest).toBe(second.digest);
+    expect(first.payload.evidence).toEqual({ invoice_hash: 'sha256:abc' });
+  });
+
+  it('changes for the target, transaction, claims, context, or evidence', () => {
+    const digest = buildIdentifiedSubmissionDigest(base).digest;
+    for (const changed of [
+      { ...base, targetEntityRef: 'attacker.example' },
+      { ...base, transactionRef: 'order-8' },
+      { ...base, claims: { price_honored: false } },
+      { ...base, context: { currency: 'EUR' } },
+      { ...base, evidence: { invoice_hash: 'sha256:def' } },
+    ]) {
+      expect(buildIdentifiedSubmissionDigest(changed).digest).not.toBe(digest);
+    }
   });
 });

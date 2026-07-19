@@ -236,7 +236,7 @@ const OPENAPI_EXEMPTIONS = [
   '/api/trust-desk/status/[engagementId]',
   '/api/trust-desk/verify/[slug]',
   '/api/cron/trust-desk-monitor',
-  // Stripe checkout session creation — EP Cloud billing surface. Uses the
+  // Stripe checkout session creation — EMILIA Gate Cloud billing surface. Uses the
   // Stripe SDK server-side; not part of the EP protocol API. Documented in
   // docs/STRIPE_SETUP.md; degrades to 503 when env is unconfigured.
   '/api/checkout',

@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           Effective {EFFECTIVE}
         </div>
         <p style={styles.body}>
-          This policy describes how {ENTITY.legalName} ("EMILIA Protocol", "we", "us") collects, uses, and protects personal information when you use the websites at <code style={{ fontFamily: font.mono, fontSize: 13 }}>emiliaprotocol.ai</code>, the EP Cloud service, the open-source reference runtime, the published SDKs, or any related interface.
+          This policy describes how {ENTITY.legalName} ("EMILIA Protocol", "we", "us") collects, uses, and protects personal information when you use the websites at <code style={{ fontFamily: font.mono, fontSize: 13 }}>emiliaprotocol.ai</code>, the EMILIA Gate Cloud service, the open-source reference runtime, the published SDKs, or any related interface.
         </p>
       </section>
 
@@ -27,7 +27,7 @@ export default function PrivacyPage() {
 
         <h2 style={styles.h2}>1. Roles</h2>
         <p style={styles.body}>
-          When you use this website or our hosted services, we act as the <strong style={{ color: color.t1 }}>controller</strong> of personal data we collect about you (a website visitor, prospect, or hosted-service customer). When a customer organization uses the EP Cloud service to authorize actions involving end-user data, we act as a <strong style={{ color: color.t1 }}>processor</strong> and the customer organization is the controller. The customer's DPA governs that processing.
+          When you use this website or our hosted services, we act as the <strong style={{ color: color.t1 }}>controller</strong> of personal data we collect about you (a website visitor, prospect, or hosted-service customer). When a customer organization uses the EMILIA Gate Cloud service to authorize actions involving end-user data, we act as a <strong style={{ color: color.t1 }}>processor</strong> and the customer organization is the controller. The customer's DPA governs that processing.
         </p>
 
         <h2 style={styles.h2}>2. What we collect</h2>
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
         <p style={styles.body}>For hosted-service customer data we process on the customer's behalf:</p>
         <ul style={styles.list}>
           <li>Trust receipts (cryptographically signed records of authorized actions). Receipts contain action context and signatures — not raw PII unless the customer's policy explicitly includes it.</li>
-          <li>Policy data (the rules a customer organization authors and ships to EP Cloud).</li>
+          <li>Policy data (the rules a customer organization authors and ships to EMILIA Gate Cloud).</li>
           <li>Entity authority records (which principal authorities exist within the customer's tenant).</li>
         </ul>
         <p style={styles.body}>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
 
         <h2 style={styles.h2}>5. International transfers</h2>
         <p style={styles.body}>
-          Our primary processing region is the United States. For customers in the EU/EEA, UK, or Switzerland, we rely on the EU Standard Contractual Clauses (SCCs) and equivalent UK addendum where required. Customer-data residency is available by arrangement on EP Enterprise engagements.
+          Our primary processing region is the United States. For customers in the EU/EEA, UK, or Switzerland, we rely on the EU Standard Contractual Clauses (SCCs) and equivalent UK addendum where required. Customer-data residency is available by arrangement on EMILIA Gate Enterprise engagements.
         </p>
 
         <h2 style={styles.h2}>6. Retention</h2>

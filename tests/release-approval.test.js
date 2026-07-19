@@ -4,7 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { validateReleaseApproval, verifyReleaseGitState } from '../scripts/require-release-approval.mjs';
+import {
+  validateReleaseApproval,
+  verifyReleaseGitState,
+  verifyUnpublishedReleaseGitState,
+} from '../scripts/require-release-approval.mjs';
 
 const valid = {
   eventName: 'workflow_dispatch',
@@ -50,6 +54,40 @@ describe('registry release approval', () => {
       });
       fs.writeFileSync(path.join(dir, 'tracked.txt'), 'tampered\n');
       expect(() => verifyReleaseGitState({ cwd: dir, tag: 'verify-v3.9.0', mainRef: 'refs/heads/main' })).toThrow(/modified tracked files/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('permits tag creation only from the exact clean main commit with no existing tag', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-go-release-approval-'));
+    const run = (...args) => execFileSync('git', args, { cwd: dir, stdio: 'pipe' });
+    try {
+      run('init', '--initial-branch=main');
+      run('config', 'user.name', 'Release Test');
+      run('config', 'user.email', 'release-test@example.invalid');
+      fs.writeFileSync(path.join(dir, 'tracked.txt'), 'release\n');
+      run('add', 'tracked.txt');
+      run('commit', '-m', 'release source');
+      const head = run('rev-parse', 'HEAD').toString().trim();
+      expect(verifyUnpublishedReleaseGitState({
+        cwd: dir,
+        tag: 'packages/go-verify/v2.3.1',
+        mainRef: 'refs/heads/main',
+        expectedCommit: head,
+      })).toMatchObject({ unpublished: true, tag: 'packages/go-verify/v2.3.1' });
+      expect(() => verifyUnpublishedReleaseGitState({
+        cwd: dir,
+        tag: 'packages/go-verify/v2.3.1',
+        mainRef: 'refs/heads/main',
+        expectedCommit: '0'.repeat(40),
+      })).toThrow(/dispatched commit/);
+      run('tag', 'packages/go-verify/v2.3.1');
+      expect(() => verifyUnpublishedReleaseGitState({
+        cwd: dir,
+        tag: 'packages/go-verify/v2.3.1',
+        mainRef: 'refs/heads/main',
+      })).toThrow(/already exists/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

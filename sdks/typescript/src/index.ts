@@ -917,7 +917,7 @@ export class EPClient {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'User-Agent': '@emilia-protocol/sdk/0.9.0',
+      'User-Agent': '@emilia-protocol/sdk/0.10.0',
     };
     if (auth && this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`;

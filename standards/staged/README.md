@@ -1,23 +1,40 @@
-# staged/ — written, render-checked, NOT filed and NOT in a current wave
+# Staged Drafts
 
-Complete drafts with no assigned filing date. Do not file without a fresh
-decision — several overlap or are superseded by filed work:
+Files here are candidates, not filed documents. The authoritative disposition
+for every item is [`../STATUS.json`](../STATUS.json).
 
-- `draft-schrock-ep-authority-registry-00` — the registry concept; **largely
-  superseded** by `draft-schrock-ep-authority-introduction-00` (filed). Salvage
-  parts, don't file as-is.
-- `draft-schrock-ep-assurance-classes-00` — staged for the July 18 window;
-  defines the assurance taxonomy Class S < Class H < Class V < Class Q,
-  renamed from C/B/A/Q on 2026-07-12 so the identifiers stay disjoint from
-  the key-custody Classes A/B/C, honoring the receipts-06 Section 5.1
-  collision-avoidance promise.
-- `draft-schrock-ep-agent-trust-stack-00` — overlaps the architecture draft.
-- `draft-schrock-ep-human-oversight-profile-00`, `draft-schrock-ep-pqc-00` —
-  fast-follow candidates, unscheduled.
-- `draft-schrock-model-to-matter-00` — informational executor-side profile for
-  model-directed physical execution; stages the public Model-to-Matter name and
-  challenge/clearance/consumption lifecycle without defining scientific safety
-  or screening criteria. Candidate for the July 18 filing wave after review.
+## July 19 post-blackout candidate line
 
-Top level holds only what is being posted now (the pre-126 batch) plus
-`draft-schrock-kintzele-grid-curtailment-00` (wave 2, ~Jul 18, co-authored).
+- `draft-schrock-canonical-action-identifier-00`
+- `draft-schrock-ep-architecture-01`
+- `draft-schrock-ep-authorization-evidence-chain-03`
+- `draft-schrock-ep-authorization-receipts-07`
+- `draft-schrock-model-to-matter-00` (Experimental profile; filed last)
+
+The first four form the cohesive protocol line. Model-to-Matter is a separate
+name-establishing executor profile with a JavaScript reference implementation,
+deterministic public vectors, a mutation gate, and explicit non-claims. The
+submission tool reopens only after July 18 at 23:59 CEST, so July 19 is the
+first filing date. Human review and Datatracker submission remain the final
+gates.
+
+## No indefinite holds
+
+The former held set now has explicit dispositions:
+
+- Agent Trust Stack, Assurance Classes, Authority Registry, and standalone PQC
+  are retired under `../archive/`, with canonical owners recorded in
+  `../STATUS.json`.
+- Human Oversight and Reliance Agreement are partner-triggered work under
+  `../profiles/`. Model-to-Matter files on July 19; a partner remains the gate
+  for deployment or adoption claims, not for publishing the profile.
+- Revocation is the mandatory July 27 lifecycle filing after its terminality,
+  tri-language, related-work, and hostile-review gates clear.
+- Authority Introduction-01 is staged as a conditional July 27 candidate. Its
+  consolidated source is present, but it does not file until executable vectors
+  cover the Authority Document to Authority Proof trust join and a hostile
+  review clears the result.
+- Challenge-01 remains conditional on a source-locked AARP binding review.
+
+No staged file should be uploaded merely because it renders. A revision must
+carry a coherent technical change and independently clear its gate.

@@ -98,6 +98,42 @@ function pubKeyB64u(pub) {
   return null;
 }
 
+function spkiFingerprint(value) {
+  try {
+    const key = crypto.createPublicKey({
+      key: Buffer.from(value, 'base64url'),
+      format: 'der',
+      type: 'spki',
+    });
+    return crypto.createHash('sha256')
+      .update(key.export({ type: 'spki', format: 'der' }))
+      .digest('hex');
+  } catch {
+    return null;
+  }
+}
+
+function validateQuorumPolicy(policy) {
+  const issues = [];
+  if (!policy || typeof policy !== 'object' || Array.isArray(policy)) return ['quorum_policy must be an object'];
+  if (!['threshold', 'ordered'].includes(policy.mode)) issues.push('quorum_policy.mode must be threshold or ordered');
+  if (!Array.isArray(policy.approvers) || policy.approvers.length === 0
+    || policy.approvers.some((entry) => !entry || typeof entry.role !== 'string' || entry.role.length === 0
+      || typeof entry.approver !== 'string' || entry.approver.length === 0)) {
+    issues.push('quorum_policy.approvers must name at least one role and approver');
+  }
+  if (policy.mode === 'threshold' && (!Number.isSafeInteger(policy.required) || policy.required < 2
+    || policy.required > (Array.isArray(policy.approvers) ? policy.approvers.length : 0))) {
+    issues.push('quorum_policy.required must be an integer from 2 through the roster size');
+  }
+  if (policy.distinct_humans === false) issues.push('quorum_policy.distinct_humans cannot be false for reliance');
+  if (policy.window_sec !== undefined
+    && (!Number.isSafeInteger(policy.window_sec) || policy.window_sec <= 0)) {
+    issues.push('quorum_policy.window_sec must be a positive safe integer');
+  }
+  return issues;
+}
+
 function digestHex(value) {
   if (typeof value !== 'string') return null;
   const match = value.match(SHA256_DIGEST);
@@ -146,8 +182,13 @@ function decimalMaterial(candidates) {
   return { value: present[0], ambiguous: present.some((value) => decimalEqual(value, present[0]) !== true) };
 }
 
+function isApprovalContext(context) {
+  return Boolean(context && typeof context === 'object'
+    && (context.decision === undefined || context.decision === 'approved'));
+}
+
 /** Extract authority/policy material only from bytes already covered by receipt verification. */
-function signedActionMaterial(receipt, contexts) {
+function signedActionMaterial(receipt, approvalContexts) {
   // verifyTrustReceipt has already authenticated receipt.action. Any malformed
   // material below still refuses through missing/ambiguous action fields.
   const signed = receipt.action ?? {};
@@ -160,11 +201,11 @@ function signedActionMaterial(receipt, contexts) {
   ]);
   const policy = exactMaterial([
     signed.policy_hash,
-    ...contexts.map((context) => context?.policy_hash),
+    ...approvalContexts.map((context) => context?.policy_hash),
   ]);
   const organization = exactMaterial([
     signed.organization_id,
-    ...contexts.map((context) => context?.organization_id),
+    ...approvalContexts.map((context) => context?.organization_id),
   ]);
   return {
     action_type: typeof signed.action_type === 'string' ? signed.action_type : null,
@@ -180,14 +221,14 @@ function signedActionMaterial(receipt, contexts) {
  * Evaluate whether a relying party may rely on an evidence packet under its own
  * pinned profile. Returns a single closed verdict, fail-closed, deterministic.
  *
- * @param {object} input
- * @param {object} input.action               { action_type, amount?, currency?, policy_hash?, action_hash? }
- * @param {object} input.receipt              the EP trust receipt (verifyTrustReceipt input)
+ * @param {object} [input]
+ * @param {object} [input.action]             { action_type, amount?, currency?, policy_hash?, action_hash? }
+ * @param {object} [input.receipt]            the EP trust receipt (verifyTrustReceipt input)
  * @param {object} [input.quorum]             EP-QUORUM-v1 doc (required when required_assurance==='quorum')
  * @param {object} [input.authority_proof]    EP-AUTHORITY-PROOF-v1
  * @param {object} [input.revocation_state]   { checked_at, statement?, target? } freshness attestation
  * @param {object} [input.consumption]        { consumed:boolean, proof?:<EP-SMT-CONSUME bundle> }
- * @param {object} input.relying_party_profile EP-RELIANCE-PROFILE-v1 (the pins)
+ * @param {object} [input.relying_party_profile] EP-RELIANCE-PROFILE-v1 (the pins)
  * @param {number|string|Date} [input.now]
  * @param {object} [opts]                     { approverKeys, logPublicKey, rpId, revokerKeys,
  *                                              isConsumed({receipt_id, action_hash}): boolean }
@@ -246,6 +287,19 @@ export function evaluateReliance(input = {}, opts = {}) {
     return deny('do_not_rely_unsigned', 'reliance evaluation time is missing or malformed');
   }
 
+  const requiresHumanCeremony = requiredAssurance === 'class_a'
+    || requiredAssurance === 'quorum'
+    || requiredEvidence.has('class_a_or_quorum');
+  if (requiresHumanCeremony
+    && (typeof opts.rpId !== 'string' || opts.rpId.length === 0
+      || !Array.isArray(opts.allowedOrigins) || opts.allowedOrigins.length === 0
+      || opts.allowedOrigins.some((origin) => typeof origin !== 'string' || origin.length === 0))) {
+    const verdict = requiredAssurance === 'quorum'
+      ? 'do_not_rely_quorum_unsatisfied'
+      : 'do_not_rely_no_class_a';
+    return deny(verdict, 'human ceremony reliance requires a relying-party-pinned WebAuthn RP ID and non-empty origin allowlist');
+  }
+
   // ── 1. RECEIPT — cryptographically valid and bound to THIS action ──────────
   if (!receipt || typeof receipt !== 'object') return deny('do_not_rely_unsigned', 'no receipt supplied');
   const rc = verifyTrustReceipt(receipt, opts);
@@ -259,11 +313,32 @@ export function evaluateReliance(input = {}, opts = {}) {
 
   // Verified approvers — the human↔ceremony join. Because the receipt is valid,
   // every signoff verified; map each back to the approver of its context and the
-  // pinned class of the key that signed. This is what lets authority be bound to
-  // the human who ACTUALLY approved, not merely to some approver on the receipt.
+  // pinned class of the key that signed. Only an approval decision may enter
+  // this authorization set; signed denials remain decision evidence and never
+  // supply identity, assurance, authority, or action material.
   const approverKeys = opts.approverKeys || {};
   const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
-  const signedMaterial = signedActionMaterial(receipt, contexts);
+  // Join signoffs to contexts on NORMALIZED hex, exactly as verifyTrustReceipt
+  // does (hexOf: strip any "sha256:" prefix, lowercase). Keying on a fixed
+  // "sha256:"-prefixed form would miss a bare-hex or upper-case context_hash that
+  // the base verifier accepts, silently emptying verifiedApprovals and denying
+  // reliance on a receipt that actually verified.
+  const hexOf = (h) => String(h || '').replace(/^sha256:/i, '').toLowerCase();
+  const ctxByHash = new Map();
+  for (const c of contexts) {
+    try { ctxByHash.set(crypto.createHash('sha256').update(canonicalize(c), 'utf8').digest('hex'), c); } catch { /* skip uncanonicalizable */ }
+  }
+  const verifiedApprovals = [];
+  for (const s of (Array.isArray(receipt.signoffs) ? receipt.signoffs : [])) {
+    const ctx = ctxByHash.get(hexOf(s?.context_hash));
+    if (!ctx?.approver || !isApprovalContext(ctx)) continue;
+    verifiedApprovals.push({
+      context: ctx,
+      approver: ctx.approver,
+      key_class: approverKeys[s?.approver_key_id]?.key_class === 'A' ? 'A' : 'B',
+    });
+  }
+  const signedMaterial = signedActionMaterial(receipt, verifiedApprovals.map((approval) => approval.context));
   if (signedMaterial.ambiguous || !signedMaterial.action_type) {
     return deny('do_not_rely_unsigned', 'receipt carries missing or internally inconsistent signed action material');
   }
@@ -282,24 +357,8 @@ export function evaluateReliance(input = {}, opts = {}) {
     policy_hash: signedMaterial.policy_hash,
     action_hash: relyingActionHash,
   };
-  // Join signoffs to contexts on NORMALIZED hex, exactly as verifyTrustReceipt
-  // does (hexOf: strip any "sha256:" prefix, lowercase). Keying on a fixed
-  // "sha256:"-prefixed form would miss a bare-hex or upper-case context_hash that
-  // the base verifier accepts, silently emptying verifiedApprovers and denying
-  // reliance on a receipt that actually verified.
-  const hexOf = (h) => String(h || '').replace(/^sha256:/i, '').toLowerCase();
-  const ctxByHash = new Map();
-  for (const c of contexts) {
-    try { ctxByHash.set(crypto.createHash('sha256').update(canonicalize(c), 'utf8').digest('hex'), c); } catch { /* skip uncanonicalizable */ }
-  }
-  const verifiedApprovers = [];
-  for (const s of (Array.isArray(receipt.signoffs) ? receipt.signoffs : [])) {
-    const ctx = ctxByHash.get(hexOf(s?.context_hash));
-    if (!ctx?.approver) continue;
-    verifiedApprovers.push({ approver: ctx.approver, key_class: approverKeys[s?.approver_key_id]?.key_class || s?.key_class || 'B' });
-  }
-  const classASigners = verifiedApprovers.filter((a) => a.key_class === 'A').map((a) => a.approver);
-  const allSigners = verifiedApprovers.map((a) => a.approver);
+  const classASigners = verifiedApprovals.filter((a) => a.key_class === 'A').map((a) => a.approver);
+  const allSigners = verifiedApprovals.map((a) => a.approver);
 
   // ── 2. ISSUER TRUST — the checkpoint key must be one the RP pinned ─────────
   // A receipt without a transparency checkpoint is trusted only through the
@@ -326,11 +385,25 @@ export function evaluateReliance(input = {}, opts = {}) {
   let achievedAssurance = 'signed';
   const boundQuorum = () => {
     if (quorumResult !== undefined) return quorumResult;
-    const q = quorum && verifyQuorum(quorum, opts);
+    const trustedPolicy = prof.quorum_policy;
+    const members = Array.isArray(quorum?.members) ? quorum.members : [];
+    const approvalMembers = members.filter((member) => isApprovalContext(member?.signoff?.context));
+    const pinnedEntries = Object.values(approverKeys).filter((entry) => entry && typeof entry === 'object');
+    const keysAnchored = approvalMembers.length > 0 && approvalMembers.every((member) => {
+      const approver = member?.signoff?.context?.approver;
+      const fingerprint = spkiFingerprint(member?.approver_public_key);
+      return fingerprint !== null && pinnedEntries.some((entry) => entry.approver_id === approver
+        && entry.key_class === 'A'
+        && spkiFingerprint(entry.public_key) === fingerprint);
+    });
+    const policyPinned = validateQuorumPolicy(trustedPolicy).length === 0;
+    const q = quorum && keysAnchored && policyPinned
+      ? verifyQuorum({ ...quorum, policy: trustedPolicy, members: approvalMembers }, opts)
+      : null;
     const ok = Boolean(q?.valid)
       && digestHex(quorum?.action_hash) !== null
       && digestHex(quorum?.action_hash) === receiptActionHash;
-    quorumResult = { q, ok };
+    quorumResult = { q, ok, keysAnchored, policyPinned };
     return quorumResult;
   };
   if (requiredAssurance === 'class_a') {
@@ -375,7 +448,7 @@ export function evaluateReliance(input = {}, opts = {}) {
       return deny('do_not_rely_registry_unavailable', 'no authority registry key is pinned for the signed action organization');
     }
     const registryPin = organizationRegistryKeys.find((key) => key?.public_key === authorityProof?.signature?.public_key
-      && (key.issuer_id === authorityProof?.authority_id || key.issuer_id === authorityProof?.signature?.key_id));
+      && key.issuer_id === authorityProof?.authority_id);
     const ap = verifyAuthorityProof(authorityProof, {
       pinnedRegistryKeys: organizationRegistryKeys,
       ...(registryPin ? { expectRegistryHead: registryPin.registry_head, expectMinEpoch: registryPin.min_epoch } : {}),
@@ -559,6 +632,9 @@ export function validateRelianceProfile(profile) {
     && profile.accepted_policy_hashes.some((h) => typeof h !== 'string' || h.length === 0)) {
     issues.push('accepted_policy_hashes contains an invalid policy hash');
   }
+  if (profile.quorum_policy !== undefined) {
+    issues.push(...validateQuorumPolicy(profile.quorum_policy));
+  }
   if (profile.max_revocation_staleness_sec !== undefined
     && (!Number.isFinite(profile.max_revocation_staleness_sec) || profile.max_revocation_staleness_sec < 0)) {
     issues.push('max_revocation_staleness_sec must be a finite non-negative number');
@@ -577,6 +653,8 @@ export const __relianceSecurityInternals = Object.freeze({
   strictInstantMs,
   toMs,
   pubKeyB64u,
+  spkiFingerprint,
+  validateQuorumPolicy,
   digestHex,
   parseNonNegativeDecimal,
   decimalGreaterThan,

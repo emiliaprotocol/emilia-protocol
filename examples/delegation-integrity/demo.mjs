@@ -51,6 +51,8 @@ for (const v of SUITE.vectors) {
 
   const res = verifyProvenanceOffline(v.input.provenance_chain, {
     delegationKeys: v.input.delegation_keys,
+    rootVerification: v.input.root_verification,
+    actionVerification: v.input.action_verification,
     now: v.input.now_ms,
   });
 

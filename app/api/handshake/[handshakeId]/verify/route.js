@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { verifyHandshake } from '@/lib/handshake';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
-import { authorizeHandshakeVerify, resolveAuthEntityId } from '@/lib/handshake-auth';
-import { getServiceClient } from '@/lib/supabase';
+import { authorizeHandshakeVerify } from '@/lib/handshake-auth';
+import { getGuardedClient } from '@/lib/write-guard';
 import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
 
@@ -24,16 +25,16 @@ export async function POST(request, { params }) {
     const { handshakeId } = await params;
 
     // ── Authorization: caller must be a party or have verify permission ──
-    const authEntityId = resolveAuthEntityId(auth.entity);
-    const supabase = getServiceClient();
-    await authorizeHandshakeVerify(supabase, authEntityId, handshakeId);
+    const actorId = authEntityId(auth);
+    const supabase = getGuardedClient();
+    await authorizeHandshakeVerify(supabase, actorId, handshakeId);
 
     const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
     if (!parsed.ok) return parsed.response;
     const body = parsed.value;
 
     const result = await verifyHandshake(handshakeId, {
-      actor: auth.entity,
+      actor: actorId,
       payload: body.payload || null,
       nonce: body.nonce || null,
       action_hash: body.action_hash || null,

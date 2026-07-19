@@ -176,6 +176,16 @@ describe('lib/webauthn-signoff — loadSignoffForSigning', () => {
     const r = await loadSignoffForSigning(sb, REQ.after_state.signoff_id);
     expect(r.alreadyDecided).toBe(true);
   });
+
+  it('treats a matching rejection as equally terminal', async () => {
+    const denied = { event_type: 'guard.signoff.rejected', after_state: { signoff_id: REQ.after_state.signoff_id } };
+    const sb = makeSupabase((c) => {
+      if (c.eq['event_type'] === 'guard.signoff.requested') return { data: [REQ], error: null };
+      return { data: [CREATED, denied], error: null };
+    });
+    const r = await loadSignoffForSigning(sb, REQ.after_state.signoff_id);
+    expect(r.alreadyDecided).toBe(true);
+  });
 });
 
 describe('lib/webauthn-signoff — loadApproverCredentials', () => {
@@ -188,9 +198,9 @@ describe('lib/webauthn-signoff — loadApproverCredentials', () => {
   it('drops expired credentials and keeps active ones', async () => {
     const sb = makeSupabase(() => ({
       data: [
-        { credential_id: 'c_active', valid_to: null },
-        { credential_id: 'c_future', valid_to: '2999-01-01T00:00:00Z' },
-        { credential_id: 'c_expired', valid_to: '2000-01-01T00:00:00Z' },
+        { credential_id: 'c_active', approver_id: 'ep:approver:x', enrollment_basis: 'operator_attested', valid_to: null },
+        { credential_id: 'c_future', approver_id: 'ep:approver:x', enrollment_basis: 'operator_attested', valid_to: '2999-01-01T00:00:00Z' },
+        { credential_id: 'c_expired', approver_id: 'ep:approver:x', enrollment_basis: 'operator_attested', valid_to: '2000-01-01T00:00:00Z' },
       ],
       error: null,
     }));
@@ -200,6 +210,36 @@ describe('lib/webauthn-signoff — loadApproverCredentials', () => {
     expect(ids).toContain('c_active');
     expect(ids).toContain('c_future');
     expect(ids).not.toContain('c_expired');
+  });
+
+  it('does NOT let a case-variant satisfy an operator-attested identity, but honors the normalized alias for a directory credential', async () => {
+    // Both rows carry the same case-folded id `alice@corp`; the signoff targets
+    // the distinct-cased `Alice@corp`. The DB .in() returns both forms; the JS
+    // filter must accept the directory row (stored normalized) and reject the
+    // operator-attested one (whose raw id only case-folds to the target).
+    const sb = makeSupabase(() => ({
+      data: [
+        { credential_id: 'c_operator_lower', approver_id: 'alice@corp', enrollment_basis: 'operator_attested', valid_to: null },
+        { credential_id: 'c_directory_lower', approver_id: 'alice@corp', enrollment_basis: 'directory', valid_to: null },
+      ],
+      error: null,
+    }));
+    const r = await loadApproverCredentials(sb, 'Alice@corp');
+    expect(r.error).toBeUndefined();
+    const ids = r.credentials.map((c) => c.credential_id);
+    expect(ids).not.toContain('c_operator_lower'); // cross-identity path closed
+    expect(ids).toContain('c_directory_lower');    // directory alias honored
+  });
+
+  it('matches an operator-attested credential only on the exact raw approver_id', async () => {
+    const sb = makeSupabase(() => ({
+      data: [
+        { credential_id: 'c_exact', approver_id: 'Alice@corp', enrollment_basis: 'operator_attested', valid_to: null },
+      ],
+      error: null,
+    }));
+    const r = await loadApproverCredentials(sb, 'Alice@corp');
+    expect(r.credentials.map((c) => c.credential_id)).toContain('c_exact');
   });
 });
 

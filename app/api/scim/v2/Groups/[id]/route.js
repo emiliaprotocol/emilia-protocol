@@ -3,7 +3,9 @@
 
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
-import { toScimGroup, fromScimGroup, applyPatch, etag } from '@/lib/scim/core';
+import {
+  toScimGroup, fromScimGroup, applyPatch, etag, validateScimGroup,
+} from '@/lib/scim/core';
 import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
 
 async function loadGroup(supabase, tenantId, id) {
@@ -28,13 +30,18 @@ export async function PUT(request, { params }) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.value;
 
+  const validation = validateScimGroup(body);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
+
   const supabase = getGuardedClient();
   const { data: current, error: loadErr } = await loadGroup(supabase, auth.tenantId, id);
   if (loadErr) return scimErrorResponse(503, 'Directory unavailable');
   if (!current) return scimErrorResponse(404, `Group ${id} not found`);
 
   const fields = fromScimGroup(body);
-  if (!fields.display_name) return scimErrorResponse(400, 'displayName is required', 'invalidValue');
   return writeGroup(supabase, auth.tenantId, id, current, fields, request);
 }
 
@@ -55,6 +62,11 @@ export async function PATCH(request, { params }) {
   const patched = applyPatch(toScimGroup(current, base), body);
   if (patched.error) return scimErrorResponse(patched.error.status, patched.error.detail, patched.error.scimType);
 
+  const validation = validateScimGroup(patched.resource);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
   const fields = fromScimGroup(patched.resource);
   return writeGroup(supabase, auth.tenantId, id, current, fields, request);
 }

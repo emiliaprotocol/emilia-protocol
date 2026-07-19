@@ -3,7 +3,8 @@
 // EP-AEC-v1 — Authorization Evidence Chain (composition verifier).
 // Mirrors packages/verify/evidence-chain.js and the Python verify_authorization_chain.
 // Composes heterogeneous agent-authorization receipts that all bind ONE canonical
-// action into a single offline, fail-closed ALLOW/DENY. Introduces no receipt type.
+// action into a single offline, fail-closed SATISFIED/UNSATISFIED result. It does
+// not make the relying party's separate authorization decision.
 package emiliaverify
 
 import (
@@ -11,7 +12,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -54,6 +54,8 @@ type AECComponentRow struct {
 
 // AECResult is the chain verification result.
 type AECResult struct {
+	Satisfied bool
+	// Allow is a compatibility alias for Satisfied.
 	Allow               bool
 	ActionDigest        string
 	ExpectedActionBound bool
@@ -166,8 +168,8 @@ func aecWebAuthnOrigin(webauthn map[string]any) string {
 	if err != nil || base64.RawURLEncoding.EncodeToString(decoded) != encoded {
 		return ""
 	}
-	var clientData map[string]any
-	if json.Unmarshal(decoded, &clientData) != nil {
+	clientData, err := decodeStrictJSONObject(decoded)
+	if err != nil {
 		return ""
 	}
 	return getStr(clientData, "origin")
@@ -279,7 +281,11 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 					return ComponentResult{Valid: false, ActionDigest: ""}
 				}
 			}
-			r := VerifyQuorum(m, rpID)
+			originList := make([]string, 0, len(allowedOrigins))
+			for origin := range allowedOrigins {
+				originList = append(originList, origin)
+			}
+			r := VerifyQuorumWithOrigins(m, rpID, originList)
 			if !r.Valid {
 				return ComponentResult{Valid: false, ActionDigest: ""}
 			}
@@ -326,7 +332,16 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 				}
 			}
 
-			r := VerifyTrustReceipt(m, map[string]any{"approverKeys": approverKeys, "logPublicKey": logPublicKey})
+			originList := make([]string, 0, len(allowedOrigins))
+			for origin := range allowedOrigins {
+				originList = append(originList, origin)
+			}
+			r := VerifyTrustReceipt(m, map[string]any{
+				"approverKeys":   approverKeys,
+				"logPublicKey":   logPublicKey,
+				"rpId":           rpID,
+				"allowedOrigins": originList,
+			})
 			if !r.Valid {
 				return ComponentResult{Valid: false}
 			}
@@ -459,7 +474,7 @@ func callAECVerifier(v ComponentVerifier, evidence any, ctx map[string]any) (res
 //
 // TRUST BOUNDARY: the chain document's "requirement" is PRESENTER-supplied — a
 // claim of what the bundle satisfies, never the relying party's bar. A pinned
-// relying-party requirement is mandatory before Allow can be true.
+// relying-party requirement is mandatory before Satisfied can be true.
 // keysByType is retained for source compatibility and custom verifiers. Built-in
 // human acceptance uses AECOptions.PoliciesByType: ep-receipt requires a Class-A
 // Trust Receipt profile; ep-quorum requires an exact quorum profile.
@@ -483,6 +498,7 @@ func VerifyAuthorizationChainWithOptions(aec map[string]any, verifiers map[strin
 		res.RequirementSource = "relying_party"
 	}
 	fail := func(why string) AECResult {
+		res.Satisfied = false
 		res.Allow = false
 		res.Reasons = append(res.Reasons, why)
 		return res
@@ -583,17 +599,18 @@ func VerifyAuthorizationChainWithOptions(aec map[string]any, verifiers map[strin
 		res.Components = append(res.Components, row)
 	}
 	value, expressionValid := aecEvalRequirement(req, satisfied)
-	res.Allow = pinned != "" && expectedDigest != "" && expressionValid && value
+	res.Satisfied = pinned != "" && expectedDigest != "" && expressionValid && value
+	res.Allow = res.Satisfied
 	if !expressionValid {
 		res.Reasons = append(res.Reasons, "requirement expression is malformed or exceeds parser limits")
 	} else if !value {
 		res.Reasons = append(res.Reasons, fmt.Sprintf("requirement not satisfied: %q", req))
 	}
 	if pinned == "" {
-		res.Reasons = append(res.Reasons, "presenter requirement is descriptive only; relying-party requirement is required for allow")
+		res.Reasons = append(res.Reasons, "presenter requirement is descriptive only; relying-party requirement is required for satisfaction")
 	}
 	if expectedDigest == "" {
-		res.Reasons = append(res.Reasons, "relying-party expected action is required for allow")
+		res.Reasons = append(res.Reasons, "relying-party expected action is required for satisfaction")
 	}
 	if pinned != "" && reqOk {
 		if presenter := strings.TrimSpace(aec["requirement"].(string)); presenter != "" && presenter != pinned {

@@ -90,7 +90,7 @@
             "webauthn": {
               "authenticator_data": "EJY-NCPfIABNHTVtLbqqS_bQY6MwdNdfSV1Hl1E-5F0FAAAAAA",
               "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicnc1VEwxLWlWbEpad2REbWY4T05WVVZteFR2VGZzRUtFeXJYLUlBbTV0NCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-              "signature": "MEUCIQDWBgIlPolZgdqCM4SOaDR2DN4qHmXyKmsXJLMMKS3eMwIgRT6WB4ZaUiLASOzXSidWfsgxYoGTVagl-L1klzgQML4"
+              "signature": "MEYCIQDVLgGIKPsWSj-xhMhIw09aqVB1LKwaQi9YIAWcd6YdDwIhAMgUZuTL5aZzaAIgyejY_gIebbnqh3RGnnBQbLeo2jc0"
             }
           }
         ],
@@ -101,7 +101,7 @@
         },
         "log_proof": {
           "alg": "EP-MERKLE-v2",
-          "leaf_hash": "sha256:cdd64edc4b82390723bb5bc354dea62b60f35107426d40d9c6038d576952d73d",
+          "leaf_hash": "sha256:26cdf4f929f0edbbcba0f7b4cbca44e084cfab2a0d0bd26a36496bd3c12e7986",
           "leaf_index": 0,
           "inclusion_path": [
             {
@@ -115,10 +115,10 @@
           ],
           "checkpoint": {
             "tree_size": 4,
-            "root_hash": "sha256:b2cecd22e7bf69d805a99d34a61d63a2fec906861f4b8443b4ec1cc72f3023fe",
+            "root_hash": "sha256:201c3f207c6c4312eb85cfad0eb8952eecddf7801e59092fb06d262760215f88",
             "log_key_id": "ep:log:demo-hub#1",
             "merkle_alg": "EP-MERKLE-v2",
-            "log_signature": "IgO3BuQURhujgTsI4syLvDXsfQXJh9vY5JmY2pD7EbRrwp7SW2ACxskAH5Yy0l3REZ0xYrxHktui9jeRPituBQ"
+            "log_signature": "f83MlW3mKIThx1T2poKbIsO7REaTpovAeAW16SKPxfSs39mv7ArPqpCdcui4jNZN-m6fVRRFsfIlUT3J-ZGOAA"
           }
         }
       }
@@ -194,13 +194,16 @@
       },
       "ep:key:demo-reviewer#1": {
         "approver_id": "ep:approver:demo-payer-reviewer",
-        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEW_iwr3g5YTLP2Ah-tO-ilbiZcEtelRn_s623NmFiK-FJO7mA3zj4Y8HMZ_IWJvBuCTuG-ArnJC6BbI7gE75LGg",
+        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfV8Uffd9SqeJ_Los8ITRjphzn5YqHilNr554BYFiRxVVRUmQmFFvvkw0tEJzSNv8_iyBf0w0LePCPFwMnIfr4w",
         "key_class": "A",
         "valid_from": "2026-01-01T00:00:00Z",
         "valid_to": "2027-01-01T00:00:00Z"
       }
     },
     "log_public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
-    "rp_id": "www.emiliaprotocol.ai"
+    "rp_id": "www.emiliaprotocol.ai",
+    "allowed_origins": [
+      "https://www.emiliaprotocol.ai"
+    ]
   }
 }

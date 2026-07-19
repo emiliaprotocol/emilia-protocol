@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Generator for the OPT-IN profile cross-language conformance vectors:
-//   EP-CURRENCY-v1                (currency.v1.json)
+//   EP-CURRENCY-v1                (currency.v2.json; v1 is the frozen clean-room baseline)
 //   EP-INITIATOR-ATTESTATION-v1   (initiator-attestation.v1.json)
 //   EP-SMT-CONSUME-v1             (consumption-proof.v1.json)
 //   EP-WITNESS-v1                 (witness.v1.json)
@@ -169,13 +169,13 @@ addWitness('reject_unpinned_ignored', false, { checkpoint, cosignatures: [csA, c
 addWitness('reject_different_head_ignored', false, { checkpoint, cosignatures: [csA, csB_other], pinned, k: 2 });
 
 // ── write suites ─────────────────────────────────────────────────────────────
-const write = (file, suite, profile, vectors) => {
-  const doc = { suite, profile, vectors_version: '1.0.0', count: vectors.length, vectors };
+const write = (file, suite, profile, vectors, vectorsVersion = '1.0.0') => {
+  const doc = { suite, profile, vectors_version: vectorsVersion, count: vectors.length, vectors };
   writeFileSync(resolve(OUT, file), JSON.stringify(doc, null, 2) + '\n');
   console.log(`wrote ${file}: ${vectors.length} vectors`);
 };
-write('currency.v1.json', 'EP-CURRENCY-v1',
-  'Two-valued currency status. valid iff evaluateCurrency(currency.args).currency_at_T.status === currency.expect_status.', currencyVectors);
+write('currency.v2.json', 'EP-CURRENCY-v1',
+  'Two-valued currency status. valid iff evaluateCurrency(currency.args).currency_at_T.status === currency.expect_status.', currencyVectors, '2.0.0');
 write('initiator-attestation.v1.json', 'EP-INITIATOR-ATTESTATION-v1',
   'Initiator attestation validation + hostile-text neutralization. valid iff validateInitiatorAttestation(initiator_attestation).ok === expect.valid.', initiatorVectors);
 write('consumption-proof.v1.json', 'EP-SMT-CONSUME-v1',

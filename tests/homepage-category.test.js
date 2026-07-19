@@ -8,24 +8,30 @@ function read(relPath) {
   return fs.readFileSync(path.join(ROOT, relPath), 'utf8');
 }
 
+function compact(value) {
+  return value.replace(/^\s*>\s?/gm, '').replace(/\s+/g, ' ');
+}
+
 describe('homepage category contract', () => {
-  it('leads with the shared-world trust mission and keeps technical proof in a restrained band', () => {
-    const page = read('app/page.js');
+  it('leads with the Consequence Firewall product and keeps technical proof in a restrained band', () => {
+    const page = read('app/HomePageClient.js');
     const layout = read('app/layout.js');
     const css = read('app/ep.css');
 
     expect(layout).toContain('The Consequence Firewall for AI Agents');
     expect(layout).toContain('secure agent actions');
     expect(layout).toContain('AI agent firewall');
-    expect(page).toContain('Trust infrastructure for a world humans and machines share.');
-    expect(page).toContain('coexistence needs a shared way to establish');
-    expect(page).toContain('EMILIA binds identity, authority, and human intent');
+    expect(page).toContain('EMILIA Gate <span>· The Consequence Firewall</span>');
+    expect(page).toContain('Stop consequential machine actions before they become irreversible.');
+    expect(page).toContain('Protocol proves. Gate prevents.');
+    expect(page).toContain('On every protected path the resource owner fully mediates: no valid evidence, no');
     expect(css).toContain('hero-human-machine-shoreline-v1.webp');
     expect(page).toContain('Proof, not promises');
     expect(page).toContain('IETF Internet-Drafts');
     expect(page).toContain('verified lemmas');
     expect(page).toContain('counterexample traces');
-    expect(page).toContain('href="/protocol"');
+    expect(page).toContain('href="/gate/live"');
+    expect(page).toContain('href="/gate"');
     expect(page).toContain('href="/proof"');
     expect(page).not.toContain('<CrashTestDemo />');
     expect(page).not.toContain('emilia-sequence.mp4');
@@ -34,7 +40,7 @@ describe('homepage category contract', () => {
   it('binds public proof counts to generated repo evidence instead of stale literals', () => {
     const proofStats = JSON.parse(read('lib/proof-stats.json'));
     const securityCase = JSON.parse(read('security/security-case.json'));
-    const page = read('app/page.js');
+    const page = read('app/HomePageClient.js');
     const proofBlock = read('components/ProofBlock.js');
 
     expect(proofStats.tests.total).toBeGreaterThan(4500);
@@ -62,8 +68,33 @@ describe('homepage category contract', () => {
     expect(proofBlock).toContain('injective_execution_with_consumption');
     expect(proofBlock).toContain('unchecked_composition_is_injective');
     expect(proofBlock).toContain('Open does not mean interchangeable.');
-    // The Alloy assertion count is now interpolated from proofStats, not a
-    // hardcoded literal — but the generated stats must still be 22.
-    expect(proofStats.alloy.assertions).toBe(22);
+    // The Alloy assertion count is interpolated from proofStats, not a hardcoded
+    // literal. It is 32 across the four models now executed headless in CI
+    // (ep_relations 15 + ep_federation 7 + ep_quorum 6 + ep_delegation 4); it was
+    // 22 when only ep_relations + ep_federation were counted.
+    expect(proofStats.alloy.assertions).toBe(32);
+  });
+
+  it('keeps the investor hierarchy exact and the assurance claims bounded', () => {
+    const hierarchy =
+      'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact human authorization and safely controls consequential outcomes.';
+    const homepage = compact(read('app/HomePageClient.js'));
+    const gate = compact(read('app/gate/page.js'));
+    const investors = compact(read('app/investors/page.js'));
+    const productBrief = compact(read('docs/EMILIA-GATE-PRODUCT-BRIEF.md'));
+
+    for (const surface of [homepage, gate, investors, productBrief]) {
+      expect(surface).toContain(hierarchy);
+    }
+
+    expect(homepage).toContain('CAID correlates native action descriptions only under exact, relying-party-pinned mapping profiles.');
+    expect(homepage).toContain('Action Escrow shows the chain on one exact release.');
+    expect(homepage).toContain('The Assurance Plane then re-performs the record');
+    expect(gate).toContain('A match is not authorization');
+    expect(gate).toContain('consumes the reservation as indeterminate: no blind retry or refund');
+    expect(investors).toContain('none is an adopted standard.');
+    expect(investors).toContain('No physical hardware attestation in production or independently operated witness network is claimed today.');
+    expect(productBrief).toContain('No independently administered operator has produced external witness evidence');
+    expect(productBrief).toContain('they do not prove the deployed service, provider, or physical world.');
   });
 });

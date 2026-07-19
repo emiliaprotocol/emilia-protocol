@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   M2M_ACTION_VERSION,
+  M2M_CAID_ACTION_TYPE,
+  M2M_CAID_DEFINITION,
   M2M_CLEARANCE_VERSION,
   M2M_EFFECT_VERSION,
   M2M_EVIDENCE_TYPES,
@@ -14,10 +17,12 @@ import {
   createRegisteredModelToMatterChallenge,
   evaluateRegisteredModelToMatterPresentation,
   modelToMatterActionDigest,
+  modelToMatterCaid,
   signModelToMatterEffect,
   signModelToMatterEvidence,
   verifyModelToMatterEffect,
   verifyModelToMatterEvidence,
+  verifyModelToMatterCaid,
 } from '../lib/frontier/model-to-matter.js';
 import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
 import { createDurableConsumptionStore, createMemoryBackend } from '../packages/gate/store.js';
@@ -44,7 +49,7 @@ function digest(label) {
 }
 
 const ACTION_INPUT = Object.freeze({
-  action_type: 'science.bio.experiment.execute',
+  action_type: 'science.bio.experiment.execute.1',
   model: {
     provider: 'example-frontier-lab',
     model_id: 'frontier-bio-model-2026-07',
@@ -182,6 +187,20 @@ describe('EP Model-to-Matter action and profile', () => {
     expect(modelToMatterActionDigest(a)).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(JSON.stringify(a)).not.toContain('fasta');
     expect(Object.isFrozen(a)).toBe(true);
+  });
+
+  it('uses one registered CAID over the exact bytes every evidence leg binds', () => {
+    const a = action();
+    const computed = modelToMatterCaid(a);
+    expect(a.action_type).toBe(M2M_CAID_ACTION_TYPE);
+    expect(computed.caid).toMatch(/^caid:1:science\.bio\.experiment\.execute\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
+    expect(computed.digest).toBe(modelToMatterActionDigest(a));
+    expect(verifyModelToMatterCaid(a, computed.caid)).toEqual({ valid: true, reasons: [] });
+    expect(verifyModelToMatterCaid({ ...a, destination_digest: digest('other') }, computed.caid).valid).toBe(false);
+
+    const registry = JSON.parse(readFileSync(new URL('../caid/registry/action-types.json', import.meta.url), 'utf8'));
+    expect(registry.types.find((entry) => entry.action_type === M2M_CAID_ACTION_TYPE))
+      .toEqual(M2M_CAID_DEFINITION);
   });
 
   it('rejects raw sequence, raw protocol, prompt, and chain-of-thought fields at any depth', () => {
@@ -331,7 +350,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     expect(challenge.action_digest).toBe(modelToMatterActionDigest(a));
   });
 
-  it('clears a complete, pinned evidence graph exactly once', async () => {
+  it('clears a complete pinned evidence graph on first presentation and refuses replay', async () => {
     const backend = createMemoryBackend();
     const issueStore = createDurableChallengeStore(backend);
     const a = action();
@@ -357,6 +376,8 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     expect(results.filter((result) => result.verdict === 'clear_to_execute')).toHaveLength(1);
     expect(results.filter((result) => result.verdict === 'do_not_execute_refused')).toHaveLength(1);
     expect(results[0]['@version']).toBe(M2M_CLEARANCE_VERSION);
+    expect(new Set(results.map((result) => result.action_caid)))
+      .toEqual(new Set([modelToMatterCaid(a).caid]));
   });
 
   it('admits at most one clearance across distinct challenges for the same action', async () => {
@@ -591,7 +612,7 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     });
   }
 
-  it('pins all trust configuration and runs one frozen action exactly once', async () => {
+  it('pins all trust configuration and invokes the effect adapter only after one successful clearance', async () => {
     const a = action();
     const challengeStore = store();
     const clearanceStore = actionStore();
@@ -741,6 +762,7 @@ describe('EP Model-to-Matter post-execution effect receipt', () => {
       '@version': M2M_CLEARANCE_VERSION,
       verdict: 'clear_to_execute',
       action_digest: modelToMatterActionDigest(a),
+      action_caid: modelToMatterCaid(a).caid,
       replay_digest: digest('clearance-replay'),
     };
     const effect = signModelToMatterEffect({
@@ -769,6 +791,7 @@ describe('EP Model-to-Matter post-execution effect receipt', () => {
       '@version': M2M_CLEARANCE_VERSION,
       verdict: 'do_not_execute_missing_evidence',
       action_digest: modelToMatterActionDigest(a),
+      action_caid: modelToMatterCaid(a).caid,
       replay_digest: digest('refusal-replay'),
     };
     expect(() => signModelToMatterEffect({
@@ -785,6 +808,19 @@ describe('EP Model-to-Matter post-execution effect receipt', () => {
       status: 'completed',
       observed_effect_digest: digest('result'),
     }, executorKey)).toThrow(/before the action/i);
+
+    expect(() => signModelToMatterEffect({
+      action: a,
+      clearance: {
+        ...refused,
+        verdict: 'clear_to_execute',
+        action_caid: modelToMatterCaid(action({ destination_digest: digest('other') })).caid,
+      },
+      executor_id: a.executor.executor_id,
+      executed_at: '2026-07-11T16:01:00Z',
+      status: 'completed',
+      observed_effect_digest: digest('result'),
+    }, executorKey)).toThrow(/different CAID/i);
 
     const clearance = { ...refused, verdict: 'clear_to_execute' };
     const effect = signModelToMatterEffect({

@@ -57,6 +57,7 @@ const mockIssueCommit = vi.fn();
 const mockVerifyCommit = vi.fn();
 const mockRevokeCommit = vi.fn();
 const mockCheckAbuse = vi.fn();
+const mockConsumeHandshake = vi.fn();
 
 vi.mock('../lib/supabase.js', () => ({
   getServiceClient: (...args) => mockGetServiceClient(...args),
@@ -88,6 +89,10 @@ vi.mock('../lib/handshake.js', () => ({
   _handleRevokeHandshake: vi.fn().mockResolvedValue({ result: { status: 'revoked' }, aggregateId: 'eph_mock' }),
 }));
 
+vi.mock('../lib/handshake/consume.js', () => ({
+  consumeHandshake: (...args) => mockConsumeHandshake(...args),
+}));
+
 vi.mock('../lib/procedural-justice.js', () => ({
   hasPermission: vi.fn().mockReturnValue(true),
   checkAbuse: (...args) => mockCheckAbuse(...args),
@@ -111,6 +116,13 @@ beforeEach(() => {
   mockGetServiceClient.mockReturnValue(mockSupabase);
 
   mockCheckAbuse.mockResolvedValue({ allowed: true });
+  mockConsumeHandshake.mockResolvedValue({
+    id: 'hsc_1',
+    handshake_id: 'eph_1',
+    binding_hash: 'sha256:binding',
+    consumed_by_type: 'trust_gate',
+    consumed_by_id: 'gate_1',
+  });
 });
 
 // ── Signoff validators ────────────────────────────────────────────────────────
@@ -316,20 +328,28 @@ describe('cron/lifecycle validators', () => {
     })).rejects.toThrow('input.continuity_ids must be a non-empty array');
   });
 
-  it('rejects consume_handshake_binding without consumed_by', async () => {
+  it('rejects consume_handshake_binding without binding_hash', async () => {
     await expect(protocolWrite({
       type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
-      input: { handshake_id: 'eph_1', consumed_for: 'entity_1' },
+      input: { handshake_id: 'eph_1', consumed_by_type: 'trust_gate', consumed_by_id: 'gate_1' },
       actor: { id: 'op_1' },
-    })).rejects.toThrow('input.consumed_by is required');
+    })).rejects.toThrow('input.binding_hash is required');
   });
 
-  it('rejects consume_handshake_binding without consumed_for', async () => {
+  it('rejects consume_handshake_binding without consumed_by_type', async () => {
     await expect(protocolWrite({
       type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
-      input: { handshake_id: 'eph_1', consumed_by: 'op_1' },
+      input: { handshake_id: 'eph_1', binding_hash: 'sha256:binding', consumed_by_id: 'gate_1' },
       actor: { id: 'op_1' },
-    })).rejects.toThrow('input.consumed_for is required');
+    })).rejects.toThrow('input.consumed_by_type is required');
+  });
+
+  it('rejects consume_handshake_binding without consumed_by_id', async () => {
+    await expect(protocolWrite({
+      type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
+      input: { handshake_id: 'eph_1', binding_hash: 'sha256:binding', consumed_by_type: 'trust_gate' },
+      actor: { id: 'op_1' },
+    })).rejects.toThrow('input.consumed_by_id is required');
   });
 });
 
@@ -525,79 +545,74 @@ describe('cron/lifecycle command routing', () => {
 // ── CONSUME_HANDSHAKE_BINDING handler ────────────────────────────────────────
 
 describe('consume_handshake_binding handler', () => {
-  it('returns consumed=true when binding found', async () => {
-    const binding = { handshake_id: 'eph_1', consumed_by: 'op_1', consumed_for: 'ent_1' };
-    const chain = makeChain({ data: binding, error: null });
-    chain.update = vi.fn().mockReturnThis();
-    chain.eq = vi.fn().mockReturnThis();
-    chain.is = vi.fn().mockReturnThis();
-    chain.select = vi.fn().mockReturnThis();
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: binding, error: null });
-
-    // First call for handshake_bindings update, second for protocol_events insert
-    let callCount = 0;
-    const mockSupabase = {
-      from: vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) return chain;
-        return makeChain({ data: null, error: null });
-      }),
+  it('delegates to the atomic consumption primitive and returns consumed=true', async () => {
+    const consumption = {
+      id: 'hsc_1',
+      handshake_id: 'eph_1',
+      binding_hash: 'sha256:binding',
+      consumed_by_type: 'trust_gate',
+      consumed_by_id: 'gate_1',
     };
-    mockGetServiceClient.mockReturnValue(mockSupabase);
+    mockConsumeHandshake.mockResolvedValue(consumption);
 
     const result = await protocolWrite({
       type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
-      input: { handshake_id: 'eph_1', consumed_by: 'op_1', consumed_for: 'ent_1' },
+      input: {
+        handshake_id: 'eph_1',
+        binding_hash: 'sha256:binding',
+        consumed_by_type: 'trust_gate',
+        consumed_by_id: 'gate_1',
+        consumed_by_action: 'payment.release',
+      },
       actor: { id: 'op_1' },
     });
 
     expect(result.consumed).toBe(true);
-    expect(result.binding).toEqual(binding);
-  });
-
-  it('returns consumed=false when binding not found (already consumed)', async () => {
-    const chain = makeChain({ data: null, error: null });
-    chain.update = vi.fn().mockReturnThis();
-    chain.eq = vi.fn().mockReturnThis();
-    chain.is = vi.fn().mockReturnThis();
-    chain.select = vi.fn().mockReturnThis();
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    let callCount = 0;
-    const mockSupabase = {
-      from: vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) return chain;
-        return makeChain({ data: null, error: null });
-      }),
-    };
-    mockGetServiceClient.mockReturnValue(mockSupabase);
-
-    const result = await protocolWrite({
-      type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
-      input: { handshake_id: 'eph_1', consumed_by: 'op_1', consumed_for: 'ent_1' },
+    expect(result.consumption).toEqual(consumption);
+    expect(mockConsumeHandshake).toHaveBeenCalledWith({
+      handshake_id: 'eph_1',
+      binding_hash: 'sha256:binding',
+      consumed_by_type: 'trust_gate',
+      consumed_by_id: 'gate_1',
+      consumed_by_action: 'payment.release',
       actor: { id: 'op_1' },
     });
-
-    expect(result.consumed).toBe(false);
   });
 
-  it('throws ProtocolWriteError when DB returns error', async () => {
-    const chain = makeChain({ data: null, error: { message: 'binding error' } });
-    chain.update = vi.fn().mockReturnThis();
-    chain.eq = vi.fn().mockReturnThis();
-    chain.is = vi.fn().mockReturnThis();
-    chain.select = vi.fn().mockReturnThis();
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: { message: 'binding error' } });
-
-    const mockSupabase = { from: vi.fn().mockReturnValue(chain) };
-    mockGetServiceClient.mockReturnValue(mockSupabase);
+  it('fails closed when the atomic primitive reports prior consumption', async () => {
+    mockConsumeHandshake.mockRejectedValue(Object.assign(new Error('already consumed'), {
+      code: 'ALREADY_CONSUMED',
+      status: 409,
+    }));
 
     await expect(protocolWrite({
       type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
-      input: { handshake_id: 'eph_1', consumed_by: 'op_1', consumed_for: 'ent_1' },
+      input: {
+        handshake_id: 'eph_1',
+        binding_hash: 'sha256:binding',
+        consumed_by_type: 'trust_gate',
+        consumed_by_id: 'gate_2',
+      },
       actor: { id: 'op_1' },
-    })).rejects.toThrow(ProtocolWriteError);
+    })).rejects.toMatchObject({ code: 'ALREADY_CONSUMED' });
+  });
+
+  it('propagates atomic storage failure without emitting a success result', async () => {
+    mockConsumeHandshake.mockRejectedValue(Object.assign(new Error('binding error'), {
+      code: 'DB_ERROR',
+      status: 500,
+    }));
+
+    await expect(protocolWrite({
+      type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
+      input: {
+        handshake_id: 'eph_1',
+        binding_hash: 'sha256:binding',
+        consumed_by_type: 'trust_gate',
+        consumed_by_id: 'gate_1',
+      },
+      actor: { id: 'op_1' },
+    })).rejects.toThrow('binding error');
   });
 });
 

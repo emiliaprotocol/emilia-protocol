@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   FLEX_ENVELOPE_VERSION, CURTAILMENT_SETTLEMENT_POLICY, SETTLEMENT_CONSUMPTION_PROFILE,
   checkOrderWithinEnvelope, computeCompliance, buildRefusalStatement,
-  settlementEntitlementKey, checkSettlementConsumption,
+  settlementEntitlementKey, checkSettlementConsumption, runSettlementOnce,
 } from '../lib/grace/curtailment.js';
 import {
   verifyConsumptionProof, ReferenceConsumptionTree,
@@ -195,6 +195,67 @@ describe('GRACE — one-time settlement consumption (the same event can never se
     const a = settlementEntitlementKey({ entitlement_id: 'a', event_id: 'b:c', meter_window_digest: claim.meter_window_digest });
     const b = settlementEntitlementKey({ entitlement_id: 'a:b', event_id: 'c', meter_window_digest: claim.meter_window_digest });
     expect(a.key).not.toBe(b.key);
+  });
+
+  it('admits one concurrent durable settlement and refuses the duplicate', async () => {
+    const states = new Map();
+    const store = {
+      durable: true,
+      ownershipFenced: true,
+      async reserve(key) {
+        if (states.has(key)) return false;
+        states.set(key, 'reserved');
+        return true;
+      },
+      async commit(key) {
+        if (states.get(key) !== 'reserved') return false;
+        states.set(key, 'committed');
+        return true;
+      },
+    };
+    let effects = 0;
+    let release;
+    const first = runSettlementOnce(claim, store, async () => {
+      effects += 1;
+      await new Promise((resolve) => { release = resolve; });
+      return { settlement_id: 'stl_1' };
+    });
+    while (!release) await new Promise((resolve) => setTimeout(resolve, 0));
+    const second = await runSettlementOnce(claim, store, async () => { effects += 1; });
+    expect(second).toMatchObject({ settled: false, reason: 'settlement_already_consumed' });
+    release();
+    const accepted = await first;
+    expect(accepted).toMatchObject({ settled: true, result: { settlement_id: 'stl_1' } });
+    expect(effects).toBe(1);
+  });
+
+  it('burns an indeterminate settlement attempt and fails closed on store outage', async () => {
+    let state = null;
+    const store = {
+      async reserve() {
+        if (state) return false;
+        state = 'reserved';
+        return true;
+      },
+      async commit() {
+        if (state !== 'reserved') return false;
+        state = 'committed';
+        return true;
+      },
+    };
+    await expect(runSettlementOnce(claim, store, async () => {
+      throw new Error('bank response lost');
+    })).rejects.toThrow('bank response lost');
+    expect(await runSettlementOnce(claim, store, async () => {})).toMatchObject({
+      settled: false,
+      reason: 'settlement_already_consumed',
+    });
+
+    const outage = await runSettlementOnce(claim, {
+      async reserve() { throw new Error('db down'); },
+      async commit() { return true; },
+    }, async () => {});
+    expect(outage).toMatchObject({ settled: false, reason: 'consumption_registry_unavailable' });
   });
 
   it('the derived key IS the nonce for EP-SMT-CONSUME-v1: a real consumption proof verifies, and a second consumption of the same key cannot produce a transition', () => {

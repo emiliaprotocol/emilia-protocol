@@ -89,7 +89,12 @@ export default function MultiPartyDemo() {
       const m = await signSim(mkContext(slot, h, idx));
       const next = [...members, { ...m, role: slot.role }];
       setMembers(next); setResult(null); setCheated(false);
-      if (next.length === ROSTER.length) setResult(await verifyQuorum(buildQuorum(next, h), { rpId: HOST }));
+      if (next.length === ROSTER.length) {
+        setResult(await verifyQuorum(buildQuorum(next, h), {
+          rpId: HOST,
+          allowedOrigins: [`https://${HOST}`],
+        }));
+      }
     } finally { setBusy(false); }
   }
 
@@ -105,7 +110,10 @@ export default function MultiPartyDemo() {
       const m2 = await signSim({ ...mkContext(ROSTER[2], h, 2), approver: po.approver });
       const mem = [{ ...m0, role: po.role }, { ...m1, role: ROSTER[1].role }, { ...m2, role: ROSTER[2].role }];
       setMembers(mem); setCheated(true);
-      setResult(await verifyQuorum(buildQuorum(mem, h), { rpId: HOST }));
+      setResult(await verifyQuorum(buildQuorum(mem, h), {
+        rpId: HOST,
+        allowedOrigins: [`https://${HOST}`],
+      }));
     } finally { setBusy(false); }
   }
 
@@ -157,7 +165,7 @@ export default function MultiPartyDemo() {
             borderRadius: 12, padding: '22px 24px', background: color.card,
           }}>
             <div style={{ fontSize: 22, fontWeight: 700, color: result.valid ? color.green : color.red }}>
-              {result.valid ? '✓ QUORUM SATISFIED — action authorized' : '✕ REJECTED — action NOT authorized'}
+              {result.valid ? '✓ QUORUM INTERNALLY CONSISTENT' : '✕ QUORUM REJECTED'}
             </div>
             {cheated && !result.valid && (
               <p style={{ ...styles.body, marginTop: 8 }}>The same human filled two slots. <strong>Separation of duties</strong> fails the quorum — exactly as the two-person rule requires.</p>
@@ -170,7 +178,7 @@ export default function MultiPartyDemo() {
               ))}
             </div>
             <p style={{ fontSize: 13, color: color.t3, marginTop: 16, lineHeight: 1.6 }}>
-              Verified in-browser by the EP-QUORUM-v1 verifier (same logic as <span style={{ fontFamily: font.mono }}>@emilia-protocol/verify</span>, 69/69 tests). Each signature is a real ECDSA P-256 assertion bound to the exact action; tamper any field, duplicate a signer, break the order, or miss the window and the quorum fails by construction.
+              Verified in-browser by the EP-QUORUM-v1 verifier, using the same logic as <span style={{ fontFamily: font.mono }}>@emilia-protocol/verify</span>. Each signature is a real ECDSA P-256 assertion bound to the exact action; tamper any field, duplicate a signer, break the order, or miss the window and the quorum fails. This local simulation proves internal consistency, not enrollment or organizational authority; a relying party must pin the roster, policy, and member keys separately.
             </p>
           </div>
         )}

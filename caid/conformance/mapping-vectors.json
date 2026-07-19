@@ -1,0 +1,248 @@
+{
+  "@version": "CAID-ACTION-MAPPING-VECTORS-v1",
+  "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action.",
+  "suite": "jcs-sha256",
+  "definitions": [
+    {
+      "action_type": "order.place.1",
+      "status": "active",
+      "risk_class": "irreversible-financial",
+      "summary": "Placement of a purchase order committing the buyer to payment.",
+      "required_fields": [
+        { "name": "order_id", "type": "string" },
+        { "name": "merchant_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the normalized merchant identifier" },
+        { "name": "total_amount", "type": "amount-string", "notes": "grand total including tax and shipping, in order currency" },
+        { "name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3" },
+        { "name": "items_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the canonical line-item list (sku, quantity, unit price per line)" },
+        { "name": "customer_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the normalized customer identifier" },
+        { "name": "fulfillment_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the canonical delivery, pickup, or digital-fulfillment target" }
+      ],
+      "optional_fields": [
+        { "name": "shipping_method", "type": "string" }
+      ],
+      "digest_notes": "merchant, customer, fulfillment target, and canonical line items are material; an order identifier alone is not globally sufficient",
+      "references": []
+    }
+  ],
+  "profiles": {
+    "ep-action-v1": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:emilia:mapping:ep-action-to-order-place:1",
+      "source_format": {
+        "media_type": "application/ep-action+json",
+        "schema": "urn:emilia:ep-action:1",
+        "version": "1"
+      },
+      "target_action_type": "order.place.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/target/checkout_id",
+        "/target/merchant_id",
+        "/parameters/total_amount",
+        "/parameters/currency",
+        "/parameters/line_items",
+        "/target/customer_id",
+        "/target/fulfillment"
+      ],
+      "rules": [
+        { "source_path": "/target/checkout_id", "target_field": "order_id", "transform": "copy" },
+        { "source_path": "/target/merchant_id", "target_field": "merchant_ref", "transform": "sha256-utf8" },
+        { "source_path": "/parameters/total_amount", "target_field": "total_amount", "transform": "copy" },
+        { "source_path": "/parameters/currency", "target_field": "currency", "transform": "copy" },
+        { "source_path": "/parameters/line_items", "target_field": "items_digest", "transform": "sha256-jcs" },
+        { "source_path": "/target/customer_id", "target_field": "customer_ref", "transform": "sha256-utf8" },
+        { "source_path": "/target/fulfillment", "target_field": "fulfillment_ref", "transform": "sha256-jcs" }
+      ]
+    },
+    "ap2-checkout-v1": {
+      "@version": "CAID-MAPPING-PROFILE-v1",
+      "profile_id": "urn:emilia:mapping:ap2-checkout-to-order-place:1",
+      "source_format": {
+        "media_type": "application/ap2-checkout+json",
+        "schema": "https://ap2-protocol.org/schemas/checkout-mandate",
+        "version": "1"
+      },
+      "target_action_type": "order.place.1",
+      "loss_policy": "no-material-field-loss",
+      "material_source_paths": [
+        "/checkout/order_id",
+        "/checkout/merchant_id",
+        "/checkout/total_amount",
+        "/checkout/currency",
+        "/checkout/line_items",
+        "/checkout/customer_id",
+        "/checkout/fulfillment"
+      ],
+      "rules": [
+        { "source_path": "/checkout/order_id", "target_field": "order_id", "transform": "copy" },
+        { "source_path": "/checkout/merchant_id", "target_field": "merchant_ref", "transform": "sha256-utf8" },
+        { "source_path": "/checkout/total_amount", "target_field": "total_amount", "transform": "copy" },
+        { "source_path": "/checkout/currency", "target_field": "currency", "transform": "copy" },
+        { "source_path": "/checkout/line_items", "target_field": "items_digest", "transform": "sha256-jcs" },
+        { "source_path": "/checkout/customer_id", "target_field": "customer_ref", "transform": "sha256-utf8" },
+        { "source_path": "/checkout/fulfillment", "target_field": "fulfillment_ref", "transform": "sha256-jcs" }
+      ]
+    }
+  },
+  "sources": {
+    "ep-order": {
+      "ep_version": "1.0",
+      "action_type": "commerce.checkout",
+      "target": {
+        "merchant_id": "merch_acme_supplies",
+        "checkout_id": "ord_2026_9911",
+        "customer_id": "cust_treasury_777",
+        "fulfillment": { "kind": "shipping", "destination_id": "addr_denver_42" }
+      },
+      "parameters": {
+        "currency": "USD",
+        "total_amount": "129.99",
+        "line_items": [
+          { "sku": "sku_widget_a", "title": "Widget A", "quantity": 2, "unit_price": "50.00" },
+          { "sku": "sku_ship_std", "title": "Standard shipping", "quantity": 1, "unit_price": "29.99" }
+        ]
+      }
+    },
+    "ap2-order": {
+      "vct": "mandate.checkout.1",
+      "checkout": {
+        "order_id": "ord_2026_9911",
+        "merchant_id": "merch_acme_supplies",
+        "customer_id": "cust_treasury_777",
+        "fulfillment": { "kind": "shipping", "destination_id": "addr_denver_42" },
+        "currency": "USD",
+        "total_amount": "129.99",
+        "line_items": [
+          { "sku": "sku_widget_a", "title": "Widget A", "quantity": 2, "unit_price": "50.00" },
+          { "sku": "sku_ship_std", "title": "Standard shipping", "quantity": 1, "unit_price": "29.99" }
+        ],
+        "created_at": "2026-07-08T11:59:00Z"
+      },
+      "checkout_hash": "native-ap2-digest-verified-by-the-ap2-verifier"
+    }
+  },
+  "vectors": [
+    {
+      "id": "equivalent-native-formats",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
+    },
+    {
+      "id": "irrelevant-source-metadata-does-not-change-projection",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/transport_trace", "value": "trace-991" }
+      ],
+      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
+    },
+    {
+      "id": "amount-mismatch",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/checkout/total_amount", "value": "130.00" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "merchant-mismatch",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/checkout/merchant_id", "value": "merch_evil_twin" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "fulfillment-target-mismatch",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/checkout/fulfillment/destination_id", "value": "addr_attacker_99" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "missing-currency-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "delete", "path": "/checkout/currency" }
+      ],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:missing_source_field:/checkout/currency" }
+    },
+    {
+      "id": "unpinned-profile-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": {
+        "source": "ap2-order",
+        "profile": "ap2-checkout-v1",
+        "pin": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:mapping_profile_unpinned" }
+    },
+    {
+      "id": "unverified-native-artifact-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": {
+        "source": "ap2-order",
+        "profile": "ap2-checkout-v1",
+        "pin": "profile",
+        "native_verified": false
+      },
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:native_verification_required" }
+    },
+    {
+      "id": "source-version-substitution-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source_descriptor", "op": "set", "path": "/version", "value": "2" }
+      ],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:source_format_mismatch" }
+    },
+    {
+      "id": "lossy-profile-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "profile", "op": "delete", "path": "/rules/3" },
+        { "side": "right", "target": "profile", "op": "delete", "path": "/material_source_paths/3" }
+      ],
+      "repin_after_mutation": ["right"],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:unmapped_material_field:currency" }
+    },
+    {
+      "id": "unregistered-transform-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "profile", "op": "set", "path": "/rules/2/transform", "value": "minor-units-to-decimal" }
+      ],
+      "repin_after_mutation": ["right"],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:invalid_mapping_profile" }
+    },
+    {
+      "id": "malformed-json-pointer-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "profile", "op": "set", "path": "/rules/0/source_path", "value": "checkout/merchant_id" }
+      ],
+      "repin_after_mutation": ["right"],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:invalid_mapping_profile" }
+    },
+    {
+      "id": "unknown-profile-member-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "profile", "op": "set", "path": "/authorization", "value": "allow" }
+      ],
+      "repin_after_mutation": ["right"],
+      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:invalid_mapping_profile" }
+    }
+  ]
+}

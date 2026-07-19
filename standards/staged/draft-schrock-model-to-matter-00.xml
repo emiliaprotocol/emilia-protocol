@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-model-to-matter-00"
-     category="info" ipr="trust200902" submissionType="IETF"
+     category="exp" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="Model-to-Matter">Model-to-Matter: Authorization Evidence for Model-Directed Physical Execution</title>
@@ -13,13 +13,13 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="12"/>
+    <date year="2026" month="July" day="14"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>physical execution</keyword>
     <keyword>authorization evidence</keyword>
     <keyword>human oversight</keyword>
-    <keyword>one-time execution</keyword>
+    <keyword>single-use clearance</keyword>
     <abstract>
       <t>Advanced models and agents can propose experimental workflows and
       invoke systems that produce physical effects. Before acting, a physical
@@ -27,12 +27,12 @@
       provenance, a safety assessment, institutional authority, a domain
       review, an external screening service, and an accountable human. Those
       artifacts are commonly evaluated separately and may not bind the same
-      action. This document defines Model-to-Matter, an informational
+      action. This document defines Model-to-Matter, an experimental
       executor-side applicability profile for composing those artifacts over
       one canonical, digest-only action. It specifies an executor-owned
       acceptance profile, normalized signed evidence adapters, a registered
-      challenge, closed clearance and refusal verdicts, atomic one-time
-      consumption, and an optional executor-signed effect statement. The
+      challenge, closed clearance and refusal verdicts, atomic single-use
+      clearance consumption, and an optional executor-signed effect statement. The
       profile does not perform domain screening, determine scientific safety,
       authorize an institution, or establish physical truth. It standardizes
       the point at which an executor refuses to act unless the authorities it
@@ -53,7 +53,7 @@
       <t>None of those facts alone answers the executor's question: do all
       authorities required by this executor agree about this exact model,
       harness, protocol commitment, material commitment, purpose, facility,
-      destination, and one permitted execution? A presenter can otherwise
+      destination, and one permitted clearance? A presenter can otherwise
       splice valid artifacts for different actions or choose a weaker
       sufficiency rule.</t>
       <t>Model-to-Matter defines the relying-party side of that boundary. The
@@ -137,12 +137,22 @@
       <xref target="RFC7493"/> object serialized with JCS
       <xref target="RFC8785"/>. Its action digest is
       <tt>"sha256:" || lowercase-hex(SHA-256(JCS(action)))</tt>.</t>
+      <t>The initial <tt>action_type</tt> is
+      <tt>science.bio.experiment.execute.1</tt>, registered by the CAID
+      package. The executor MUST also compute the
+      <tt>jcs-sha256</tt> Canonical Action Identifier (CAID)
+      <xref target="I-D.schrock-canonical-action-identifier"/> over the same
+      closed Action Object. The CAID's base64url digest component and the
+      hexadecimal <tt>action_digest</tt> MUST decode to the same SHA-256
+      octets. A mismatch is a refusal. CAID supplies portable content identity
+      only; it does not establish identity, authority, authorization,
+      execution, safety, or legal reliance.</t>
       <t>The initial profile requires these members:</t>
       <table>
         <thead><tr><th>Member</th><th>Required binding</th></tr></thead>
         <tbody>
           <tr><td><tt>@version</tt></td><td>The version identifier above.</td></tr>
-          <tr><td><tt>action_type</tt></td><td>A profile-allowed action family.</td></tr>
+          <tr><td><tt>action_type</tt></td><td><tt>science.bio.experiment.execute.1</tt>.</td></tr>
           <tr><td><tt>model</tt></td><td>Provider and model identifiers plus manifest, harness, and safeguards digests.</td></tr>
           <tr><td><tt>experiment</tt></td><td>Protocol digest, material commitment, and expected-effects digest.</td></tr>
           <tr><td><tt>principal</tt></td><td>Organization and principal identifiers.</td></tr>
@@ -246,7 +256,8 @@
         <li>Clone or otherwise snapshot the action, profile, challenge, and
         evidence graph before the first asynchronous operation.</li>
         <li>Validate the closed object shapes and resource bounds.</li>
-        <li>Recompute the action digest and profile digest.</li>
+        <li>Recompute the action digest, CAID, and profile digest, and require
+        the CAID and action digest to encode the same SHA-256 result.</li>
         <li>Require the challenge bindings and current time to match.</li>
         <li>Require an explicit revocation view for every profile-required
         evidence type. Absence of revocation state is not proof of
@@ -258,7 +269,7 @@
         <li>Require exactly the evidence types named by the relying-party
         profile and reject duplicate or unknown nodes.</li>
         <li>If and only if all checks pass, atomically consume
-        <tt>"model-to-matter:" || action_digest</tt> in a durable shared store.</li>
+        <tt>"model-to-matter:" || action_caid</tt> in a durable shared store.</li>
         <li>Return <tt>clear_to_execute</tt> only when the action consumption is
         the first successful consumption. Every other outcome is a refusal.</li>
       </ol>
@@ -272,6 +283,9 @@
       <tt>do_not_execute_refused</tt>, and
       <tt>do_not_execute_malformed</tt>. Unknown verdicts MUST be treated as
       refusal.</t>
+      <t>An action-bound clearance carries both <tt>action_digest</tt> and
+      <tt>action_caid</tt>. The executor computes both fields; a presenter MUST
+      NOT supply either value as a substitute for the Action Object.</t>
       <t>Consumption of the action digest MUST be non-expiring for as long as
       the action can be presented. An unavailable response after consumption
       is an indeterminate outcome that requires reconciliation. The executor
@@ -294,8 +308,8 @@
     <section anchor="effect"><name>Executor Effect Statement</name>
       <t>After an execution attempt, the executor MAY sign an
       <tt>EP-MODEL-TO-MATTER-EFFECT-v1</tt> statement containing the action
-      digest, clearance replay digest, executor identity, execution time,
-      status, and observed-effect digest. The statement MUST bind a prior
+      digest, action CAID, clearance replay digest, executor identity,
+      execution time, status, and observed-effect digest. The statement MUST bind a prior
       <tt>clear_to_execute</tt> clearance for the same action and MUST verify
       under a relying-party-pinned executor key.</t>
       <t>Valid statuses are <tt>completed</tt>, <tt>failed</tt>, and
@@ -315,8 +329,9 @@
       proof that its own evidence must pass.</t>
       <t><strong>Cross-action splicing.</strong> Every evidence artifact,
       challenge, clearance, consumption key, and effect statement MUST bind the
-      executor-computed action digest. A valid artifact for a different action
-      is unsatisfied.</t>
+      executor-computed action digest. Clearances and effect statements MUST
+      also bind the recomputed CAID, and both identifiers MUST name the same
+      canonical bytes. A valid artifact for a different action is unsatisfied.</t>
       <t><strong>Issuer laundering.</strong> A signature proves control of a key,
       not authority for an evidence role. Acceptance MUST bind both issuer
       identity and key independently for each evidence type. A key accepted for
@@ -368,10 +383,13 @@
       self-checking demonstration, and adversarial tests are publicly
       available. The implementation covers the Action Object, profile, six
       signed evidence adapters, registered challenge, evidence graph,
-      single-use clearance, and effect statement. It has no Python or Go port,
-      no wet-lab deployment, no external scientific validation, and no claimed
-      partnership or endorsement. The demonstration does not process raw
-      biological content or perform screening.</t>
+      single-use clearance, and effect statement. A deterministic public suite
+      exercises 15 CAID, acceptance, refusal, replay, storage-failure, and
+      effect cases; 41 focused tests and a mutation-score floor exercise the reference
+      implementation. It has no Python or Go port, no wet-lab deployment, no
+      external scientific validation, and no claimed partnership or
+      endorsement. The demonstration does not process raw biological content
+      or perform screening.</t>
     </section>
   </middle>
 
@@ -384,6 +402,14 @@
       <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
       <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
       <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <reference anchor="I-D.schrock-canonical-action-identifier" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
+        <front>
+          <title>The Canonical Action Identifier (CAID)</title>
+          <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-00"/>
+      </reference>
       <reference anchor="I-D.schrock-authorization-evidence-challenge" target="https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/">
         <front>
           <title>Authorization Evidence Challenge</title>
@@ -410,7 +436,7 @@
           <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
           <date year="2026" month="July"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-02"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-03"/>
       </reference>
     </references>
   </back>

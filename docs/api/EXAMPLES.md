@@ -561,9 +561,9 @@ When a receipt is later submitted for this action, the attribution chain will wr
 
 ## Example 4: Cloud Control Plane Usage
 
-**Scenario**: An operations team uses the EP Cloud API to review pending signoffs, check event history for a handshake, and simulate a policy change before rolling it out.
+**Scenario**: An operations team uses the EMILIA Gate Cloud API to review pending signoffs, check event history for a handshake, and simulate a policy change before rolling it out.
 
-All cloud requests require an EP Cloud API key:
+All cloud requests require an EMILIA Gate Cloud API key:
 
 ```
 Authorization: Bearer ep_cloud_...

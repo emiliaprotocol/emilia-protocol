@@ -1,0 +1,305 @@
+name: Publish Go verifier module tag
+
+# Go modules are published by an immutable repository tag. Keep repository-code
+# execution read-only, put the human gate after preflight, create the tag in an
+# API-only write job, then verify the fresh public proxy copy in a read-only job.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example packages/go-verify/v2.3.1
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    outputs:
+      module: ${{ steps.metadata.outputs.module }}
+      version: ${{ steps.metadata.outputs.version }}
+      tag: ${{ steps.metadata.outputs.tag }}
+    steps:
+      - name: Checkout the dispatched commit without write credentials
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup the declared minimum Go toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version-file: packages/go-verify/go.mod
+          cache: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Require an immutable Go module tag namespace
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'NODE'
+          const headers = {
+            accept: 'application/vnd.github+json',
+            authorization: `Bearer ${process.env.GH_TOKEN}`,
+            'x-github-api-version': '2022-11-28',
+          };
+          const base = `https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/rulesets`;
+          const listResponse = await fetch(base, { headers });
+          if (!listResponse.ok) throw new Error(`cannot inspect tag rulesets: ${listResponse.status}`);
+          const summaries = await listResponse.json();
+          let protectedNamespace = false;
+          for (const summary of summaries) {
+            if (summary.target !== 'tag' || summary.enforcement !== 'active') continue;
+            const detailResponse = await fetch(`${base}/${summary.id}`, { headers });
+            if (!detailResponse.ok) throw new Error(`cannot inspect tag ruleset ${summary.id}`);
+            const detail = await detailResponse.json();
+            const includes = detail.conditions?.ref_name?.include || [];
+            const rules = new Set((detail.rules || []).map((rule) => rule.type));
+            if (includes.includes('refs/tags/packages/go-verify/v*')
+              && rules.has('deletion') && rules.has('update')) {
+              protectedNamespace = true;
+            }
+          }
+          if (!protectedNamespace) throw new Error('Go module tag namespace is not immutable');
+          NODE
+
+      - name: Bind owner approval request to exact clean main source
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_SHA" = "$(git rev-parse 'HEAD^{commit}')"
+          VERSION=$(node -p "require('./packages/go-verify/go-release.json').version")
+          MODULE=$(node -p "require('./packages/go-verify/go-release.json').module")
+          EXPECTED_TAG=$(node -p "require('./packages/go-verify/go-release.json').tag")
+          test "$RELEASE_TAG" = "$EXPECTED_TAG"
+          node scripts/require-release-approval.mjs \
+            --unpublished-tag \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix packages/go-verify/v \
+            --package "$MODULE" \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION" \
+            --expected-commit "$GITHUB_SHA"
+          {
+            echo "module=$MODULE"
+            echo "version=$VERSION"
+            echo "tag=$EXPECTED_TAG"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install evidence tooling
+        run: npm ci --ignore-scripts
+
+      - name: Test exact Go source
+        working-directory: packages/go-verify
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Generate exact-source release evidence
+        run: |
+          npm run security-case:emit
+          npm run conformance:manifest
+          mkdir -p release-artifacts
+          VERSION="${{ steps.metadata.outputs.version }}"
+          SOURCE_DIR=$(mktemp -d)
+          git archive HEAD:packages/go-verify | tar -x -C "$SOURCE_DIR"
+          git archive --format=tar.gz \
+            --prefix="go-verify-v$VERSION/" \
+            --output="release-artifacts/go-verify-v$VERSION-source.tar.gz" \
+            HEAD:packages/go-verify
+          (cd "$SOURCE_DIR" && find . -type f -print0 | sort -z | xargs -0 sha256sum) \
+            > release-artifacts/go-verify-source.sha256
+
+      - name: Attest tested source and security evidence
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: |
+            release-artifacts/go-verify-*-source.tar.gz
+            release-artifacts/go-verify-source.sha256
+            security/security-case.json
+            conformance/conformance-manifest.json
+
+      - name: Upload preflight evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: go-verify-v${{ steps.metadata.outputs.version }}-preflight
+          path: |
+            release-artifacts/go-verify-*-source.tar.gz
+            release-artifacts/go-verify-source.sha256
+            security/security-case.json
+            conformance/conformance-manifest.json
+          retention-days: 90
+
+  approval:
+    needs: preflight
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved ${{ needs.preflight.outputs.tag }}."
+
+  create_tag:
+    needs: [preflight, approval]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Atomically create the validated tag at the preflighted commit
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ needs.preflight.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+        with:
+          script: |
+            const version = process.env.RELEASE_VERSION;
+            const tag = process.env.RELEASE_TAG;
+            const sha = process.env.RELEASE_SHA;
+            const canonical = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
+            if (!canonical.test(version) || tag !== `packages/go-verify/v${version}`) {
+              throw new Error('validated Go release identity drifted before tag creation');
+            }
+            if (context.ref !== 'refs/heads/main' || context.sha !== sha) {
+              throw new Error('tag creation is not bound to the dispatched main commit');
+            }
+            const shortRef = `tags/${tag}`;
+            try {
+              await github.rest.git.getRef({ owner: context.repo.owner, repo: context.repo.repo, ref: shortRef });
+              throw new Error(`release tag already exists: ${tag}`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+            }
+            const created = await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${tag}`,
+              sha,
+            });
+            if (created.data.object.sha !== sha) throw new Error('created tag resolved to the wrong commit');
+
+  verify_proxy:
+    needs: [preflight, create_tag]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout the exact tagged source without write credentials
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup the declared minimum Go toolchain
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version-file: packages/go-verify/go.mod
+          cache: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '24'
+
+      - name: Verify proxy identity, checksum, origin, and complete source tree
+        env:
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+          GOPRIVATE: ''
+          GONOPROXY: ''
+          GONOSUMDB: ''
+          RELEASE_MODULE: ${{ needs.preflight.outputs.module }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          RELEASE_TAG: ${{ needs.preflight.outputs.tag }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          CACHE_DIR=$(mktemp -d)
+          export GOMODCACHE="$CACHE_DIR/mod"
+          export GOCACHE="$CACHE_DIR/cache"
+          mkdir -p release-artifacts
+          for _ in $(seq 1 30); do
+            if go mod download -json "$RELEASE_MODULE@v$RELEASE_VERSION" \
+              > "$CACHE_DIR/proxy-candidate.json"; then
+              cp "$CACHE_DIR/proxy-candidate.json" release-artifacts/go-verify-proxy-raw.json
+              break
+            fi
+            sleep 10
+          done
+          test -s release-artifacts/go-verify-proxy-raw.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const p = JSON.parse(fs.readFileSync('release-artifacts/go-verify-proxy-raw.json', 'utf8'));
+          const expected = {
+            Path: process.env.RELEASE_MODULE,
+            Version: `v${process.env.RELEASE_VERSION}`,
+            URL: 'https://github.com/emiliaprotocol/emilia-protocol',
+            Subdir: 'packages/go-verify',
+            Hash: process.env.RELEASE_SHA,
+            Ref: `refs/tags/${process.env.RELEASE_TAG}`,
+          };
+          for (const key of ['Path', 'Version']) {
+            if (p[key] !== expected[key]) throw new Error(`proxy ${key} mismatch`);
+          }
+          for (const key of ['URL', 'Subdir', 'Hash', 'Ref']) {
+            if (p.Origin?.[key] !== expected[key]) throw new Error(`proxy Origin.${key} mismatch`);
+          }
+          if (!/^h1:[A-Za-z0-9+/]+=$/.test(p.Sum || '') || !/^h1:[A-Za-z0-9+/]+=$/.test(p.GoModSum || '')) {
+            throw new Error('proxy checksum evidence is missing');
+          }
+          for (const key of ['Dir', 'Zip', 'GoMod']) {
+            if (!p[key] || !fs.existsSync(p[key])) throw new Error(`proxy ${key} path is missing`);
+          }
+          const stable = { Path: p.Path, Version: p.Version, Sum: p.Sum, GoModSum: p.GoModSum, Origin: p.Origin };
+          fs.writeFileSync('release-artifacts/go-verify-proxy.json', `${JSON.stringify(stable, null, 2)}\n`);
+          NODE
+          PROXY_DIR=$(node -p "require('./release-artifacts/go-verify-proxy-raw.json').Dir")
+          PROXY_ZIP=$(node -p "require('./release-artifacts/go-verify-proxy-raw.json').Zip")
+          PROXY_MOD=$(node -p "require('./release-artifacts/go-verify-proxy-raw.json').GoMod")
+          diff -ru packages/go-verify "$PROXY_DIR"
+          echo "complete source trees are identical" > release-artifacts/go-verify-proxy-source-diff.txt
+          cp "$PROXY_ZIP" release-artifacts/go-verify-proxy.zip
+          cp "$PROXY_MOD" release-artifacts/go-verify-proxy.mod
+          rm release-artifacts/go-verify-proxy-raw.json
+
+      - name: Attest independently fetched proxy bytes
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: |
+            release-artifacts/go-verify-proxy.json
+            release-artifacts/go-verify-proxy.zip
+            release-artifacts/go-verify-proxy.mod
+            release-artifacts/go-verify-proxy-source-diff.txt
+
+      - name: Upload proxy verification evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: go-verify-v${{ needs.preflight.outputs.version }}-proxy
+          path: |
+            release-artifacts/go-verify-proxy.json
+            release-artifacts/go-verify-proxy.zip
+            release-artifacts/go-verify-proxy.mod
+            release-artifacts/go-verify-proxy-source-diff.txt
+          retention-days: 90

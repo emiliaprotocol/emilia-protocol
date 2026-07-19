@@ -61,6 +61,40 @@ const MANIFEST = {
 const PAY = { protocol: 'mcp', tool: 'release_payment' };
 const READ = { protocol: 'mcp', tool: 'read_balance' };
 const T = Date.parse('2026-07-04T00:00:00.000Z');
+const AUDIT_SCOPE = {
+  rpId: 'emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
+};
+
+function auditorTrustFor(entries) {
+  const approverKeys = {};
+  const quorumPolicies = {};
+  let next = 0;
+  for (const entry of entries) {
+    const payload = entry?.receipt?.payload;
+    const signoff = entry?.signoff ?? payload?.signoff;
+    const signoffKey = entry?.approver_public_key ?? payload?.approver_public_key;
+    if (signoff?.context?.approver && signoffKey) {
+      approverKeys[`audit_${next++}`] = {
+        approver_id: signoff.context.approver,
+        public_key: signoffKey,
+        key_class: 'A',
+      };
+    }
+    const quorum = entry?.quorum ?? payload?.quorum;
+    if (quorum?.policy && typeof entry?.action === 'string') {
+      quorumPolicies[entry.action] = structuredClone(quorum.policy);
+      for (const member of quorum.members || []) {
+        approverKeys[`audit_${next++}`] = {
+          approver_id: member?.signoff?.context?.approver,
+          public_key: member?.approver_public_key,
+          key_class: 'A',
+        };
+      }
+    }
+  }
+  return { approverKeys, quorumPolicies, ...AUDIT_SCOPE };
+}
 
 /**
  * A real gate run: 1 unguarded pass-through, 1 allow (genuine WebAuthn signoff
@@ -73,7 +107,15 @@ async function realGateEntries() {
   // Self-contained embedded-evidence mode: the receipt carries a genuine WebAuthn
   // signoff plus its approver key. That mode is now opt-in (allowEmbeddedApproverKeys)
   // so an unpinned embedded key does not launder trust by default.
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], log, allowEmbeddedApproverKeys: true });
+  const g = createGate({
+    manifest: MANIFEST,
+    trustedKeys: [pub],
+    log,
+    allowEmbeddedApproverKeys: true,
+    rpId: 'emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+    allowEphemeralStore: true,
+  });
   const r = receipt(privateKey, { outcome: 'allow_with_signoff' });
   const passthrough = await g.check({ selector: READ });
   assert.equal(passthrough.reason, 'not_guarded');
@@ -191,7 +233,8 @@ async function carryingLog(privateKey, { rogueKey = null } = {}) {
 test('carried receipt/signoff/quorum material re-verifies; stripped payloads land in not_reverifiable', async () => {
   const { pub, privateKey } = makeKey();
   const log = await carryingLog(privateKey);
-  const rep = await reperformEvidence(log.all(), { issuerKeys: [pub], now: T });
+  const entries = log.all();
+  const rep = await reperformEvidence(entries, { issuerKeys: [pub], now: T, ...auditorTrustFor(entries) });
 
   assert.equal(rep.chain.ok, true);
   // Entry 1: receipt + embedded WebAuthn signoff, entry 2: receipt + embedded
@@ -206,7 +249,7 @@ test('failed re-verification is a NAMED failure, never absorbed', async () => {
   const rogue = makeKey();
   const log = await carryingLog(privateKey, { rogueKey: rogue.privateKey });
   const entries = log.all();
-  const rep = await reperformEvidence(entries, { issuerKeys: [pub], now: T });
+  const rep = await reperformEvidence(entries, { issuerKeys: [pub], now: T, ...auditorTrustFor(entries) });
 
   assert.equal(rep.chain.ok, true); // the LOG honestly recorded a bad receipt — chain is intact
   assert.equal(rep.receipts.reverified, 2);
@@ -218,7 +261,8 @@ test('failed re-verification is a NAMED failure, never absorbed', async () => {
 test('no issuer keys pinned: carried receipts fail NAMED, never silently pass', async () => {
   const { privateKey } = makeKey();
   const log = await carryingLog(privateKey);
-  const rep = await reperformEvidence(log.all(), { now: T }); // issuerKeys omitted
+  const entries = log.all();
+  const rep = await reperformEvidence(entries, { now: T, ...auditorTrustFor(entries) }); // issuerKeys omitted
   assert.equal(rep.receipts.reverified, 0);
   assert.ok(rep.receipts.failed.length >= 2);
   for (const f of rep.receipts.failed.filter((x) => x.reason.startsWith('receipt:'))) {
@@ -226,10 +270,11 @@ test('no issuer keys pinned: carried receipts fail NAMED, never silently pass', 
   }
 });
 
-test('tampered embedded signoff and signoff without approver key fail named', async () => {
+test('tampered embedded signoff and unpinned approver fail named', async () => {
   const log = createEvidenceLog();
   const at = new Date(T).toISOString();
   const good = mintDeviceSignoff({ actionHash: HASH_FOR('payment.release'), approver: 'ep:approver:test' });
+  const unpinned = mintDeviceSignoff({ actionHash: HASH_FOR('payment.release'), approver: 'ep:approver:unknown' });
   // Tamper the signed context — challenge binding must fail.
   const evilSignoff = { ...good.signoff, context: { ...good.signoff.context, nonce: 'sig_forged' } };
   await log.record({
@@ -238,15 +283,34 @@ test('tampered embedded signoff and signoff without approver key fail named', as
   });
   await log.record({
     kind: 'decision', at, action: 'payment.release', allow: true, status: 200, reason: 'allow',
-    required_tier: 'class_a', receipt_id: 'rcpt_x2', signoff: good.signoff, // key NOT carried
+    required_tier: 'class_a', receipt_id: 'rcpt_x2', signoff: unpinned.signoff,
   });
   const entries = log.all();
-  const rep = await reperformEvidence(entries, { now: T });
+  const rep = await reperformEvidence(entries, {
+    now: T,
+    approverKeys: {
+      trusted: { approver_id: good.signoff.context.approver, public_key: good.approver_public_key, key_class: 'A' },
+    },
+    ...AUDIT_SCOPE,
+  });
   assert.equal(rep.receipts.reverified, 0);
   assert.equal(rep.receipts.failed.length, 2);
   assert.equal(rep.receipts.failed[0].hash, entries[0].hash);
   assert.match(rep.receipts.failed[0].reason, /^signoff:checks_failed:.*challenge_binding/);
-  assert.equal(rep.receipts.failed[1].reason, 'signoff:no_approver_key_carried');
+  assert.equal(rep.receipts.failed[1].reason, 'signoff:approver_key_unpinned_or_ambiguous');
+});
+
+test('presenter-carried approver key and quorum policy never become auditor trust roots', async () => {
+  const log = createEvidenceLog();
+  const at = new Date(T).toISOString();
+  const q = mintQuorumEvidence({ actionHash: HASH_FOR('treasury.wire'), threshold: 2 });
+  await log.record({
+    kind: 'decision', at, action: 'treasury.wire', allow: true, status: 200, reason: 'allow',
+    required_tier: 'quorum', receipt_id: 'rcpt_self_trusted', quorum: q,
+  });
+  const rep = await reperformEvidence(log.all(), { now: T, ...AUDIT_SCOPE });
+  assert.equal(rep.receipts.reverified, 0);
+  assert.equal(rep.receipts.failed[0].reason, 'quorum:quorum_policy_required');
 });
 
 /* --------------------------- compareToReported ------------------------- */

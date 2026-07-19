@@ -5,8 +5,8 @@
 //   • Zero dependencies (Node built-in crypto only). Copy this file into your
 //     repo — no npm package, no supply-chain or version surface to own.
 //   • The gate blocks an irreversible action unless it arrives with a valid,
-//     action-bound, non-replayed EMILIA authorization receipt (proof a named
-//     human approved THIS exact action), verified offline (Ed25519 over JCS).
+//     action-bound, non-replayed EMILIA authorization receipt at the configured
+//     assurance tier, verified offline (Ed25519/WebAuthn over canonical bytes).
 //   • Off by default: you decide which actions require a receipt.
 //
 //   Quick use:
@@ -20,23 +20,130 @@
 //        real actions — an inline key proves integrity, not WHO authorized.
 //     2. The default consumed-store is in-memory (process-local). For restart-
 //        durable / multi-instance one-time consumption, pass a shared store:
-//        makeReceiptGate({ ..., store: { has:(id)=>kv.has(id), add:(id)=>kv.add(id) } }).
+//        makeReceiptGate({ ..., store: { reserve, commit, release } }).
+//        reserve MUST be an atomic insert-if-absent. Once execution begins, an
+//        indeterminate result is committed, never released for automatic retry.
 //
 //   Conformance: this drop-in passes EMILIA RR-1 (challenge-on-missing, runs-on-
 //   valid, replay-refused, forged-refused). Verify with @emilia-protocol/fire-drill.
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.5.4  ·  content-sha256:320e357f1ab7ebc5
+//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:efea80bf0b323d0d
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
+
+// SPDX-License-Identifier: Apache-2.0
+// Duplicate-name and Unicode-scalar gate for signed nested JSON such as
+// WebAuthn clientDataJSON. JSON.parse remains the syntax gate.
+
+const MAX_JSON_DEPTH = 64;
+
+function hasUnpairedUtf16Surrogate(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) return true;
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function strictJsonGate(raw) {
+  if (typeof raw !== 'string') return { ok: false, reason: 'JSON input must be text' };
+  if (hasUnpairedUtf16Surrogate(raw)) {
+    return { ok: false, reason: 'unpaired Unicode surrogate' };
+  }
+  try { JSON.parse(raw); } catch { return { ok: false, reason: 'invalid JSON syntax' }; }
+  let index = 0;
+  const stack = [];
+  let reason = null;
+  const escapes = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
+
+  function readString() {
+    index += 1;
+    let output = '';
+    while (index < raw.length) {
+      const character = raw[index];
+      if (character === '"') { index += 1; return output; }
+      if (character !== '\\') { output += character; index += 1; continue; }
+      const escape = raw[index + 1];
+      if (escape !== 'u') {
+        output += escapes[escape] ?? '';
+        index += 2;
+        continue;
+      }
+      const first = Number.parseInt(raw.slice(index + 2, index + 6), 16);
+      index += 6;
+      if (first >= 0xd800 && first <= 0xdbff) {
+        if (raw[index] === '\\' && raw[index + 1] === 'u') {
+          const second = Number.parseInt(raw.slice(index + 2, index + 6), 16);
+          if (second >= 0xdc00 && second <= 0xdfff) {
+            output += String.fromCharCode(first, second);
+            index += 6;
+            continue;
+          }
+        }
+        reason = 'unpaired high surrogate escape';
+        return null;
+      }
+      if (first >= 0xdc00 && first <= 0xdfff) {
+        reason = 'unpaired low surrogate escape';
+        return null;
+      }
+      output += String.fromCharCode(first);
+    }
+    reason = 'unterminated string';
+    return null;
+  }
+
+  while (index < raw.length) {
+    const character = raw[index];
+    if (character === '{') {
+      stack.push({ object: true, keys: new Set(), expectsKey: true });
+      if (stack.length > MAX_JSON_DEPTH) return { ok: false, reason: `nesting depth exceeds ${MAX_JSON_DEPTH}` };
+      index += 1;
+    } else if (character === '[') {
+      stack.push({ object: false });
+      if (stack.length > MAX_JSON_DEPTH) return { ok: false, reason: `nesting depth exceeds ${MAX_JSON_DEPTH}` };
+      index += 1;
+    } else if (character === '}' || character === ']') {
+      stack.pop();
+      index += 1;
+    } else if (character === ',') {
+      const top = stack.at(-1);
+      if (top?.object) top.expectsKey = true;
+      index += 1;
+    } else if (character === '"') {
+      const top = stack.at(-1);
+      const isKey = Boolean(top?.object && top.expectsKey);
+      const value = readString();
+      if (reason) return { ok: false, reason };
+      if (isKey) {
+        if (top.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
+        top.keys.add(value);
+        top.expectsKey = false;
+      }
+    } else {
+      index += 1;
+    }
+  }
+  return { ok: true };
+}
+
+// ── inlined from index.js ──────────────────────────────────────────────────
 
 /**
  * @emilia-protocol/require-receipt — the demand side of the network.
  * @license Apache-2.0
  *
  * One line that lets ANY service refuse an irreversible agent action unless it
- * arrives with a verifiable EMILIA Trust Receipt — proof that a named human
- * accountably authorized this exact action. This is NOT auth ("who are you")
+ * arrives with a verifiable EMILIA Trust Receipt at the relying party's
+ * configured assurance tier. A software-tier receipt is not proof that a named
+ * human was present; Class-A/quorum profiles add that requirement. This is NOT auth ("who are you")
  * and NOT permissions ("are you allowed here"). It is *portable accountability
  * evidence the service keeps for its own liability*.
  *
@@ -58,9 +165,40 @@ export const ACTION_RISK_MANIFEST_VERSION = 'EP-ACTION-RISK-MANIFEST-v0.1';
 export const DEFAULT_ACTION_RISK_MANIFEST = '/.well-known/agent-actions.json';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 export const ASSURANCE_PROOF_VERSION = 'EP-ASSURANCE-PROOF-v1';
+export const MAX_RECEIPT_CARRIER_BYTES = 8 * 1024 * 1024;
 const ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
 const FLAG_UP = 0x01;
 const FLAG_UV = 0x04;
+const RECEIPT_UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
+
+/**
+ * Decode an HTTP/MCP receipt carrier without inheriting Buffer's permissive
+ * base64 behavior. The bytes must use one canonical alphabet, be valid UTF-8,
+ * contain strict JSON (no duplicate member names), and decode to an object.
+ */
+export function parseReceiptCarrier(value, { maxBytes = MAX_RECEIPT_CARRIER_BYTES } = {}) {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) return null;
+  if (value.length > Math.ceil(maxBytes * 4 / 3) + 4) return null;
+  if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(value) || value.length % 4 === 1) return null;
+  const hasBase64url = /[-_]/.test(value);
+  const hasBase64 = /[+/]/.test(value);
+  if (hasBase64url && hasBase64) return null;
+  const encoding = hasBase64url ? 'base64url' : 'base64';
+  try {
+    const bytes = Buffer.from(value, encoding);
+    if (bytes.length === 0 || bytes.length > maxBytes) return null;
+    const supplied = value.replace(/=+$/, '');
+    const canonical = bytes.toString(encoding).replace(/=+$/, '');
+    if (canonical !== supplied) return null;
+    const text = RECEIPT_UTF8_DECODER.decode(bytes);
+    if (!strictJsonGate(text).ok) return null;
+    const parsed = JSON.parse(text);
+    return isObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
@@ -156,17 +294,36 @@ function verifyEd25519Digest(signature, digest, publicKeyB64u) {
   }
 }
 
-function verifyWebAuthnDigest(webauthn, digest, publicKeyB64u) {
+function spkiFingerprint(publicKeyB64u) {
+  try {
+    const key = crypto.createPublicKey({ key: b64urlDecode(publicKeyB64u), format: 'der', type: 'spki' });
+    const der = key.export({ type: 'spki', format: 'der' });
+    return sha256Hex(der);
+  } catch {
+    return null;
+  }
+}
+
+function verifyWebAuthnDigest(webauthn, digest, publicKeyB64u, opts = {}) {
   try {
     if (!webauthn || typeof webauthn !== 'object') return false;
+    const allowedOrigins = Array.isArray(opts.allowedOrigins)
+      ? opts.allowedOrigins.filter((origin) => typeof origin === 'string' && origin.length > 0)
+      : [];
+    if (typeof opts.rpId !== 'string' || !opts.rpId || allowedOrigins.length === 0) return false;
     const authData = b64urlDecode(webauthn.authenticator_data);
     const clientDataBytes = b64urlDecode(webauthn.client_data_json);
     if (authData.length < 37) return false;
     const flags = authData[32];
     if ((flags & FLAG_UP) !== FLAG_UP || (flags & FLAG_UV) !== FLAG_UV) return false;
-    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
+    const clientDataText = clientDataBytes.toString('utf8');
+    if (!strictJsonGate(clientDataText).ok) return false;
+    const clientData = JSON.parse(clientDataText);
     if (clientData.type !== 'webauthn.get') return false;
     if (clientData.challenge !== Buffer.from(digest).toString('base64url')) return false;
+    if (!allowedOrigins.includes(clientData.origin) || clientData.crossOrigin === true) return false;
+    const expectedRpIdHash = sha256Bytes(opts.rpId);
+    if (!expectedRpIdHash.equals(authData.subarray(0, 32))) return false;
     const signedData = Buffer.concat([authData, sha256Bytes(clientDataBytes)]);
     const pub = crypto.createPublicKey({ key: b64urlDecode(publicKeyB64u), format: 'der', type: 'spki' });
     return crypto.verify('sha256', signedData, pub, b64urlDecode(webauthn.signature));
@@ -178,6 +335,41 @@ function verifyWebAuthnDigest(webauthn, digest, publicKeyB64u) {
 function normalizeApproverKeys(input) {
   if (!input || typeof input !== 'object') return {};
   return input;
+}
+
+/**
+ * Validate the quorum rule supplied by the relying party. The policy is a trust
+ * input, not evidence: a receipt creator's own threshold or roster never
+ * establishes the organization's actual two-person rule.
+ */
+export function validatePinnedQuorumPolicy(policy) {
+  if (!isObject(policy)) return { ok: false, reason: 'quorum_policy_required' };
+  if (policy.mode !== 'threshold' && policy.mode !== 'ordered') {
+    return { ok: false, reason: 'quorum_policy_invalid_mode' };
+  }
+  const approvers = Array.isArray(policy.approvers) ? policy.approvers : [];
+  if (approvers.length < 2 || approvers.some((entry) => !isObject(entry)
+      || typeof entry.approver !== 'string' || !entry.approver
+      || typeof entry.role !== 'string' || !entry.role)) {
+    return { ok: false, reason: 'quorum_policy_invalid_roster' };
+  }
+  const people = approvers.map((entry) => entry.approver);
+  const slots = approvers.map((entry) => `${entry.role}\u0000${entry.approver}`);
+  if (new Set(people).size !== people.length || new Set(slots).size !== slots.length) {
+    return { ok: false, reason: 'quorum_policy_duplicate_roster_entry' };
+  }
+  if (policy.distinct_humans === false) {
+    return { ok: false, reason: 'quorum_policy_distinct_humans_required' };
+  }
+  const required = policy.mode === 'ordered' ? approvers.length : policy.required;
+  if (!Number.isInteger(required) || required < 2 || required > approvers.length) {
+    return { ok: false, reason: 'quorum_policy_invalid_threshold' };
+  }
+  if (policy.window_sec !== undefined
+      && (!Number.isSafeInteger(policy.window_sec) || policy.window_sec <= 0)) {
+    return { ok: false, reason: 'quorum_policy_invalid_window' };
+  }
+  return { ok: true, reason: null, policy, required, approvers };
 }
 
 function verifyPinnedAssuranceProof(doc, opts = {}) {
@@ -201,44 +393,91 @@ function verifyPinnedAssuranceProof(doc, opts = {}) {
     const keyId = s?.approver_key_id;
     const entry = keyId ? approverKeys[keyId] : null;
     if (!entry?.public_key) continue;
-    const keyClass = s.key_class || entry.key_class || 'B';
+    // The pinned directory entry is authoritative. A presenter-controlled
+    // key_class must never upgrade a software key into a human ceremony.
+    const keyClass = entry.key_class === 'A' ? 'A' : 'B';
     const ok = keyClass === 'A'
-      ? verifyWebAuthnDigest(s.webauthn, digest, entry.public_key)
+      ? verifyWebAuthnDigest(s.webauthn, digest, entry.public_key, opts)
       : verifyEd25519Digest(s.signature, digest, entry.public_key);
     if (!ok) continue;
+    const keyFingerprint = spkiFingerprint(entry.public_key);
+    if (!keyFingerprint) continue;
     // Distinctness MUST key on the PINNED SIGNING KEY (approver_key_id), never the
     // attacker-controlled `approver` label. One key signing the same digest twice
     // under two names is ONE approver — it must not inflate the quorum count and
     // satisfy a two-person rule with a single key.
-    valid.push({ approver: String(keyId), keyClass });
+    valid.push({
+      keyId: String(keyId),
+      keyFingerprint,
+      approver: typeof entry.approver_id === 'string' && entry.approver_id ? entry.approver_id : null,
+      keyClass,
+    });
   }
   if (!valid.length) return { ok: false, tier: 'software', reason: 'assurance_proof_invalid' };
-  const distinctApprovers = new Set(valid.map((s) => s.approver));
-  const threshold = Number(proof.threshold ?? proof.m ?? 1);
-  if (Number.isFinite(threshold) && threshold >= 2 && distinctApprovers.size >= threshold && valid.length >= threshold) {
-    return { ok: true, tier: 'quorum', reason: 'assurance_proof_verified' };
+  const classA = valid.filter((entry) => entry.keyClass === 'A');
+  const claimedApprover = doc?.payload?.claim?.approver;
+  if (claimedApprover !== undefined
+      && (typeof claimedApprover !== 'string' || !claimedApprover
+        || !classA.some((entry) => entry.approver === claimedApprover))) {
+    return {
+      ok: false,
+      tier: 'software',
+      reason: 'assurance_claimed_approver_mismatch',
+      approvers: classA.map((entry) => entry.approver).filter(Boolean),
+    };
   }
-  if (valid.some((s) => s.keyClass === 'A')) {
-    return { ok: true, tier: 'class_a', reason: 'assurance_proof_verified' };
+  const policyCheck = validatePinnedQuorumPolicy(opts.quorumPolicy || opts.quorum_policy);
+  if (policyCheck.ok && policyCheck.policy.mode === 'threshold') {
+    const eligible = new Set(policyCheck.approvers.map((entry) => entry.approver));
+    const admitted = valid.filter((entry) => entry.keyClass === 'A'
+      && entry.approver && eligible.has(entry.approver));
+    // A single SPKI registered under two key IDs is still one signing key.
+    const distinctKeys = new Set(admitted.map((entry) => entry.keyFingerprint));
+    const distinctHumans = new Set(admitted.map((entry) => entry.approver));
+    if (distinctKeys.size >= policyCheck.required && distinctHumans.size >= policyCheck.required) {
+      return {
+        ok: true,
+        tier: 'quorum',
+        reason: 'assurance_proof_verified_against_pinned_policy',
+        approvers: [...distinctHumans],
+      };
+    }
   }
-  return { ok: true, tier: 'software', reason: 'assurance_proof_verified' };
+  if (classA.length) {
+    return {
+      ok: true,
+      tier: 'class_a',
+      reason: 'assurance_proof_verified',
+      approvers: [...new Set(classA.map((entry) => entry.approver).filter(Boolean))],
+    };
+  }
+  return { ok: true, tier: 'software', reason: 'assurance_proof_verified', approvers: [] };
 }
 
 function normalizeVerifierResult(result) {
-  if (typeof result === 'string') return { ok: true, tier: normalizeAssuranceClass(result), reason: 'custom_assurance_verifier' };
   if (result && typeof result === 'object') {
     return {
-      ok: result.ok !== false,
+      // Elevated assurance is a positive security decision. Missing `ok` is
+      // malformed, never implicit success.
+      ok: result.ok === true,
       tier: normalizeAssuranceClass(result.tier || result.have || result.assuranceClass),
       reason: result.reason || 'custom_assurance_verifier',
     };
   }
-  return { ok: false, tier: 'software', reason: 'custom_assurance_verifier_failed' };
+  return { ok: false, tier: 'software', reason: 'custom_assurance_result_invalid' };
+}
+
+function invokeCustomAssurance(verifier, doc, requiredTier) {
+  try {
+    return normalizeVerifierResult(verifier(doc, { requiredTier }));
+  } catch {
+    return { ok: false, tier: 'software', reason: 'assurance_verification_failed' };
+  }
 }
 
 export function receiptAssuranceTier(doc, opts = {}) {
   const custom = typeof opts.verifyAssurance === 'function'
-    ? normalizeVerifierResult(opts.verifyAssurance(doc, { requiredTier: 'quorum' }))
+    ? invokeCustomAssurance(opts.verifyAssurance, doc, 'quorum')
     : null;
   if (custom?.ok) return custom.tier;
   return verifyPinnedAssuranceProof(doc, opts).tier;
@@ -248,8 +487,15 @@ export function evaluateReceiptAssurance(doc, required, opts = {}) {
   const need = normalizeAssuranceClass(required);
   if (need === 'software') return { ok: true, have: 'software', need, reason: 'software_receipt' };
   const custom = typeof opts.verifyAssurance === 'function'
-    ? normalizeVerifierResult(opts.verifyAssurance(doc, { requiredTier: need }))
+    ? invokeCustomAssurance(opts.verifyAssurance, doc, need)
     : null;
+  if (need === 'quorum' && !custom) {
+    const policy = validatePinnedQuorumPolicy(opts.quorumPolicy || opts.quorum_policy);
+    if (!policy.ok) {
+      const lower = verifyPinnedAssuranceProof(doc, { ...opts, quorumPolicy: null, quorum_policy: null });
+      return { ok: false, have: normalizeAssuranceClass(lower.tier), need, reason: policy.reason };
+    }
+  }
   const proof = custom || verifyPinnedAssuranceProof(doc, opts);
   const have = normalizeAssuranceClass(proof.tier);
   const rankOk = (ASSURANCE_RANK[have] ?? 0) >= (ASSURANCE_RANK[need] ?? 0);
@@ -258,6 +504,7 @@ export function evaluateReceiptAssurance(doc, required, opts = {}) {
     have,
     need,
     reason: proof.ok === true && !rankOk ? 'assurance_too_low' : (proof.reason || (proof.ok ? 'assurance_ok' : 'assurance_proof_required')),
+    approvers: Array.isArray(proof.approvers) ? proof.approvers : [],
   };
 }
 
@@ -289,12 +536,13 @@ export function receiptRequiredHeader(opts = {}) {
  * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own inline key (proves integrity, NOT trust)
  * @param {string|null} [opts.action] require the receipt to be bound to this action_type
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this
+ * @param {()=>number} [opts.now=Date.now] trusted clock used for freshness
  * @param {string[]} [opts.allowedOutcomes] acceptable claim.outcome values
- * @returns {{ok:boolean, reason?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
+ * @returns {{ok:boolean, reason?:string, detail?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
  */
 export function verifyEmiliaReceipt(doc, opts = {}) {
   const { trustedKeys = [], allowInlineKey = false, action = null, maxAgeSec = 900,
-    allowedOutcomes = ['allow', 'allow_with_signoff'] } = opts;
+    now = Date.now, allowedOutcomes = ['allow', 'allow_with_signoff'] } = opts;
 
   if (!doc || doc['@version'] !== 'EP-RECEIPT-v1' || !doc.payload || !doc.signature?.value) {
     return { ok: false, reason: 'malformed_receipt' };
@@ -327,7 +575,8 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
   // EXPIRED (not skipped) so an undated receipt can never slip past the age
   // gate — matching what /api/v1/guarded enforces on the demand side.
   if (maxAgeSec) {
-    const ageSec = (Date.now() - Date.parse(payload.created_at)) / 1000;
+    const nowMs = typeof now === 'function' ? now() : Number.NaN;
+    const ageSec = (nowMs - Date.parse(payload.created_at)) / 1000;
     if (!Number.isFinite(ageSec) || ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
   }
   if (action && payload.claim?.action_type !== action) {
@@ -459,7 +708,7 @@ export function requireEmiliaReceipt(opts = {}) {
     const challengeOpts = { ...opts, action, status };
     let doc = null;
     const hdr = req.headers?.['x-emilia-receipt'];
-    if (hdr) { try { doc = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8')); } catch { /* fallthrough */ } }
+    if (hdr) doc = parseReceiptCarrier(hdr);
     if (!doc && req.body && req.body.emilia_receipt) doc = req.body.emilia_receipt;
 
     if (!doc) {
@@ -509,8 +758,8 @@ export function requireEmiliaReceipt(opts = {}) {
  * @param {string} p.tool       receipt-required tool/route name to probe
  * @param {object} [p.args]     arguments passed to the tool
  * @param {string} p.action     canonical action_type the receipt must bind
- * @param {()=>(object|Promise<object>)} p.issueReceipt  mints a FRESH valid
- *   EP-RECEIPT-v1 bound to `action` that this dispatcher accepts
+ * @param {(action:string)=>(object|Promise<object>)} p.issueReceipt  mints a FRESH
+ *   valid EP-RECEIPT-v1 bound to `action` (passed in) that this dispatcher accepts
  * @param {object} [p.manifest] optional Action Risk Manifest to validate
  * @returns {Promise<{level:string, passed:boolean, checks:object, detail:object}>}
  */
@@ -575,24 +824,42 @@ export default requireReceiptExports;
  *
  *   1. TARGET BINDING — a receipt is bound to the exact resource, not just the
  *      action type, so a valid receipt for resource A cannot act on resource B.
- *   2. CONSUME-AFTER-SUCCESS (+ replay safety) — a receipt is RESERVED for the
- *      duration of the side effect, COMMITTED (one-time-consumed) only if the
- *      action succeeds, and RELEASED if it fails — so a transient failure never
- *      burns a valid approval, and a reserved/consumed receipt can never drive a
- *      second action (concurrent or after restart, given a shared store).
+ *   2. CONSUME-BEFORE-RETRY (+ replay safety) — a receipt is RESERVED before the
+ *      side effect and permanently COMMITTED after any execution attempt. Once
+ *      execution begins, an exception cannot distinguish "nothing happened"
+ *      from "the effect happened but its response was lost", so automatic retry
+ *      would risk duplicating an irreversible action.
  *   3. SANITIZED REJECTIONS — a refusal returns only a `{ reason }` code, never
  *      the verified receipt's signer/subject/library detail.
  *
- * Prefer `gate.run(receipt, { target }, fn)` — it orchestrates verify → run →
- * commit/release so a caller cannot get the ordering wrong. Use the lower-level
- * `check` / `commit` / `release` only when you must gate and act in separate steps.
+ * Prefer `gate.run(receipt, { target }, fn)` — it orchestrates verify → reserve →
+ * attempt → commit so a caller cannot get the ordering wrong. Use the lower-level
+ * `check` / `commit` / `release` only when you can prove the effect has not begun.
  */
 
-/** Default in-memory consumed-store. Process-local — pass a shared/durable store
- *  ({ has, add }) for multi-instance or restart-durable one-time consumption. */
+/** Default process-local atomic store. Fleets must pass an ownership-fenced
+ * shared store implementing the same reserve/commit/release contract. */
 function inMemoryStore() {
-  const consumed = new Set();
-  return { has: (id) => consumed.has(id), add: (id) => consumed.add(id) };
+  const states = new Map();
+  return {
+    durable: false,
+    ownershipFenced: true,
+    async reserve(id) {
+      if (states.has(id)) return false;
+      states.set(id, 'reserved');
+      return true;
+    },
+    async commit(id) {
+      if (states.get(id) !== 'reserved') throw new Error('consumption reservation not owned');
+      states.set(id, 'committed');
+      return true;
+    },
+    async release(id) {
+      if (states.get(id) !== 'reserved') throw new Error('consumption reservation not owned');
+      states.delete(id);
+      return true;
+    },
+  };
 }
 
 function normalizeTarget(target) {
@@ -611,9 +878,10 @@ function normalizeGateAssuranceClass(value) {
 /**
  * Build a hardened Receipt-Required gate for one action type.
  *
- * @param {object} opts
- * @param {string|((target:any)=>string)} opts.action  base action_type, or a fn
- *   that derives the fully-bound action from the target.
+ * @param {object} [opts]
+ * @param {string|((target:any)=>string)} [opts.action]  base action_type, or a fn
+ *   that derives the fully-bound action from the target. Required at runtime
+ *   (throws when absent); optional in the type so a `{}` default is well-formed.
  * @param {string[]} [opts.trustedKeys]      issuer SPKI keys you trust (recommended).
  * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own key
  *   (proves integrity, NOT issuer trust) — demo only; leave off in production.
@@ -623,10 +891,19 @@ function normalizeGateAssuranceClass(value) {
  * @param {string} [opts.manifestUrl]
  * @param {string} [opts.assuranceClass]
  * @param {object} [opts.quorum]
- * @param {{has:(id:string)=>boolean, add:(id:string)=>void}} [opts.store]
- *   consumed-receipt store; defaults to in-memory (process-local). A durable
- *   store makes one-time consumption survive restarts and span instances. The
- *   in-flight reservation that blocks *concurrent* replay is always process-local.
+ * @param {object} [opts.quorumPolicy] relying-party-pinned organizational quorum rule
+ * @param {Record<string, any>} [opts.approverKeys] pinned approver keys (assurance eval).
+ * @param {Record<string, any>} [opts.approver_keys] snake_case alias of approverKeys.
+ * @param {(receipt:any, requiredTier:string, ctx:any)=>any} [opts.verifyAssurance]
+ *   optional override for assurance evaluation.
+ * @param {string} [opts.rpId] expected WebAuthn RP ID for Class-A assurance checks.
+ * @param {string[]} [opts.allowedOrigins] allowed WebAuthn origins for Class-A checks.
+ * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
+ *   commit:(id:string)=>Promise<boolean>|boolean,
+ *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]
+ *   Atomic ownership-fenced consumption store; defaults to process-local memory.
+ *   Fleet stores MUST make reserve() an atomic insert-if-absent and MUST leave an
+ *   uncertain reservation closed until operator reconciliation.
  */
 export function makeReceiptGate(opts = {}) {
   const {
@@ -639,15 +916,21 @@ export function makeReceiptGate(opts = {}) {
     manifestUrl,
     assuranceClass,
     quorum,
+    quorumPolicy,
     approverKeys,
     approver_keys,
     verifyAssurance,
+    rpId,
+    allowedOrigins,
     store = inMemoryStore(),
   } = opts;
 
   if (!action) throw new Error('makeReceiptGate: `action` is required');
-
-  const inflight = new Set(); // reservations held during an in-progress action
+  for (const method of ['reserve', 'commit', 'release']) {
+    if (typeof store?.[method] !== 'function') {
+      throw new Error(`makeReceiptGate: store must implement atomic ${method}(); legacy {has, add} stores are not fleet-safe`);
+    }
+  }
 
   const boundActionFor = (target) => {
     const base = typeof action === 'function' ? action(target) : action;
@@ -659,6 +942,7 @@ export function makeReceiptGate(opts = {}) {
   const requiredTier = normalizeGateAssuranceClass(assuranceClass);
   const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass: requiredTier, quorum, maxAgeSec });
 
+  /** @returns {{ok:false, status:number, body:any}} */
   function refuse(boundAction, reason) {
     return {
       ok: false,
@@ -669,11 +953,12 @@ export function makeReceiptGate(opts = {}) {
 
   /**
    * Verify + reserve a receipt WITHOUT consuming it. On ok, the caller MUST
-   * later call commit(receiptId) on success or release(receiptId) on failure.
-   * @returns {{ok:true, receiptId, outcome, signer, subject, boundAction}
-   *          | {ok:false, status, body}}
+   * later call commit(receiptId) after an execution attempt, or release(receiptId)
+   * only when it can prove the external effect never began.
+   * @returns {Promise<{ok:true, receiptId, outcome, signer, subject, boundAction}
+   *          | {ok:false, status, body}>}
    */
-  function check(receipt, { target } = {}) {
+  async function check(receipt, { target } = /** @type {{target?:any}} */ ({})) {
     const boundAction = boundActionFor(target);
 
     if (!receipt) {
@@ -687,44 +972,65 @@ export function makeReceiptGate(opts = {}) {
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
 
-    const assurance = evaluateReceiptAssurance(receipt, requiredTier, { approverKeys, approver_keys, verifyAssurance });
+    const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
+      approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy,
+    });
     if (!assurance.ok || (TIER_RANK[assurance.have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
       return refuse(boundAction, assurance.reason || 'assurance_too_low');
     }
 
-    if (store.has(v.receipt_id) || inflight.has(v.receipt_id)) return refuse(boundAction, 'replay_refused');
-
-    inflight.add(v.receipt_id); // reserve for the duration of the action
+    let reserved;
+    try {
+      reserved = await store.reserve(v.receipt_id);
+    } catch {
+      return refuse(boundAction, 'consumption_store_unavailable');
+    }
+    if (reserved !== true) return refuse(boundAction, 'replay_refused');
     return { ok: true, receiptId: v.receipt_id, outcome: v.outcome, signer: v.signer, subject: v.subject, boundAction };
   }
 
-  /** Finalize one-time consumption after the action SUCCEEDS. */
-  function commit(receiptId) {
-    inflight.delete(receiptId);
-    store.add(receiptId);
+  /** Finalize one-time consumption after an execution attempt begins. */
+  async function commit(receiptId) {
+    const committed = await store.commit(receiptId);
+    if (committed !== true) throw new Error('consumption commit failed closed');
   }
 
-  /** Release the reservation after the action FAILS — the approval stays retryable. */
-  function release(receiptId) {
-    inflight.delete(receiptId);
+  /** Release only when the caller can prove the external effect never began. */
+  async function release(receiptId) {
+    const released = await store.release(receiptId);
+    if (released !== true) throw new Error('consumption release failed closed');
   }
 
   /**
-   * The safe path: verify+reserve, run the side effect, then commit on success
-   * or release on failure. `fn` MUST throw on failure (so the approval is not
-   * consumed). Receives the check result: fn({ receiptId, outcome, signer, ... }).
+   * The safe path: verify+reserve, run the side effect, then commit regardless
+   * of its return value. An exception after invocation is an indeterminate
+   * outcome and MUST consume the approval to prevent duplicate execution.
+   * Receives the check result: fn({ receiptId, outcome, signer, ... }).
    * @returns {Promise<{ok:true, receiptId, outcome, signer, result}|{ok:false, status, body}>}
    */
   async function run(receipt, ctx, fn) {
     if (typeof ctx === 'function') { fn = ctx; ctx = {}; }
-    const c = check(receipt, ctx || {});
-    if (!c.ok) return c;
+    if (typeof fn !== 'function') throw new Error('makeReceiptGate.run: fn is required');
+    const c = await check(receipt, ctx || {});
+    if (!c.ok) return /** @type {{ok:false, status:any, body:any}} */ (c);
+    let attempted = false;
+    let committed = false;
     try {
+      attempted = true;
       const result = await fn(c);
-      commit(c.receiptId);
+      await commit(c.receiptId);
+      committed = true;
       return { ok: true, receiptId: c.receiptId, outcome: c.outcome, signer: c.signer, result };
     } catch (err) {
-      release(c.receiptId); // failure -> not consumed -> retryable
+      if (attempted && !committed) {
+        try {
+          await commit(c.receiptId); // effect may have occurred before the exception
+        } catch (commitError) {
+          if (err && typeof err === 'object') {
+            err.consumption_error = String(commitError?.message ?? commitError);
+          }
+        }
+      }
       throw err;
     }
   }

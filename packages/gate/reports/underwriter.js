@@ -70,12 +70,12 @@ function actionFamily(action) {
 /**
  * Build the underwriter attestation over a slice of the evidence log.
  * @param {Array<object>} entries  evidence.all() (or a durable export of it)
- * @param {object} o
- * @param {string} o.insured           named insured (required)
+ * @param {object} [o]
+ * @param {string} [o.insured]           named insured (required)
  * @param {string} [o.policyRef]       carrier policy/submission reference (null until bound)
- * @param {string|number} o.periodStart  inclusive period start (ISO or epoch ms)
- * @param {string|number} o.periodEnd    inclusive period end (ISO or epoch ms)
- * @param {number|function} [o.now]    clock for generated_at (pin for determinism)
+ * @param {string|number} [o.periodStart]  inclusive period start (ISO or epoch ms)
+ * @param {string|number} [o.periodEnd]    inclusive period end (ISO or epoch ms)
+ * @param {number|Function} [o.now]    clock for generated_at (pin for determinism)
  * @returns {object} EP-GATE-UNDERWRITER-ATTESTATION-v1 document
  */
 export function buildUnderwriterAttestation(entries = [], {
@@ -168,7 +168,7 @@ export function buildUnderwriterAttestation(entries = [], {
       status: 'Not an insurance document. This attestation carries no coverage effect until adopted by the carrier.',
     },
     control_in_force: {
-      control: 'EMILIA Gate — Trusted Action Firewall',
+      control: 'EMILIA Gate — Consequence Firewall',
       mode: 'deny_by_default',
       statement: 'Guarded actions execute only with a valid, in-scope, sufficiently-assured, fresh, one-time authorization receipt; absent or insufficient proof is refused, and every decision is appended to a hash-chained evidence log.',
       guarded_decisions: guarded.length,
@@ -221,9 +221,18 @@ export function buildUnderwriterAttestation(entries = [], {
 
 /* ------------------------------- markdown ------------------------------- */
 
-/** Table cells must not break the table; the source strings are log-derived. */
+/**
+ * Table cells must not break the table; the source strings are log-derived.
+ * Backslash is escaped FIRST: escaping only the pipe turns a log-derived
+ * `a\|b` into `a\\|b`, where the `\\` renders as a literal backslash and
+ * leaves the pipe live as a cell delimiter, letting an action or refusal
+ * reason split its cell and shift every column after it.
+ */
 function cell(v) {
-  return String(v ?? '—').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(v ?? '—')
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
 function pct(rate) {

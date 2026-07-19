@@ -3,6 +3,77 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.11.0 (2026-07-17)
+
+### Added
+
+- `./document-action-binding`, a typed verifier for joining exact final
+  document bytes, material terms, and a consequential release action.
+- Closed `match`, `mismatch`, and `invalid` results so a malformed or
+  differently bound document cannot be mistaken for an authorized action.
+
+## 3.10.1 (2026-07-16)
+
+### Security (please upgrade)
+
+- A validly signed denial remains portable decision evidence but can no longer
+  contribute an approver identity, assurance class, authority subject, signed
+  action material, or quorum member toward authorization or reliance.
+- JavaScript, Python, and Go now share a refusal vector proving that a signed
+  denial cannot verify as authorization. The reliance kernel separately tests
+  mixed approved/denied receipts and a valid device-signed denied quorum member.
+
+## 3.10.0 (2026-07-15)
+
+### Security (please upgrade)
+
+- Human signoffs, quorum members, provenance links, resolution receipts, trust
+  receipts, and evidence-chain components now enforce relying-party ID and
+  origin scope consistently across JavaScript, browser, Python, and Go ports.
+- Role, issuer, approver, authority, profile-registry, and key-class decisions
+  are derived from relying-party pins rather than presenter-controlled labels,
+  embedded keys, or self-asserted metadata.
+- Strict JSON parsing rejects duplicate members before security-relevant
+  canonicalization. SPKI identity comparisons use canonical fingerprints so
+  alternate encodings cannot fill multiple quorum seats or alias a pinned key.
+- Reliance evaluation now requires an exact action join, pinned organizational
+  quorum policy, and pinned registry identity. The CLI treats `--key` as an
+  authoritative trust anchor and exposes RP/origin policy flags.
+- Shared conformance adds cross-origin, key-role, authority, provenance, and
+  hostile-parser refusals. The release security case binds the executable
+  claims to the current artifacts and cross-language vectors.
+
+### Changed
+
+- Some artifacts accepted by earlier releases will now be refused until the
+  verifier is supplied with the relying party's explicit trust roots, RP ID,
+  origin allowlist, and required quorum/profile policy. This is intentional
+  fail-closed behavior.
+
+## 3.9.0 (2026-07-14)
+
+### Added
+
+- Additive `EP-RESOLUTION-v1` verifier for durable, device-signed
+  `approved | declined | amended | rejected` binding-moment outcomes. Receipt
+  validity is separate from execution authority: only an authentic approval
+  under a complete relying-party-pinned acceptance context (role key, RP ID,
+  origin, option mapping, nonce, initiator, and in-window evaluation time) sets
+  `authorizes_action: true`.
+
+### Changed
+
+- `verifyAuthorizationChain` now names its evidence-layer result `satisfied`.
+  The `allow` member remains as an equal compatibility alias; authorization is
+  still a separate relying-party decision.
+- Terminal revocations no longer age out through `maxAgeSeconds`. Verification
+  rejects future-effective and impossible calendar timestamps, malformed
+  targets, non-Ed25519 algorithm labels, and signatures outside the pinned
+  revoker context. Fresh non-revocation status remains a separate input.
+- Future-dated currency/status heads now return `stale`, never `fresh`.
+- JavaScript, Python, and Go carry the same resolution, revocation, currency,
+  and evidence-satisfaction behavior under the shared conformance vectors.
+
 ## 3.8.0 (2026-07-09)
 
 ### Security (please upgrade)

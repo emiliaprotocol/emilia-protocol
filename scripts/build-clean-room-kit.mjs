@@ -11,6 +11,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const KIT_PREFIX = 'emilia-clean-room-kit-v1/';
 const SPEC_PATH = 'conformance/clean-room/specification-bundle.v1.json';
 const VECTOR_BUNDLE_PATH = 'conformance/clean-room/bundle.v1.json';
+const FROZEN_PREFIX = 'conformance/clean-room/frozen-v1/';
 const REQUIRED_INPUTS = Object.freeze([
   'LICENSE',
   'conformance/clean-room/EXTERNAL-CHALLENGE.md',
@@ -67,10 +68,11 @@ function parseJsonAt(commit, filePath) {
 
 function verifyDeclaredFile(commit, entry, source) {
   const filePath = assertSafePath(entry?.path);
+  const sourcePath = assertSafePath(`${FROZEN_PREFIX}${filePath}`);
   if (!/^[0-9a-f]{64}$/.test(entry?.sha256 ?? '')) {
     throw new Error(`${source} has an invalid SHA-256 for ${filePath}`);
   }
-  const bytes = readAt(commit, filePath);
+  const bytes = readAt(commit, sourcePath);
   const actual = sha256(bytes);
   if (actual !== entry.sha256) {
     throw new Error(`${source} hash mismatch for ${filePath}: declared ${entry.sha256}, got ${actual}`);
@@ -78,7 +80,7 @@ function verifyDeclaredFile(commit, entry, source) {
   if (entry.bytes !== undefined && entry.bytes !== bytes.length) {
     throw new Error(`${source} byte count mismatch for ${filePath}: declared ${entry.bytes}, got ${bytes.length}`);
   }
-  return filePath;
+  return { filePath, sourcePath };
 }
 
 export function collectCleanRoomKitFiles(ref = 'HEAD') {
@@ -98,24 +100,61 @@ export function collectCleanRoomKitFiles(ref = 'HEAD') {
     throw new Error(`unsupported vector bundle version: ${vectorBundle?.['@version']}`);
   }
 
-  const paths = new Set(REQUIRED_INPUTS.map(assertSafePath));
+  const sources = new Map(REQUIRED_INPUTS.map((filePath) => {
+    const safe = assertSafePath(filePath);
+    return [safe, safe];
+  }));
   for (const entry of specification.documents ?? []) {
-    paths.add(verifyDeclaredFile(commit, entry, SPEC_PATH));
+    const { filePath, sourcePath } = verifyDeclaredFile(commit, entry, SPEC_PATH);
+    sources.set(filePath, sourcePath);
   }
   for (const entry of vectorBundle.suites ?? []) {
-    paths.add(verifyDeclaredFile(commit, entry, VECTOR_BUNDLE_PATH));
+    const { filePath, sourcePath } = verifyDeclaredFile(commit, entry, VECTOR_BUNDLE_PATH);
+    sources.set(filePath, sourcePath);
   }
 
-  const files = [...paths].sort().map((filePath) => {
-    const modeLine = git(['ls-tree', commit, '--', filePath], { encoding: 'utf8' }).trim();
+  const files = [...sources].sort(([left], [right]) => left.localeCompare(right)).map(([filePath, sourcePath]) => {
+    const modeLine = git(['ls-tree', commit, '--', sourcePath], { encoding: 'utf8' }).trim();
     if (!/^100(?:644|755) blob [0-9a-f]{40}\t/.test(modeLine)) {
-      throw new Error(`kit input is not a regular tracked file at ${commit}: ${filePath}`);
+      throw new Error(`kit input is not a regular tracked file at ${commit}: ${sourcePath}`);
     }
-    const bytes = readAt(commit, filePath);
-    return { path: filePath, bytes: bytes.length, sha256: sha256(bytes) };
+    const bytes = readAt(commit, sourcePath);
+    return {
+      path: filePath,
+      sourcePath,
+      mode: modeLine.slice(0, 6),
+      bytes: bytes.length,
+      sha256: sha256(bytes),
+    };
   });
 
   return { commit, files };
+}
+
+function buildArchiveCommit(sourceCommit, files, temporary) {
+  const indexPath = path.join(temporary, 'archive.index');
+  const env = { ...process.env, GIT_INDEX_FILE: indexPath };
+  git(['read-tree', '--empty'], { env, encoding: 'utf8' });
+  for (const file of files) {
+    const bytes = readAt(sourceCommit, file.sourcePath);
+    const oid = git(['hash-object', '-w', '--stdin'], { input: bytes, encoding: 'utf8' }).trim();
+    git(['update-index', '--add', '--cacheinfo', `${file.mode},${oid},${file.path}`], { env, encoding: 'utf8' });
+  }
+  const tree = git(['write-tree'], { env, encoding: 'utf8' }).trim();
+  const timestamp = git(['show', '-s', '--format=%ct', sourceCommit], { encoding: 'utf8' }).trim();
+  const identity = {
+    ...env,
+    GIT_AUTHOR_NAME: 'EMILIA Clean Room Kit',
+    GIT_AUTHOR_EMAIL: 'security@emiliaprotocol.ai',
+    GIT_COMMITTER_NAME: 'EMILIA Clean Room Kit',
+    GIT_COMMITTER_EMAIL: 'security@emiliaprotocol.ai',
+    GIT_AUTHOR_DATE: `${timestamp} +0000`,
+    GIT_COMMITTER_DATE: `${timestamp} +0000`,
+  };
+  return git(['commit-tree', tree, '-m', `Frozen clean-room kit from ${sourceCommit}`], {
+    env: identity,
+    encoding: 'utf8',
+  }).trim();
 }
 
 function archive(commit, paths, output) {
@@ -148,8 +187,9 @@ export function buildCleanRoomKit({ ref = 'HEAD', output } = {}) {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-kit-'));
   const second = path.join(temporary, 'second.tar.gz');
   try {
-    archive(commit, filePaths, target);
-    archive(commit, filePaths, second);
+    const archiveCommit = buildArchiveCommit(commit, files, temporary);
+    archive(archiveCommit, filePaths, target);
+    archive(archiveCommit, filePaths, second);
     const firstHash = sha256(fs.readFileSync(target));
     const secondHash = sha256(fs.readFileSync(second));
     if (firstHash !== secondHash) throw new Error('clean-room archive is not reproducible');
@@ -160,6 +200,11 @@ export function buildCleanRoomKit({ ref = 'HEAD', output } = {}) {
       throw new Error('clean-room archive content differs from the byte-pinned allowlist');
     }
 
+    const reportFiles = files.map(({ path: filePath, bytes, sha256: digest }) => ({
+      path: filePath,
+      bytes,
+      sha256: digest,
+    }));
     const report = {
       '@version': 'EP-CLEAN-ROOM-KIT-REPORT-v1',
       source_commit: commit,
@@ -170,7 +215,7 @@ export function buildCleanRoomKit({ ref = 'HEAD', output } = {}) {
         reproducible: true,
       },
       reference_implementation_included: false,
-      files,
+      files: reportFiles,
     };
     fs.writeFileSync(manifestTarget, `${JSON.stringify(report, null, 2)}\n`);
     return { target, manifestTarget, ...report };

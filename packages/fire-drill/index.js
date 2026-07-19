@@ -9,16 +9,17 @@
  * Point it at an MCP manifest, an OpenAPI spec, or a tool list. It classifies
  * each operation into the high-risk families (money / data destruction /
  * production deploy / permission change / data export / regulated override) and
- * checks whether a dangerous one can execute WITHOUT an accountable human
- * receipt. Output: an Agent Action Firewall score, the failing operations, the
- * fix (EMILIA Gate), and EG-1 pass/fail.
+ * checks whether a dangerous one DECLARES a required receipt input. Output is a
+ * static coverage score and a list of missing declarations. Static metadata
+ * cannot prove runtime verification, trust anchoring, or consumption.
  *
  * This is a STATIC assessment from the manifest/spec — like SSL Labs or
  * `npm audit`. It reveals the gap; EG-1 conformance verifies the fix at runtime.
  * Zero dependencies so `npx` is instant.
  */
 
-export const FIRE_DRILL_VERSION = 'EP-FIRE-DRILL-v1';
+export const FIRE_DRILL_VERSION = 'EP-FIRE-DRILL-v2';
+const MAX_OPERATIONS = 10_000;
 
 // High-risk families, mirrored from the EMILIA Gate default action packs. Each
 // matcher is a hardcoded literal (no dynamic RegExp) — a stem alternation plus a
@@ -85,21 +86,38 @@ export function classifyOperation({ name = '', description = '', method = '', pa
 }
 const famOut = (f) => ({ family: f.family, label: f.label, tier: f.tier, adapter: f.adapter, why: f.why });
 
-/** Does this operation require a receipt (any receipt-shaped parameter / marker)? */
+const RECEIPT_NAME = /^[a-z0-9_-]{0,32}(?:receipt|emilia|signoff)[a-z0-9_-]{0,32}$/i;
+
+function schemaRequiresReceipt(schema) {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return false;
+  const properties = schema.properties;
+  const required = Array.isArray(schema.required) ? new Set(schema.required) : new Set();
+  return properties && typeof properties === 'object' && !Array.isArray(properties)
+    && Object.keys(properties).some((name) => RECEIPT_NAME.test(name) && required.has(name));
+}
+
+/**
+ * Detect a structural declaration that receipt evidence is required.
+ * This does NOT detect or certify runtime enforcement.
+ */
 export function detectReceiptGate(op = {}, raw = null) {
-  const blob = JSON.stringify(raw ?? op ?? {});
-  // A JSON KEY shaped like a receipt (MCP inputSchema property, request-body field).
-  if (/"[a-z0-9_-]{0,20}(?:receipt|emilia|signoff)[a-z0-9_-]{0,20}"\s*:/i.test(blob)) return true;
-  // A parameter/header whose NAME value is receipt-shaped (OpenAPI parameters).
-  if (/"name"\s*:\s*"[a-z0-9_\- ]{0,20}(?:receipt|emilia)[a-z0-9_\- ]{0,20}"/i.test(blob)) return true;
-  // An explicit marker some manifests set.
-  if (raw && (raw['x-emilia'] || raw.emilia_gate === true || raw.x_emilia_receipt_required === true)) return true;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;
+  if (raw.x_emilia_receipt_required === true || raw.emilia_gate === true
+      || raw['x-emilia']?.receipt_required === true) return true;
+  if (schemaRequiresReceipt(raw.inputSchema) || schemaRequiresReceipt(raw.input_schema)) return true;
+  if (Array.isArray(raw.parameters) && raw.parameters.some((parameter) => parameter?.required === true
+      && typeof parameter.name === 'string' && RECEIPT_NAME.test(parameter.name))) return true;
+  if (raw.requestBody?.required === true && raw.requestBody.content
+      && typeof raw.requestBody.content === 'object') {
+    return Object.values(raw.requestBody.content)
+      .some((media) => schemaRequiresReceipt(media?.schema));
+  }
   return false;
 }
 
 function operationFinding(op, raw) {
   const cls = classifyOperation(op);
-  const gated = cls.dangerous ? detectReceiptGate(op, raw) : true;
+  const receiptDeclared = cls.dangerous ? detectReceiptGate(op, raw) : true;
   return {
     name: op.name,
     method: op.method || null,
@@ -110,7 +128,7 @@ function operationFinding(op, raw) {
     tier: cls.tier || null,
     adapter: cls.adapter || null,
     why: cls.why || null,
-    gated,
+    receipt_declared: receiptDeclared,
   };
 }
 
@@ -118,6 +136,9 @@ function operationFinding(op, raw) {
 
 export function scanMcpManifest(manifest = {}) {
   const tools = manifest.tools || manifest.capabilities?.tools || [];
+  if (!Array.isArray(tools) || tools.length > MAX_OPERATIONS) {
+    throw new Error(`fire-drill: MCP tools must be an array with at most ${MAX_OPERATIONS} entries`);
+  }
   const ops = tools.map((t) => operationFinding(
     { name: t.name, description: t.description || '', method: '', path: '' }, t,
   ));
@@ -127,9 +148,12 @@ export function scanMcpManifest(manifest = {}) {
 export function scanOpenApi(spec = {}) {
   const ops = [];
   const paths = spec.paths || {};
+  if (!paths || typeof paths !== 'object' || Array.isArray(paths)) throw new Error('fire-drill: OpenAPI paths must be an object');
   for (const [path, methods] of Object.entries(paths)) {
     for (const [method, op] of Object.entries(methods || {})) {
       if (!MUTATING_METHODS.has(method.toUpperCase()) && method.toUpperCase() !== 'GET') continue;
+      if (!op || typeof op !== 'object' || Array.isArray(op)) continue;
+      if (ops.length >= MAX_OPERATIONS) throw new Error(`fire-drill: OpenAPI operation limit exceeds ${MAX_OPERATIONS}`);
       const finding = operationFinding({
         name: op.operationId || `${method.toUpperCase()} ${path}`,
         description: op.summary || op.description || '',
@@ -142,6 +166,9 @@ export function scanOpenApi(spec = {}) {
 }
 
 export function scanToolList(list = []) {
+  if (!Array.isArray(list) || list.length > MAX_OPERATIONS) {
+    throw new Error(`fire-drill: tool list must contain at most ${MAX_OPERATIONS} entries`);
+  }
   return buildReport(list.map((t) => operationFinding({ name: t.name, description: t.description || '' }, t)), 'tools');
 }
 
@@ -157,36 +184,37 @@ export function scan(input) {
 
 export function buildReport(operations, targetType = 'unknown') {
   const dangerous = operations.filter((o) => o.dangerous);
-  const ungated = dangerous.filter((o) => !o.gated);
-  const score = dangerous.length === 0 ? 100 : Math.round(((dangerous.length - ungated.length) / dangerous.length) * 100);
-  const findings = ungated.map((o) => ({
+  const missing = dangerous.filter((o) => !o.receipt_declared);
+  const score = dangerous.length === 0 ? 100 : Math.round(((dangerous.length - missing.length) / dangerous.length) * 100);
+  const findings = missing.map((o) => ({
     severity: o.tier === 'quorum' ? 'critical' : 'high',
     operation: o.name,
     family: o.family,
-    message: `FAIL: \`${o.name}\` can execute without an accountable human receipt (${o.label}).`,
+    message: `MISSING DECLARATION: \`${o.name}\` does not declare a required receipt input (${o.label}).`,
     fix: o.adapter
       ? `Add EMILIA Gate — @emilia-protocol/gate/adapters/${o.adapter} (or gateMcpTool) requiring a ${o.tier} receipt.`
       : `Add EMILIA Gate — require a ${o.tier} receipt for this action.`,
-    earn: 'EG-1 Enforced',
+    earn: 'eligible for a separate runtime EG-1 test',
   }));
   return {
     '@version': FIRE_DRILL_VERSION,
     target_type: targetType,
     score,
-    eg1: ungated.length === 0 ? 'pass' : 'fail',
+    eg1: 'not_assessed',
+    static_result: missing.length === 0 ? 'complete' : 'incomplete',
     summary: {
       operations: operations.length,
       dangerous: dangerous.length,
-      gated: dangerous.length - ungated.length,
-      ungated: ungated.length,
+      declared: dangerous.length - missing.length,
+      missing_declaration: missing.length,
     },
     findings,
     operations,
-    note: 'Static assessment from the manifest/spec. Verify the fix at runtime with EG-1 conformance (@emilia-protocol/gate).',
+    note: 'Static declaration assessment only. It does not verify runtime receipt validation, trust anchors, exact-action binding, or one-time consumption. Run EG-1 conformance separately.',
   };
 }
 
-export const TAGLINE = 'If your agent can take an irreversible action without a receipt, you do not have control. You have hope.';
+export const TAGLINE = 'Static declarations locate review targets; only runtime conformance can establish enforcement.';
 
 // ── Shareable badge ──────────────────────────────────────────────────────────
 
@@ -196,18 +224,18 @@ function segWidth(text) {
 }
 
 /**
- * A shields-style flat SVG badge: "agent action firewall | EG-1 Enforced".
- * Green when EG-1 passes / score 100, amber for partial, red for fail.
+ * A shields-style badge for static declaration coverage. It is deliberately
+ * never green and never says EG-1 Enforced; this scanner cannot prove runtime.
  * @param {object} o
- * @param {'pass'|'fail'} [o.eg1]
- * @param {number} [o.score]   0..100 — overrides the message with "N/100" when given
- * @param {string} [o.label='agent action firewall']
+ * @param {number} [o.score] 0..100
+ * @param {string} [o.label='receipt declarations']
  */
-export function badgeSvg({ eg1, score, label = 'agent action firewall' } = {}) {
-  const hasScore = typeof score === 'number' && Number.isFinite(score);
-  const pass = eg1 === 'pass' || score === 100;
-  const message = hasScore ? `${score}/100` : (pass ? 'EG-1 Enforced' : 'EG-1 not earned');
-  const color = pass ? '#16A34A' : (hasScore && score >= 50 ? '#D97706' : '#DC2626');
+export function badgeSvg({ score, label = 'receipt declarations' } = {}) {
+  const normalizedScore = typeof score === 'number' && Number.isFinite(score)
+    ? Math.max(0, Math.min(100, Math.round(score))) : null;
+  const message = normalizedScore === null ? 'static only' : `static ${normalizedScore}/100`;
+  const color = normalizedScore !== null && normalizedScore < 50 ? '#DC2626' : '#D97706';
+  label = String(label).slice(0, 80);
   const lw = segWidth(label);
   const mw = segWidth(message);
   const w = lw + mw;
@@ -232,32 +260,31 @@ export function badgeSvg({ eg1, score, label = 'agent action firewall' } = {}) {
 // ── Corpus aggregation (the Report) ──────────────────────────────────────────
 
 /**
- * Aggregate many scan reports into one Agent Action Firewall Index — the figure
- * behind the Report. Honest by construction: it only summarizes the reports it
- * was given; the caller decides the corpus.
+ * Aggregate static declaration reports. The caller owns corpus selection and
+ * this output makes no claim about runtime enforcement.
  * @param {object[]} reports  buildReport() results
  */
 export function aggregate(reports = []) {
   const servers = reports.length;
   let dangerous = 0;
-  let ungated = 0;
-  let withUnguarded = 0;
+  let missing = 0;
+  let withMissing = 0;
   let scoreSum = 0;
   const byFamily = {};
   for (const r of reports) {
     dangerous += r.summary.dangerous;
-    ungated += r.summary.ungated;
-    if (r.summary.ungated > 0) withUnguarded += 1;
+    missing += r.summary.missing_declaration;
+    if (r.summary.missing_declaration > 0) withMissing += 1;
     scoreSum += r.score;
     for (const f of (r.findings || [])) byFamily[f.family] = (byFamily[f.family] || 0) + 1;
   }
   return {
     '@version': FIRE_DRILL_VERSION,
     servers,
-    servers_with_unguarded_action: withUnguarded,
-    pct_servers_with_unguarded_action: servers ? Math.round((withUnguarded / servers) * 100) : 0,
+    servers_missing_declaration: withMissing,
+    pct_servers_missing_declaration: servers ? Math.round((withMissing / servers) * 100) : 0,
     dangerous_operations: dangerous,
-    unguarded_operations: ungated,
+    missing_declarations: missing,
     mean_score: servers ? Math.round(scoreSum / servers) : 100,
     by_family: byFamily,
   };
@@ -267,7 +294,7 @@ export function aggregate(reports = []) {
 
 /**
  * Turn a report into a ready-to-open pull request (title + Markdown body) that
- * tells a maintainer exactly which dangerous tools to gate and how to earn EG-1.
+ * tells a maintainer which dangerous tools lack a required evidence declaration.
  * @param {object} report  a buildReport() result
  * @param {object} [o]
  * @param {string} [o.project] project/repo name for the title
@@ -276,18 +303,18 @@ export function generatePullRequest(report, { project } = {}) {
   const name = project ? ` for ${project}` : '';
   const failing = report.findings || [];
   const title = failing.length
-    ? `Require an EMILIA receipt for ${failing.length} high-risk action${failing.length > 1 ? 's' : ''}${name} (earn EG-1)`
-    : `Confirm EG-1 Enforced${name}`;
+    ? `Declare required receipt evidence for ${failing.length} high-risk action${failing.length > 1 ? 's' : ''}${name}`
+    : `Review runtime receipt enforcement${name}`;
   const lines = [];
-  lines.push(`## Agent Action Firewall: ${report.score}/100 (EG-1 ${report.eg1.toUpperCase()})`, '');
+  lines.push(`## Static receipt declaration coverage: ${report.score}/100`, '');
   if (!failing.length) {
-    lines.push('No dangerous action can run without a receipt. This integration is **EG-1 Enforced**.', '');
+    lines.push('Every detected dangerous action declares a required receipt input. **Runtime enforcement is not assessed by this scan.**', '');
   } else {
-    lines.push('These tool calls can mutate money, data, permissions, or production **without an accountable human receipt**:', '');
+    lines.push('These tool calls can mutate money, data, permissions, or production but do not declare required receipt evidence:', '');
     for (const f of failing) lines.push(`- \`${f.operation}\` — ${f.family} — ${f.fix}`);
     lines.push('', '### Fix', '', '```js', `import { createGate } from '@emilia-protocol/gate';`, `import { gateMcpTool } from '@emilia-protocol/gate/mcp';`, '', `const gate = createGate({ manifest, trustedKeys: [process.env.EMILIA_ISSUER] });`);
     for (const f of failing) lines.push(`server.tool('${f.operation}', gateMcpTool(gate, { tool: '${f.operation}' }, handler));`);
-    lines.push('```', '', `Then \`npx @emilia-protocol/fire-drill <manifest>\` should report **EG-1 Enforced**.`);
+    lines.push('```', '', `Then rerun \`npx @emilia-protocol/fire-drill <manifest>\` and separately execute the EG-1 runtime conformance suite.`);
   }
   lines.push('', '---', `_Generated by [@emilia-protocol/fire-drill](https://www.npmjs.com/package/@emilia-protocol/fire-drill) — the Agent Action Firewall Test._`);
   return { title, body: lines.join('\n') };

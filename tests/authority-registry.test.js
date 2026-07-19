@@ -66,7 +66,7 @@ function runProofVector(v) {
   if (v.verify.tamper) proof = { ...proof, ...v.verify.tamper };
   if (v.verify.tamperKeyId) proof = { ...proof, signature: { ...proof.signature, key_id: v.verify.tamperKeyId } };
   const pinnedRegistryKeys = v.verify.pin
-    ? [{ issuer_id: proof.signature.key_id, public_key: pubB64u(priv) }]
+    ? [{ issuer_id: proof.authority_id, public_key: pubB64u(priv) }]
     : [];
   return verifyAuthorityProof(proof, {
     pinnedRegistryKeys,
@@ -140,6 +140,26 @@ describe('EP-AUTHORITY-REGISTRY-v1 unit invariants', () => {
     }, priv);
     const result = verifyAuthorityProof(proof, {
       pinnedRegistryKeys: [{ issuer_id: 'auth_other', public_key: pubB64u(priv) }],
+    });
+
+    expect(result.verified).toBe(false);
+    expect(result.accepted).toBe(false);
+    expect(result.reason).toBe('pin_mismatched_issuer');
+  });
+
+  it('does not let a key-only pin establish registry identity', () => {
+    const priv = keyFromSeedHex('d5'.repeat(32));
+    const proof = signAuthorityProof({
+      authority_id: 'auth_cfo',
+      subject: 'ep:approver:cfo',
+      role: 'cfo',
+      scope: ['wire.release'],
+      registry_head: `sha256:${'11'.repeat(32)}`,
+      registry_epoch: 1,
+      issued_at: '2026-07-07T00:00:00.000Z',
+    }, priv);
+    const result = verifyAuthorityProof(proof, {
+      pinnedRegistryKeys: [{ public_key: pubB64u(priv) }],
     });
 
     expect(result.verified).toBe(false);

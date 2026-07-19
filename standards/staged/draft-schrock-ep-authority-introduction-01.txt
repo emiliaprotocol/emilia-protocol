@@ -1,0 +1,504 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                              14 July 2026
+Expires: 15 January 2027
+
+
+   Authority Documents and Scoped Authority for Agent-Action Evidence
+               draft-schrock-ep-authority-introduction-01
+
+Abstract
+
+   Signature verification answers whether a key produced an artifact.
+   It does not answer why a relying party accepts that key, or whether
+   the key holder had authority for the action.  This document specifies
+   two composable artifacts.  An Authority Document introduces and
+   rotates an organization's evidence-issuing keys through a signed,
+   hash-chained sequence.  A Scoped Authority Proof records the
+   authority held by a subject at a registry snapshot, including role,
+   action scope, material limits, policy binding, validity, and
+   revocation status.  A relying party evaluates both artifacts under
+   its own pinned trust inputs and policy.  The design does not make a
+   self-presented key authoritative, does not turn log inclusion or
+   domain control into automatic trust, and does not equate a valid
+   signature with permission to act.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 15 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 1]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  The Authority Document (EP-AUTHORITY-DOC-v1)  . . . . . . . .   3
+   3.  Scoped Authority Proof (EP-AUTHORITY-PROOF-v1)  . . . . . . .   3
+   4.  Authority Evaluation  . . . . . . . . . . . . . . . . . . . .   5
+   5.  Separation of Duties and Quorum . . . . . . . . . . . . . . .   5
+   6.  Rotation, Continuity, and Time-of-Issuance  . . . . . . . . .   6
+   7.  Anti-Equivocation . . . . . . . . . . . . . . . . . . . . . .   6
+   8.  Introduction as Evidence: Graded, Replayable Acceptance . . .   7
+   9.  Compromise Recovery . . . . . . . . . . . . . . . . . . . . .   7
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .   7
+   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
+   12. References  . . . . . . . . . . . . . . . . . . . . . . . . .   8
+     12.1.  Normative References . . . . . . . . . . . . . . . . . .   8
+     12.2.  Informative References . . . . . . . . . . . . . . . . .   8
+   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .   9
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
+
+1.  Introduction
+
+   This document follows the distinction between VERIFIED and ACCEPTED.
+   Verification establishes cryptographic and structural facts given a
+   key.  Acceptance is a relying-party decision about which keys,
+   issuers, authority sources, and policies are admissible.  Existing
+   systems use certificates, federation metadata, trust bundles,
+   transparency services, and deployment configuration for portions of
+   that decision.  Agent-action evidence profiles still need a concrete
+   way to bind those trust inputs to the issuer key and to the human
+   authority being relied upon.
+
+   The design is deliberately not a universal public-key infrastructure.
+   The relying party selects its trust anchors and acceptance policy.
+   Domain control, log inclusion, and endorsement are evidence inputs,
+   not authority by themselves.  The goal is a reproducible answer to
+   two narrower questions: which evidence key was valid at issuance, and
+   what scoped authority did the approving subject hold for the exact
+   action under review?
+
+
+
+Schrock                  Expires 15 January 2027                [Page 2]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+1.1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+2.  The Authority Document (EP-AUTHORITY-DOC-v1)
+
+   An authority document is a JSON object, served from the
+   organization's own origin (RECOMMENDED: /.well-known/ep-
+   authority.json) and registrable to a transparency service:
+
+   {
+     "@version": "EP-AUTHORITY-DOC-v1",
+     "org": { "name": "...", "domain": "acme.example" },
+     "seq": 3,
+     "prev_doc_digest": "sha256:<core digest of doc seq 2>",
+     "root_key": "<b64url SPKI>",
+     "issuer_keys": [
+       { "kid": "<hex>", "key": "<b64url SPKI>",
+         "usages": ["evidence_issuer", "authority_proof_issuer"],
+         "valid_from": "...", "valid_to": "...",
+         "revoked_at": "<OPTIONAL>" }
+     ],
+     "issued_at": "...",
+     "sig": "<root_key over the canonical core>",
+     "continuity_sig": "<by a key from the PREVIOUS doc>",
+     "endorsements": [ { "by_org": "...", "by_key": "...",
+                         "doc_digest": "...", "sig": "..." } ]
+   }
+
+   The signed core is the document without sig, continuity_sig, and
+   endorsements; its canonical digest is the document's identity.
+   Endorsements are countersignatures over that digest by OTHER
+   authorities — third-party attestations that ride with the document
+   without being part of it.
+
+3.  Scoped Authority Proof (EP-AUTHORITY-PROOF-v1)
+
+   An accepted issuer key with the authority_proof_issuer usage MAY sign
+   a snapshot of one subject's authority.  The proof records what the
+   authority source asserted at issuance; it does not grant authority
+   merely because it is carried with an action.
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 3]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+   {
+     "@type": "EP-AUTHORITY-PROOF-v1",
+     "authority_id": "auth_cfo",
+     "subject": "ep:approver:ada",
+     "organization_id": "org1",
+     "role": "cfo",
+     "scope": ["payment.release"],
+     "limits": { "max_amount_usd": 50000, "currency": "USD" },
+     "validity": {
+       "from": "2026-01-01T00:00:00Z",
+       "to": "2027-01-01T00:00:00Z"
+     },
+     "revocation": {
+       "status": "not_revoked",
+       "checked_at": "2026-07-14T16:00:00Z"
+     },
+     "registry_head": "sha256:<snapshot digest>",
+     "registry_epoch": 17,
+     "policy_hash": "sha256:<applicable policy digest>",
+     "issued_at": "2026-07-14T16:00:00Z",
+     "signature": {
+       "algorithm": "Ed25519",
+       "key_id": "ep:authority-registry-key:sha256:<prefix>",
+       "public_key": "<b64url SPKI>",
+       "proof_digest": "sha256:<signed-body digest>",
+       "signature_b64u": "<signature>"
+     }
+   }
+
+   The signed body is the proof without the signature member, domain-
+   separated with the ASCII string "EP-AUTHORITY-PROOF-v1" followed by a
+   zero octet, and canonicalized using JCS [RFC8785].  The public key
+   carried in the signature envelope is a verification input only.  It
+   MUST NOT establish its own authority.  A relying party MUST resolve
+   it through an accepted Authority Document or match it to an
+   independently pinned authority issuer key.
+
+   The max_amount_usd field is the implemented v1 monetary limit.  It
+   permits no currency conversion: a proof denominated in USD MUST NOT
+   satisfy a limit check for another currency.  Profiles that need other
+   monetary representations MUST define their canonical amount and
+   comparison rules rather than relying on floating-point currency
+   conversion.
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 4]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+4.  Authority Evaluation
+
+   Given an action, its authorization evidence, an Authority Proof, and
+   relying-party trust inputs, a verifier MUST perform all of the
+   following checks.  A missing or failed required check produces a
+   refusal; no unknown value is treated as permission.
+
+   1.  Verify the proof digest and signature and establish that the
+       signing key is accepted for authority-proof issuance.
+
+   2.  Match subject and organization to the approving identity and
+       action context.  A proof for one subject or organization MUST NOT
+       be substituted for another.
+
+   3.  Require the action type to be within scope and any required role
+       to match.
+
+   4.  Apply every material limit.  If a capped action omits the amount
+       or currency needed for comparison, refuse it.
+
+   5.  Check that the action authorization time falls within the
+       authority validity window and that the policy hash, when present,
+       matches the policy being evaluated.
+
+   6.  Check the registry head and minimum epoch required by the relying
+       party.  A stale or unavailable required authority view is not
+       equivalent to an unbounded grant.
+
+   7.  Apply revocation at its effective time.  Terminal revocation
+       evidence does not age out.  A not_revoked snapshot establishes
+       only the status observed at checked_at; current status is a
+       separate, freshness-bounded input
+       [I-D.schrock-ep-revocation-statement].
+
+   Portable profiles SHOULD express ceremony strength as verifier-
+   visible proof predicates, such as user verification, named-human
+   binding, or device binding.  This document does not define a
+   universal letter-grade assurance taxonomy.
+
+5.  Separation of Duties and Quorum
+
+   Authority and independence are different properties.  An authority
+   source can establish that a subject is eligible to approve an action;
+   it cannot establish that the subject did not initiate that same
+   action merely by asserting a flag.  Initiator exclusion MUST be
+   evaluated by joining the signed initiator and approver identities for
+   the action.  For a quorum, every counted approver MUST have its own
+   accepted authority proof, and the authorization profile MUST
+
+
+
+Schrock                  Expires 15 January 2027                [Page 5]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+   separately enforce distinct-human and initiator-exclusion
+   requirements.
+
+6.  Rotation, Continuity, and Time-of-Issuance
+
+   Documents chain: seq increments by one, prev_doc_digest names the
+   previous core digest, and each rotation MUST carry a continuity
+   signature by the previous document's root key or one of its non-
+   revoked issuer keys.  A verifier walking the chain therefore needs
+   exactly one leap — the first document it ever saw — and every
+   subsequent rotation is mechanically checkable.  A rotation without
+   valid continuity MUST be flagged, never silently accepted; whether
+   endorsements can substitute for continuity is the relying party's
+   policy (Section 9), not a default.
+
+   Two invariants govern key resolution, and implementations that miss
+   either will hurt someone:
+
+   1.  Time of issuance.  An artifact verifies against the key that was
+       valid WHEN THE ARTIFACT WAS ISSUED.  Rotation never invalidates
+       previously issued evidence, and a revocation voids a key only for
+       signatures claimed at or after revoked_at — honest history
+       survives compromise.
+
+   2.  Newest document authoritative.  The newest document that mentions
+       a key identifier is authoritative for it.  A revocation recorded
+       in document N MUST NOT be undone by resolving the same key
+       identifier against the pre-revocation entry in document N-1.
+
+7.  Anti-Equivocation
+
+   A malicious authority might show different documents to different
+   relying parties.  The hash chain exposes a fork when a verifier
+   possesses both branches or a previously pinned head.  Registration to
+   a transparency service [RFC9943] can make revisions discoverable, but
+   inclusion in one log view alone does not prove global consistency.
+   Split-view resistance requires an independently checked consistency
+   mechanism such as witnesses, gossip, or cross-logging.  A profile
+   MUST state which of those observations it requires; this document
+   does not convert log inclusion into automatic acceptance.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 6]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+8.  Introduction as Evidence: Graded, Replayable Acceptance
+
+   Acceptance is not a boolean in a config file; it is a verdict over
+   introduction evidence, evaluated under a RELYING-PARTY policy, using
+   the same closed-verdict classification and replay-digest discipline
+   as the evidence-sufficiency layer this family defines for actions
+   ([I-D.schrock-ep-action-evidence-graph]).  The evidence facts: the
+   authority chain itself (consistent, signed, no unexplained continuity
+   breaks); domain binding (the relying party's own attested observation
+   that it fetched this document digest from the organization's origin);
+   transparency-log inclusion and FIRST-LOGGED AGE (history can be a
+   policy input, particularly when the history is independently
+   witnessed); and endorsements, graded by whether the endorser is among
+   the relying party's own pinned anchors.
+
+   Policies are per action class.  A relying party can require stronger
+   introduction evidence for money movement than for a low-impact
+   action.  New observations, such as an endorsement from an already
+   pinned anchor or a longer witnessed history, may satisfy an unchanged
+   policy, but they never alter that policy and never compel acceptance.
+   The replay result MUST identify the policy and observations used so
+   another evaluator can reproduce the decision.
+
+9.  Compromise Recovery
+
+   If an authority loses its keys entirely, continuity breaks by
+   construction.  The recovery path is explicit rather than exceptional:
+   the successor document is published with no (or invalid) continuity
+   signature, the break is flagged by every verifier, and the relying
+   party's policy decides what substitutes — typically an endorsement
+   threshold (a quorum of the relying party's pinned anchors
+   countersigning the successor document) plus a revocation statement
+   over the compromised keys.  A relying party with no such policy
+   simply continues to refuse: fail closed is the default, recovery is
+   opt-in.
+
+10.  Security Considerations
+
+   Nothing creates trust from nothing, and this document does not claim
+   to.  It makes the bootstrap and scoped-authority inputs explicit and
+   permits their checks to be replayed.  The residual assumptions are
+   named: domain binding inherits the Web PKI and is worth exactly that;
+   log-backed consistency is as strong as the log's operator or the
+   cross-log witnessing above it; endorsements are as strong as the
+   endorser and mean nothing until a relying party pins one.  A
+   presenter-supplied key cannot establish its own authority.  Key-
+   resurrection (resolving a revoked key through an older document) is
+   defeated by the newest-document-authoritative rule.  Hash chaining
+
+
+
+Schrock                  Expires 15 January 2027                [Page 7]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+   detects conflicting branches only when the verifier has a comparison
+   point; a single log view is insufficient to prove non-equivocation.
+   Rotation-based history rewriting is constrained by time-of-issuance
+   resolution.  No combination of missing observations grades toward
+   acceptance.
+
+11.  IANA Considerations
+
+   This document has no IANA actions.  A well-known URI registration
+   (ep-authority.json) is anticipated for a future revision.
+
+12.  References
+
+12.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+12.2.  Informative References
+
+   [I-D.schrock-ep-action-evidence-graph]
+              Schrock, I., "Action Evidence Graphs and Evidence Policy
+              Replay for High-Risk Agent Actions (EP-AEG)", Work in
+              Progress, Internet-Draft, draft-schrock-ep-action-
+              evidence-graph-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
+              evidence-graph/>.
+
+   [I-D.schrock-ep-revocation-statement]
+              Schrock, I., "Revocation Statements for Agent-Action
+              Authorization Evidence", Work in Progress, Internet-Draft,
+              draft-schrock-ep-revocation-statement-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              revocation-statement/>.
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 8]
+
+Internet-Draft           Authority Introduction                July 2026
+
+
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943,
+              DOI 10.17487/RFC9943, June 2026,
+              <https://www.rfc-editor.org/info/rfc9943>.
+
+Appendix A.  Implementation Status
+
+   Two Apache-2.0 reference components are published in the EMILIA
+   Protocol repository. lib/authority/authority-doc.js covers document
+   creation, rotation, chain verification, time-of-issuance key
+   resolution, endorsement verification, and introduction-policy replay.
+   lib/authority/proof.js and lib/authority/resolver.js cover signed
+   scoped-authority proofs and closed authority verdicts.  The authority
+   vector suite contains 27 cases, including unpinned-key, issuer-
+   substitution, amount, currency, scope, role, lifecycle, policy,
+   delegation, malformed-time, registry-head, and stale-epoch refusals.
+   This revision does not claim an integrated conformance result for
+   resolving an Authority Proof key through an Authority Document; that
+   join and its cross-language vectors are required before publication
+   of this revision.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 9]

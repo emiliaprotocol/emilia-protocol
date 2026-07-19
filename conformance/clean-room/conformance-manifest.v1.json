@@ -100,12 +100,12 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run-js.mjs",
-        "sha256": "a30043c2b51a685083c51eb2125b9466461ee1c182557bfdbb1ca51012ce174d"
+        "sha256": "4b14ba147aa3b9695efc73da34133927f8774f9dda14846a24e7c4a4da9e80d1"
       },
       "source": {
-        "files": 50,
-        "bytes": 771256,
-        "tree_sha256": "6d657c6c780c8ed33c48e5db389da376cbeca50696d3f397051b4b5dba790e84"
+        "files": 52,
+        "bytes": 797798,
+        "tree_sha256": "2634c2d819e0a6d0f4bf4ddb0b1bc5f95208c2ad13dc6a963093dd598a91e121"
       },
       "suites": 16,
       "vectors": 164,
@@ -118,12 +118,12 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run_py.py",
-        "sha256": "3d6a7f8c088999dc086e68c62d6c3285542c81f9928d84b02ce97c628bec01fe"
+        "sha256": "5026f6cf6d0bd6fc367fd38ae1fe8833f47ee02c2476fb135cae05e8104fe3e4"
       },
       "source": {
         "files": 1,
-        "bytes": 142494,
-        "tree_sha256": "ab1a4fb3c0671282fff7771a439807c0445efa9ee04d94f4d469d1de0b937b28"
+        "bytes": 156723,
+        "tree_sha256": "df84c63f42eb8384f2bbf2aec7f03e22cb646aa8569377ccaa49acefc6128b48"
       },
       "suites": 16,
       "vectors": 164,
@@ -136,12 +136,12 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "afb678fe06dcad9545537e2aec25762140ac64e37d807eb73e178662d11c970e"
+        "sha256": "6334db0e309b8d99cf340f8d603fa8cf615056f4ab65c2678f7f85f18c606979"
       },
       "source": {
-        "files": 30,
-        "bytes": 251043,
-        "tree_sha256": "8e0c98972fc051b010757892cf3197abf06ec1ea803dcb07a344cc20cfd46ac2"
+        "files": 31,
+        "bytes": 266635,
+        "tree_sha256": "72f96230b289074d137540937fcab3b3446bdad8a85adc7b59f169d1df6a745f"
       },
       "suites": 16,
       "vectors": 164,
@@ -149,5 +149,5 @@
       "status": "pass"
     }
   ],
-  "manifest_sha256": "7d6d2adfdd26b77d85e7892599436e1d08290d3496a90ae1ad3add936ff892c9"
+  "manifest_sha256": "0024a6c9eae7cc694cdd45d75599801f4601f38225dc033dc0b6ce1b9f095ed6"
 }

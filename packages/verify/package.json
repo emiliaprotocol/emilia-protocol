@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/verify",
-  "version": "3.8.1",
+  "version": "3.11.0",
   "description": "Zero-dependency offline verification for EP authorization receipts: Ed25519 receipts, Merkle anchors, commitment proofs, Class-A WebAuthn device signoffs, multi-party quorum (M-of-N / ordered, two-person rule), portable revocation, trusted-time attestation, provenance chains, long-term evidence records, federated cross-operator receipts (PIP-006), and the opt-in transparency knobs (witness cosignatures, RFC 3161 timestamp proofs, currency evaluation, consumption proofs, initiator-software attestation). Node uses built-in crypto; the /web build runs in any browser, edge, or Deno via Web Crypto. No EP infrastructure required.",
   "license": "Apache-2.0",
   "type": "module",
@@ -14,6 +14,9 @@
     "./web": {
       "import": "./web.js"
     },
+    "./strict-json": {
+      "import": "./strict-json.js"
+    },
     "./federation": {
       "import": "./federation.js"
     },
@@ -22,6 +25,13 @@
     },
     "./consent-grant": {
       "import": "./consent-grant.js"
+    },
+    "./resolution": {
+      "import": "./resolution.js"
+    },
+    "./document-action-binding": {
+      "import": "./document-action-binding.js",
+      "types": "./document-action-binding.d.ts"
     },
     "./witness.js": {
       "import": "./witness.js"
@@ -43,10 +53,17 @@
     },
     "./evidence-chain": {
       "import": "./evidence-chain.js"
+    },
+    "./agentroa": {
+      "import": "./agentroa.js"
+    },
+    "./orprg": {
+      "import": "./orprg.js"
     }
   },
   "files": [
     "index.js",
+    "strict-json.js",
     "web.js",
     "federation.js",
     "quorum.js",
@@ -62,12 +79,17 @@
     "initiator-attestation.js",
     "surface-binding.js",
     "consent-grant.js",
+    "resolution.js",
+    "document-action-binding.js",
+    "document-action-binding.d.ts",
     "pq-hybrid.js",
     "authority-proof.js",
     "reliance.js",
     "reliance-profile-registry.js",
     "reliance-gap.js",
     "evidence-chain.js",
+    "agentroa.js",
+    "orprg.js",
     "cli.js",
     "index.d.ts",
     "README.md",
@@ -99,7 +121,7 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
-    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js agent-binding.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js pq-hybrid.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js agent-binding.test.js agentroa.test.js orprg.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"

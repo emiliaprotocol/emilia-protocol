@@ -68,7 +68,12 @@ import {
 // Helper: build a mock Supabase client that returns specified data
 // ============================================================================
 
-function buildMockDb(commitRecord = null, { insertError = null, updateError = null, revokedKid = false } = {}) {
+function buildMockDb(commitRecord = null, {
+  insertError = null,
+  updateError = null,
+  revokedKid = false,
+  revokedKidError = null,
+} = {}) {
   const readChain = makeChain({ data: commitRecord, error: null });
   const writeInsertChain = makeChain({ data: null, error: insertError });
 
@@ -88,7 +93,10 @@ function buildMockDb(commitRecord = null, { insertError = null, updateError = nu
     // so it doesn't shadow the signature/status assertions; revocation behavior
     // is exercised in its own test below.
     if (table === 'revoked_commit_keys') {
-      return makeChain({ data: revokedKid ? { kid: 'ep-signing-key-1' } : null, error: null });
+      return makeChain({
+        data: revokedKid ? { kid: 'ep-signing-key-1' } : null,
+        error: revokedKidError,
+      });
     }
     return {
       select: (...args) => {
@@ -532,6 +540,49 @@ describe('verifyCommit', () => {
     expect(result.reasons).toContain('kid_revoked');
   });
 
+  it('fails closed when signing-key revocation state cannot be read', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
+    mockGetServiceClient.mockReturnValue(buildMockDb());
+    const commit = await issueCommit({ entity_id: 'entity-123', action_type: 'install' });
+
+    mockGetServiceClient.mockReturnValue(buildMockDb(commit, {
+      revokedKidError: { code: 'PGRST000', message: 'revocation store unavailable' },
+    }));
+
+    await expect(verifyCommit(commit.commit_id)).rejects.toMatchObject({
+      code: 'COMMIT_KEY_REVOCATION_CHECK_FAILED',
+      status: 503,
+    });
+  });
+
+  it('fails closed when durable nonce replay state cannot be read', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
+    mockGetServiceClient.mockReturnValue(buildMockDb());
+    const commit = await issueCommit({ entity_id: 'entity-123', action_type: 'install' });
+
+    let commitRead = 0;
+    mockGetServiceClient.mockReturnValue({
+      from(table) {
+        if (table === 'revoked_commit_keys') {
+          return makeChain({ data: null, error: null });
+        }
+        commitRead += 1;
+        return commitRead === 1
+          ? makeChain({ data: commit, error: null })
+          : makeChain({ data: null, error: { code: 'PGRST000', message: 'replay store unavailable' } });
+      },
+    });
+
+    await expect(verifyCommit(commit.commit_id)).rejects.toMatchObject({
+      code: 'COMMIT_REPLAY_CHECK_FAILED',
+      status: 503,
+    });
+  });
+
   it('expired commit returns { valid: false, status: "expired" }', async () => {
     const pastExpiry = new Date(Date.now() - 60 * 1000).toISOString();
     const db = buildMockDb({
@@ -770,6 +821,36 @@ describe('state machine', () => {
 // 6. bindReceiptToCommit
 // ============================================================================
 
+/**
+ * Mock DB for bindReceiptToCommit whose commit-status read returns `status`,
+ * whose UPDATE reports `affectedRows` rows changed, and which exposes the
+ * update spy so a test can assert whether any mutation was even attempted.
+ */
+function buildBindMockDb(status, { affectedRows = 1, updateError = null, existingReceiptId = null } = {}) {
+  const readChain = makeChain({
+    data: status ? { commit_id: 'epc_bind', status, receipt_id: existingReceiptId } : null,
+    error: null,
+  });
+  const updateResult = {
+    data: Array.from({ length: affectedRows }, () => ({ commit_id: 'epc_bind' })),
+    error: updateError,
+  };
+  const updateChain = {
+    eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    then: (resolve) => Promise.resolve(updateResult).then(resolve),
+  };
+  const updateSpy = vi.fn(() => updateChain);
+  const db = {
+    from: vi.fn(() => ({
+      select: (...args) => { readChain.select(...args); return readChain; },
+      update: updateSpy,
+    })),
+  };
+  return { db, updateSpy, updateChain };
+}
+
 describe('bindReceiptToCommit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -777,51 +858,104 @@ describe('bindReceiptToCommit', () => {
   });
 
   it('links receipt_id to an active commit', async () => {
-    const db = buildMockDb({
-      commit_id: 'epc_bind1',
-      status: 'active',
-    });
+    const { db, updateSpy } = buildBindMockDb('active', { affectedRows: 1 });
     mockGetServiceClient.mockReturnValue(db);
 
     const result = await bindReceiptToCommit('epc_bind1', 'receipt_xyz');
     expect(result.success).toBe(true);
     expect(result.receipt_id).toBe('receipt_xyz');
     expect(result.commit_id).toBe('epc_bind1');
+    // Legit path performs the bind mutation.
+    expect(updateSpy).toHaveBeenCalledWith({ receipt_id: 'receipt_xyz' });
   });
 
-  it('links receipt_id to a fulfilled commit', async () => {
-    const db = buildMockDb({
-      commit_id: 'epc_bind2',
-      status: 'fulfilled',
-    });
+  // SECURITY REGRESSION (Sentrix, high / state-integrity): a fulfilled commit is
+  // terminal — its authorization->receipt link is append-only. Binding a new
+  // receipt must be REFUSED and must NOT overwrite/persist anything.
+  it('refuses to rebind a fulfilled commit and performs no mutation', async () => {
+    const { db, updateSpy } = buildBindMockDb('fulfilled', { existingReceiptId: 'receipt_original' });
     mockGetServiceClient.mockReturnValue(db);
 
-    const result = await bindReceiptToCommit('epc_bind2', 'receipt_abc');
-    expect(result.success).toBe(true);
+    await expect(
+      bindReceiptToCommit('epc_bind2', 'receipt_attacker')
+    ).rejects.toMatchObject({ code: 'INVALID_STATE_FOR_RECEIPT', status: 409 });
+
+    // The mutation is guarded, not the response: no UPDATE is ever issued, so
+    // the already-recorded receipt_id cannot be overwritten.
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // SECURITY REGRESSION (Strix, high / CWE-362): the link is append-only even
+  // WHILE the commit is active. A second bind with a DIFFERENT receipt must be
+  // refused without issuing any UPDATE — otherwise two concurrent authorized
+  // binds could leave an attacker-chosen receipt_id as the persisted record.
+  it('refuses to overwrite an already-bound receipt while active, no mutation', async () => {
+    const { db, updateSpy } = buildBindMockDb('active', { existingReceiptId: 'receipt_original' });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(
+      bindReceiptToCommit('epc_bind_active', 'receipt_attacker')
+    ).rejects.toMatchObject({ code: 'RECEIPT_ALREADY_BOUND', status: 409 });
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // Re-binding the SAME receipt is an idempotent retry (bind->fulfill may be
+  // re-run after a fulfillment failure) and must succeed without re-mutating.
+  it('idempotent: re-binding the same receipt to an active commit succeeds, no mutation', async () => {
+    const { db, updateSpy } = buildBindMockDb('active', { existingReceiptId: 'receipt_xyz' });
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await bindReceiptToCommit('epc_bind_retry', 'receipt_xyz');
+    expect(result).toMatchObject({ success: true, receipt_id: 'receipt_xyz' });
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  // First-write-wins is enforced at the MUTATION: the UPDATE must carry the
+  // `receipt_id IS NULL` compare-and-set predicate so the second of two
+  // concurrent binds matches 0 rows at the database, not just in the pre-read.
+  it('predicates the bind UPDATE on receipt_id IS NULL (first-write-wins CAS)', async () => {
+    const { db, updateChain } = buildBindMockDb('active', { affectedRows: 1 });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await bindReceiptToCommit('epc_bind_cas', 'receipt_xyz');
+    expect(updateChain.is).toHaveBeenCalledWith('receipt_id', null);
+    expect(updateChain.eq).toHaveBeenCalledWith('status', 'active');
+  });
+
+  // The precondition read can race with a concurrent fulfill/revoke. Even if the
+  // status read still says 'active', the atomic `.eq('status','active')` UPDATE
+  // matches 0 rows once the commit has transitioned — that must be rejected, not
+  // silently reported as success.
+  it('refuses to bind when the commit leaves active concurrently (0 rows updated)', async () => {
+    const { db, updateSpy } = buildBindMockDb('active', { affectedRows: 0 });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(
+      bindReceiptToCommit('epc_race', 'receipt_race')
+    ).rejects.toMatchObject({ code: 'INVALID_STATE_FOR_RECEIPT', status: 409 });
+
+    // The UPDATE was attempted but matched nothing (the CAS predicate held).
+    expect(updateSpy).toHaveBeenCalledTimes(1);
   });
 
   it('revoked commit cannot accept receipt binding', async () => {
-    const db = buildMockDb({
-      commit_id: 'epc_bind3',
-      status: 'revoked',
-    });
+    const { db, updateSpy } = buildBindMockDb('revoked');
     mockGetServiceClient.mockReturnValue(db);
 
     await expect(
       bindReceiptToCommit('epc_bind3', 'receipt_def')
     ).rejects.toThrow("Cannot bind receipt to commit in 'revoked' state");
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it('expired commit cannot accept receipt binding', async () => {
-    const db = buildMockDb({
-      commit_id: 'epc_bind4',
-      status: 'expired',
-    });
+    const { db, updateSpy } = buildBindMockDb('expired');
     mockGetServiceClient.mockReturnValue(db);
 
     await expect(
       bindReceiptToCommit('epc_bind4', 'receipt_ghi')
     ).rejects.toThrow("Cannot bind receipt to commit in 'expired' state");
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 });
 

@@ -8,38 +8,41 @@
  * with no credentials; swap in `new Octokit({ auth })` for the real thing.
  * @license Apache-2.0
  */
-import crypto from 'node:crypto';
-import { createGate } from '../index.js';
+import { createGate, createEg1Harness } from '../index.js';
 import { createGithubManifest, guardGithubMutation } from './github.js';
 
-const canon = (v) => (v == null ? JSON.stringify(v)
-  : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
-    : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
-      : JSON.stringify(v));
-const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
-const ISSUER = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
-let n = 0;
-const mint = (extra = {}) => {
-  const payload = {
-    receipt_id: `gh_${++n}`, subject: 'agent:repo-bot', issuer: 'ep:org:demo', created_at: new Date().toISOString(),
-    claim: { action_type: 'github.repo.delete', owner: 'acme', repo: 'prod', outcome: 'allow_with_signoff', approver: 'ep:approver:cto', ...extra },
-  };
-  return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value: crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url') } };
-};
+const action = { action_type: 'github.repo.delete', owner: 'acme', repo: 'prod' };
+const harness = createEg1Harness({ action, idPrefix: 'gh' });
 
+const executed = [];
 const octokit = {
-  repos: { delete: async (p) => { console.log(`        !! GitHub API: repos.delete(${p.owner}/${p.repo}) EXECUTED`); return { status: 204 }; } },
+  repos: {
+    delete: async (p) => {
+      executed.push(`${p.owner}/${p.repo}`);
+      return { status: 204 };
+    },
+  },
 };
-const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [ISSUER] });
+const gate = createGate({
+  manifest: createGithubManifest(),
+  trustedKeys: [harness.publicKey],
+  approverKeys: harness.approverKeys,
+  rpId: harness.rpId,
+  allowedOrigins: harness.allowedOrigins,
+  allowEphemeralStore: true,
+});
 const G = (s) => `\x1b[32m${s}\x1b[0m`; const R = (s) => `\x1b[31m${s}\x1b[0m`;
 const line = (s) => console.log(s);
 
 async function attempt(label, params, receipt) {
+  const before = executed.length;
   try {
     const { reliance } = await guardGithubMutation(gate, octokit, { op: 'repo.delete', params, receipt });
-    line(`  ${label} -> ${G('ALLOWED')}  reliance=${reliance.verdict.toUpperCase()}`);
+    const mutation = executed.length === before + 1 ? `  GitHub API=${executed.at(-1)}` : '  GitHub API=NOT CALLED';
+    line(`  ${label} -> ${G('ALLOWED')}  reliance=${reliance.verdict.toUpperCase()}${mutation}`);
   } catch (e) {
-    line(`  ${label} -> ${R(`REFUSED ${e.status || ''}`)} (${e.gate?.reason || e.message})`);
+    const mutation = executed.length === before ? '  GitHub API=NOT CALLED' : '  GitHub API=CALLED';
+    line(`  ${label} -> ${R(`REFUSED ${e.status || ''}`)} (${e.gate?.reason || e.message})${mutation}`);
   }
 }
 
@@ -47,10 +50,10 @@ line('='.repeat(66));
 line('  EMILIA Gate × GitHub — agent tries to delete the production repo');
 line('='.repeat(66));
 await attempt('1. delete acme/prod, no receipt            ', { owner: 'acme', repo: 'prod' }, null);
-const approval = mint();
+const approval = harness.mint({ outcome: 'allow_with_signoff' });
 await attempt('2. delete acme/prod, valid human signoff   ', { owner: 'acme', repo: 'prod' }, approval);
 await attempt('3. same receipt replayed                   ', { owner: 'acme', repo: 'prod' }, approval);
-const reAppro = mint();
+const reAppro = harness.mint({ outcome: 'allow_with_signoff' });
 await attempt('4. approved acme/prod, but targets staging ', { owner: 'acme', repo: 'staging' }, reAppro);
 line('  ' + '-'.repeat(62));
 line('  No receipt, no mutation. The GitHub API is only reached on an allowed line.');

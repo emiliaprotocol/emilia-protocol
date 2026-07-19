@@ -6,11 +6,13 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { buildSamlSp, buildLoginUrl } from '@/lib/sso/saml';
 import { loadConnection, spOrigin } from '@/lib/sso/config';
 import { validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { signState, SAML_STATE_COOKIE } from '@/lib/sso/state';
 
 export async function GET(request) {
   const url = new URL(request.url);
@@ -35,8 +37,23 @@ export async function GET(request) {
   });
 
   try {
-    const redirectUrl = await buildLoginUrl(sp, { relayState: tenant });
-    return NextResponse.redirect(redirectUrl, 302);
+    // RelayState is a transport value, not an authorization input. Bind it to
+    // an HMAC-signed, browser-bound server state so ACS cannot be pointed at a
+    // different tenant by replacing the form field or query parameter.
+    const relayState = signState({
+      tenant,
+      nonce: crypto.randomBytes(16).toString('base64url'),
+    });
+    const redirectUrl = await buildLoginUrl(sp, { relayState });
+    const res = NextResponse.redirect(redirectUrl, 302);
+    // The IdP returns the assertion as a cross-site POST to ACS. SameSite=Lax
+    // suppresses this state cookie on that request, turning a valid signed
+    // RelayState into an unusable/ambiguous session. None is safe here because
+    // the value is HttpOnly, Secure, short-lived, and HMAC-bound to the flow.
+    res.cookies.set(SAML_STATE_COOKIE, relayState, {
+      httpOnly: true, secure: true, sameSite: 'none', path: '/api/sso/saml', maxAge: 600,
+    });
+    return res;
   } catch (err) {
     logger.error('[sso/saml/login] build failed:', err);
     return epProblem(500, 'authn_request_failed', 'Could not build the SAML AuthnRequest');

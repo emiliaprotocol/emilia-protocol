@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { fileContinuityClaim } from '@/lib/ep-ix';
 import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';

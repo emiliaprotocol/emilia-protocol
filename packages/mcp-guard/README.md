@@ -75,19 +75,30 @@ const guardedHandleTool = withMcpGuard(handleTool, {
   annotations: {
     release_payment: { irreversible: true, action: 'payment.release' },
     delete_record:   { irreversible: true, action: 'record.delete' },
-    search_entities: { readOnlyHint: true },           // passes through
+    search_entities: { irreversible: false },          // trusted local policy: pass through
   },
   policy: (name) => /^(release|delete|wire|transfer)_/.test(name),
-  defaultIrreversible: false,
+  defaultIrreversible: true, // secure default; explicitly annotate read-only tools
 
   // 2) Demand hook config (offline verify; pin the issuers you trust).
   verifyOpts: {
     trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],   // base64url SPKI
     maxAgeSec: 900,
     allowedOutcomes: ['allow', 'allow_with_signoff'],
+    assuranceClass: 'class_a',
+    approverKeys: ENROLLED_APPROVER_KEYS,
+    rpId: 'tools.example.com',
+    allowedOrigins: ['https://tools.example.com'],
+    // Required for quorum: relying-party-pinned roster, threshold, roles,
+    // initiator exclusion, and distinct-human/key requirements.
+    quorumPolicy: HIGH_RISK_TOOL_QUORUM_POLICY,
   },
 
-  // 3) Adapters — REQUIRED to exercise Path B (mint a new receipt).
+  // 3) One-time consumption. reserve() is an atomic insert-if-absent; commit
+  // and release are ownership-fenced. Use one durable store across the fleet.
+  store: durableReceiptStore, // { reserve, commit, release }
+
+  // 4) Adapters — REQUIRED to exercise Path B (mint a new receipt).
   //    Without them the middleware fails closed at the first missing stage.
   requestConsent:       async (ctx) => ({ approved: await askUser(ctx) }),
   requestClassASignoff: async (ctx) => ({ approved: await webauthnAssert(ctx) }),
@@ -97,6 +108,21 @@ const guardedHandleTool = withMcpGuard(handleTool, {
 // Then dispatch through the guarded function instead of the raw one.
 const result = await guardedHandleTool(name, args, { _meta: request.params._meta });
 ```
+
+Both presented receipts and receipts minted by Path B are reserved before the
+tool is invoked and committed after any invocation attempt. A replay, concurrent
+presentation, or uncertain effect cannot reuse the same approval. The default
+store is process-local for examples only; production fleets must inject the
+shared durable store shown above.
+
+For every irreversible call, the middleware binds the receipt to the configured
+action family **and** a strict-canonical digest of the tool name and material
+arguments. For example, `payment.release` becomes
+`payment.release:sha256:<digest>`. Changing an amount, destination, or any other
+argument therefore produces a different required action. Values outside EP's
+cross-language canonical profile (including floats, unsafe integers, `NaN`,
+`undefined`, and cyclic objects) refuse before an adapter or tool executes.
+`issueReceipt(ctx)` must mint the exact `ctx.action` supplied by the guard.
 
 > **Do not edit the shared mcp-server in this repo to adopt this.** The exact,
 > minimal change is a one-line swap at the dispatch site
@@ -133,7 +159,7 @@ const guardedHandleTool = withMcpReceiptGuard(handleTool, {
       approverId: 'ap_controller_jane',
       onSignoffRequired: async ({ signoff }) => waitForApprovedSignoff(signoff?.signoff_id),
     },
-    search_payments: { readOnlyHint: true },
+    search_payments: { irreversible: false },
   },
 });
 
@@ -196,12 +222,18 @@ runs.
 
 ## Classification rules (first hit wins)
 
-1. **Per-call override** — `args.__ep.irreversible === true | false`
-2. **Annotation** — `annotations[name].irreversible`, or the standard MCP
-   `destructiveHint` / `readOnlyHint`
+1. **Per-call escalation** — `args.__ep.irreversible === true` (caller data cannot downgrade)
+2. **Trusted local annotation** — `annotations[name].irreversible`.
+   `destructiveHint` may only escalate. MCP `readOnlyHint` is advisory and is
+   ignored by default; set `trustReadOnlyHints: true` only after independently
+   validating the metadata source.
 3. **Policy fn** — `policy(name, args) → boolean` (a throwing policy is treated
    as irreversible — fail safe)
-4. **Default** — `defaultIrreversible` (false unless you set it)
+4. **Default** — `defaultIrreversible` (true unless you explicitly lower it)
+
+`getAnnotations()` is treated as untrusted registry metadata: it may contribute
+only `destructiveHint`/`readOnlyHint`, cannot replace a locally pinned action or
+`irreversible` decision, and a throwing resolver fails closed.
 
 ## Provenance ledger
 

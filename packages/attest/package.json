@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/attest",
-  "version": "0.1.0",
-  "description": "Verify an agent identity (SHA-256 vs a known-good hash) and sign a work product as an offline-verifiable EP-RECEIPT-v1. The standardized, drop-in version of the Identity-Manager pattern: re-hash the identity, re-hash the work, check the Ed25519 signature and EP-MERKLE-v2 anchor with @emilia-protocol/verify. No server, no trust in the issuer.",
+  "version": "0.2.0",
+  "description": "Bind relying-party-pinned identity bytes and subject to a work-product hash in a signed EP receipt; no identity, authority, or execution overclaim.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@emilia-protocol/issue": "^0.4.0",
-    "@emilia-protocol/verify": "^3.8.1"
+    "@emilia-protocol/verify": "^3.10.0"
   },
   "keywords": [
     "emilia-protocol",

@@ -1,0 +1,147 @@
+{
+  "suite": "EP-TIME-ATTESTATION-v1",
+  "profile": "Executable trusted-time attestation vectors (real Ed25519). verifyTimeAttestation(att, opts) must return expect.valid.",
+  "vectors_version": "2.0.0",
+  "count": 6,
+  "vectors": [
+    {
+      "id": "accept_pinned_hash_bounds",
+      "expect": {
+        "valid": true
+      },
+      "time_attestation": {
+        "@version": "EP-TIME-ATTESTATION-v1",
+        "ts_authority_id": "ep:tsa:roughtime-1",
+        "hashed": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "time": "2026-06-20T12:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "ts_key_id": "tk1",
+          "public_key": "MCowBQYDK2VwAyEAC-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw",
+          "signature_b64u": "8TOXpHwiRc7CsWbi8A2q1Tg3oGNWmHhqEvPFqaNer8gMUvYPIGwzcxO1se8-M3UUWFehQsIsK4MiQFS8g0FrAw"
+        }
+      },
+      "tsa_keys": {
+        "ep:tsa:roughtime-1": {
+          "public_key": "MCowBQYDK2VwAyEAC-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw"
+        }
+      },
+      "expected_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "not_before": "2026-06-01T00:00:00.000Z",
+      "not_after": "2026-07-01T00:00:00.000Z"
+    },
+    {
+      "id": "reject_unpinned_tsa",
+      "expect": {
+        "valid": false
+      },
+      "time_attestation": {
+        "@version": "EP-TIME-ATTESTATION-v1",
+        "ts_authority_id": "ep:tsa:roughtime-1",
+        "hashed": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "time": "2026-06-20T12:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "ts_key_id": "tk1",
+          "public_key": "MCowBQYDK2VwAyEA2b8hSHSKhcidparY7gsPwtEF_TnUGkx5ZTY1TwrikAw",
+          "signature_b64u": "vFrW3MBYl2-id96FM-NVhuvqB6r0FZ5YnTQ0ZtDJiXTpo2QSHKCv2Ubq7Usmje8-fOuYb4jJDrTMAvMvaUrfDg"
+        }
+      },
+      "tsa_keys": {}
+    },
+    {
+      "id": "reject_tsa_key_substitution",
+      "expect": {
+        "valid": false
+      },
+      "time_attestation": {
+        "@version": "EP-TIME-ATTESTATION-v1",
+        "ts_authority_id": "ep:tsa:roughtime-1",
+        "hashed": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "time": "2026-06-20T12:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "ts_key_id": "tk1",
+          "public_key": "MCowBQYDK2VwAyEAXJxt8mHJy4QEdXdqrvzZRLQFMo-rKPmzqV70BJDT3oQ",
+          "signature_b64u": "CxLauJzsRWVrWC0L-HtQx52smDV5Aef5gz7XWhaj0NLsXyBxH1yqt4PdewMjSY-aZj-fnBdOgj3xLJA-FanFCg"
+        }
+      },
+      "tsa_keys": {
+        "ep:tsa:roughtime-1": {
+          "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+        }
+      }
+    },
+    {
+      "id": "reject_tampered_time",
+      "expect": {
+        "valid": false
+      },
+      "time_attestation": {
+        "@version": "EP-TIME-ATTESTATION-v1",
+        "ts_authority_id": "ep:tsa:roughtime-1",
+        "hashed": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "time": "2030-01-01T00:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "ts_key_id": "tk1",
+          "public_key": "MCowBQYDK2VwAyEAIEBA42TBDyvsnB_lAKHNTCR8idZQoB7X6CyrqGeHfCE",
+          "signature_b64u": "cXVmNsCpUd-F5QtphUpoCEoUXsn6ZRuHDXS40yHTZnhv4GxweDQzvnwGGY1dnEVFFcBtymiNJxHiCcHMBU_wBQ"
+        }
+      },
+      "tsa_keys": {
+        "ep:tsa:roughtime-1": {
+          "public_key": "MCowBQYDK2VwAyEAIEBA42TBDyvsnB_lAKHNTCR8idZQoB7X6CyrqGeHfCE"
+        }
+      }
+    },
+    {
+      "id": "reject_wrong_covered_hash",
+      "expect": {
+        "valid": false
+      },
+      "time_attestation": {
+        "@version": "EP-TIME-ATTESTATION-v1",
+        "ts_authority_id": "ep:tsa:roughtime-1",
+        "hashed": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "time": "2026-06-20T12:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "ts_key_id": "tk1",
+          "public_key": "MCowBQYDK2VwAyEAZs1gi5KLiOUODv6qM_rxxDzv4HKUsLh-n-CrpqPPdjM",
+          "signature_b64u": "WJ5EHJ_t-utJqgBt1hPMblVM9lBWVj2RalwdwuyNA-sduafDoCtjwKkETw6cXeQFDBFRck6jEWkiyofNdEbgAQ"
+        }
+      },
+      "tsa_keys": {
+        "ep:tsa:roughtime-1": {
+          "public_key": "MCowBQYDK2VwAyEAZs1gi5KLiOUODv6qM_rxxDzv4HKUsLh-n-CrpqPPdjM"
+        }
+      },
+      "expected_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "id": "reject_out_of_bounds_time",
+      "expect": {
+        "valid": false
+      },
+      "time_attestation": {
+        "@version": "EP-TIME-ATTESTATION-v1",
+        "ts_authority_id": "ep:tsa:roughtime-1",
+        "hashed": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "time": "2026-06-20T12:00:00.000Z",
+        "proof": {
+          "algorithm": "Ed25519",
+          "ts_key_id": "tk1",
+          "public_key": "MCowBQYDK2VwAyEAIIKL9cW9ystoSGMzbCAvtVmdpIvlWWYVdCFwcFvsqfc",
+          "signature_b64u": "VB_9LX8l6JifoP5OKrrVsnFZh-TjvsuqNEnBlRrVufAILPEvZ8EVZcFMDAA1_n3N2iub6On99M24Bznux2kgDQ"
+        }
+      },
+      "tsa_keys": {
+        "ep:tsa:roughtime-1": {
+          "public_key": "MCowBQYDK2VwAyEAIIKL9cW9ystoSGMzbCAvtVmdpIvlWWYVdCFwcFvsqfc"
+        }
+      },
+      "not_after": "2026-06-01T00:00:00.000Z"
+    }
+  ]
+}

@@ -31,6 +31,7 @@ vi.mock('@/lib/crypto', () => ({
 const mockSendTransaction = vi.fn();
 const mockWaitForTransactionReceipt = vi.fn();
 const mockPrivateKeyToAccount = vi.fn();
+const mockToAccount = vi.fn();
 
 vi.mock('viem', () => ({
   createWalletClient: vi.fn(() => ({
@@ -44,6 +45,7 @@ vi.mock('viem', () => ({
 
 vi.mock('viem/accounts', () => ({
   privateKeyToAccount: (...a) => mockPrivateKeyToAccount(...a),
+  toAccount: (...a) => mockToAccount(...a),
 }));
 
 vi.mock('viem/chains', () => ({
@@ -173,9 +175,10 @@ describe('anchorToBase — missing private key (production enforcement)', () => 
 describe('anchorToBase — happy path with viem mocked', () => {
   const FAKE_HASH = '0xdeadbeefcafe';
   const FAKE_ADDRESS = '0xabc123';
+  const VALID_PRIVATE_KEY = 'ab'.repeat(32);
 
   beforeEach(() => {
-    mockGetBlockchainConfig.mockReturnValue({ network: 'sepolia', walletPrivateKey: 'aabbccdd' });
+    mockGetBlockchainConfig.mockReturnValue({ network: 'sepolia', walletPrivateKey: VALID_PRIVATE_KEY });
     mockIsProduction.mockReturnValue(false);
     mockPrivateKeyToAccount.mockReturnValue({ address: FAKE_ADDRESS });
     mockSendTransaction.mockResolvedValue(FAKE_HASH);
@@ -198,7 +201,7 @@ describe('anchorToBase — happy path with viem mocked', () => {
   });
 
   it('constructs correct explorer URL for mainnet', async () => {
-    mockGetBlockchainConfig.mockReturnValue({ network: 'mainnet', walletPrivateKey: 'aabbccdd' });
+    mockGetBlockchainConfig.mockReturnValue({ network: 'mainnet', walletPrivateKey: VALID_PRIVATE_KEY });
     const result = await anchorToBase('batch-main', 'merkle-root-main');
     expect(result.explorerUrl).toBe(`https://basescan.org/tx/${FAKE_HASH}`);
   });
@@ -209,7 +212,7 @@ describe('anchorToBase — happy path with viem mocked', () => {
   });
 
   it('uses mainnet chain id 8453 when network=mainnet', async () => {
-    mockGetBlockchainConfig.mockReturnValue({ network: 'mainnet', walletPrivateKey: 'aabbccdd' });
+    mockGetBlockchainConfig.mockReturnValue({ network: 'mainnet', walletPrivateKey: VALID_PRIVATE_KEY });
     const result = await anchorToBase('batch-m', 'root-m');
     expect(result.chain).toBe(8453);
   });
@@ -220,9 +223,9 @@ describe('anchorToBase — happy path with viem mocked', () => {
   });
 
   it('strips 0x prefix from private key before passing to viem', async () => {
-    mockGetBlockchainConfig.mockReturnValue({ network: 'sepolia', walletPrivateKey: '0xdeadbeef' });
+    mockGetBlockchainConfig.mockReturnValue({ network: 'sepolia', walletPrivateKey: `0x${'de'.repeat(32)}` });
     await anchorToBase('batch-strip', 'root-strip');
-    expect(mockPrivateKeyToAccount).toHaveBeenCalledWith('0xdeadbeef');
+    expect(mockPrivateKeyToAccount).toHaveBeenCalledWith(`0x${'de'.repeat(32)}`);
   });
 
   it('sends transaction to self with calldata', async () => {
@@ -250,7 +253,7 @@ describe('anchorToBase — happy path with viem mocked', () => {
 
 describe('anchorToBase — viem error wrapping', () => {
   beforeEach(() => {
-    mockGetBlockchainConfig.mockReturnValue({ network: 'sepolia', walletPrivateKey: 'aabbccdd' });
+    mockGetBlockchainConfig.mockReturnValue({ network: 'sepolia', walletPrivateKey: 'ab'.repeat(32) });
     mockIsProduction.mockReturnValue(false);
     mockPrivateKeyToAccount.mockReturnValue({ address: '0xabc' });
   });

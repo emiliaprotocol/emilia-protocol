@@ -3,16 +3,26 @@
 // Trust gate: pre-action check. Returns allow/review/deny before executing a high-stakes action.
 
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { verifyDelegation } from '@/lib/delegation';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId, authEntityActor } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { canonicalize } from '@/lib/canonical-json';
 import { sha256 } from '@/lib/handshake/invariants';
+import { authorizeHandshakeVerify } from '@/lib/handshake-auth';
+import { consumeHandshake } from '@/lib/handshake/consume';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import {
+  buildGateCommitBindingFromGateRequest,
+  GATE_COMMIT_BINDING_VERSION,
+  GateCommitBindingError,
+  hashGateCommitBinding,
+} from '@/lib/gate-commit-binding';
 import { logger } from '../../../../lib/logger.js';
 
 const MAX_TRUST_GATE_BYTES = 256 * 1024;
@@ -33,11 +43,30 @@ export async function POST(request) {
 
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+    const actor = authEntityActor(auth);
+    const callerEntityId = authEntityId(auth);
+    const handshakeActor = { entity_id: callerEntityId };
 
     const { entity_id, action, policy = 'standard', value_usd, delegation_id, handshake_id, resource_ref, intent_ref } = body;
 
     if (!entity_id || !action) {
       return EP_ERRORS.BAD_REQUEST('entity_id and action are required');
+    }
+    if (entity_id !== callerEntityId && !delegation_id) {
+      return NextResponse.json({
+        error: 'entity_id must match the authenticated entity unless a delegation is supplied',
+        code: 'cross_entity_authorization_required',
+      }, { status: 403 });
+    }
+
+    let gateBindingHash;
+    try {
+      gateBindingHash = hashGateCommitBinding(buildGateCommitBindingFromGateRequest(body));
+    } catch (error) {
+      if (error instanceof GateCommitBindingError) {
+        return EP_ERRORS.BAD_REQUEST(error.message);
+      }
+      throw error;
     }
 
     // Fetch entity trust data via canonical evaluator
@@ -93,9 +122,19 @@ export async function POST(request) {
     if (delegation_id) {
       try {
         const dlg = await verifyDelegation(delegation_id, action);
-        delegationVerified = dlg.valid && (dlg.action_permitted !== false);
+        // A valid action scope alone is not enough. The authenticated caller
+        // must be the delegated agent and the requested entity must be the
+        // delegation principal; otherwise a caller can mint a commit for an
+        // unrelated entity by presenting any in-scope delegation id.
+        const delegationBindingMatches = dlg.agent_entity_id === callerEntityId
+          && dlg.principal_id === entity_id;
+        delegationVerified = dlg.valid
+          && (dlg.action_permitted !== false)
+          && delegationBindingMatches;
         if (!delegationVerified) {
-          reasons.push(dlg.reason || 'Delegation is invalid or action not in scope');
+          reasons.push(!delegationBindingMatches
+            ? 'Delegation principal/agent does not match the authenticated request'
+            : (dlg.reason || 'Delegation is invalid or action not in scope'));
         }
       } catch {
         delegationVerified = false;
@@ -103,18 +142,25 @@ export async function POST(request) {
       }
     }
 
-    // Verify handshake if provided
+    // Verify handshake if provided. The caller must be an initiator, responder,
+    // or policy-designated verifier; knowing a handshake UUID is not authority.
     let handshakeVerified = null;
+    let handshakeBinding = null;
     if (body.handshake_id) {
       try {
         const hsReadClient = getGuardedClient();
-        const { data: hs } = await hsReadClient
+        await authorizeHandshakeVerify(hsReadClient, authEntityId(auth), body.handshake_id);
+
+        const { data: hs, error: hsError } = await hsReadClient
           .from('handshakes')
           .select('handshake_id, status, action_type, resource_ref, action_hash, policy_hash')
           .eq('handshake_id', body.handshake_id)
           .maybeSingle();
 
-        if (!hs) {
+        if (hsError) {
+          reasons.push('Could not verify handshake');
+          handshakeVerified = false;
+        } else if (!hs) {
           reasons.push('Handshake not found');
           handshakeVerified = false;
         } else if (hs.status !== 'verified') {
@@ -140,19 +186,27 @@ export async function POST(request) {
 
           if (handshakeVerified !== false) {
             // Check binding not consumed
-            const { data: binding } = await hsReadClient
+            const { data: binding, error: bindingError } = await hsReadClient
               .from('handshake_bindings')
-              .select('consumed_at, expires_at')
+              .select('binding_hash, consumed_at, expires_at')
               .eq('handshake_id', body.handshake_id)
               .maybeSingle();
 
-            if (binding?.consumed_at) {
+            const expiryMs = Date.parse(binding?.expires_at || '');
+            if (bindingError) {
+              reasons.push('Could not verify handshake binding');
+              handshakeVerified = false;
+            } else if (!binding?.binding_hash) {
+              reasons.push('Handshake binding not found');
+              handshakeVerified = false;
+            } else if (binding.consumed_at) {
               reasons.push('Handshake binding already consumed');
               handshakeVerified = false;
-            } else if (binding && new Date(binding.expires_at) < new Date()) {
+            } else if (!Number.isFinite(expiryMs) || expiryMs <= Date.now()) {
               reasons.push('Handshake binding expired');
               handshakeVerified = false;
             } else {
+              handshakeBinding = binding;
               handshakeVerified = true;
             }
           }
@@ -163,7 +217,61 @@ export async function POST(request) {
       }
     }
 
-    const decision = reasons.length === 0 ? 'allow' : 'deny';
+    let decision = reasons.length === 0 ? 'allow' : 'deny';
+
+    // A gate decision is usable only when backed by a durable allow commit.
+    // For a handshake-backed decision, atomically consume the handshake first.
+    // This deliberately burns the approval if later commit issuance is uncertain:
+    // availability loss is safer than executing the same approval twice.
+    let commit_ref = null;
+    if (decision === 'allow') {
+      try {
+        if (body.handshake_id) {
+          await consumeHandshake({
+            handshake_id: body.handshake_id,
+            binding_hash: handshakeBinding.binding_hash,
+            consumed_by_type: 'trust_gate',
+            consumed_by_id: randomUUID(),
+            actor: handshakeActor,
+            consumed_by_action: action,
+          });
+        }
+
+        const commitResult = await protocolWrite({
+          type: COMMAND_TYPES.ISSUE_COMMIT,
+          actor,
+          input: {
+            entity_id,
+            action_type: action,
+            ...(delegation_id ? { delegation_id } : {}),
+            scope: {
+              policy,
+              gate_binding_version: GATE_COMMIT_BINDING_VERSION,
+              gate_binding_hash: gateBindingHash,
+              ...(body.handshake_id ? { handshake_id: body.handshake_id } : {}),
+              ...(body.resource_ref ? { resource_ref: body.resource_ref } : {}),
+              ...(body.intent_ref ? { intent_ref: body.intent_ref } : {}),
+            },
+            context: {
+              gate_decision: 'allow',
+              delegation_verified: delegationVerified,
+              handshake_verified: handshakeVerified,
+            },
+            policy,
+          },
+        });
+
+        if (commitResult?.decision !== 'allow' || !commitResult?.commit_id) {
+          reasons.push('Pre-authorization did not authorize this action');
+          decision = 'deny';
+        } else {
+          commit_ref = commitResult.commit_id;
+        }
+      } catch {
+        reasons.push('Pre-authorization could not be issued');
+        decision = 'deny';
+      }
+    }
 
     const extensions = {
       action,
@@ -181,48 +289,6 @@ export async function POST(request) {
 
     if (decision === 'deny') {
       extensions._note = 'Trust must never be more powerful than appeal.';
-    }
-
-    // Mint commit if allowed
-    let commit_ref = null;
-    if (decision === 'allow') {
-      try {
-        const commitResult = await protocolWrite({
-          type: COMMAND_TYPES.ISSUE_COMMIT,
-          actor: auth.entity || 'system',
-          input: {
-            entity_id,
-            action_type: action,
-            scope: {
-              policy,
-              ...(body.handshake_id ? { handshake_id: body.handshake_id } : {}),
-              ...(body.resource_ref ? { resource_ref: body.resource_ref } : {}),
-            },
-            context: {
-              gate_decision: decision,
-              delegation_verified: delegationVerified,
-              handshake_verified: handshakeVerified,
-            },
-          },
-        });
-        commit_ref = commitResult?.commit_id || null;
-
-        // Consume handshake binding after commit issuance
-        if (body.handshake_id && commit_ref) {
-          await protocolWrite({
-            type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
-            actor: auth.entity || 'system',
-            input: {
-              handshake_id: body.handshake_id,
-              consumed_by: entity_id,
-              consumed_for: `commit:${commit_ref}`,
-            },
-          });
-        }
-      } catch {
-        // Commit issuance failure should not block the gate response
-        warnings.push('Commit issuance failed');
-      }
     }
 
     if (commit_ref) extensions.commit_ref = commit_ref;

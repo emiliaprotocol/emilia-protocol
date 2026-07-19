@@ -19,12 +19,13 @@ export default function sitemap() {
   // Top-level marketing surfaces — highest crawl priority.
   const marketing = [
     { path: '/',                      priority: 1.0, changeFrequency: 'weekly' },
-    { path: '/agent-guard',           priority: 0.95, changeFrequency: 'weekly' },
+    { path: '/gate',                  priority: 0.98, changeFrequency: 'weekly' },
+    { path: '/assurance',             priority: 0.92, changeFrequency: 'weekly' },
+    { path: '/agent-guard',           priority: 0.85, changeFrequency: 'monthly' },
     { path: '/fire-drill',            priority: 0.95, changeFrequency: 'weekly' },
     { path: '/fire-drill/cf-1',       priority: 0.9,  changeFrequency: 'monthly' },
     { path: '/fire-drill/gallery',    priority: 0.8,  changeFrequency: 'weekly' },
     { path: '/fire-drill/report',     priority: 0.85, changeFrequency: 'weekly' },
-    { path: '/gate',                  priority: 0.95, changeFrequency: 'monthly' },
     { path: '/pricing',               priority: 0.9, changeFrequency: 'monthly' },
     { path: '/protocol',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/observatory',           priority: 0.95, changeFrequency: 'weekly' },
@@ -32,12 +33,14 @@ export default function sitemap() {
     { path: '/proof',                 priority: 0.95, changeFrequency: 'weekly' },
     { path: '/spec',                  priority: 0.9, changeFrequency: 'monthly' },
     { path: '/spec/trust-receipt',    priority: 0.85, changeFrequency: 'monthly' },
-    { path: '/govguard',              priority: 0.95, changeFrequency: 'monthly' },
-    { path: '/finguard',              priority: 0.95, changeFrequency: 'monthly' },
+    { path: '/govguard',              priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/finguard',              priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/grace',                 priority: 0.85, changeFrequency: 'monthly' },
     { path: '/insurance',             priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quorum',                priority: 0.9, changeFrequency: 'monthly' },
     { path: '/evidence-chain',        priority: 0.9, changeFrequency: 'monthly' },
     { path: '/mcp',                   priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/labs/google-cloud-reliance', priority: 0.85, changeFrequency: 'monthly' },
     { path: '/for-ai-companies',      priority: 0.9, changeFrequency: 'monthly' },
     { path: '/sovereignty',           priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quickstart',            priority: 0.85, changeFrequency: 'monthly' },
@@ -114,7 +117,7 @@ export default function sitemap() {
   //   /investors  — page is `noindex`; listing it in the sitemap is a
   //                 contradictory crawl signal that ends up in GSC's
   //                 "Excluded by noindex tag" bucket. The noindex stays.
-  //   /cloud      — this URL renders the gated EP Cloud dashboard
+  //   /cloud      — this URL renders the gated EMILIA Gate Cloud dashboard
   //                 (sidebar + signed-in chrome), not a marketing surface.
   //                 The marketing page is /product/cloud. Keeping /cloud
   //                 in the sitemap leads Google to a thin, gated UI and

@@ -63,26 +63,43 @@ function clientDataJson(challenge = CHALLENGE) {
   })).toString('base64url');
 }
 
-function makeClient() {
-  const calls = { updates: [], selects: [] };
+function makeClient({ contextDecision = 'approved' } = {}) {
+  const calls = { updates: [], selects: [], inserts: [], upserts: [] };
   function builder(table) {
-    const state = { table, eq: {}, is: {} };
+    const state = { table, eq: {}, is: {}, operation: 'select' };
     const b = {
       select() { return b; },
       eq(k, v) { state.eq[k] = v; return b; },
       is(k, v) { state.is[k] = v; return b; },
+      in() { return b; },
       order() { return b; },
       limit() { return b; },
-      update(patch) { calls.updates.push({ table, patch, state }); return b; },
+      update(patch) { state.operation = 'update'; calls.updates.push({ table, patch, state }); return b; },
+      insert(payload) {
+        calls.inserts.push({ table, payload });
+        return Promise.resolve({ data: null, error: null });
+      },
+      upsert(payload) {
+        calls.upserts.push({ table, payload });
+        return Promise.resolve({ data: null, error: null });
+      },
+      single() { return Promise.resolve({ data: null, error: null }); },
       then(resolve, reject) {
         try {
           calls.selects.push({ ...state });
           if (table === 'webauthn_challenges') {
+            if (state.operation === 'update') {
+              return resolve({ data: [{ id: 'ch_1' }], error: null });
+            }
             return resolve({
               data: [{
                 id: 'ch_1',
                 challenge: CHALLENGE,
-                context: { action_hash: 'sha256:approved-action', display_hash: 'sha256:display' },
+                context: {
+                  action_hash: 'sha256:approved-action',
+                  display_hash: 'sha256:display',
+                  decision: contextDecision,
+                },
                 context_hash: 'sha256:context',
                 expires_at: '2999-01-01T00:00:00.000Z',
               }],
@@ -164,5 +181,58 @@ describe('POST /api/v1/signoffs/:id/approve-webauthn — red-team ceremony harde
     expect(calls.selects.find((s) => s.table === 'webauthn_challenges').eq)
       .toMatchObject({ organization_id: 'org_1', challenge: CHALLENGE });
     expect(calls.updates).toHaveLength(0);
+  });
+
+  it('refuses to relabel a device-signed denial as approval', async () => {
+    const { client, calls } = makeClient({ contextDecision: 'denied' });
+    mockGetGuardedClient.mockReturnValue(client);
+
+    const res = await POST(req({
+      approver_id: 'cfo@example.com',
+      decision: 'approved',
+      assertion: {
+        id: 'cred_1',
+        response: {
+          clientDataJSON: clientDataJson(),
+          authenticatorData: 'auth',
+          signature: 'sig',
+        },
+      },
+    }), { params: Promise.resolve({ signoffId: 'sig_' + 'a'.repeat(32) }) });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).type).toContain('decision_mismatch');
+    expect(mockVerifyAuthenticationResponse).not.toHaveBeenCalled();
+    expect(calls.updates).toHaveLength(0);
+  });
+
+  it('records a verified denial from the signed context as a terminal rejection event', async () => {
+    const { client, calls } = makeClient({ contextDecision: 'denied' });
+    mockGetGuardedClient.mockReturnValue(client);
+    mockVerifyAuthenticationResponse.mockResolvedValue({
+      verified: true,
+      authenticationInfo: { newCounter: 1 },
+    });
+
+    const res = await POST(req({
+      approver_id: 'cfo@example.com',
+      decision: 'rejected',
+      assertion: {
+        id: 'cred_1',
+        response: {
+          clientDataJSON: clientDataJson(),
+          authenticatorData: 'auth',
+          signature: 'sig',
+        },
+      },
+    }), { params: Promise.resolve({ signoffId: 'sig_' + 'a'.repeat(32) }) });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ decision: 'rejected', signed_decision: 'denied', key_class: 'A' });
+    const recorded = calls.inserts.find((call) => call.table === 'audit_events')?.payload;
+    expect(recorded.event_type).toBe('guard.signoff.rejected');
+    expect(recorded.after_state.context.decision).toBe('denied');
+    expect(recorded.after_state.key_class).toBe('A');
   });
 });

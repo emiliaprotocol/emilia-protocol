@@ -45,7 +45,7 @@ export default function FinancialUseCasePage() {
 
   const HOW_EP_HELPS = [
     { title: 'Dual signoff with exact transaction binding', body: 'High-value transactions require two named principals to sign off on the exact amount, destination, and routing parameters. The signoff is cryptographically bound to those exact values.' },
-    { title: 'SOX-grade evidence production', body: 'Every high-risk financial action produces an immutable evidence chain: who requested, who authorized, what exact parameters, under what policy, at what time. Auditors get action-level proof, not access logs.' },
+    { title: 'Action-level control evidence', body: 'Each protected financial action can produce a tamper-evident record of who requested it, who authorized it, the exact parameters, the policy, and the time. Auditors still decide what conclusion the record supports.' },
     { title: 'Replay-resistant authorization', body: 'Each authorization is one-time consumable. A captured wire approval cannot be replayed for a different amount, a different beneficiary, or a different routing instruction.' },
     { title: 'Policy-bound evaluation', body: 'Trust decisions are evaluated against explicit policies: transaction thresholds, counterparty risk classes, velocity limits, and dual-approval requirements. No black-box scoring.' },
   ];
@@ -150,7 +150,7 @@ export default function FinancialUseCasePage() {
         {[
           'Every wire transfer and beneficiary change requires a handshake binding the exact destination, amount, and authorizing principals',
           'Dual signoff is enforced at the action level, not the role or session level',
-          'Every high-risk financial action produces SOX-grade evidence: principal, authority chain, policy, exact parameters, timestamp',
+          'Every protected financial action can preserve control-testing evidence: principal, authority chain, policy, exact parameters, and timestamp',
           'Replay resistance ensures a captured approval cannot be reused for a different transaction',
           'Compliance teams receive action-level audit trails that satisfy regulatory examination requirements',
         ].map((item, i) => (
@@ -190,7 +190,7 @@ export default function FinancialUseCasePage() {
           'One-time wire approval semantics: each authorization is cryptographically bound to a single transaction and consumed on use. A captured approval cannot authorize a second wire.',
           'Exact transaction binding: the handshake locks amount, currency, beneficiary, routing instruction, and settlement date. Any parameter change invalidates the authorization.',
           'Dual signoff support: high-value and high-risk transactions require two named principals to independently sign off on the exact same bound parameters before execution proceeds.',
-          'Immutable event chain: every handshake, signoff, and execution produces a tamper-evident record. Compliance teams receive SOX-grade action-level evidence, not session access logs.',
+          'Tamper-evident event chain: each protected handshake, signoff, and execution statement can be reconstructed as action-level control evidence rather than only a session access log.',
         ].map((item, i) => (
           <div key={i} className={`ep-list-item ep-reveal ep-stagger-${i + 1}`}>
             <span className="ep-list-bullet">+</span>

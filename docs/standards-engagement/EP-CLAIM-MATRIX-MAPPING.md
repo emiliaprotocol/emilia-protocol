@@ -201,7 +201,7 @@ remain at their stated lower evidence types.
   revocation I-D posts and its vector file joins the revocation suites.
 - **Evidence type**: local-harness.
 - **Evidence reference**: `conformance/vectors/revocation.v1.json`,
-  `revocation.exec.v1.json`, `time-attestation.v1.json`.
+  `revocation.exec.v2.json`, `time-attestation.v2.json`.
 
 ## C-009 — Failure handling
 

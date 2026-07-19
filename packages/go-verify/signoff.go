@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"time"
 )
 
@@ -34,9 +33,20 @@ func getStr(m map[string]any, k string) string {
 	return s
 }
 
-// VerifyWebAuthnSignoff verifies a Class-A device signoff. rpID "" skips the
-// audience check (matches JS opts.rpId absent). Never panics.
+// VerifyWebAuthnSignoff preserves the v2 fixed-arity API. rpID "" skips the
+// audience check (matches JS opts.rpId absent). Call
+// VerifyWebAuthnSignoffWithOrigins when the relying party pins origins.
 func VerifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rpID string) SignoffResult {
+	return verifyWebAuthnSignoff(signoff, approverPubKeyB64u, rpID)
+}
+
+// VerifyWebAuthnSignoffWithOrigins verifies the same Class-A ceremony and also
+// requires clientDataJSON.origin to equal one relying-party-pinned origin.
+func VerifyWebAuthnSignoffWithOrigins(signoff map[string]any, approverPubKeyB64u string, rpID string, allowedOrigins []string) SignoffResult {
+	return verifyWebAuthnSignoff(signoff, approverPubKeyB64u, rpID, allowedOrigins)
+}
+
+func verifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rpID string, allowedOrigins ...[]string) SignoffResult {
 	checks := map[string]bool{
 		"challenge_binding": false, "client_data_type": false, "user_present": false,
 		"user_verified": false, "signature": false,
@@ -59,14 +69,29 @@ func VerifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rp
 	if err != nil {
 		return SignoffResult{false, checks}
 	}
-	var client map[string]any
-	if json.Unmarshal(cdBytes, &client) != nil {
+	client, err := decodeStrictJSONObject(cdBytes)
+	if err != nil {
 		return SignoffResult{false, checks}
 	}
 	sum := sha256.Sum256([]byte(Canonicalize(ctx)))
 	expected := base64.RawURLEncoding.EncodeToString(sum[:])
 	checks["challenge_binding"] = getStr(client, "challenge") == expected
 	checks["client_data_type"] = getStr(client, "type") == "webauthn.get"
+	originOK := true
+	if len(allowedOrigins) > 0 {
+		originOK = false
+		origin := getStr(client, "origin")
+		for _, allowed := range allowedOrigins[0] {
+			if origin == allowed {
+				originOK = true
+				break
+			}
+		}
+		if crossOrigin, ok := client["crossOrigin"].(bool); ok && crossOrigin {
+			originOK = false
+		}
+		checks["origin"] = originOK
+	}
 
 	ad, err := b64urlDecode(adB64)
 	if err != nil || len(ad) < 37 {
@@ -95,7 +120,7 @@ func VerifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rp
 		}
 	}
 	valid := checks["challenge_binding"] && checks["client_data_type"] && checks["user_present"] &&
-		checks["user_verified"] && checks["signature"] && (!rpChecked || rpOK)
+		checks["user_verified"] && checks["signature"] && (!rpChecked || rpOK) && originOK
 	return SignoffResult{valid, checks}
 }
 
@@ -122,9 +147,19 @@ func parseMillis(ts string) (int64, bool) {
 	return t.UnixMilli(), true
 }
 
-// VerifyQuorum verifies an EP-QUORUM-v1 document. Fail-closed; composes
-// VerifyWebAuthnSignoff per member. Mirrors quorum.js.
+// VerifyQuorum preserves the v2 fixed-arity API and verifies an EP-QUORUM-v1
+// document. Call VerifyQuorumWithOrigins when the relying party pins origins.
 func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
+	return verifyQuorum(quorum, rpID)
+}
+
+// VerifyQuorumWithOrigins verifies every member ceremony against the same
+// relying-party-pinned origin set in addition to the quorum predicates.
+func VerifyQuorumWithOrigins(quorum map[string]any, rpID string, allowedOrigins []string) QuorumResult {
+	return verifyQuorum(quorum, rpID, allowedOrigins)
+}
+
+func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string) QuorumResult {
 	checks := map[string]bool{
 		"all_signatures_valid": false, "action_binding": false, "distinct_humans": false,
 		"distinct_keys": false, "initiator_excluded": false, "roles_admitted": false,
@@ -144,9 +179,9 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	for i, m := range membersAny {
 		members[i] = getMap(m)
 	}
-	mode := "threshold"
-	if getStr(policy, "mode") == "ordered" {
-		mode = "ordered"
+	mode := getStr(policy, "mode")
+	if mode != "threshold" && mode != "ordered" {
+		return QuorumResult{false, checks}
 	}
 	distinctHumans := true
 	if v, ok := policy["distinct_humans"].(bool); ok {
@@ -180,7 +215,7 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	issuedOK := make([]bool, len(members))
 	memberValid := make([]bool, len(members))
 	for i, m := range members {
-		r := VerifyWebAuthnSignoff(getMap(m["signoff"]), getStr(m, "approver_public_key"), rpID)
+		r := verifyWebAuthnSignoff(getMap(m["signoff"]), getStr(m, "approver_public_key"), rpID, allowedOrigins...)
 		memberValid[i] = r.Valid
 		if !r.Valid {
 			allSigs = false

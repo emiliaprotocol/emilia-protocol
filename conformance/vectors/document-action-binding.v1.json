@@ -1,0 +1,386 @@
+{
+  "suite": "EP-DOCUMENT-ACTION-BINDING-v1",
+  "profile": "Executable mapping-only conformance vectors with real Ed25519 signatures. valid never means party acceptance.",
+  "vectors_version": "1.0.0",
+  "cryptography": {
+    "canonicalization": "RFC 8785 / EP I-JSON profile",
+    "binding_digest": "SHA-256(domain || JCS(core))",
+    "signature": "Ed25519(domain || JCS(core))",
+    "document_digest": "SHA-256(final document bytes)",
+    "action_digest": "SHA-256(JCS(release action template))"
+  },
+  "count": 6,
+  "fixtures": {
+    "documents": {
+      "final": "JVBERi0xLjcKJSBFUCBEQUIgZmluYWwgYWdyZWVtZW50CjEgMCBvYmo8PC9UeXBlL0NhdGFsb2c-PmVuZG9iagolJUVPRgo",
+      "substituted": "JVBERi0xLjcKJSBFUCBEQUIgZmlvYWwgYWdyZWVtZW50CjEgMCBvYmo8PC9UeXBlL0NhdGFsb2c-PmVuZG9iagolJUVPRgo"
+    },
+    "actions": {
+      "expected": {
+        "action_type": "settlement.funds_release",
+        "agreement_id": "agreement:settlement-2026-001",
+        "amount": "125000.00",
+        "currency": "USD",
+        "destination_digest": "sha256:abababababababababababababababababababababababababababababababab"
+      },
+      "substituted": {
+        "action_type": "settlement.funds_release",
+        "agreement_id": "agreement:settlement-2026-001",
+        "amount": "125001.00",
+        "currency": "USD",
+        "destination_digest": "sha256:abababababababababababababababababababababababababababababababab"
+      }
+    },
+    "required_parties": [
+      {
+        "party_id": "party:contractor-acme",
+        "role": "contractor"
+      },
+      {
+        "party_id": "party:homeowner-alex",
+        "role": "homeowner"
+      },
+      {
+        "party_id": "party:homeowner-jordan",
+        "role": "homeowner"
+      }
+    ],
+    "issuer_keys": {
+      "key:issuer:document-mapper:2026-01": {
+        "issuer_id": "issuer:document-mapper",
+        "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+      }
+    },
+    "bindings": {
+      "valid": {
+        "profile": "EP-DOCUMENT-ACTION-BINDING-v1",
+        "binding_id": "dab:settlement-2026-001:v1",
+        "agreement_id": "agreement:settlement-2026-001",
+        "mapping_issuer": {
+          "issuer_id": "issuer:document-mapper",
+          "key_id": "key:issuer:document-mapper:2026-01"
+        },
+        "document": {
+          "digest": "sha256:4e0d31e4867dbfe7cd90619a9f4c75404d664c3e625392306891193501830f8a",
+          "media_type": "application/pdf",
+          "byte_length": 71
+        },
+        "material_terms": [
+          {
+            "term_id": "effective_date",
+            "type": "date",
+            "value": "2026-07-15"
+          },
+          {
+            "currency": "USD",
+            "term_id": "release_amount",
+            "type": "amount",
+            "value": "125000.00"
+          },
+          {
+            "term_id": "release_scope",
+            "type": "string",
+            "value": "Final settlement payment"
+          }
+        ],
+        "release_action": {
+          "digest": "sha256:1d26f6b87b32b6f63e5f04f43e4f65c0315ddc8fd6db0bd90c406bb34f9cc8ee",
+          "template": {
+            "action_type": "settlement.funds_release",
+            "agreement_id": "agreement:settlement-2026-001",
+            "amount": "125000.00",
+            "currency": "USD",
+            "destination_digest": "sha256:abababababababababababababababababababababababababababababababab"
+          }
+        },
+        "parties": [
+          {
+            "party_id": "party:contractor-acme",
+            "role": "contractor"
+          },
+          {
+            "party_id": "party:homeowner-alex",
+            "role": "homeowner"
+          },
+          {
+            "party_id": "party:homeowner-jordan",
+            "role": "homeowner"
+          }
+        ],
+        "required_parties": [
+          {
+            "party_id": "party:contractor-acme",
+            "role": "contractor"
+          },
+          {
+            "party_id": "party:homeowner-alex",
+            "role": "homeowner"
+          },
+          {
+            "party_id": "party:homeowner-jordan",
+            "role": "homeowner"
+          }
+        ],
+        "validity": {
+          "not_after": "2026-08-15T00:00:00Z",
+          "not_before": "2026-07-15T00:00:00Z"
+        },
+        "binding_digest": "sha256:c2bca0343eb3a05d2f739a25d4756ce3006125935336558f7a5cf421ac0ba42b",
+        "issuer_signatures": [
+          {
+            "algorithm": "Ed25519",
+            "signature_b64u": "Y1BY1wLz8HkCdm2-p9pslf5GWPScYWK5sZioylQ-M2uol4t4wD1Bq7rOyZXjyWl3nwH0ZQEh_PdL7BxdnGW4Dw"
+          }
+        ]
+      },
+      "attacker": {
+        "profile": "EP-DOCUMENT-ACTION-BINDING-v1",
+        "binding_id": "dab:settlement-2026-001:v1",
+        "agreement_id": "agreement:settlement-2026-001",
+        "mapping_issuer": {
+          "issuer_id": "issuer:attacker",
+          "key_id": "key:issuer:attacker:2026-01"
+        },
+        "document": {
+          "digest": "sha256:4e0d31e4867dbfe7cd90619a9f4c75404d664c3e625392306891193501830f8a",
+          "media_type": "application/pdf",
+          "byte_length": 71
+        },
+        "material_terms": [
+          {
+            "term_id": "effective_date",
+            "type": "date",
+            "value": "2026-07-15"
+          },
+          {
+            "currency": "USD",
+            "term_id": "release_amount",
+            "type": "amount",
+            "value": "125000.00"
+          },
+          {
+            "term_id": "release_scope",
+            "type": "string",
+            "value": "Final settlement payment"
+          }
+        ],
+        "release_action": {
+          "digest": "sha256:1d26f6b87b32b6f63e5f04f43e4f65c0315ddc8fd6db0bd90c406bb34f9cc8ee",
+          "template": {
+            "action_type": "settlement.funds_release",
+            "agreement_id": "agreement:settlement-2026-001",
+            "amount": "125000.00",
+            "currency": "USD",
+            "destination_digest": "sha256:abababababababababababababababababababababababababababababababab"
+          }
+        },
+        "parties": [
+          {
+            "party_id": "party:contractor-acme",
+            "role": "contractor"
+          },
+          {
+            "party_id": "party:homeowner-alex",
+            "role": "homeowner"
+          },
+          {
+            "party_id": "party:homeowner-jordan",
+            "role": "homeowner"
+          }
+        ],
+        "required_parties": [
+          {
+            "party_id": "party:contractor-acme",
+            "role": "contractor"
+          },
+          {
+            "party_id": "party:homeowner-alex",
+            "role": "homeowner"
+          },
+          {
+            "party_id": "party:homeowner-jordan",
+            "role": "homeowner"
+          }
+        ],
+        "validity": {
+          "not_after": "2026-08-15T00:00:00Z",
+          "not_before": "2026-07-15T00:00:00Z"
+        },
+        "binding_digest": "sha256:9cb054df0f5a79758cbdbf99486673960d07845aff2a0ecc284128c58c2115c3",
+        "issuer_signatures": [
+          {
+            "algorithm": "Ed25519",
+            "signature_b64u": "xIYQmexBHunaC23kJbVdFtHSbGajygfaItDDcqLLkAfw2vfTwMfwz8wRPnPEzY626yBi3ZXP34_GW6U9T_S2AQ"
+          }
+        ]
+      },
+      "wrong_byte_length": {
+        "profile": "EP-DOCUMENT-ACTION-BINDING-v1",
+        "binding_id": "dab:settlement-2026-001:v1",
+        "agreement_id": "agreement:settlement-2026-001",
+        "mapping_issuer": {
+          "issuer_id": "issuer:document-mapper",
+          "key_id": "key:issuer:document-mapper:2026-01"
+        },
+        "document": {
+          "digest": "sha256:4e0d31e4867dbfe7cd90619a9f4c75404d664c3e625392306891193501830f8a",
+          "media_type": "application/pdf",
+          "byte_length": 72
+        },
+        "material_terms": [
+          {
+            "term_id": "effective_date",
+            "type": "date",
+            "value": "2026-07-15"
+          },
+          {
+            "currency": "USD",
+            "term_id": "release_amount",
+            "type": "amount",
+            "value": "125000.00"
+          },
+          {
+            "term_id": "release_scope",
+            "type": "string",
+            "value": "Final settlement payment"
+          }
+        ],
+        "release_action": {
+          "digest": "sha256:1d26f6b87b32b6f63e5f04f43e4f65c0315ddc8fd6db0bd90c406bb34f9cc8ee",
+          "template": {
+            "action_type": "settlement.funds_release",
+            "agreement_id": "agreement:settlement-2026-001",
+            "amount": "125000.00",
+            "currency": "USD",
+            "destination_digest": "sha256:abababababababababababababababababababababababababababababababab"
+          }
+        },
+        "parties": [
+          {
+            "party_id": "party:contractor-acme",
+            "role": "contractor"
+          },
+          {
+            "party_id": "party:homeowner-alex",
+            "role": "homeowner"
+          },
+          {
+            "party_id": "party:homeowner-jordan",
+            "role": "homeowner"
+          }
+        ],
+        "required_parties": [
+          {
+            "party_id": "party:contractor-acme",
+            "role": "contractor"
+          },
+          {
+            "party_id": "party:homeowner-alex",
+            "role": "homeowner"
+          },
+          {
+            "party_id": "party:homeowner-jordan",
+            "role": "homeowner"
+          }
+        ],
+        "validity": {
+          "not_after": "2026-08-15T00:00:00Z",
+          "not_before": "2026-07-15T00:00:00Z"
+        },
+        "binding_digest": "sha256:5eb7244668ec169925e6499f2dde6bba7319dc8b70b0b968de8d02e175cf7f0b",
+        "issuer_signatures": [
+          {
+            "algorithm": "Ed25519",
+            "signature_b64u": "o869DlXxBCnfrXbnLQTCc771sLIRbY7H-dTDeQiKgsPHkN_PJHR0SvuL4VnxnbdHDVImqe0fVT2UzPYiY7NrCw"
+          }
+        ]
+      }
+    }
+  },
+  "defaults": {
+    "verify": {
+      "now": "2026-07-17T12:00:00Z",
+      "allowed_media_types": [
+        "application/pdf"
+      ],
+      "allowed_party_roles": [
+        "contractor",
+        "homeowner"
+      ],
+      "allowed_action_types": [
+        "settlement.funds_release"
+      ],
+      "required_material_term_ids": [
+        "effective_date",
+        "release_amount",
+        "release_scope"
+      ],
+      "expected_binding_id": "dab:settlement-2026-001:v1",
+      "expected_agreement_id": "agreement:settlement-2026-001",
+      "document": "final",
+      "document_media_type": "application/pdf",
+      "release_action": "expected",
+      "expected_required_parties": true
+    }
+  },
+  "vectors": [
+    {
+      "id": "accept_pinned_mapping_with_repeated_role",
+      "binding": "valid",
+      "expect": {
+        "valid": true,
+        "reason": "valid",
+        "binding_digest": "sha256:c2bca0343eb3a05d2f739a25d4756ce3006125935336558f7a5cf421ac0ba42b"
+      }
+    },
+    {
+      "id": "reject_document_substitution",
+      "binding": "valid",
+      "verify": {
+        "document": "substituted"
+      },
+      "expect": {
+        "valid": false,
+        "reason": "document_digest_mismatch"
+      }
+    },
+    {
+      "id": "reject_action_substitution",
+      "binding": "valid",
+      "verify": {
+        "release_action": "substituted"
+      },
+      "expect": {
+        "valid": false,
+        "reason": "action_digest_mismatch"
+      }
+    },
+    {
+      "id": "reject_expired_window",
+      "binding": "valid",
+      "verify": {
+        "now": "2026-09-01T00:00:00Z"
+      },
+      "expect": {
+        "valid": false,
+        "reason": "binding_expired"
+      }
+    },
+    {
+      "id": "reject_unpinned_attacker_issuer",
+      "binding": "attacker",
+      "expect": {
+        "valid": false,
+        "reason": "issuer_key_not_pinned"
+      }
+    },
+    {
+      "id": "reject_signed_wrong_byte_length",
+      "binding": "wrong_byte_length",
+      "expect": {
+        "valid": false,
+        "reason": "document_byte_length_mismatch"
+      }
+    }
+  ]
+}

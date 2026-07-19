@@ -12,7 +12,8 @@
 // inside a single transaction that also checks the prior consume sentinel.
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -24,7 +25,7 @@ import { deriveSignoffUserVerification } from '@/lib/guard-signoff-uv.js';
 import { resolveGuardAuthority } from '@/lib/guard-authority.js';
 import { isTierQuorumEnforced } from '@/lib/env';
 import { countDistinctValidApprovers, requiredApprovalsForTier } from '@/lib/guard-tier.js';
-import { canReadReceipt } from '@/lib/tenant-binding.js';
+import { canMutateReceipt } from '@/lib/tenant-binding.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { resolveOrgQuorumTemplate, evaluateQuorumAgainstTemplate } from '@/lib/guard-quorum-template.js';
 
@@ -80,7 +81,10 @@ export async function POST(request, { params }) {
     // tightly scoped as read/evidence. An org-bound caller may consume only
     // its own org's receipt; an unbound transitional caller may consume only
     // its own created receipt. Mismatch => 404 to avoid receipt enumeration.
-    if (!canReadReceipt(auth, { organizationId: base.organization_id, creatorActorId: created.actor_id })) {
+    if (!canMutateReceipt(auth, {
+      organizationId: base.organization_id,
+      creatorActorId: created.actor_id,
+    }, 'receipt.consume')) {
       return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
     }
 
@@ -180,8 +184,11 @@ export async function POST(request, { params }) {
           );
         }
         const members = decisionsToMembers(base.quorum_policy, approvedDecisions, credsByCredentialId);
-        const { rpID } = getRpConfig();
-        const gate = quorumGate(base.quorum_policy, base.action_hash, members, { rpId: rpID });
+        const { rpID, origin } = getRpConfig();
+        const gate = quorumGate(base.quorum_policy, base.action_hash, members, {
+          rpId: rpID,
+          allowedOrigins: [origin],
+        });
         if (!gate.satisfied) {
           const failed = Object.entries(gate.checks || {})
             .filter(([, v]) => v === false)
@@ -235,12 +242,13 @@ export async function POST(request, { params }) {
             }
             approverPublicKeySpki = (credRows || [])[0]?.public_key_spki || null;
           }
-          const { rpID } = getRpConfig();
+          const { rpID, origin } = getRpConfig();
           const uv = deriveSignoffUserVerification({
             decision: approved.after_state,
             approverPublicKeySpki,
             expectedActionHash: base.action_hash,
             rpId: rpID,
+            allowedOrigins: [origin],
           });
           if (!uv.verified) {
             return epProblem(

@@ -209,7 +209,7 @@ export default function CloudLayout({ children }) {
       <div style={s.main}>
         <header style={s.topBar}>
           <span style={s.breadcrumb}>
-            EP Cloud {pathname !== '/cloud' ? ` / ${pathname.replace('/cloud/', '').split('/')[0]}` : ''}
+            EMILIA Gate Cloud {pathname !== '/cloud' ? ` / ${pathname.replace('/cloud/', '').split('/')[0]}` : ''}
           </span>
           <span style={s.envBadge}>demo data</span>
         </header>

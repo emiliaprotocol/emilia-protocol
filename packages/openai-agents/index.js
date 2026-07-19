@@ -43,14 +43,33 @@
 // The canonical makeReceiptGate encodes verify + target binding + reserve→
 // commit/release replay safety + sanitized {reason} rejections in one place.
 import { makeReceiptGate } from '../require-receipt/gate.js';
+import { strictJsonGate } from '../require-receipt/strict-json.js';
 
-/** Process-local set of consumed receipt_ids (replay defense). Per-process only.
- *  Shared across every per-action gate so one receipt is spent at most once. */
+/** Process-local atomic receipt states plus call-scoped replay keys. */
+const receiptStates = new Map();
 const consumed = new Set();
-const sharedStore = { has: (id) => consumed.has(id), add: (id) => consumed.add(id) };
+const sharedStore = {
+  ownershipFenced: true,
+  async reserve(id) {
+    if (receiptStates.has(id)) return false;
+    receiptStates.set(id, 'reserved');
+    return true;
+  },
+  async commit(id) {
+    if (receiptStates.get(id) !== 'reserved') throw new Error('reservation_not_owned');
+    receiptStates.set(id, 'committed');
+    return true;
+  },
+  async release(id) {
+    if (receiptStates.get(id) !== 'reserved') throw new Error('reservation_not_owned');
+    receiptStates.delete(id);
+    return true;
+  },
+};
 
 /** Reset the consumed-receipt set. Test/ops helper — not a production control. */
 export function _resetConsumed() {
+  receiptStates.clear();
   consumed.clear();
 }
 
@@ -78,11 +97,15 @@ function interruptionArgs(interruption) {
     interruption?.rawItem?.arguments ??
     undefined;
   if (raw === undefined || raw === null) return {};
-  if (typeof raw !== 'string') return raw;
+  if (typeof raw !== 'string') {
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : null;
+  }
+  if (Buffer.byteLength(raw, 'utf8') > 1024 * 1024 || !strictJsonGate(raw).ok) return null;
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
   } catch {
-    return raw;
+    return null;
   }
 }
 
@@ -95,6 +118,16 @@ function interruptionCallId(interruption) {
     interruption?.id ??
     null
   );
+}
+
+function deriveAction(actionFor, toolName, args) {
+  if (toolName == null) return null;
+  try {
+    const action = actionFor(toolName, args);
+    return typeof action === 'string' && action.length > 0 ? action : null;
+  } catch {
+    return null;
+  }
 }
 
 function isApprovalInterruption(interruption) {
@@ -122,10 +155,9 @@ function isApprovalInterruption(interruption) {
  */
 export function requireReceiptForOpenAIAgent(opts = {}) {
   const {
-    trustedKeys = [],
-    allowInlineKey = false,
-    maxAgeSec = 900,
     actionFor,
+    store = sharedStore,
+    ...gateOptions
   } = opts;
 
   if (typeof actionFor !== 'function') {
@@ -142,7 +174,7 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
   const gateFor = (action) => {
     let gate = gates.get(action);
     if (!gate) {
-      gate = makeReceiptGate({ action, trustedKeys, allowInlineKey, maxAgeSec, store: sharedStore });
+      gate = makeReceiptGate({ action, ...gateOptions, store });
       gates.set(action, gate);
     }
     return gate;
@@ -166,19 +198,25 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
    * stays retryable with a fresh, valid receipt. Replay is still checked here,
    * before any approval, so a receipt can satisfy at most one interruption.
    */
-  function decide(interruption, receipt) {
+  async function decide(interruption, receipt, { reserveOnly = false } = {}) {
     const toolName = interruptionToolName(interruption);
     const callId = interruptionCallId(interruption);
     const args = interruptionArgs(interruption);
     // Bind the receipt to THIS tool call. actionFor SHOULD incorporate the
     // specific call identity (callId or a hash of args) so a single receipt
     // cannot be reused across distinct tool calls — see the README note.
-    const action = toolName != null ? actionFor(toolName, args) : null;
+    const action = args === null ? null : deriveAction(actionFor, toolName, args);
 
     const base = { action, toolName, callId };
 
     if (!isApprovalInterruption(interruption)) {
       return { decision: 'reject', ...base, reason: 'not_a_tool_approval_interruption' };
+    }
+    if (args === null) {
+      return { decision: 'reject', ...base, reason: 'tool_arguments_invalid' };
+    }
+    if (!action) {
+      return { decision: 'reject', ...base, reason: 'action_binding_invalid' };
     }
     if (!receipt) {
       return { decision: 'reject', ...base, reason: 'no_receipt_for_interruption' };
@@ -197,7 +235,7 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
 
     // gate.check verifies (sanitized reason), enforces action binding + trust,
     // and reserves the receipt (one-time consumption / replay safety).
-    const c = gate.check(receipt);
+    const c = await gate.check(receipt);
     if (!c.ok) {
       // Map the gate's sanitized refusal to this adapter's decision vocabulary.
       // The gate uses `replay_refused`; this API has long exposed `receipt_replayed`.
@@ -212,14 +250,22 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
     // call-scoped guard: if this exact receipt already drove a DIFFERENT call,
     // refuse and release the reservation the gate just took.
     if (callKey && consumed.has(callKey)) {
-      gate.release(c.receiptId);
+      await gate.release(c.receiptId);
       return { decision: 'reject', ...base, reason: 'receipt_replayed', receipt_id: c.receiptId };
     }
 
-    // Record the reservation so resolve() can commit (driven approve) or release
-    // (rollback). decide() reserves but does NOT commit — a standalone approve
-    // that is never driven leaves the receipt retryable, matching prior behavior.
-    pending.set(c.receiptId, { gate, callKey });
+    if (reserveOnly) {
+      pending.set(c.receiptId, { gate, callKey });
+    } else {
+      try {
+        // A direct approval decision can drive external action immediately, so
+        // spend the receipt before returning approve.
+        await gate.commit(c.receiptId);
+        if (callKey) consumed.add(callKey);
+      } catch {
+        return { decision: 'reject', ...base, reason: 'consumption_commit_failed', receipt_id: c.receiptId };
+      }
+    }
 
     return {
       decision: 'approve',
@@ -247,12 +293,13 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
     }
     if (Array.isArray(receipts)) {
       const args = interruptionArgs(interruption);
-      const action = toolName != null ? actionFor(toolName, args) : null;
+      const action = args === null ? null : deriveAction(actionFor, toolName, args);
+      if (!action) return null;
       return receipts.find((r) => r?.payload?.claim?.action_type === action) ?? null;
     }
     if (typeof receipts === 'object') {
-      if (callId != null && callId in receipts) return receipts[callId];
-      if (toolName != null && toolName in receipts) return receipts[toolName];
+      if (callId != null && Object.prototype.hasOwnProperty.call(receipts, callId)) return receipts[callId];
+      if (toolName != null && Object.prototype.hasOwnProperty.call(receipts, toolName)) return receipts[toolName];
       return null;
     }
     return null;
@@ -279,61 +326,61 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
     const rejected = [];
     const decisions = [];
 
-    // Release the reservation decide() took when the approval is not actually
-    // driven (no approve() to call, or approve() threw) — keeps it retryable.
-    const releasePending = (d) => {
+    // Release only when no runtime approval was attempted.
+    const releasePending = async (d) => {
       if (!d.receipt_id) return;
       const p = pending.get(d.receipt_id);
       if (p) {
-        p.gate.release(d.receipt_id);
+        await p.gate.release(d.receipt_id);
         pending.delete(d.receipt_id);
       }
     };
 
     // Finalize one-time consumption for a driven approve: commit in the gate and
     // also record the compound call-scoped key for the cross-call replay guard.
-    const commitPending = (d) => {
+    const commitPending = async (d) => {
       if (!d.receipt_id) return;
       const p = pending.get(d.receipt_id);
       if (p) {
-        p.gate.commit(d.receipt_id); // moves receipt_id into the shared store
-        if (p.callKey) consumed.add(p.callKey);
-        pending.delete(d.receipt_id);
+        try {
+          await p.gate.commit(d.receipt_id); // spend before runtime approval
+          if (p.callKey) consumed.add(p.callKey);
+        } finally {
+          pending.delete(d.receipt_id);
+        }
       }
     };
 
     for (const interruption of interruptions) {
       const receipt = lookupReceipt(receipts, interruption);
-      const d = decide(interruption, receipt);
+      const d = await decide(interruption, receipt, { reserveOnly: true });
       decisions.push(d);
       if (d.decision === 'approve') {
-        // decide() RESERVED the receipt for this approve. Drive the SDK's
-        // approval now; commit (spend) only if approve() succeeds. If approve()
-        // is missing or throws, release the reservation so the (un-driven)
-        // approval stays retryable — a receipt is spent only when it drives one.
         if (state && typeof state.approve === 'function') {
           try {
-            state.approve(interruption);
-            commitPending(d);
+            // Commit first. Once the runtime sees approve, an effect may become
+            // inevitable; consumption must already be durable at that boundary.
+            await commitPending(d);
+            await state.approve(interruption);
             approved.push(interruption);
           } catch (err) {
-            releasePending(d);
             d.decision = 'reject';
-            d.reason = 'approve_failed';
+            d.reason = 'approve_or_consumption_failed';
             rejected.push(interruption);
             if (state && typeof state.reject === 'function') {
-              state.reject(interruption, { message: `EMILIA: approve_failed` });
+              await state.reject(interruption, { message: 'EMILIA: approve_or_consumption_failed' });
             }
           }
         } else {
-          // No approve() to drive -> do not spend the receipt.
-          releasePending(d);
-          approved.push(interruption);
+          await releasePending(d);
+          d.decision = 'reject';
+          d.reason = 'approval_runtime_unavailable';
+          rejected.push(interruption);
         }
       } else {
         rejected.push(interruption);
         if (state && typeof state.reject === 'function') {
-          state.reject(interruption, { message: `EMILIA: ${d.reason}` });
+          await state.reject(interruption, { message: `EMILIA: ${d.reason}` });
         }
       }
     }

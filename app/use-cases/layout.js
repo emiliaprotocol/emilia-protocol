@@ -1,16 +1,12 @@
 export const metadata = {
-  title: 'Use Cases — Where Pre-Action Trust Pays Off',
+  title: 'EMILIA Gate Solution Profiles',
   description:
-    'EMILIA Protocol use cases across government benefit integrity, ' +
-    'financial-fraud defense, enterprise privileged actions, and AI agent ' +
-    'execution governance. Real-world bindings of identity, authority, and ' +
-    'action context.',
+    'Solution profiles for applying EMILIA Gate to MCP tool calls, government, financial, energy, enterprise, and multi-party action boundaries.',
   alternates: { canonical: '/use-cases' },
   openGraph: {
-    title: 'Use Cases for Verifiable AI Action Authorization',
+    title: 'EMILIA Gate Solution Profiles',
     description:
-      'Government benefits, financial ops, enterprise privileged actions, ' +
-      'AI agent governance — where EP gates the action before execution.',
+      'One consequence firewall, adapted to configured action and evidence requirements.',
     url: 'https://www.emiliaprotocol.ai/use-cases',
     type: 'article',
   },

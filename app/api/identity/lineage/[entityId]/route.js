@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId, authEntityIsOperator } from '@/lib/auth-projections.js';
 import { getLineage } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
 import { logger } from '../../../../../lib/logger.js';
@@ -12,7 +13,7 @@ export async function GET(request, { params }) {
     const { entityId } = await params;
 
     // Restrict to the authenticated entity or operators only
-    if (auth.entity.entity_id !== entityId && !auth.entity.is_operator) {
+    if (authEntityId(auth) !== entityId && !authEntityIsOperator(auth)) {
       return EP_ERRORS.FORBIDDEN('You may only view your own entity lineage');
     }
 

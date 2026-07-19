@@ -91,6 +91,15 @@ def test_head_older_than_bound_is_stale():
     assert r["currency_at_T"]["reason"] == CURRENCY_REASON["fresh_head_stale"]
 
 
+def test_future_head_is_stale():
+    r = evaluate_currency({
+        "receipt": receipt, "authentic_as_of_commit": True, "now": NOW,
+        "maxStalenessSeconds": 300, "freshHead": head_at(-60),
+    })
+    assert r["currency_at_T"]["status"] == "stale"
+    assert r["currency_at_T"]["reason"] == CURRENCY_REASON["fresh_head_in_future"]
+
+
 def test_scalar_revoked_is_stale():
     r = evaluate_currency({
         "receipt": receipt, "authentic_as_of_commit": True, "now": NOW,

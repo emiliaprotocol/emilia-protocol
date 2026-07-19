@@ -15,7 +15,7 @@ function fakeStripe() {
 }
 function setup(action) {
   const harness = createEg1Harness({ action });
-  return { harness, gate: createGate({ manifest: createStripeManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys }), stripe: fakeStripe() };
+  return { harness, gate: createGate({ manifest: createStripeManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true }), stripe: fakeStripe() };
 }
 const PAYOUT = { action_type: 'stripe.payout.create', amount: 40000, currency: 'usd', destination: 'acct_x' };
 

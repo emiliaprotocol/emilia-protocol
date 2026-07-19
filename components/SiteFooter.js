@@ -2,65 +2,55 @@ import { color, font } from '@/lib/tokens';
 import { ENTITY } from '@/lib/site-config';
 
 const COL_PRODUCT = [
-  ['/agent-guard', 'Agent Guard'],
-  ['/protocol', 'Protocol'],
-  ['/spec', 'Specification'],
-  ['/govguard', 'GovGuard'],
-  ['/finguard', 'FinGuard'],
-  ['/signup', 'Start Free'],
+  ['/gate', 'EMILIA Gate'],
+  ['/gate/live', 'Live Gate'],
+  ['/product/accountable-signoff', 'Approver Apps'],
+  ['/assurance', 'Assurance Plane'],
   ['/pricing', 'Pricing'],
-  ['/network', 'Trust Network'],
-  ['/playground', 'Playground'],
-  ['/explorer', 'Explorer'],
-  ['/mcp', 'MCP Server'],
-  ['/for-ai-companies', 'For AI Companies'],
-  ['/adopt', 'Adopt'],
 ];
 
-const COL_RESOURCES = [
+const COL_SOLUTIONS = [
+  ['/mcp', 'MCP Tool Calls'],
+  ['/agent-guard', 'Agent Guard Profile'],
+  ['/govguard', 'Government Profile'],
+  ['/finguard', 'Financial Profile'],
+  ['/grace', 'Energy Profile'],
+  ['/quorum', 'Multi-party Approval'],
+];
+
+const COL_DEVELOPERS = [
   ['/docs', 'Docs'],
-  ['/observatory', 'Standards Observatory'],
-  ['/standards', 'Standards Map'],
-  ['/changelog', 'Changelog'],
-  ['/blog', 'Blog'],
-  ['/essays', 'Essays'],
-  ['/why-emilia', 'Why EMILIA'],
-  ['/why-agents-fail', 'Why Agents Fail'],
-  ['/compare', 'Comparisons'],
-  ['/auditors', 'For Auditors'],
-  ['/rfp', 'RFP Language'],
-  ['/governance', 'Governance'],
-  ['/badge', 'Badge'],
+  ['/quickstart', 'Gate Quickstart'],
+  ['/guides/require-receipt', 'Receipt Required Guide'],
+  ['/verify', 'Open Verifier'],
+  ['/mcp', 'MCP Integration'],
   ['https://github.com/emiliaprotocol/emilia-protocol', 'GitHub'],
 ];
 
-const COL_TRUST = [
+const COL_PROTOCOL = [
+  ['/protocol', 'Open Protocol'],
+  ['/spec', 'Specifications'],
   ['/proof', 'Engineering Evidence'],
-  ['/security', 'Trust & Security'],
-  ['/about', 'About'],
-  ['/.well-known/security.txt', 'Responsible Disclosure'],
-  ['/governance', 'Governance Framework'],
-];
-
-const COL_LEGAL = [
-  ['/legal/privacy', 'Privacy Policy'],
-  ['/legal/terms', 'Terms of Service'],
-  ['/legal/acceptable-use', 'Acceptable Use'],
-  ['/legal/sub-processors', 'Sub-processors'],
+  ['/observatory', 'Standards Observatory'],
+  ['/standards', 'Standards Map'],
+  ['/governance', 'Governance'],
 ];
 
 const COL_COMPANY = [
+  ['/about', 'About'],
   ['/partners', 'Partners'],
+  ['/security', 'Security'],
+  ['/auditors', 'For Auditors'],
   [`mailto:${ENTITY.email}`, 'Contact'],
-  [`mailto:${ENTITY.securityEmail}`, 'Security'],
-  ['/investors', 'Investor Inquiries'],
+  ['/legal/privacy', 'Privacy Policy'],
+  ['/legal/terms', 'Terms of Service'],
 ];
 
 const COLUMNS = [
   { title: 'Product',   links: COL_PRODUCT },
-  { title: 'Resources', links: COL_RESOURCES },
-  { title: 'Trust',     links: COL_TRUST },
-  { title: 'Legal',     links: COL_LEGAL },
+  { title: 'Solutions', links: COL_SOLUTIONS },
+  { title: 'Developers', links: COL_DEVELOPERS },
+  { title: 'Protocol', links: COL_PROTOCOL },
   { title: 'Company',   links: COL_COMPANY },
 ];
 
@@ -74,6 +64,29 @@ export default function SiteFooter() {
       background: color.bg,
     }}>
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 32,
+          alignItems: 'flex-end',
+          flexWrap: 'wrap',
+          paddingBottom: 34,
+          marginBottom: 40,
+          borderBottom: `1px solid ${color.border}`,
+        }}>
+          <div>
+            <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 19, color: color.t1 }}>
+              Protocol proves. Gate prevents.
+            </div>
+            <div style={{ fontSize: 13, color: color.t2, marginTop: 8, lineHeight: 1.6, maxWidth: 560 }}>
+              Gate enforces. Approver apps capture the human decision. The open Protocol preserves
+              independently reproducible proof. Assurance re-performs the record.
+            </div>
+          </div>
+          <a href="/gate" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>
+            Explore EMILIA Gate &rarr;
+          </a>
+        </div>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -130,7 +143,7 @@ export default function SiteFooter() {
             {ENTITY.registrationNumber && <div>Reg. {ENTITY.registrationNumber}</div>}
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div>&copy; {year} {ENTITY.legalName}. Apache 2.0 reference runtime.</div>
+            <div>&copy; {year} {ENTITY.legalName}. Protocol artifacts are Apache 2.0.</div>
             <div style={{ marginTop: 4 }}>
               <a href={`mailto:${ENTITY.privacyEmail}`} className="ep-footer-link">{ENTITY.privacyEmail}</a>
               {' · '}

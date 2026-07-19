@@ -4,7 +4,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGate, createEg1Harness } from '../index.js';
-import { createVercelManifest, guardVercelMutation, VERCEL_OPS } from './vercel.js';
+import {
+  createVercelManifest, guardVercelMutation, VERCEL_OPS,
+  secretValueDigest, SECRET_VALUE_BINDING_VERSION,
+} from './vercel.js';
 import { createCloudflareManifest, guardCloudflareMutation, CLOUDFLARE_OPS } from './cloudflare.js';
 import { createLinearManifest, guardLinearMutation, LINEAR_OPS } from './linear.js';
 import { createJiraManifest, guardJiraMutation, JIRA_OPS } from './jira.js';
@@ -14,7 +17,7 @@ const A = 'allow_with_signoff';
 const Q = { quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } };
 function setup(manifest, action) {
   const harness = createEg1Harness({ action });
-  return { harness, gate: createGate({ manifest, trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys }) };
+  return { harness, gate: createGate({ manifest, trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true }) };
 }
 
 test('op inventories', () => {
@@ -26,7 +29,14 @@ test('op inventories', () => {
 });
 
 test('vercel: env.set refused without receipt, runs with Class-A, drift refused', async () => {
-  const action = { action_type: 'vercel.env.set', project: 'app', key: 'STRIPE_KEY', target: 'production' };
+  const action = {
+    action_type: 'vercel.env.set',
+    project: 'app',
+    key: 'STRIPE_KEY',
+    target: 'production',
+    secret_value_digest: secretValueDigest('s'),
+    secret_value_version: SECRET_VALUE_BINDING_VERSION,
+  };
   const { harness, gate } = setup(createVercelManifest(), action);
   const calls = [];
   const client = { upsertEnv: async (p) => { calls.push(p); return { ok: true }; } };
@@ -35,7 +45,7 @@ test('vercel: env.set refused without receipt, runs with Class-A, drift refused'
   const ok = await guardVercelMutation(gate, client, { op: 'env.set', params: { project: 'app', key: 'STRIPE_KEY', target: 'production', value: 's' }, receipt: harness.mint({ outcome: A }) });
   assert.equal(ok.result.ok, true);
   await assert.rejects(
-    () => guardVercelMutation(gate, client, { op: 'env.set', params: { project: 'app', key: 'OTHER', target: 'production' }, receipt: harness.mint({ outcome: A }) }),
+    () => guardVercelMutation(gate, client, { op: 'env.set', params: { project: 'app', key: 'OTHER', target: 'production', value: 's' }, receipt: harness.mint({ outcome: A }) }),
     (e) => /binding/.test(e.gate.reason),
   );
 });
@@ -66,7 +76,7 @@ test('linear: bulk delete binds the query hash', async () => {
   const action = { action_type: 'linear.issue.bulk_delete', team: 'ENG', query_hash: undefined };
   // mint with the same query the call uses so the hash matches.
   const harness = createEg1Harness({ action: { action_type: 'linear.issue.bulk_delete', team: 'ENG' } });
-  const gate = createGate({ manifest: createLinearManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys });
+  const gate = createGate({ manifest: createLinearManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true });
   const client = { bulkDeleteIssues: async () => ({ deleted: 9 }) };
   // The receipt must carry the query_hash; mint with extra fields matching observed.
   const { hashCanonical } = await import('./_kit.js');

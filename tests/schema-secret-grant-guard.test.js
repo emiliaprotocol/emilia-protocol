@@ -34,6 +34,24 @@ const migrations = fs
   .sort()
   .map((f) => ({ file: f, sql: fs.readFileSync(path.join(MIG_DIR, f), 'utf8') }));
 
+function filesUnder(directory) {
+  const files = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...filesUnder(target));
+    else if (entry.isFile() && /\.(?:js|mjs)$/.test(entry.name)) files.push(target);
+  }
+  return files;
+}
+
+const runtimeSources = ['app', 'lib']
+  .flatMap((directory) => filesUnder(path.join(ROOT, directory)))
+  .map((file) => fs.readFileSync(file, 'utf8'))
+  .join('\n');
+const referencedAtomicRpcs = new Set(
+  [...runtimeSources.matchAll(/\.rpc\(\s*['"]([a-z][a-z0-9_]*_atomic)['"]/g)].map((match) => match[1]),
+);
+
 // Coarse statement split. Adequate for GRANT/REVOKE (no embedded ';'); we do NOT
 // use this for function-body checks (those scan whole files). Strip `-- ...` line
 // comments first so a statement's leading comment block doesn't shadow the verb.
@@ -62,6 +80,14 @@ function stmtActsOn(stmt, verb, table, col, role) {
 }
 
 describe('schema secret-disclosure contract (static)', () => {
+  it('guards every runtime atomic RPC in the live service-role-only contract', () => {
+    expect(referencedAtomicRpcs.size).toBeGreaterThan(0);
+    for (const name of referencedAtomicRpcs) {
+      expect(contract.definerRpcsServiceRoleOnly, `${name} is absent from the live schema contract`)
+        .toContain(name);
+    }
+  });
+
   it('declares sensitive columns to protect', () => {
     expect(contract.sensitiveColumnsNoPublicGrant).toBeTruthy();
     expect(pairs.length).toBeGreaterThanOrEqual(6);

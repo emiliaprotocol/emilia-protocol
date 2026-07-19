@@ -18,6 +18,7 @@ import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { signEvidenceReceipt } from '@/lib/guard-evidence-receipt.js';
 import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { buildPortableSignoffDecision } from '@/lib/signoff/decision-evidence.js';
 import { canReadReceipt } from '@/lib/tenant-binding';
 
 export async function GET(request, { params }) {
@@ -61,6 +62,12 @@ export async function GET(request, { params }) {
     const approved = findBoundSignoffDecision(events, created, 'guard.signoff.approved');
     const rejected = findBoundSignoffDecision(events, created, 'guard.signoff.rejected');
     const replays = events.filter((e) => e.event_type === 'guard.trust_receipt.replay_attempt');
+    // A healthy timeline has exactly one terminal decision for a signoff. If a
+    // corrupt/imported timeline carries both outcomes, do not choose one.
+    const terminalDecisions = [approved, rejected].filter(Boolean);
+    const decisionEvidence = terminalDecisions.length === 1
+      ? buildPortableSignoffDecision(terminalDecisions[0])
+      : null;
 
     // ── Signed, offline-verifiable receipt (EP-RECEIPT-v1) ───────────────
     // When the receipt has reached a terminal positive state (approved /
@@ -120,9 +127,19 @@ export async function GET(request, { params }) {
       },
       signoff: {
         required: base.signoff_required,
-        approver_id: approved?.actor_id || null,
+        approver_id: (approved || rejected)?.actor_id || null,
+        recorded_decision: approved ? 'approved' : (rejected ? 'denied' : null),
+        // `decision` is populated only when the terminal outcome is itself
+        // present in portable, device-signed evidence. Callers that only need
+        // the operator's audit view can inspect recorded_decision explicitly.
+        decision: decisionEvidence?.decision || null,
         approved_at: approved?.created_at || null,
         rejected_at: rejected?.created_at || null,
+        decision_evidence_signed: Boolean(decisionEvidence),
+        // Class-A approvals and denials use the same portable EP-SIGNOFF-v1
+        // shape. Verify `decision_evidence.signoff` with an independently
+        // pinned approver key; a key carried by the presenter is not authority.
+        decision_evidence: decisionEvidence,
         events: signoffEvents.map((e) => ({
           event_type: e.event_type,
           actor_id: e.actor_id,

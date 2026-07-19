@@ -1,17 +1,47 @@
 {
   "name": "@emilia-protocol/cli",
-  "version": "0.1.0",
-  "description": "EMILIA Protocol CLI — register entities, submit receipts, query trust profiles, evaluate policies",
+  "version": "0.2.1",
+  "description": "Offline authorization-receipt verification and hosted EMILIA Protocol operations from the command line.",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
     "ep": "./bin/ep.mjs"
   },
-  "files": ["bin/", "lib/", "README.md"],
+  "files": [
+    "bin/",
+    "lib/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.node.mjs"
+  },
+  "dependencies": {
+    "@emilia-protocol/verify": "3.10.1"
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/emiliaprotocol/emilia-protocol",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "cli"
   },
-  "keywords": ["emilia", "trust", "protocol", "mcp", "cli"]
+  "homepage": "https://emiliaprotocol.ai",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
+  "author": "EMILIA Protocol, Inc.",
+  "keywords": [
+    "emilia",
+    "authorization",
+    "receipts",
+    "verification",
+    "offline",
+    "trust",
+    "protocol",
+    "cli"
+  ]
 }

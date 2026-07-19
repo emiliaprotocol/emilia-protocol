@@ -1,6 +1,6 @@
 /**
  * EMILIA Gate — end-to-end demo. Run: node demo.mjs
- * Shows the Trusted Action Firewall refusing and allowing a consequential
+ * Shows the Consequence Firewall refusing and allowing a consequential
  * action, defeating replay and tampering, and emitting a verifiable audit log.
  * @license Apache-2.0
  */
@@ -35,13 +35,19 @@ const receipt = (outcome, extra = {}) => {
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value: crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url') } };
 };
 
-const gate = createTrustedActionFirewall({ trustedKeys: [pub] });
+const gate = createTrustedActionFirewall({
+  trustedKeys: [pub],
+  rpId: 'emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  allowEmbeddedApproverKeys: true,
+  allowEphemeralStore: true,
+});
 const PAY = { protocol: 'mcp', tool: 'release_payment' };
 const line = (s) => console.log(s);
 const r = (o) => o.allow ? `\x1b[32mALLOW\x1b[0m` : `\x1b[31mREFUSE ${o.status}\x1b[0m (${o.reason})`;
 
 line('='.repeat(64));
-line('  EMILIA Gate — Trusted Action Firewall  (release_payment, critical)');
+line('  EMILIA Gate — Consequence Firewall  (release_payment, critical)');
 line('='.repeat(64));
 line(`\n  1. read_status (not guarded)             -> ${r(await gate.check({ selector: { protocol: 'mcp', tool: 'read_status' } }))}`);
 line(`  2. release_payment, no receipt          -> ${r(await gate.check({ selector: PAY }))}`);

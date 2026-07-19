@@ -64,6 +64,27 @@ check('tenant-bound v1 writes require authenticated org binding', () => {
   return `${files.length} authenticated surfaces checked`;
 });
 
+check('approver enrollment requires an explicit capability', () => {
+  requireContains('lib/approver-enrollment-auth.js', "APPROVER_ENROLL_PERMISSION = 'approver.enroll'");
+  for (const rel of [
+    'app/api/v1/approvers/webauthn/register-options/route.js',
+    'app/api/v1/approvers/webauthn/register-verify/route.js',
+  ]) requireContains(rel, 'hasApproverEnrollmentPermission');
+  return 'both WebAuthn enrollment phases require approver.enroll or admin';
+});
+
+check('async Gate providers cannot bypass a guarded action', () => {
+  const gate = read('packages/gate/index.js');
+  for (const needle of [
+    '? await opts.selector(...args)',
+    '? await opts.receipt(...args)',
+    '? await opts.observedAction(...args)',
+  ]) {
+    if (!gate.includes(needle)) throw new Error(`packages/gate/index.js missing ${needle}`);
+  }
+  return 'guard resolves async selector, receipt, and observed-action providers before check';
+});
+
 check('strict production verifier refuses inline issuer keys', () => {
   // Inline-key acceptance is demo-only. Non-demo guarded endpoints require
   // pinned issuer keys even outside gov-strict mode.

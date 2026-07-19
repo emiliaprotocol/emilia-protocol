@@ -11,8 +11,18 @@ const canon = (v) => v === null || v === undefined ? JSON.stringify(v)
     : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
       : JSON.stringify(v);
 
+let signerOrdinal = 0;
 function newSigner() {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  // Fixed, unique Ed25519 seeds make committed vectors byte-reproducible while
+  // still exercising real signatures. Never use these test keys outside this
+  // conformance generator.
+  const seed = Buffer.alloc(32, ++signerOrdinal);
+  const privateKey = crypto.createPrivateKey({
+    key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), seed]),
+    format: 'der',
+    type: 'pkcs8',
+  });
+  const publicKey = crypto.createPublicKey(privateKey);
   return { privateKey, pub: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 }
 const sign = (obj, priv) => crypto.sign(null, Buffer.from(canon(obj), 'utf8'), priv).toString('base64url');
@@ -23,9 +33,9 @@ const TARGET = { target_type: 'receipt', target_id: 'rcpt_x', action_hash: 'sha2
 const REVOKER = 'ep:revoker:ig_okafor';
 const REVOKED_AT = '2026-06-20T12:00:00.000Z';
 
-function revStatement({ signer, actionHash = TARGET.action_hash, reason = 'authority withdrawn', revokedAt = REVOKED_AT }) {
-  const signed = { '@version': RV, action_hash: actionHash, reason, revoked_at: revokedAt, revoker_id: REVOKER, target_id: TARGET.target_id, target_type: TARGET.target_type };
-  return { '@version': RV, target_type: TARGET.target_type, target_id: TARGET.target_id, action_hash: actionHash, revoker_id: REVOKER, revoked_at: revokedAt, reason, proof: { algorithm: 'Ed25519', revoker_key_id: 'rk1', public_key: signer.pub, signature_b64u: sign(signed, signer.privateKey) } };
+function revStatement({ signer, target = TARGET, actionHash = target.action_hash, reason = 'authority withdrawn', revokedAt = REVOKED_AT }) {
+  const signed = { '@version': RV, action_hash: actionHash ?? null, reason, revoked_at: revokedAt ?? null, revoker_id: REVOKER, target_id: target.target_id ?? null, target_type: target.target_type ?? null };
+  return { '@version': RV, target_type: target.target_type, target_id: target.target_id, action_hash: actionHash, revoker_id: REVOKER, revoked_at: revokedAt, reason, proof: { algorithm: 'Ed25519', revoker_key_id: 'rk1', public_key: signer.pub, signature_b64u: sign(signed, signer.privateKey) } };
 }
 const pinR = (s) => ({ [REVOKER]: { public_key: s.pub } });
 
@@ -37,18 +47,24 @@ const addR = (id, expectValid, vec) => RVEC.push({ id, expect: { valid: expectVa
 }
 { const s = newSigner(); addR('reject_unpinned_revoker', false, { target: TARGET, revocation: revStatement({ signer: s }), revoker_keys: {} }); }
 { const s = newSigner(); const o = newSigner(); addR('reject_key_substitution', false, { target: TARGET, revocation: revStatement({ signer: s }), revoker_keys: pinR(o) }); }
+{ const s = newSigner(); const other = { ...TARGET, target_id: 'rcpt_other' }; addR('reject_different_target_id', false, { target: TARGET, revocation: revStatement({ signer: s, target: other }), revoker_keys: pinR(s) }); }
 { const s = newSigner(); addR('reject_revoke_a_for_b', false, { target: TARGET, revocation: revStatement({ signer: s, actionHash: 'sha256:' + 'b'.repeat(64) }), revoker_keys: pinR(s) }); }
+{ const s = newSigner(); const st = revStatement({ signer: s }); st['@version'] = 'EP-REVOCATION-v2'; addR('reject_wrong_version', false, { target: TARGET, revocation: st, revoker_keys: pinR(s) }); }
 { const s = newSigner(); const st = revStatement({ signer: s }); st.reason = 'tampered after signing'; addR('reject_tampered_field', false, { target: TARGET, revocation: st, revoker_keys: pinR(s) }); }
-{ const s = newSigner(); addR('reject_stale_freshness', false, { target: TARGET, revocation: revStatement({ signer: s, revokedAt: '2020-01-01T00:00:00.000Z' }), revoker_keys: pinR(s), max_age_seconds: 3600, now: '2026-06-20T12:00:00.000Z' }); }
+{ const s = newSigner(); addR('reject_missing_revoked_at', false, { target: TARGET, revocation: revStatement({ signer: s, revokedAt: null }), revoker_keys: pinR(s) }); }
+{ const s = newSigner(); addR('reject_future_effective_instant', false, { target: TARGET, revocation: revStatement({ signer: s, revokedAt: '2026-06-21T12:00:00.000Z' }), revoker_keys: pinR(s), now: '2026-06-20T12:00:00.000Z' }); }
+{ const s = newSigner(); const malformed = { target_type: 'receipt', target_id: '', action_hash: 'not-a-digest' }; addR('reject_malformed_target_shape', false, { target: malformed, revocation: revStatement({ signer: s, target: malformed }), revoker_keys: pinR(s) }); }
+{ const s = newSigner(); const st = revStatement({ signer: s }); st.proof.algorithm = 'ES256'; addR('reject_algorithm_label_mismatch', false, { target: TARGET, revocation: st, revoker_keys: pinR(s) }); }
+{ const s = newSigner(); addR('accept_old_terminal_revocation', true, { target: TARGET, revocation: revStatement({ signer: s, revokedAt: '2020-01-01T00:00:00.000Z' }), revoker_keys: pinR(s), max_age_seconds: 3600, now: '2026-06-20T12:00:00.000Z' }); }
 
 const revSuite = {
   suite: 'EP-REVOCATION-v1',
   profile: 'Executable revocation-statement vectors (real Ed25519). verifyRevocation(target, statement, opts) must return expect.valid.',
-  vectors_version: '1.0.0',
+  vectors_version: '2.0.0',
   count: RVEC.length,
   vectors: RVEC,
 };
-writeFileSync(new URL('./revocation.exec.v1.json', import.meta.url), JSON.stringify(revSuite, null, 2) + '\n');
+writeFileSync(new URL('./revocation.exec.v2.json', import.meta.url), JSON.stringify(revSuite, null, 2) + '\n');
 
 // ── EP-TIME-ATTESTATION-v1 ───────────────────────────────────────────────────
 const TV = 'EP-TIME-ATTESTATION-v1';
@@ -74,9 +90,9 @@ const addT = (id, expectValid, vec) => TVEC.push({ id, expect: { valid: expectVa
 const timeSuite = {
   suite: 'EP-TIME-ATTESTATION-v1',
   profile: 'Executable trusted-time attestation vectors (real Ed25519). verifyTimeAttestation(att, opts) must return expect.valid.',
-  vectors_version: '1.0.0',
+  vectors_version: '2.0.0',
   count: TVEC.length,
   vectors: TVEC,
 };
-writeFileSync(new URL('./time-attestation.v1.json', import.meta.url), JSON.stringify(timeSuite, null, 2) + '\n');
-console.log(`wrote revocation.exec.v1.json (${RVEC.length}) + time-attestation.v1.json (${TVEC.length})`);
+writeFileSync(new URL('./time-attestation.v2.json', import.meta.url), JSON.stringify(timeSuite, null, 2) + '\n');
+console.log(`wrote revocation.exec.v2.json (${RVEC.length}) + time-attestation.v2.json (${TVEC.length})`);

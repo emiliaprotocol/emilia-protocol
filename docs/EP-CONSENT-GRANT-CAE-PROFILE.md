@@ -31,7 +31,7 @@ distinct objects, and the receipt never rounds up into the grant:
 | CAE slot | EP object | What it asserts |
 |---|---|---|
 | Section 3.3, standing consent | `EP-CONSENT-GRANT-v1` | A named principal consents to `{asset, control_verb}` until `expires_at`, revocable by `grant_hash`. |
-| Section 3.4, binding moment | EP receipt, carried per `draft-schrock-human-authorization-binding` | A named human's device-bound signature over the exact action, before execution; signed denial is the other veto outcome; the initiator is barred from approving their own request. |
+| Section 3.4, binding moment | `EP-RESOLUTION-v1`, carried per `draft-schrock-human-authorization-binding` | A named human's device-bound resolution of the exact envelope and action as `approved`, `declined`, `amended`, or `rejected`; only a relying-party-mapped approval can authorize the action. Existing binary EP signoffs remain valid. |
 | Section 3.5, audit record | The receipt plus the executor-signed effect attestation, registered as signed statements on a shared append-only log (SCITT; see `docs/EP-RECEIPT-SCITT-PROFILE.md`) | What was authorized and what executed, on one substrate, not two. |
 
 The receipt **acts under** the grant by carrying `grant_hash`. It does not
@@ -63,9 +63,19 @@ statement is presented and verifies.
 
 ## Binding 4 (Section 3.4): the receipt at the binding moment
 
-The receipt is the second object. It is the device-bound human signature over
-the exact action, evaluated by the base EP verifier, and it references the grant
-by `grant_hash`. Composition is `verifyReceiptUnderGrant(receipt, grant, opts)`.
+The per-action receipt is the second object. For a briefing-and-binding exchange,
+`EP-RESOLUTION-v1` preserves four typed outcomes and binds the source envelope,
+exact action, principal, initiator, nonce, and time window under one WebAuthn
+signature. `declined`, `amended`, and `rejected` are valid evidence but never
+authority. Even `approved` authorizes only when the relying party pins the
+selected option, nonce, initiator, evaluation time, RP ID, origin, and role key
+for the exact action hash. Existing binary EP signoffs
+remain unchanged for flows that do not use the four-outcome envelope.
+
+The authorized action references the standing grant by `grant_hash`. Composition
+with the grant remains `verifyReceiptUnderGrant(receipt, grant, opts)`; the
+resolution profile refines the human-decision evidence and does not merge the
+standing grant into it.
 
 **The seven distinct fail-closed refusals** (the conformance points for the CAE
 rows):

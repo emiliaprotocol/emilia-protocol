@@ -47,11 +47,26 @@ const hexOf = (h) => {
   const s = String(h ?? '').replace(/^sha256:/, '').toLowerCase();
   return /^[0-9a-f]{64}$/.test(s) ? s : '';
 };
+const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
-function instantMs(s) {
-  if (typeof s !== 'string' || s.length === 0) return null;
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? null : t;
+function instantMs(value) {
+  if (typeof value !== 'string') return NaN;
+  const match = value.match(RFC3339_INSTANT);
+  if (!match) return NaN;
+  const [, y, mo, d, h, mi, s, , oh, om] = match;
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(Number(y), Number(mo) - 1, Number(d));
+  calendar.setUTCHours(Number(h), Number(mi), Number(s), 0);
+  if (calendar.toISOString().slice(0, 19) !== `${y}-${mo}-${d}T${h}:${mi}:${s}`) return NaN;
+  if (oh !== undefined && (Number(oh) > 23 || Number(om) > 59)) return NaN;
+  return Date.parse(value);
+}
+
+function referenceTimeMs(value) {
+  if (value === undefined) return Date.now();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  return instantMs(value);
 }
 
 /** The two-valued currency status. 'fresh' is the ONLY value that asserts
@@ -70,6 +85,7 @@ export const CURRENCY_REASON = Object.freeze({
   now_invalid: 'now_invalid',
   // status: 'stale'
   fresh_head_stale: 'fresh_head_stale',
+  fresh_head_in_future: 'fresh_head_in_future',
   fresh_head_required_but_absent: 'fresh_head_required_but_absent',
   revoked_by_fresh_head: 'revoked_by_fresh_head',
   max_staleness_invalid: 'max_staleness_invalid',
@@ -112,10 +128,10 @@ function headRevokesReceipt(freshHead, receipt) {
  * CANNOT establish and which is therefore 'unknown' by default).
  *
  * @param {object} args
- * @param {object} args.receipt  the receipt being evaluated. Used only to match
+ * @param {object} [args.receipt]  the receipt being evaluated. Used only to match
  *   a `freshHead` revocation signal to this authorization; its offline
  *   cryptography is NOT re-checked here.
- * @param {boolean} args.authentic_as_of_commit  the boolean the caller already
+ * @param {boolean} [args.authentic_as_of_commit]  the boolean the caller already
  *   computed from offline verification (e.g. verifyTrustReceipt(...).valid).
  *   Passed through verbatim. Fail-safe: anything not strictly `true` is
  *   recorded as false.
@@ -163,7 +179,7 @@ export function evaluateCurrency(args = {}) {
 
   // Resolve reference time T. A bad clock must NOT silently become "now": an
   // unparseable `now` yields 'unknown' (we will not measure age against it).
-  const nowMs = now === undefined ? Date.now() : instantMs(String(now instanceof Date ? now.toISOString() : now));
+  const nowMs = referenceTimeMs(now);
   const evaluated_at = Number.isFinite(nowMs) ? new Date(nowMs).toISOString() : null;
 
   const result = (status, reason) => ({
@@ -193,8 +209,9 @@ export function evaluateCurrency(args = {}) {
   if (typeof freshHead !== 'object') {
     return result('unknown', CURRENCY_REASON.fresh_head_malformed);
   }
-  const headMs = instantMs(freshHead.observed_at) ?? instantMs(freshHead.issued_at);
-  if (headMs === null) {
+  let headMs = instantMs(freshHead.observed_at);
+  if (!Number.isFinite(headMs)) headMs = instantMs(freshHead.issued_at);
+  if (!Number.isFinite(headMs)) {
     return result('unknown', CURRENCY_REASON.fresh_head_malformed);
   }
 
@@ -206,17 +223,20 @@ export function evaluateCurrency(args = {}) {
     return result('stale', CURRENCY_REASON.max_staleness_invalid);
   }
 
+  // A future-dated head cannot certify current status. Clock-skew tolerance, if
+  // any, is a relying-party policy and must be explicit rather than implicit.
+  const ageSeconds = (nowMs - headMs) / 1000;
+  if (ageSeconds < 0) {
+    return result('stale', CURRENCY_REASON.fresh_head_in_future);
+  }
+
   // Revocation shown by the head dominates: a revoked authorization is not
   // current regardless of how recent the head is.
   if (headRevokesReceipt(freshHead, receipt)) {
     return result('stale', CURRENCY_REASON.revoked_by_fresh_head);
   }
 
-  // Age gate. A head observed in the FUTURE (headMs > nowMs) has a negative
-  // age; that is within any non-negative window, so it is not stale on age
-  // alone. (A clock-skew / future-dated head is a signature/time-attestation
-  // concern handled upstream, not a staleness signal.)
-  const ageSeconds = (nowMs - headMs) / 1000;
+  // Age gate.
   if (ageSeconds > maxStalenessSeconds) {
     return result('stale', CURRENCY_REASON.fresh_head_stale);
   }

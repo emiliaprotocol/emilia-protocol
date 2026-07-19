@@ -2,24 +2,39 @@
 
 **Guard OpenAI-compatible tool calls with EMILIA Protocol.** Works with any
 OpenAI-style tool-calling API — OpenAI, **xAI Grok**, Together, Fireworks, Groq.
-Before an irreversible tool call runs, it routes through the EMILIA trust gate:
-`allow` → run · `deny` → throw · `signoff_required` → wait for a named human, then run.
-Zero dependencies.
+The production path verifies a pinned, exact-action authorization receipt
+offline and consumes it before the tool runs. Missing, forged, wrong-action, or
+replayed evidence is refused.
 
 ```bash
 npm install @emilia-protocol/openai-guard
 ```
 
-## One line
+## Production: offline receipt gate
 
 ```js
-import { guard } from '@emilia-protocol/openai-guard';
+import { requireReceiptForOpenAITool } from '@emilia-protocol/openai-guard';
 
-const result = await guard('payment.release');   // reads EP_API_KEY from env
-if (!result.allowed) return result.reason;        // "denied by policy" / "human signoff required"
+const releasePayment = requireReceiptForOpenAITool(bank.wire, {
+  actionFor: (args) => `payment.release:${args.destination}:${args.amount}`,
+  trustedKeys: [ISSUER_SPKI_B64URL],
+  assuranceClass: 'class_a',
+  approverKeys: ENROLLED_APPROVER_KEYS,
+  rpId: 'approvals.example.com',
+  allowedOrigins: ['https://approvals.example.com'],
+  store: durableAtomicReceiptStore,
+});
+
+await releasePayment({
+  destination: 'acct_9f12',
+  amount: 82000,
+  __ep: { receipt },
+});
 ```
 
-Pass context when the policy needs it: `await guard({ action: 'payment.release', context: { amount } })`.
+`actionFor` should bind every material tool argument. The default replay store is
+process-local; production fleets must provide a shared, ownership-fenced
+`{ reserve, commit, release }` store.
 
 ## Try it offline (~5s)
 
@@ -28,24 +43,22 @@ node packages/openai-guard/example.mjs
 # 1) $200 → released   2) $82k → human signoff → released   3) sanctioned → blocked
 ```
 
-## Guard one tool
+## Legacy hosted policy client
 
 ```js
-import { withGuard } from '@emilia-protocol/openai-guard';
+import { guard } from '@emilia-protocol/openai-guard';
 
-const releasePayment = withGuard(
-  async ({ amount, destination }) => bank.wire(amount, destination),
-  {
-    action: 'payment.release',
-    context: ({ amount, destination }) => ({ amount, destination }),
-    apiKey: process.env.EP_API_KEY,
-    onSignoff: async (decision) => waitForNamedHuman(decision), // return false to reject
-  },
-);
-
-await releasePayment({ amount: 82000, destination: 'acct_9f12' });
-// → throws "EMILIA requires human signoff for \"payment.release\"" until approved
+const result = await guard({
+  action: 'payment.release',
+  actor: 'ep:entity:agent-7',
+  context: { value_usd: 82000, resource_ref: 'acct_9f12' },
+}, { apiKey: process.env.EP_API_KEY });
 ```
+
+This path accepts only a successful `allow` carrying a durable `commit_ref`.
+Network errors, non-2xx responses, unknown verdicts, and malformed bodies deny.
+It is still the operator's online decision, not portable authorization evidence;
+use the receipt gate above for irreversible work.
 
 ## Guard a whole tool-calling loop (Grok / OpenAI)
 
@@ -58,13 +71,20 @@ const res = await client.chat.completions.create({ model: 'grok-4', messages, to
 const msg = res.choices[0].message;
 
 const toolResults = await runToolCalls(msg.tool_calls, {
-  lookup_invoice: { fn: lookupInvoice },                       // read-only → ungated
+  lookup_invoice: { fn: lookupInvoice, readOnly: true },       // explicitly read-only
   release_payment: {                                          // irreversible → gated
-    action: 'payment.release',
-    context: (a) => ({ amount: a.amount, destination: a.destination }),
+    actionFor: (a) => `payment.release:${a.destination}:${a.amount}`,
     fn: releasePaymentImpl,
   },
-}, { apiKey: process.env.EP_API_KEY, onSignoff });
+}, {
+  receipts: { [toolCallId]: receipt },
+  trustedKeys: [ISSUER_SPKI_B64URL],
+  assuranceClass: 'class_a',
+  approverKeys: ENROLLED_APPROVER_KEYS,
+  rpId: 'approvals.example.com',
+  allowedOrigins: ['https://approvals.example.com'],
+  store: durableAtomicReceiptStore,
+});
 
 // feed `toolResults` (role:"tool" messages) back to the model and continue the loop.
 ```
@@ -72,11 +92,12 @@ const toolResults = await runToolCalls(msg.tool_calls, {
 Point it at OpenAI, Together, Fireworks, etc. by swapping the `baseURL` — the
 guard layer is identical.
 
-## Full signoff ceremony + Trust Receipt (`/receipt`)
+## Legacy hosted software-approval flow (`/receipt`)
 
-For the real hosted flow — mint a pre-action receipt, require a **named** human's
-signoff, and get a verifiable record — use the `/receipt` submodule (needs an EP
-API key). Each function maps 1:1 to a live endpoint.
+This submodule maps 1:1 to the hosted API-key endpoints. The approval route
+authenticates a different principal and enforces separation of duty; it does
+**not** by itself establish human presence, user verification, or a passkey
+ceremony. Use the WebAuthn/mobile ceremony when a profile requires Class A.
 
 ```js
 import { mintReceipt, requestSignoff, approveSignoff, verifyReceipt } from '@emilia-protocol/openai-guard/receipt';
@@ -94,7 +115,7 @@ if (receipt.signoff_required) {
   // 2. Request signoff on that receipt.
   const { signoff_id } = await requestSignoff({ apiKey: process.env.EP_API_KEY, receipt_id: receipt.receipt_id });
 
-  // 3. A DIFFERENT, named human approves (EMILIA enforces separation of duty).
+  // 3. A DIFFERENT authenticated principal approves (software/API-key evidence).
   await approveSignoff({ apiKey: process.env.APPROVER_EP_API_KEY, signoff_id });
 }
 
@@ -102,15 +123,16 @@ if (receipt.signoff_required) {
 // const v = await verifyReceipt(signedReceiptDoc, issuerPublicKey);
 ```
 
-The approval is an out-of-band human action — surface the `signoff_id` to your
-dashboard or Slack and approve there. Endpoints: `/api/v1/trust-receipts`,
+The approval is an out-of-band authenticated-principal action. A dashboard or
+Slack UX does not upgrade it into cryptographic human-presence evidence.
+Endpoints: `/api/v1/trust-receipts`,
 `/api/v1/signoffs/request`, `/api/v1/signoffs/{id}/approve`.
 
 ## Scope
 
-EMILIA's formal proofs (26 TLA+ theorems / 35 Alloy facts) cover the policy
-**engine** — no self-approval, no replay, money-destination + large releases
-always gated. This package is the thin client that routes your tool calls to that
-engine; the client itself is ordinary code. Apache-2.0.
+This package enforces receipt verification, exact-action binding, and one-time
+consumption at the tool boundary. It does not prove business correctness or what
+a person perceived, and it does not replace the resource owner's authorization,
+fraud, safety, or legal controls. Apache-2.0.
 
 End-to-end runnable Grok demo: [`examples/grok-guard.mjs`](../../examples/grok-guard.mjs).

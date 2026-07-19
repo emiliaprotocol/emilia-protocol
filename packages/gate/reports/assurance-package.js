@@ -26,14 +26,10 @@
  * SUPPORTS a re-performance procedure; it never issues an opinion.
  */
 import { hashCanonical } from '../execution-binding.js';
+import { evaluateReliance, RELIANCE_VERDICTS } from '@emilia-protocol/verify/reliance';
 
 export const ASSURANCE_PACKAGE_VERSION = 'EP-ASSURANCE-PACKAGE-v1';
 export const ASSURANCE_REPERFORMANCE_VERSION = 'EP-ASSURANCE-REPERFORMANCE-v1';
-
-// Cross-package resolution, same pattern the Gate uses: the pure offline reliance
-// verifier. No DB, no network.
-const { evaluateReliance, RELIANCE_VERDICTS } = await import('@emilia-protocol/verify/reliance')
-  .catch(() => import('../../verify/reliance.js'));
 
 export { RELIANCE_VERDICTS };
 
@@ -70,6 +66,33 @@ function toIso(now) {
   return new Date(ms == null ? 0 : ms).toISOString();
 }
 
+function portableJsonCopy(value, active = new Set()) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || Object.is(value, -0)) {
+      throw new TypeError('assurance-package: value is not canonical JSON');
+    }
+    return value;
+  }
+  if (typeof value !== 'object') {
+    throw new TypeError('assurance-package: value is not JSON');
+  }
+  if (active.has(value)) throw new TypeError('assurance-package: cyclic value');
+  active.add(value);
+  try {
+    if (Array.isArray(value)) return value.map((entry) => portableJsonCopy(entry, active));
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw new TypeError('assurance-package: value must use plain JSON objects');
+    }
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, portableJsonCopy(entry, active)]),
+    );
+  } finally {
+    active.delete(value);
+  }
+}
+
 /**
  * Bundle N automated reliance decisions + the evidence each relied on into one
  * portable, content-addressed assurance package. Does NOT re-perform (that is the
@@ -78,27 +101,28 @@ function toIso(now) {
  *
  * @param {Array<object>} decisions  each: { decision_id, action, receipt, quorum?,
  *   authority_proof?, revocation_state?, consumption?, stated_verdict? }
- * @param {object} opts
- * @param {object} opts.profile       the pinned EP-RELIANCE-PROFILE-v1 the org operated under
+ * @param {object} [opts]
+ * @param {object} [opts.profile]       the pinned EP-RELIANCE-PROFILE-v1 the org operated under
  * @param {object} [opts.organization] { id, name } (no PHI)
- * @param {number|function} [opts.now]
+ * @param {number|Function} [opts.now]
  * @returns {object} EP-ASSURANCE-PACKAGE-v1
  */
 export function buildAssurancePackage(decisions = [], { profile, organization = null, now = 0 } = {}) {
   if (!Array.isArray(decisions)) throw new Error('assurance-package: decisions must be an array');
   const items = decisions.map((d, i) => {
-    const decision_id = d?.decision_id ?? `decision-${i}`;
+    const source = portableJsonCopy(d ?? {});
+    const decision_id = source.decision_id ?? `decision-${i}`;
     return {
       decision_id,
-      action: d?.action ?? null,
-      policy_hash: d?.action?.policy_hash ?? null,
-      stated_verdict: typeof d?.stated_verdict === 'string' ? d.stated_verdict : null,
+      action: source.action ?? null,
+      policy_hash: source.action?.policy_hash ?? null,
+      stated_verdict: typeof source.stated_verdict === 'string' ? source.stated_verdict : null,
       evidence: {
-        receipt: d?.receipt ?? null,
-        quorum: d?.quorum ?? null,
-        authority_proof: d?.authority_proof ?? null,
-        revocation_state: d?.revocation_state ?? null,
-        consumption: d?.consumption ?? null,
+        receipt: source.receipt ?? null,
+        quorum: source.quorum ?? null,
+        authority_proof: source.authority_proof ?? null,
+        revocation_state: source.revocation_state ?? null,
+        consumption: source.consumption ?? null,
       },
     };
   });
@@ -106,11 +130,12 @@ export function buildAssurancePackage(decisions = [], { profile, organization = 
   const exceptions = items.filter((it) => it.stated_verdict && it.stated_verdict !== 'rely')
     .map((it) => ({ decision_id: it.decision_id, stated_verdict: it.stated_verdict, control_id: controlForVerdict(it.stated_verdict) }));
 
+  const profileCopy = profile == null ? null : portableJsonCopy(profile);
   const body = {
     '@version': ASSURANCE_PACKAGE_VERSION,
-    organization,
-    reliance_profile: profile ?? null,
-    profile_hash: profile ? hashCanonical(profile) : null,
+    organization: organization == null ? null : portableJsonCopy(organization),
+    reliance_profile: profileCopy,
+    profile_hash: profileCopy ? hashCanonical(profileCopy) : null,
     control_catalog: RELIANCE_CONTROL_CATALOG,
     decisions: items,
     exception_history: exceptions,
@@ -140,15 +165,16 @@ export function buildAssurancePackage(decisions = [], { profile, organization = 
  * @param {object} [opts.approverKeys]  auditor-pinned approver keys (out of band)
  * @param {string} [opts.logPublicKey]  auditor-pinned transparency-log key
  * @param {string} [opts.rpId]
+ * @param {string[]} [opts.allowedOrigins]
  * @param {object} [opts.revokerKeys]
  * @param {(key:object)=>boolean} [opts.isConsumed] auditor-owned consumption lookup
- * @param {number|string|Date} [opts.now]  reliance-evaluation clock (pin for determinism)
+ * @param {number|string|Date|Function} [opts.now]  reliance-evaluation clock (pin for determinism)
  * @returns {object} EP-ASSURANCE-REPERFORMANCE-v1
  */
-export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey = null, rpId = null, revokerKeys = {}, isConsumed, now = 0 } = {}) {
+export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey = null, rpId = null, allowedOrigins = [], revokerKeys = {}, isConsumed, now = 0 } = {}) {
   if (!pkg || pkg['@version'] !== ASSURANCE_PACKAGE_VERSION) throw new Error('assurance-reperform: not an EP-ASSURANCE-PACKAGE-v1');
   const profile = pkg.reliance_profile;
-  const evalOpts = { approverKeys, logPublicKey, rpId, revokerKeys, ...(typeof isConsumed === 'function' ? { isConsumed } : {}) };
+  const evalOpts = { approverKeys, logPublicKey, rpId, allowedOrigins, revokerKeys, ...(typeof isConsumed === 'function' ? { isConsumed } : {}) };
   const relianceNow = typeof now === 'function' ? now() : now;
 
   const results = (Array.isArray(pkg.decisions) ? pkg.decisions : []).map((it) => {

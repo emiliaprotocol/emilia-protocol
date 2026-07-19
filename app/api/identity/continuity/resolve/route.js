@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { resolveContinuity } from '@/lib/ep-ix';
 import { EP_ERRORS, epDbError } from '@/lib/errors';
 import { epProblem } from '@/lib/errors';
@@ -23,7 +24,7 @@ export async function POST(request) {
     if (!body.continuity_id) return EP_ERRORS.BAD_REQUEST('continuity_id is required');
     if (!body.decision) return EP_ERRORS.BAD_REQUEST('decision is required (approved_full, approved_partial, rejected, rejected_laundering)');
 
-    const result = await resolveContinuity(body.continuity_id, body.decision, body.reasoning, auth.entity?.entity_id || 'operator');
+    const result = await resolveContinuity(body.continuity_id, body.decision, body.reasoning, authEntityId(auth) || 'operator');
     if (result.error) {
       if ((result.status || 500) >= 500) return epDbError(result.status || 500, 'identity_continuity_resolve_failed', result.error, 'identity/continuity/resolve');
       return NextResponse.json({ error: result.error }, { status: result.status });

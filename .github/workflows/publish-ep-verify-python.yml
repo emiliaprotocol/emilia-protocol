@@ -1,0 +1,156 @@
+name: Publish ep-verify Python
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example ep-verify-py-v0.1.0
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH ep-verify@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  publish:
+    name: Publish ep-verify
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    concurrency:
+      group: registry-publish-pypi-ep-verify
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: "1.22"
+
+      - name: Install hash-locked build and test tooling
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/release.txt
+
+      - name: Install locked repository tooling
+        run: npm ci --ignore-scripts
+
+      - name: Test package
+        working-directory: packages/ep-verify-py
+        env:
+          PYTHONPATH: ${{ github.workspace }}/packages/ep-verify-py
+        run: python -m pytest -q
+
+      - name: Require owner approval bound to tag, package, version, and main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/ep-verify-py/pyproject.toml','rb'))['project']['version'])")
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix ep-verify-py-v \
+            --package ep-verify \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION"
+
+      - name: Execute security and conformance evidence
+        run: |
+          npm run security-case:emit
+          npm run conformance:manifest
+
+      - name: Build twice and retain exact reproducible artifacts
+        id: build
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          node scripts/verify-reproducible-wheel.mjs packages/ep-verify-py \
+            --emit release-artifacts/ep-verify-python-reproducible.json \
+            --outdir release-artifacts
+          WHEEL=$(find release-artifacts/ep-verify-py -maxdepth 1 -name '*.whl' -print -quit)
+          SDIST=$(find release-artifacts/ep-verify-py -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$WHEEL" && test -n "$SDIST"
+          echo "wheel=$WHEEL" >> "$GITHUB_OUTPUT"
+          echo "sdist=$SDIST" >> "$GITHUB_OUTPUT"
+
+      - name: Check exact distributions
+        run: python -m twine check "${{ steps.build.outputs.wheel }}" "${{ steps.build.outputs.sdist }}"
+
+      - name: Attest exact wheel
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: ${{ steps.build.outputs.wheel }}
+
+      - name: Attest exact source distribution
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: ${{ steps.build.outputs.sdist }}
+
+      - name: Attest conformance and security manifests
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
+            release-artifacts/ep-verify-python-reproducible.json
+
+      - name: Upload exact release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ep-verify-python-release-${{ inputs.release_tag }}
+          path: |
+            release-artifacts/ep-verify-py/
+            release-artifacts/ep-verify-python-reproducible.json
+            security/security-case.json
+            conformance/conformance-manifest.json
+          retention-days: 90
+
+      - name: Publish through PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+        with:
+          packages-dir: release-artifacts/ep-verify-py/
+
+      - name: Verify PyPI bytes match the attested artifacts
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/ep-verify-py/pyproject.toml','rb'))['project']['version'])")
+          mkdir -p registry-copy
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if python -m pip download --no-deps --only-binary=:all: --dest registry-copy "ep-verify==$VERSION" \
+              && python -m pip download --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "ep-verify==$VERSION"; then
+              break
+            fi
+            sleep 5
+          done
+          REGISTRY_WHEEL=$(find registry-copy -maxdepth 1 -name '*.whl' -print -quit)
+          REGISTRY_SDIST=$(find registry-copy -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$REGISTRY_WHEEL" && test -n "$REGISTRY_SDIST"
+          cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"
+          cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"

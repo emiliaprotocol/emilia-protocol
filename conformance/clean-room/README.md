@@ -19,6 +19,11 @@ Candidates receive the byte-pinned `specification-bundle.v1.json` and
 `bundle.v1.json`; neither bundle includes EMILIA implementation source. The
 public procurement-ready requirements are in `EXTERNAL-CHALLENGE.md`.
 
+The bundle paths are stable protocol identifiers, while evaluator reads are
+served from `frozen-v1/`. That directory contains the exact historical bytes
+named by both bundles. Live specifications and vectors may evolve without
+silently changing an already-issued clean-room challenge.
+
 The public challenge release includes a standalone archive containing only the
 allowed inputs. Maintainers build it from an immutable commit with:
 

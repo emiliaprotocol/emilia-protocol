@@ -45,36 +45,48 @@ type witnessVec struct {
 }
 
 type vec struct {
-	ID                   string         `json:"id"`
-	PublicKey            string         `json:"public_key"`
-	Document             map[string]any `json:"document"`
-	Signoff              map[string]any `json:"signoff"`
-	ApproverPublicKey    string         `json:"approver_public_key"`
-	RPID                 string         `json:"rp_id"`
-	Quorum               map[string]any `json:"quorum"`
-	Revocation           map[string]any `json:"revocation"`
-	Target               map[string]any `json:"target"`
-	RevokerKeys          map[string]any `json:"revoker_keys"`
-	MaxAgeSeconds        *float64       `json:"max_age_seconds"`
-	Now                  string         `json:"now"`
-	TimeAttestation      map[string]any `json:"time_attestation"`
-	TSAKeys              map[string]any `json:"tsa_keys"`
-	ExpectedHash         string         `json:"expected_hash"`
-	NotBefore            string         `json:"not_before"`
-	NotAfter             string         `json:"not_after"`
-	TrustReceipt         map[string]any `json:"trust_receipt"`
-	Verification         map[string]any `json:"verification"`
-	VerifyOpts           map[string]any `json:"verify_opts"`
-	ProvenanceChain      map[string]any `json:"provenance_chain"`
-	DelegationKeys       map[string]any `json:"delegation_keys"`
-	NowMs                *float64       `json:"now_ms"`
-	EvidenceRecord       map[string]any `json:"evidence_record"`
-	ProtectedHash        string         `json:"protected_hash"`
-	Canonicalization     *canonVec      `json:"canonicalization"`
-	Currency             *currencyVec   `json:"currency"`
-	InitiatorAttestation map[string]any `json:"initiator_attestation"`
-	ConsumptionProof     map[string]any `json:"consumption_proof"`
-	WitnessQuorum        *witnessVec    `json:"witness_quorum"`
+	ID                      string                       `json:"id"`
+	PublicKey               string                       `json:"public_key"`
+	Document                map[string]any               `json:"document"`
+	ResolutionReceipt       map[string]any               `json:"resolution_receipt"`
+	ResolutionAuthorization map[string]any               `json:"resolution_authorization"`
+	BindingMoment           map[string]any               `json:"binding_moment"`
+	ExpectedActionHash      string                       `json:"expected_action_hash"`
+	ExpectedSelectedOption  *int                         `json:"expected_selected_option"`
+	ExpectedNonce           string                       `json:"expected_nonce"`
+	ExpectedInitiator       string                       `json:"expected_initiator"`
+	EvaluationTime          string                       `json:"evaluation_time"`
+	PrincipalKeys           map[string]map[string]string `json:"principal_keys"`
+	Signoff                 map[string]any               `json:"signoff"`
+	ApproverPublicKey       string                       `json:"approver_public_key"`
+	RPID                    string                       `json:"rp_id"`
+	AllowedOrigins          []string                     `json:"allowed_origins"`
+	Quorum                  map[string]any               `json:"quorum"`
+	Revocation              map[string]any               `json:"revocation"`
+	Target                  map[string]any               `json:"target"`
+	RevokerKeys             map[string]any               `json:"revoker_keys"`
+	MaxAgeSeconds           *float64                     `json:"max_age_seconds"`
+	Now                     string                       `json:"now"`
+	TimeAttestation         map[string]any               `json:"time_attestation"`
+	TSAKeys                 map[string]any               `json:"tsa_keys"`
+	ExpectedHash            string                       `json:"expected_hash"`
+	NotBefore               string                       `json:"not_before"`
+	NotAfter                string                       `json:"not_after"`
+	TrustReceipt            map[string]any               `json:"trust_receipt"`
+	Verification            map[string]any               `json:"verification"`
+	VerifyOpts              map[string]any               `json:"verify_opts"`
+	ProvenanceChain         map[string]any               `json:"provenance_chain"`
+	DelegationKeys          map[string]any               `json:"delegation_keys"`
+	RootVerification        map[string]any               `json:"root_verification"`
+	ActionVerification      map[string]any               `json:"action_verification"`
+	NowMs                   *float64                     `json:"now_ms"`
+	EvidenceRecord          map[string]any               `json:"evidence_record"`
+	ProtectedHash           string                       `json:"protected_hash"`
+	Canonicalization        *canonVec                    `json:"canonicalization"`
+	Currency                *currencyVec                 `json:"currency"`
+	InitiatorAttestation    map[string]any               `json:"initiator_attestation"`
+	ConsumptionProof        map[string]any               `json:"consumption_proof"`
+	WitnessQuorum           *witnessVec                  `json:"witness_quorum"`
 	// EP-TIMESTAMP-PROOF-v1 (RFC 3161). TimestampProof is kept as a raw JSON
 	// token to distinguish an ABSENT field (route elsewhere) from an empty-string
 	// token (route to the verifier, which returns missing_token). PinnedTSAKeys
@@ -380,12 +392,33 @@ func main() {
 		switch {
 		case v.Document != nil:
 			valid = emiliaverify.VerifyReceipt(v.Document, v.PublicKey).Valid
+		case v.ResolutionReceipt != nil || v.ResolutionAuthorization != nil:
+			receipt := v.ResolutionReceipt
+			authorizationMode := false
+			if receipt == nil {
+				receipt = v.ResolutionAuthorization
+				authorizationMode = true
+			}
+			result := emiliaverify.VerifyResolutionReceipt(receipt, emiliaverify.ResolutionOptions{
+				BindingMoment: v.BindingMoment, ExpectedActionHash: v.ExpectedActionHash,
+				ExpectedSelectedOption: v.ExpectedSelectedOption,
+				ExpectedNonce:          v.ExpectedNonce, ExpectedInitiator: v.ExpectedInitiator,
+				EvaluationTime: v.EvaluationTime, PrincipalKeys: v.PrincipalKeys, RPID: v.RPID,
+				AllowedOrigins: v.AllowedOrigins,
+			})
+			valid = result.Valid
+			if authorizationMode {
+				valid = result.Valid && result.AuthorizesAction
+			}
 		case v.Signoff != nil:
-			valid = emiliaverify.VerifyWebAuthnSignoff(v.Signoff, v.ApproverPublicKey, v.RPID).Valid
+			valid = emiliaverify.VerifyWebAuthnSignoffWithOrigins(v.Signoff, v.ApproverPublicKey, v.RPID, v.AllowedOrigins).Valid
 		case v.Quorum != nil:
-			valid = emiliaverify.VerifyQuorum(v.Quorum, "emiliaprotocol.ai").Valid
+			valid = emiliaverify.VerifyQuorumWithOrigins(v.Quorum, "emiliaprotocol.ai", []string{"https://www.emiliaprotocol.ai"}).Valid
 		case v.Revocation != nil:
-			opts := map[string]any{"revokerKeys": v.RevokerKeys, "now": v.Now}
+			opts := map[string]any{"revokerKeys": v.RevokerKeys}
+			if v.Now != "" {
+				opts["now"] = v.Now
+			}
 			if v.MaxAgeSeconds != nil {
 				opts["maxAgeSeconds"] = *v.MaxAgeSeconds
 			}
@@ -407,7 +440,11 @@ func main() {
 			}
 			valid = emiliaverify.VerifyTrustReceipt(v.TrustReceipt, opts).Valid
 		case v.ProvenanceChain != nil:
-			opts := map[string]any{"delegationKeys": v.DelegationKeys}
+			opts := map[string]any{
+				"delegationKeys":     v.DelegationKeys,
+				"rootVerification":   v.RootVerification,
+				"actionVerification": v.ActionVerification,
+			}
 			if v.NowMs != nil {
 				opts["now"] = *v.NowMs
 			}
@@ -472,7 +509,7 @@ func main() {
 			valid = emiliaverify.VerifyAuthorizationChainWithOptions(v.AECChain, verifiers, v.KeysByType, emiliaverify.AECOptions{
 				Requirement: v.Requirement, ExpectedActionDigest: v.ExpectedActionDigest,
 				VerificationTime: v.VerificationTime, PoliciesByType: v.PoliciesByType,
-			}).Allow
+			}).Satisfied
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

@@ -88,6 +88,22 @@ signature verifies against the enrolled approver key.
 
 Returns `{ valid, checks, error? }`.
 
+### `verifyResolutionReceipt(receipt, opts)` - `@emilia-protocol/verify/resolution`
+
+Verify an additive `EP-RESOLUTION-v1` record for a briefing-and-binding
+envelope. The signed context preserves `approved`, `declined`, `amended`, and
+`rejected` as distinct outcomes and binds the source envelope digest, exact
+action digest, principal, initiator, nonce, and validity window.
+
+The relying party supplies the exact `bindingMoment`, `expectedActionHash`,
+role-scoped `principalKeys`, `rpId`, and an exact `allowedOrigins` list. Before
+an authentic approval returns `authorizes_action: true`, it must additionally
+supply `expectedSelectedOption`, `expectedNonce`, `expectedInitiator`, and an
+in-window `evaluationTime`. Callers gating execution test `authorizes_action`,
+not merely `valid`; authentic negative outcomes are evidence and never authority.
+
+Returns `{ valid, authorizes_action, outcome, requires_successor, checks, reason? }`.
+
 ### `verifyTrustReceipt(receipt, { approverKeys, logPublicKey })` — *requires 1.3.0*
 
 The full offline verification algorithm from the Internet-Draft
@@ -203,8 +219,12 @@ import { verifyFederatedReceipt, verifyFederatedReceiptOffline } from '@emilia-p
 // hint, not a trust root.
 const verdict = await verifyFederatedReceipt(receipt, {
   keyDiscoveryUrl: 'https://op-a.example/.well-known/ep-keys.json',
+  expectedSigner: 'ep:operator:op-a',
 });
 // { accepted, verified, revoked, signer, keyMatched: 'current'|'historical', checks }
+
+// If the live revocation surface is unavailable, a valid signature remains
+// verified:true but accepted is false until status can be confirmed.
 
 // Air-gapped: supply the issuer's ep-keys.json + revocation set yourself.
 const offline = verifyFederatedReceiptOffline(receipt, discoveryDoc, { revokedReceiptIds });

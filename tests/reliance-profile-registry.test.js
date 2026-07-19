@@ -20,11 +20,11 @@ const registrarKey = crypto.createPrivateKey({ key: Buffer.concat([Buffer.from('
 const registrarPub = crypto.createPublicKey(registrarKey).export({ type: 'spki', format: 'der' }).toString('base64url');
 
 const NCPDP = seed('ncpdp-specialty-pa.v1.json');
-const baseEntry = () => signRelianceProfileEntry({ profile_id: 'ncpdp.specialty-pa.v1', profile: NCPDP, registry_epoch: 3, issued_at: '2026-07-07T00:00:00.000Z' }, registrarKey);
+const baseEntry = () => signRelianceProfileEntry({ registry_id: 'emilia-registrar', profile_id: 'ncpdp.specialty-pa.v1', profile: NCPDP, registry_epoch: 3, issued_at: '2026-07-07T00:00:00.000Z' }, registrarKey);
 
 function run(brk) {
   const entry = baseEntry();
-  const opts = { pinnedRegistryKeys: [{ issuer_id: 'emilia-registrar', public_key: registrarPub }] };
+  const opts = { pinnedRegistryKeys: [{ registry_id: 'emilia-registrar', public_key: registrarPub }] };
   switch (brk) {
     case 'none': break;
     case 'unpin_key': opts.pinnedRegistryKeys = []; break;
@@ -33,6 +33,9 @@ function run(brk) {
     case 'tamper_signature': entry.signature.signature_b64u = Buffer.from('00'.repeat(64), 'hex').toString('base64url'); break;
     case 'expect_wrong_id': opts.expectProfileId = 'cms.prior-auth.v1'; break;
     case 'expect_higher_epoch': opts.expectMinEpoch = 99; break;
+    case 'wrong_registry_id': opts.pinnedRegistryKeys[0].registry_id = 'attacker-registry'; break;
+    case 'pin_omits_registry_id': delete opts.pinnedRegistryKeys[0].registry_id; break;
+    case 'tamper_key_id': entry.signature.key_id = 'ep:reliance-registry-key:sha256:0000000000000000'; break;
     default: throw new Error(`unknown break ${brk}`);
   }
   return verifyRelianceProfileEntry(entry, opts);
@@ -69,8 +72,8 @@ describe('EP-RELIANCE-PROFILE-REGISTRY-v1 invariants', () => {
 
   it('both seed profiles sign, verify, and are well-formed', () => {
     for (const [id, file] of [['ncpdp.specialty-pa.v1', 'ncpdp-specialty-pa.v1.json'], ['cms.prior-auth.v1', 'cms-prior-auth.v1.json']]) {
-      const entry = signRelianceProfileEntry({ profile_id: id, profile: seed(file), registry_epoch: 1 }, registrarKey);
-      const r = verifyRelianceProfileEntry(entry, { pinnedRegistryKeys: [{ public_key: registrarPub }] });
+      const entry = signRelianceProfileEntry({ registry_id: 'emilia-registrar', profile_id: id, profile: seed(file), registry_epoch: 1 }, registrarKey);
+      const r = verifyRelianceProfileEntry(entry, { pinnedRegistryKeys: [{ registry_id: 'emilia-registrar', public_key: registrarPub }] });
       expect(r.accepted).toBe(true);
       expect(r.entry_digest).toBe(profileRegistryEntryDigest(entry));
     }

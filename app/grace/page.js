@@ -24,12 +24,12 @@ const BUYERS = [
 export default function GracePage() {
   return (
     <>
-      <SiteNav activePage="GRACE" />
+      <SiteNav activePage="Solutions" />
       <main style={styles.page}>
         {/* Hero */}
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GRACE · PROOF-OF-CURTAILMENT</div>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA Gate solution profile &middot; GRACE energy controls</div>
             <h1 style={{ ...styles.h1, marginTop: 16 }}>A verifiable demand-response rail for AI compute.</h1>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
               When the grid asks an AI datacenter to reduce load, GRACE proves who authorized it,
@@ -40,6 +40,7 @@ export default function GracePage() {
               COSA moves the megawatts. <span style={{ color: color.gold }}>EMILIA proves the move was authorized and delivered.</span>
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
+              <a href="/grace/live" style={cta.primary}>Run the live control room</a>
               <a href="/grace/flex-passport" style={cta.primary}>Get the Flex Passport</a>
               <a href="#loop" style={cta.secondary}>How it works</a>
               <a href="/pilot?v=grace" style={cta.secondary}>Request pilot</a>
@@ -110,15 +111,20 @@ export default function GracePage() {
         <section style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>DEMONSTRATION</div>
-            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>Available now: a runnable reference. Planned: real hardware.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>Available now: the full reference circuit, visible end to end.</h2>
             <p style={{ ...styles.body, maxWidth: 700, marginTop: 16 }}>
               A runnable reference of the full loop is published and verifies under the production
               EMILIA verifier — issue a grid.curtailment order, shed, sign attested telemetry,
               compute delivered kW·h, emit the Proof-of-Curtailment bundle — with the adversarial
               paths refusing (tampered telemetry → invalid; forged order → refused; replay →
-              refused). The five-minute hardware demonstration adds a multi-GPU node + a smart PDU on
-              a live wattage graph; it requires a host facility.
+              refused). The control-room view makes each transition inspectable without implying a
+              physical deployment. A hardware demonstration adds a host-approved compute node and
+              independently keyed meter; that step requires a facility partner.
             </p>
+            <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
+              <a href="/grace/live" style={cta.primary}>Open the reference control room</a>
+              <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples/grace" style={cta.secondary}>Run from source</a>
+            </div>
           </div>
         </section>
 

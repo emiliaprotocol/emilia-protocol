@@ -4,7 +4,8 @@
 import { NextResponse } from 'next/server';
 import { getDomainScores, KNOWN_DOMAINS } from '@/lib/domain-scoring';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {

@@ -37,6 +37,7 @@ const pad = (s, n) => String(s).padEnd(n);
 const ALL_IMPLS = IMPLS.map((i) => i.lang);
 let totalFailures = 0;
 let anyRan = false;
+const completedSuites = [];
 // Track every impl that was skipped in ANY suite. The "three independent
 // implementations agree" claim is only honest if all three actually ran on
 // every suite — a skipped impl (e.g. missing go/python) must FAIL the run, not
@@ -65,6 +66,7 @@ for (const suiteFile of SUITES) {
   console.log(`\n${suite.suite || suiteFile} — ${suite.vectors.length} vectors`);
   if (ran.length === 0) { console.log('  (no implementations ran)'); totalFailures++; continue; }
   anyRan = true;
+  completedSuites.push(suite.suite || suiteFile);
   const head = `  ${pad('vector', 36)}${pad('expect', 8)}${ran.map((l) => pad(l, 12)).join('')}`;
   console.log(head);
   console.log('  ' + '─'.repeat(head.length - 2));
@@ -91,5 +93,5 @@ if (missingImpls.size > 0) {
     + `Vectors agreed where run, but the cross-language interop claim requires all ${ALL_IMPLS.length} — install the missing toolchain(s) and re-run.`);
   process.exit(1);
 }
-console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
+console.log(`\n✅ all ${completedSuites.length} suites (${completedSuites.join(' · ')}) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
 process.exit(0);

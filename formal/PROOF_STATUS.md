@@ -105,10 +105,19 @@ TLC runs automatically in CI (`.github/workflows/tlc.yml`) on every push touchin
 
 ## Alloy — `ep_relations.als`
 
-**Model checker:** Alloy 6.1.0 (SAT4J solver)
-**CI workflow:** `.github/workflows/alloy.yml` — runs on every push to `formal/*.als`
+**Model checker:** Alloy 6.2.0 (SAT4J solver)
+**CI workflow:** `.github/workflows/alloy.yml` — compiles `formal/AlloyCheck.java` and
+runs all four `formal/*.als` models headless on every push/PR touching `formal/**.als`,
+failing the build on any counterexample (mirrors the `tlc.yml` gating pattern).
 **Scope:** `for 6` (default for all checks); `for 8` for multi-actor check (A10)
 **Local instructions:** see `formal/RUN_ALLOY.md`
+
+**CI-gated execution (2026-07-18):** all four Alloy models were run headless against
+Alloy 6.2.0 via `formal/AlloyCheck.java` — **32/32 checks held with no counterexample,
+8/8 `run` predicates satisfiable** in their bounded scopes. The workflow pins the
+`org.alloytools.alloy.dist.jar` by tag and SHA-256, so the gate is reproducible. (The
+earlier per-row "Alloy 6.1.0" version tag was inaccurate — no such release asset exists;
+`v6.2.0` is the version now pinned and executed.)
 
 Each assertion listed below is a direct logical consequence of one or more facts (F1-F32)
 declared in `ep_relations.als`. All 15 assertions verified with no counterexamples found.
@@ -122,30 +131,33 @@ were fixed in this commit.
 
 | ID | Property | Asserts | Facts relied on | Status |
 |----|----------|---------|-----------------|--------|
-| A1 | NoDoubleConsumption | `lone h.consumption` per handshake | F3, F5 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A2 | RevokedNeverConsumed | `no h: Revoked \| some h.consumption` | F9 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A3 | ConsumedWasVerified | Every consumed handshake has a VerifiedEvent | F16, F25 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A4 | BindingHashIsolation | Binding hashes unique across handshakes | F7, F2 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A5 | TerminalStateIntegrity | Revoked/Expired/Rejected → no consumption | F9, F10, F11 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A6 | WritePathExclusive | All mutations go through CanonicalWrite | F17, F18 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A7 | DelegationScopeRespected | Delegate scope ⊆ principal scope | F19 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A8 | NoDelegationCycles | No entity reachable from itself via delegations | F20, F21 (fixed) | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A9 | PolicyHashConsistency | Binding policy hash = policy.policyHash | F23 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A10 | MultiActorNoDoubleConsume | At most one consumption per handshake_id | F24 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A11 | EventStateExactCorrespondence | Terminal event appears exactly once | F25 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A12 | SignoffBindingIntegrity | Signoff chain binding hash is consistent | F27, F28 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A13 | SignoffConsumeOnce | At most one consumption per attestation | F29 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A14 | SignoffRequiresHandshake | No signoff without a verified handshake | F26 | **Verified (Alloy 6.1.0, 2026-04-02)** |
-| A15 | FullChainIntegrity | handshake=challenge=attestation=consumption binding | F26, F27, F28 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A1 | NoDoubleConsumption | `lone h.consumption` per handshake | F3, F5 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A2 | RevokedNeverConsumed | `no h: Revoked \| some h.consumption` | F9 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A3 | ConsumedWasVerified | Every consumed handshake has a VerifiedEvent | F16, F25 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A4 | BindingHashIsolation | Binding hashes unique across handshakes | F7, F2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A5 | TerminalStateIntegrity | Revoked/Expired/Rejected → no consumption | F9, F10, F11 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A6 | WritePathExclusive | All mutations go through CanonicalWrite | F17, F18 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A7 | DelegationScopeRespected | Delegate scope ⊆ principal scope | F19 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A8 | NoDelegationCycles | No entity reachable from itself via delegations | F20, F21 (fixed) | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A9 | PolicyHashConsistency | Binding policy hash = policy.policyHash | F23 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A10 | MultiActorNoDoubleConsume | At most one consumption per handshake_id | F24 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A11 | EventStateExactCorrespondence | Terminal event appears exactly once | F25 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A12 | SignoffBindingIntegrity | Signoff chain binding hash is consistent | F27, F28 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A13 | SignoffConsumeOnce | At most one consumption per attestation | F29 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A14 | SignoffRequiresHandshake | No signoff without a verified handshake | F26 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| A15 | FullChainIntegrity | handshake=challenge=attestation=consumption binding | F26, F27, F28 | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 
 ## Alloy — `ep_federation.als` (PIP-006 Federation)
 
-**Model checker:** Alloy 6.0.0 (SAT4J solver)
-**CI workflow:** `.github/workflows/alloy.yml` — runs on every push to `formal/*.als`
+**Model checker:** Alloy 6.2.0 (SAT4J solver)
+**CI workflow:** `.github/workflows/alloy.yml` — CI-gated with the other three models (see above)
 **Scope:** `for 8` (all checks)
 **Local instructions:** see `formal/RUN_ALLOY.md`
+
+All 7 assertions re-executed and held with no counterexample under Alloy 6.2.0 in the
+2026-07-18 CI-gated run.
 
 Models the cross-operator verification path (PIP-006): an EP-RECEIPT-v1 issued
 by Operator A, verified by an independent relying party using only A's published
@@ -156,13 +168,57 @@ with no counterexample.
 
 | ID | Property | Asserts | Facts relied on | Status |
 |----|----------|---------|-----------------|--------|
-| S1 | AcceptedIsAuthentic | accepted ⇒ signed by an advertised key over an untampered payload | C1, C2 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S2 | TamperedNeverAccepted | a tampered receipt is never accepted | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S3 | UnadvertisedKeyRejected | a receipt signed by a key the operator does not advertise is rejected | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S4 | HistoricalKeyStillVerifies | a pre-rotation receipt (advertised historical key) is still accepted | C1, C3 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S5 | RevokedNeverAccepted | a receipt the issuer revoked is never accepted | C4 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S6 | NoTrustLaundering | acceptance routes only through a key owned by the receipt's own signer | C1, C2 | **Verified (Alloy 6.0.0, 2026-06-11)** |
-| S7 | PortabilityIsObserverIndependent | acceptance depends only on the receipt + its signer's surfaces, not on who verifies | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S1 | AcceptedIsAuthentic | accepted ⇒ signed by an advertised key over an untampered payload | C1, C2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S2 | TamperedNeverAccepted | a tampered receipt is never accepted | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S3 | UnadvertisedKeyRejected | a receipt signed by a key the operator does not advertise is rejected | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S4 | HistoricalKeyStillVerifies | a pre-rotation receipt (advertised historical key) is still accepted | C1, C3 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S5 | RevokedNeverAccepted | a receipt the issuer revoked is never accepted | C4 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S6 | NoTrustLaundering | acceptance routes only through a key owned by the receipt's own signer | C1, C2 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| S7 | PortabilityIsObserverIndependent | acceptance depends only on the receipt + its signer's surfaces, not on who verifies | C1 | **Verified (Alloy 6.2.0, 2026-07-18)** |
+
+---
+
+## Alloy — `ep_quorum.als` (two-person rule)
+
+**Model checker:** Alloy 6.2.0 (SAT4J solver)
+**CI workflow:** `.github/workflows/alloy.yml` — CI-gated with the other three models
+**Scope:** `for 6` (all checks)
+**Local instructions:** see `formal/RUN_ALLOY.md`
+
+Models m-of-n quorum signoff. All 6 assertions verified with no counterexample and
+`showStrongQuorum` satisfiable in the 2026-07-18 CI-gated run.
+
+| ID | Property | Asserts | Status |
+|----|----------|---------|--------|
+| Q1 | SelfApprovalImpossible | the requester can never fill an approval slot | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q2 | NoHumanFillsTwoSlots | one human occupies at most one quorum slot | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q3 | NoKeyFillsTwoSlots | one signing key occupies at most one quorum slot | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q4 | TwoPersonRuleHolds | a satisfied quorum has ≥2 distinct human approvers | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q5 | OrderedChainAcyclic | an ordered approval chain has no cycle | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| Q6 | OrderedChainLinear | an ordered approval chain is a single linear path | **Verified (Alloy 6.2.0, 2026-07-18)** |
+
+---
+
+## Alloy — `ep_delegation.als` (EP-CAPABILITY-DELEGATION-v1)
+
+**Model checker:** Alloy 6.2.0 (SAT4J solver)
+**CI workflow:** `.github/workflows/alloy.yml` — CI-gated with the other three models
+**Scope:** `for 6` (`but 5 int` for the arithmetic checks)
+**Local instructions:** see `formal/RUN_ALLOY.md`
+
+States the ingest-time structural invariants the runtime validator enforces at the chain
+level — mirrors `packages/gate/capability-receipt.js` `assertDelegationChain()` and the
+`DelegationAuthorityNonIncreasing` invariant in `formal/ep_capability.tla`. This is the
+model that closes the "Alloy authored-not-run" gap: it was authored to the repo's Alloy
+convention but had never been executed. All 4 assertions now verified with no
+counterexample and `showChain` satisfiable in the 2026-07-18 CI-gated run.
+
+| ID | Property | Asserts | Status |
+|----|----------|---------|--------|
+| D1 | DelegationAcyclic | a valid chain is acyclic; no parent recurs | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| D2 | DelegationIdsUnique | each hop's delegation_id is distinct | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| D3 | LeafIsNotItsOwnAncestor | the leaf capability is never a parent in its own chain | **Verified (Alloy 6.2.0, 2026-07-18)** |
+| D4 | AuthorityNonIncreasing | authority is monotonically non-increasing root→leaf | **Verified (Alloy 6.2.0, 2026-07-18)** |
 
 ---
 

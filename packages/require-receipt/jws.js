@@ -26,11 +26,15 @@
  * `jose` library is a dev-only cross-verification dependency for the test suite.
  */
 import crypto from 'node:crypto';
+import { strictJsonGate } from './strict-json.js';
 
 export const JWS_PROFILE_VERSION = 'EP-RECEIPT-JWS-PROFILE-v1';
 export const JWS_ALG = 'EdDSA';
 export const JWS_TYP = 'application/ep-receipt+jws';
 const RECEIPT_VERSION = 'EP-RECEIPT-v1';
+const MAX_COMPACT_JWS_CHARS = 12 * 1024 * 1024;
+const MAX_PROTECTED_HEADER_BYTES = 4096;
+const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 
 // Single canonicalization source of truth — byte-identical to
 // @emilia-protocol/verify and @emilia-protocol/require-receipt: recursive,
@@ -46,6 +50,29 @@ function canonicalize(v) {
 
 function b64u(buf) {
   return Buffer.from(buf).toString('base64url');
+}
+
+function decodeCanonicalB64u(value, maxBytes) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) {
+    throw new Error('non-canonical base64url');
+  }
+  const bytes = Buffer.from(value, 'base64url');
+  if (bytes.length === 0 || bytes.length > maxBytes || bytes.toString('base64url') !== value) {
+    throw new Error('non-canonical base64url');
+  }
+  return bytes;
+}
+
+function decodeStrictJson(bytes, label) {
+  let text;
+  try {
+    text = UTF8_DECODER.decode(bytes);
+  } catch {
+    throw new Error(`${label} is not valid UTF-8`);
+  }
+  const strict = strictJsonGate(text);
+  if (!strict.ok) throw new Error(`${label} is not strict JSON: ${strict.reason}`);
+  return { text, value: JSON.parse(text) };
 }
 
 function isPlainObject(v) {
@@ -164,6 +191,9 @@ export function verifyReceiptJws(jws, publicKey) {
   if (typeof jws !== 'string') {
     return { valid: false, checks, error: 'jws must be a compact JWS string' };
   }
+  if (jws.length > MAX_COMPACT_JWS_CHARS) {
+    return { valid: false, checks, error: 'jws exceeds the profile size limit' };
+  }
   const parts = jws.split('.');
   if (parts.length !== 3 || parts.some((p) => p.length === 0)) {
     return { valid: false, checks, error: 'jws is not a well-formed compact serialization' };
@@ -174,16 +204,28 @@ export function verifyReceiptJws(jws, publicKey) {
   let payloadBytes;
   let sigBytes;
   try {
-    header = JSON.parse(Buffer.from(protectedB64, 'base64url').toString('utf8'));
-    payloadBytes = Buffer.from(payloadB64, 'base64url');
-    sigBytes = Buffer.from(sigB64, 'base64url');
+    const protectedBytes = decodeCanonicalB64u(protectedB64, MAX_PROTECTED_HEADER_BYTES);
+    header = decodeStrictJson(protectedBytes, 'protected header').value;
+    payloadBytes = decodeCanonicalB64u(payloadB64, 8 * 1024 * 1024);
+    sigBytes = decodeCanonicalB64u(sigB64, 64);
   } catch (e) {
     return { valid: false, checks, error: `Malformed JWS segment: ${e.message}` };
+  }
+  if (sigBytes.length !== 64) {
+    return { valid: false, checks, error: 'JWS Ed25519 signature must be exactly 64 bytes' };
   }
   if (!isPlainObject(header)) {
     return { valid: false, checks, error: 'protected header is not a JSON object' };
   }
   checks.structure = true;
+
+  const headerNames = Object.keys(header);
+  if (headerNames.some((name) => !['alg', 'typ', 'kid'].includes(name))) {
+    return { valid: false, checks, header, error: 'protected header contains a member outside the EP JWS profile' };
+  }
+  if (header.kid !== undefined && (typeof header.kid !== 'string' || header.kid.length === 0 || header.kid.length > 256)) {
+    return { valid: false, checks, header, error: 'protected header kid is invalid' };
+  }
 
   if (header.alg !== JWS_ALG) {
     return { valid: false, checks, header, error: `Unsupported alg: ${header.alg} (expected ${JWS_ALG})` };
@@ -195,6 +237,9 @@ export function verifyReceiptJws(jws, publicKey) {
 
   try {
     const keyObject = ed25519PublicFromKey(publicKey);
+    if (keyObject.asymmetricKeyType !== 'ed25519') {
+      return { valid: false, checks, header, error: `EP JWS requires an Ed25519 key (got ${keyObject.asymmetricKeyType})` };
+    }
     const signingInput = Buffer.from(`${protectedB64}.${payloadB64}`, 'ascii');
     checks.signature = crypto.verify(null, signingInput, keyObject, sigBytes);
   } catch (e) {
@@ -206,9 +251,12 @@ export function verifyReceiptJws(jws, publicKey) {
 
   let payload;
   try {
-    payload = JSON.parse(payloadBytes.toString('utf8'));
+    payload = decodeStrictJson(payloadBytes, 'payload').value;
   } catch (e) {
     return { valid: false, checks, header, error: `Payload is not valid JSON: ${e.message}` };
+  }
+  if (!isPlainObject(payload)) {
+    return { valid: false, checks, header, error: 'JWS payload must be a JSON object' };
   }
 
   // Round-trip: the verified bytes MUST already be the EP canonical (JCS) form.

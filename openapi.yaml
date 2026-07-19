@@ -9,7 +9,7 @@ info:
     Supporting line for AI-native contexts: MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.
 
     Extensions include Handshake for pre-action trust enforcement and Accountable Signoff when policy requires named human ownership.
-  version: 1.1.0
+  version: 1.2.0
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0
@@ -62,6 +62,12 @@ tags:
     description: Health, stats, audit, and operational endpoints
   - name: Signoff
     description: Accountable Signoff — named human ownership for high-risk actions requiring explicit attestation
+  - name: Mobile Approval
+    description: Native passkey approval, platform attestation, pairing, and exact-action ceremonies
+  - name: GRACE
+    description: Bounded grid-curtailment authorization and reference evidence composition
+  - name: EMILIA Gate
+    description: Consequence Firewall enforcement and public reference scenarios
   - name: GovGuard
     description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
@@ -4349,18 +4355,1232 @@ paths:
           description: Already decided, replay, or action-hash mismatch
         '410':
           description: Challenge or signoff window expired
+
+  # ===========================================================================
+  # Native mobile approval
+  # ===========================================================================
+
+  /api/v1/mobile/pairings:
+    post:
+      tags: [Mobile Approval]
+      summary: Create a single-use native app pairing code
+      description: |
+        Creates a short-lived pairing capability for one named approver. The
+        organization API key determines the tenant; approver identity is never
+        accepted as an authority claim from the mobile app.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approver_id]
+              properties:
+                approver_id:
+                  type: string
+                  pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+      responses:
+        '201':
+          description: Single-use pairing code created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobilePairing'
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '429': { description: Pairing rate exceeded }
+        '503': { description: Durable pairing service unavailable }
+
+  /api/v1/mobile/pairings/exchange:
+    post:
+      tags: [Mobile Approval]
+      summary: Exchange a single-use pairing code for a mobile session
+      description: |
+        Consumes the pairing capability atomically and returns a time-bounded
+        mobile bearer token. The platform and app identity must match the apps
+        pinned when the pairing was created.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pairing_code, platform, app_id]
+              properties:
+                pairing_code:
+                  type: string
+                  pattern: '^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$'
+                platform:
+                  type: string
+                  enum: [ios, android]
+                app_id:
+                  type: string
+      responses:
+        '201':
+          description: Paired mobile session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileSession'
+        '401': { description: Pairing capability refused }
+        '429': { description: Pairing rate exceeded }
+        '503': { description: Durable pairing service unavailable }
+
+  /api/v1/mobile/inbox:
+    get:
+      tags: [Mobile Approval]
+      summary: List pending exact-action approvals for the paired approver
+      security:
+        - MobileSessionAuth: []
+      responses:
+        '200':
+          description: Pending approvals scoped to the paired tenant and approver
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [approver_id, actions]
+                properties:
+                  approver_id: { type: string }
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MobileInboxAction'
+        '401': { description: 'Invalid, expired, or revoked mobile session' }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Approval inbox unavailable }
+
+  /api/v1/mobile/enrollments/challenges:
+    post:
+      tags: [Mobile Approval]
+      summary: Begin passkey and platform-attestation enrollment
+      description: |
+        Returns one challenge binding the approver, app identity, RP ID,
+        passkey registration, and App Attest or Play Integrity request.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approver_id, platform, app_id]
+              properties:
+                approver_id: { type: string }
+                platform: { type: string, enum: [ios, android] }
+                app_id: { type: string }
+      responses:
+        '200':
+          description: Enrollment challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '401': { description: Invalid mobile session }
+        '409': { description: Challenge replay or state conflict }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable enrollment service unavailable }
+
+  /api/v1/mobile/enrollments:
+    post:
+      tags: [Mobile Approval]
+      summary: Complete passkey and platform-attestation enrollment
+      description: |
+        Verifies the passkey registration and platform attestation against the
+        same single-use enrollment challenge before admitting the device.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobilePresentation'
+      responses:
+        '200':
+          description: Device enrollment accepted or refused with a closed verdict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '401': { description: Invalid mobile session }
+        '409': { description: Challenge replay or state conflict }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable enrollment service unavailable }
+
+  /api/v1/mobile/challenges:
+    post:
+      tags: [Mobile Approval]
+      summary: Issue an exact-action approval challenge
+      description: |
+        Resolves the action from the tenant system of record and issues a
+        single-use challenge bound to the action digest, presentation, approver,
+        decision, enrolled device, app identity, policy, and expiry.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [profile_id, action_reference, approver_id, decision, platform, app_id, device_key_id]
+              properties:
+                profile_id: { type: string }
+                action_reference: { type: string }
+                approver_id: { type: string }
+                decision: { type: string, enum: [approved, denied] }
+                platform: { type: string, enum: [ios, android] }
+                app_id: { type: string }
+                device_key_id: { type: string }
+      responses:
+        '200':
+          description: Exact-action challenge issued or refused with a closed verdict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '401': { description: Invalid mobile session }
+        '403': { description: Session is not authorized for the named approver or device }
+        '409': { description: Challenge replay or action-state conflict }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable challenge service unavailable }
+
+  /api/v1/mobile/ceremonies:
+    post:
+      tags: [Mobile Approval]
+      summary: Verify and atomically consume a native approval ceremony
+      description: |
+        Verifies passkey user presence and verification, exact-action binding,
+        app and device enrollment, platform attestation, freshness, policy, and
+        replay state. The action decision and portable evidence record commit in
+        one database transaction; storage failure refuses the action.
+      security:
+        - MobileSessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobilePresentation'
+      responses:
+        '200':
+          description: Closed reliance verdict and portable evidence record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileProtocolResult'
+        '400': { description: Malformed or mismatched ceremony }
+        '401': { description: Invalid mobile session }
+        '409': { description: 'Replayed, already decided, or conflicting ceremony' }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Verification or durable evidence store unavailable }
+
+  /api/v1/mobile/ceremonies/{challengeId}:
+    get:
+      tags: [Mobile Approval]
+      summary: Recover a possibly committed mobile ceremony result
+      description: |
+        Idempotently checks whether the exact challenge produced a verified,
+        atomically committed decision for the authenticated tenant, session,
+        approver, app, and device. Unknown identifiers and all scope, freshness,
+        or evidence mismatches return the same closed unknown body.
+      security:
+        - MobileSessionAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9:_.@-]{8,256}$'
+      responses:
+        '200':
+          description: Committed verified result or closed unknown state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileCeremonyLookup'
+        '401': { description: Invalid mobile session }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Durable ceremony result lookup unavailable }
+
+  /api/v1/mobile/session:
+    delete:
+      tags: [Mobile Approval]
+      summary: Revoke the current paired mobile session
+      security:
+        - MobileSessionAuth: []
+      responses:
+        '200': { description: Mobile session revoked }
+        '401': { description: Invalid mobile session }
+        '409': { description: Session already inactive }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Session revocation unavailable }
+
+  /api/v1/mobile/demo/actions:
+    post:
+      tags: [Mobile Approval]
+      summary: Inject a synthetic approval into a demo tenant
+      description: |
+        Disabled unless MOBILE_DEMO_ENABLED=true. Creates only synthetic
+        treasury, grid, or healthcare examples for authenticated demo tenants;
+        it is not an action-ingestion interface for production deployments.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approver_id]
+              properties:
+                approver_id: { type: string }
+                scenario: { type: string, enum: [treasury, grid, healthcare], default: treasury }
+      responses:
+        '201': { description: Synthetic action created }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '404': { description: Mobile demo injection is disabled }
+        '429': { description: Demo action rate exceeded }
+        '503': { description: Demo action service unavailable }
+
+  # ===========================================================================
+  # GRACE grid curtailment
+  # ===========================================================================
+
+  /api/v1/grace/curtailment/actions:
+    post:
+      tags: [GRACE]
+      operationId: createGraceCurtailmentActionGroup
+      summary: Create one bounded grid-curtailment approval group
+      description: |
+        Canonicalizes one `grid.curtailment` action and atomically creates the
+        named mobile-approver assignments. The relying-party policy, exact
+        approval surface, action digest, approver order, and threshold are
+        server-derived. A curtailment at or above the configured hard-cut floor
+        requires at least two distinct approvers.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - action_id
+                - facility
+                - target_delta_kw
+                - not_before
+                - not_after
+                - baseline_method_hash
+                - envelope_id
+                - initiator_id
+                - approver_ids
+                - required_approvals
+              properties:
+                action_id: { type: string, minLength: 3, maxLength: 256 }
+                facility: { type: string, minLength: 3, maxLength: 256 }
+                target_delta_kw:
+                  type: string
+                  pattern: '^(0|[1-9][0-9]*)(\.[0-9]{1,3})?$'
+                  description: Positive decimal kilowatts, encoded as a string.
+                not_before: { type: string, format: date-time }
+                not_after: { type: string, format: date-time }
+                baseline_method_hash:
+                  type: string
+                  pattern: '^sha256:[0-9a-f]{64}$'
+                envelope_id: { type: string, minLength: 3, maxLength: 256 }
+                initiator_id: { type: string, minLength: 3, maxLength: 256 }
+                approver_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 16
+                  uniqueItems: true
+                  items:
+                    type: string
+                    pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+                required_approvals: { type: integer, minimum: 1, maximum: 16 }
+                control_mode:
+                  type: string
+                  enum: [human_on_the_loop, human_in_the_loop]
+                  default: human_on_the_loop
+      responses:
+        '201':
+          description: Canonical action and mobile approval group created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [action_id, action_hash, required_approvals, assignments, expires_at]
+                properties:
+                  action_id: { type: string }
+                  action_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  required_approvals: { type: integer }
+                  assignments:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [action_reference, approver_id]
+                      properties:
+                        action_reference: { type: string, pattern: '^mobact_[0-9a-f]{32}$' }
+                        approver_id: { type: string }
+                  expires_at: { type: string, format: date-time }
+        '400': { description: Malformed action or insufficient hard-cut quorum }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '415': { description: Request is not application/json }
+        '429': { description: Action-creation rate exceeded }
+        '503': { description: Durable GRACE action service unavailable }
+
+  /api/v1/grace/reference-scenario:
+    get:
+      tags: [GRACE]
+      operationId: runGraceReferenceScenario
+      summary: Run the public signed GRACE reference composition
+      description: |
+        Runs a synthetic 18 MW scenario through two Class-A mobile approvals,
+        bounded one-time dispatch, separately signed actuator and meter evidence,
+        an Action State COSE Signed Statement, one-time entitlement redemption,
+        and hostile replay cases. Cryptographic verification is real; the
+        adapters are simulations and this endpoint makes no physical-grid claim.
+      security: []
+      responses:
+        '200':
+          description: Completed reference proof and hostile-refusal results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, reference_only, physical_claim, action, action_hash, authorization, acknowledgment, meter_statement, compliance, action_state, settlement, attacks, pins]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  reference_only: { type: boolean, enum: [true] }
+                  physical_claim: { type: boolean, enum: [false] }
+                  description: { type: string }
+                  action: { type: object }
+                  action_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  authorization: { type: object }
+                  acknowledgment: { type: object }
+                  meter_statement: { type: object }
+                  compliance: { type: object }
+                  action_state: { type: object }
+                  settlement: { type: object }
+                  attacks: { type: object }
+                  pins: { type: object }
+        '429': { description: Public reference-run rate exceeded }
+        '503': { description: Reference scenario unavailable }
+
+  /api/v1/gate/reference-scenario:
+    get:
+      tags: [EMILIA Gate]
+      operationId: runGateReferenceScenario
+      summary: Run the public EMILIA Gate consequence-firewall scenario
+      description: |
+        Runs a synthetic consequential action through the real Gate runtime:
+        missing evidence is challenged, a generated human or quorum ceremony is
+        bound to the exact action, the authorized effect runs once, and drift,
+        tampering, wrong-authority, and replay presentations are refused. Keys
+        and effects are reference-only; this endpoint makes no production-system
+        or physical-world claim.
+      security: []
+      parameters:
+        - in: query
+          name: profile
+          required: false
+          schema:
+            type: string
+            enum: [treasury, production, data, healthcare]
+            default: treasury
+      responses:
+        '200':
+          description: Completed reference execution and hostile-refusal results
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, reference_only, physical_claim, run_id, profile, action, action_hash, challenge, ceremony, authorization, execution, reliance, evidence, attacks, limitations]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  reference_only: { type: boolean, enum: [true] }
+                  physical_claim: { type: boolean, enum: [false] }
+                  generated_at: { type: string, format: date-time }
+                  run_id: { type: string }
+                  profile: { type: object }
+                  action: { type: object }
+                  action_hash: { type: string }
+                  challenge: { type: object }
+                  ceremony: { type: object }
+                  authorization: { type: object }
+                  execution: { type: object }
+                  reliance: { type: object }
+                  evidence: { type: object }
+                  attacks:
+                    type: array
+                    items: { type: object }
+                  limitations:
+                    type: array
+                    items: { type: string }
+        '400': { description: Unknown reference profile }
+        '429': { description: Public reference-run rate exceeded }
+        '503': { description: Gate reference scenario unavailable }
+
+  /api/v1/gate/control-plane-scenario:
+    get:
+      tags: [EMILIA Gate]
+      operationId: runGateControlPlaneScenario
+      summary: Run the public three-plane Gate control-plane scenario
+      description: |
+        Composes a synthetic executor-side Gate, an independently pinned network
+        observation, coverage evidence, and an evidence-eligibility decision. The
+        witness-only mode demonstrates the fail-closed boundary: observing traffic
+        does not establish that the action was mediated. All keys, effects, and
+        measurements are reference-only and make no production-system claim.
+      security: []
+      parameters:
+        - in: query
+          name: mode
+          required: false
+          schema:
+            type: string
+            enum: [complete, witness_only]
+            default: complete
+      responses:
+        '200':
+          description: Three-plane reference result with coverage and evidence eligibility
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok, reference_only, physical_claim, mode, action, action_digest, planes, hashes, limitations]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  reference_only: { type: boolean, enum: [true] }
+                  physical_claim: { type: boolean, enum: [false] }
+                  mode: { type: string, enum: [complete, witness_only] }
+                  generated_at: { type: string, format: date-time }
+                  action: { type: object }
+                  action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                  planes: { type: object }
+                  hashes: { type: object }
+                  limitations:
+                    type: array
+                    items: { type: string }
+        '400': { description: Unknown control-plane reference mode }
+        '429': { description: Public reference-run rate exceeded }
+        '503': { description: Control-plane reference scenario unavailable }
+
+  # ===========================================================================
+  # Release Lock
+  # ===========================================================================
+
+  /api/v1/release-locks:
+    post:
+      operationId: createReleaseLock
+      tags: [Release Lock]
+      summary: Create a two-round change-order Release Lock
+      description: |
+        Requires write permission. Verifies the final retained document, both
+        independently verified contact bindings, and two distinct role subjects
+        under one relying-party-pinned external authority. It then delivers one
+        single-use invitation to each verified contact. Raw invitation
+        capabilities are never returned to the creating contractor.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseLockCreateRequest'
+      responses:
+        '201': { description: 'Release Lock created and invitations delivered' }
+        '400': { description: 'Malformed, non-canonical, or incomplete lock' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '422': { description: 'Authoritative document evidence refused' }
+        '503': { description: 'Storage, document, or delivery provider unavailable' }
+
+  /api/v1/release-locks/invitations/exchange:
+    post:
+      operationId: exchangeReleaseLockInvitation
+      tags: [Release Lock]
+      summary: Exchange one exact participant invitation
+      description: |
+        Browser or cookie-jar exchange. The request Origin must exactly match
+        the API origin. The response sets a strict host-only cookie named
+        `__Host-ep_release_lock_session_{lockId}`; clients must preserve that
+        exact Set-Cookie value for participant operations.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, lock_id, role]
+              properties:
+                token: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true }
+                lock_id: { $ref: '#/components/schemas/ReleaseLockId' }
+                role: { $ref: '#/components/schemas/ReleaseLockRole' }
+      responses:
+        '200':
+          description: Invitation consumed; strict host-only session cookie set
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: Dynamic per-lock HttpOnly, Secure, SameSite=Strict session cookie
+        '401': { description: 'Invitation invalid' }
+        '403': { description: 'Origin, invitation lock, or role mismatch' }
+        '409': { description: 'Invitation already exchanged or no longer active' }
+        '410': { description: 'Invitation expired' }
+
+  /api/v1/release-locks/pairings/exchange:
+    post:
+      operationId: exchangeReleaseLockPairing
+      tags: [Release Lock]
+      summary: Exchange a one-time Action Mirror phone pairing
+      description: |
+        Creates a short-lived session restricted to the pairing's exact lock,
+        participant role, contact binding, and approval round. The request
+        Origin must exactly match the API origin; the response sets the exact
+        dynamic per-lock cookie used by the Action Mirror.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, lock_id, role, round]
+              properties:
+                token: { type: string, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true }
+                lock_id: { $ref: '#/components/schemas/ReleaseLockId' }
+                role: { $ref: '#/components/schemas/ReleaseLockRole' }
+                round: { $ref: '#/components/schemas/ReleaseLockRound' }
+      responses:
+        '200':
+          description: Pairing consumed; round-scoped session cookie set
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: Dynamic per-lock HttpOnly, Secure, SameSite=Strict session cookie
+        '401': { description: 'Pairing invalid' }
+        '403': { description: 'Pairing lock, role, or round mismatch' }
+        '409': { description: 'Pairing already exchanged' }
+        '410': { description: 'Pairing expired' }
+
+  /api/v1/release-locks/{lockId}/view:
+    get:
+      operationId: getReleaseLockParticipantView
+      tags: [Release Lock]
+      summary: Retrieve the participant-scoped canonical lock view
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      responses:
+        '200': { description: 'Canonical actions, decisions, and effect state for this lock' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session is scoped to a different lock' }
+        '404': { description: 'Release Lock not found' }
+
+  /api/v1/release-locks/{lockId}/evidence:
+    get:
+      operationId: getReleaseLockEvidence
+      tags: [Release Lock]
+      summary: Export the organization-scoped portable evidence bundle
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      responses:
+        '200': { description: 'Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs' }
+        '401': { description: 'Organization authentication required' }
+        '404': { description: 'Release Lock not found in the authenticated organization' }
+
+  /api/v1/release-locks/{lockId}/participant-evidence:
+    get:
+      operationId: getReleaseLockParticipantEvidence
+      tags: [Release Lock]
+      summary: Export the same portable bundle from a participant session
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      responses:
+        '200': { description: 'Content-digested Release Lock transport bundle; authenticity comes from its signed components and pinned verification inputs' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session is scoped to a different lock' }
+
+  /api/v1/release-locks/{lockId}/registration/options:
+    post:
+      operationId: createReleaseLockRegistrationOptions
+      tags: [Release Lock]
+      summary: Begin role-scoped passkey enrollment
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      responses:
+        '201': { description: 'WebAuthn registration options bound to this lock, role, and contact' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin or session scope refused' }
+        '409': { description: 'Credential already enrolled for this role' }
+
+  /api/v1/release-locks/{lockId}/registration/verify:
+    post:
+      operationId: verifyReleaseLockRegistration
+      tags: [Release Lock]
+      summary: Verify and store one role-scoped passkey credential
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [challenge_id, attestation]
+              properties:
+                challenge_id: { type: string, format: uuid }
+                attestation: { type: object, description: WebAuthn RegistrationResponseJSON }
+      responses:
+        '201': { description: 'Credential enrolled for the exact lock, role, and contact' }
+        '400': { description: 'WebAuthn attestation refused' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin or session scope refused' }
+        '409': { description: 'Challenge replayed or credential reused' }
+
+  /api/v1/release-locks/{lockId}/rounds/{round}/action-check/options:
+    post:
+      operationId: createReleaseLockActionCheck
+      tags: [Release Lock]
+      summary: Begin a fresh exact-action approval check
+      description: |
+        Returns randomized material-field questions and WebAuthn authentication
+        options committed to the exact lock version, role, round, action hash,
+        expected-answer digest, nonce, and expiry. Requires an exact same-origin
+        Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockRound'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      responses:
+        '201': { description: 'Fresh Action Check and WebAuthn options' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Session role or round scope mismatch' }
+        '409': { description: 'Round unavailable, complete, or already approved' }
+
+  /api/v1/release-locks/{lockId}/rounds/{round}/approvals:
+    post:
+      operationId: approveReleaseLockRound
+      tags: [Release Lock]
+      summary: Record one exact, passkey-backed round approval
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockRound'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [challenge_id, answers, assertion]
+              properties:
+                challenge_id: { type: string, format: uuid }
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [question_id, option_id]
+                    properties:
+                      question_id: { type: string }
+                      option_id: { type: string }
+                assertion: { type: object, description: WebAuthn AuthenticationResponseJSON }
+      responses:
+        '200': { description: 'Approval recorded; a complete draw round may reserve one effect' }
+        '400': { description: 'Assertion or Action Check malformed' }
+        '403': { description: 'Origin, session, credential, role, or round scope mismatch' }
+        '409': { description: 'Binding mismatch, replay, or round already complete' }
+        '422': { description: 'One or more exact-term answers are incorrect' }
+        '503': { description: 'Custodian result unavailable or ambiguous' }
+
+  /api/v1/release-locks/{lockId}/rounds/{round}/pairings:
+    post:
+      operationId: createReleaseLockRoundPairing
+      tags: [Release Lock]
+      summary: Create a one-time Action Mirror pairing for this participant round
+      description: Browser-only mutation requiring the dynamic Release Lock cookie and an exact same-origin Origin header.
+      security:
+        - ReleaseLockSession: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+        - $ref: '#/components/parameters/ReleaseLockRound'
+        - $ref: '#/components/parameters/ReleaseLockOrigin'
+      responses:
+        '201': { description: 'Five-minute pairing capability scoped to one lock, role, and round' }
+        '401': { description: 'Session invalid or expired' }
+        '403': { description: 'Origin, session lock, or round scope mismatch' }
+        '409': { description: 'Round unavailable or already complete' }
+
+  /api/v1/release-locks/{lockId}/draw-release:
+    post:
+      operationId: stageReleaseLockDraw
+      tags: [Release Lock]
+      summary: Stage the exact post-milestone draw and custodian instruction
+      description: Requires write permission and payee-bound lien-waiver evidence for every exact payee.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseLockDrawRequest'
+      responses:
+        '201': { description: 'DRAW_RELEASE staged for the accepted change-order version' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '409': { description: 'CO not accepted, version stale, or draw already staged' }
+        '422': { description: 'Authoritative milestone evidence refused' }
+        '503': { description: 'Evidence provider unavailable or ambiguous' }
+
+  /api/v1/release-locks/{lockId}/amendments:
+    post:
+      operationId: amendReleaseLock
+      tags: [Release Lock]
+      summary: Replace the retained change order and invalidate both prior rounds
+      description: Requires write permission. Any amendment revokes unexchanged pairings and resets both approval rounds.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReleaseLockId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReleaseLockAmendRequest'
+      responses:
+        '201': { description: 'New immutable version created; both rounds reset' }
+        '401': { description: 'Organization authentication required' }
+        '403': { description: 'Contractor entity or organization mismatch' }
+        '409': { description: 'Version stale, identical amendment, or effect already in progress' }
+        '422': { description: 'Authoritative replacement document refused' }
+
+  /api/internal/release-lock/reconcile:
+    post:
+      operationId: reconcileReleaseLockEffect
+      tags: [Release Lock]
+      summary: Reconcile an ambiguous custodian result
+      description: Named full-operator endpoint; shared cron credentials and lower-privilege named roles are refused.
+      security:
+        - OperatorAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [effect_reference]
+              properties:
+                effect_reference: { type: string }
+      responses:
+        '200': { description: 'Authoritative custodian state recorded' }
+        '401': { description: 'Named operator authentication required' }
+        '403': { description: 'Named operator lacks release_lock.reconcile permission' }
+        '409': { description: 'Effect is not ambiguous or provider binding mismatched' }
+        '503': { description: 'Authoritative reconciliation unavailable' }
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       description: EP API key (ep_live_...)
+    MobileSessionAuth:
+      type: http
+      scheme: bearer
+      description: Time-bounded paired native session token (ep_mobile_...)
     CronAuth:
       type: http
       scheme: bearer
       description: CRON_SECRET for internal/operator endpoints
+    OperatorAuth:
+      type: http
+      scheme: bearer
+      description: Five-minute ep_op_ named-operator token
+    ReleaseLockSession:
+      type: apiKey
+      in: header
+      name: Cookie
+      description: |
+        Raw Cookie header containing exactly one dynamic
+        `__Host-ep_release_lock_session_{lockId}=<token>` entry. Browsers receive
+        it as HttpOnly, Secure, SameSite=Strict from invitation or pairing
+        exchange. Non-browser clients must preserve the returned Set-Cookie;
+        the session token is never returned in a JSON body.
+
+  parameters:
+    ReleaseLockId:
+      name: lockId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ReleaseLockId'
+    ReleaseLockRound:
+      name: round
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [co-accepted, draw-release]
+    ReleaseLockOrigin:
+      name: Origin
+      in: header
+      required: true
+      description: Exact API origin required for every cookie-authenticated or capability-exchange mutation
+      schema:
+        type: string
+        format: uri
 
   schemas:
+    ReleaseLockId:
+      type: string
+      pattern: '^rlk_[a-f0-9]{32}$'
+
+    ReleaseLockRole:
+      type: string
+      enum: [contractor, customer]
+
+    ReleaseLockRound:
+      type: string
+      enum: [CO_ACCEPTED, DRAW_RELEASE]
+
+    ReleaseLockCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [change_order, lock_expires_at, invitation_expires_at, contractor_party, customer_party]
+      properties:
+        organization_id: { type: string }
+        change_order:
+          $ref: '#/components/schemas/ReleaseLockChangeOrder'
+        lock_expires_at: { type: string, format: date-time }
+        invitation_expires_at: { type: string, format: date-time }
+        contractor_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+        customer_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+
+    ReleaseLockParty:
+      type: object
+      additionalProperties: false
+      required: [party_id, display_name, contact, authority]
+      properties:
+        party_id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$' }
+        display_name: { type: string, minLength: 1, maxLength: 200 }
+        contact:
+          $ref: '#/components/schemas/ReleaseLockVerifiedContact'
+        authority:
+          $ref: '#/components/schemas/ReleaseLockAuthority'
+
+    ReleaseLockVerifiedContact:
+      type: object
+      additionalProperties: false
+      required: [channel, identifier, verification]
+      properties:
+        channel: { type: string, enum: [email, sms] }
+        identifier: { type: string, writeOnly: true }
+        verification:
+          $ref: '#/components/schemas/ReleaseLockVerificationProof'
+
+    ReleaseLockAuthority:
+      type: object
+      additionalProperties: false
+      description: |
+        Portable provider-signed role authority. Verification uses a
+        relying-party-pinned Ed25519 provider key. The provider remains
+        responsible for civil-identity proofing, subject uniqueness, and its
+        asserted binding between the subject and verified contact digest.
+      required: [assertion, signature]
+      properties:
+        assertion:
+          type: object
+          additionalProperties: false
+          required:
+            ['@version', algorithm, provider, key_id, reference, role, party_id,
+             subject_digest, contact_binding_digest, verified_at, expires_at]
+          properties:
+            '@version':
+              type: string
+              enum: [EP-RELEASE-LOCK-AUTHORITY-ASSERTION-v1]
+            algorithm: { type: string, enum: [Ed25519] }
+            provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+            key_id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$' }
+            reference: { type: string, minLength: 1, maxLength: 512 }
+            role: { $ref: '#/components/schemas/ReleaseLockRole' }
+            party_id: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$' }
+            subject_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+            contact_binding_digest: { type: string, pattern: '^hmac-sha256:[0-9a-f]{64}$' }
+            verified_at: { type: string, format: date-time }
+            expires_at: { type: string, format: date-time }
+        signature:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{86}$'
+          description: Ed25519 signature over the domain-separated RFC 8785 assertion bytes
+
+    ReleaseLockVerificationProof:
+      type: object
+      additionalProperties: false
+      required: [provider, reference, verified_at, expires_at, proof]
+      properties:
+        provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+        reference: { type: string, minLength: 1, maxLength: 512 }
+        verified_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        proof: { type: string, pattern: '^hmac-sha256:[0-9a-f]{64}$', writeOnly: true }
+
+    ReleaseLockProviderDocument:
+      type: object
+      additionalProperties: false
+      required: [provider, reference, verification]
+      properties:
+        provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+        reference: { type: string, minLength: 1, maxLength: 512 }
+        verification:
+          type: object
+          description: Provider-specific verification object; credentials and tokens are forbidden
+
+    ReleaseLockChangeOrder:
+      type: object
+      additionalProperties: false
+      required: [document, scope, price_delta, currency, progress_schedule_effect, expires_at]
+      properties:
+        document:
+          $ref: '#/components/schemas/ReleaseLockProviderDocument'
+        scope: { type: object, minProperties: 1 }
+        price_delta: { type: string, pattern: '^-?(?:0|[1-9][0-9]{0,11})\.[0-9]{2}$' }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        progress_schedule_effect: { type: object, minProperties: 1 }
+        expires_at: { type: string, format: date-time }
+
+    ReleaseLockDrawRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_version, draw]
+      properties:
+        organization_id: { type: string }
+        expected_version: { type: integer, minimum: 1 }
+        draw:
+          $ref: '#/components/schemas/ReleaseLockDraw'
+
+    ReleaseLockDraw:
+      type: object
+      additionalProperties: false
+      required:
+        [draw_id, amount, currency, payees, milestone, completion_evidence, lien_waivers, draw_documents, custodian, expires_at]
+      properties:
+        draw_id: { type: string, minLength: 1, maxLength: 256 }
+        amount: { type: string, pattern: '^(?:0|[1-9][0-9]{0,11})\.[0-9]{2}$' }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        payees:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ReleaseLockPayee'
+        milestone:
+          type: object
+          additionalProperties: false
+          required: [id, label]
+          properties:
+            id: { type: string }
+            label: { type: string }
+        completion_evidence:
+          $ref: '#/components/schemas/ReleaseLockProviderDocument'
+        lien_waivers:
+          type: array
+          minItems: 1
+          maxItems: 40
+          description: Must cover every exact payee; provider references cannot be reused across evidence categories.
+          items:
+            $ref: '#/components/schemas/ReleaseLockLienWaiver'
+        draw_documents:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ReleaseLockProviderDocument'
+        custodian:
+          $ref: '#/components/schemas/ReleaseLockCustodian'
+        expires_at: { type: string, format: date-time }
+
+    ReleaseLockPayee:
+      type: object
+      additionalProperties: false
+      required: [party_id, destination_id, amount]
+      properties:
+        party_id: { type: string }
+        destination_id: { type: string }
+        amount: { type: string, pattern: '^(?:0|[1-9][0-9]{0,11})\.[0-9]{2}$' }
+
+    ReleaseLockLienWaiver:
+      type: object
+      additionalProperties: false
+      required: [payee_party_id, document]
+      properties:
+        payee_party_id: { type: string }
+        document:
+          $ref: '#/components/schemas/ReleaseLockProviderDocument'
+
+    ReleaseLockCustodian:
+      type: object
+      additionalProperties: false
+      required: [provider, environment, transaction_id, milestone_id, instruction]
+      properties:
+        provider: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,127}$' }
+        environment: { type: string, enum: [sandbox, production] }
+        transaction_id: { type: string }
+        milestone_id: { type: string }
+        instruction: { type: string, enum: [release_milestone] }
+
+    ReleaseLockAmendRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [expected_version, change_order, lock_expires_at, contractor_party, customer_party]
+      properties:
+        organization_id: { type: string }
+        expected_version: { type: integer, minimum: 1 }
+        change_order:
+          $ref: '#/components/schemas/ReleaseLockChangeOrder'
+        lock_expires_at: { type: string, format: date-time }
+        contractor_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+        customer_party:
+          $ref: '#/components/schemas/ReleaseLockParty'
+
+    MobilePairing:
+      type: object
+      required: [pairing_code, profile_id, expires_at, enabled_platforms]
+      properties:
+        pairing_code: { type: string }
+        profile_id: { type: string }
+        expires_at: { type: string, format: date-time }
+        enabled_platforms:
+          type: array
+          items: { type: string, enum: [ios, android] }
+
+    MobileSession:
+      type: object
+      required: [access_token, token_type, expires_at, approver_id, profile_id]
+      properties:
+        access_token: { type: string, readOnly: true }
+        token_type: { type: string, enum: [Bearer] }
+        expires_at: { type: string, format: date-time }
+        approver_id: { type: string }
+        profile_id: { type: string }
+
+    MobileInboxAction:
+      type: object
+      required: [action_reference, title, summary, risk, material_fields, expires_at, created_at]
+      properties:
+        action_reference: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        risk: { type: string }
+        material_fields:
+          type: object
+          additionalProperties: { type: string }
+        expires_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    MobilePresentation:
+      type: object
+      additionalProperties: false
+      required: [challenge, response]
+      properties:
+        challenge:
+          type: object
+          description: Server-issued challenge returned without mutation
+        response:
+          type: object
+          description: Passkey and platform-attestation response bound to the challenge
+
+    MobileProtocolResult:
+      type: object
+      description: Closed mobile protocol result. Unknown or unavailable state refuses.
+      required: [ok, verdict]
+      properties:
+        ok: { type: boolean }
+        valid: { type: boolean }
+        verdict:
+          type: string
+          pattern: '^(issued|accepted|refuse_[a-z0-9_]+)$'
+        reason: { type: string }
+        challenge: { type: object, nullable: true }
+        decision: { type: string, nullable: true }
+        audit_record: { type: object, nullable: true }
+
+    MobileCeremonyLookup:
+      type: object
+      additionalProperties: false
+      required: [committed, outcome, result]
+      properties:
+        committed: { type: boolean }
+        outcome: { type: string, enum: [committed, unknown] }
+        result:
+          type: object
+          nullable: true
+          additionalProperties: false
+          required: [valid, verdict, decision, reason, context_hash]
+          properties:
+            valid: { type: boolean, enum: [true] }
+            verdict: { type: string, enum: [verified] }
+            decision: { type: string, enum: [approved, denied] }
+            reason: { type: string, nullable: true }
+            context_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+
     TrustProfileResponse:
       type: object
       properties:

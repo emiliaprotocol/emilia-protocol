@@ -65,6 +65,28 @@ enrollment flow uses.
 - **Provision (active):** the human becomes eligible to enroll a signing passkey
   at `/api/v1/approvers/webauthn/register-options` (recorded in the audit trail).
   No key is minted on their behalf — that would be operator custody (Class C).
+- **Directory anchor:** once your org provisions a directory, enrollment is
+  gated on it. An operator holding `approver.enroll` can only bind an
+  `approver_id` that matches an **active** provisioned `userName` (normalized
+  identically to the SSO directory check), so an operator can no longer name an
+  approver the directory does not carry. Each credential records its
+  `enrollment_basis`: `directory` when it matched a provisioned user, or
+  `operator_attested` when the org has no directory (the pilot path). The org →
+  directory link is the SCIM provisioning token, which is the only record
+  carrying both your `organization_id` and your directory `tenant_id`; because
+  one org can mint several tokens, the lookup resolves the full set of your
+  directory tenants and an active match in any of them anchors the enrollment.
+- **The anchor is sticky.** Minting a SCIM token commits your org to
+  directory-anchored enrollment: from then on, an approver must be synced (and
+  active) before it can enroll. **Revoking the token does not disarm the
+  anchor** — the directory link is keyed on the existence of a token row, not on
+  its liveness, so you cannot drop back to operator-attested enrollment by
+  revoking a bearer token. Exiting directory governance requires an
+  administrator to hard-delete the token rows. This is deliberate: token
+  revocation is reachable by the same privileged operator the anchor defends
+  against, so it must not be a one-step bypass. A directory-mode credential is
+  stored under the **normalized** `userName`, which is the same value the
+  deprovision path revokes by — so an IdP offboarding reliably revokes it.
 - **Deprovision (`active=false` or `DELETE`):** every live approver credential
   for that `userName` is revoked **in the same write**. Offboarding in your IdP
   removes signing authority in the same sync. Re-activation makes the human

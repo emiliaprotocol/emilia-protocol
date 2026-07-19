@@ -1,5 +1,7 @@
 name: Publish Verify SDK
 
+permissions: read-all
+
 # npm Trusted Publishing (OIDC) — NO long-lived NPM_TOKEN. On each run npm
 # verifies the OIDC claim (owner / repo / workflow filename) and issues a
 # short-lived credential, and `--provenance` attaches a signed provenance
@@ -20,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Exact tag, for example verify-v3.9.0
+        description: Exact tag, for example verify-v3.10.0
         required: true
         type: string
       confirmation:
@@ -76,21 +78,22 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install cross-language verifier dependency
+      - name: Install hash-locked cross-language verifier dependency
         working-directory: ${{ github.workspace }}
-        run: python -m pip install cryptography==46.0.6
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
 
-      - name: Upgrade npm (>= 11.5.1 for OIDC trusted publishing + provenance)
-        # --min-release-age=0: the repo .npmrc age-gates app dependencies (supply-
-        # chain defense); the trusted first-party npm tool is exempt so publish
-        # tooling always installs a current npm with full provenance support.
-        run: npm install -g npm@11.18.0 --min-release-age=0
+      - name: Install hash-locked npm (>= 11.5.1 for OIDC publishing)
+        working-directory: ${{ github.workspace }}
+        run: |
+          npm ci --prefix .github/npm-toolchain --ignore-scripts --min-release-age=0
+          echo "$GITHUB_WORKSPACE/.github/npm-toolchain/node_modules/.bin" >> "$GITHUB_PATH"
 
-      # Zero-dependency package — no install step. The package.json "files"
-      # array controls exactly what ships: index.js plus every module it
-      # re-exports (web, federation, quorum, revocation, provenance,
-      # time-attestation, evidence-record, cli) and index.d.ts/README/LICENSE.
-      # `npm pack --dry-run` below prints the authoritative list before publish.
+      # The published verifier remains zero-dependency. Its test suite also
+      # exercises the optional PQ adapter, so install the repository's locked
+      # development tooling without running lifecycle scripts.
+      - name: Install locked test tooling
+        working-directory: ${{ github.workspace }}
+        run: npm ci --ignore-scripts
 
       - name: Run tests
         run: npm test
@@ -153,17 +156,31 @@ jobs:
           retention-days: 90
 
       - name: Publish the attested tarball (OIDC + npm provenance)
-        run: npm publish "../../release-artifacts/${{ steps.pack.outputs.tarball }}" --access public --provenance
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@emilia-protocol/verify@$VERSION" version --min-release-age=0 >/dev/null 2>&1; then
+            echo "@emilia-protocol/verify@$VERSION already exists; continuing to mandatory byte verification."
+          else
+            npm publish "../../release-artifacts/${{ steps.pack.outputs.tarball }}" --access public --provenance
+          fi
 
       - name: Verify registry bytes match the attested tarball
         run: |
           VERSION=$(node -p "require('./package.json').version")
           mkdir -p ../../registry-copy
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if npm pack "@emilia-protocol/verify@$VERSION" --json --pack-destination ../../registry-copy > ../../registry-copy/pack.json; then
+          REGISTRY_READY=false
+          for attempt in $(seq 1 60); do
+            rm -f ../../registry-copy/pack.json
+            if npm pack "@emilia-protocol/verify@$VERSION" --min-release-age=0 --json --pack-destination ../../registry-copy > ../../registry-copy/pack.json; then
+              REGISTRY_READY=true
               break
             fi
+            echo "Registry has not exposed @emilia-protocol/verify@$VERSION yet (attempt $attempt/60); retrying in 5 seconds."
             sleep 5
           done
+          if [ "$REGISTRY_READY" != "true" ]; then
+            echo "::error::npm did not expose @emilia-protocol/verify@$VERSION within 5 minutes of publication."
+            exit 2
+          fi
           REGISTRY_TARBALL=$(node -e "const r=require('../../registry-copy/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
           cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"

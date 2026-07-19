@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { getPrincipal } from '@/lib/ep-ix';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId, authEntityIsOperator } from '@/lib/auth-projections.js';
 import { EP_ERRORS } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '../../../../../../lib/logger.js';
@@ -30,7 +31,7 @@ export async function GET(request, { params }) {
     const { principalId } = await params;
 
     // Only the principal themselves or operators may list their delegation history.
-    if (auth.entity.entity_id !== principalId && !auth.entity.is_operator) {
+    if (authEntityId(auth) !== principalId && !authEntityIsOperator(auth)) {
       return EP_ERRORS.FORBIDDEN('You may only view delegation history for your own principal.');
     }
 

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# EMILIA Gate — reference Terraform module (`EP-GATE-TF-v1`)
+# EMILIA Gate — deprecated Terraform module (`EP-GATE-TF-v1`)
 
 Terraform sibling of the Helm chart (`../helm`, `EP-GATE-HELM-v1`) for BYOC
 (bring-your-own-cloud) installs of the Trusted Action Firewall. Same container
@@ -12,6 +12,10 @@ in a cluster **you** control:
 | `kubernetes_config_map_v1.manifest` | The action-risk manifest (the deny-by-default policy), mounted read-only at `/etc/emilia-gate/action-risk-manifest.json` |
 | `kubernetes_deployment_v1.gate` | The gate pods — non-root, read-only rootfs, no privilege escalation, all capabilities dropped, no service-account token; pinned issuer keys arrive via a non-optional `secretKeyRef` to **your** Secret |
 | `kubernetes_service_v1.gate` | Cluster-internal Service (ClusterIP by default) in front of the pods |
+
+**Deprecated:** this legacy module may run per-process in-memory consumption and
+evidence state. New deployments should use `./service`, which targets
+`apps/gate-service` and requires durable operator adapters.
 
 **Honest framing:** this is a *reference module* and it is *experimental*. It
 is a starting point for your platform team to review, fork, and own — not a
@@ -57,8 +61,9 @@ module "emilia_gate" {
   namespace = "emilia"                                  # must already exist
   image     = "ghcr.io/your-org/emilia-gate@sha256:..." # pin a digest
 
-  replicas                = 2
+  replicas                = 1
   issuer_keys_secret_name = "emilia-gate-issuer-keys" # NAME only, never keys
+  github_token_secret_name = "emilia-gate-github"
 
   # The deny-by-default policy the gate enforces (EP-ACTION-RISK-MANIFEST).
   manifest_json = file("${path.module}/manifest.json")
@@ -85,9 +90,11 @@ policy change rolls the pods.
 | `EP_GATE_MANIFEST_PATH` | ConfigMap mount | `/etc/emilia-gate/action-risk-manifest.json` |
 | `EP_GATE_METRICS_ENABLED` | `metrics_enabled` | `false` |
 | `EP_GATE_ISSUER_KEYS` | `secretKeyRef` → your existing Secret | — (required) |
+| `GITHUB_TOKEN` | `github_token_secret_name` → existing Secret | — (optional) |
 
 Extra plain-text env goes in `extra_env` — **never secrets** (values in that
-map land in Terraform state); wire secret env from your own Secrets.
+map land in Terraform state). Use `secret_env` for generic non-optional
+`secretKeyRef` entries; the module accepts Secret names/keys, never values.
 
 ## Inputs
 
@@ -99,7 +106,10 @@ map land in Terraform state); wire secret env from your own Secrets.
 | `issuer_keys_secret_key` | `issuer-keys.json` | Key inside that Secret |
 | `name` | `emilia-gate` | DNS-1123 label |
 | `namespace` | `default` | Must already exist |
-| `replicas` | `2` | See replay-defense note below |
+| `replicas` | `1` | Values above one require both shared backend references |
+| `shared_consumption_backend`, `shared_evidence_backend` | `null` | Secret-backed adapter environment references required above one replica |
+| `github_token_secret_name` | `null` | Existing GitHub token Secret reference |
+| `secret_env` | `{}` | Generic environment-to-existing-Secret references |
 | `port` / `service_port` | `8080` / `8080` | |
 | `service_type` | `ClusterIP` | Anything more exposed is your explicit call |
 | `log_level` | `info` | `error` \| `warn` \| `info` \| `debug` |
@@ -116,12 +126,11 @@ Outputs: `service_name`, `namespace`, `service_endpoint`, `deployment_name`,
 
 ## Operational notes
 
-- **Replay defense across replicas:** with `replicas > 1`, one-time receipt
-  consumption is only fleet-safe if the gate is configured with a *shared*
-  durable consumption store (Redis/Postgres — see
-  `createDurableConsumptionStore` in `@emilia-protocol/gate`). The module
-  deploys the pods either way; pointing them at a shared store (e.g. via
-  `extra_env`) is your configuration responsibility.
+- **Replay defense across replicas:** the module refuses `replicas > 1` unless
+  both `shared_consumption_backend` and `shared_evidence_backend` provide
+  complete Secret-backed environment references. That proves wiring exists,
+  not that a custom legacy image implements the required atomic adapters;
+  prefer the service module.
 - **Namespace:** not created by this module — pass one that exists.
 - **Ingress/TLS/NetworkPolicy/ServiceMonitor:** intentionally out of scope.
   The default posture is cluster-internal; exposure decisions belong to the
@@ -129,10 +138,11 @@ Outputs: `service_name`, `namespace`, `service_endpoint`, `deployment_name`,
 
 ## What has been validated
 
-`terraform fmt -check`, `terraform init -backend=false`, and
-`terraform validate` pass against Terraform 1.9.8 with
+`packages/gate/deploy/terraform/tests/validate.sh` runs formatting, provider
+schema validation, and mocked plan tests that cover the one-replica default,
+multi-replica refusal, and Secret-backed environment rendering. It uses
+Terraform 1.9.8 with
 `hashicorp/kubernetes` 2.38. A create-only `terraform plan` renders all three
-resources, and the plan-time input validations (unparseable manifest, inline
-key material, zero replicas) refuse as designed. The module has **not** been
+resources, and the plan-time input validations refuse unsafe scaling. The module has **not** been
 applied against a live cluster as part of this repo's CI — treat it as
 reviewed reference code, not a certified install path.

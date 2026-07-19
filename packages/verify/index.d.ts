@@ -99,7 +99,7 @@ export function verifyWebAuthnSignoff(
     };
   },
   approverPublicKeySpkiB64u: string,
-  opts?: { rpId?: string }
+  opts?: { rpId?: string; allowedOrigins?: string[] }
 ): WebAuthnSignoffResult;
 
 // ── Trust Receipt — full offline verification (I-D Section 6.3) ─────────────
@@ -210,6 +210,7 @@ export interface InitiatorAttestationResult {
 export type TrustReceiptStrictCheckName =
   | 'pinned_keys'
   | 'rp_id'
+  | 'origin'
   | 'user_presence'
   | 'user_verification'
   | 'key_windows'
@@ -270,6 +271,8 @@ export interface TrustReceiptVerificationOptions {
   strict?: boolean;
   /** Expected WebAuthn RP ID for Class-A signoffs in strict mode. */
   rpId?: string;
+  /** Allowed WebAuthn origins for Class-A signoffs. Required in strict mode. */
+  allowedOrigins?: string[];
   /** Expected policy hash all contexts must carry in strict mode. */
   expectedPolicyHash?: string;
   /**
@@ -337,6 +340,14 @@ export interface TrustReceiptVerificationOptions {
    * the software behaved.
    */
   requireInitiatorAttestation?: boolean;
+  /**
+   * DORMANT legacy opt-in: verify pre-v2 (sorted-pair, undomain-separated)
+   * Merkle inclusion. Never the default and never used by production gates;
+   * present only so callers holding pre-v2 proofs can explicitly opt in.
+   */
+  allowLegacyMerkle?: boolean;
+  /** Alias of `allowLegacyMerkle` for the Trust Receipt inclusion path. */
+  allowLegacyTrustReceiptMerkle?: boolean;
 }
 
 /**
@@ -573,7 +584,11 @@ export function verifyFederatedReceipt(
     trustedIssuers?: TrustedIssuers;
     allowInsecureFetch?: boolean;
   }
-): Promise<FederatedVerificationResult & { fetched: Record<string, unknown>; revocation_confirmed?: boolean }>;
+): Promise<FederatedVerificationResult & {
+  fetched: Record<string, unknown>;
+  revocation_confirmed?: boolean;
+  revocation_status?: 'confirmed_not_revoked' | 'revoked' | 'unavailable';
+}>;
 
 /** EP-QUORUM-v1 multi-party (M-of-N / ordered) approval verification result. */
 export interface QuorumResult {
@@ -591,4 +606,96 @@ export interface QuorumResult {
 }
 
 /** Verify an EP-QUORUM-v1 multi-party approval (composes verifyWebAuthnSignoff; fail-closed). */
-export function verifyQuorum(quorum: object, opts?: { rpId?: string }): QuorumResult;
+export function verifyQuorum(quorum: object, opts?: { rpId?: string; allowedOrigins?: string[] }): QuorumResult;
+
+/** AgentROA -01 native verifier. It verifies evidence; it never grants local authority by itself. */
+export const AGENTROA_DRAFT: 'draft-nivalto-agentroa-route-authorization-01';
+export function verifyAgentROA(
+  evidence: Record<string, unknown>,
+  context?: Record<string, unknown>
+): { valid: boolean; reason: string | null; action_digest?: string; decision?: string };
+
+/** Concrete EMILIA JSON/JCS/Ed25519 profile for the abstract ORPRG -00 model. */
+export const ORPRG_JSON_JCS_PROFILE: 'ORPRG-JSON-JCS-ED25519-v1';
+export const ORPRG_ACTION_PROFILE: 'ORPRG-JCS-ACTION-v1';
+export function computeOrprgActionDigest(action: Record<string, unknown>): string;
+export function verifyOrprgJsonJcsPermit(
+  input: Record<string, unknown> | string,
+  options?: Record<string, unknown>
+): { valid: boolean; reason: string | null; action_digest?: string };
+export function verifyOrprgJsonJcsPermitAsync(
+  input: Record<string, unknown> | string,
+  options?: Record<string, unknown>
+): Promise<{ valid: boolean; reason: string | null; action_digest?: string }>;
+export function createOrprgAecVerifier(
+  profile?: Record<string, unknown>
+): (evidence: Record<string, unknown>, context?: Record<string, unknown>) => {
+  valid: boolean;
+  reason: string | null;
+  action_digest?: string;
+};
+
+/**
+ * Deterministic canonical serialization (RFC 8785 JCS for the value subset EP
+ * signs) — the single canonicalization source of truth shared by every offline
+ * verifier module so signer and verifier produce byte-identical material.
+ */
+export function canonicalize(value: unknown): string;
+
+/**
+ * True if `value` serializes within the EP canonicalization profile
+ * (JSON scalars, arrays, and plain objects of canonicalizable values).
+ */
+export function isCanonicalizable(value: unknown): boolean;
+
+/** b64u/hex SHA-256 over `canonicalize(context)`; links each ordered signoff to its predecessor. */
+export function contextChainHash(context: unknown): string;
+
+export const REVOCATION_VERSION: 'EP-REVOCATION-v1';
+
+/**
+ * Verify an EP-REVOCATION-v1 statement against the authorization the relying
+ * party holds. Fail-closed: a missing or malformed statement returns valid:false.
+ */
+export function verifyRevocation(
+  target: { target_type: string; target_id: string; action_hash: string },
+  statement: object,
+  opts?: {
+    revokerKeys?: Record<string, { public_key: string }>;
+    maxAgeSeconds?: number;
+    now?: number | string | Date;
+    [k: string]: unknown;
+  }
+): { valid: boolean; checks: Record<string, boolean>; errors: string[] };
+
+/** True if any statement in `statements` validly revokes `target`. */
+export function isRevoked(target: object, statements: unknown, opts?: object): boolean;
+
+export const PROVENANCE_VERSION: 'EP-PROVENANCE-CHAIN-v1';
+
+/** Verify an EP-PROVENANCE-CHAIN-v1 document fully offline. Fail-closed. */
+export function verifyProvenanceOffline(
+  doc: unknown,
+  opts?: Record<string, unknown>
+): {
+  valid: boolean;
+  checks: Record<string, boolean>;
+  errors: string[];
+  links: unknown[];
+  agent_identity: unknown;
+  liability: unknown;
+};
+
+export const TIME_ATTESTATION_VERSION: 'EP-TIME-ATTESTATION-v1';
+
+/** EP-TIME-ATTESTATION-v1: independent, pinned, offline-verifiable proof of WHEN (trusted-time anchor). */
+export function verifyTimeAttestation(
+  att: Record<string, unknown> | null | undefined,
+  opts?: {
+    pinnedTsaKeys?: string | string[] | Record<string, string>;
+    expectedHash?: string | Uint8Array;
+    notBefore?: number | string | Date;
+    notAfter?: number | string | Date;
+    [k: string]: unknown;
+  }
+): { valid: boolean; checks: Record<string, boolean>; errors: string[] };

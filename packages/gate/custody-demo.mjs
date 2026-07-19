@@ -1,10 +1,13 @@
 /**
- * EMILIA Gate — production custody demo. Run: node custody-demo.mjs
+ * EMILIA Gate — issuer custody reference demo. Run: node custody-demo.mjs
  *
  * Shows the three custody controls a serious buyer asks for:
  *   1. ROTATION  — a new issuer key takes over without breaking the old one.
  *   2. REVOCATION — a compromised issuer key is rejected immediately, live.
  *   3. RETENTION  — the evidence log classifies hot/cold/expired + exports.
+ * Issuer keys use the live registry path. Approver keys are embedded only to
+ * keep this reference demo self-contained; production Gate deployments pin
+ * approver keys or provide their own assurance verifier.
  * @license Apache-2.0
  */
 import { createGate, createKeyRegistry, createEg1Harness } from './index.js';
@@ -14,7 +17,14 @@ const SEL = { protocol: 'mcp', tool: 'release_payment' };
 const k1 = createEg1Harness({ idPrefix: 'k1' });
 const k2 = createEg1Harness({ idPrefix: 'k2' });
 const registry = createKeyRegistry([{ kid: 'issuer-1', key: k1.publicKey }]);
-const gate = createGate({ manifest: DEFAULT_GATE_MANIFEST, keyRegistry: registry });
+const gate = createGate({
+  manifest: DEFAULT_GATE_MANIFEST,
+  keyRegistry: registry,
+  rpId: k1.rpId,
+  allowedOrigins: k1.allowedOrigins,
+  allowEmbeddedApproverKeys: true,
+  allowEphemeralStore: true,
+});
 
 const G = (s) => `\x1b[32m${s}\x1b[0m`; const R = (s) => `\x1b[31m${s}\x1b[0m`;
 const line = (s) => console.log(s);
@@ -24,7 +34,7 @@ async function pay(label, harness) {
 }
 
 line('='.repeat(64));
-line('  EMILIA Gate — production custody: rotate, revoke, retain');
+line('  EMILIA Gate — custody reference: rotate, revoke, retain');
 line('='.repeat(64));
 await pay('1. payout, issuer-1 (current)            ', k1);
 registry.revoke('issuer-1');

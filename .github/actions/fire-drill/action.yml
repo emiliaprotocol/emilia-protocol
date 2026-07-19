@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
-# EMILIA Fire Drill — fail CI if an AI agent can take a dangerous action without
-# an accountable human receipt (EG-1). Drop into any repo's workflow:
+# EMILIA Fire Drill — fail CI when a detected dangerous action omits a required
+# receipt declaration. Runtime EG-1 is a separate gate.
 #
 #   - uses: emiliaprotocol/emilia-protocol/.github/actions/fire-drill@main
 #     with:
 #       manifest: ./mcp-manifest.json   # MCP manifest, OpenAPI spec, or tool list (JSON)
 #       fail-on: fail                   # 'fail' (default) blocks the build; 'warn' only reports
 #
-# Outputs `score` (0-100) and `eg1` (pass|fail) for downstream steps (e.g. a badge).
+# Outputs static declaration coverage only.
 name: 'EMILIA Fire Drill'
-description: 'Fail CI if an agent can take a dangerous action without an accountable human receipt (EG-1).'
+description: 'Fail CI when a detected high-risk tool omits a required receipt declaration.'
 branding:
   icon: shield
   color: orange
@@ -18,16 +18,19 @@ inputs:
     description: 'Path to the MCP manifest / OpenAPI spec / tool list (JSON) to scan.'
     required: true
   fail-on:
-    description: "'fail' to fail the build when EG-1 is not earned (default); 'warn' to report only."
+    description: "'fail' to fail on a missing declaration (default); 'warn' to report only."
     required: false
     default: 'fail'
 outputs:
   score:
-    description: 'Agent Action Firewall score (0-100).'
+    description: 'Static receipt declaration coverage (0-100).'
     value: ${{ steps.scan.outputs.score }}
   eg1:
-    description: 'EG-1 result: pass or fail.'
+    description: 'Always not_assessed; retained for compatibility.'
     value: ${{ steps.scan.outputs.eg1 }}
+  static-result:
+    description: 'Static result: complete or incomplete.'
+    value: ${{ steps.scan.outputs.static_result }}
 runs:
   using: composite
   steps:
@@ -39,16 +42,28 @@ runs:
         MANIFEST: ${{ inputs.manifest }}
         FAIL_ON: ${{ inputs.fail-on }}
       run: |
+        set -u
+        MANIFEST_PATH=$(realpath -- "$MANIFEST")
+        test -f "$MANIFEST_PATH"
         set +e
-        OUT=$(npx -y @emilia-protocol/fire-drill@latest "$MANIFEST" --json)
+        OUT=$(npx -y @emilia-protocol/fire-drill@0.5.0 "$MANIFEST_PATH" --json)
+        STATUS=$?
+        set -e
         echo "$OUT"
         SCORE=$(printf '%s' "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).score)}catch{console.log('')}})")
         EG1=$(printf '%s' "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).eg1)}catch{console.log('')}})")
+        STATIC_RESULT=$(printf '%s' "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).static_result)}catch{console.log('')}})")
+        test -n "$SCORE" && test "$EG1" = "not_assessed" && test -n "$STATIC_RESULT"
         echo "score=$SCORE" >> "$GITHUB_OUTPUT"
         echo "eg1=$EG1" >> "$GITHUB_OUTPUT"
-        echo "## EMILIA Fire Drill — EG-1 $EG1 (score $SCORE/100)" >> "$GITHUB_STEP_SUMMARY"
-        if [ "$FAIL_ON" = "fail" ] && [ "$EG1" != "pass" ]; then
-          echo "::error::EMILIA Fire Drill: EG-1 not earned — a dangerous action can run without an accountable human receipt. See https://www.emiliaprotocol.ai/fire-drill"
+        echo "static_result=$STATIC_RESULT" >> "$GITHUB_OUTPUT"
+        echo "## EMILIA Fire Drill — static $STATIC_RESULT (score $SCORE/100; EG-1 not assessed)" >> "$GITHUB_STEP_SUMMARY"
+        if [ "$STATUS" -eq 2 ]; then
+          echo "::error::EMILIA Fire Drill input was malformed or unsupported."
+          exit 2
+        fi
+        if [ "$FAIL_ON" = "fail" ] && [ "$STATIC_RESULT" != "complete" ]; then
+          echo "::error::EMILIA Fire Drill: a detected dangerous action omits a required receipt declaration. Runtime enforcement remains a separate EG-1 test."
           exit 1
         fi
         exit 0

@@ -49,8 +49,9 @@ const STEPS = [
     'Apply the relying party’s requirement — e.g. “delegation AND policy AND a named human” — '
     + 'as an explicit, inspectable rule over receipt types.'],
   ['06 · One verdict',
-    'Return a single, offline, fail-closed ALLOW or DENY. No network, no introspection '
-    + 'endpoint, no trust in the operator. Anything missing or unverifiable means DENY.'],
+    'Return a single, offline, fail-closed SATISFIED or UNSATISFIED evidence verdict. '
+    + 'No network, no introspection endpoint, no trust in the operator. The relying party '
+    + 'separately decides whether that evidence is sufficient to authorize execution.'],
 ];
 
 const BOUNDS = [
@@ -72,10 +73,10 @@ const FAQ = [
     + 'heterogeneous receipts for one action into a single offline verdict. AEC is that layer — '
     + 'a composition object plus a verifier with pluggable per-receipt checks.'],
   ['What exactly does the verifier return?',
-    'A single fail-closed ALLOW or DENY for one canonical action, computed entirely offline. '
-    + 'ALLOW requires that every presented receipt binds the same action, each verifies, and the '
-    + 'relying party’s requirement (which receipt types must be present) is satisfied. Anything '
-    + 'missing, mismatched, or unverifiable yields DENY.'],
+    'A single fail-closed SATISFIED or UNSATISFIED evidence verdict for one canonical action, '
+    + 'computed entirely offline. SATISFIED requires that every presented receipt binds the same '
+    + 'action, each verifies, and the relying party’s evidence requirement is met. It is not an '
+    + 'ALLOW decision: the executor applies its own authorization policy separately.'],
   ['How does it relate to DRP, permit receipts, or PSEA?',
     'As complements, not competitors. Delegation (e.g. DRP), policy/permit, and decision '
     + 'receipts each answer their own hop; AEC verifies that those receipts — plus EP’s '
@@ -122,9 +123,9 @@ export default function EvidenceChainPage() {
           </p>
           <p style={{ ...styles.body, maxWidth: 760, marginTop: 8 }}>
             The Authorization Evidence Chain (EP-AEC) is that missing layer: a composition object
-            and verifier that returns one offline, fail-closed <strong>ALLOW</strong> or{' '}
-            <strong>DENY</strong> — with no network, no introspection endpoint, and no trust in the
-            operator.
+            and verifier that returns one offline, fail-closed <strong>SATISFIED</strong> or{' '}
+            <strong>UNSATISFIED</strong> evidence verdict. The executor separately decides whether
+            to authorize the action.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
             <a href={DT} target="_blank" rel="noopener noreferrer" style={cta.primary}>Read the Internet-Draft</a>
@@ -209,15 +210,16 @@ export default function EvidenceChainPage() {
 
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>STANDING</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Filed, implemented, externally reproduced.</h2>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Filed, implemented, reproducibly tested.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
             EP-AEC is filed as an IETF Internet-Draft,{' '}
             <a href={DT} target="_blank" rel="noopener noreferrer" style={{ color: color.gold, textDecoration: 'none' }}>draft-schrock-ep-authorization-evidence-chain</a>,
             with a reference verifier in three languages — JavaScript, Python, and Go, one team’s
             ports in one repository, a cross-language consistency check, not independent
-            reimplementations — that agree over portable conformance vectors. An outside party has
-            reproduced the EP conformance suite against our published vectors and reported the
-            result on the IETF SecDispatch list.
+            reimplementations — that agree over portable conformance vectors. An outside party
+            reproduced a time-pinned EP conformance bundle and reported that result on the IETF
+            SecDispatch list; that historical run is not silently extended to later AEC revisions
+            or newly added vectors.
             It composes with the receipts already published across the cluster, including the EP{' '}
             <a href="/spec" style={{ color: color.gold, textDecoration: 'none' }}>authorization-receipts</a>{' '}
             and <a href="/quorum" style={{ color: color.gold, textDecoration: 'none' }}>quorum</a> drafts.

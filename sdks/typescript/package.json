@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/sdk",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Minimal TypeScript SDK for the EMILIA Protocol — 5 core endpoints + signoff.",
   "type": "module",
   "main": "dist/index.js",

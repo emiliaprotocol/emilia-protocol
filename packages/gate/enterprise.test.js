@@ -54,6 +54,15 @@ test('verify accepts the artifact as a JSON string', () => {
   assert.equal(v.tier, 'enterprise');
 });
 
+test('duplicate-member entitlement JSON resolves to community', () => {
+  const ent = mint();
+  const raw = `{"@version":"${ENTITLEMENT_VERSION}","payload":${JSON.stringify(ent.payload)},"payload":${JSON.stringify(ent.payload)},"signature":${JSON.stringify(ent.signature)}}`;
+  const v = verifyEntitlement(raw, { issuerKeys: ISSUER_KEYS, now: NOW });
+  assert.equal(v.valid, false);
+  assert.equal(v.tier, 'community');
+  assert.equal(v.reason, 'entitlement_unparseable');
+});
+
 test('absence of an entitlement -> community, never an error', () => {
   for (const absent of [null, undefined, '']) {
     const v = verifyEntitlement(absent, { issuerKeys: ISSUER_KEYS, now: NOW });

@@ -79,6 +79,9 @@ export async function GET(request) {
   }
 
   const directory = await resolveDirectory(tenant, verdict.email || verdict.subject);
+  if (!directory.matched || !directory.active) {
+    return epProblem(403, 'sso_identity_not_provisioned', 'The asserted identity is not active in this tenant directory');
+  }
 
   // Mint the EP session — this is what "logged in" means. The session asserts
   // the verified identity; signing authority still requires the enrolled

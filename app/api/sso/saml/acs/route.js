@@ -16,6 +16,7 @@ import { normalizeUserName } from '@/lib/scim/core';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { readLimitedText } from '@/lib/http/body-limit';
+import { verifyState, SAML_STATE_COOKIE } from '@/lib/sso/state';
 
 // T4-B: assertion replay window. node-saml already rejects assertions whose
 // Conditions/NotOnOrAfter have passed, so the cache only needs to span a typical
@@ -64,9 +65,14 @@ export async function POST(request) {
     return epProblem(400, 'invalid_acs_post', 'Expected an application/x-www-form-urlencoded SAML POST');
   }
   const samlResponse = form.get('SAMLResponse');
-  const tenant = form.get('RelayState') || new URL(request.url).searchParams.get('tenant');
+  const relayState = form.get('RelayState');
   if (!samlResponse) return epProblem(400, 'missing_saml_response', 'SAMLResponse is required');
-  if (!tenant) return epProblem(400, 'missing_tenant', 'RelayState (tenant) is required');
+  const stateCookie = request.cookies.get(SAML_STATE_COOKIE)?.value;
+  const stateData = verifyState(relayState);
+  if (!stateData || !stateCookie || stateCookie !== relayState || typeof stateData.tenant !== 'string') {
+    return epProblem(400, 'invalid_state', 'Missing or expired SAML login state');
+  }
+  const tenant = stateData.tenant;
 
   const { connection, error } = await loadConnection(tenant, 'saml');
   // Unified response for BOTH "unknown tenant" and "tenant without SAML" so this
@@ -111,6 +117,9 @@ export async function POST(request) {
   }
 
   const directory = await resolveDirectory(tenant, result.profile);
+  if (!directory.matched || !directory.active) {
+    return epProblem(403, 'sso_identity_not_provisioned', 'The asserted identity is not active in this tenant directory');
+  }
 
   // Mint the EP session — this is what "logged in" means. The session asserts
   // the verified identity; signing authority still requires the enrolled
@@ -131,6 +140,7 @@ export async function POST(request) {
     session: 'set',
   });
   res.cookies.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+  res.cookies.delete(SAML_STATE_COOKIE);
   return res;
 }
 

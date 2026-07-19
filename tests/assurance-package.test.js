@@ -84,7 +84,7 @@ function population() {
     { decision_id: 'd3', action: baseAction(r3, 90000), receipt: r3, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' },
   ];
 }
-const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', isConsumed: () => false, now: NOW };
+const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'], isConsumed: () => false, now: NOW };
 
 describe('EP-ASSURANCE-PACKAGE-v1', () => {
   it('bundles decisions into a content-addressed package', () => {
@@ -93,6 +93,22 @@ describe('EP-ASSURANCE-PACKAGE-v1', () => {
     expect(pkg.decisions.length).toBe(3);
     expect(pkg.package_digest).toMatch(/^[0-9a-f]{64}$/);
     expect(pkg.exception_history.length).toBe(1); // d2 stated a refusal
+  });
+
+  it('materializes shared JSON values but refuses cyclic evidence', () => {
+    const shared = { checked_at: '2026-07-07T14:00:00.000Z' };
+    const pkg = buildAssurancePackage([
+      { action: { action_type: 'a' }, revocation_state: shared },
+      { action: { action_type: 'b' }, revocation_state: shared },
+    ], { profile: PROFILE, now: NOW });
+    expect(pkg.decisions[0].evidence.revocation_state).toEqual(shared);
+    expect(pkg.decisions[0].evidence.revocation_state)
+      .not.toBe(pkg.decisions[1].evidence.revocation_state);
+
+    const cyclic = {};
+    cyclic.self = cyclic;
+    expect(() => buildAssurancePackage([{ action: cyclic }], { profile: PROFILE, now: NOW }))
+      .toThrow(/cyclic value/);
   });
 
   it('re-performance recomputes every verdict and CATCHES the lie (drift)', () => {

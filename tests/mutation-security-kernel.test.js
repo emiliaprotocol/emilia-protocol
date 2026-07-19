@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
+import crypto from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import {
   MemoryConsumptionStore,
   createDurableConsumptionStore,
   createMemoryBackend,
+  isSecureConsumptionStore,
 } from '../packages/gate/store.js';
+import { canonicalize, createGate, hashCanonical } from '../packages/gate/index.js';
 import {
   __relianceSecurityInternals,
   RELIANCE_PROFILE_VERSION,
@@ -21,6 +24,26 @@ import {
 function token(prefix = 'owner') {
   let n = 0;
   return () => `${prefix}-${String(++n).padStart(24, '0')}`;
+}
+
+function mintSoftwareReceipt(actionType) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const payload = {
+    receipt_id: `mutation_${crypto.randomUUID()}`,
+    subject: 'agent:mutation-test',
+    issuer: 'ep:org:mutation-test',
+    created_at: new Date().toISOString(),
+    claim: { action_type: actionType, outcome: 'allow' },
+  };
+  const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
+  return {
+    publicKey: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    receipt: {
+      '@version': 'EP-RECEIPT-v1',
+      payload,
+      signature: { algorithm: 'Ed25519', value },
+    },
+  };
 }
 
 describe('mutation oracles for the replay kernel', () => {
@@ -79,6 +102,46 @@ describe('mutation oracles for the replay kernel', () => {
     // durability is strict-equality on the backend flag, never coerced from a truthy value.
     const truthyDurable = { ...createMemoryBackend(), durable: 1 };
     expect(createDurableConsumptionStore(truthyDurable, good).durable).toBe(false);
+
+    const explicitNull = createDurableConsumptionStore(durableBackend, { ttlSeconds: null, ...good });
+    expect(explicitNull.permanentConsumption).toBe(true);
+    expect(explicitNull.retentionSeconds).toBe(null);
+  });
+
+  it('exposes backend readiness without inventing a healthy fallback', async () => {
+    const noHealth = createDurableConsumptionStore(createMemoryBackend(), {
+      reservationTokenFactory: () => '1234567890abcdef',
+    });
+    await expect(noHealth.health()).resolves.toEqual({
+      ok: false,
+      reason: 'backend_health_unavailable',
+    });
+
+    const backend = createMemoryBackend();
+    const verdict = { ok: true, version: 'test-backend-v1' };
+    backend.health = vi.fn(async () => verdict);
+    const ready = createDurableConsumptionStore(backend, {
+      reservationTokenFactory: () => '1234567890abcdef',
+    });
+    await expect(ready.health()).resolves.toBe(verdict);
+    expect(backend.health).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires the complete secure-store capability shape', () => {
+    expect(isSecureConsumptionStore(null)).toBe(false);
+    expect(isSecureConsumptionStore('store')).toBe(false);
+    const complete = {
+      durable: true,
+      ownershipFenced: true,
+      permanentConsumption: true,
+      async consume() {},
+      async reserve() {},
+      async commit() {},
+    };
+    expect(isSecureConsumptionStore(complete)).toBe(true);
+    for (const missing of ['durable', 'ownershipFenced', 'permanentConsumption', 'consume', 'reserve', 'commit']) {
+      expect(isSecureConsumptionStore({ ...complete, [missing]: undefined })).toBe(false);
+    }
   });
 
   it('the in-memory backend declares itself non-durable', () => {
@@ -216,9 +279,203 @@ describe('mutation oracles for the replay kernel', () => {
   });
 });
 
+describe('mutation oracles for Gate admission inputs', () => {
+  const manifest = {
+    '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
+    actions: [{
+      id: 'release',
+      action_type: 'payment.release',
+      receipt_required: true,
+      risk: 'critical',
+      assurance_class: 'class_a',
+      match: { protocol: 'mcp', tool: 'release_payment' },
+    }],
+  };
+
+  it('pins the manifest action and tier over presenter selector aliases', async () => {
+    const observed = { amount_usd: 25000, beneficiary: 'approved' };
+    const gate = createGate({ manifest, allowEphemeralStore: true });
+    const result = await gate.check({
+      selector: {
+        protocol: 'mcp',
+        tool: 'release_payment',
+        action_type: 'presenter.decoy',
+        action: 'presenter.fallback',
+        assurance_class: 'software',
+      },
+      observedAction: observed,
+    });
+
+    expect(result).toMatchObject({
+      allow: false,
+      status: 428,
+      reason: 'receipt_required',
+      action: 'payment.release',
+    });
+    expect(result.challenge.required).toMatchObject({
+      action: 'payment.release',
+      assurance_class: 'class_a',
+    });
+    expect(result.evidence).toMatchObject({
+      action: 'payment.release',
+      required_tier: 'class_a',
+      observed_action_hash: hashCanonical(observed),
+    });
+    expect(result.evidence.business_authorization).toEqual({
+      required: false,
+      ok: true,
+      reason: null,
+      expected: {
+        configured: false,
+        ok: true,
+        reason: null,
+        policy_id: null,
+        policy_hash: null,
+        tenant_id: null,
+        allowed_approvers: [],
+      },
+      evaluated: {
+        policy_id: null,
+        policy_hash: null,
+        tenant_id: null,
+        approvers: [],
+      },
+    });
+  });
+
+  it('uses the documented selector fallbacks only without a pinned manifest requirement', async () => {
+    const gate = createGate({ allowEphemeralStore: true });
+    const explicit = await gate.check({
+      selector: { action_type: 'cloud.delete', action: 'decoy', assurance_class: 'quorum' },
+      observedAction: { resource: 'repo:critical' },
+    });
+    expect(explicit.action).toBe('cloud.delete');
+    expect(explicit.challenge.required.assurance_class).toBe('quorum');
+    expect(explicit.evidence.observed_action_hash).toBe(hashCanonical({ resource: 'repo:critical' }));
+
+    const fallback = await gate.check({ selector: { action: 'cloud.rotate' } });
+    expect(fallback.action).toBe('cloud.rotate');
+    expect(fallback.challenge.required.assurance_class).toBe('software');
+    expect(fallback.evidence.observed_action_hash).toBe(null);
+  });
+
+  it('uses the relying party evidence logger rather than silently creating another log', async () => {
+    const record = vi.fn(async (entry) => ({ ...structuredClone(entry), logger: 'pinned' }));
+    const gate = createGate({ allowEphemeralStore: true, log: { record } });
+    const result = await gate.check({ selector: { action_type: 'cloud.delete' } });
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(result.evidence.logger).toBe('pinned');
+  });
+
+  it('requires the complete capability-store contract and explicit issuer pins', () => {
+    const capabilityStore = {
+      registerCapability() {},
+      reserveSpend() {},
+      commitSpend() {},
+    };
+    for (const method of ['registerCapability', 'reserveSpend', 'commitSpend']) {
+      expect(() => createGate({
+        capabilityStore: { ...capabilityStore, [method]: undefined },
+        capabilityTrustedIssuerKeys: ['issuer-key'],
+        allowEphemeralStore: true,
+      }), method).toThrow(new RegExp(method));
+    }
+    for (const capabilityTrustedIssuerKeys of [
+      undefined,
+      null,
+      [],
+      [''],
+      [1],
+      ['issuer-key', ''],
+    ]) {
+      expect(() => createGate({
+        capabilityStore,
+        capabilityTrustedIssuerKeys,
+        allowEphemeralStore: true,
+      })).toThrow(/must explicitly pin at least one capability issuer/);
+    }
+    expect(() => createGate({
+      capabilityStore,
+      capabilityTrustedIssuerKeys: ['issuer-key'],
+      allowEphemeralStore: true,
+    })).not.toThrow();
+  });
+
+  it('passes the exact guarded action and receipt identity through the runtime monitor', async () => {
+    const { publicKey, receipt } = mintSoftwareReceipt('payment.release');
+    const runtimeMonitor = {
+      beginCheck: vi.fn(() => 'cycle-1'),
+      minimumAssuranceTier: vi.fn((tier) => tier),
+      getMode: vi.fn(() => 'normal'),
+      preflight: vi.fn(() => ({ ok: true })),
+      recordDecision: vi.fn(() => ({ ok: true })),
+    };
+    const gate = createGate({
+      manifest,
+      trustedKeys: [publicKey],
+      allowEphemeralStore: true,
+      runtimeMonitor,
+    });
+    const result = await gate.check({
+      selector: { protocol: 'mcp', tool: 'release_payment' },
+      receipt,
+    });
+
+    expect(runtimeMonitor.beginCheck).toHaveBeenCalledWith({
+      action: 'payment.release',
+      receipt_id: receipt.payload.receipt_id,
+    });
+    expect(runtimeMonitor.minimumAssuranceTier).toHaveBeenCalledWith('class_a');
+    expect(runtimeMonitor.recordDecision).toHaveBeenCalledWith(
+      'cycle-1',
+      expect.objectContaining({
+        guarded: true,
+        receipt_id: receipt.payload.receipt_id,
+      }),
+    );
+    expect(result._runtime_cycle_id).toBe('cycle-1');
+  });
+
+  it('pins manifest quorum policy ahead of per-action and global fallback policies', async () => {
+    const actionType = 'payment.release';
+    const pinnedPolicy = {
+      mode: 'threshold',
+      required: 2,
+      distinct_humans: true,
+      approvers: [
+        { role: 'finance', approver: 'ep:approver:alice' },
+        { role: 'security', approver: 'ep:approver:bob' },
+      ],
+    };
+    const quorumManifest = structuredClone(manifest);
+    quorumManifest.actions[0].assurance_class = 'quorum';
+    quorumManifest.actions[0].quorum_policy = pinnedPolicy;
+    const { publicKey, receipt } = mintSoftwareReceipt(actionType);
+    const gate = createGate({
+      manifest: quorumManifest,
+      trustedKeys: [publicKey],
+      quorumPolicies: { [actionType]: { ...pinnedPolicy, mode: 'invalid-per-action-mode' } },
+      quorumPolicy: { ...pinnedPolicy, mode: 'invalid-global-mode' },
+      rpId: 'approve.example.test',
+      allowedOrigins: ['https://approve.example.test'],
+      allowEphemeralStore: true,
+    });
+
+    const result = await gate.check({
+      selector: { protocol: 'mcp', tool: 'release_payment' },
+      receipt,
+    });
+
+    expect(result.allow).toBe(false);
+    expect(result.reason).toBe('assurance_too_low');
+    expect(result.evidence.need_tier).toBe('quorum');
+  });
+});
+
 describe('mutation oracles for reliance parsing and signed material', () => {
   const {
-    strictInstantMs, toMs, pubKeyB64u, digestHex, parseNonNegativeDecimal,
+    strictInstantMs, toMs, pubKeyB64u, spkiFingerprint, validateQuorumPolicy,
+    digestHex, parseNonNegativeDecimal,
     decimalGreaterThan, decimalEqual, exactMaterial, decimalMaterial,
     signedActionMaterial,
   } = __relianceSecurityInternals;
@@ -226,11 +483,16 @@ describe('mutation oracles for reliance parsing and signed material', () => {
   it('strictly parses RFC3339 instants across calendar and offset boundaries', () => {
     expect(Number.isFinite(strictInstantMs('2024-02-29T23:59:59Z'))).toBe(true);
     expect(Number.isFinite(strictInstantMs('2026-01-01T00:00:00+23:59'))).toBe(true);
+    expect(Number.isFinite(strictInstantMs('2026-01-01T00:00:00-23:59'))).toBe(true);
+    expect(strictInstantMs('2026-01-01T00:00:00+00:01')).toBe(
+      Date.parse('2026-01-01T00:00:00+00:01'),
+    );
     for (const invalid of [
       null, 0, '', '2026-01-01', '2026-02-29T00:00:00Z',
       '2026-01-01T24:00:00Z', '2026-01-01T00:60:00Z',
       '2026-01-01T00:00:60Z', '2026-01-01T00:00:00+24:00',
-      '2026-01-01T00:00:00+00:60',
+      '2026-01-01T00:00:00-24:00', '2026-01-01T00:00:00+00:60',
+      '2026-01-01T00:00:00-00:60',
     ]) expect(Number.isNaN(strictInstantMs(invalid))).toBe(true);
   });
 
@@ -242,6 +504,8 @@ describe('mutation oracles for reliance parsing and signed material', () => {
     expect(Number.isNaN(toMs(new Date('invalid')))).toBe(true);
     expect(toMs(0)).toBe(0);
     expect(Number.isNaN(toMs(Number.POSITIVE_INFINITY))).toBe(true);
+    expect(Number.isNaN(toMs(null))).toBe(true);
+    expect(Number.isNaN(toMs(true))).toBe(true);
     expect(Number.isNaN(toMs({}))).toBe(true);
     expect(pubKeyB64u('key')).toBe('key');
     expect(pubKeyB64u({ public_key: 'nested' })).toBe('nested');
@@ -251,6 +515,81 @@ describe('mutation oracles for reliance parsing and signed material', () => {
     expect(digestHex('ab'.repeat(32))).toBe('ab'.repeat(32));
     expect(digestHex('sha256:abc')).toBeNull();
     expect(digestHex(null)).toBeNull();
+  });
+
+  it('canonicalizes valid SPKI keys and refuses every malformed key shape', () => {
+    const { publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+    const der = publicKey.export({ type: 'spki', format: 'der' });
+    const encoded = der.toString('base64url');
+    const expected = crypto.createHash('sha256').update(der).digest('hex');
+    expect(spkiFingerprint(encoded)).toBe(expected);
+    expect(spkiFingerprint(encoded)).toMatch(/^[0-9a-f]{64}$/);
+    for (const malformed of [null, undefined, '', 'not-an-spki', 0, {}, []]) {
+      expect(spkiFingerprint(malformed)).toBeNull();
+    }
+  });
+
+  it('validates every pinned quorum-policy field at exact boundaries', () => {
+    const validThreshold = {
+      mode: 'threshold',
+      required: 2,
+      distinct_humans: true,
+      window_sec: 60,
+      approvers: [
+        { role: 'requester', approver: 'alice' },
+        { role: 'reviewer', approver: 'bob' },
+      ],
+    };
+    const validOrdered = {
+      mode: 'ordered',
+      distinct_humans: true,
+      approvers: [{ role: 'reviewer', approver: 'alice' }],
+    };
+    expect(validateQuorumPolicy(validThreshold)).toEqual([]);
+    expect(validateQuorumPolicy(validOrdered)).toEqual([]);
+
+    for (const malformed of [null, undefined, false, 0, 'policy', []]) {
+      expect(validateQuorumPolicy(malformed)).toEqual(['quorum_policy must be an object']);
+    }
+
+    const cases = [
+      [{ ...validThreshold, mode: 'other' }, 'quorum_policy.mode must be threshold or ordered'],
+      [{ ...validThreshold, approvers: null }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [null] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: 1, approver: 'alice' }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: '', approver: 'alice' }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: 'reviewer', approver: 1 }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, approvers: [{ role: 'reviewer', approver: '' }] }, 'quorum_policy.approvers must name at least one role and approver'],
+      [{ ...validThreshold, required: 1 }, 'quorum_policy.required must be an integer from 2 through the roster size'],
+      [{ ...validThreshold, required: 2.5 }, 'quorum_policy.required must be an integer from 2 through the roster size'],
+      [{ ...validThreshold, required: 3 }, 'quorum_policy.required must be an integer from 2 through the roster size'],
+      [{ ...validThreshold, distinct_humans: false }, 'quorum_policy.distinct_humans cannot be false for reliance'],
+      [{ ...validThreshold, window_sec: 0 }, 'quorum_policy.window_sec must be a positive safe integer'],
+      [{ ...validThreshold, window_sec: -1 }, 'quorum_policy.window_sec must be a positive safe integer'],
+      [{ ...validThreshold, window_sec: 1.5 }, 'quorum_policy.window_sec must be a positive safe integer'],
+    ];
+    for (const [policy, issue] of cases) {
+      expect(validateQuorumPolicy(policy)).toContain(issue);
+    }
+    expect(validateQuorumPolicy({ ...validThreshold, required: 2, window_sec: 1 })).toEqual([]);
+    expect(validateQuorumPolicy({ ...validThreshold, window_sec: undefined })).toEqual([]);
+  });
+
+  it('surfaces pinned quorum-policy validation through the reliance profile', () => {
+    const minimal = { '@type': RELIANCE_PROFILE_VERSION };
+    const valid = {
+      mode: 'threshold', required: 2, distinct_humans: true,
+      approvers: [
+        { role: 'requester', approver: 'alice' },
+        { role: 'reviewer', approver: 'bob' },
+      ],
+    };
+    expect(validateRelianceProfile({ ...minimal, quorum_policy: valid })).toEqual({ ok: true, issues: [] });
+    expect(validateRelianceProfile({ ...minimal, quorum_policy: { ...valid, distinct_humans: false } })).toEqual({
+      ok: false,
+      issues: ['quorum_policy.distinct_humans cannot be false for reliance'],
+    });
   });
 
   it('compares non-negative decimal material without scale or syntax ambiguity', () => {

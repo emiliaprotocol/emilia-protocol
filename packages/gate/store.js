@@ -4,8 +4,8 @@
  *
  * A receipt authorizes ONE action, once. The gate consumes a receipt's
  * identifier the first time it is used; any later presentation of the same
- * receipt is a replay and is refused. The default store is in-memory; fleets
- * use the ownership-fenced durable contract below.
+ * receipt is a replay and is refused. The in-memory store is an explicit
+ * test/demo opt-in; security-bearing gates use the durable contract below.
  */
 export class MemoryConsumptionStore {
   constructor() {
@@ -30,14 +30,14 @@ export class MemoryConsumptionStore {
     return true;
   }
 
-  /** Commit a reserved id after the action succeeds. */
+  /** Commit a reserved id after an external-effect attempt begins. */
   async commit(key) {
     this.reserved.delete(key);
     this.seen.add(key);
     return true;
   }
 
-  /** Release a reserved id after the action fails; approval stays retryable. */
+  /** Release only when the caller can prove the external effect never began. */
   async release(key) {
     this.reserved.delete(key);
     return true;
@@ -53,6 +53,17 @@ export class MemoryConsumptionStore {
 }
 
 export const DURABLE_CONSUMPTION_VERSION = 'EP-GATE-DURABLE-CONSUMPTION-v2';
+
+/** Capability contract required by security-bearing Gate execution paths. */
+export function isSecureConsumptionStore(store) {
+  if (!store || typeof store !== 'object') return false;
+  return store.durable === true
+    && store.ownershipFenced === true
+    && store.permanentConsumption === true
+    && typeof store.consume === 'function'
+    && typeof store.reserve === 'function'
+    && typeof store.commit === 'function';
+}
 
 const COMMITTED_VALUE = 'committed:v2';
 const RESERVED_PREFIX = 'reserved:v2:';
@@ -91,6 +102,10 @@ function defaultReservationToken() {
  * reservations. `ttlSeconds` applies only after a value is committed, when the
  * receipt's own freshness window independently prevents reuse.
  */
+/**
+ * @param {any} backend
+ * @param {{ ttlSeconds?: number, reservationTokenFactory?: () => string }} [options]
+ */
 export function createDurableConsumptionStore(backend, { ttlSeconds, reservationTokenFactory = defaultReservationToken } = {}) {
   for (const m of ['addIfAbsent', 'compareAndSet', 'deleteIfValue', 'has']) {
     if (typeof backend?.[m] !== 'function') {
@@ -121,6 +136,10 @@ export function createDurableConsumptionStore(backend, { ttlSeconds, reservation
     ownershipFenced: true,
     permanentConsumption: ttlSeconds === undefined || ttlSeconds === null,
     retentionSeconds: ttlSeconds ?? null,
+    async health() {
+      if (typeof backend.health !== 'function') return { ok: false, reason: 'backend_health_unavailable' };
+      return backend.health();
+    },
     async reserve(key) {
       const token = reservationTokenFactory();
       if (typeof token !== 'string' || token.length < 16) {
@@ -174,4 +193,10 @@ export function createMemoryBackend() {
   };
 }
 
-export default { MemoryConsumptionStore, createDurableConsumptionStore, createMemoryBackend, DURABLE_CONSUMPTION_VERSION };
+export default {
+  MemoryConsumptionStore,
+  createDurableConsumptionStore,
+  createMemoryBackend,
+  isSecureConsumptionStore,
+  DURABLE_CONSUMPTION_VERSION,
+};

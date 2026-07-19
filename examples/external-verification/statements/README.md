@@ -76,15 +76,43 @@ of this signed 162-vector statement. The later commit also passes the pinned
 differential-hostility campaign: 353 structured attacks and 6 raw-parser
 refusals with zero divergences. It remains external interoperability and
 hostility evidence, not strict clean-room acceptance, until a separate attestor
-signs a current-schema manifest under an independently pinned key. That result
-requires a new aggregate evidence schema and will be recorded separately rather
-than retroactively changing this statement.
+signs a current-schema manifest under an independently pinned key. The
+implementer-signed record of the full current vector set now exists separately:
+see the 2026-07-13 statement below, which does not retroactively change this
+one.
 
 **What remains attestation.** That the implementation was written only from the
 Internet-Drafts and the vector schemas, without reading this repository's
 verifier code, is the implementer's stated construction process. Publishing the
-source makes that claim auditable by anyone; no output can prove it. Stated
-precisely: one implementation set from this repository (JavaScript, Python, Go,
-one team) and one externally authored from-spec Rust implementation agree on all
-163 current vectors; the original signed statement remains bound to its
-162-vector input set.
+source makes that claim auditable by anyone; no output can prove it.
+
+### Rust verifier / J Diesel NY — 2026-07-13 (historical pinned-input statement)
+
+- File: [`rust-cleanroom/statement-2026-07-13.json`](rust-cleanroom/statement-2026-07-13.json),
+  published as received.
+- Verifier: `ext:verifier:emilia-cleanroom-rust` (J Diesel NY), same key_id
+  `ep:external-verifier-key:sha256:87c8c5029475f53a` as the 2026-07-07 statement.
+- Signed result for this historical input: `verified`, all 17 suites, 193 of 193 vectors, bound to this
+  repository's commit `a904480` by per-suite `suite_digests`.
+
+**Verified by the maintainer 2026-07-13, each step re-run here.** The statement
+is accepted under the stored pin with `verify-statement.mjs` (`verified: true`,
+`accepted: true`); all 17 `suite_digests` match this repository's vector bytes
+at `a904480` exactly; and, separately from the statement, the maintainer rebuilt
+the public source at its pinned commit `f4c10aa` with a local toolchain and
+re-ran all 17 suites (193/193, zero divergences) plus the differential-hostility
+campaign (353 structured cases and 6 raw-parser refusals, zero divergences).
+
+**Scope, unchanged.** The statement is signed by the implementing organization,
+not by a separate attestor, so it does not change the strict clean-room
+acceptance status above. The statement does not name the implementation source
+commit; the maintainer's rebuild pins that independently. The statement's own
+limitations field notes that per-vector results are produced by the named
+implementation and compared by its harness against each vector's `expect.valid`;
+the maintainer's independent re-run closes that distance for the same source
+tree. Construction independence remains the implementer's attestation, auditable
+in the public source. Stated precisely: one implementation set from this
+repository (JavaScript, Python, Go, one team) and one externally authored
+from-spec Rust implementation agree on the 193-vector historical input set; the original
+signed statement remains bound to its 162-vector input set, and this one is
+bound to the 193-vector set at `a904480`.

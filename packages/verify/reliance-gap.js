@@ -375,6 +375,7 @@ export function buildRelianceGapReport(packet, profile, opts = {}) {
     revokerKeys: context.revoker_keys && typeof context.revoker_keys === 'object' ? context.revoker_keys : {},
   };
   if (typeof context.rp_id === 'string') verifierOpts.rpId = context.rp_id;
+  if (Array.isArray(context.allowed_origins)) verifierOpts.allowedOrigins = context.allowed_origins;
 
   // THE VERDICT: exactly what the kernel returns. Never reinterpreted here.
   const kernel = evaluateReliance({

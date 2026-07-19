@@ -57,6 +57,33 @@ export function verifyReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin
   return { head, tag, mainRef };
 }
 
+export function verifyUnpublishedReleaseGitState({ cwd, tag, mainRef = 'refs/remotes/origin/main', expectedCommit = null }) {
+  const head = git(cwd, ['rev-parse', 'HEAD^{commit}']);
+  if (expectedCommit !== null) {
+    if (!/^[0-9a-f]{40}$/.test(expectedCommit) || head !== expectedCommit) {
+      throw new Error(`release checkout ${head} does not match dispatched commit ${expectedCommit}`);
+    }
+  }
+  let mainCommit;
+  try {
+    mainCommit = git(cwd, ['rev-parse', '--verify', `${mainRef}^{commit}`]);
+  } catch {
+    throw new Error(`protected main reference is unavailable: ${mainRef}`);
+  }
+  if (head !== mainCommit) {
+    throw new Error(`release commit ${head} must be the exact protected main commit ${mainCommit}`);
+  }
+  const existingTag = spawnSync('git', ['rev-parse', '--verify', `refs/tags/${tag}`], {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (existingTag.status === 0) throw new Error(`release tag already exists: ${tag}`);
+  const dirty = git(cwd, ['status', '--porcelain', '--untracked-files=no']);
+  if (dirty) throw new Error('release checkout contains modified tracked files');
+  return { head, tag, mainRef, unpublished: true };
+}
+
 function option(argv, name) {
   const index = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : null;
@@ -73,11 +100,18 @@ export function main(argv = process.argv.slice(2), env = process.env) {
     version: option(argv, '--version'),
     confirmation: option(argv, '--confirmation'),
   });
-  const gitState = verifyReleaseGitState({
-    cwd: env.GITHUB_WORKSPACE || process.cwd(),
-    tag: approval.expectedTag,
-    mainRef: option(argv, '--main-ref') || 'refs/remotes/origin/main',
-  });
+  const gitState = argv.includes('--unpublished-tag')
+    ? verifyUnpublishedReleaseGitState({
+      cwd: env.GITHUB_WORKSPACE || process.cwd(),
+      tag: approval.expectedTag,
+      mainRef: option(argv, '--main-ref') || 'refs/remotes/origin/main',
+      expectedCommit: option(argv, '--expected-commit'),
+    })
+    : verifyReleaseGitState({
+      cwd: env.GITHUB_WORKSPACE || process.cwd(),
+      tag: approval.expectedTag,
+      mainRef: option(argv, '--main-ref') || 'refs/remotes/origin/main',
+    });
   console.log(`RELEASE APPROVAL: PASS (${approval.expectedConfirmation}; ${gitState.head})`);
 }
 

@@ -6,7 +6,7 @@
  *
  *   import { createTrustedActionFirewall } from '@emilia-protocol/gate';
  *   import { gateMcpTool } from '@emilia-protocol/gate/mcp';
- *   const gate = createTrustedActionFirewall({ trustedKeys: [ISSUER] });
+ *   const gate = createTrustedActionFirewall({ trustedKeys: [ISSUER], store: sharedConsumptionStore });
  *
  *   server.tool('release_payment',
  *     gateMcpTool(gate, { tool: 'release_payment' }, async (args) => actuallyPay(args)));
@@ -21,6 +21,8 @@
  * args.emilia_receipt, then a base64 string in args._emilia_receipt_b64.
  */
 
+import { parseReceiptCarrier } from '@emilia-protocol/require-receipt';
+
 function resolveReceipt(args, opts) {
   if (typeof opts.receipt === 'function') return opts.receipt(args);
   if (opts.receipt) return opts.receipt;
@@ -28,7 +30,7 @@ function resolveReceipt(args, opts) {
     if (args._emilia_receipt) return args._emilia_receipt;
     if (args.emilia_receipt) return args.emilia_receipt;
     if (typeof args._emilia_receipt_b64 === 'string') {
-      try { return JSON.parse(Buffer.from(args._emilia_receipt_b64, 'base64').toString('utf8')); } catch { return null; }
+      return parseReceiptCarrier(args._emilia_receipt_b64);
     }
   }
   return null;
@@ -38,7 +40,7 @@ function resolveReceipt(args, opts) {
  * Wrap a single MCP tool handler so it runs only behind a passing gate check.
  * @param {object} gate     an EMILIA Gate (createGate/createTrustedActionFirewall)
  * @param {object} o
- * @param {string} o.tool   the MCP tool name (matched against the manifest)
+ * @param {string} [o.tool]   the MCP tool name (matched against the manifest)
  * @param {string} [o.protocol='mcp']
  * @param {string} [o.action] explicit action_type (else resolved by the manifest from {protocol,tool})
  * @param {object|function} [o.observedAction] the system-of-record facts to bind (default: the tool args)

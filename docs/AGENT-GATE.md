@@ -12,7 +12,7 @@ We dogfood it on the highest-stakes agent we have: the one that operates this
 company. **EMILIA governs the agent that builds EMILIA.**
 
 > **Productized:** the deployable, framework-agnostic firewall is
-> `@emilia-protocol/gate` (the *Trusted Action Firewall*) — deny-by-default
+> `@emilia-protocol/gate` (the *Consequence Firewall*) — deny-by-default
 > `check` / `middleware` / `guard` with assurance-tier enforcement, one-time
 > consumption (replay defense), and a tamper-evident evidence log, composing
 > `@emilia-protocol/require-receipt`. See `docs/EMILIA-GATE-PRODUCT-BRIEF.md`.

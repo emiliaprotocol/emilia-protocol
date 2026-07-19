@@ -85,8 +85,10 @@ vi.mock('@/lib/write-guard', () => ({ getGuardedClient: () => mockClient }));
 
 // Import AFTER mocks are registered.
 const { authenticateScim, hashScimToken } = await import('../lib/scim/auth.js');
+const { SCIM, SCIM_LIMITS } = await import('../lib/scim/core.js');
 const Users = await import('../app/api/scim/v2/Users/route.js');
 const UserById = await import('../app/api/scim/v2/Users/[id]/route.js');
+const Groups = await import('../app/api/scim/v2/Groups/route.js');
 
 // A request helper.
 function req(method, url, { token, body } = {}) {
@@ -196,6 +198,89 @@ describe('SCIM User lifecycle', () => {
 
     const gone = await UserById.GET(req('GET', `${base}/${id}`, { token: TOKEN }), params);
     expect(gone.status).toBe(404);
+  });
+});
+
+describe('SCIM hostile payload rejection', () => {
+  const usersBase = 'https://x/api/scim/v2/Users';
+  const groupsBase = 'https://x/api/scim/v2/Groups';
+
+  it('returns a SCIM invalidValue error for oversized user input without writing', async () => {
+    const res = await Users.POST(req('POST', usersBase, {
+      token: TOKEN,
+      body: { userName: 'u'.repeat(SCIM_LIMITS.userName + 1) },
+    }));
+    const error = await res.json();
+    expect(res.status).toBe(400);
+    expect(error.schemas).toEqual([SCIM.ERROR]);
+    expect(error.scimType).toBe('invalidValue');
+    expect(store.scim_users).toHaveLength(0);
+  });
+
+  it('rejects a deep raw extension with a SCIM error', async () => {
+    let extension = 'leaf';
+    for (let i = 0; i < SCIM_LIMITS.extensionDepth + 2; i += 1) extension = { next: extension };
+    const res = await Users.POST(req('POST', usersBase, {
+      token: TOKEN,
+      body: { userName: 'deep@example.com', [SCIM.ENTERPRISE_USER]: extension },
+    }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).scimType).toBe('invalidValue');
+    expect(store.scim_users).toHaveLength(0);
+  });
+
+  it('validates the post-PATCH user and leaves the stored row unchanged on rejection', async () => {
+    const created = await (await Users.POST(req('POST', usersBase, {
+      token: TOKEN,
+      body: { userName: 'stable@example.com' },
+    }))).json();
+    const res = await UserById.PATCH(req('PATCH', `${usersBase}/${created.id}`, {
+      token: TOKEN,
+      body: {
+        Operations: [{
+          op: 'replace',
+          path: 'userName',
+          value: 'u'.repeat(SCIM_LIMITS.userName + 1),
+        }],
+      },
+    }), { params: Promise.resolve({ id: created.id }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).scimType).toBe('invalidValue');
+    expect(store.scim_users[0].user_name).toBe('stable@example.com');
+  });
+
+  it('returns tooMany for an oversized PATCH operation set', async () => {
+    const created = await (await Users.POST(req('POST', usersBase, {
+      token: TOKEN,
+      body: { userName: 'patch@example.com' },
+    }))).json();
+    const Operations = Array.from(
+      { length: SCIM_LIMITS.patchOperations + 1 },
+      () => ({ op: 'replace', path: 'active', value: true }),
+    );
+    const res = await UserById.PATCH(req('PATCH', `${usersBase}/${created.id}`, {
+      token: TOKEN,
+      body: { Operations },
+    }), { params: Promise.resolve({ id: created.id }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).scimType).toBe('tooMany');
+  });
+
+  it('rejects malformed and oversized group/member payloads without writing', async () => {
+    const malformed = await Groups.POST(req('POST', groupsBase, {
+      token: TOKEN,
+      body: { displayName: 'Approvers', members: [{ value: { id: 'u1' } }] },
+    }));
+    expect(malformed.status).toBe(400);
+    expect((await malformed.json()).scimType).toBe('invalidValue');
+
+    const oversized = await Groups.POST(req('POST', groupsBase, {
+      token: TOKEN,
+      body: { displayName: 'g'.repeat(SCIM_LIMITS.displayName + 1), members: [] },
+    }));
+    expect(oversized.status).toBe(400);
+    expect((await oversized.json()).scimType).toBe('invalidValue');
+    expect(store.scim_groups).toHaveLength(0);
   });
 });
 

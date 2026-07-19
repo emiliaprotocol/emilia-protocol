@@ -37,15 +37,10 @@
  * Deterministic: pure over (entries, issuerKeys); time enters only through the
  * injectable `now` (generated_at). No sampling, no randomness.
  */
+import crypto from 'node:crypto';
 import { createEvidenceLog } from '../evidence.js';
-
-// The protocol verifiers being re-driven. Same resolution pattern as
-// packages/gate/index.js: prefer the published package, fall back to the
-// in-repo source so the monorepo works without a node_modules link.
-const { verifyEmiliaReceipt } = await import('@emilia-protocol/require-receipt')
-  .catch(() => import('../../require-receipt/index.js'));
-const { verifyWebAuthnSignoff, verifyQuorum } = await import('@emilia-protocol/verify')
-  .catch(() => import('../../verify/index.js'));
+import { validatePinnedQuorumPolicy, verifyEmiliaReceipt } from '@emilia-protocol/require-receipt';
+import { verifyQuorum, verifyWebAuthnSignoff } from '@emilia-protocol/verify';
 
 export const REPERFORMANCE_VERSION = 'EP-GATE-REPERFORMANCE-v1';
 
@@ -107,7 +102,28 @@ function collectMaterial(e) {
  * what IS re-performed is the cryptography (signature, issuer trust, action
  * binding, ceremony checks).
  */
-function reverifyMaterial(m, { issuerKeys, action, rpId }) {
+function spkiFingerprint(value) {
+  try {
+    const key = crypto.createPublicKey({ key: Buffer.from(value, 'base64url'), format: 'der', type: 'spki' });
+    return crypto.createHash('sha256').update(key.export({ type: 'spki', format: 'der' })).digest('hex');
+  } catch { return null; }
+}
+
+function pinnedApproverEntry(approverKeys, approver, carriedKey = null) {
+  if (!approverKeys || typeof approverKeys !== 'object' || Array.isArray(approverKeys)) return null;
+  const candidates = Object.values(approverKeys).filter((entry) => entry && typeof entry === 'object'
+    && entry.approver_id === approver && typeof entry.public_key === 'string');
+  if (carriedKey) {
+    const fingerprint = spkiFingerprint(carriedKey);
+    const matches = candidates.filter((entry) => fingerprint && spkiFingerprint(entry.public_key) === fingerprint);
+    return matches.length === 1 ? matches[0] : null;
+  }
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+function reverifyMaterial(m, {
+  issuerKeys, action, rpId, allowedOrigins, approverKeys, quorumPolicy, quorumPolicies,
+}) {
   if (m.type === 'receipt') {
     const r = verifyEmiliaReceipt(m.doc, {
       trustedKeys: issuerKeys, allowInlineKey: false, action, maxAgeSec: 0,
@@ -115,14 +131,33 @@ function reverifyMaterial(m, { issuerKeys, action, rpId }) {
     return r.ok ? null : `receipt:${r.reason}`;
   }
   if (m.type === 'signoff') {
-    // No pinned/carried approver key -> nothing to verify AGAINST. Named
-    // failure, never a silent pass.
-    if (!m.key || typeof m.key !== 'string') return 'signoff:no_approver_key_carried';
-    const r = verifyWebAuthnSignoff(m.doc, m.key, rpId ? { rpId } : {});
+    if (typeof rpId !== 'string' || !rpId || !Array.isArray(allowedOrigins) || allowedOrigins.length === 0) {
+      return 'signoff:relying_party_scope_unpinned';
+    }
+    const approver = m.doc?.context?.approver;
+    const entry = pinnedApproverEntry(approverKeys, approver, m.key);
+    if (!entry) return 'signoff:approver_key_unpinned_or_ambiguous';
+    const r = verifyWebAuthnSignoff(m.doc, entry.public_key, { rpId, allowedOrigins });
     return r.valid ? null : `signoff:${r.error ? `error:${r.error}` : `checks_failed:${failingChecks(r.checks)}`}`;
   }
   if (m.type === 'quorum') {
-    const r = verifyQuorum(m.doc, rpId ? { rpId } : {});
+    if (typeof rpId !== 'string' || !rpId || !Array.isArray(allowedOrigins) || allowedOrigins.length === 0) {
+      return 'quorum:relying_party_scope_unpinned';
+    }
+    const pinnedPolicy = (quorumPolicies && typeof quorumPolicies === 'object' ? quorumPolicies[action] : null)
+      || quorumPolicy;
+    const policy = validatePinnedQuorumPolicy(pinnedPolicy);
+    if (!policy.ok) return `quorum:${policy.reason}`;
+    const members = Array.isArray(m.doc?.members) ? m.doc.members.map((member) => {
+      const entry = pinnedApproverEntry(
+        approverKeys,
+        member?.signoff?.context?.approver,
+        member?.approver_public_key,
+      );
+      return entry ? { ...member, approver_public_key: entry.public_key } : null;
+    }) : [];
+    if (members.length === 0 || members.some((member) => !member)) return 'quorum:approver_key_unpinned_or_ambiguous';
+    const r = verifyQuorum({ ...m.doc, policy: policy.policy, members }, { rpId, allowedOrigins });
     return r.valid ? null : `quorum:checks_failed:${failingChecks(r.checks)}`;
   }
   /* c8 ignore next */
@@ -154,12 +189,24 @@ function reverifyMaterial(m, { issuerKeys, action, rpId }) {
  * @param {string[]} [o.issuerKeys=[]]  pinned base64url SPKI issuer keys, sourced
  *   by the AUDITOR out of band — never from the entries themselves
  * @param {number|function} [o.now=Date.now]  clock for generated_at (pin for determinism)
- * @param {string} [o.rpId]  bind carried WebAuthn assertions to this relying-party id
+ * @param {object} [o.approverKeys={}] auditor-pinned identity-bound approver keys
+ * @param {string} [o.rpId] bind carried WebAuthn assertions to this relying-party id
+ * @param {string[]} [o.allowedOrigins=[]] exact accepted WebAuthn origins
+ * @param {object} [o.quorumPolicy] auditor-pinned global organizational quorum rule
+ * @param {object} [o.quorumPolicies] action_type -> auditor-pinned quorum rule
  * @returns {Promise<object>} EP-GATE-REPERFORMANCE-v1 document:
  *   { chain: {ok, entries, head}, receipts: {reverified, failed, not_reverifiable},
  *     counts: {allows, denies, replays_blocked, by_action_type}, ... }
  */
-export async function reperformEvidence(entries = [], { issuerKeys = [], now = Date.now, rpId = null } = {}) {
+export async function reperformEvidence(entries = [], {
+  issuerKeys = [],
+  approverKeys = {},
+  now = Date.now,
+  rpId = null,
+  allowedOrigins = [],
+  quorumPolicy = null,
+  quorumPolicies = {},
+} = {}) {
   if (!Array.isArray(entries)) {
     throw new Error('reperform: entries must be an array (evidence.all() or a full export)');
   }
@@ -227,7 +274,13 @@ export async function reperformEvidence(entries = [], { issuerKeys = [], now = D
       let allOk = true;
       for (const m of material) {
         const reason = reverifyMaterial(m, {
-          issuerKeys, action: typeof e.action === 'string' && e.action ? e.action : null, rpId,
+          issuerKeys,
+          approverKeys,
+          action: typeof e.action === 'string' && e.action ? e.action : null,
+          rpId,
+          allowedOrigins,
+          quorumPolicy,
+          quorumPolicies,
         });
         if (reason) { allOk = false; receipts.failed.push({ hash, reason }); }
       }
@@ -255,7 +308,8 @@ export async function reperformEvidence(entries = [], { issuerKeys = [], now = D
       reperforms:
         'Independent recomputation from the supplied evidence entries: the hash chain is rebuilt '
         + 'and checked with the evidence log\'s own verifier, carried receipt/signoff/quorum material '
-        + 'is cryptographically re-verified against auditor-pinned issuer keys, and decision counts '
+        + 'is cryptographically re-verified against auditor-pinned issuer and identity-bound approver keys, '
+        + 'WebAuthn scope, and organizational quorum policy; decision counts '
         + 'are recomputed from scratch without reference to any report builder.',
       does_not_establish: [
         'Completeness of the log: a chain rewritten in full, or entries withheld before they were supplied, is not detectable from the entries alone. Anchor the head hash externally to close this.',
@@ -268,6 +322,12 @@ export async function reperformEvidence(entries = [], { issuerKeys = [], now = D
     input: {
       entries_supplied: entries.length,
       issuer_keys_pinned: issuerKeys.length,
+      approver_keys_pinned: approverKeys && typeof approverKeys === 'object'
+        ? Object.keys(approverKeys).length : 0,
+      relying_party_scope_pinned: typeof rpId === 'string' && rpId.length > 0
+        && Array.isArray(allowedOrigins) && allowedOrigins.length > 0,
+      quorum_policies_pinned: (quorumPolicy ? 1 : 0)
+        + (quorumPolicies && typeof quorumPolicies === 'object' ? Object.keys(quorumPolicies).length : 0),
       expects: 'the complete evidence log from genesis (evidence.all() or a full export)',
     },
     chain,

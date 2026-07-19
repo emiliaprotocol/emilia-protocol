@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockAuthenticateCloudRequest = vi.fn();
 const mockRequirePermission = vi.fn();
-const mockGetServiceClient = vi.fn();
+const mockGetGuardedClient = vi.fn();
 
 vi.mock('@/lib/cloud/auth', () => ({
   authenticateCloudRequest: (...args) => mockAuthenticateCloudRequest(...args),
@@ -15,11 +15,11 @@ vi.mock('@/lib/cloud/authorize', () => ({
 }));
 
 vi.mock('@/lib/write-guard', () => ({
-  getGuardedClient: vi.fn(),
+  getGuardedClient: (...args) => mockGetGuardedClient(...args),
 }));
 
 vi.mock('@/lib/supabase', () => ({
-  getServiceClient: (...args) => mockGetServiceClient(...args),
+  getServiceClient: vi.fn(),
 }));
 
 vi.mock('@/lib/logger.js', () => ({
@@ -58,13 +58,13 @@ describe('PUT /api/cloud/webhooks/:endpointId — SSRF hardening', () => {
   beforeEach(() => {
     mockAuthenticateCloudRequest.mockReset();
     mockRequirePermission.mockReset();
-    mockGetServiceClient.mockReset();
+    mockGetGuardedClient.mockReset();
     mockAuthenticateCloudRequest.mockResolvedValue({ tenantId: 'tenant-1', permissions: ['write'] });
   });
 
   it('rejects private webhook URLs on update before storing them', async () => {
     const { client, calls } = makeClient();
-    mockGetServiceClient.mockReturnValue(client);
+    mockGetGuardedClient.mockReturnValue(client);
 
     const res = await PUT(req({ url: 'http://127.0.0.1/internal', events: ['receipt.created'] }), {
       params: Promise.resolve({ endpointId: 'ep-1' }),

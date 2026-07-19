@@ -20,7 +20,7 @@ console.log('  ' + '─'.repeat(76));
 
 let failures = 0;
 for (const v of suite.vectors) {
-  const opts = { rpId: v.rp_id };
+  const opts = { rpId: v.rp_id, allowedOrigins: v.allowed_origins };
   const n = nodeVerify(v.signoff, v.approver_public_key, opts).valid;
   const w = (await webVerify(v.signoff, v.approver_public_key, opts)).valid;
   const exp = v.expect.valid;

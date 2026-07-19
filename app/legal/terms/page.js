@@ -19,7 +19,7 @@ export default function TermsPage() {
           Effective {EFFECTIVE}
         </div>
         <p style={styles.body}>
-          These Terms govern your use of the websites at <code style={{ fontFamily: font.mono, fontSize: 13 }}>emiliaprotocol.ai</code>, the hosted EP Cloud service, the documentation site, and any related interface operated by {ENTITY.legalName} ("EMILIA Protocol", "we", "us"). By using these services you agree to these Terms.
+          These Terms govern your use of the websites at <code style={{ fontFamily: font.mono, fontSize: 13 }}>emiliaprotocol.ai</code>, the hosted EMILIA Gate Cloud service, the documentation site, and any related interface operated by {ENTITY.legalName} ("EMILIA Protocol", "we", "us"). By using these services you agree to these Terms.
         </p>
       </section>
 
@@ -32,7 +32,7 @@ export default function TermsPage() {
 
         <h2 style={styles.h2}>2. The websites and hosted services</h2>
         <p style={styles.body}>
-          The websites, the hosted EP Cloud service, the playground, and the explorer are provided under these Terms. You may use them for lawful purposes consistent with the Acceptable Use Policy at <a href="/legal/acceptable-use" style={{ color: color.blue }}>/legal/acceptable-use</a>.
+          The websites, the hosted EMILIA Gate Cloud service, the playground, and the explorer are provided under these Terms. You may use them for lawful purposes consistent with the Acceptable Use Policy at <a href="/legal/acceptable-use" style={{ color: color.blue }}>/legal/acceptable-use</a>.
         </p>
 
         <h2 style={styles.h2}>3. Accounts</h2>

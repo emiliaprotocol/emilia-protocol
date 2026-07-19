@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"os"
 
-	emiliaverify "github.com/emiliaprotocol/emilia-protocol/packages/go-verify"
+	emiliaverify "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2"
 )
 
 func main() {
@@ -43,10 +43,29 @@ func main() {
 `Valid` is true when the version and signature pass and the anchor is either absent or valid.
 
 Also exported: `VerifyMerkleAnchor` and `Canonicalize` for lower-level use.
+The v2 fixed-arity `VerifyWebAuthnSignoff` and `VerifyQuorum` APIs remain
+source-compatible. Relying parties that pin browser origins use
+`VerifyWebAuthnSignoffWithOrigins` and `VerifyQuorumWithOrigins`.
 
 ## Cross-language guarantee
 
-`go test ./...` verifies the **same JS-signed receipt fixture** that the Python suite checks (`packages/python-verify/tests/fixtures`), and confirms tampering, a wrong key, and a broken anchor are all rejected. If Go, JS, and Python all verify the same receipt, the canonicalization is correct.
+`go test ./...` verifies the **same JS-signed receipt fixture** that the Python
+suite checks (`packages/python-verify/tests/fixtures`), and confirms tampering,
+a wrong key, and a broken anchor are all rejected. Agreement on the shared
+corpus is evidence of implementation consistency; it is not a proof that every
+possible canonicalization input is correct.
+
+These are same-team ports in one repository. Agreement is a cross-language
+consistency check, not evidence of independent implementation.
+
+## Release integrity
+
+`go-release.json` binds the module path, version, and required submodule tag.
+The owner-dispatched release workflow tests and attests the exact dispatched
+`main` commit without write credentials. After human approval, an isolated API
+job creates that tag; a final read-only job validates the public proxy origin,
+checksums, and complete source tree. Direct manual tag publication is not the
+supported release path.
 
 ## License
 

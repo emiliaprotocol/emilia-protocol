@@ -1,6 +1,6 @@
-# EP Enterprise
+# EMILIA Gate Enterprise
 
-EP Enterprise is the hardened deployment and governance layer for regulated and high-assurance environments.
+EMILIA Gate Enterprise is the hardened deployment and governance layer for regulated and high-assurance environments.
 
 ## What it includes
 

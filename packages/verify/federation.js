@@ -63,6 +63,8 @@
 
 import { verifyReceipt } from './index.js';
 
+/** @typedef {import('./index.js').IssuerPin} IssuerPin */
+
 // =============================================================================
 // KEY RESOLUTION
 // =============================================================================
@@ -81,6 +83,7 @@ import { verifyReceipt } from './index.js';
  * @returns {Array<{ public_key: string, status: 'current'|'historical', algorithm: string, retired_at?: string }>}
  */
 export function resolveOperatorKeys(discoveryDoc, signerId) {
+  /** @type {Array<{ public_key: string, status: 'current'|'historical', algorithm: string, retired_at?: string }>} */
   const candidates = [];
   if (!discoveryDoc || typeof discoveryDoc !== 'object' || !signerId) return candidates;
 
@@ -344,10 +347,10 @@ function normalizeStringSet(input) {
  * The receipt's `signature.key_discovery` URL (PIP-006 §"Federation contract")
  * is the operator's ep-keys.json location. Revocation is checked against the
  * operator's verifier-of-record endpoint (`/api/verify/{receipt_id}`), which
- * reports a `revoked` field; absence of an affirmative revocation is treated as
- * not-revoked (fail-open on revocation is the documented behavior — a missing
- * revocation feed must not block verification of an otherwise-valid receipt;
- * the converse — a present `revoked: true` — is honored).
+ * reports a `revoked` field. Cryptographic verification and live acceptance are
+ * deliberately separate: an unavailable revocation surface does not erase a
+ * valid signature (`verified` may remain true), but it MUST prevent a live
+ * acceptance decision (`accepted` remains false) until status is confirmed.
  *
  * FAIL CLOSED + SSRF-GUARDED. The receipt-supplied `key_discovery` URL is
  * attacker-controlled. It is fetched ONLY when the relying party has pinned the
@@ -382,7 +385,7 @@ function normalizeStringSet(input) {
  *   like a bare-id trustedIssuers entry, it does not bind the key source, so it
  *   does not by itself authorize fetching a receipt-supplied key_discovery)
  * @param {boolean} [opts.allowInsecureFetch=false] - test-only escape hatch to skip the SSRF guard
- * @returns {Promise<ReturnType<typeof verifyFederatedReceiptOffline> & { fetched: object }>}
+ * @returns {Promise<ReturnType<typeof verifyFederatedReceiptOffline> & { fetched: object, revocation_confirmed?: boolean, revocation_status?: string }>}
  */
 export async function verifyFederatedReceipt(receipt, opts = {}) {
   const signer = receipt?.signature?.signer || null;
@@ -475,9 +478,8 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
         fetched.revocation = { ok: true, revoked: v?.revoked === true };
         if (v?.revoked === true) revokedReceiptIds.add(receiptId);
       } catch {
-        // Fail-open on revocation lookup: an unreachable revocation feed must
-        // not turn a cryptographically-valid receipt into a failure. The
-        // verdict notes that revocation could not be confirmed.
+        // Preserve cryptographic verification, but never interpret unavailable
+        // revocation state as affirmative evidence that the receipt is live.
         fetched.revocation = { ok: false };
       }
     } else if (verifyUrl) {
@@ -490,7 +492,35 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
     expectedSigner: opts.expectedSigner,
     trustedIssuers: opts.trustedIssuers,
   });
-  return { ...offline, fetched, revocation_confirmed: fetched.revocation?.ok === true };
+  const revocationConfirmed = fetched.revocation?.ok === true;
+  const revoked = offline.revoked === true;
+  const revocationStatus = revoked
+    ? 'revoked'
+    : revocationConfirmed
+      ? 'confirmed_not_revoked'
+      : 'unavailable';
+
+  if (!revocationConfirmed) {
+    return {
+      ...offline,
+      accepted: false,
+      checks: { ...offline.checks, not_revoked: false, revocation_confirmed: false },
+      fetched,
+      revocation_confirmed: false,
+      revocation_status: revocationStatus,
+      error: offline.accepted
+        ? 'Signature verifies and issuer is pinned, but revocation status is unavailable; refusing live acceptance'
+        : offline.error,
+    };
+  }
+
+  return {
+    ...offline,
+    checks: { ...offline.checks, revocation_confirmed: true },
+    fetched,
+    revocation_confirmed: true,
+    revocation_status: revocationStatus,
+  };
 }
 
 // Build the verifier-of-record URL for a receipt. Priority:

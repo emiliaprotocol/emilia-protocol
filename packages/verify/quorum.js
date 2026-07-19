@@ -33,7 +33,22 @@
  * Verifying a creator-declared policy against creator-declared keys proves only
  * internal consistency — it is not authorization.
  */
+import crypto from 'node:crypto';
 import { verifyWebAuthnSignoff, contextChainHash } from './index.js';
+
+function spkiFingerprint(value) {
+  try {
+    const key = crypto.createPublicKey({
+      key: Buffer.from(value, 'base64url'),
+      format: 'der',
+      type: 'spki',
+    });
+    const der = key.export({ type: 'spki', format: 'der' });
+    return crypto.createHash('sha256').update(der).digest('hex');
+  } catch {
+    return null;
+  }
+}
 
 /**
  * @param {object} quorum  EP-QUORUM-v1 document:
@@ -75,7 +90,10 @@ export function verifyQuorum(quorum, opts = {}) {
       return { valid: false, checks, members: memberResults };
     }
 
-    const mode = policy.mode === 'ordered' ? 'ordered' : 'threshold';
+    const mode = policy.mode;
+    if (mode !== 'ordered' && mode !== 'threshold') {
+      return { valid: false, checks, members: memberResults };
+    }
     const distinctHumans = policy.distinct_humans !== false; // default true
     const windowSec = Number.isFinite(policy.window_sec) ? policy.window_sec : 900;
     const eligible = Array.isArray(policy.approvers) ? policy.approvers : [];
@@ -123,8 +141,9 @@ export function verifyQuorum(quorum, opts = {}) {
     //     Key-uniqueness is a cryptographic floor, NOT a separation-of-duties
     //     preference: it holds unconditionally, even when distinct_humans is
     //     disabled. One key in two counted seats is one signer, never a quorum.
-    const countedKeys = counted.map((x) => x.m?.approver_public_key);
-    checks.distinct_keys = new Set(countedKeys).size === countedKeys.length;
+    const countedKeys = counted.map((x) => spkiFingerprint(x.m?.approver_public_key));
+    checks.distinct_keys = countedKeys.every(Boolean)
+      && new Set(countedKeys).size === countedKeys.length;
 
     // 3c. Initiator excluded (separation of duties): the human/agent that
     //     INITIATED the action must never also approve it. Every signed member

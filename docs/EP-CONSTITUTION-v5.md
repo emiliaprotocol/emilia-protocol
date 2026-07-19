@@ -35,7 +35,7 @@ When an AI acts with real-world consequences, a specific named human — not a r
 Trust must never be more powerful than appeal. Every trust decision is contestable. Every entity has access to dispute, appeal, and human review. EP will never build a trust system where a low score is a permanent sentence.
 
 ### 5. Open protocol, not a product
-EP is Apache 2.0. The protocol is free. The specification is public. The formal verification models are open. Commercial offerings (EP Cloud) sustain development but never gate protocol functionality.
+EP is Apache 2.0. The protocol is free. The specification is public. The formal verification models are open. Commercial offerings (EMILIA Gate Cloud) sustain development but never gate protocol functionality.
 
 ### 6. Federated, not centralized
 EP is designed for multiple independent operators. No single operator, no single database, no single jurisdiction controls the protocol. Operators cross-verify via cryptographic proofs.
@@ -154,7 +154,7 @@ EP is designed for a federated world where multiple operators run independent EP
 ## Article VII — What EP Will Never Do
 
 1. **Never require a token** to use the protocol. No cryptocurrency. No DeFi. No trading.
-2. **Never gate protocol functionality** behind commercial offerings. EP Cloud is a convenience layer, not a feature gate.
+2. **Never gate protocol functionality** behind commercial offerings. EMILIA Gate Cloud is a convenience layer, not a feature gate.
 3. **Never produce permanent reputation labels.** Trust decisions are contextual, not persistent sentences.
 4. **Never allow trust to override appeal.** Due process is architecturally guaranteed.
 5. **Never centralize control.** Federation is the design target. Single-operator mode is a starting point, not the end state.

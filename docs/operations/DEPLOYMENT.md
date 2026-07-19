@@ -42,6 +42,8 @@ All environment variables are accessed through `lib/env.js`. No other file reads
 | `EP_AUTO_RECEIPT_URL` | URL for auto-receipt submission | `https://emiliaprotocol.ai` |
 | `BASE_NETWORK` | Blockchain network for anchoring (`sepolia` or `mainnet`) | `sepolia` |
 | `EP_WALLET_PRIVATE_KEY` | Wallet private key for blockchain anchoring | N/A |
+| `EP_BLOCKCHAIN_SIGNING_MODE` | Blockchain transaction signer (`env`, `kms`, or `hsm`) | `env` |
+| `EP_BLOCKCHAIN_SIGNING_KEY_ID` | Auditable external signer key id; required for `kms`/`hsm` | N/A |
 | `OPENAI_API_KEY` | OpenAI key (if AI features are enabled) | `null` |
 | `GITHUB_TOKEN` | GitHub token for CI/integration features | `null` |
 

@@ -4,6 +4,7 @@
 import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord, canonicalize, isCanonicalizable, evaluateCurrency, validateInitiatorAttestation, verifyConsumptionProof, requireWitnessQuorum } from '../../packages/verify/index.js';
 import { verifyTimestampProof } from '../../packages/verify/timestamp-proof.js';
 import { verifyAuthorizationChain } from '../../packages/verify/evidence-chain.js';
+import { verifyResolutionReceipt } from '../../packages/verify/resolution.js';
 import { strictParseGate } from './strict-json.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -29,12 +30,27 @@ function runCanonicalization(c) {
 }
 const out = vectors.map((v) => {
   if (v.document) return { id: v.id, valid: verifyReceipt(v.document, v.public_key).valid };
-  if (v.signoff) return { id: v.id, valid: verifyWebAuthnSignoff(v.signoff, v.approver_public_key, { rpId: v.rp_id }).valid };
-  if (v.quorum) return { id: v.id, valid: verifyQuorum(v.quorum, { rpId: 'emiliaprotocol.ai' }).valid };
+  if (v.resolution_receipt !== undefined || v.resolution_authorization !== undefined) {
+    const receipt = v.resolution_receipt ?? v.resolution_authorization;
+    const result = verifyResolutionReceipt(receipt, {
+      bindingMoment: v.binding_moment,
+      expectedActionHash: v.expected_action_hash,
+      expectedSelectedOption: v.expected_selected_option,
+      expectedNonce: v.expected_nonce,
+      expectedInitiator: v.expected_initiator,
+      evaluationTime: v.evaluation_time,
+      principalKeys: v.principal_keys,
+      rpId: v.rp_id,
+      allowedOrigins: v.allowed_origins,
+    });
+    return { id: v.id, valid: v.resolution_authorization !== undefined ? result.valid && result.authorizes_action : result.valid };
+  }
+  if (v.signoff) return { id: v.id, valid: verifyWebAuthnSignoff(v.signoff, v.approver_public_key, { rpId: v.rp_id, allowedOrigins: v.allowed_origins }).valid };
+  if (v.quorum) return { id: v.id, valid: verifyQuorum(v.quorum, { rpId: 'emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'] }).valid };
   if (v.revocation) return { id: v.id, valid: verifyRevocation(v.target, v.revocation, { revokerKeys: v.revoker_keys, maxAgeSeconds: v.max_age_seconds, now: v.now }).valid };
   if (v.time_attestation) return { id: v.id, valid: verifyTimeAttestation(v.time_attestation, { tsaKeys: v.tsa_keys, expectedHash: v.expected_hash, notBefore: v.not_before, notAfter: v.not_after }).valid };
   if (v.trust_receipt) return { id: v.id, valid: verifyTrustReceipt(v.trust_receipt, { approverKeys: v.verification.approver_keys, logPublicKey: v.verification.log_public_key, ...(v.verify_opts || {}) }).valid };
-  if (v.provenance_chain) return { id: v.id, valid: verifyProvenanceOffline(v.provenance_chain, { delegationKeys: v.delegation_keys, now: v.now_ms }).valid };
+  if (v.provenance_chain) return { id: v.id, valid: verifyProvenanceOffline(v.provenance_chain, { delegationKeys: v.delegation_keys, rootVerification: v.root_verification, actionVerification: v.action_verification, now: v.now_ms }).valid };
   if (v.evidence_record) return { id: v.id, valid: verifyEvidenceRecord(v.evidence_record, { tsaKeys: v.tsa_keys, protectedHash: v.protected_hash }).valid };
   if (v.canonicalization) return { id: v.id, valid: runCanonicalization(v.canonicalization) };
   // EP-CURRENCY-v1: valid iff the two-valued currency status equals expect_status.
@@ -48,14 +64,14 @@ const out = vectors.map((v) => {
   // EP-TIMESTAMP-PROOF-v1 (RFC 3161): valid iff the pinned TSA's TimeStampToken
   // verifies over the expected digest (fail-closed on any refusal).
   if (v.timestamp_proof !== undefined) return { id: v.id, valid: verifyTimestampProof(v.timestamp_proof, v.expected_digest, v.pinned_tsa_keys).verified };
-  // EP-AEC-ROLE-v1: valid iff verifyAuthorizationChain ALLOWs, with the built-in
+  // EP-AEC-ROLE-v1: valid iff the evidence requirement is SATISFIED, with the built-in
   // ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for
   // each stub_type. Exercises real signatures, role scoping, and signed binding.
   if (v.aec_chain) {
     const stub = (ev) => ({ valid: ev?.valid !== false, action_digest: ev?.action_digest });
     const verifiers = {};
     for (const t of (v.stub_types || [])) verifiers[t] = stub;
-    return { id: v.id, valid: verifyAuthorizationChain(v.aec_chain, { keysByType: v.keys_by_type, policiesByType: v.policies_by_type, verifiers, requirement: v.requirement, expectedActionDigest: v.expected_action_digest, verificationTime: v.verification_time }).allow };
+    return { id: v.id, valid: verifyAuthorizationChain(v.aec_chain, { keysByType: v.keys_by_type, policiesByType: v.policies_by_type, verifiers, requirement: v.requirement, expectedActionDigest: v.expected_action_digest, verificationTime: v.verification_time }).satisfied };
   }
   return { id: v.id, valid: false };
 });

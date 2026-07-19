@@ -5,6 +5,7 @@
 package emiliaverify
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -64,13 +65,13 @@ func withinWindowGo(t, frm, to string) bool {
 	return true
 }
 
-func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) bool {
+func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string, rpID string, allowedOrigins []string, requireOrigin bool) bool {
 	cdBytes, err := b64urlDecode(getStr(wa, "client_data_json"))
 	if err != nil {
 		return false
 	}
-	var client map[string]any
-	if json.Unmarshal(cdBytes, &client) != nil {
+	client, err := decodeStrictJSONObject(cdBytes)
+	if err != nil {
 		return false
 	}
 	if getStr(client, "type") != "webauthn.get" {
@@ -82,6 +83,27 @@ func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) 
 	ad, err := b64urlDecode(getStr(wa, "authenticator_data"))
 	if err != nil || len(ad) < 37 || ad[32]&flagUP != flagUP || ad[32]&flagUV != flagUV {
 		return false
+	}
+	if rpID != "" {
+		expected := sha256.Sum256([]byte(rpID))
+		if !bytes.Equal(expected[:], ad[:32]) {
+			return false
+		}
+	}
+	if requireOrigin {
+		originOK := false
+		for _, allowed := range allowedOrigins {
+			if getStr(client, "origin") == allowed {
+				originOK = true
+				break
+			}
+		}
+		if crossOrigin, ok := client["crossOrigin"].(bool); ok && crossOrigin {
+			originOK = false
+		}
+		if !originOK {
+			return false
+		}
 	}
 	signed := append(append([]byte{}, ad...), func() []byte { s := sha256.Sum256(cdBytes); return s[:] }()...)
 	der, err := base64.RawURLEncoding.DecodeString(b64urlPad(pubB64u))
@@ -130,6 +152,15 @@ func trustReceiptCanonicalProfileOK(receipt map[string]any) bool {
 	return true
 }
 
+func contextAuthorizes(ctx map[string]any) bool {
+	decision, present := ctx["decision"]
+	if !present {
+		return true
+	}
+	typed, ok := decision.(string)
+	return ok && typed == "approved"
+}
+
 // VerifyTrustReceipt verifies an EP §6.2 Trust Receipt offline. opts keys:
 // approverKeys (map of approver_key_id -> {approver_id,public_key,key_class,valid_from,valid_to}),
 // logPublicKey (string).
@@ -143,6 +174,8 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 	}
 	approverKeys := getMap(opts["approverKeys"])
 	logPublicKey := getStr(opts, "logPublicKey")
+	rpID := getStr(opts, "rpId")
+	allowedOrigins, requireOrigin := stringSliceOption(opts, "allowedOrigins")
 	contexts, _ := receipt["contexts"].([]any)
 	signoffs, _ := receipt["signoffs"].([]any)
 	if receipt["action"] == nil || getStr(receipt, "action_hash") == "" {
@@ -199,6 +232,7 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		approver, signedAt string
 		ctx                map[string]any
 	}
+	validSignoffs := []approval{}
 	validApprovals := []approval{}
 	signaturesOK := len(signoffs) > 0
 	for _, so := range signoffs {
@@ -210,19 +244,19 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		}
 		keyEntry := getMap(approverKeys[getStr(s, "approver_key_id")])
 		pub := getStr(keyEntry, "public_key")
-			if pub == "" {
-				signaturesOK = false
-				continue
-			}
-			// The pinned directory entry must bind this key to the approver named
-			// by the signed context. A valid key signature without this identity
-			// join cannot establish which principal approved.
-			boundApprover := getStr(keyEntry, "approver_id")
-			if boundApprover == "" || boundApprover != getStr(ctx, "approver") {
-				signaturesOK = false
-				continue
-			}
-			if !withinWindowGo(getStr(ctx, "issued_at"), getStr(keyEntry, "valid_from"), getStr(keyEntry, "valid_to")) {
+		if pub == "" {
+			signaturesOK = false
+			continue
+		}
+		// The pinned directory entry must bind this key to the approver named
+		// by the signed context. A valid key signature without this identity
+		// join cannot establish which principal approved.
+		boundApprover := getStr(keyEntry, "approver_id")
+		if boundApprover == "" || boundApprover != getStr(ctx, "approver") {
+			signaturesOK = false
+			continue
+		}
+		if !withinWindowGo(getStr(ctx, "issued_at"), getStr(keyEntry, "valid_from"), getStr(keyEntry, "valid_to")) {
 			signaturesOK = false
 			continue
 		}
@@ -240,15 +274,14 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		// assertion and is rejected if it only carries a raw signature. Mirrors
 		// index.js verifyTrustReceipt.
 		keyClass := getStr(keyEntry, "key_class")
-		if keyClass == "" {
-			keyClass = getStr(s, "key_class")
-		}
-		if keyClass == "" {
+		// Key class is a relying-party directory fact. Missing defaults to B;
+		// the presented signoff cannot promote its own key to Class A.
+		if keyClass != "A" {
 			keyClass = "B"
 		}
 		var sigOK bool
 		if keyClass == "A" {
-			sigOK = getMap(s["webauthn"]) != nil && verifyClassAOverDigestGo(getMap(s["webauthn"]), digest, pub)
+			sigOK = getMap(s["webauthn"]) != nil && verifyClassAOverDigestGo(getMap(s["webauthn"]), digest, pub, rpID, allowedOrigins, requireOrigin)
 		} else {
 			sigOK = ed25519VerifyBytes(digest, pub, getStr(s, "signature"))
 		}
@@ -256,7 +289,11 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			signaturesOK = false
 			continue
 		}
-		validApprovals = append(validApprovals, approval{getStr(ctx, "approver"), getStr(s, "signed_at"), ctx})
+		verifiedSignoff := approval{getStr(ctx, "approver"), getStr(s, "signed_at"), ctx}
+		validSignoffs = append(validSignoffs, verifiedSignoff)
+		if contextAuthorizes(ctx) {
+			validApprovals = append(validApprovals, verifiedSignoff)
+		}
 	}
 	checks["signoff_signatures"] = signaturesOK
 
@@ -375,8 +412,8 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		}
 	}
 
-	windowsOK := len(validApprovals) > 0
-	for _, a := range validApprovals {
+	windowsOK := len(validSignoffs) > 0
+	for _, a := range validSignoffs {
 		if !withinWindowGo(a.signedAt, getStr(a.ctx, "issued_at"), getStr(a.ctx, "expires_at")) {
 			windowsOK = false
 		}

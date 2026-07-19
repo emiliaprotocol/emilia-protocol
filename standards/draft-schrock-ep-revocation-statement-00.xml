@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="8"/>
+    <date year="2026" month="July" day="14"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>revocation</keyword>
@@ -24,24 +24,23 @@
     <abstract>
       <t>Signed authorization artifacts for agent actions (receipts,
       commits, delegations) are being defined faster than the means to
-      retract them. In deployed systems revocation is server state: a
-      record is flipped in a live datastore, and a relying party must
-      call back to the issuer to learn of it. There is no portable
-      artifact a relying party can be handed to prove, offline, that a
-      previously valid authorization has been revoked. This document
-      defines the revocation statement: a signed, offline-verifiable
+      retract them. Many deployed systems use live status services,
+      revocation lists, or issuer datastores. This document defines a
+      complementary portable form for digest-addressed authorization
+      artifacts: a signed, offline-verifiable
       claim that a named target, addressed by identifier and content
       digest, is revoked. Verification is fail-closed and evaluates a
       fixed set of checks: version, exact target binding (both the
       identifier and the digest), a revoker key pinned by the verifier
       (a self-asserted key confers nothing), the presence of a
-      revocation instant, an independently recomputed signature, and an
-      optional bounded-staleness window. The statement proves that a
-      named, pinned revoker revoked this specific target. It does not
-      prove that every relying party saw it, and offline verification
-      cannot prove the absence of a later revocation; bounded staleness
-      is the stated mitigation, not a substitute for a revocation
-      feed.</t>
+	      strict revocation instant that has taken effect by the verifier's
+	      decision time, and an independently recomputed signature. The
+	      statement proves that a
+	      named, pinned revoker revoked this specific target. It does not
+	      prove that every relying party saw it, and offline verification
+	      cannot prove the absence of a revocation that was not presented.
+	      A terminal revocation never ages out; current non-revocation
+	      requires separate authenticated, policy-fresh status evidence.</t>
     </abstract>
   </front>
   <middle>
@@ -52,23 +51,22 @@
       <xref target="I-D.schrock-ep-authorization-receipts"/>, policy
       commits, delegation records. Each is designed to be carried,
       presented, and verified offline, without a call back to its
-      issuer. Their retraction is not. Revocation, where it exists, is
-      a server-side status flag: the issuer's datastore records that an
-      authorization is revoked, and only parties who query that
-      datastore learn of it. A relying party holding the artifact but
-      not a connection to the issuer has no way to be shown that the
-      artifact was revoked, and a revoker has no portable proof that it
-      revoked.</t>
-      <t>Recent gap analyses in the agent-authorization space name
-      artifact-level revocation as an unmet need: the field defines new
-      signed objects readily but leaves their lifecycle end
-      unspecified. This document fills that specific slot. It defines a
-      revocation statement, a small signed object that binds one exact
+      issuer. The initial implementation of this artifact family
+      represented revocation only as a server-side status flag. That
+      state is useful to online enforcement but is not itself a portable
+      record that another party can verify offline.</t>
+	      <t>This document defines a portable terminal record for one
+	      lifecycle transition: revocation of a digest-addressed
+	      authorization artifact. It defines a
+	      revocation statement, a small signed object that binds one exact
       target, carries who revoked it, when, and why, and verifies
       offline under a key the verifier has pinned in advance. The
       statement is deliberately the same shape as the artifacts it
       retracts: portable, digest-bound, and verifiable with no
-      network.</t>
+      network. Other ecosystems provide CRLs, OCSP responses, status
+      lists, and signed status assertions; this document specifies the
+      exact-target binding and verification rules for the artifact
+      family described here.</t>
       <t>The scope discipline of this document is strict. A revocation
       statement is the analogue of a CRL entry or an OCSP response
       <xref target="RFC5280"/> <xref target="RFC6960"/>, not of the CRL
@@ -137,8 +135,8 @@
         registry (<xref target="verification"/>); the identifier alone
         confers nothing. revoked_at is the instant the revocation took
         effect, as an <xref target="RFC3339"/> timestamp. It is
-        REQUIRED: it is the anchor for the staleness bound, and a
-        statement without it is refused. reason is a human-readable
+	        REQUIRED: it is the effective-time anchor, and a statement
+	        without it is refused. reason is a human-readable
         cause; it MAY be null. Because reason and revoked_at are inside
         the signed payload, neither can be edited after signing.</t>
       </section>
@@ -188,8 +186,8 @@
       <name>Verification (Fail-Closed)</name>
       <t>Verification takes three inputs: the target the relying party
       holds, the candidate statement, and the relying party's options
-      (its pinned revoker key registry and an optional staleness
-      bound). The target MUST be derived from the artifact the relying
+	      (its pinned revoker key registry and decision time). The target
+	      MUST be derived from the artifact the relying
       party holds, never taken from the statement: the statement is the
       claim under test, not the source of what it is tested
       against.</t>
@@ -207,8 +205,10 @@
         <dt>target_bound</dt>
         <dd>The statement MUST bind the exact target the verifier
         holds. If no target is supplied, or the held target's
-        target_type is not one of the three recognized values, the
-        check fails. Otherwise the statement's target_type and
+        target_type is not one of the three recognized values, its
+        target_id is empty, or its action_hash is not a 64-hex SHA-256
+        digest, the check fails. The statement MUST independently meet
+        the same structural requirements. Otherwise its target_type and
         target_id MUST equal the held target's, and the statement's
         action_hash MUST equal the held target's action_hash after
         normalization (an optional "sha256:" prefix is stripped and hex
@@ -224,13 +224,20 @@
         proof carries a public_key, it MUST equal the pinned key; a
         differing key is a key-substitution attempt and is refused. The
         verifier MUST NOT fall back to the proof's own public_key.</dd>
-        <dt>revoked_at_present</dt>
-        <dd>revoked_at MUST be present and parse as a well-formed
-        timestamp. A statement without a revocation instant has no
-        staleness anchor and no record of when the revocation took
-        effect, and is refused.</dd>
+	        <dt>revoked_at_present</dt>
+	        <dd>revoked_at MUST be present and parse as a strict RFC 3339
+	        timestamp. Permissive calendar normalization, such as accepting
+	        30 February, is not allowed. A statement without a revocation
+	        instant has no record of when the revocation took effect and is
+	        refused.</dd>
+	        <dt>effective_at_or_before_T</dt>
+	        <dd>revoked_at MUST be at or before the verifier's decision
+	        time. A correctly signed statement with a future effective
+	        instant does not establish that the target is revoked at the
+	        current decision time and is refused until that instant.</dd>
         <dt>revoker_signature_valid</dt>
-        <dd>The proof's signature MUST verify, under the PINNED key
+        <dd>The proof algorithm MUST be Ed25519, and the signature MUST
+        verify under the PINNED key
         and no other, over the payload bytes the verifier itself
         recomputes per <xref target="payload"/>. A missing proof,
         missing signature, or forged signature is refused.</dd>
@@ -245,22 +252,15 @@
         verify against them: refusal, fail-closed. If no statement is
         presented at all, this check and the previous one both fail:
         an absent statement confers nothing.</dd>
-        <dt>freshness</dt>
-        <dd>Evaluated only when the relying party supplies a maximum
-        age. The verifier computes the age of revoked_at relative to a
-        caller-supplied reference time (defaulting to the current time)
-        and refuses a statement older than the maximum. When no maximum
-        age is supplied, this check passes vacuously. This bound
-        applies to a PRESENTED statement only; see
-        <xref target="scope"/> for what it does not do.</dd>
-      </dl>
+	      </dl>
       <t>The complete refusal set, restated: wrong or missing version;
       no statement presented; no target supplied; unrecognized
       target_type; target_type, target_id, or action_hash mismatch;
       unpinned revoker_id; proof key differing from the pinned key;
-      absent or malformed revoked_at; absent, forged, or non-binding
-      signature; non-canonicalizable presented fields; and, when a
-      bound is required, a revoked_at older than the bound.</t>
+	      absent or malformed revoked_at; a revoked_at later than the
+	      decision time; absent, forged, or non-binding signature; and
+      non-canonicalizable presented fields; malformed target ids or
+      digests; and an algorithm label other than Ed25519.</t>
     </section>
     <section anchor="aggregate">
       <name>Aggregation over Multiple Statements</name>
@@ -275,6 +275,27 @@
       <t>The aggregate rule is not a completeness oracle. A false
       result means "no valid binding statement is present in this
       collection", never "this target was never revoked anywhere".</t>
+    </section>
+    <section anchor="status">
+      <name>Current Status Is a Separate Input</name>
+      <t>A revocation is a terminal negative fact. Once its revoked_at
+      instant has been reached, a verifier MUST NOT reject it because it
+      is old. Passage of time cannot transform REVOKED into acceptable.
+      Implementations that retain a legacy maximum-age option for API
+      compatibility MUST ignore that option when verifying a revocation
+      statement.</t>
+      <t>Current non-revocation is a different claim. A relying party
+      that needs to establish that no revocation is known as of time T
+      MUST obtain separately authenticated status evidence and apply a
+      relying-party-selected freshness bound. Missing, stale,
+      future-dated, rolled-back, or incomplete status evidence MUST NOT
+      be treated as proof of non-revocation.</t>
+      <t>The Token Status List specification
+      <xref target="I-D.ietf-oauth-status-list"/> defines a status
+      substrate for JOSE- and COSE-secured tokens. This document does not
+      redefine that substrate. A future action-artifact binding may
+      profile an existing status mechanism while preserving the exact
+      (target_type, target_id, action_hash) binding defined here.</t>
     </section>
     <section anchor="general">
       <name>Generalization: Any Digest-Addressed Artifact</name>
@@ -299,8 +320,8 @@
         action_hash) the relying party is reasoning about;</li>
         <li>the signed fields, including revoked_at and reason, were
         not edited after signing; and</li>
-        <li>when the relying party requires it, the statement is no
-        older than its staleness bound.</li>
+        <li>the revocation had taken effect by the verifier's decision
+        time.</li>
       </ul>
       <t>It does NOT prove:</t>
       <ul>
@@ -315,11 +336,9 @@
         <xref target="RFC5280"/> <xref target="RFC6960"/> exist to
         address, and it is out of scope here. Treating
         absence-of-statement as proof-of-not-revoked is a relying-party
-        error this mechanism cannot prevent. Bounded staleness is the
-        mitigation this document offers, and it is a bound on presented
-        statements only: a relying party that needs liveness MUST
-        consult a revocation feed or transparency log, or rely on a
-        short validity lifetime on the underlying artifact.</li>
+        error this mechanism cannot prevent. A relying party that needs
+        liveness MUST obtain authenticated, policy-fresh status evidence
+        as described in <xref target="status"/>.</li>
         <li>that the revoker was entitled to revoke this target. The
         signature proves who signed and what it binds; whether that
         party had the authority to revoke is the relying party's
@@ -357,11 +376,12 @@
       statement that somehow verified would be denial of service
       (treating a live authorization as revoked), which is why the
       pinning rule and the exact-binding rule both gate acceptance.</t>
-      <t>Freshness is not completeness. The staleness bound rejects
-      old presented statements; it does nothing about statements never
-      presented. Deployments MUST NOT advertise the bound as a
-      revocation-checking guarantee; <xref target="scope"/> is
-      normative reading for anyone relying on this mechanism.</t>
+      <t>Terminality is monotonic. A verifier MUST NOT apply a
+      freshness window to a revocation fact. Freshness applies only to
+      separately authenticated status evidence. Deployments MUST NOT
+      advertise absence of a revocation statement as proof of current
+      non-revocation; <xref target="scope"/> is normative reading for
+      anyone relying on this mechanism.</t>
     </section>
     <section anchor="iana">
       <name>IANA Considerations</name>
@@ -385,6 +405,16 @@
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5280.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6960.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+        <reference anchor="I-D.ietf-oauth-status-list" target="https://datatracker.ietf.org/doc/draft-ietf-oauth-status-list/">
+          <front>
+            <title>Token Status List (TSL)</title>
+            <author fullname="Tobias Looker"/>
+            <author fullname="Paul Bastian"/>
+            <author fullname="Christian Bormann"/>
+            <date year="2026" month="June"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-oauth-status-list-21"/>
+        </reference>
         <reference anchor="I-D.schrock-ep-authorization-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>
@@ -397,19 +427,20 @@
     </references>
     <section anchor="impl">
       <name>Implementation Status</name>
-      <t>A reference implementation is published Apache-2.0 in the
-      EMILIA Protocol repository (lib/revocation/revocation.js:
-      building, single-statement verification with the seven named
-      checks in the order specified here, and the aggregate rule over
-      a collection). An attack-catalogue-first conformance vector file
-      (conformance/vectors/revocation.v1.json) enumerates nine
+      <t>Apache-2.0 verifier implementations are published in JavaScript,
+      Python, and Go in the EMILIA Protocol repository. They implement
+      single-statement verification with the seven named checks and the
+      aggregate rule over a collection. An attack-catalogue-first vector file
+      (conformance/vectors/revocation.v1.json) enumerates eleven
       rejection cases every conformant verifier is required to refuse
       (forged signature; unpinned revoker key; substituted pinned key;
       different target_id; different action_hash; wrong version; fields
-      tampered after signing; missing revoked_at; stale beyond the
-      staleness bound) and two acceptance cases (a well-formed binding
-      statement, and the aggregate rule finding one valid binding
-      statement among unrelated ones). The negative vectors are minted
+      tampered after signing; missing revoked_at; future effective
+      instant; malformed target shape; mismatched algorithm label) and
+      three acceptance cases (a well-formed binding
+      statement, the aggregate rule finding one valid binding statement
+      among unrelated ones, and an old terminal revocation remaining
+      valid despite a legacy maximum-age option). The negative vectors are minted
       with real keys and real detached signatures over canonical bytes,
       so each is a genuine forgery attempt rather than hand-edited JSON
       that fails for an unrelated reason.</t>

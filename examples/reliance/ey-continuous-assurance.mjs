@@ -42,8 +42,20 @@ function signA(digestHex) {
   const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataJSON).digest()]);
   return { authenticator_data: authData.toString('base64url'), client_data_json: clientDataJSON.toString('base64url'), signature: crypto.sign('sha256', signedData, reviewer.privateKey).toString('base64url') };
 }
-function receipt(nonce) {
-  const action = { ep_version: '1.0', action_type: 'rx.prior_auth.approve', organization_id: 'planX', target: { system: 'pbm', resource: `pa/${nonce}` }, parameters: { ncpdp: nonce }, initiator: 'ep:entity:pa-agent', policy_id: 'ep:policy:tier4', requested_at: '2026-07-07T14:00:00Z' };
+function receipt(nonce, amount) {
+  const action = {
+    ep_version: '1.0',
+    action_type: 'rx.prior_auth.approve',
+    amount,
+    currency: 'USD',
+    organization_id: 'planX',
+    policy_hash: 'sha256:benef',
+    target: { system: 'pbm', resource: `pa/${nonce}` },
+    parameters: { ncpdp: nonce },
+    initiator: 'ep:entity:pa-agent',
+    policy_id: 'ep:policy:tier4',
+    requested_at: '2026-07-07T14:00:00Z',
+  };
   const action_hash = `sha256:${sha(canon(action))}`;
   const base = { ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash, policy_id: 'ep:policy:tier4', policy_hash: 'sha256:benef', initiator: action.initiator, required_approvals: 2, issued_at: '2026-07-07T14:00:05Z', expires_at: '2026-07-07T14:15:05Z' };
   const c1 = { ...base, approver: 'ep:approver:intake', approver_index: 1, nonce: `${nonce}-1` };
@@ -83,16 +95,40 @@ const act = (r, amount) => ({ action_type: 'rx.prior_auth.approve', amount, curr
 // A month of automated PA decisions the payer's runtime acted on. Most are clean;
 // three are not, and one of those the runtime WRONGLY recorded as reliable.
 const decisions = [];
-for (let i = 0; i < 8; i++) { const r = receipt(`ok${i}`); decisions.push({ decision_id: `PA-ok-${i}`, action: act(r, 30000 + i * 100), receipt: r, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' }); }
+for (let i = 0; i < 8; i++) {
+  const amount = 30000 + i * 100;
+  const r = receipt(`ok${i}`, amount);
+  decisions.push({ decision_id: `PA-ok-${i}`, action: act(r, amount), receipt: r, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' });
+}
 // honest refusal: reviewer authority expired — runtime correctly refused
-{ const r = receipt('exp'); decisions.push({ decision_id: 'PA-expired-auth', action: act(r, 30000), receipt: r, authority_proof: authority({ validity: { from: '2025-01-01T00:00:00.000Z', to: '2026-06-01T00:00:00.000Z' } }), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'do_not_rely_authority_expired' }); }
+{ const r = receipt('exp', 30000); decisions.push({ decision_id: 'PA-expired-auth', action: act(r, 30000), receipt: r, authority_proof: authority({ validity: { from: '2025-01-01T00:00:00.000Z', to: '2026-06-01T00:00:00.000Z' } }), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'do_not_rely_authority_expired' }); }
 // honest refusal: stale eligibility check
-{ const r = receipt('stale'); decisions.push({ decision_id: 'PA-stale-eligibility', action: act(r, 30000), receipt: r, authority_proof: authority(), revocation_state: { checked_at: '2026-07-01T00:00:00.000Z' }, consumption: { consumed: false }, stated_verdict: 'do_not_rely_stale_revocation' }); }
+{
+  const r = receipt('stale', 30000);
+  decisions.push({
+    decision_id: 'PA-stale-eligibility',
+    action: act(r, 30000),
+    receipt: r,
+    authority_proof: authority({
+      revocation: { status: 'not_revoked', checked_at: '2026-07-01T00:00:00.000Z' },
+    }),
+    revocation_state: { checked_at: '2026-07-01T00:00:00.000Z' },
+    consumption: { consumed: false },
+    stated_verdict: 'do_not_rely_stale_revocation',
+  });
+}
 // THE FINDING: over the authority ceiling, but the runtime recorded `rely`
-{ const r = receipt('over'); decisions.push({ decision_id: 'PA-over-ceiling', action: act(r, 120000), receipt: r, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' }); }
+{ const r = receipt('over', 120000); decisions.push({ decision_id: 'PA-over-ceiling', action: act(r, 120000), receipt: r, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' }); }
 
 const pkg = buildAssurancePackage(decisions, { profile: PROFILE, organization: { id: 'planX', name: 'Synthetic Health Plan' }, now: NOW });
-const rp = reperformAssurancePackage(pkg, { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', now: NOW });
+const rp = reperformAssurancePackage(pkg, {
+  approverKeys: KEYS,
+  logPublicKey: logKey.pub,
+  rpId: 'www.emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  isConsumed: () => false,
+  now: NOW,
+});
 
 console.log('\nContinuous assurance over agentic prior authorization (synthetic, no PHI).');
 console.log(`Package: ${pkg.decisions.length} automated PA decisions | digest ${pkg.package_digest.slice(0, 16)}…\n`);

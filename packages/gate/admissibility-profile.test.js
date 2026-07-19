@@ -36,10 +36,14 @@ function admissibilityBlock({ profileHash, verdict = 'admissible' } = {}) {
 const PINNED_HASH = 'sha256:' + 'a'.repeat(64);
 const OTHER_HASH = 'sha256:' + 'b'.repeat(64);
 
-function gateTrustingHarness(harness) {
+function gateTrustingHarness(harness, { verifyAdmissibilityPacket = async ({ presented }) => presented } = {}) {
   return createTrustedActionFirewall({
     trustedKeys: [harness.publicKey],
     approverKeys: harness.approverKeys,
+    rpId: harness.rpId,
+    allowedOrigins: harness.allowedOrigins,
+    verifyAdmissibilityPacket,
+    allowEphemeralStore: true,
   });
 }
 
@@ -67,6 +71,23 @@ test('pinned profile + admissible packet with MATCHING hash => allowed', async (
   assert.equal(out.packet.admissibility.admissible, true);
   assert.equal(out.packet.admissibility.profile_hash, PINNED_HASH);
   assert.equal(out.packet.summary.admissibility_verdict, 'admissible');
+});
+
+test('a presenter cannot self-assert an admissible verdict without a trusted evaluator', async () => {
+  const harness = createEg1Harness();
+  const gate = gateTrustingHarness(harness, { verifyAdmissibilityPacket: null });
+  const out = await gate.run(
+    {
+      selector: EG1_DEFAULT_SELECTOR,
+      receipt: harness.mint(),
+      observedAction: harness.action,
+      admissibilityProfile: { id: 'ep:profile:reliance-test', profile_hash: PINNED_HASH },
+      admissibility: admissibilityBlock({ profileHash: PINNED_HASH, verdict: 'admissible' }),
+    },
+    async () => ({ ran: true }),
+  );
+  assert.equal(out.ok, false);
+  assert.equal(out.authorization.reason, 'admissibility_verifier_required');
 });
 
 test('pinned profile + MISMATCHED hash => refused (profile_hash_mismatch), receipt NOT consumed', async () => {
@@ -204,16 +225,16 @@ test('closed verdict set is exactly the five admissibility verdicts', () => {
   );
 });
 
-test('buildReliancePacket fails closed: a non-admissible block can never read as rely', () => {
+test('buildReliancePacket fails closed: a non-admissible block can never read as rely', async () => {
   const decision = { allow: true, reason: 'allow', action: 'x', evidence: { hash: 'h', receipt_id: 'r' } };
-  const packet = buildReliancePacket({
+  const packet = await buildReliancePacket({
     decision,
     admissibility: admissibilityBlock({ profileHash: PINNED_HASH, verdict: 'conflicted' }),
   });
   assert.equal(packet.verdict, 'do_not_rely');
   assert.equal(packet.admissibility.admissible, false);
   // And a bare/malformed block (no verdict) is also non-admissible, not a pass.
-  const bare = buildReliancePacket({ decision, admissibility: { profile_hash: PINNED_HASH } });
+  const bare = await buildReliancePacket({ decision, admissibility: { profile_hash: PINNED_HASH } });
   assert.equal(bare.verdict, 'do_not_rely');
   assert.equal(bare.admissibility.admissible, false);
 });

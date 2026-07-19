@@ -119,9 +119,18 @@ export function toActionControl(action) {
     },
   };
   if (action.quorum) out.quorum = cloneJson(action.quorum);
+  if (action.business_authorization || action.businessAuthorization) {
+    out.business_authorization = cloneJson(action.business_authorization || action.businessAuthorization);
+  }
   return out;
 }
 
+/**
+ * @param {object} [o]
+ * @param {{ name?: string, issuer?: string, manifest_url?: string }} [o.service]
+ * @param {boolean} [o.includePassThrough]
+ * @param {Array<object>} [o.extraActions]
+ */
 export function createDefaultActionControlManifest({
   service = {},
   includePassThrough = true,
@@ -224,6 +233,29 @@ export function validateActionControlManifest(manifest) {
       if (control.evidence_output?.execution_attestation !== true) errors.push(`${prefix}.control.evidence_output.execution_attestation must be true`);
       if (control.evidence_output?.reliance_packet !== true) errors.push(`${prefix}.control.evidence_output.reliance_packet must be true`);
       if (action.conformance?.level !== ACTION_CONTROL_CONFORMANCE_LEVEL) errors.push(`${prefix}.conformance.level must be ${ACTION_CONTROL_CONFORMANCE_LEVEL}`);
+      if (action.business_authorization !== undefined) {
+        const business = action.business_authorization;
+        const policy = business?.policy;
+        const approvers = business?.allowed_approvers;
+        if (!business || typeof business !== 'object' || Array.isArray(business)) {
+          errors.push(`${prefix}.business_authorization must be an object`);
+        } else {
+          if (!policy || typeof policy !== 'object' || Array.isArray(policy)
+              || typeof policy.id !== 'string' || !policy.id
+              || typeof policy.hash !== 'string' || !policy.hash) {
+            errors.push(`${prefix}.business_authorization.policy must pin non-empty id and hash`);
+          }
+          if (typeof business.tenant_id !== 'string' || !business.tenant_id) {
+            errors.push(`${prefix}.business_authorization.tenant_id must be a non-empty string`);
+          }
+          if (!Array.isArray(approvers) || approvers.length === 0
+              || approvers.some((entry) => !entry || typeof entry !== 'object'
+                || typeof entry.subject !== 'string' || !entry.subject
+                || typeof entry.role !== 'string' || !entry.role)) {
+            errors.push(`${prefix}.business_authorization.allowed_approvers must name subject and role`);
+          }
+        }
+      }
     }
   }
   return { ok: errors.length === 0, errors };

@@ -216,7 +216,7 @@ test('verifyMerkleAnchor: trivial single-leaf proof', () => {
 
 test('verifyMerkleAnchor: rejects oversize proofs', () => {
   const leaf = 'aaaa';
-  const tooLong = Array.from({ length: 21 }, () => ({ hash: 'bb', position: 'left' }));
+  const tooLong = Array.from({ length: 21 }, () => ({ hash: 'bb', position: /** @type {'left'} */ ('left') }));
   assert.equal(verifyMerkleAnchor(leaf, tooLong, 'cc'), false);
 });
 

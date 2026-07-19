@@ -34,6 +34,8 @@ const SUITE = JSON.parse(
 const runVector = (v) =>
   verifyProvenanceOffline(v.input.provenance_chain, {
     delegationKeys: v.input.delegation_keys,
+    rootVerification: v.input.root_verification,
+    actionVerification: v.input.action_verification,
     now: v.input.now_ms,
   });
 

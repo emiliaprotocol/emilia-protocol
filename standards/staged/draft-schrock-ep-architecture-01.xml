@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-architecture-01"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="EP Architecture">The EMILIA Protocol: An Evidence Architecture for Consequential Agent Actions</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-architecture-01"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal><country>US</country></postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="14"/>
+    <area>Security</area>
+    <keyword>agent authorization</keyword>
+    <keyword>evidence</keyword>
+    <keyword>cross-domain</keyword>
+    <keyword>human approval</keyword>
+    <abstract>
+      <t>Consequential agent actions can cross operator and
+      administrative boundaries. The party that later decides whether
+      to rely on an action record may not have participated in the
+      interaction and may not trust either operator. This document
+      describes an evidence architecture for that case. It separates
+      transport identity, delegation and policy, material action
+      matching, authorization evidence, evidence satisfaction,
+      enforcement, outcome evidence, and long-term preservation.</t>
+      <t>The architecture does not define a universal authorization
+      policy and does not claim that a valid signature establishes
+      authority. It defines where independently verified artifacts join,
+      which decisions remain local to the relying party, and the terms
+      VERIFIED, MATCH, SATISFIED, AUTHORIZED, and EXECUTED so that an
+      implementation cannot silently collapse one into another.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>An agent in one administrative domain can request a gateway in
+      another domain to perform an action whose consequences are borne by
+      a third party. Months later, an auditor, counterparty, insurer, or
+      regulator may need to determine which identity, delegation, policy,
+      approval, and enforcement facts held for that exact action. An
+      operator-controlled log can be useful operationally, but it is not
+      by itself portable evidence against a dishonest or unavailable
+      operator.</t>
+      <t>This architecture addresses that cross-domain and delayed-review
+      case. It is not required for every agent interaction. A deployment
+      in one trusted administrative domain, with no need to export or
+      preserve independently verifiable evidence, can use ordinary
+      authentication, authorization, and logging.</t>
+      <t>The architecture also separates an interoperability requirement
+      from ordinary implementation hygiene. For example, refusing a key
+      supplied by an untrusted artifact from establishing its own
+      authority is a baseline verifier property, not a new architectural
+      layer. The architectural question is which independently verified
+      facts a remote relying party needs, how those facts are bound to the
+      same material action, and which party decides whether the resulting
+      evidence is sufficient.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+        <dl newline="false" spacing="normal">
+          <dt>Native verifier:</dt>
+          <dd>The verifier defined by an artifact's own specification,
+          operating under trust anchors selected by the relying party.</dd>
+          <dt>Relying party:</dt>
+          <dd>The party that states an evidence requirement and decides
+          whether to act on the verified facts.</dd>
+          <dt>Consequential action:</dt>
+          <dd>An action for which a deployment requires evidence that
+          can survive beyond the live interaction or operator boundary.</dd>
+        </dl>
+      </section>
+    </section>
+
+    <section anchor="vocabulary">
+      <name>Decision Vocabulary</name>
+      <t>Conforming descriptions and APIs MUST keep the following states
+      distinct:</t>
+      <dl newline="false" spacing="normal">
+        <dt>VERIFIED:</dt>
+        <dd>An artifact passed its native cryptographic and structural
+        verification under relying-party-selected trust anchors. It does
+        not follow that the artifact filled an authorization role.</dd>
+        <dt>MATCH:</dt>
+        <dd>Two independently verified artifacts refer to the same
+        material action, either by direct identifier equality or by an
+        explicit, pinned mapping profile. MATCH is content correlation,
+        not authorization.</dd>
+        <dt>SATISFIED:</dt>
+        <dd>The verified and matched evidence fills every slot in a
+        relying-party-pinned evidence requirement. The evidence
+        composition layer can compute this state.</dd>
+        <dt>AUTHORIZED:</dt>
+        <dd>The relying party's local policy permits execution. This is a
+        business and policy decision; no presented artifact establishes
+        its own authority.</dd>
+        <dt>EXECUTED:</dt>
+        <dd>An executor asserts or attests that an effect occurred. This
+        is distinct from what was requested or authorized.</dd>
+      </dl>
+      <t>An implementation MUST NOT promote VERIFIED to MATCH, MATCH to
+      SATISFIED, SATISFIED to AUTHORIZED, or AUTHORIZED to EXECUTED
+      without performing the separate check that transition requires.</t>
+    </section>
+
+    <section anchor="layers">
+      <name>Layered Composition</name>
+      <section anchor="identity">
+        <name>Transport, Workload, and Agent Identity</name>
+        <t>This layer establishes who or what is present in a live
+        channel and how a workload credential is managed. WIMSE and
+        related workload-identity work are examples. The evidence
+        architecture consumes those results but does not redefine them.</t>
+      </section>
+      <section anchor="authority">
+        <name>Delegation, Capability, and Policy</name>
+        <t>This layer establishes what a principal delegated, what a
+        capability permits, and what a policy decision point allowed.
+        OAuth profiles, delegation receipts, AuthZEN, and agent transport
+        work occupy parts of this layer. A machine policy decision is not
+        represented as human approval unless a separately defined and
+        verified approval artifact establishes that fact.</t>
+      </section>
+      <section anchor="action">
+        <name>Material Action Identity and Mapping</name>
+        <t>This layer answers whether independently represented artifacts
+        concern the same material action. The candidate Canonical Action
+        IDentifier specification defines a typed action object and an
+        Action-Mapping Profile. A mapping result is one of
+        EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT, or INDETERMINATE. The
+        mapping profile is selected and pinned by the relying party and
+        cannot establish authorization.</t>
+      </section>
+      <section anchor="artifacts">
+        <name>Authorization and Confirmation Evidence</name>
+        <t>This layer carries evidence that a specified approval ceremony
+        or authorization event occurred. EMILIA authorization receipts,
+        multi-party quorum records, presentation bindings, FIDO
+        Verifiable Intent, and other confirmation artifacts can occupy
+        this layer under their own guarantees. No single artifact is
+        assumed to fill every relying-party requirement.</t>
+      </section>
+      <section anchor="satisfaction">
+        <name>Evidence Composition and Satisfaction</name>
+        <t>The Authorization Evidence Chain verifies each component using
+        the component's native verifier and role-scoped trust anchors,
+        checks that all required components MATCH the same action, and
+        evaluates a relying-party-pinned requirement. Its result is
+        SATISFIED or UNSATISFIED, not a universal authorization decision.</t>
+      </section>
+      <section anchor="lifecycle">
+        <name>Challenge, Enforcement, Outcome, and Preservation</name>
+        <t>An evidence challenge can state what is missing before an
+        executor acts. The enforcement point applies local policy and
+        refuses when required evidence is absent. Outcome evidence states
+        what occurred after the effect boundary. Revocation and evidence
+        records address lifecycle and long-term verification. Each is a
+        separate transition and none is inferred from receipt validity.</t>
+      </section>
+      <section anchor="profiles">
+        <name>Application Profiles</name>
+        <t>Application profiles select action types, evidence
+        requirements, trust anchors, freshness, consumption, and outcome
+        rules for one deployment context. Agent Gateways, payments,
+        healthcare, grid coordination, and model-directed laboratory
+        execution can use the architecture without changing the core
+        artifact formats. A profile does not make a domain claim true; it
+        states the checks a deployment will perform.</t>
+      </section>
+    </section>
+
+    <section anchor="flow">
+      <name>Cross-Domain Verification Flow</name>
+      <ol spacing="normal">
+        <li>The relying party identifies the proposed material action and
+        pins its trust roots, mapping profiles, and evidence requirement.</li>
+        <li>Each identity, delegation, policy, and approval artifact is
+        verified by its native verifier. Presenter-supplied keys or labels
+        do not create authority.</li>
+        <li>Verified artifacts are matched to the action. Missing or lossy
+        mappings yield INDETERMINATE and fail the requirement.</li>
+        <li>The evidence requirement is evaluated. A missing role,
+        mismatched action, stale fact, invalid signature, or unpinned trust
+        anchor yields UNSATISFIED with a reproducible reason.</li>
+        <li>The local policy enforcement point decides whether the
+        SATISFIED evidence is sufficient to authorize execution.</li>
+        <li>Consumption and outcome evidence are recorded separately so
+        replay and request-versus-effect divergence remain detectable.</li>
+      </ol>
+    </section>
+
+    <section anchor="components">
+      <name>EMILIA Component Boundaries</name>
+      <ul spacing="normal">
+        <li><tt>draft-schrock-ep-authorization-receipts</tt> defines an
+        action-bound authorization evidence artifact and verification
+        profiles.</li>
+        <li><tt>draft-schrock-ep-quorum</tt> composes distinct approval
+        ceremonies for multi-party requirements.</li>
+        <li><tt>draft-schrock-human-authorization-binding</tt> defines how
+        human-authorization evidence binds into adjacent artifact
+        families without replacing them.</li>
+        <li><tt>draft-schrock-canonical-action-identifier</tt> defines
+        material action identity and profile-bounded matching.</li>
+        <li><tt>draft-schrock-ep-authorization-evidence-chain</tt> defines
+        evidence composition and requirement satisfaction.</li>
+        <li>The action manifest, challenge, enforcement, outcome,
+        revocation, and evidence-record documents address distinct
+        lifecycle transitions. Their presence does not change the trust
+        semantics of the core evidence artifacts.</li>
+      </ul>
+    </section>
+
+    <section anchor="related">
+      <name>Relationship to Adjacent Work</name>
+      <t>The architecture is designed to compose with, rather than absorb,
+      adjacent work:</t>
+      <ul spacing="normal">
+        <li>Linda Dunbar's individual DMSC Agent Gateway gap-analysis draft
+        (<xref target="DMSC-GW"/>) provides a concrete cross-domain
+        enforcement point: one gateway can enforce local policy while
+        evidence remains verifiable outside either operator. This is a use
+        case from an individual draft, not a claim of DMSC BoF consensus.</li>
+        <li>WIMSE Condition-Bounded Credentials
+        (<xref target="WIMSE-CBC"/>) establish workload identity and channel possession;
+        portable authorization evidence can be bound to the same action
+        without treating a workload credential as human approval.</li>
+        <li>AuthZEN's Access Request and Approval Profile
+        (<xref target="AUTHZEN-AARP"/>) defines requestable
+        denial, asynchronous approval tasks, an approval object whose optional
+        state carries opaque proof or verifier state, JWS interoperability when
+        that state is carried by value, an exact-match baseline, and PDP
+        re-evaluation at enforcement time. An EMILIA profile is complementary when a deployment requires
+        a verifier-visible approver-held device ceremony, distinct-human
+        quorum, portable initiator exclusion, cross-format material-action
+        matching, or one-time executor consumption. None of those additional
+        properties is implied merely by carrying an AuthZEN approval
+        result.</li>
+        <li>Mastercard's Verifiable Intent, co-developed with Google and
+        contributed to the FIDO Alliance (<xref target="FIDO-VI"/>), describes
+        portable evidence of user intent. The cited page describes a
+        contribution and prospective standardization, not a final FIDO
+        specification. EMILIA does not claim that portable human evidence is
+        absent; it defines additional action matching, quorum,
+        consumption, and composition profiles where deployments require
+        them.</li>
+        <li>AGTP (<xref target="AGTP"/>) carries agent identity, authority,
+        attribution, and application payloads at the wire layer. This
+        architecture defines evidence that can be carried or referenced by
+        that transport and checked after the live channel is gone.</li>
+      </ul>
+    </section>
+
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>The primary architectural failure is category collapse. A valid
+      signature can authenticate an untrusted assertion; it does not make
+      the assertion authoritative. A policy ALLOW does not prove a named
+      human approved. A matching action identifier does not prove either
+      artifact is valid. A satisfied evidence requirement does not prove an
+      action is lawful, safe, wise, or correctly executed.</t>
+      <t>Trust anchors, role assignments, evidence requirements, mapping
+      profiles, freshness limits, and consumption stores are
+      relying-party inputs. They MUST NOT be silently imported from the
+      artifact being judged. Implementations MUST fail closed when a
+      required input is absent or unavailable.</t>
+      <t>Human evidence remains vulnerable to coercion, fatigue,
+      mis-rendering, compromised devices, and collusion. Device-bound user
+      verification, exact-action presentation, initiator exclusion, and
+      distinct-human quorum reduce specified threats but do not establish
+      comprehension or correctness.</t>
+    </section>
+
+    <section anchor="changes">
+      <name>Changes from -00</name>
+      <t>This revision replaces the "human-authorization apex" framing
+      with an ecosystem-first composition model; adds a concrete
+      cross-domain applicability test; separates ordinary verifier hygiene
+      from the portable-evidence requirement; defines the MATCH, VERIFIED,
+      SATISFIED, AUTHORIZED, and EXECUTED vocabulary; introduces material
+      action mapping; and narrows all claims to relying-party-pinned trust
+      inputs and named verification profiles.</t>
+    </section>
+
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>Normative References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+    </references>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="DMSC-GW" target="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">
+        <front>
+          <title>Deployment Scenarios and Gap Analysis for AI Agent Gateway</title>
+          <author fullname="Linda Dunbar"/>
+          <date year="2026" month="July" day="2"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-dunbar-dmsc-gw-scenarios-gap-analysis-02"/>
+      </reference>
+      <reference anchor="WIMSE-CBC" target="https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/">
+        <front>
+          <title>Condition-Bounded Credentials for Workload and Agent Identity</title>
+          <author fullname="Thi Nguyen-Huu"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-winmagic-wimse-condition-bounded-credentials-01"/>
+      </reference>
+      <reference anchor="AUTHZEN-AARP" target="https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html">
+        <front>
+          <title>AuthZEN Access Request and Approval Profile - Draft 1</title>
+          <author fullname="K. McGuinness"/>
+          <date year="2026" month="July" day="9"/>
+        </front>
+      </reference>
+      <reference anchor="FIDO-VI" target="https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/">
+        <front>
+          <title>Building the Trust Layer for Agentic Payments with AP2 and Verifiable Intent</title>
+          <author><organization>FIDO Alliance</organization></author>
+          <date year="2026" month="May" day="26"/>
+        </front>
+      </reference>
+      <reference anchor="AGTP" target="https://datatracker.ietf.org/doc/draft-hood-independent-agtp/">
+        <front>
+          <title>Agent Transfer Protocol (AGTP)</title>
+          <author fullname="Chris Hood"/>
+          <date year="2026" month="June" day="28"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-hood-independent-agtp-09"/>
+      </reference>
+    </references>
+    <section anchor="acknowledgments">
+      <name>Acknowledgments</name>
+      <t>Eric Rescorla's review prompted a sharper separation between
+      baseline verifier security properties and the specific need for
+      third-party, cross-domain validation. Linda Dunbar's Agent Gateway
+      scenarios supplied the concrete multi-operator use case. Chris
+      Hood's agent transport and composition work helped clarify the
+      boundary between carrying authority context and independently
+      verifying evidence after the interaction. These acknowledgments do
+      not imply endorsement of this document.</t>
+    </section>
+  </back>
+</rfc>

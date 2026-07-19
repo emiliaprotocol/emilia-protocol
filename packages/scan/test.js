@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { classifyAction, scanActions, KNOWN_CATEGORIES, HIGH_RISK_ACTION_PACKS } from './index.js';
 
 test('STRUCTURAL: every category maps to a real risk pack (no guessed ids)', () => {
@@ -48,6 +52,16 @@ test('read-only actions pass through', () => {
   assert.equal(classifyAction({ name: 'summarizeTicket', annotations: { readOnlyHint: true } }).decision, 'pass_through');
 });
 
+test('presenter-authored readOnlyHint cannot launder a dangerous or ambiguous action', () => {
+  const payment = classifyAction({ name: 'release_payment', annotations: { readOnlyHint: true } });
+  assert.equal(payment.decision, 'gate');
+  assert.match(payment.reason, /conflicting readOnlyHint ignored/);
+
+  const opaque = classifyAction({ name: 'frobnicate', annotations: { readOnlyHint: true } });
+  assert.equal(opaque.decision, 'review_fail_closed');
+  assert.equal(opaque.receipt_required, true);
+});
+
 test('THE HONEST CORE: a mutating action of unrecognized category fails closed, never waved through', () => {
   const c = classifyAction({ name: 'reconcileLedger', description: 'reconcile ledger and post adjustments' });
   assert.equal(c.decision, 'review_fail_closed');
@@ -69,4 +83,32 @@ test('the emitted manifest fails closed on every discovered action', () => {
   const discovered = rep.manifest.actions.filter((a) => String(a.id).startsWith('discovered.'));
   assert.ok(discovered.length >= 2, 'both mutating actions should be in the manifest');
   assert.ok(discovered.every((a) => a.receipt_required === true), 'no discovered action may be receipt_required:false');
+});
+
+test('malformed or oversized action surfaces are refused', () => {
+  assert.throws(() => scanActions([null]), /each action/);
+  assert.throws(() => scanActions([{ name: 'x'.repeat(257) }]), /bounded/);
+  assert.throws(() => scanActions(Array.from({ length: 10_001 }, () => ({ name: 'get_x' }))), /at most/);
+});
+
+test('codemod refuses duplicate JSON members and symlinked output paths', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-'));
+  const duplicate = join(dir, 'duplicate.json');
+  writeFileSync(duplicate, '{"tools":[],"tools":[{"name":"sendWire"}]}');
+  const duplicateRun = spawnSync(process.execPath, [join(import.meta.dirname, 'codemod.mjs'), duplicate], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(duplicateRun.status, 0);
+  assert.match(`${duplicateRun.stdout}${duplicateRun.stderr}`, /duplicate object member/);
+
+  const target = join(dir, 'elsewhere');
+  const link = join(dir, 'emilia');
+  symlinkSync(target, link, 'dir');
+  const symlinkRun = spawnSync(process.execPath, [join(import.meta.dirname, 'codemod.mjs'), '--sample', '--out', 'emilia', '--apply', '--force'], {
+    cwd: dir,
+    encoding: 'utf8',
+  });
+  assert.notEqual(symlinkRun.status, 0);
+  assert.match(`${symlinkRun.stdout}${symlinkRun.stderr}`, /symlinked output path/);
 });

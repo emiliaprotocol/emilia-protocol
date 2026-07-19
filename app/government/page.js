@@ -45,25 +45,27 @@ export default function GovernmentPage() {
       </section>
 
       <section style={styles.sectionWide}>
-        <h2 style={styles.h2}>What EP proves before a government action executes</h2>
+        <h2 style={styles.h2}>What Gate can establish before a protected government action executes</h2>
         <ul style={styles.list}>
           <li>actor identity from authenticated context, never self-asserted request body claims</li>
           <li>authority from registry, delegation, and policy—not declarations</li>
           <li>exact action and target binding through canonical binding material</li>
           <li>policy version and policy hash pinned at decision time</li>
           <li>replay resistance through nonce, expiry, and one-time consumption</li>
-          <li>immutable events for reconstruction, oversight, and evidence export</li>
+          <li>tamper-evident events for reconstruction, oversight, and evidence export</li>
           <li>Accountable Signoff when policy requires named human ownership</li>
         </ul>
       </section>
 
       <section style={styles.sectionWide}>
         <div style={{ ...styles.card, borderLeft: `3px solid ${color.green}`, padding: '28px 32px' }}>
-          <h3 style={styles.h3}>Start with Emilia Eye</h3>
+          <h3 style={styles.h3}>Start with one consequence boundary</h3>
           <p style={styles.cardBody}>
-            If an agency is not ready to redesign the workflow immediately, Eye can flag payment destination changes, benefit redirects, and unusual overrides so those cases trigger EP enforcement first.
+            Begin in observe mode around one system-of-record action, such as a payment destination
+            change, benefit redirect, provider enrollment update, or accountable override. Move
+            that path to enforcement after the policy and evidence requirements are validated.
           </p>
-          <a href="/eye" style={{ fontFamily: font.mono, fontSize: 12, color: color.green, textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See Emilia Eye &#8594;</a>
+          <a href="/gate" style={{ fontFamily: font.mono, fontSize: 12, color: color.green, textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See EMILIA Gate &#8594;</a>
         </div>
       </section>
 
@@ -74,7 +76,7 @@ export default function GovernmentPage() {
             <li>Decision record -- who acted, what was requested, what policy governed</li>
             <li>Event chain -- complete sequence from request through enforcement to outcome</li>
             <li>Signoff trace if required -- named human responsibility bound to the exact action</li>
-            <li>Policy snapshot -- immutable reference to the exact policy version at decision time</li>
+            <li>Policy snapshot -- content-addressed reference to the exact policy version at decision time</li>
             <li>Reconstruction-ready export -- full evidence package for audit, oversight, and legal review</li>
           </ul>
         </div>

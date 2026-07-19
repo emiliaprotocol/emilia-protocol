@@ -1,15 +1,13 @@
-# posted/ — drafts already on the IETF datatracker
+# Posted Draft Snapshots
 
-These are live individual Internet-Drafts (or superseded revisions of them).
-Do NOT re-upload; the datatracker holds the authoritative copy. Kept here for
-history and to show what each active draft evolved from.
+This directory keeps local source snapshots for revisions already published on
+the IETF Datatracker. Datatracker is authoritative for current revisions and
+status; see [`../STATUS.json`](../STATUS.json) for the last verified local
+inventory.
 
-- `draft-schrock-ep-architecture-00` — the umbrella (a -01 refresh is planned post-126).
-- `draft-schrock-ep-quorum-01` — multi-party human authorization.
-- `draft-schrock-ep-evidence-record-00` — crypto-agile long-term preservation.
-- `draft-schrock-ep-enforcement-point-00` — the PEP profile.
-- `draft-schrock-emilia-eye-00` — advisory posture signal.
+Do not upload a file from this directory as a new draft. New substantive
+revisions are prepared in `../staged/`, rendered and tested, then filed through
+the Datatracker by a human.
 
-Superseded by a member of the current (pre-IETF-126) batch, kept for the diff:
-- `draft-schrock-ep-authorization-receipts-00 / -03 / -04` → superseded by **-05** (top level).
-- `draft-schrock-ep-authorization-evidence-chain-00` → superseded by **-01** (top level).
+"Posted" means an individual Internet-Draft was published. It does not mean
+working-group adoption, RFC status, or IETF endorsement.

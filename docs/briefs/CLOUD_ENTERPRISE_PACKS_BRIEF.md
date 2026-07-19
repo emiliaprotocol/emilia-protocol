@@ -1,8 +1,8 @@
 # Cloud, Enterprise, and Packs Brief
 
 ## What's new (June 2026)
-- **17 suites / 193 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
-- **Composition (EP-AEC):** EP now composes delegation, policy-permit, and human-authorization receipts into one offline ALLOW/DENY — the convergence layer for the emerging IETF agent-authorization standards. A pack or policy can require a machine policy check *and* a named human's authorization, bound to the same action.
+- **18 suites / 251 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
+- **Composition (EP-AEC):** EP composes delegation, policy-permit, and human-authorization receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The executor separately authorizes the action. A pack can therefore require machine-policy evidence *and* a named human's authorization bound to the same action.
 - **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (the mandated independent double-check, PHI-free receipts) extend the same primitive across verticals.
 
 ## Open protocol below
@@ -34,6 +34,6 @@
 
 ## Proof
 
-The protocol layer beneath has been exercised end-to-end: 5,000+ automated test cases across 250+ files with every platform-applicable case required to pass, 329 complete Accountable Signoff chains with zero correctness violations, all endpoints using single-roundtrip atomic RPCs, and 46 EP-only database tables with zero foreign artifacts.
+The protocol layer beneath has been exercised end-to-end: 6,729 automated test cases across 353 files with every platform-applicable case required to pass, 329 complete Accountable Signoff chains with zero correctness violations, all endpoints using single-roundtrip atomic RPCs, and 46 EP-only database tables with zero foreign artifacts.
 
 This is the business model: open protocol below, managed trust infrastructure above, vertical control systems on top.

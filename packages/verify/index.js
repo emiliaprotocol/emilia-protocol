@@ -11,6 +11,29 @@
  */
 
 import crypto from 'crypto';
+import { strictJsonGate } from './strict-json.js';
+
+export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
+export {
+  ORPRG_JSON_JCS_PROFILE,
+  ORPRG_ACTION_PROFILE,
+  computeOrprgActionDigest,
+  verifyOrprgJsonJcsPermit,
+  verifyOrprgJsonJcsPermitAsync,
+  createOrprgAecVerifier,
+} from './orprg.js';
+
+const FATAL_UTF8 = new TextDecoder('utf-8', { fatal: true });
+
+function decodeBase64url(value) {
+  if (typeof value !== 'string' || value.length === 0
+      || !/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) {
+    throw new Error('value is not canonical base64url');
+  }
+  const decoded = Buffer.from(value, 'base64url');
+  if (decoded.toString('base64url') !== value) throw new Error('value is not canonical base64url');
+  return decoded;
+}
 
 // =============================================================================
 // CONSTANTS
@@ -274,7 +297,7 @@ export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
 
   try {
     const payloadBytes = Buffer.from(canonicalize(doc.payload), 'utf8');
-    const publicKeyDer = Buffer.from(publicKeyBase64url, 'base64url');
+    const publicKeyDer = decodeBase64url(publicKeyBase64url);
     const keyObject = crypto.createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
     // EP-RECEIPT-v1 is Ed25519 over JCS. crypto.verify(null, ...) dispatches on the
     // key type, so without this guard a non-Ed25519 pinned key (EC/RSA) would be
@@ -284,7 +307,7 @@ export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
     if (keyObject.asymmetricKeyType !== 'ed25519') {
       return { valid: false, checks, error: `Unsupported issuer key type '${keyObject.asymmetricKeyType}'; EP-RECEIPT-v1 requires Ed25519` };
     }
-    const sigBytes = Buffer.from(doc.signature.value, 'base64url');
+    const sigBytes = decodeBase64url(doc.signature.value);
     checks.signature = crypto.verify(null, payloadBytes, keyObject, sigBytes);
   } catch (e) {
     return { valid: false, checks, error: `Signature verification failed: ${e.message}` };
@@ -361,7 +384,7 @@ const FLAG_UV = 0x04;
  * What this proves with pure math, no network, no EP server:
  *   - the WebAuthn challenge the device signed equals
  *     SHA-256(JCS(context)) for the EXACT context in the signoff — which
- *     binds the action hash, nonce, approver, and validity window;
+ *     binds the action hash, decision, nonce, approver, and validity window;
  *   - the signature verifies against the approver's enrolled P-256 key;
  *   - the authenticator asserted user presence AND user verification
  *     (a human with the biometric/PIN was there);
@@ -380,7 +403,7 @@ const FLAG_UV = 0x04;
  *   }
  * }
  * @param {string} approverPublicKeySpkiB64u - enrolled P-256 key, SPKI DER b64u
- * @param {{ rpId?: string }} [opts]
+ * @param {{ rpId?: string, allowedOrigins?: string[] }} [opts]
  * @returns {{ valid: boolean, checks: object, error?: string }}
  */
 export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts = {}) {
@@ -405,8 +428,13 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
     // 1. Challenge binding: clientDataJSON.challenge must equal
     //    b64u(SHA-256(canonical(context))). The context is re-canonicalized
     //    here — tamper any field (amount, approver, nonce) and this fails.
-    const clientDataBytes = Buffer.from(client_data_json, 'base64url');
-    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
+    const clientDataBytes = decodeBase64url(client_data_json);
+    const clientDataText = FATAL_UTF8.decode(clientDataBytes);
+    const clientDataGate = strictJsonGate(clientDataText);
+    if (!clientDataGate.ok) {
+      return { valid: false, checks, error: `Invalid clientDataJSON: ${clientDataGate.reason}` };
+    }
+    const clientData = JSON.parse(clientDataText);
     const expectedChallenge = crypto
       .createHash('sha256')
       .update(canonicalize(signoff.context), 'utf8')
@@ -417,8 +445,16 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
     // 2. Ceremony type must be an assertion, not a registration.
     checks.client_data_type = clientData.type === 'webauthn.get';
 
+    if (Array.isArray(opts.allowedOrigins)) {
+      if (opts.allowedOrigins.length === 0
+          || !opts.allowedOrigins.includes(clientData.origin)
+          || clientData.crossOrigin === true) {
+        return { valid: false, checks, error: 'WebAuthn origin is not allowed' };
+      }
+    }
+
     // 3. Authenticator flags: user present + user verified.
-    const authData = Buffer.from(authenticator_data, 'base64url');
+    const authData = decodeBase64url(authenticator_data);
     if (authData.length < 37) {
       return { valid: false, checks, error: 'authenticator_data too short' };
     }
@@ -438,7 +474,7 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
       crypto.createHash('sha256').update(clientDataBytes).digest(),
     ]);
     const keyObject = crypto.createPublicKey({
-      key: Buffer.from(approverPublicKeySpkiB64u, 'base64url'),
+      key: decodeBase64url(approverPublicKeySpkiB64u),
       format: 'der',
       type: 'spki',
     });
@@ -446,7 +482,7 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
       'sha256',
       signedData,
       keyObject,
-      Buffer.from(signature, 'base64url'),
+      decodeBase64url(signature),
     );
   } catch (e) {
     return { valid: false, checks, error: `WebAuthn verification failed: ${e.message}` };
@@ -499,9 +535,9 @@ export function verifyCommitmentProof(proof, publicKeyBase64url, options = {}) {
 
   try {
     const commitmentBytes = Buffer.from(canonicalize(proof.commitment), 'utf8');
-    const publicKeyDer = Buffer.from(publicKeyBase64url, 'base64url');
+    const publicKeyDer = decodeBase64url(publicKeyBase64url);
     const keyObject = crypto.createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
-    const sigBytes = Buffer.from(proof.signature.value, 'base64url');
+    const sigBytes = decodeBase64url(proof.signature.value);
     if (!crypto.verify(null, commitmentBytes, keyObject, sigBytes)) {
       return { valid: false, claim: proof.claim, error: 'Invalid signature' };
     }
@@ -600,9 +636,11 @@ function withinWindow(t, from, to) {
 
 function parseClassAAssertion(webauthn) {
   try {
-    const clientDataBytes = Buffer.from(webauthn.client_data_json, 'base64url');
-    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
-    const authData = Buffer.from(webauthn.authenticator_data, 'base64url');
+    const clientDataBytes = decodeBase64url(webauthn.client_data_json);
+    const clientDataText = FATAL_UTF8.decode(clientDataBytes);
+    if (!strictJsonGate(clientDataText).ok) return null;
+    const clientData = JSON.parse(clientDataText);
+    const authData = decodeBase64url(webauthn.authenticator_data);
     if (authData.length < 37) return null;
     return { authData, clientData, clientDataBytes };
   } catch {
@@ -611,22 +649,31 @@ function parseClassAAssertion(webauthn) {
 }
 
 // WebAuthn Class-A assertion bound to a context digest (challenge = b64u(digest)).
-function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
+function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u, opts = {}) {
   try {
     const parsed = parseClassAAssertion(webauthn);
     if (!parsed) return false;
     const { authData, clientData, clientDataBytes } = parsed;
     if (clientData.type !== 'webauthn.get') return false;
     if (clientData.challenge !== Buffer.from(digestBytes).toString('base64url')) return false;
+    if (opts.rpId) {
+      const expectedRpIdHash = crypto.createHash('sha256').update(opts.rpId, 'utf8').digest();
+      if (!expectedRpIdHash.equals(authData.subarray(0, 32))) return false;
+    }
+    if (Array.isArray(opts.allowedOrigins)) {
+      if (opts.allowedOrigins.length === 0
+        || !opts.allowedOrigins.includes(clientData.origin)
+        || clientData.crossOrigin === true) return false;
+    }
 
     if ((authData[32] & FLAG_UP) !== FLAG_UP) return false; // human presence required
     if ((authData[32] & FLAG_UV) !== FLAG_UV) return false; // biometric/PIN verification required
 
     const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataBytes).digest()]);
     const keyObject = crypto.createPublicKey({
-      key: Buffer.from(publicKeySpkiB64u, 'base64url'), format: 'der', type: 'spki',
+      key: decodeBase64url(publicKeySpkiB64u), format: 'der', type: 'spki',
     });
-    return crypto.verify('sha256', signedData, keyObject, Buffer.from(webauthn.signature, 'base64url'));
+    return crypto.verify('sha256', signedData, keyObject, decodeBase64url(webauthn.signature));
   } catch {
     return false;
   }
@@ -635,9 +682,9 @@ function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
 function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) {
   try {
     const keyObject = crypto.createPublicKey({
-      key: Buffer.from(publicKeySpkiB64u, 'base64url'), format: 'der', type: 'spki',
+      key: decodeBase64url(publicKeySpkiB64u), format: 'der', type: 'spki',
     });
-    return crypto.verify(null, digestBytes, keyObject, Buffer.from(signatureB64u, 'base64url'));
+    return crypto.verify(null, digestBytes, keyObject, decodeBase64url(signatureB64u));
   } catch {
     return false;
   }
@@ -646,6 +693,7 @@ function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) 
 const STRICT_CHECK_NAMES = [
   'pinned_keys',
   'rp_id',
+  'origin',
   'user_presence',
   'user_verification',
   'key_windows',
@@ -704,7 +752,9 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
     // Pinned key class is authoritative (see default path): a pinned Class-A key
     // is always evaluated as Class-A even if the signoff declares key_class:'B',
     // so its WebAuthn UP/UV checks below cannot be downgraded away.
-    const keyClass = keyEntry?.key_class || s.key_class || 'B';
+    // Classification is a relying-party directory fact. An omitted class is
+    // Class B; the presented signoff can never promote its own key to Class A.
+    const keyClass = keyEntry?.key_class === 'A' ? 'A' : 'B';
     if (keyClass === 'A') classASignoffs.push({ signoff: s, keyEntry });
   }
   markStrict(report, 'pinned_keys', pinnedKeysOk);
@@ -730,6 +780,23 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
     }
   }
   markStrict(report, 'rp_id', rpOk);
+
+  let originOk = true;
+  if (classASignoffs.length > 0
+      && (!Array.isArray(opts.allowedOrigins) || opts.allowedOrigins.length === 0)) {
+    originOk = false;
+    report.errors.push('strict origin requires a non-empty opts.allowedOrigins for Class-A WebAuthn signoffs');
+  }
+  for (const { signoff } of classASignoffs) {
+    const parsed = parseClassAAssertion(signoff.webauthn);
+    if (!parsed
+        || !opts.allowedOrigins?.includes(parsed.clientData.origin)
+        || parsed.clientData.crossOrigin === true) {
+      originOk = false;
+      report.errors.push('strict origin rejects the Class-A WebAuthn origin');
+    }
+  }
+  markStrict(report, 'origin', originOk);
 
   let upOk = true;
   let uvOk = true;
@@ -818,7 +885,7 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
     // Pinned key class is authoritative: a pinned Class-A key must carry a full
     // WebAuthn assertion; the attacker cannot declare key_class:'B' to reduce the
     // no_unsigned requirement to a bare Ed25519 signature.
-    const keyClass = approverKeys[s?.approver_key_id]?.key_class || s?.key_class || 'B';
+    const keyClass = approverKeys[s?.approver_key_id]?.key_class === 'A' ? 'A' : 'B';
     if (keyClass === 'A') {
       requireField(s?.webauthn?.authenticator_data, 'strict no_unsigned requires Class-A authenticator_data');
       requireField(s?.webauthn?.client_data_json, 'strict no_unsigned requires Class-A client_data_json');
@@ -931,12 +998,18 @@ function trustReceiptCanonicalProfileError(receipt) {
  *
  * @param {object} receipt - Section 6.2 Trust Receipt
  * @param {object} opts
- * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
- *   - pinned approver key entries by approver_key_id (or a directory extract)
- * @param {string} opts.logPublicKey - trusted log Ed25519 key (base64url SPKI DER)
+ * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} [opts.approverKeys]
+ *   - pinned approver key entries by approver_key_id (or a directory extract).
+ *   Required for a meaningful result; the body defaults a missing/empty opts to
+ *   {} and fails closed rather than throwing.
+ * @param {string} [opts.logPublicKey] - trusted log Ed25519 key (base64url SPKI DER)
  * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
  * @param {string} [opts.rpId] - expected WebAuthn RP ID when strict mode sees Class-A signoffs
  * @param {string} [opts.expectedPolicyHash] - expected policy hash when strict mode is enabled
+ * @param {boolean} [opts.allowLegacyMerkle] - DORMANT opt-in: verify pre-v2
+ *   (sorted-pair, undomain-separated) Merkle inclusion. Never the default; never
+ *   used by production gates.
+ * @param {boolean} [opts.allowLegacyTrustReceiptMerkle] - alias of allowLegacyMerkle
  * @param {{tree_size:number, root_hash:string, consistency_proof:string[]}} [opts.priorCheckpoint]
  *   OPT-IN append-only check: a checkpoint head this verifier previously
  *   OBSERVED and pinned, plus the RFC 6962 consistency proof from that head to
@@ -1073,7 +1146,8 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   checks.context_commitments = commitmentsOk;
 
   // ── Step 3: per signoff — signature over the context hash vs approver key ─
-  const validApprovals = []; // { approver, signedAt, ctx }
+  const validSignoffs = []; // cryptographically valid signed decisions, including denials
+  const validApprovals = []; // validSignoffs whose signed decision authorizes the action
   let signaturesOk = signoffs.length > 0;
   for (const s of signoffs) {
     const digestHex = hexOf(s.context_hash);
@@ -1119,16 +1193,28 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     // digest, downgrading to raw-signature verification with NO WebAuthn proof.
     // A pinned Class-A key MUST be satisfied by a real WebAuthn assertion and is
     // rejected if it only carries a raw signature.
-    const keyClass = keyEntry.key_class || s.key_class || 'B';
+    const keyClass = keyEntry.key_class === 'A' ? 'A' : 'B';
     const sigOk = keyClass === 'A'
-      ? Boolean(s.webauthn) && verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key)
+      ? Boolean(s.webauthn) && verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key, opts)
       : verifyEd25519OverDigest(s.signature, digestBytes, keyEntry.public_key);
     if (!sigOk) {
       signaturesOk = false;
       errors.push(`signoff by ${ctx.approver} does not verify`);
       continue;
     }
-    validApprovals.push({ approver: ctx.approver, signedAt: s.signed_at, ctx });
+    const verifiedSignoff = { approver: ctx.approver, signedAt: s.signed_at, ctx };
+    validSignoffs.push(verifiedSignoff);
+    // Pre-decision Authorization Contexts remain compatible as implicit
+    // approvals. Once a decision is present, only the typed `approved` outcome
+    // can satisfy authorization; a valid signature over `denied` remains useful
+    // decision evidence but cannot be counted as an approval.
+    if (ctx.decision === undefined || ctx.decision === 'approved') {
+      validApprovals.push(verifiedSignoff);
+    } else if (ctx.decision === 'denied') {
+      errors.push(`signed denial by ${ctx.approver} does not authorize the action`);
+    } else {
+      errors.push(`signed decision by ${ctx.approver} is not a recognized approval outcome`);
+    }
   }
   checks.signoff_signatures = signaturesOk;
 
@@ -1418,8 +1504,8 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   }
 
   // ── Step 6: temporal windows ──────────────────────────────────────────────
-  let windowsOk = validApprovals.length > 0;
-  for (const a of validApprovals) {
+  let windowsOk = validSignoffs.length > 0;
+  for (const a of validSignoffs) {
     if (!withinWindow(a.signedAt, a.ctx.issued_at, a.ctx.expires_at)) {
       windowsOk = false;
       errors.push(`signed_at for ${a.approver} falls outside [issued_at, expires_at]`);

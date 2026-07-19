@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-authority-introduction-01"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Authority Introduction">Authority Documents and Scoped Authority for Agent-Action Evidence</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authority-introduction-01"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="14"/>
+    <area>sec</area>
+    <keyword>trust establishment</keyword>
+    <keyword>key rotation</keyword>
+    <keyword>introduction</keyword>
+    <keyword>AI agents</keyword>
+    <abstract>
+      <t>Signature verification answers whether a key produced an
+      artifact. It does not answer why a relying party accepts that key,
+      or whether the key holder had authority for the action. This
+      document specifies two composable artifacts. An Authority Document
+      introduces and rotates an organization's evidence-issuing keys
+      through a signed, hash-chained sequence. A Scoped Authority Proof
+      records the authority held by a subject at a registry snapshot,
+      including role, action scope, material limits, policy binding,
+      validity, and revocation status. A relying party evaluates both
+      artifacts under its own pinned trust inputs and policy. The design
+      does not make a self-presented key authoritative, does not turn log
+      inclusion or domain control into automatic trust, and does not
+      equate a valid signature with permission to act.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>This document follows the distinction between VERIFIED and
+      ACCEPTED. Verification establishes cryptographic and structural
+      facts given a key. Acceptance is a relying-party decision about
+      which keys, issuers, authority sources, and policies are
+      admissible. Existing systems use certificates, federation
+      metadata, trust bundles, transparency services, and deployment
+      configuration for portions of that decision. Agent-action evidence
+      profiles still need a concrete way to bind those trust inputs to
+      the issuer key and to the human authority being relied upon.</t>
+      <t>The design is deliberately not a universal public-key
+      infrastructure. The relying party selects its trust anchors and
+      acceptance policy. Domain control, log inclusion, and endorsement
+      are evidence inputs, not authority by themselves. The goal is a
+      reproducible answer to two narrower questions: which evidence key
+      was valid at issuance, and what scoped authority did the approving
+      subject hold for the exact action under review?</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+      </section>
+    </section>
+    <section anchor="doc">
+      <name>The Authority Document (EP-AUTHORITY-DOC-v1)</name>
+      <t>An authority document is a JSON object, served from the
+      organization's own origin (RECOMMENDED:
+      /.well-known/ep-authority.json) and registrable to a transparency
+      service:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-AUTHORITY-DOC-v1",
+  "org": { "name": "...", "domain": "acme.example" },
+  "seq": 3,
+  "prev_doc_digest": "sha256:<core digest of doc seq 2>",
+  "root_key": "<b64url SPKI>",
+  "issuer_keys": [
+    { "kid": "<hex>", "key": "<b64url SPKI>",
+      "usages": ["evidence_issuer", "authority_proof_issuer"],
+      "valid_from": "...", "valid_to": "...",
+      "revoked_at": "<OPTIONAL>" }
+  ],
+  "issued_at": "...",
+  "sig": "<root_key over the canonical core>",
+  "continuity_sig": "<by a key from the PREVIOUS doc>",
+  "endorsements": [ { "by_org": "...", "by_key": "...",
+                      "doc_digest": "...", "sig": "..." } ]
+}
+]]></sourcecode>
+      <t>The signed core is the document without sig, continuity_sig,
+      and endorsements; its canonical digest is the document's identity.
+      Endorsements are countersignatures over that digest by OTHER
+      authorities — third-party attestations that ride with the
+      document without being part of it.</t>
+    </section>
+    <section anchor="scoped-authority">
+      <name>Scoped Authority Proof (EP-AUTHORITY-PROOF-v1)</name>
+      <t>An accepted issuer key with the authority_proof_issuer usage MAY
+      sign a snapshot of one subject's authority. The proof records what
+      the authority source asserted at issuance; it does not grant
+      authority merely because it is carried with an action.</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@type": "EP-AUTHORITY-PROOF-v1",
+  "authority_id": "auth_cfo",
+  "subject": "ep:approver:ada",
+  "organization_id": "org1",
+  "role": "cfo",
+  "scope": ["payment.release"],
+  "limits": { "max_amount_usd": 50000, "currency": "USD" },
+  "validity": {
+    "from": "2026-01-01T00:00:00Z",
+    "to": "2027-01-01T00:00:00Z"
+  },
+  "revocation": {
+    "status": "not_revoked",
+    "checked_at": "2026-07-14T16:00:00Z"
+  },
+  "registry_head": "sha256:<snapshot digest>",
+  "registry_epoch": 17,
+  "policy_hash": "sha256:<applicable policy digest>",
+  "issued_at": "2026-07-14T16:00:00Z",
+  "signature": {
+    "algorithm": "Ed25519",
+    "key_id": "ep:authority-registry-key:sha256:<prefix>",
+    "public_key": "<b64url SPKI>",
+    "proof_digest": "sha256:<signed-body digest>",
+    "signature_b64u": "<signature>"
+  }
+}
+]]></sourcecode>
+      <t>The signed body is the proof without the signature member,
+      domain-separated with the ASCII string "EP-AUTHORITY-PROOF-v1"
+      followed by a zero octet, and canonicalized using JCS
+      <xref target="RFC8785"/>. The public key carried in the signature
+      envelope is a verification input only. It MUST NOT establish its
+      own authority. A relying party MUST resolve it through an accepted
+      Authority Document or match it to an independently pinned authority
+      issuer key.</t>
+      <t>The max_amount_usd field is the implemented v1 monetary limit.
+      It permits no currency conversion: a proof denominated in USD MUST
+      NOT satisfy a limit check for another currency. Profiles that need
+      other monetary representations MUST define their canonical amount
+      and comparison rules rather than relying on floating-point currency
+      conversion.</t>
+    </section>
+    <section anchor="authority-evaluation">
+      <name>Authority Evaluation</name>
+      <t>Given an action, its authorization evidence, an Authority Proof,
+      and relying-party trust inputs, a verifier MUST perform all of the
+      following checks. A missing or failed required check produces a
+      refusal; no unknown value is treated as permission.</t>
+      <ol>
+        <li>Verify the proof digest and signature and establish that the
+        signing key is accepted for authority-proof issuance.</li>
+        <li>Match subject and organization to the approving identity and
+        action context. A proof for one subject or organization MUST NOT
+        be substituted for another.</li>
+        <li>Require the action type to be within scope and any required
+        role to match.</li>
+        <li>Apply every material limit. If a capped action omits the
+        amount or currency needed for comparison, refuse it.</li>
+        <li>Check that the action authorization time falls within the
+        authority validity window and that the policy hash, when present,
+        matches the policy being evaluated.</li>
+        <li>Check the registry head and minimum epoch required by the
+        relying party. A stale or unavailable required authority view is
+        not equivalent to an unbounded grant.</li>
+        <li>Apply revocation at its effective time. Terminal revocation
+        evidence does not age out. A not_revoked snapshot establishes
+        only the status observed at checked_at; current status is a
+        separate, freshness-bounded input
+        <xref target="I-D.schrock-ep-revocation-statement"/>.</li>
+      </ol>
+      <t>Portable profiles SHOULD express ceremony strength as
+      verifier-visible proof predicates, such as user verification,
+      named-human binding, or device binding. This document does not
+      define a universal letter-grade assurance taxonomy.</t>
+    </section>
+    <section anchor="separation-of-duties">
+      <name>Separation of Duties and Quorum</name>
+      <t>Authority and independence are different properties. An
+      authority source can establish that a subject is eligible to
+      approve an action; it cannot establish that the subject did not
+      initiate that same action merely by asserting a flag. Initiator
+      exclusion MUST be evaluated by joining the signed initiator and
+      approver identities for the action. For a quorum, every counted
+      approver MUST have its own accepted authority proof, and the
+      authorization profile MUST separately enforce distinct-human and
+      initiator-exclusion requirements.</t>
+    </section>
+    <section anchor="continuity">
+      <name>Rotation, Continuity, and Time-of-Issuance</name>
+      <t>Documents chain: seq increments by one, prev_doc_digest names
+      the previous core digest, and each rotation MUST carry a
+      continuity signature by the previous document's root key or one
+      of its non-revoked issuer keys. A verifier walking the chain
+      therefore needs exactly one leap — the first document it ever
+      saw — and every subsequent rotation is mechanically checkable. A
+      rotation without valid continuity MUST be flagged, never silently
+      accepted; whether endorsements can substitute for continuity is
+      the relying party's policy (<xref target="compromise"/>), not a
+      default.</t>
+      <t>Two invariants govern key resolution, and implementations
+      that miss either will hurt someone:</t>
+      <ol>
+        <li>Time of issuance. An artifact verifies against the key that
+        was valid WHEN THE ARTIFACT WAS ISSUED. Rotation never
+        invalidates previously issued evidence, and a revocation voids
+        a key only for signatures claimed at or after revoked_at —
+        honest history survives compromise.</li>
+        <li>Newest document authoritative. The newest document that
+        mentions a key identifier is authoritative for it. A
+        revocation recorded in document N MUST NOT be undone by
+        resolving the same key identifier against the pre-revocation
+        entry in document N-1.</li>
+      </ol>
+    </section>
+    <section anchor="equivocation">
+      <name>Anti-Equivocation</name>
+      <t>A malicious authority might show different documents to
+      different relying parties. The hash chain exposes a fork when a
+      verifier possesses both branches or a previously pinned head.
+      Registration to a transparency service <xref target="RFC9943"/>
+      can make revisions discoverable, but inclusion in one log view
+      alone does not prove global consistency. Split-view resistance
+      requires an independently checked consistency mechanism such as
+      witnesses, gossip, or cross-logging. A profile MUST state which
+      of those observations it requires; this document does not convert
+      log inclusion into automatic acceptance.</t>
+    </section>
+    <section anchor="graded">
+      <name>Introduction as Evidence: Graded, Replayable Acceptance</name>
+      <t>Acceptance is not a boolean in a config file; it is a verdict
+      over introduction evidence, evaluated under a RELYING-PARTY
+      policy, using the same closed-verdict classification and
+      replay-digest discipline as the evidence-sufficiency layer this
+      family defines for actions
+      (<xref target="I-D.schrock-ep-action-evidence-graph"/>). The
+      evidence facts: the authority chain itself (consistent, signed,
+      no unexplained continuity breaks); domain binding (the relying
+      party's own attested observation that it fetched this document
+      digest from the organization's origin); transparency-log
+      inclusion and FIRST-LOGGED AGE (history can be a policy input,
+      particularly when the history is independently witnessed); and endorsements,
+      graded by whether the endorser is among the relying party's own
+      pinned anchors.</t>
+      <t>Policies are per action class. A relying party can require
+      stronger introduction evidence for money movement than for a
+      low-impact action. New observations, such as an endorsement from
+      an already pinned anchor or a longer witnessed history, may satisfy
+      an unchanged policy, but they never alter that policy and never
+      compel acceptance. The replay result MUST identify the policy and
+      observations used so another evaluator can reproduce the decision.</t>
+    </section>
+    <section anchor="compromise">
+      <name>Compromise Recovery</name>
+      <t>If an authority loses its keys entirely, continuity breaks by
+      construction. The recovery path is explicit rather than
+      exceptional: the successor document is published with no (or
+      invalid) continuity signature, the break is flagged by every
+      verifier, and the relying party's policy decides what
+      substitutes — typically an endorsement threshold (a quorum of
+      the relying party's pinned anchors countersigning the successor
+      document) plus a revocation statement over the compromised keys.
+      A relying party with no such policy simply continues to refuse:
+      fail closed is the default, recovery is opt-in.</t>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>Nothing creates trust from nothing, and this document does
+      not claim to. It makes the bootstrap and scoped-authority inputs
+      explicit and permits their checks to be replayed. The residual
+      assumptions are named:
+      domain binding inherits the Web PKI and is worth exactly that;
+      log-backed consistency is as strong as the log's operator or the
+      cross-log witnessing above it; endorsements are as strong as the
+      endorser and mean nothing until a relying party pins one.
+      A presenter-supplied key cannot establish its own authority.
+      Key-resurrection (resolving a revoked key through an older
+      document) is defeated by the newest-document-authoritative rule.
+      Hash chaining detects conflicting branches only when the verifier
+      has a comparison point; a single log view is insufficient to prove
+      non-equivocation. Rotation-based history rewriting is constrained
+      by time-of-issuance resolution. No combination of missing
+      observations grades toward acceptance.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. A well-known URI
+      registration (ep-authority.json) is anticipated for a future
+      revision.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9943.xml"/>
+        <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
+          <front>
+            <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+        </reference>
+        <reference anchor="I-D.schrock-ep-revocation-statement" target="https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/">
+          <front>
+            <title>Revocation Statements for Agent-Action Authorization Evidence</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-revocation-statement-00"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>Two Apache-2.0 reference components are published in the
+      EMILIA Protocol repository. lib/authority/authority-doc.js covers
+      document creation, rotation, chain verification, time-of-issuance
+      key resolution, endorsement verification, and introduction-policy
+      replay. lib/authority/proof.js and lib/authority/resolver.js cover
+      signed scoped-authority proofs and closed authority verdicts. The
+      authority vector suite contains 27 cases, including unpinned-key,
+      issuer-substitution, amount, currency, scope, role, lifecycle,
+      policy, delegation, malformed-time, registry-head, and stale-epoch
+      refusals. This revision does not claim an integrated conformance
+      result for resolving an Authority Proof key through an Authority
+      Document; that join and its cross-language vectors are required
+      before publication of this revision.</t>
+    </section>
+  </back>
+</rfc>

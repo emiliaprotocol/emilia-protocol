@@ -15,18 +15,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock the MCP SDK before importing anything that depends on it.
 // ---------------------------------------------------------------------------
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
-  Server: vi.fn().mockImplementation(() => ({
-    setRequestHandler: vi.fn(),
-    connect: vi.fn().mockResolvedValue(undefined),
-  })),
+  Server: vi.fn(function MockServer() {
+    this.setRequestHandler = vi.fn();
+    this.connect = vi.fn().mockResolvedValue(undefined);
+  }),
 }));
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+  StdioServerTransport: vi.fn(function MockTransport() {}),
 }));
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
   CallToolRequestSchema: 'CallToolRequestSchema',
   ListToolsRequestSchema: 'ListToolsRequestSchema',
   ListResourcesRequestSchema: 'ListResourcesRequestSchema',
+  ListResourceTemplatesRequestSchema: 'ListResourceTemplatesRequestSchema',
   ReadResourceRequestSchema: 'ReadResourceRequestSchema',
   ListPromptsRequestSchema: 'ListPromptsRequestSchema',
   GetPromptRequestSchema: 'GetPromptRequestSchema',
@@ -36,6 +37,7 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 // Import the modules under test.
 // ---------------------------------------------------------------------------
 import { AutoReceiptMiddleware } from '../auto-receipt.js';
+import { normalizeSecureBaseUrl } from '../index.js';
 
 // ---------------------------------------------------------------------------
 // We extract TOOLS by reading index.js source and importing only the TOOLS
@@ -93,6 +95,25 @@ const EXPECTED_TOOL_NAMES = [
   'ep_get_handshake',
   'ep_revoke_handshake',
 ];
+
+it('refuses remote plaintext API endpoints while allowing loopback development', () => {
+  expect(() => normalizeSecureBaseUrl('http://api.example.test')).toThrow(/must use HTTPS/);
+  expect(normalizeSecureBaseUrl('http://127.0.0.1:8787/')).toBe('http://127.0.0.1:8787');
+  expect(() => new AutoReceiptMiddleware({ epApiUrl: 'http://collector.example.test' })).toThrow(/must use HTTPS/);
+});
+
+it('auto-receipt refuses duplicate-member and non-object collector responses', async () => {
+  const originalFetch = globalThis.fetch;
+  const middleware = new AutoReceiptMiddleware({ epApiUrl: 'https://collector.example.test' });
+  try {
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => '{"accepted":1,"accepted":2}' });
+    await expect(middleware._submitBatch([])).rejects.toThrow(/invalid JSON/);
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => '[]' });
+    await expect(middleware._submitBatch([])).rejects.toThrow(/invalid JSON/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 // Static TOOLS list reconstructed from the source (since TOOLS is not exported).
 // This mirrors exactly what index.js defines so we can test the schema shapes.

@@ -134,7 +134,8 @@ export function verifyGrantHash(grant) {
  * @returns {object} the complete EP-CONSENT-GRANT-v1 grant with grant_hash and signature.
  */
 export function buildConsentGrant(spec, signer) {
-  const privateKey = signer && signer.privateKey ? signer.privateKey : signer;
+  const s = /** @type {any} */ (signer);
+  const privateKey = s && s.privateKey ? s.privateKey : s;
   const grant = {
     profile: CONSENT_GRANT_VERSION,
     ...spec,
@@ -183,8 +184,8 @@ function refuseGrant(reason, checks) {
  * @param {Object<string,{public_key:string}>} [opts.revokerKeys]  pinned revoker
  *   keys by revoker_id, passed through to verifyRevocation (a revocation under an
  *   unpinned revoker is ignored — it cannot revoke, fail-closed on the REVOKER).
- * @param {number} [opts.revocationMaxAgeSeconds]  optional freshness bound on the
- *   presented revocation statement.
+ * @param {number} [opts.revocationMaxAgeSeconds]  DEPRECATED compatibility
+ *   option; terminal revocation statements do not age out.
  * @returns {{ valid:boolean, checks:{hash:boolean, signature:boolean, within_window:boolean}, reason?:string }}
  */
 export function verifyConsentGrant(grant, pinnedPrincipalKey, opts = {}) {
@@ -408,7 +409,8 @@ function refuseComposition(reason, checks) {
  * @param {string} [opts.pinnedPrincipalKey]  the grant principal's Ed25519 public key (base64url SPKI DER).
  * @param {object} [opts.revocation]  a presented EP-REVOCATION-v1 statement against the grant_hash.
  * @param {Object<string,{public_key:string}>} [opts.revokerKeys]  pinned revoker keys.
- * @param {number} [opts.revocationMaxAgeSeconds]  freshness bound on the presented revocation.
+ * @param {number} [opts.revocationMaxAgeSeconds]  DEPRECATED compatibility
+ *   option; terminal revocation statements do not age out.
  * @param {string} [opts.grantHash]  out-of-band grant_hash override when the receipt does not carry one.
  * @param {(receiptAsset:any, grantAsset:any)=>boolean} [opts.assetCovers]  optional
  *   scope predicate; default is strict equality. MUST fail closed (return false on doubt).

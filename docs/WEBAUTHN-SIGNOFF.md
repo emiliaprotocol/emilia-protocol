@@ -65,11 +65,16 @@ The draft's one non-negotiable: **WebAuthn challenge = context hash.**
 challenge = SHA-256( JCS(AuthorizationContext) )   // raw 32 bytes, b64u in options
 ```
 
-The Authorization Context already contains `action_hash`, `policy_hash`,
+The Authorization Context contains `action_hash`, `policy_hash`, `decision`,
 `nonce`, `expires_at`, `approver` — so the challenge is action-bound and
 **single-use by construction** (the nonce lives inside what's hashed). A
 replayed assertion fails twice: wrong challenge at the WebAuthn layer, spent
 nonce at the consumption layer.
+
+`decision` is `approved` or `denied` and is inside the signed bytes. The API
+retains `rejected` as an alias for compatibility, but normalizes it to the
+signed wire value `denied` before issuing the challenge. A request field sent
+after the ceremony cannot relabel one outcome as the other.
 
 Reuse the JCS canonicalizer from `packages/verify` (byte-identical
 serialization is the point; amounts stay strings per draft §3).
@@ -85,9 +90,15 @@ serialization is the point; amounts stay strings per draft §3).
   `verifyAuthenticationResponse({ expectedChallenge: b64u(contextHash),
   expectedOrigin, expectedRPID, requireUserVerification: true })`; reject
   sign-count regression; existing SoD check (approver ≠ initiator) unchanged;
-  mark approved; store the assertion
+  derive the outcome from the signed context; mark approved or rejected; store
+  the assertion
   `{ authenticator_data, client_data_json, signature, key_class: 'A',
   approver_key_id }` into the receipt's signoff (draft §5.3 shape).
+
+The bearer-key `/approve` and `/reject` routes both refuse when the request
+requires Class A. The evidence endpoint projects either terminal outcome into
+the same portable `EP-SIGNOFF-v1` shape; an offline relying party verifies it
+against an independently pinned approver key.
 
 **Render page `/signoff/[id]`** — draft §11.3 control (1): server-render
 amount / beneficiary / action_type **from the same stored canonical Action

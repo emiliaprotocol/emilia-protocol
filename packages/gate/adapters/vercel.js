@@ -5,7 +5,17 @@
  * never reach Vercel without a receipt bound to THIS project. Client injected
  * (the Vercel REST client or a thin wrapper).
  */
-import { createAdapter, manifestFromPack } from './_kit.js';
+import { createAdapter, manifestFromPack, hashCanonical } from './_kit.js';
+
+export const SECRET_VALUE_BINDING_VERSION = 'EP-VERCEL-SECRET-VALUE-v1';
+
+/** Digest an exact secret value for receipt binding; callers must never log it. */
+export function secretValueDigest(value) {
+  return hashCanonical({
+    version: SECRET_VALUE_BINDING_VERSION,
+    value,
+  });
+}
 
 export const VERCEL_ACTION_PACK = Object.freeze([
   Object.freeze({
@@ -27,7 +37,11 @@ export const VERCEL_ACTION_PACK = Object.freeze([
     risk: 'high', receipt_required: true, assurance_class: 'class_a',
     match: { protocol: 'vercel', tool: 'upsert_env' },
     why: 'Changes production secrets/config. Bind project+key+target.',
-    execution_binding: { required_fields: ['action_type', 'project', 'key', 'target'] },
+    execution_binding: {
+      required_fields: [
+        'action_type', 'project', 'key', 'target', 'secret_value_digest', 'secret_value_version',
+      ],
+    },
   }),
 ]);
 
@@ -44,7 +58,15 @@ const OPS = {
   },
   'env.set': {
     selector: { protocol: 'vercel', tool: 'upsert_env' },
-    observed: (p) => ({ action_type: 'vercel.env.set', project: p.project, key: p.key, target: p.target }),
+    observed: (p) => ({
+      action_type: 'vercel.env.set',
+      project: p.project,
+      key: p.key,
+      target: p.target,
+      secret_value_digest: secretValueDigest(p.value),
+      secret_value_version: SECRET_VALUE_BINDING_VERSION,
+    }),
+    actuator: (p, observed) => ({ ...observed, value: p.value }),
     perform: (c, p) => c.upsertEnv({ project: p.project, key: p.key, value: p.value, target: p.target }),
   },
 };
@@ -53,4 +75,11 @@ const adapter = createAdapter({ system: 'vercel', ops: OPS });
 export const VERCEL_OPS = adapter.OPS;
 export function createVercelManifest(extra = []) { return manifestFromPack(VERCEL_ACTION_PACK, extra); }
 export function guardVercelMutation(gate, client, args) { return adapter.guard(gate, client, args); }
-export default { VERCEL_ACTION_PACK, VERCEL_OPS, createVercelManifest, guardVercelMutation };
+export default {
+  VERCEL_ACTION_PACK,
+  VERCEL_OPS,
+  SECRET_VALUE_BINDING_VERSION,
+  secretValueDigest,
+  createVercelManifest,
+  guardVercelMutation,
+};

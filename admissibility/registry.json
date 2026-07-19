@@ -51,9 +51,9 @@
       "claim": "The authority, delegation, or key backing this action is still current within a stated freshness bound.",
       "pinned_authority": "The revocation authority's signing key, pinned by the relying party. The staleness bound itself is a relying-party policy input, graded per consequence.",
       "verifier_behavior": { "file": "packages/verify/revocation.js", "symbol": "verifyRevocation" },
-      "negative_vector": { "suite": "revocation.exec.v1.json", "must": "reject", "case": "a revoked target and a stale/expired revocation statement fail safe rather than open" },
+      "negative_vector": { "suite": "revocation.exec.v2.json", "must": "reject", "case": "an unpinned, future-effective, malformed-target, or algorithm-mislabeled terminal revocation is refused; an effective terminal revocation never ages out" },
       "parity": ["js", "py", "go"],
-      "acceptance_semantics": "VERIFIED = the revocation statement is authentic under the pinned authority key. ACCEPTED = the relying party's own staleness bound is met; stale material fails closed, never open."
+      "acceptance_semantics": "VERIFIED = the terminal revocation statement is authentic under the pinned authority key, exactly target-bound, structurally valid, and effective at the evaluation time. Once effective it does not age out. A claim that a target is currently not revoked is a separate freshness-bounded status decision; stale or absent required status fails closed, never open."
     },
     {
       "claim_id": "timestamp-proof-pinned-tsa",

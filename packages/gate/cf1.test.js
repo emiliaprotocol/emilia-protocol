@@ -38,7 +38,11 @@ test('CF-1: a gate that trusts the WRONG authority cannot earn the badge', async
   const manifest = createDefaultActionRiskManifest();
   // The gate under test trusts the WRONG key → every valid receipt is rejected.
   const wrongHarness = createEg1Harness();
-  const gate = createTrustedActionFirewall({ trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys });
+  const gate = createTrustedActionFirewall({
+    trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys,
+    rpId: wrongHarness.rpId, allowedOrigins: wrongHarness.allowedOrigins,
+    allowEphemeralStore: true,
+  });
   const report = await cf1Conformance({ gate, harness, manifest, selector: EG1_DEFAULT_SELECTOR, action: harness.action });
   assert.equal(report.passed, false);
   const byId = Object.fromEntries(report.checks.map((c) => [c.id, c]));
@@ -49,9 +53,17 @@ test('CF-1: a gate that trusts the WRONG authority cannot earn the badge', async
 test('CF-1: an action the manifest does not declare consequential fails the declaration check', async () => {
   const harness = createEg1Harness();
   const manifest = createDefaultActionRiskManifest();
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys });
+  const gate = createTrustedActionFirewall({
+    trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys,
+    rpId: harness.rpId, allowedOrigins: harness.allowedOrigins,
+    allowEphemeralStore: true,
+  });
   const wrongHarness = createEg1Harness();
-  const wrongGate = createTrustedActionFirewall({ trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys });
+  const wrongGate = createTrustedActionFirewall({
+    trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys,
+    rpId: wrongHarness.rpId, allowedOrigins: wrongHarness.allowedOrigins,
+    allowEphemeralStore: true,
+  });
   // A selector the default manifest does not guard → no requirement resolved.
   const report = await cf1Conformance({
     gate, wrongGate, harness, manifest,

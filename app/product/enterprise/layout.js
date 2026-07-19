@@ -1,12 +1,12 @@
 export const metadata = {
-  title: 'Enterprise — Privileged Action Authorization for Zero Trust',
+  title: 'EMILIA Gate Enterprise — Private Consequence Firewall',
   description:
     'Bound authorization for infrastructure changes, data exports, ' +
     'permission escalations, and production deployments. PAM-layer ' +
     'extension with cryptographic action-binding and named signoff.',
   alternates: { canonical: '/product/enterprise' },
   openGraph: {
-    title: 'EMILIA Enterprise',
+    title: 'EMILIA Gate Enterprise',
     description:
       'Action-bound authorization layered on top of PAM. Cryptographic ' +
       'evidence for every consequential enterprise change.',

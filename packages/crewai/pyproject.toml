@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
 
 [project]
 name = "emilia-crewai"
-version = "0.1.0"
+version = "0.2.0"
 description = "Guard CrewAI tools with EMILIA Protocol — require an offline-verifiable authorization receipt (EP-RECEIPT-v1) before an irreversible tool runs: missing -> refused, valid -> runs, replay -> refused, forged -> refused (RR-1)."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -18,7 +18,7 @@ classifiers = [
   "Topic :: Security",
 ]
 dependencies = [
-  "emilia-verify>=1.0.0",
+  "emilia-verify>=2.7.0",
 ]
 
 [project.optional-dependencies]
@@ -29,5 +29,5 @@ test = ["cryptography>=41", "pytest>=7"]
 Homepage = "https://www.emiliaprotocol.ai/agent-guard"
 Repository = "https://github.com/emiliaprotocol/emilia-protocol"
 
-[tool.setuptools]
+[tool.hatch.build.targets.wheel]
 packages = ["emilia_crewai"]

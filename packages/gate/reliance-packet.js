@@ -51,17 +51,44 @@ function normalizeAdmissibility(adm) {
   };
 }
 
-function evidenceStatus(evidence) {
-  if (!evidence) return { ok: null, length: null, head: null };
-  if (typeof evidence.verify === 'function') return evidence.verify();
-  return evidence;
+async function evidenceStatus(evidence) {
+  if (!evidence) {
+    return { ok: false, length: null, head: null, reason: 'evidence_verification_unavailable' };
+  }
+  try {
+    const status = typeof evidence.verify === 'function'
+      ? await evidence.verify()
+      : await evidence;
+    if (!status || typeof status !== 'object' || Array.isArray(status)) {
+      return { ok: false, length: null, head: null, reason: 'evidence_verification_malformed' };
+    }
+    if (status.ok !== true) {
+      return {
+        ok: false,
+        length: Number.isSafeInteger(status.length) ? status.length : null,
+        head: typeof status.head === 'string' ? status.head : null,
+        reason: status.reason || 'evidence_verification_rejected',
+      };
+    }
+    return {
+      ...status,
+      ok: true,
+      length: Number.isSafeInteger(status.length) ? status.length : null,
+      head: typeof status.head === 'string' ? status.head : null,
+    };
+  } catch {
+    return { ok: false, length: null, head: null, reason: 'evidence_verification_failed' };
+  }
 }
 
 function check(id, ok, detail = null) {
   return { id, ok, ...(detail ? { detail } : {}) };
 }
 
-export function buildReliancePacket({
+/**
+ * @param {{ decision?: any, execution?: any, evidence?: any, manifest?: any, binding?: any, admissibility?: any, verifier?: string }} [o]
+ */
+export async function buildReliancePacket({
   decision,
   execution = null,
   evidence = null,
@@ -70,12 +97,24 @@ export function buildReliancePacket({
   admissibility = null,
   verifier = '@emilia-protocol/gate',
 } = {}) {
-  const evidenceCheck = evidenceStatus(evidence);
+  const evidenceCheck = await evidenceStatus(evidence);
   const decisionHash = decision?.evidence?.hash || decision?.hash || null;
-  const executionBound = !execution || (execution.kind === 'execution' && execution.authorizes_decision === decisionHash);
-  const bindingCheck = binding || decision?.evidence?.execution_binding || decision?.execution_binding || null;
+  const executionBound = Boolean(
+    execution
+    && execution.kind === 'execution'
+    && decisionHash
+    && execution.authorizes_decision === decisionHash,
+  );
+  // Prefer the binding carried by the execution proof. Authorization-time
+  // binding alone is not enough: an executor could otherwise attest a
+  // different mutation and still receive a rely verdict.
+  const bindingCheck = execution?.execution_binding
+    || binding
+    || decision?.evidence?.execution_binding
+    || decision?.execution_binding
+    || null;
   const allowed = decision?.allow === true;
-  const evidenceOk = evidenceCheck.ok !== false;
+  const evidenceOk = evidenceCheck.ok === true;
   const bindingOk = bindingCheck ? bindingCheck.ok === true : true;
 
   // Admissibility block (relying-party evaluator output, computed OFFLINE against
@@ -96,6 +135,10 @@ export function buildReliancePacket({
       action: decision?.action || null,
       receipt_id: decision?.evidence?.receipt_id || decision?.receipt_id || null,
       subject: decision?.evidence?.subject || null,
+      policy_id: decision?.evidence?.evaluated_policy_id || null,
+      policy_hash: decision?.evidence?.evaluated_policy_hash || null,
+      tenant_id: decision?.evidence?.evaluated_tenant_id || null,
+      approvers: decision?.evidence?.evaluated_approvers || [],
       required_tier: decision?.evidence?.required_tier || decision?.required_tier || null,
       observed_tier: decision?.evidence?.have_tier || decision?.have_tier || null,
       decision_hash: decisionHash,
@@ -117,8 +160,8 @@ export function buildReliancePacket({
       check('assurance_sufficient', allowed || decision?.reason !== 'assurance_too_low', decision?.reason === 'assurance_too_low' ? 'receipt tier below action requirement' : null),
       check('receipt_one_time_consumed', allowed || decision?.reason === 'replay_refused' ? decision?.reason !== 'replay_refused' : null),
       check('execution_fields_bound', bindingCheck ? bindingCheck.ok === true : null, bindingCheck ? { missing_observed_fields: bindingCheck.missing_observed_fields || [], mismatched_fields: bindingCheck.mismatched_fields || [] } : 'no material execution-field binding required by this action'),
-      check('execution_attests_decision', execution ? executionBound : null, execution ? null : 'no execution record supplied'),
-      check('evidence_log_intact', evidenceCheck.ok === undefined ? null : evidenceCheck.ok, evidenceCheck.reason || null),
+      check('execution_attests_decision', executionBound, execution ? null : 'no execution record supplied'),
+      check('evidence_log_intact', evidenceCheck.ok === true, evidenceCheck.reason || null),
       // Admissibility verdict against the relying party's PINNED profile. null when
       // no profile/verdict was supplied (this reliance did not gate on admissibility);
       // true only for a recognized 'admissible' verdict; false otherwise (fail closed).

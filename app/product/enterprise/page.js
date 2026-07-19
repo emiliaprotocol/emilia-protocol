@@ -56,7 +56,7 @@ export default function EnterprisePage() {
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
         <div style={styles.eyebrowBlue}>Product / Enterprise</div>
-        <h1 style={styles.h1}>EP Enterprise</h1>
+        <h1 style={styles.h1}>EMILIA Gate Enterprise</h1>
         <p style={{ ...styles.body, maxWidth: 640 }}>
           Hardened deployment for regulated environments that require private infrastructure, data residency, and compliance-grade evidence.
         </p>
@@ -68,7 +68,9 @@ export default function EnterprisePage() {
         <div style={styles.section}>
           <h2 style={styles.h2}>Enterprise capabilities</h2>
           <p style={styles.body}>
-            EP Enterprise provides the full trust-control plane deployed within your infrastructure. Every feature available in EP Cloud, plus the controls required by regulated environments.
+            Gate Enterprise deploys the enforcement and control plane within your infrastructure.
+            It includes the managed Gate capabilities plus private trust roots, deployment controls,
+            and evidence operations for regulated environments.
           </p>
           <div style={grid.auto(280)}>
             {FEATURES.map((f, i) => (
@@ -103,13 +105,13 @@ export default function EnterprisePage() {
       {/* Deployment models */}
       <section style={styles.section}>
         <h2 style={styles.h2}>Deployment models</h2>
-        <p style={styles.body}>EP Enterprise supports multiple deployment topologies based on your security requirements and infrastructure constraints.</p>
+        <p style={styles.body}>Gate Enterprise supports multiple deployment topologies based on your security requirements and infrastructure constraints.</p>
         <div style={grid.stack}>
           {[
             { title: 'Customer VPC (AWS today)', body: 'EP control plane deployed in your cloud account. You control the network boundary, encryption keys, and data lifecycle. We provide the container images, the AWS CloudFormation template (infrastructure/aws/template.yaml), configuration, and operational runbooks.' },
             { title: 'Private cloud / on-prem (pilot-track)', body: 'On-premises deployment for environments that require physical infrastructure control. Container images run anywhere Linux runs; Helm charts, OpenShift operators, and VMware OVF templates are scoped per pilot rather than shipped as off-the-shelf artifacts.' },
             { title: 'Air-gapped', body: 'A self-contained offline installer (deploy/airgap/): build the bundle on a connected machine, transfer one tarball, and install with no network — the running stack has no route off the host, enforced by the network driver. The bundle is built and statically validated in CI (self-containment audit plus a proof that receipts verify with zero network); the full no-egress container run and the deployment on your certified-isolated hardware are performed together during onboarding.' },
-            { title: 'Hybrid', body: 'Policy management and event explorer in EP Cloud. Signoff orchestration and evidence storage in your infrastructure. Minimizes operational burden while maintaining data residency for sensitive records.' },
+            { title: 'Hybrid', body: 'Policy management and event exploration in Gate Cloud, with approval orchestration and evidence storage in your infrastructure. This reduces operational burden while keeping sensitive records within your boundary.' },
           ].map((d, i) => (
             <div key={i} className="ep-card-hover" style={styles.card}>
               <div style={styles.cardTitle}>{d.title}</div>

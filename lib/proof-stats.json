@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-12T21:46:57.831Z",
+  "generatedAt": "2026-07-19T06:50:23.103Z",
   "tests": {
-    "total": 5564,
-    "files": 278,
+    "total": 6729,
+    "files": 353,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
@@ -11,8 +11,8 @@
   },
   "alloy": {
     "facts": 35,
-    "assertions": 22,
-    "version": "6.0.0 (CI)"
+    "assertions": 32,
+    "version": "6.2.0 (CI)"
   },
   "tamarin": {
     "model": "EP-RELIANCE-COMPOSED-v2",
@@ -23,13 +23,13 @@
   },
   "securityCase": {
     "status": "passed",
-    "claims": 16,
-    "evidenceFiles": 73,
-    "evidenceBundleSha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+    "claims": 26,
+    "evidenceFiles": 121,
+    "evidenceBundleSha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
   },
   "conformance": {
-    "suites": 17,
-    "vectors": 193,
+    "suites": 18,
+    "vectors": 251,
     "referencePorts": 3,
     "relationship": "same_team_ports"
   },

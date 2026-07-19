@@ -52,9 +52,9 @@ variable "image_pull_policy" {
 }
 
 variable "replicas" {
-  description = "Number of gate replicas. Replay defense across >1 replica requires a shared consumption store (see README) — the module deploys the pods either way, but fleet-safety is the deployer's configuration responsibility."
+  description = "Number of legacy gate replicas. Values above one require explicit Secret-backed shared consumption and evidence backend references."
   type        = number
-  default     = 2
+  default     = 1
 
   validation {
     condition     = var.replicas >= 1 && floor(var.replicas) == var.replicas
@@ -92,6 +92,99 @@ variable "issuer_keys_secret_key" {
   validation {
     condition     = length(trimspace(var.issuer_keys_secret_key)) > 0
     error_message = "issuer_keys_secret_key must be non-empty."
+  }
+}
+
+variable "shared_consumption_backend" {
+  description = "Secret-backed environment reference for a shared durable consumption backend used by a custom legacy image. Required with replicas > 1."
+  type = object({
+    env_name    = string
+    secret_name = string
+    secret_key  = string
+  })
+  default  = null
+  nullable = true
+
+  validation {
+    condition = var.shared_consumption_backend == null ? true : (
+      can(regex("^[A-Za-z_][A-Za-z0-9_]*$", var.shared_consumption_backend.env_name))
+      && trimspace(var.shared_consumption_backend.secret_name) != ""
+      && trimspace(var.shared_consumption_backend.secret_key) != ""
+    )
+    error_message = "shared_consumption_backend must provide a valid env_name and non-empty existing Secret name/key."
+  }
+}
+
+variable "shared_evidence_backend" {
+  description = "Secret-backed environment reference for a shared durable evidence backend used by a custom legacy image. Required with replicas > 1."
+  type = object({
+    env_name    = string
+    secret_name = string
+    secret_key  = string
+  })
+  default  = null
+  nullable = true
+
+  validation {
+    condition = var.shared_evidence_backend == null ? true : (
+      can(regex("^[A-Za-z_][A-Za-z0-9_]*$", var.shared_evidence_backend.env_name))
+      && trimspace(var.shared_evidence_backend.secret_name) != ""
+      && trimspace(var.shared_evidence_backend.secret_key) != ""
+    )
+    error_message = "shared_evidence_backend must provide a valid env_name and non-empty existing Secret name/key."
+  }
+}
+
+variable "github_token_secret_name" {
+  description = "Optional existing Secret containing a GitHub token. Only the Secret reference enters Terraform state."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.github_token_secret_name == null ? true : can(regex("^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$", var.github_token_secret_name))
+    error_message = "github_token_secret_name must be null or a Kubernetes Secret name."
+  }
+}
+
+variable "github_token_secret_key" {
+  description = "Key in github_token_secret_name containing the GitHub token."
+  type        = string
+  default     = "token"
+
+  validation {
+    condition     = trimspace(var.github_token_secret_key) != ""
+    error_message = "github_token_secret_key must be non-empty."
+  }
+}
+
+variable "github_token_env_name" {
+  description = "Environment variable populated from github_token_secret_name."
+  type        = string
+  default     = "GITHUB_TOKEN"
+
+  validation {
+    condition     = can(regex("^[A-Za-z_][A-Za-z0-9_]*$", var.github_token_env_name))
+    error_message = "github_token_env_name must be a valid environment variable name."
+  }
+}
+
+variable "secret_env" {
+  description = "Additional environment variables populated from existing Kubernetes Secrets. Secret values are never module inputs."
+  type = map(object({
+    secret_name = string
+    secret_key  = string
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for env_name, reference in var.secret_env :
+      can(regex("^[A-Za-z_][A-Za-z0-9_]*$", env_name))
+      && trimspace(reference.secret_name) != ""
+      && trimspace(reference.secret_key) != ""
+    ])
+    error_message = "secret_env keys must be environment variable names and each Secret name/key must be non-empty."
   }
 }
 

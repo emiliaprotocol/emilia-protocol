@@ -1,149 +1,96 @@
-name: Alloy
+name: Alloy Model Checker
 
-# Opt every JavaScript-based action into the Node.js 24 runner.
+permissions: read-all
+
+# Opt every JavaScript-based action into the Node.js 24 runner (mirrors tlc.yml).
 # GitHub forces this default in June 2026; doing it now eliminates the
-# deprecation-warning noise on every run and surfaces any Node-24 incompat
-# early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
+# deprecation-warning noise on every run and surfaces any Node-24 incompat early.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   push:
     paths:
-      - 'formal/*.als'
+      - 'formal/**.als'
+      - 'formal/AlloyCheck.java'
+      - '.github/workflows/alloy.yml'
+  pull_request:
+    paths:
+      - 'formal/**.als'
+      - 'formal/AlloyCheck.java'
       - '.github/workflows/alloy.yml'
   workflow_dispatch:
 
 jobs:
-  alloy-check:
+  alloy:
+    name: Check formal/*.als (Alloy 6.2.0, SAT4J)
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      - uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287  # v5.3.0
+      - name: Set up Java
+        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287  # v5.3.0
         with:
+          distribution: temurin
           java-version: '17'
-          distribution: 'temurin'
 
-      - name: Download Alloy 6 (pinned release + checksum)
-        # v6.0.0 is the latest release that ships a flat org.alloytools.alloy.dist.jar.
-        # v6.1.0 has no jar asset; v6.2.0 only ships platform-specific zips.
-        # Verify the SHA-256 so a re-cut release asset can't inject a different jar.
-        # To bump: change ALLOY_VERSION, recompute with `shasum -a 256 alloy.jar`,
-        # and update ALLOY_SHA256.
+      - name: Download org.alloytools.alloy.dist.jar (pinned release + checksum)
+        # Pin to a tagged release (NOT the mutable `latest`) and verify the
+        # SHA-256 so a compromised or re-cut release asset can't inject a
+        # different jar. v6.2.0 does ship the flat dist jar (contrary to an
+        # earlier assumption); it is the version the models were executed against.
+        # To bump: change ALLOY_VERSION, download the new jar, recompute the hash
+        # with `shasum -a 256 alloy.jar`, and update ALLOY_SHA256.
         env:
-          ALLOY_VERSION: v6.0.0
-          ALLOY_SHA256: ac0ee637172ed035a4ca43327d5e09c05990aa0d073887308e30f88c2471370c
+          ALLOY_VERSION: v6.2.0
+          ALLOY_SHA256: 6b8c1cb5bc93bedfc7c61435c4e1ab6e688a242dc702a394628d9a9801edb78d
         run: |
           curl -fsSL -o alloy.jar \
             "https://github.com/AlloyTools/org.alloytools.alloy/releases/download/${ALLOY_VERSION}/org.alloytools.alloy.dist.jar"
           echo "${ALLOY_SHA256}  alloy.jar" | sha256sum -c -
 
-      - name: Write Alloy runner
+      - name: Compile the headless runner
+        working-directory: formal
+        run: javac -cp ../alloy.jar AlloyCheck.java
+
+      - name: Execute every command in every model
+        working-directory: formal
         run: |
-          cat > AlloyCheck.java << 'JAVAEOF'
-          // Alloy v6 reorganized packages: alloy4compiler.ast → ast,
-          // alloy4compiler.parser → parser, alloy4compiler.translator → translator.
-          // alloy4.* (A4Reporter, Err, ErrorWarning) is unchanged.
-          import edu.mit.csail.sdg.alloy4.A4Reporter;
-          import edu.mit.csail.sdg.alloy4.Err;
-          import edu.mit.csail.sdg.alloy4.ErrorWarning;
-          import edu.mit.csail.sdg.ast.Command;
-          import edu.mit.csail.sdg.ast.Module;
-          import edu.mit.csail.sdg.parser.CompUtil;
-          import edu.mit.csail.sdg.translator.A4Options;
-          import edu.mit.csail.sdg.translator.A4Solution;
-          import edu.mit.csail.sdg.translator.TranslateAlloyToKodkod;
-          import java.util.ArrayList;
-          import java.util.List;
+          # AlloyCheck runs each `check` and `run` command in each model and exits
+          # non-zero if ANY assertion produces a counterexample or any predicate is
+          # vacuous. Kodkod's solver progress goes to stderr; the per-command
+          # verdicts go to stdout, which we tee for the artifact.
+          set -o pipefail
+          java -cp ../alloy.jar:. AlloyCheck \
+            ep_relations.als \
+            ep_federation.als \
+            ep_quorum.als \
+            ep_delegation.als \
+            2>/dev/null | tee alloy-output.txt
+          # tee would mask the runner's exit code; pipefail (above) propagates it.
 
-          public class AlloyCheck {
-              public static void main(String[] args) throws Exception {
-                  if (args.length < 1) {
-                      System.err.println("Usage: AlloyCheck <model.als>");
-                      System.exit(1);
-                  }
-                  String modelPath = args[0];
-
-                  List<String> warnings = new ArrayList<>();
-                  A4Reporter rep = new A4Reporter() {
-                      @Override
-                      public void warning(ErrorWarning msg) {
-                          warnings.add("WARNING: " + msg);
-                          System.out.println("WARNING: " + msg);
-                      }
-                  };
-
-                  System.out.println("Parsing: " + modelPath);
-                  Module world = CompUtil.parseEverything_fromFile(rep, null, modelPath);
-                  System.out.println("Parse OK.");
-
-                  A4Options options = new A4Options();
-                  options.solver = A4Options.SatSolver.SAT4J;
-
-                  List<Command> commands = world.getAllCommands();
-                  System.out.println("Commands: " + commands.size());
-
-                  int checks = 0, passes = 0, failures = 0, runs = 0, satisfiable = 0;
-                  for (Command cmd : commands) {
-                      System.out.printf("  %-12s %s ... ", cmd.check ? "check" : "run", cmd.label);
-                      System.out.flush();
-                      A4Solution sol = TranslateAlloyToKodkod.execute_command(
-                          rep, world.getAllReachableSigs(), cmd, options);
-                      if (cmd.check) {
-                          checks++;
-                          if (sol.satisfiable()) {
-                              System.out.println("COUNTEREXAMPLE FOUND");
-                              failures++;
-                          } else {
-                              System.out.println("No counterexample found.");
-                              passes++;
-                          }
-                      } else {
-                          runs++;
-                          if (sol.satisfiable()) {
-                              System.out.println("instance found");
-                              satisfiable++;
-                          } else {
-                              System.out.println("no instance");
-                          }
-                      }
-                  }
-
-                  System.out.println();
-                  System.out.println("Results:");
-                  System.out.printf("  checks: %d passed, %d failed%n", passes, failures);
-                  System.out.printf("  runs:   %d satisfiable%n", satisfiable);
-
-                  if (failures > 0) {
-                      System.out.println();
-                      System.out.println("FAIL: " + failures + " check(s) found counterexamples.");
-                      System.exit(1);
-                  }
-                  System.out.println("OK: all checks passed.");
-              }
-          }
-          JAVAEOF
-
-      - name: Compile runner
-        run: javac -cp alloy.jar AlloyCheck.java
-
-      - name: Run Alloy checks
+      - name: Check Alloy result
+        working-directory: formal
         run: |
-          # Check every model in formal/. A counterexample in any one fails CI.
-          rc=0
-          for model in formal/*.als; do
-            echo "::group::Alloy — $model"
-            java -cp .:alloy.jar AlloyCheck "$model" || rc=1
-            echo "::endgroup::"
-          done
-          exit $rc
+          if grep -q "COUNTEREXAMPLE FOUND" alloy-output.txt; then
+            echo "Alloy: an assertion was violated."
+            grep "COUNTEREXAMPLE FOUND" alloy-output.txt
+            exit 1
+          fi
+          if grep -q "OK: all assertions hold" alloy-output.txt; then
+            echo "Alloy: all assertions hold, all predicates consistent."
+          else
+            echo "Alloy did not produce a clean completion message. Check the artifact."
+            cat alloy-output.txt
+            exit 1
+          fi
 
       - name: Upload Alloy output
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: alloy-output
-          path: formal/*.als
-          retention-days: 30
+          path: formal/alloy-output.txt
+          retention-days: 90

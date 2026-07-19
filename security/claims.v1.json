@@ -8,9 +8,98 @@
   "release_artifacts": {
     "verify-sdk": { "kind": "npm", "path": "packages/verify" },
     "gate-sdk": { "kind": "npm", "path": "packages/gate" },
+    "mobile-sdk": { "kind": "npm", "path": "packages/mobile" },
     "security-evidence": { "kind": "content-addressed-evidence-bundle" }
   },
   "claims": [
+    {
+      "claim_id": "class-a-signed-decision-parity",
+      "statement": "A Class-A approval or denial is a device-signed terminal decision over the same canonical action context; the operator cannot relabel the outcome after signing or use bearer authentication to deny a Class-A request.",
+      "acceptance_roots": ["approver credential key pinned from enrollment", "single-use WebAuthn challenge store and decided-once audit constraint"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/webauthn.js", "symbol": "buildAuthorizationContext", "exported": true },
+        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js", "symbol": "POST", "exported": true },
+        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js", "symbol": "POST", "exported": true },
+        { "language": "javascript", "file": "lib/guard-signoff.js", "symbol": "handleSignoffDecision", "exported": true },
+        { "language": "javascript", "file": "lib/signoff/decision-evidence.js", "symbol": "buildPortableSignoffDecision", "exported": true },
+        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyWebAuthnSignoff", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "lib/signoff/decision-evidence.js", "export": "buildPortableSignoffDecision" },
+        { "language": "javascript", "file": "packages/verify/index.js", "export": "verifyWebAuthnSignoff" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "security/vectors.v1.json" },
+        "python": { "status": "gap", "reason": "Python verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths." },
+        "go": { "status": "gap", "reason": "Go verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_device_signed_denial", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_signed_denial_relabel", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_class_a_bearer_denial", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/signoff-decision-evidence.test.js", "title": "exports a device-signed denial that verifies offline under a pinned approver key", "runner": "vitest" },
+        { "file": "tests/v1-api.test.js", "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence", "runner": "vitest" },
+        { "file": "tests/webauthn-approve-route.test.js", "title": "refuses to relabel a device-signed denial as approval", "runner": "vitest" },
+        { "file": "tests/v1-api.test.js", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt", "runner": "vitest" },
+        { "file": "tests/webauthn-lib.test.js", "title": "treats a matching rejection as equally terminal", "runner": "vitest" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "TLA+ and Alloy model rejection terminality, but the exact decision-in-WebAuthn-challenge bytes, API alias mapping, and bearer-path assurance gate are executable properties rather than a composed formal proof." }
+      ],
+      "assumptions": ["the enrolled approver key belongs to the named approver", "the authenticator and relying-party origin are not compromised before the ceremony", "the challenge and audit stores preserve their enforced uniqueness constraints"],
+      "exclusions": ["the verifier does not infer why a human denied", "a compromised authentic device can still sign a harmful outcome", "legacy lower-assurance denial events are not represented as Class-A evidence"],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "four-outcome-resolution-preserves-meaning",
+      "statement": "A binding-moment resolution preserves approved, declined, amended, and rejected as distinct device-signed outcomes bound to the exact well-formed source envelope and action; no negative outcome authorizes the original action, and an approval authorizes only under a complete relying-party-pinned acceptance context.",
+      "acceptance_roots": ["role-scoped principal key and principal identity pinned by the relying party", "exact source binding-moment envelope and action digest supplied by the relying party", "WebAuthn RP ID and exact origin allowlist pinned by the relying party", "option-to-action mapping, nonce, initiator, and evaluation time pinned by the relying party"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/verify/resolution.js", "symbol": "verifyResolutionReceipt", "exported": true },
+        { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_resolution_receipt", "exported": true },
+        { "language": "go", "file": "packages/go-verify/resolution.go", "symbol": "VerifyResolutionReceipt", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/verify/resolution.js", "export": "verifyResolutionReceipt" },
+        { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_resolution_receipt" },
+        { "language": "go", "file": "packages/go-verify/resolution.go", "symbol": "VerifyResolutionReceipt" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/resolution.v1.json" },
+        "python": { "status": "covered", "evidence": "conformance/vectors/resolution.v1.json" },
+        "go": { "status": "covered", "evidence": "conformance/vectors/resolution.v1.json" }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "accept_approved", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "accept_declined", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_declined_as_authorization", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_option_binding", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_nonce_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_initiator_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_evaluation_time", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_outcome_relabel", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_cross_principal_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_wrong_origin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_malformed_binding_moment", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_noncanonical_binding_moment", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_impossible_calendar_date", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
+      ],
+      "tests": [
+        { "file": "packages/verify/resolution.test.js", "title": "all four authentic outcomes verify while only approved authorizes", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "an approved receipt does not authorize until the relying party pins the option-to-action mapping", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "changing a signed outcome from declined to approved fails", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "a presenter-supplied or cross-principal key cannot establish authority", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "malformed envelopes and cross-language-unsafe signed values fail before digest credit", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The exact four-outcome discriminated union, complete acceptance-context rule, source-envelope grammar, origin check, envelope digest, and WebAuthn challenge bytes are covered by executable cross-language vectors but are not yet represented in TLA+, Alloy, or Tamarin." }
+      ],
+      "assumptions": ["the relying party maps the selected option to the exact action correctly", "the role-pinned principal key, RP ID, origin allowlist, nonce, initiator, and evaluation time are authentic", "the consuming surface faithfully presents the envelope and action that the signed digests denote"],
+      "exclusions": ["the profile does not prove the briefing was truthful or unbiased", "the profile does not prove display faithfulness without separate presentation evidence", "the profile does not provide exactly-once consumption, revocation currency, trusted time, or quorum by itself"],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
     {
       "claim_id": "class-a-downgrade-refused",
       "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",
@@ -40,6 +129,39 @@
       ],
       "assumptions": ["the enrolled approver key and class are authentic", "the device key is not compromised before acceptance"],
       "exclusions": ["enrollment fraud and compromised authenticators are outside this verifier claim"],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "signed-denial-cannot-authorize",
+      "statement": "An authentic device-signed negative human decision remains verifiable decision evidence but cannot satisfy approval, separation-of-duties, quorum, assurance, authority, action-material, or reliance predicates in the Trust Receipt verifier.",
+      "acceptance_roots": ["approver credential keys and relying-party policy pinned independently of the presented receipt"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyTrustReceipt", "exported": true },
+        { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_trust_receipt" },
+        { "language": "go", "file": "packages/go-verify/trust_receipt.go", "symbol": "VerifyTrustReceipt" }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/verify/index.js", "export": "verifyTrustReceipt" },
+        { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_trust_receipt" },
+        { "language": "go", "file": "packages/go-verify/trust_receipt.go", "symbol": "VerifyTrustReceipt" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/trust-receipt.exec.v1.json" },
+        "python": { "status": "covered", "evidence": "conformance/vectors/trust-receipt.exec.v1.json" },
+        "go": { "status": "covered", "evidence": "conformance/vectors/trust-receipt.exec.v1.json" }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/trust-receipt.exec.v1.json", "case_id": "accept_valid_receipt", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/trust-receipt.exec.v1.json", "case_id": "reject_signed_denial_as_authorization", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
+      ],
+      "tests": [
+        { "file": "packages/verify/trust-receipt.test.js", "title": "a signed denied receipt remains valid decision evidence but cannot authorize reliance", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "execution_has_honest_approvals_or_prior_compromise", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The composed model requires honest approval events or prior compromise before execution; the concrete four-outcome parser and every denied-evidence projection are enforced by executable cross-language code rather than modeled as one discriminated union." }
+      ],
+      "assumptions": ["the relying party pins the authentic approver directory and acceptance profile", "the signoff outcome remains inside the authenticated context checked by each port"],
+      "exclusions": ["the verifier preserves a valid negative decision as evidence but does not infer the reason, wisdom, or legal effect of that decision", "this claim does not prevent a compromised authentic approver device from signing an approval"],
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
@@ -145,9 +267,9 @@
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
-      "claim_id": "revocation-is-pinned-and-fresh",
-      "statement": "Revocation state is accepted only under a pinned revoker key, for the exact target, and within the relying party's freshness window.",
-      "acceptance_roots": ["revocation authority key and maximum staleness pinned by the relying party"],
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "statement": "A terminal revocation is accepted only under a pinned revoker key, for the exact well-formed target, with a valid effective instant at or before the evaluation time; once effective, it does not age out. Fresh evidence that a target is currently not revoked is a separate status input.",
+      "acceptance_roots": ["revocation authority key pinned by the relying party", "trusted evaluation time for future-effective revocations"],
       "enforcement_path": [
         { "language": "javascript", "file": "packages/verify/revocation.js", "symbol": "verifyRevocation", "exported": true }
       ],
@@ -157,23 +279,29 @@
         { "language": "go", "file": "packages/go-verify/revocation.go", "symbol": "VerifyRevocation" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v1.json" },
-        "python": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v1.json" },
-        "go": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v1.json" }
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v2.json" },
+        "python": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v2.json" },
+        "go": { "status": "covered", "evidence": "conformance/vectors/revocation.exec.v2.json" }
       },
       "vectors": [
-        { "suite": "conformance/vectors/revocation.exec.v1.json", "case_id": "accept_pinned_exact_binding", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
-        { "suite": "conformance/vectors/revocation.exec.v1.json", "case_id": "reject_stale_freshness", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "accept_pinned_exact_binding", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "accept_old_terminal_revocation", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "reject_future_effective_instant", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "reject_malformed_target_shape", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/revocation.exec.v2.json", "case_id": "reject_algorithm_label_mismatch", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
       ],
       "tests": [
         { "file": "packages/verify/revocation.test.js", "title": "accepts an authentic, pinned, exactly-bound revocation", "runner": "node-test" },
-        { "file": "packages/verify/revocation.test.js", "title": "rejects a stale statement under a freshness window", "runner": "node-test" }
+        { "file": "packages/verify/revocation.test.js", "title": "an old terminal revocation remains valid despite a legacy max-age option", "runner": "node-test" },
+        { "file": "packages/verify/revocation.test.js", "title": "rejects a revocation whose effective instant is still in the future", "runner": "node-test" },
+        { "file": "packages/verify/revocation.test.js", "title": "rejects malformed targets even when both sides normalize to emptiness", "runner": "node-test" },
+        { "file": "packages/verify/revocation.test.js", "title": "rejects a mismatched signature algorithm label", "runner": "node-test" }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Wall-clock freshness and revocation publication are outside the current symbolic models." }
       ],
-      "assumptions": ["the revoker key pin is current", "the verifier's trusted clock is within the relying party's tolerance"],
-      "exclusions": ["withheld revocation publications require external transparency or availability controls"],
+      "assumptions": ["the revoker key pin is current", "the verifier's trusted clock is within the relying party's tolerance when evaluating a future-effective revocation"],
+      "exclusions": ["withheld revocation publications require external transparency or availability controls", "current non-revocation requires a separately authenticated and freshness-bounded status source"],
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
@@ -309,6 +437,46 @@
       ],
       "assumptions": ["the guarded effect is invoked only through gate.run or the AEC execution gate run method", "the durable backend remains fail-closed"],
       "exclusions": ["the protocol cannot infer whether an unavailable external system applied an effect"],
+      "release_artifacts": ["gate-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "statement": "A pinned network-witness stream advances monotonically until two different signed statements claim the same sequence. That conflict permanently poisons the exact tenant, gate, witness, and capture-point stream; no later sequence can restore acceptance under that stream identity.",
+      "acceptance_roots": ["relying-party-pinned witness key, capture-point identity, configuration digest, and durable sequence store", "tenant and gate scope fixed outside the presented witness statement"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/gate/network-witness.js", "symbol": "createMemoryWitnessSequenceStore", "exported": true },
+        { "language": "javascript", "file": "packages/gate/network-witness.js", "symbol": "acceptNetworkWitnessStatement", "exported": true },
+        { "language": "javascript", "file": "packages/gate/witness-postgres.js", "symbol": "createPostgresWitnessSequenceStore", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/gate/network-witness.js", "export": "createMemoryWitnessSequenceStore" },
+        { "language": "javascript", "file": "packages/gate/network-witness.js", "export": "acceptNetworkWitnessStatement" },
+        { "language": "javascript", "file": "packages/gate/witness-postgres.js", "export": "createPostgresWitnessSequenceStore" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "security/vectors.v1.json" },
+        "python": { "status": "not_applicable", "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Python receipt-verifier surface." },
+        "go": { "status": "not_applicable", "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Go receipt-verifier surface." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_monotonic_witness_sequence", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_witness_stream_after_equivocation", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/gate/network-witness.test.js", "title": "accepts a higher witness sequence before any conflict", "runner": "node-test" },
+        { "file": "packages/gate/network-witness.test.js", "title": "permanently refuses every later sequence after same-sequence equivocation", "runner": "node-test" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "packages/gate/deploy/sql/001-runtime.sql",
+          "contains": ["equivocated      BOOLEAN NOT NULL DEFAULT FALSE", "SET equivocated = TRUE", "IF v_equivocated THEN", "sequence_equivocation"]
+        }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "TLA+, Alloy, and Tamarin do not model this SQL-backed witness-stream state machine; monotonic advance, conflict poisoning, and post-conflict refusal are executable properties." }
+      ],
+      "assumptions": ["the production store linearizes advancement for one exact binary stream identifier", "the witness signing key and capture point are provisioned independently and the signed observation body commits to the action digest", "operators replace a poisoned stream only by provisioning and pinning a new stream identity"],
+      "exclusions": ["a passive witness proves observation, not authorization, enforcement, physical execution, or sensor truth", "the protocol cannot distinguish benign witness failure from malicious equivocation after a conflict"],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },
     {
@@ -478,9 +646,9 @@
       "release_artifacts": ["security-evidence"]
     },
     {
-      "claim_id": "all-package-releases-use-verifiable-bytes",
-      "statement": "Every declared npm and PyPI package release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
-      "acceptance_roots": ["the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory", "the FutureEnterprises owner identity", "the protected registry-publishing-approval environment", "GitHub Actions OIDC identity", "registry trusted-publisher configuration for each package"],
+      "claim_id": "npm-pypi-releases-use-verifiable-bytes",
+      "statement": "Every declared npm and PyPI release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact with security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "acceptance_roots": ["the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory", "the FutureEnterprises owner identity", "the registry-publishing-approval environment", "GitHub Actions OIDC identity", "npm and PyPI trusted-publisher configuration"],
       "enforcement_path": [
         { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "auditReleaseChain", "exported": true },
         { "language": "javascript", "file": "scripts/require-release-approval.mjs", "symbol": "validateReleaseApproval", "exported": true },
@@ -494,54 +662,99 @@
         { "language": "javascript", "file": "scripts/require-release-approval.mjs", "export": "verifyReleaseGitState" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/release-approval.test.js" },
-        "python": { "status": "not_applicable", "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript." },
-        "go": { "status": "not_applicable", "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package." }
+        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.js" },
+        "python": { "status": "not_applicable", "reason": "Python packages are built by pinned Python tooling, while inventory and workflow enforcement are repository controls implemented in JavaScript." },
+        "go": { "status": "not_applicable", "reason": "Go tag publication has a distinct source-and-proxy claim because a Go module is not an OIDC-uploaded registry artifact." }
       },
       "vectors": [
-        { "suite": "security/vectors.v1.json", "case_id": "accept_all_declared_release_chains", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "accept_npm_pypi_release_byte_chains", "polarity": "positive", "expect": { "valid": true } },
         { "suite": "security/vectors.v1.json", "case_id": "reject_release_chain_without_registry_comparison", "polarity": "negative", "expect": { "valid": false } },
         { "suite": "security/vectors.v1.json", "case_id": "accept_owner_approved_release_dispatch", "polarity": "positive", "expect": { "valid": true } },
         { "suite": "security/vectors.v1.json", "case_id": "reject_unapproved_release_dispatch", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
-        { "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses the complete verifiable release chain", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses reproducible registry-byte verification", "runner": "vitest" },
         { "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable PyPI publisher with its post-registry byte comparison removed", "runner": "vitest" },
         { "file": "tests/release-approval.test.js", "title": "accepts an owner dispatch bound to the exact package version and tag", "runner": "vitest" },
         { "file": "tests/release-approval.test.js", "title": "rejects automatic events, other actors, tag drift, and weak confirmation", "runner": "vitest" },
         { "file": "tests/release-approval.test.js", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
         { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@a1948c3f048ba23858d222213b7c278aabede763", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-pypi-package.yml", "contains": ["verify-reproducible-wheel.mjs", "gh-action-pypi-publish@", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
-        { "file": ".github/workflows/publish-issue.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/issue'"] },
-        { "file": ".github/workflows/publish-langchain.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/langchain'"] },
-        { "file": ".github/workflows/publish-mcp.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/mcp-server'"] },
-        { "file": ".github/workflows/publish-require-receipt.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/require-receipt'"] },
-        { "file": ".github/workflows/publish-typescript-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/sdk'"] },
         { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["npm run security-case:emit", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance"] },
         { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
-        { "file": ".github/workflows/publish-python-sdk.yml", "contains": ["verify-reproducible-wheel.mjs sdks/python", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
-        { "file": ".github/workflows/publish-langchain-python.yml", "contains": ["verify-reproducible-wheel.mjs integrations/langchain-emilia", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
         { "file": "release/release-packages.v1.json", "contains": ["EP-RELEASE-PACKAGE-REGISTRY-v1", "@emilia-protocol/verify", "langchain-emilia"] }
       ],
       "formal": [
-        { "status": "not_modeled", "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties." }
+        { "status": "not_modeled", "gap": "Registry account state, hosted CI identity, OIDC, and artifact storage are operational controls rather than symbolic protocol properties." }
       ],
       "assumptions": ["each npm and PyPI project has the matching trusted publisher enabled", "GitHub enforces the required reviewer or records an explicit administrator bypass on registry-publishing-approval", "release tags are protected against update and deletion", "the release registry is updated whenever a publish workflow is added or removed"],
       "exclusions": ["static workflow coverage cannot prove registry-side trusted-publisher settings until a real owner-approved publish succeeds", "a credential acting as FutureEnterprises is operationally equivalent to the owner, so account security remains an external root"],
       "release_artifacts": ["security-evidence"]
     },
     {
+      "claim_id": "go-module-release-is-tag-and-proxy-bound",
+      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
+      "acceptance_roots": ["the checked-in Go module release identity", "the FutureEnterprises owner identity", "the registry-publishing-approval environment", "the workflow-dispatched refs/heads/main commit", "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*", "GitHub tag-ref authority", "proxy.golang.org and sum.golang.org"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "discoverReleaseSurfaces", "exported": true },
+        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "validateGoTagWorkflowText", "exported": true },
+        { "language": "javascript", "file": "scripts/require-release-approval.mjs", "symbol": "verifyUnpublishedReleaseGitState", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "export": "discoverReleaseSurfaces" },
+        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "export": "validateGoTagWorkflowText" },
+        { "language": "javascript", "file": "scripts/require-release-approval.mjs", "export": "verifyUnpublishedReleaseGitState" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.js" },
+        "python": { "status": "not_applicable", "reason": "Release workflow verification is a repository control implemented in JavaScript." },
+        "go": { "status": "covered", "evidence": "packages/go-verify/signoff_compatibility_test.go" }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_go_tag_proxy_chain", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_go_release_without_proxy_comparison", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_go_release_write_job_code_execution", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_go_release_mutable_or_credentialed_checkout", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_unclassified_go_module", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/release-chain-coverage.test.js", "title": "Go release isolates tag write authority and verifies the public proxy origin", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go tag publisher without public-proxy source comparison", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses Go release code execution in the contents-write tag job", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go release checkout that follows mutable main or keeps credentials", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses slash-bearing Go release artifact names derived from the tag", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses an unclassified Go module even when its release manifest is absent", "runner": "vitest" },
+        { "file": "tests/release-approval.test.js", "title": "permits tag creation only from the exact clean main commit with no existing tag", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        { "file": ".github/workflows/publish-go-verify.yml", "contains": ["ref: ${{ github.sha }}", "persist-credentials: false", "--expected-commit \"$GITHUB_SHA\"", "go-version-file: packages/go-verify/go.mod", "refs/tags/packages/go-verify/v*", "rules.has('deletion') && rules.has('update')", "github.rest.git.createRef", "p.Origin?.[key]", "p.GoModSum", "diff -ru packages/go-verify \"$PROXY_DIR\"", "release-artifacts/go-verify-proxy.zip"] },
+        { "file": "packages/go-verify/go-release.json", "contains": ["EP-GO-MODULE-RELEASE-v1", "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "packages/go-verify/v2.3.1"] },
+        { "file": "release/release-packages.v1.json", "contains": ["github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2", "publish-go-verify.yml", "go_tag"] },
+        { "file": "packages/go-verify/signoff_compatibility_test.go", "contains": ["func(map[string]any, string, string) SignoffResult", "func(map[string]any, string) QuorumResult"] }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "GitHub job permissions, environment approvals, VCS refs, Go proxy behavior, and checksum-database state are operational controls." }
+      ],
+      "assumptions": ["GitHub records required-reviewer approval or an explicit administrator bypass on registry-publishing-approval", "the GitHub ruleset API accurately reports active update-and-deletion protection", "the dispatched main commit is the owner-reviewed source intended for release", "proxy.golang.org and sum.golang.org remain independently available"],
+      "exclusions": ["the proxy source-tree comparison proves source equivalence, not byte identity between the Git archive and the proxy's canonical module zip", "the tag must exist before the proxy can serve it, so a post-tag verification failure requires a higher corrective version or module retraction and never a moved tag", "the first live release still has to demonstrate environment and ruleset configuration"],
+      "release_artifacts": ["security-evidence"]
+    },
+    {
       "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
-      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact digest-only action, satisfy freshness and the pinned revocation provider, and survive durable challenge and action consumption. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact closed action, satisfy freshness and the pinned revocation provider, and survive durable challenge and CAID-keyed action consumption. The executor recomputes the registered CAID over the same bytes as the legacy action digest, emits both identifiers in the clearance, and binds both into its signed effect statement. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
       "acceptance_roots": [
         "the executor provisions the authentic Model-to-Matter profile and issuer keys",
         "the executor pins a revocation provider that supplies an explicit current view",
-        "the challenge backend provides atomic registration and compare-and-set consumption"
+        "the challenge backend provides atomic registration and compare-and-set consumption",
+        "the action-clearance backend is shared, atomic, ownership-fenced, and non-expiring"
       ],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterProfile", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "modelToMatterCaid", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "verifyModelToMatterEvidence", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterExecutor", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "evaluateRegisteredModelToMatterPresentation", "exported": true },
@@ -549,6 +762,7 @@
       ],
       "implementations": [
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "createModelToMatterExecutor" },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "modelToMatterCaid" },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "evaluateRegisteredModelToMatterPresentation" }
       ],
       "language_coverage": {
@@ -562,12 +776,36 @@
       ],
       "tests": [
         { "file": "tests/model-to-matter.test.js", "title": "admits at most one clearance across distinct challenges for the same action", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "uses one registered CAID over the exact bytes every evidence leg binds", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "snapshots the action, profile, and graph before awaiting durable consumption", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "pins all trust configuration and runs one frozen action exactly once", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "pins all trust configuration and invokes the effect adapter only after one successful clearance", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "refuses every transaction-scoped trust field before challenge consumption", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "requires explicit durable custody in production mode", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "conformance/vectors/model-to-matter.v1.json",
+          "contains": [
+            "accept_registered_caid",
+            "refuse_caid_action_substitution",
+            "accept_complete_evidence",
+            "refuse_action_mutation_after_challenge",
+            "refuse_indeterminate_clearance_storage",
+            "admit_at_most_one_of_two_challenges",
+            "refuse_tampered_executor_effect"
+          ]
+        },
+        {
+          "file": "conformance/run-model-to-matter.mjs",
+          "contains": [
+            "evaluateRegisteredModelToMatterPresentation",
+            "verifyModelToMatterCaid",
+            "verifyModelToMatterEffect",
+            "EP-MODEL-TO-MATTER-v1"
+          ]
+        }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models." }
@@ -590,7 +828,7 @@
     },
     {
       "claim_id": "aec-role-substitution-refused",
-      "statement": "EP-AEC returns allow only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
+      "statement": "EP-AEC returns satisfied=true (and an equivalent legacy allow alias) only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
       "acceptance_roots": [
         "relying-party requirement and executor-computed expected action digest",
         "Class-A approver directory, RP ID, allowed WebAuthn origins, policy hash, log key, freshness time, and max age for ep-receipt",
@@ -674,6 +912,322 @@
         "offline AEC verification does not prove current revocation status or atomic one-time consumption; an execution gate must enforce those stateful properties separately"
       ],
       "release_artifacts": ["security-evidence"]
+    },
+    {
+      "claim_id": "mobile-ceremony-exact-binding-and-consumption",
+      "statement": "A native mobile approval or denial is accepted only when exact relying-party-created action, presentation, decision, profile, app, enrollment, origin, and validity bytes pass the pinned Class-A WebAuthn path, independently verified platform evidence is bound to the same request, and the exact registered challenge body is consumed atomically and recorded durably.",
+      "acceptance_roots": [
+        "relying-party-pinned mobile reliance profile, WebAuthn RP ID, origin allowlist, app allowlist, enrollment key, and platform-attestation policy",
+        "agency-authenticated caller and mandatory authorization policy bound to the action reference, approver, profile, app, and enrolled device",
+        "durable body-bound challenge store, authenticator counter store, and strict durable evidence log",
+        "government system of record computes the protected action and presentation"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "verifyMobileCeremony", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "createMobileCeremonyService", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/government.js", "symbol": "createGovernmentMobileController", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/http.js", "symbol": "createMobileHttpHandler", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "verifyMobileCeremony" },
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "createMobileCeremonyService" },
+        { "language": "javascript", "file": "packages/mobile/government.js", "export": "createGovernmentMobileController" },
+        { "language": "javascript", "file": "packages/mobile/http.js", "export": "createMobileHttpHandler" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },
+        "python": { "status": "gap", "reason": "No Python mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports." },
+        "go": { "status": "gap", "reason": "No Go mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports." }
+      },
+      "vectors": [
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "accept_ios_and_android_class_a", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_mobile_substitution_matrix", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_mobile_replay_and_state_failure", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_mobile_http_boundary_attacks", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/mobile/index.test.js", "title": "verifies iOS and Android ceremonies as the same Class-A evidence shape", "runner": "node-test" },
+        { "file": "packages/mobile/index.test.js", "title": "refuses action, presentation, origin, app, credential, profile, and UV substitution", "runner": "node-test" },
+        { "file": "packages/mobile/index.test.js", "title": "service registers exact bodies and only one concurrent presentation wins", "runner": "node-test" },
+        { "file": "packages/mobile/index.test.js", "title": "service fails closed on store, audit, and counter failures", "runner": "node-test" },
+        { "file": "packages/mobile/government.test.js", "title": "government controller gets action and display bytes from the system of record", "runner": "node-test" },
+        { "file": "packages/mobile/government.test.js", "title": "government controller refuses untrusted fields and unauthorized callers before protected work", "runner": "node-test" },
+        { "file": "packages/mobile/http.test.js", "title": "mobile HTTP adapter rejects insecure, unauthenticated, duplicate, oversized, and unknown input", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The mobile app-integrity row, native SDK validation, HTTP boundary, system-of-record controller, and exact stateful ceremony service are executable but are not represented in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "the enrollment directory correctly binds the approver, credential, app, and attestation key",
+        "the agency identity provider authenticates the caller and the configured authorization hook implements the relying party's intended personnel policy",
+        "the configured App Attest or Play Integrity verifier validates provider evidence and applies the relying party's pins",
+        "all protected execution paths require the consumed ceremony and clocks and durable stores meet their deployment assumptions"
+      ],
+      "exclusions": [
+        "the ceremony does not prove civil identity, comprehension, legality, wisdom, safety, execution, or physical outcome",
+        "App Attest and Play Integrity verification are online dependencies at ceremony time and are not silently claimed as offline-verifiable evidence",
+        "Swift and Kotlin canonical-byte agreement is same-team cross-platform consistency, not an independent implementation"
+      ],
+      "release_artifacts": ["mobile-sdk", "verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
+      "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
+      "acceptance_roots": [
+        "a relying-party-provisioned trust bundle containing the allowed action family, exact mobile reliance profile, Class-A approver directory, log key, policy hash, and operator execution-record key",
+        "a mobile ceremony result that the stateful service consumed and appended to its strict atomic audit log",
+        "the Class-A receipt verifier, CAID verifier, mobile execution-record verifier, and atomic evidence-record verifier"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "createMobileExecutionRecord", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "verifyMobileExecutionRecord", "exported": true },
+        { "language": "javascript", "file": "examples/regulatory-mobile-oversight/lib.mjs", "symbol": "verifyRegulatoryEvidence", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "createMobileExecutionRecord" },
+        { "language": "javascript", "file": "packages/mobile/index.js", "export": "verifyMobileExecutionRecord" },
+        { "language": "javascript", "file": "examples/regulatory-mobile-oversight/lib.mjs", "export": "verifyRegulatoryEvidence" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },
+        "python": { "status": "gap", "reason": "No Python implementation of the regulatory mobile export profile is claimed." },
+        "go": { "status": "gap", "reason": "No Go implementation of the regulatory mobile export profile is claimed." }
+      },
+      "vectors": [
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "accept_regulatory_mobile_evidence_export", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_regulatory_mobile_evidence_substitution", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/mobile/index.test.js", "title": "execution record requires a consumed, audited result and binds the runtime record", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "deterministic mobile fixture exercises the regulator evidence path", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "action and presentation substitution both refuse offline", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "evidence never supplies its own reviewer or operator trust keys", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "unknown package and trust claims are refused instead of ignored", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "runtime statement and audit record cannot be detached or relabeled", "runner": "node-test" },
+        { "file": "examples/regulatory-mobile-oversight/demo.test.mjs", "title": "the report separates direct verification, operator assertions, and nonclaims", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The regulatory export composition and the distinction between direct offline checks and operator runtime assertions are executable but not represented in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "the relying party provisions its trust bundle out of band and correctly vets the reviewer directory, policy, mobile profile, log key, and operator execution-record key",
+        "the operator execution-record signer is protected and accountable for its statements about platform verification, challenge consumption, and audit persistence",
+        "all consequential execution paths are mediated by the same stateful service and system of record"
+      ],
+      "exclusions": [
+        "the operator execution-record signature authenticates the operator's assertion but does not independently replay Apple or Google verification, storage durability, one-time consumption, or physical effect",
+        "the deterministic runnable fixture uses synthetic records, a cryptographic platform-attestation test double, and in-memory backends; it is not evidence of a live-device or government deployment",
+        "the package does not establish clinical correctness, reviewer licensure, comprehension, legal compliance, non-bypassability, or real-world outcome"
+      ],
+      "release_artifacts": ["mobile-sdk", "verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "statement": "A mobile enrollment becomes active only after the agency authorizes the authenticated caller for the named approver at issuance and completion, a WebAuthn registration adapter returns an ES256 P-256 credential under the exact RP, origin, challenge, and user-verification requirements, a platform adapter independently verifies integrity evidence over the exact enrollment binding, the challenge is consumed once, and the directory plus audit event commit atomically.",
+      "acceptance_roots": [
+        "authenticated approver enrollment request and relying-party-owned RP, origin, and app configuration",
+        "cryptographic WebAuthn registration and platform-enrollment verification adapters",
+        "durable body-bound challenge store and atomic enrollment-directory audit commit"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "symbol": "buildMobileEnrollmentBinding", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "symbol": "createMobileEnrollmentService", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "export": "buildMobileEnrollmentBinding" },
+        { "language": "javascript", "file": "packages/mobile/enrollment.js", "export": "createMobileEnrollmentService" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },
+        "python": { "status": "gap", "reason": "No Python enrollment service port is claimed." },
+        "go": { "status": "gap", "reason": "No Go enrollment service port is claimed." }
+      },
+      "vectors": [
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "accept_atomic_mobile_enrollment", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "reject_unverified_or_replayed_mobile_enrollment", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/mobile/enrollment.test.js", "title": "enrolls only after both independently verified registration rows and atomic storage", "runner": "node-test" },
+        { "file": "packages/mobile/enrollment.test.js", "title": "refuses enrollment binding, WebAuthn, platform, replay, and storage failures", "runner": "node-test" },
+        { "file": "packages/mobile/enrollment.test.js", "title": "two concurrent enrollment completions produce at most one active enrollment", "runner": "node-test" },
+        { "file": "packages/mobile/enrollment.test.js", "title": "refuses enrollment when the agency caller is absent or not bound to the approver", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models." }
+      ],
+      "assumptions": [
+        "the injected WebAuthn adapter performs full registration attestation verification and returns the authentic P-256 SPKI",
+        "the injected platform adapter verifies the provider chain or service response under relying-party pins",
+        "the authenticated enrollment requester is permitted to enroll the named approver and the directory operation is atomic"
+      ],
+      "exclusions": [
+        "the package does not infer civil identity from a passkey or platform attestation",
+        "enrollment authorization, personnel vetting, device management, and recovery policy remain relying-party responsibilities",
+        "the simulated adapters in unit tests are test doubles and not production token verifiers"
+      ],
+      "release_artifacts": ["mobile-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "statement": "A GRACE curtailment reaches dispatch only while one canonical action is active, inside the pinned envelope, and approved by the required distinct Class-A mobile roster; post-dispatch compliance is computed only from a separately keyed meter statement, a confirmed Action State record requires that meter digest, and a compliant settlement entitlement is consumed at most once.",
+      "acceptance_roots": [
+        "relying-party-pinned curtailment envelope, mobile profile, approver roster, RP ID, origins, and Class-A credential keys",
+        "deployment-pinned actuator, meter, Action State, and settlement trust configuration",
+        "owner-fenced durable execution and settlement stores"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "verifyGraceMobileAuthorization", "exported": true },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "executeGraceCurtailment", "exported": true },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "buildActionStateCapsule", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "verifyGraceMobileAuthorization" },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "executeGraceCurtailment" },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "buildActionStateCapsule" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/grace-mobile-grid.v1.json" },
+        "python": { "status": "gap", "reason": "No Python port of the GRACE vertical composition is claimed; the existing Python receipt verifier is a lower-layer primitive." },
+        "go": { "status": "gap", "reason": "No Go port of the GRACE vertical composition is claimed; the existing Go receipt verifier is a lower-layer primitive." }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "accept_two_person_curtailment_and_single_settlement", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_initiator_self_approval", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_inactive_action_before_dispatch", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_concurrent_replay", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "conformance/vectors/grace-mobile-grid.v1.json", "case_id": "reject_meter_rule_smuggling", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/grace-mobile-grid.test.js", "title": "executes, measures, emits a valid -02 Signed Statement, and settles once", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses initiator self-approval under the pinned mobile roster", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses an inactive or expired action before touching COSA", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "burns an indeterminate dispatch and never retries the physical effect", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "consumes one execution and one settlement under concurrent duplicate delivery", "runner": "vitest" },
+        { "file": "tests/grace-mobile-grid.test.js", "title": "refuses meter signature substitution and market-rule smuggling", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "examples/grace/live-control-room.mjs",
+          "contains": [
+            "2 distinct Class-A handshakes: VERIFIED",
+            "CONSUMED ONCE",
+            "no physical grid event is claimed"
+          ]
+        }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "every protected curtailment path is completely mediated by the execution store and configured actuator",
+        "the deployed actuator and meter adapters verify under correctly provisioned, independently governed keys and the meter reports truthful physical readings",
+        "the execution and settlement stores preserve owner fencing and atomic reserve or commit behavior under deployment faults",
+        "the grid program selects the correct baseline methodology and settlement policy"
+      ],
+      "exclusions": [
+        "the shipped COSA actuator and meter are reference simulations and are not evidence of a physical grid event, utility integration, adoption, or partner endorsement",
+        "cryptographic meter integrity does not prove sensor truth, baseline economic correctness, grid safety, or absence of an out-of-band bypass",
+        "the Action State output is an unregistered signed statement and is not claimed as a SCITT transparency-service anchor",
+        "the upstream Action State parser check is time-pinned interoperability evidence, not an independent implementation of GRACE"
+      ],
+      "release_artifacts": ["security-evidence"]
+    },
+    {
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. When a project-system source is supplied, its complete stable snapshot digest binds the provider origin, company, project, record type and identifier, normalized payload, observation time, and non-authoritative claim boundary as a signed typed material term inside that exact action. The portable package keeps project source, document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
+      "acceptance_roots": [
+        "relying-party-pinned document-mapping issuer, Action Escrow profile, party keys, operator state key, and custodian adapter configuration",
+        "the exact final PDF bytes and signed Document Action Binding whose closed material-term profile commits the payment action and evidence requirements",
+        "when configured, an authenticated complete project-system snapshot whose digest is independently mapped into the signed release action",
+        "a licensed external custodian that exclusively mediates funding and release for the configured transaction and honors idempotency"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/gate/action-escrow.js", "symbol": "createActionEscrowKernel", "exported": true },
+        { "language": "javascript", "file": "packages/gate/action-escrow-verifiers.js", "symbol": "createActionEscrowContractorDocumentBindingVerifier", "exported": true },
+        { "language": "javascript", "file": "packages/gate/action-escrow-custodian.js", "symbol": "createActionEscrowCustodianBridge", "exported": true },
+        { "language": "javascript", "file": "packages/gate/action-escrow-package.js", "symbol": "assembleActionEscrowContractorEvidencePackage", "exported": true },
+        { "language": "javascript", "file": "packages/gate/action-escrow-evidence.js", "symbol": "verifyActionEscrowEvidencePackage", "exported": true },
+        { "language": "javascript", "file": "packages/gate/action-escrow-postgres.js", "symbol": "createActionEscrowPostgresStore", "exported": true },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/escrow-com.js", "symbol": "createEscrowComAdapter", "exported": true },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "symbol": "createProcoreChangeOrderAdapter", "exported": true },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "symbol": "verifyProcoreChangeOrderEvidence", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/gate/action-escrow.js", "export": "createActionEscrowKernel" },
+        { "language": "javascript", "file": "packages/gate/action-escrow-verifiers.js", "export": "createActionEscrowContractorDocumentBindingVerifier" },
+        { "language": "javascript", "file": "packages/gate/action-escrow-custodian.js", "export": "createActionEscrowCustodianBridge" },
+        { "language": "javascript", "file": "packages/gate/action-escrow-package.js", "export": "assembleActionEscrowContractorEvidencePackage" },
+        { "language": "javascript", "file": "packages/gate/action-escrow-evidence.js", "export": "verifyActionEscrowEvidencePackage" },
+        { "language": "javascript", "file": "packages/gate/action-escrow-postgres.js", "export": "createActionEscrowPostgresStore" },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/escrow-com.js", "export": "createEscrowComAdapter" },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "export": "createProcoreChangeOrderAdapter" },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "export": "verifyProcoreChangeOrderEvidence" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "security/vectors.v1.json" },
+        "python": { "status": "gap", "reason": "No Python implementation of the Action Escrow product profile or stateful release kernel is claimed." },
+        "go": { "status": "gap", "reason": "No Go implementation of the Action Escrow product profile or stateful release kernel is claimed." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_action_escrow_exact_release_once", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_committed_fact_substitution", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_role_substitution", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_funded_amendment_without_unwind", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_journal_divergence", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_verifier_echo_substitution", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_expired_release_approval", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_funding_request_state_fallback", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_compensated_history_pruning", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_database_role_or_clock_rollback", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_custodian_alias_or_unfunded_release", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "accept_action_escrow_project_source_snapshot", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_project_source_substitution", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_project_sidecar_bytes_substitution", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_action_escrow_project_source_context_relabeling", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "packages/gate/action-escrow.test.js", "title": "runs the complete milestone lifecycle and releases exactly once", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow.test.js", "title": "signed action commitments cannot be replaced by verifier-selected funding or evidence", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow.test.js", "title": "concurrent release requests durably reserve once before provider invocation", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-evidence.test.js", "title": "document execution, agreement acceptance, and release approval are non-substitutable rows", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-evidence.test.js", "title": "component verifiers must echo the exact agreement, binding, and action they checked", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-custodian.test.js", "title": "bridges the exact signed action to provider release and a portable observation", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-postgres.test.js", "title": "history verification refuses mutation, gaps, and digest substitution", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-postgres.test.js", "title": "normal reads refuse truncated, reordered, or state-divergent journals", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow.test.js", "title": "an amendment cannot race funded custody without an authenticated unwind", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow.test.js", "title": "expired approvals are refused both at admission and immediately before release", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow.test.js", "title": "funding-request state blocks amendment and cancellation until custodian reconciliation", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-package.test.js", "title": "assembler refuses pruned operation history and regressing timestamps", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-evidence.test.js", "title": "contractor package re-performs the bound project sidecar and refuses profile confusion", "runner": "node-test" },
+        { "file": "packages/gate/action-escrow-postgres.test.js", "title": "health refuses owner or destructive runtime privileges", "runner": "node-test" },
+        { "file": "tests/action-escrow-escrow-com.test.js", "title": "refuses milestone acceptance until every schedule is secured and funded", "runner": "vitest" },
+        { "file": "tests/action-escrow-procore.test.js", "title": "double-fetches an exact read-only snapshot and marks it non-authoritative", "runner": "vitest" },
+        { "file": "tests/action-escrow-procore.test.js", "title": "binds every source coordinate and refuses provenance relabeling", "runner": "vitest" },
+        { "file": "packages/gate/action-escrow-verifiers.test.js", "title": "the contractor profile requires a project source digest bound to its signed term", "runner": "node-test" },
+        { "file": "examples/action-escrow/scenario.test.mjs", "title": "keeps document, exact-action approvals, and external custody visibly separate", "runner": "node-test" },
+        { "file": "examples/action-escrow/scenario.test.mjs", "title": "uses the shipped DAB, Action Escrow kernel, and portable evidence package", "runner": "node-test" },
+        { "file": "examples/action-escrow/scenario.test.mjs", "title": "refuses project-source context relabeling even after package rehash", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model." }
+      ],
+      "assumptions": [
+        "every release path is completely mediated by the configured licensed custodian and the custodian honors the exact provider transaction, beneficiary, amount, and idempotency contract",
+        "the relying party provisions and maintains the mapping issuer, party, operator, and provider trust roots out of band",
+        "the durable store runs under a separately provisioned non-owner role with no DELETE or TRUNCATE privilege on state and no UPDATE, DELETE, or TRUNCATE privilege on history; database-owner compromise remains outside this claim",
+        "the deployment supplies a durable fail-closed effect-reference binding store to the external custodian adapter",
+        "the configured project-system API and OAuth credentials resolve the intended company, project, and change-order namespace",
+        "the external evidence verifier truthfully checks completion evidence under the requirements committed by the signed action"
+      ],
+      "exclusions": [
+        "EMILIA does not hold funds, act as an escrow agent, determine licensure, or establish legal enforceability",
+        "cryptographic evidence does not prove workmanship, physical completion, identity, comprehension, voluntariness, fairness, or absence of fraud by an authentic trusted key",
+        "the guarantee does not cover payment routes or custodian operations that bypass the integrated mediation boundary",
+        "a project-system record is source evidence only and does not prove party acceptance, human approval, legal enforceability, or physical completion",
+        "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
+        "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
+      ],
+      "release_artifacts": ["gate-sdk", "security-evidence"]
     }
   ]
 }

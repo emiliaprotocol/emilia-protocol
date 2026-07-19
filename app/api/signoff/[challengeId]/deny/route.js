@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
 import { denyChallenge } from '@/lib/signoff/deny';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
@@ -25,7 +26,7 @@ export async function POST(request, { params }) {
     const body = parsed.value;
 
     const result = await denyChallenge({
-      actor: auth.entity,
+      actor: authEntityActor(auth),
       challengeId,
       reason: body.reason || null,
     });

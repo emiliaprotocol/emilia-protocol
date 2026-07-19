@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef",
-  "claim_count": 16,
-  "evidence_file_count": 73,
+  "evidence_bundle_sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e",
+  "claim_count": 26,
+  "evidence_file_count": 121,
   "execution": {
     "required": true,
     "status": "passed",
@@ -54,10 +54,38 @@
       },
       {
         "runner": "cross-language",
-        "suite": "conformance/vectors/revocation.exec.v1.json",
+        "suite": "conformance/vectors/resolution.v1.json",
         "cases": [
+          "accept_approved",
+          "accept_declined",
+          "refuse_approved_without_evaluation_time",
+          "refuse_approved_without_initiator_pin",
+          "refuse_approved_without_nonce_pin",
+          "refuse_approved_without_option_binding",
+          "refuse_declined_as_authorization",
+          "reject_cross_principal_key",
+          "reject_impossible_calendar_date",
+          "reject_malformed_binding_moment",
+          "reject_noncanonical_binding_moment",
+          "reject_outcome_relabel",
+          "reject_wrong_origin"
+        ],
+        "languages": [
+          "javascript",
+          "python",
+          "go"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "cross-language",
+        "suite": "conformance/vectors/revocation.exec.v2.json",
+        "cases": [
+          "accept_old_terminal_revocation",
           "accept_pinned_exact_binding",
-          "reject_stale_freshness"
+          "reject_algorithm_label_mismatch",
+          "reject_future_effective_instant",
+          "reject_malformed_target_shape"
         ],
         "languages": [
           "javascript",
@@ -85,12 +113,93 @@
         "suite": "conformance/vectors/trust-receipt.exec.v1.json",
         "cases": [
           "accept_valid_receipt",
-          "reject_pinned_class_a_bare_signature_downgrade"
+          "reject_pinned_class_a_bare_signature_downgrade",
+          "reject_signed_denial_as_authorization"
         ],
         "languages": [
           "javascript",
           "python",
           "go"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "examples/action-escrow/scenario.test.mjs",
+        "titles": [
+          "keeps document, exact-action approvals, and external custody visibly separate",
+          "refuses project-source context relabeling even after package rehash",
+          "uses the shipped DAB, Action Escrow kernel, and portable evidence package"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+        "titles": [
+          "action and presentation substitution both refuse offline",
+          "deterministic mobile fixture exercises the regulator evidence path",
+          "evidence never supplies its own reviewer or operator trust keys",
+          "runtime statement and audit record cannot be detached or relabeled",
+          "the report separates direct verification, operator assertions, and nonclaims",
+          "unknown package and trust claims are refused instead of ignored"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/action-escrow-custodian.test.js",
+        "titles": [
+          "bridges the exact signed action to provider release and a portable observation"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/action-escrow-evidence.test.js",
+        "titles": [
+          "component verifiers must echo the exact agreement, binding, and action they checked",
+          "contractor package re-performs the bound project sidecar and refuses profile confusion",
+          "document execution, agreement acceptance, and release approval are non-substitutable rows"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/action-escrow-package.test.js",
+        "titles": [
+          "assembler refuses pruned operation history and regressing timestamps"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/action-escrow-postgres.test.js",
+        "titles": [
+          "health refuses owner or destructive runtime privileges",
+          "history verification refuses mutation, gaps, and digest substitution",
+          "normal reads refuse truncated, reordered, or state-divergent journals"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/action-escrow-verifiers.test.js",
+        "titles": [
+          "the contractor profile requires a project source digest bound to its signed term"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/action-escrow.test.js",
+        "titles": [
+          "an amendment cannot race funded custody without an authenticated unwind",
+          "concurrent release requests durably reserve once before provider invocation",
+          "expired approvals are refused both at admission and immediately before release",
+          "funding-request state blocks amendment and cancellation until custodian reconciliation",
+          "runs the complete milestone lifecycle and releases exactly once",
+          "signed action commitments cannot be replaced by verifier-selected funding or evidence"
         ],
         "result": "passed"
       },
@@ -117,6 +226,15 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/gate/network-witness.test.js",
+        "titles": [
+          "accepts a higher witness sequence before any conflict",
+          "permanently refuses every later sequence after same-sequence equivocation"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/gate/store-faults.test.js",
         "titles": [
           "fault: a 100-way reservation storm admits exactly one worker",
@@ -135,6 +253,46 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/mobile/enrollment.test.js",
+        "titles": [
+          "enrolls only after both independently verified registration rows and atomic storage",
+          "refuses enrollment binding, WebAuthn, platform, replay, and storage failures",
+          "refuses enrollment when the agency caller is absent or not bound to the approver",
+          "two concurrent enrollment completions produce at most one active enrollment"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/mobile/government.test.js",
+        "titles": [
+          "government controller gets action and display bytes from the system of record",
+          "government controller refuses untrusted fields and unauthorized callers before protected work"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/mobile/http.test.js",
+        "titles": [
+          "mobile HTTP adapter rejects insecure, unauthenticated, duplicate, oversized, and unknown input"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/mobile/index.test.js",
+        "titles": [
+          "execution record requires a consumed, audited result and binds the runtime record",
+          "refuses action, presentation, origin, app, credential, profile, and UV substitution",
+          "service fails closed on store, audit, and counter failures",
+          "service registers exact bodies and only one concurrent presentation wins",
+          "verifies iOS and Android ceremonies as the same Class-A evidence shape"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/verify/quorum.test.js",
         "titles": [
           "EP-QUORUM-v1: initiator sitting in an approver seat is rejected",
@@ -144,10 +302,25 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/verify/resolution.test.js",
+        "titles": [
+          "a presenter-supplied or cross-principal key cannot establish authority",
+          "all four authentic outcomes verify while only approved authorizes",
+          "an approved receipt does not authorize until the relying party pins the option-to-action mapping",
+          "changing a signed outcome from declined to approved fails",
+          "malformed envelopes and cross-language-unsafe signed values fail before digest credit"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/verify/revocation.test.js",
         "titles": [
           "accepts an authentic, pinned, exactly-bound revocation",
-          "rejects a stale statement under a freshness window"
+          "an old terminal revocation remains valid despite a legacy max-age option",
+          "rejects a mismatched signature algorithm label",
+          "rejects a revocation whose effective instant is still in the future",
+          "rejects malformed targets even when both sides normalize to emptiness"
         ],
         "result": "passed"
       },
@@ -164,7 +337,25 @@
         "runner": "node-test",
         "file": "packages/verify/trust-receipt.test.js",
         "titles": [
+          "a signed denied receipt remains valid decision evidence but cannot authorize reliance",
           "class-downgrade — pinned Class-A + declared key_class B + bare signature is REJECTED (default path)"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/action-escrow-escrow-com.test.js",
+        "titles": [
+          "refuses milestone acceptance until every schedule is secured and funded"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/action-escrow-procore.test.js",
+        "titles": [
+          "binds every source coordinate and refuses provenance relabeling",
+          "double-fetches an exact read-only snapshot and marks it non-authoritative"
         ],
         "result": "passed"
       },
@@ -218,15 +409,29 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/grace-mobile-grid.test.js",
+        "titles": [
+          "burns an indeterminate dispatch and never retries the physical effect",
+          "consumes one execution and one settlement under concurrent duplicate delivery",
+          "executes, measures, emits a valid -02 Signed Statement, and settles once",
+          "refuses an inactive or expired action before touching COSA",
+          "refuses initiator self-approval under the pinned mobile roster",
+          "refuses meter signature substitution and market-rule smuggling"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/model-to-matter.test.js",
         "titles": [
           "admits at most one clearance across distinct challenges for the same action",
           "fails before challenge consumption when explicit revocation state is absent",
-          "pins all trust configuration and runs one frozen action exactly once",
+          "pins all trust configuration and invokes the effect adapter only after one successful clearance",
           "refuses every transaction-scoped trust field before challenge consumption",
           "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps",
           "requires explicit durable custody in production mode",
-          "snapshots the action, profile, and graph before awaiting durable consumption"
+          "snapshots the action, profile, and graph before awaiting durable consumption",
+          "uses one registered CAID over the exact bytes every evidence leg binds"
         ],
         "result": "passed"
       },
@@ -247,6 +452,7 @@
         "titles": [
           "accepts an owner dispatch bound to the exact package version and tag",
           "binds the checked-out commit to a tag contained in main",
+          "permits tag creation only from the exact clean main commit with no existing tag",
           "rejects automatic events, other actors, tag drift, and weak confirmation"
         ],
         "result": "passed"
@@ -255,8 +461,15 @@
         "runner": "vitest",
         "file": "tests/release-chain-coverage.test.js",
         "titles": [
-          "every declared npm and PyPI package uses the complete verifiable release chain",
-          "refuses a reusable publisher with its post-registry byte comparison removed"
+          "Go release isolates tag write authority and verifies the public proxy origin",
+          "every declared npm and PyPI package uses reproducible registry-byte verification",
+          "refuses Go release code execution in the contents-write tag job",
+          "refuses a Go release checkout that follows mutable main or keeps credentials",
+          "refuses a Go tag publisher without public-proxy source comparison",
+          "refuses a reusable PyPI publisher with its post-registry byte comparison removed",
+          "refuses a reusable publisher with its post-registry byte comparison removed",
+          "refuses an unclassified Go module even when its release manifest is absent",
+          "refuses slash-bearing Go release artifact names derived from the tag"
         ],
         "result": "passed"
       },
@@ -296,6 +509,39 @@
           "NEGATIVE: a bare operator-signed envelope is not a human ceremony"
         ],
         "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/signoff-decision-evidence.test.js",
+        "titles": [
+          "exports a device-signed denial that verifies offline under a pinned approver key"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/v1-api.test.js",
+        "titles": [
+          "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence",
+          "returns 403 when bearer-key rejection attempts a Class-A-required receipt"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/webauthn-approve-route.test.js",
+        "titles": [
+          "refuses to relabel a device-signed denial as approval"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/webauthn-lib.test.js",
+        "titles": [
+          "treats a matching rejection as equally terminal"
+        ],
+        "result": "passed"
       }
     ]
   },
@@ -304,27 +550,453 @@
     "gate-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/gate",
-      "version": "0.9.3",
-      "filename": "emilia-protocol-gate-0.9.3.tgz",
-      "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd",
-      "file_count": 62
+      "version": "0.12.0",
+      "filename": "emilia-protocol-gate-0.12.0.tgz",
+      "sha256": "4ed9777b461474b7008aed76d0c08d99af8d92c092c730c950bf04a60a3d1f01",
+      "file_count": 107
+    },
+    "mobile-sdk": {
+      "kind": "npm-tarball",
+      "package": "@emilia-protocol/mobile",
+      "version": "0.1.1",
+      "filename": "emilia-protocol-mobile-0.1.1.tgz",
+      "sha256": "a75257e7a92de0413cd0a3776e7cfd516e32f3bdbcd12f7cc42f1df9fc71f952",
+      "file_count": 11
     },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef",
-      "file_count": 73
+      "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e",
+      "file_count": 121
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
-      "version": "3.8.0",
-      "filename": "emilia-protocol-verify-3.8.0.tgz",
-      "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96",
-      "file_count": 28
+      "version": "3.11.0",
+      "filename": "emilia-protocol-verify-3.11.0.tgz",
+      "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b",
+      "file_count": 34
     }
   },
   "claims": [
+    {
+      "claim_id": "class-a-signed-decision-parity",
+      "statement": "A Class-A approval or denial is a device-signed terminal decision over the same canonical action context; the operator cannot relabel the outcome after signing or use bearer authentication to deny a Class-A request.",
+      "acceptance_roots": [
+        "approver credential key pinned from enrollment",
+        "single-use WebAuthn challenge store and decided-once audit constraint"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/webauthn.js",
+          "symbol": "buildAuthorizationContext",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js",
+          "symbol": "POST",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js",
+          "symbol": "POST",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/guard-signoff.js",
+          "symbol": "handleSignoffDecision",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/signoff/decision-evidence.js",
+          "symbol": "buildPortableSignoffDecision",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyWebAuthnSignoff",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/signoff/decision-evidence.js",
+          "export": "buildPortableSignoffDecision"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "export": "verifyWebAuthnSignoff"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "Python verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "Go verifies the generic signed WebAuthn context, but the stateful challenge issuance, outcome mapping, and evidence projection are service-layer JavaScript paths."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_device_signed_denial",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_signed_denial_relabel",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_class_a_bearer_denial",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/signoff-decision-evidence.test.js",
+          "title": "exports a device-signed denial that verifies offline under a pinned approver key",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/v1-api.test.js",
+          "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/webauthn-approve-route.test.js",
+          "title": "refuses to relabel a device-signed denial as approval",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/v1-api.test.js",
+          "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/webauthn-lib.test.js",
+          "title": "treats a matching rejection as equally terminal",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "TLA+ and Alloy model rejection terminality, but the exact decision-in-WebAuthn-challenge bytes, API alias mapping, and bearer-path assurance gate are executable properties rather than a composed formal proof."
+        }
+      ],
+      "assumptions": [
+        "the enrolled approver key belongs to the named approver",
+        "the authenticator and relying-party origin are not compromised before the ceremony",
+        "the challenge and audit stores preserve their enforced uniqueness constraints"
+      ],
+      "exclusions": [
+        "the verifier does not infer why a human denied",
+        "a compromised authentic device can still sign a harmful outcome",
+        "legacy lower-assurance denial events are not represented as Class-A evidence"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "four-outcome-resolution-preserves-meaning",
+      "statement": "A binding-moment resolution preserves approved, declined, amended, and rejected as distinct device-signed outcomes bound to the exact well-formed source envelope and action; no negative outcome authorizes the original action, and an approval authorizes only under a complete relying-party-pinned acceptance context.",
+      "acceptance_roots": [
+        "role-scoped principal key and principal identity pinned by the relying party",
+        "exact source binding-moment envelope and action digest supplied by the relying party",
+        "WebAuthn RP ID and exact origin allowlist pinned by the relying party",
+        "option-to-action mapping, nonce, initiator, and evaluation time pinned by the relying party"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/resolution.js",
+          "symbol": "verifyResolutionReceipt",
+          "exported": true
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_resolution_receipt",
+          "exported": true
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/resolution.go",
+          "symbol": "VerifyResolutionReceipt",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/resolution.js",
+          "export": "verifyResolutionReceipt"
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_resolution_receipt"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/resolution.go",
+          "symbol": "VerifyResolutionReceipt"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "accept_approved",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "accept_declined",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_declined_as_authorization",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_option_binding",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_nonce_pin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_initiator_pin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_evaluation_time",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_outcome_relabel",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_cross_principal_key",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_wrong_origin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_malformed_binding_moment",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_noncanonical_binding_moment",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_impossible_calendar_date",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "all four authentic outcomes verify while only approved authorizes",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "an approved receipt does not authorize until the relying party pins the option-to-action mapping",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "changing a signed outcome from declined to approved fails",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "a presenter-supplied or cross-principal key cannot establish authority",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "malformed envelopes and cross-language-unsafe signed values fail before digest credit",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The exact four-outcome discriminated union, complete acceptance-context rule, source-envelope grammar, origin check, envelope digest, and WebAuthn challenge bytes are covered by executable cross-language vectors but are not yet represented in TLA+, Alloy, or Tamarin."
+        }
+      ],
+      "assumptions": [
+        "the relying party maps the selected option to the exact action correctly",
+        "the role-pinned principal key, RP ID, origin allowlist, nonce, initiator, and evaluation time are authentic",
+        "the consuming surface faithfully presents the envelope and action that the signed digests denote"
+      ],
+      "exclusions": [
+        "the profile does not prove the briefing was truthful or unbiased",
+        "the profile does not prove display faithfulness without separate presentation evidence",
+        "the profile does not provide exactly-once consumption, revocation currency, trusted time, or quorum by itself"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
     {
       "claim_id": "class-a-downgrade-refused",
       "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",
@@ -425,11 +1097,130 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "signed-denial-cannot-authorize",
+      "statement": "An authentic device-signed negative human decision remains verifiable decision evidence but cannot satisfy approval, separation-of-duties, quorum, assurance, authority, action-material, or reliance predicates in the Trust Receipt verifier.",
+      "acceptance_roots": [
+        "approver credential keys and relying-party policy pinned independently of the presented receipt"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyTrustReceipt",
+          "exported": true
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_trust_receipt"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/trust_receipt.go",
+          "symbol": "VerifyTrustReceipt"
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "export": "verifyTrustReceipt"
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_trust_receipt"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/trust_receipt.go",
+          "symbol": "VerifyTrustReceipt"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "accept_valid_receipt",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "reject_signed_denial_as_authorization",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/verify/trust-receipt.test.js",
+          "title": "a signed denied receipt remains valid decision evidence but cannot authorize reliance",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "execution_has_honest_approvals_or_prior_compromise",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The composed model requires honest approval events or prior compromise before execution; the concrete four-outcome parser and every denied-evidence projection are enforced by executable cross-language code rather than modeled as one discriminated union."
+        }
+      ],
+      "assumptions": [
+        "the relying party pins the authentic approver directory and acceptance profile",
+        "the signoff outcome remains inside the authenticated context checked by each port"
+      ],
+      "exclusions": [
+        "the verifier preserves a valid negative decision as evidence but does not infer the reason, wisdom, or legal effect of that decision",
+        "this claim does not prevent a compromised authentic approver device from signing an approval"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -547,11 +1338,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -695,7 +1486,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -837,19 +1628,20 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
     {
-      "claim_id": "revocation-is-pinned-and-fresh",
-      "statement": "Revocation state is accepted only under a pinned revoker key, for the exact target, and within the relying party's freshness window.",
+      "claim_id": "revocation-is-pinned-effective-and-terminal",
+      "statement": "A terminal revocation is accepted only under a pinned revoker key, for the exact well-formed target, with a valid effective instant at or before the evaluation time; once effective, it does not age out. Fresh evidence that a target is currently not revoked is a separate status input.",
       "acceptance_roots": [
-        "revocation authority key and maximum staleness pinned by the relying party"
+        "revocation authority key pinned by the relying party",
+        "trusted evaluation time for future-effective revocations"
       ],
       "enforcement_path": [
         {
@@ -879,20 +1671,20 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "conformance/vectors/revocation.exec.v1.json"
+          "evidence": "conformance/vectors/revocation.exec.v2.json"
         },
         "python": {
           "status": "covered",
-          "evidence": "conformance/vectors/revocation.exec.v1.json"
+          "evidence": "conformance/vectors/revocation.exec.v2.json"
         },
         "go": {
           "status": "covered",
-          "evidence": "conformance/vectors/revocation.exec.v1.json"
+          "evidence": "conformance/vectors/revocation.exec.v2.json"
         }
       },
       "vectors": [
         {
-          "suite": "conformance/vectors/revocation.exec.v1.json",
+          "suite": "conformance/vectors/revocation.exec.v2.json",
           "case_id": "accept_pinned_exact_binding",
           "polarity": "positive",
           "expect": {
@@ -903,8 +1695,41 @@
           }
         },
         {
-          "suite": "conformance/vectors/revocation.exec.v1.json",
-          "case_id": "reject_stale_freshness",
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "accept_old_terminal_revocation",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "reject_future_effective_instant",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "reject_malformed_target_shape",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/revocation.exec.v2.json",
+          "case_id": "reject_algorithm_label_mismatch",
           "polarity": "negative",
           "expect": {
             "valid": false
@@ -922,7 +1747,22 @@
         },
         {
           "file": "packages/verify/revocation.test.js",
-          "title": "rejects a stale statement under a freshness window",
+          "title": "an old terminal revocation remains valid despite a legacy max-age option",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/revocation.test.js",
+          "title": "rejects a revocation whose effective instant is still in the future",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/revocation.test.js",
+          "title": "rejects malformed targets even when both sides normalize to emptiness",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/revocation.test.js",
+          "title": "rejects a mismatched signature algorithm label",
           "runner": "node-test"
         }
       ],
@@ -934,10 +1774,11 @@
       ],
       "assumptions": [
         "the revoker key pin is current",
-        "the verifier's trusted clock is within the relying party's tolerance"
+        "the verifier's trusted clock is within the relying party's tolerance when evaluating a future-effective revocation"
       ],
       "exclusions": [
-        "withheld revocation publications require external transparency or availability controls"
+        "withheld revocation publications require external transparency or availability controls",
+        "current non-revocation requires a separately authenticated and freshness-bounded status source"
       ],
       "release_artifacts": [
         "verify-sdk",
@@ -946,11 +1787,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1055,11 +1896,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1187,11 +2028,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "4ed9777b461474b7008aed76d0c08d99af8d92c092c730c950bf04a60a3d1f01"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1294,11 +2135,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "4ed9777b461474b7008aed76d0c08d99af8d92c092c730c950bf04a60a3d1f01"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1418,11 +2259,140 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "4ed9777b461474b7008aed76d0c08d99af8d92c092c730c950bf04a60a3d1f01"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "network-witness-equivocation-permanently-poisons-stream",
+      "statement": "A pinned network-witness stream advances monotonically until two different signed statements claim the same sequence. That conflict permanently poisons the exact tenant, gate, witness, and capture-point stream; no later sequence can restore acceptance under that stream identity.",
+      "acceptance_roots": [
+        "relying-party-pinned witness key, capture-point identity, configuration digest, and durable sequence store",
+        "tenant and gate scope fixed outside the presented witness statement"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "symbol": "createMemoryWitnessSequenceStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "symbol": "acceptNetworkWitnessStatement",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/witness-postgres.js",
+          "symbol": "createPostgresWitnessSequenceStore",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "export": "createMemoryWitnessSequenceStore"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/network-witness.js",
+          "export": "acceptNetworkWitnessStatement"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/witness-postgres.js",
+          "export": "createPostgresWitnessSequenceStore"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Python receipt-verifier surface."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The network-witness acceptance store is an online Gate enforcement component, not an offline Go receipt-verifier surface."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_monotonic_witness_sequence",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_witness_stream_after_equivocation",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/gate/network-witness.test.js",
+          "title": "accepts a higher witness sequence before any conflict",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/network-witness.test.js",
+          "title": "permanently refuses every later sequence after same-sequence equivocation",
+          "runner": "node-test"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "packages/gate/deploy/sql/001-runtime.sql",
+          "contains": [
+            "equivocated      BOOLEAN NOT NULL DEFAULT FALSE",
+            "SET equivocated = TRUE",
+            "IF v_equivocated THEN",
+            "sequence_equivocation"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "TLA+, Alloy, and Tamarin do not model this SQL-backed witness-stream state machine; monotonic advance, conflict poisoning, and post-conflict refusal are executable properties."
+        }
+      ],
+      "assumptions": [
+        "the production store linearizes advancement for one exact binary stream identifier",
+        "the witness signing key and capture point are provisioned independently and the signed observation body commits to the action digest",
+        "operators replace a poisoned stream only by provisioning and pinning a new stream identity"
+      ],
+      "exclusions": [
+        "a passive witness proves observation, not authorization, enforcement, physical execution, or sensor truth",
+        "the protocol cannot distinguish benign witness failure from malicious equivocation after a conflict"
+      ],
+      "release_artifacts": [
+        "gate-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "gate-sdk",
+          "sha256": "4ed9777b461474b7008aed76d0c08d99af8d92c092c730c950bf04a60a3d1f01"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1592,11 +2562,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "4ed9777b461474b7008aed76d0c08d99af8d92c092c730c950bf04a60a3d1f01"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1730,7 +2700,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1842,11 +2812,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
@@ -1980,19 +2950,19 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
     {
-      "claim_id": "all-package-releases-use-verifiable-bytes",
-      "statement": "Every declared npm and PyPI package release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "claim_id": "npm-pypi-releases-use-verifiable-bytes",
+      "statement": "Every declared npm and PyPI release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact with security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
       "acceptance_roots": [
         "the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory",
         "the FutureEnterprises owner identity",
-        "the protected registry-publishing-approval environment",
+        "the registry-publishing-approval environment",
         "GitHub Actions OIDC identity",
-        "registry trusted-publisher configuration for each package"
+        "npm and PyPI trusted-publisher configuration"
       ],
       "enforcement_path": [
         {
@@ -2046,21 +3016,21 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-approval.test.js"
+          "evidence": "tests/release-chain-coverage.test.js"
         },
         "python": {
           "status": "not_applicable",
-          "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript."
+          "reason": "Python packages are built by pinned Python tooling, while inventory and workflow enforcement are repository controls implemented in JavaScript."
         },
         "go": {
           "status": "not_applicable",
-          "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package."
+          "reason": "Go tag publication has a distinct source-and-proxy claim because a Go module is not an OIDC-uploaded registry artifact."
         }
       },
       "vectors": [
         {
           "suite": "security/vectors.v1.json",
-          "case_id": "accept_all_declared_release_chains",
+          "case_id": "accept_npm_pypi_release_byte_chains",
           "polarity": "positive",
           "expect": {
             "valid": true
@@ -2094,12 +3064,17 @@
       "tests": [
         {
           "file": "tests/release-chain-coverage.test.js",
-          "title": "every declared npm and PyPI package uses the complete verifiable release chain",
+          "title": "every declared npm and PyPI package uses reproducible registry-byte verification",
           "runner": "vitest"
         },
         {
           "file": "tests/release-chain-coverage.test.js",
           "title": "refuses a reusable publisher with its post-registry byte comparison removed",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses a reusable PyPI publisher with its post-registry byte comparison removed",
           "runner": "vitest"
         },
         {
@@ -2132,45 +3107,19 @@
           ]
         },
         {
+          "file": ".github/workflows/_publish-pypi-package.yml",
+          "contains": [
+            "verify-reproducible-wheel.mjs",
+            "gh-action-pypi-publish@",
+            "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"",
+            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
+          ]
+        },
+        {
           "file": ".github/workflows/publish-gate.yml",
           "contains": [
             "uses: ./.github/workflows/_publish-npm-package.yml",
             "package_name: '@emilia-protocol/gate'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-issue.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/issue'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-langchain.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/langchain'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-mcp.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/mcp-server'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-require-receipt.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/require-receipt'"
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-typescript-sdk.yml",
-          "contains": [
-            "uses: ./.github/workflows/_publish-npm-package.yml",
-            "package_name: '@emilia-protocol/sdk'"
           ]
         },
         {
@@ -2188,20 +3137,6 @@
           ]
         },
         {
-          "file": ".github/workflows/publish-python-sdk.yml",
-          "contains": [
-            "verify-reproducible-wheel.mjs sdks/python",
-            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
-          ]
-        },
-        {
-          "file": ".github/workflows/publish-langchain-python.yml",
-          "contains": [
-            "verify-reproducible-wheel.mjs integrations/langchain-emilia",
-            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
-          ]
-        },
-        {
           "file": "release/release-packages.v1.json",
           "contains": [
             "EP-RELEASE-PACKAGE-REGISTRY-v1",
@@ -2213,7 +3148,7 @@
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties."
+          "gap": "Registry account state, hosted CI identity, OIDC, and artifact storage are operational controls rather than symbolic protocol properties."
         }
       ],
       "assumptions": [
@@ -2232,23 +3167,240 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "go-module-release-is-tag-and-proxy-bound",
+      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
+      "acceptance_roots": [
+        "the checked-in Go module release identity",
+        "the FutureEnterprises owner identity",
+        "the registry-publishing-approval environment",
+        "the workflow-dispatched refs/heads/main commit",
+        "an active GitHub update-and-deletion ruleset for refs/tags/packages/go-verify/v*",
+        "GitHub tag-ref authority",
+        "proxy.golang.org and sum.golang.org"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "discoverReleaseSurfaces",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "validateGoTagWorkflowText",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/require-release-approval.mjs",
+          "symbol": "verifyUnpublishedReleaseGitState",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "export": "discoverReleaseSurfaces"
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "export": "validateGoTagWorkflowText"
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/require-release-approval.mjs",
+          "export": "verifyUnpublishedReleaseGitState"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-chain-coverage.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Release workflow verification is a repository control implemented in JavaScript."
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "packages/go-verify/signoff_compatibility_test.go"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_go_tag_proxy_chain",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_without_proxy_comparison",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_write_job_code_execution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_go_release_mutable_or_credentialed_checkout",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_unclassified_go_module",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "Go release isolates tag write authority and verifies the public proxy origin",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses a Go tag publisher without public-proxy source comparison",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses Go release code execution in the contents-write tag job",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses a Go release checkout that follows mutable main or keeps credentials",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses slash-bearing Go release artifact names derived from the tag",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses an unclassified Go module even when its release manifest is absent",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-approval.test.js",
+          "title": "permits tag creation only from the exact clean main commit with no existing tag",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": ".github/workflows/publish-go-verify.yml",
+          "contains": [
+            "ref: ${{ github.sha }}",
+            "persist-credentials: false",
+            "--expected-commit \"$GITHUB_SHA\"",
+            "go-version-file: packages/go-verify/go.mod",
+            "refs/tags/packages/go-verify/v*",
+            "rules.has('deletion') && rules.has('update')",
+            "github.rest.git.createRef",
+            "p.Origin?.[key]",
+            "p.GoModSum",
+            "diff -ru packages/go-verify \"$PROXY_DIR\"",
+            "release-artifacts/go-verify-proxy.zip"
+          ]
+        },
+        {
+          "file": "packages/go-verify/go-release.json",
+          "contains": [
+            "EP-GO-MODULE-RELEASE-v1",
+            "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2",
+            "packages/go-verify/v2.3.1"
+          ]
+        },
+        {
+          "file": "release/release-packages.v1.json",
+          "contains": [
+            "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2",
+            "publish-go-verify.yml",
+            "go_tag"
+          ]
+        },
+        {
+          "file": "packages/go-verify/signoff_compatibility_test.go",
+          "contains": [
+            "func(map[string]any, string, string) SignoffResult",
+            "func(map[string]any, string) QuorumResult"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "GitHub job permissions, environment approvals, VCS refs, Go proxy behavior, and checksum-database state are operational controls."
+        }
+      ],
+      "assumptions": [
+        "GitHub records required-reviewer approval or an explicit administrator bypass on registry-publishing-approval",
+        "the GitHub ruleset API accurately reports active update-and-deletion protection",
+        "the dispatched main commit is the owner-reviewed source intended for release",
+        "proxy.golang.org and sum.golang.org remain independently available"
+      ],
+      "exclusions": [
+        "the proxy source-tree comparison proves source equivalence, not byte identity between the Git archive and the proxy's canonical module zip",
+        "the tag must exist before the proxy can serve it, so a post-tag verification failure requires a higher corrective version or module retraction and never a moved tag",
+        "the first live release still has to demonstrate environment and ruleset configuration"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
     {
       "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
-      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact digest-only action, satisfy freshness and the pinned revocation provider, and survive durable challenge and action consumption. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact closed action, satisfy freshness and the pinned revocation provider, and survive durable challenge and CAID-keyed action consumption. The executor recomputes the registered CAID over the same bytes as the legacy action digest, emits both identifiers in the clearance, and binds both into its signed effect statement. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
       "acceptance_roots": [
         "the executor provisions the authentic Model-to-Matter profile and issuer keys",
         "the executor pins a revocation provider that supplies an explicit current view",
-        "the challenge backend provides atomic registration and compare-and-set consumption"
+        "the challenge backend provides atomic registration and compare-and-set consumption",
+        "the action-clearance backend is shared, atomic, ownership-fenced, and non-expiring"
       ],
       "enforcement_path": [
         {
           "language": "javascript",
           "file": "lib/frontier/model-to-matter.js",
           "symbol": "createModelToMatterProfile",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "modelToMatterCaid",
           "exported": true
         },
         {
@@ -2281,6 +3433,11 @@
           "language": "javascript",
           "file": "lib/frontier/model-to-matter.js",
           "export": "createModelToMatterExecutor"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "export": "modelToMatterCaid"
         },
         {
           "language": "javascript",
@@ -2328,6 +3485,11 @@
         },
         {
           "file": "tests/model-to-matter.test.js",
+          "title": "uses one registered CAID over the exact bytes every evidence leg binds",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
           "title": "snapshots the action, profile, and graph before awaiting durable consumption",
           "runner": "vitest"
         },
@@ -2343,7 +3505,7 @@
         },
         {
           "file": "tests/model-to-matter.test.js",
-          "title": "pins all trust configuration and runs one frozen action exactly once",
+          "title": "pins all trust configuration and invokes the effect adapter only after one successful clearance",
           "runner": "vitest"
         },
         {
@@ -2355,6 +3517,29 @@
           "file": "tests/model-to-matter.test.js",
           "title": "requires explicit durable custody in production mode",
           "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "conformance/vectors/model-to-matter.v1.json",
+          "contains": [
+            "accept_registered_caid",
+            "refuse_caid_action_substitution",
+            "accept_complete_evidence",
+            "refuse_action_mutation_after_challenge",
+            "refuse_indeterminate_clearance_storage",
+            "admit_at_most_one_of_two_challenges",
+            "refuse_tampered_executor_effect"
+          ]
+        },
+        {
+          "file": "conformance/run-model-to-matter.mjs",
+          "contains": [
+            "evaluateRegisteredModelToMatterPresentation",
+            "verifyModelToMatterCaid",
+            "verifyModelToMatterEffect",
+            "EP-MODEL-TO-MATTER-v1"
+          ]
         }
       ],
       "formal": [
@@ -2383,13 +3568,13 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     },
     {
       "claim_id": "aec-role-substitution-refused",
-      "statement": "EP-AEC returns allow only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
+      "statement": "EP-AEC returns satisfied=true (and an equivalent legacy allow alias) only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
       "acceptance_roots": [
         "relying-party requirement and executor-computed expected action digest",
         "Class-A approver directory, RP ID, allowed WebAuthn origins, policy hash, log key, freshness time, and max age for ep-receipt",
@@ -2667,7 +3852,1018 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "mobile-ceremony-exact-binding-and-consumption",
+      "statement": "A native mobile approval or denial is accepted only when exact relying-party-created action, presentation, decision, profile, app, enrollment, origin, and validity bytes pass the pinned Class-A WebAuthn path, independently verified platform evidence is bound to the same request, and the exact registered challenge body is consumed atomically and recorded durably.",
+      "acceptance_roots": [
+        "relying-party-pinned mobile reliance profile, WebAuthn RP ID, origin allowlist, app allowlist, enrollment key, and platform-attestation policy",
+        "agency-authenticated caller and mandatory authorization policy bound to the action reference, approver, profile, app, and enrolled device",
+        "durable body-bound challenge store, authenticator counter store, and strict durable evidence log",
+        "government system of record computes the protected action and presentation"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "verifyMobileCeremony",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "createMobileCeremonyService",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/government.js",
+          "symbol": "createGovernmentMobileController",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/http.js",
+          "symbol": "createMobileHttpHandler",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "verifyMobileCeremony"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "createMobileCeremonyService"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/government.js",
+          "export": "createGovernmentMobileController"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/http.js",
+          "export": "createMobileHttpHandler"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go mobile ceremony service is claimed; Swift and Kotlin are native clients, not server-verifier ports."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_ios_and_android_class_a",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_substitution_matrix",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_replay_and_state_failure",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_mobile_http_boundary_attacks",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "verifies iOS and Android ceremonies as the same Class-A evidence shape",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "refuses action, presentation, origin, app, credential, profile, and UV substitution",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "service registers exact bodies and only one concurrent presentation wins",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "service fails closed on store, audit, and counter failures",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/government.test.js",
+          "title": "government controller gets action and display bytes from the system of record",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/government.test.js",
+          "title": "government controller refuses untrusted fields and unauthorized callers before protected work",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/http.test.js",
+          "title": "mobile HTTP adapter rejects insecure, unauthenticated, duplicate, oversized, and unknown input",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The mobile app-integrity row, native SDK validation, HTTP boundary, system-of-record controller, and exact stateful ceremony service are executable but are not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the enrollment directory correctly binds the approver, credential, app, and attestation key",
+        "the agency identity provider authenticates the caller and the configured authorization hook implements the relying party's intended personnel policy",
+        "the configured App Attest or Play Integrity verifier validates provider evidence and applies the relying party's pins",
+        "all protected execution paths require the consumed ceremony and clocks and durable stores meet their deployment assumptions"
+      ],
+      "exclusions": [
+        "the ceremony does not prove civil identity, comprehension, legality, wisdom, safety, execution, or physical outcome",
+        "App Attest and Play Integrity verification are online dependencies at ceremony time and are not silently claimed as offline-verifiable evidence",
+        "Swift and Kotlin canonical-byte agreement is same-team cross-platform consistency, not an independent implementation"
+      ],
+      "release_artifacts": [
+        "mobile-sdk",
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "mobile-sdk",
+          "sha256": "a75257e7a92de0413cd0a3776e7cfd516e32f3bdbcd12f7cc42f1df9fc71f952"
+        },
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
+      "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
+      "acceptance_roots": [
+        "a relying-party-provisioned trust bundle containing the allowed action family, exact mobile reliance profile, Class-A approver directory, log key, policy hash, and operator execution-record key",
+        "a mobile ceremony result that the stateful service consumed and appended to its strict atomic audit log",
+        "the Class-A receipt verifier, CAID verifier, mobile execution-record verifier, and atomic evidence-record verifier"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "createMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "symbol": "verifyMobileExecutionRecord",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "examples/regulatory-mobile-oversight/lib.mjs",
+          "symbol": "verifyRegulatoryEvidence",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "createMobileExecutionRecord"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/index.js",
+          "export": "verifyMobileExecutionRecord"
+        },
+        {
+          "language": "javascript",
+          "file": "examples/regulatory-mobile-oversight/lib.mjs",
+          "export": "verifyRegulatoryEvidence"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the regulatory mobile export profile is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the regulatory mobile export profile is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_regulatory_mobile_evidence_export",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_regulatory_mobile_evidence_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/mobile/index.test.js",
+          "title": "execution record requires a consumed, audited result and binds the runtime record",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "deterministic mobile fixture exercises the regulator evidence path",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "action and presentation substitution both refuse offline",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "evidence never supplies its own reviewer or operator trust keys",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "unknown package and trust claims are refused instead of ignored",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "runtime statement and audit record cannot be detached or relabeled",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/regulatory-mobile-oversight/demo.test.mjs",
+          "title": "the report separates direct verification, operator assertions, and nonclaims",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The regulatory export composition and the distinction between direct offline checks and operator runtime assertions are executable but not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the relying party provisions its trust bundle out of band and correctly vets the reviewer directory, policy, mobile profile, log key, and operator execution-record key",
+        "the operator execution-record signer is protected and accountable for its statements about platform verification, challenge consumption, and audit persistence",
+        "all consequential execution paths are mediated by the same stateful service and system of record"
+      ],
+      "exclusions": [
+        "the operator execution-record signature authenticates the operator's assertion but does not independently replay Apple or Google verification, storage durability, one-time consumption, or physical effect",
+        "the deterministic runnable fixture uses synthetic records, a cryptographic platform-attestation test double, and in-memory backends; it is not evidence of a live-device or government deployment",
+        "the package does not establish clinical correctness, reviewer licensure, comprehension, legal compliance, non-bypassability, or real-world outcome"
+      ],
+      "release_artifacts": [
+        "mobile-sdk",
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "mobile-sdk",
+          "sha256": "a75257e7a92de0413cd0a3776e7cfd516e32f3bdbcd12f7cc42f1df9fc71f952"
+        },
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "4e8fdc402d8b31b505cbb6864b9e1e10588ca45002573d1605bcc5719b94869b"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "mobile-enrollment-requires-two-verified-rows",
+      "statement": "A mobile enrollment becomes active only after the agency authorizes the authenticated caller for the named approver at issuance and completion, a WebAuthn registration adapter returns an ES256 P-256 credential under the exact RP, origin, challenge, and user-verification requirements, a platform adapter independently verifies integrity evidence over the exact enrollment binding, the challenge is consumed once, and the directory plus audit event commit atomically.",
+      "acceptance_roots": [
+        "authenticated approver enrollment request and relying-party-owned RP, origin, and app configuration",
+        "cryptographic WebAuthn registration and platform-enrollment verification adapters",
+        "durable body-bound challenge store and atomic enrollment-directory audit commit"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "symbol": "buildMobileEnrollmentBinding",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "symbol": "createMobileEnrollmentService",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "export": "buildMobileEnrollmentBinding"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/mobile/enrollment.js",
+          "export": "createMobileEnrollmentService"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python enrollment service port is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go enrollment service port is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_atomic_mobile_enrollment",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "reject_unverified_or_replayed_mobile_enrollment",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "enrolls only after both independently verified registration rows and atomic storage",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "refuses enrollment binding, WebAuthn, platform, replay, and storage failures",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "two concurrent enrollment completions produce at most one active enrollment",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/mobile/enrollment.test.js",
+          "title": "refuses enrollment when the agency caller is absent or not bound to the approver",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Native passkey registration, platform-key enrollment, adapter contracts, and atomic directory-plus-audit persistence are executable properties not represented in the current formal models."
+        }
+      ],
+      "assumptions": [
+        "the injected WebAuthn adapter performs full registration attestation verification and returns the authentic P-256 SPKI",
+        "the injected platform adapter verifies the provider chain or service response under relying-party pins",
+        "the authenticated enrollment requester is permitted to enroll the named approver and the directory operation is atomic"
+      ],
+      "exclusions": [
+        "the package does not infer civil identity from a passkey or platform attestation",
+        "enrollment authorization, personnel vetting, device management, and recovery policy remain relying-party responsibilities",
+        "the simulated adapters in unit tests are test doubles and not production token verifiers"
+      ],
+      "release_artifacts": [
+        "mobile-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "mobile-sdk",
+          "sha256": "a75257e7a92de0413cd0a3776e7cfd516e32f3bdbcd12f7cc42f1df9fc71f952"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "grace-curtailment-is-authorized-measured-and-single-use",
+      "statement": "A GRACE curtailment reaches dispatch only while one canonical action is active, inside the pinned envelope, and approved by the required distinct Class-A mobile roster; post-dispatch compliance is computed only from a separately keyed meter statement, a confirmed Action State record requires that meter digest, and a compliant settlement entitlement is consumed at most once.",
+      "acceptance_roots": [
+        "relying-party-pinned curtailment envelope, mobile profile, approver roster, RP ID, origins, and Class-A credential keys",
+        "deployment-pinned actuator, meter, Action State, and settlement trust configuration",
+        "owner-fenced durable execution and settlement stores"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "verifyGraceMobileAuthorization",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "executeGraceCurtailment",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "symbol": "buildActionStateCapsule",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "export": "verifyGraceMobileAuthorization"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "export": "executeGraceCurtailment"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/grace/mobile-grid.js",
+          "export": "buildActionStateCapsule"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/grace-mobile-grid.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python port of the GRACE vertical composition is claimed; the existing Python receipt verifier is a lower-layer primitive."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go port of the GRACE vertical composition is claimed; the existing Go receipt verifier is a lower-layer primitive."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "accept_two_person_curtailment_and_single_settlement",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_initiator_self_approval",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_inactive_action_before_dispatch",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_concurrent_replay",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "conformance/vectors/grace-mobile-grid.v1.json",
+          "case_id": "reject_meter_rule_smuggling",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "executes, measures, emits a valid -02 Signed Statement, and settles once",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "refuses initiator self-approval under the pinned mobile roster",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "refuses an inactive or expired action before touching COSA",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "burns an indeterminate dispatch and never retries the physical effect",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "consumes one execution and one settlement under concurrent duplicate delivery",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/grace-mobile-grid.test.js",
+          "title": "refuses meter signature substitution and market-rule smuggling",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "examples/grace/live-control-room.mjs",
+          "contains": [
+            "2 distinct Class-A handshakes: VERIFIED",
+            "CONSUMED ONCE",
+            "no physical grid event is claimed"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The exact GRACE mobile quorum, envelope arithmetic, owner-fenced dispatch, independent meter composition, Action State encoding, and one-time settlement path are executable but are not represented as one property in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "every protected curtailment path is completely mediated by the execution store and configured actuator",
+        "the deployed actuator and meter adapters verify under correctly provisioned, independently governed keys and the meter reports truthful physical readings",
+        "the execution and settlement stores preserve owner fencing and atomic reserve or commit behavior under deployment faults",
+        "the grid program selects the correct baseline methodology and settlement policy"
+      ],
+      "exclusions": [
+        "the shipped COSA actuator and meter are reference simulations and are not evidence of a physical grid event, utility integration, adoption, or partner endorsement",
+        "cryptographic meter integrity does not prove sensor truth, baseline economic correctness, grid safety, or absence of an out-of-band bypass",
+        "the Action State output is an unregistered signed statement and is not claimed as a SCITT transparency-service anchor",
+        "the upstream Action State parser check is time-pinned interoperability evidence, not an independent implementation of GRACE"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+        }
+      ]
+    },
+    {
+      "claim_id": "action-escrow-releases-one-exact-milestone-once",
+      "statement": "Inside a completely mediated licensed-custodian integration, Action Escrow reserves and requests at most one release for the exact DAB-bound milestone action only after a relying-party-pinned document mapping, distinct party agreement acceptances, exact committed completion evidence, distinct party release approvals that remain fresh at admission and immediately before the effect, authenticated funding state, and durable compare-and-swap reservation all join. When a project-system source is supplied, its complete stable snapshot digest binds the provider origin, company, project, record type and identifier, normalized payload, observation time, and non-authoritative claim boundary as a signed typed material term inside that exact action. The portable package keeps project source, document execution, agreement acceptance, release approval, and custodian effect as separate independently reverified rows.",
+      "acceptance_roots": [
+        "relying-party-pinned document-mapping issuer, Action Escrow profile, party keys, operator state key, and custodian adapter configuration",
+        "the exact final PDF bytes and signed Document Action Binding whose closed material-term profile commits the payment action and evidence requirements",
+        "when configured, an authenticated complete project-system snapshot whose digest is independently mapped into the signed release action",
+        "a licensed external custodian that exclusively mediates funding and release for the configured transaction and honors idempotency"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow.js",
+          "symbol": "createActionEscrowKernel",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-verifiers.js",
+          "symbol": "createActionEscrowContractorDocumentBindingVerifier",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-custodian.js",
+          "symbol": "createActionEscrowCustodianBridge",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-package.js",
+          "symbol": "assembleActionEscrowContractorEvidencePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-evidence.js",
+          "symbol": "verifyActionEscrowEvidencePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-postgres.js",
+          "symbol": "createActionEscrowPostgresStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/escrow-com.js",
+          "symbol": "createEscrowComAdapter",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "createProcoreChangeOrderAdapter",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "symbol": "verifyProcoreChangeOrderEvidence",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow.js",
+          "export": "createActionEscrowKernel"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-verifiers.js",
+          "export": "createActionEscrowContractorDocumentBindingVerifier"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-custodian.js",
+          "export": "createActionEscrowCustodianBridge"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-package.js",
+          "export": "assembleActionEscrowContractorEvidencePackage"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-evidence.js",
+          "export": "verifyActionEscrowEvidencePackage"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/action-escrow-postgres.js",
+          "export": "createActionEscrowPostgresStore"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/escrow-com.js",
+          "export": "createEscrowComAdapter"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "export": "createProcoreChangeOrderAdapter"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "export": "verifyProcoreChangeOrderEvidence"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the Action Escrow product profile or stateful release kernel is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the Action Escrow product profile or stateful release kernel is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_action_escrow_exact_release_once",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_committed_fact_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_role_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_funded_amendment_without_unwind",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_journal_divergence",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_verifier_echo_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_expired_release_approval",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_funding_request_state_fallback",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_compensated_history_pruning",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_database_role_or_clock_rollback",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_custodian_alias_or_unfunded_release",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_action_escrow_project_source_snapshot",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_sidecar_bytes_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_action_escrow_project_source_context_relabeling",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/gate/action-escrow.test.js",
+          "title": "runs the complete milestone lifecycle and releases exactly once",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow.test.js",
+          "title": "signed action commitments cannot be replaced by verifier-selected funding or evidence",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow.test.js",
+          "title": "concurrent release requests durably reserve once before provider invocation",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-evidence.test.js",
+          "title": "document execution, agreement acceptance, and release approval are non-substitutable rows",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-evidence.test.js",
+          "title": "component verifiers must echo the exact agreement, binding, and action they checked",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-custodian.test.js",
+          "title": "bridges the exact signed action to provider release and a portable observation",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-postgres.test.js",
+          "title": "history verification refuses mutation, gaps, and digest substitution",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-postgres.test.js",
+          "title": "normal reads refuse truncated, reordered, or state-divergent journals",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow.test.js",
+          "title": "an amendment cannot race funded custody without an authenticated unwind",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow.test.js",
+          "title": "expired approvals are refused both at admission and immediately before release",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow.test.js",
+          "title": "funding-request state blocks amendment and cancellation until custodian reconciliation",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-package.test.js",
+          "title": "assembler refuses pruned operation history and regressing timestamps",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-evidence.test.js",
+          "title": "contractor package re-performs the bound project sidecar and refuses profile confusion",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/action-escrow-postgres.test.js",
+          "title": "health refuses owner or destructive runtime privileges",
+          "runner": "node-test"
+        },
+        {
+          "file": "tests/action-escrow-escrow-com.test.js",
+          "title": "refuses milestone acceptance until every schedule is secured and funded",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/action-escrow-procore.test.js",
+          "title": "double-fetches an exact read-only snapshot and marks it non-authoritative",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/action-escrow-procore.test.js",
+          "title": "binds every source coordinate and refuses provenance relabeling",
+          "runner": "vitest"
+        },
+        {
+          "file": "packages/gate/action-escrow-verifiers.test.js",
+          "title": "the contractor profile requires a project source digest bound to its signed term",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/action-escrow/scenario.test.mjs",
+          "title": "keeps document, exact-action approvals, and external custody visibly separate",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/action-escrow/scenario.test.mjs",
+          "title": "uses the shipped DAB, Action Escrow kernel, and portable evidence package",
+          "runner": "node-test"
+        },
+        {
+          "file": "examples/action-escrow/scenario.test.mjs",
+          "title": "refuses project-source context relabeling even after package rehash",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The complete project-source-to-custodian composition, six-row evidence flow, amendment lifecycle, durable reservation, provider reconciliation, and external effect are executable but not represented as one TLA+, Alloy, or Tamarin model."
+        }
+      ],
+      "assumptions": [
+        "every release path is completely mediated by the configured licensed custodian and the custodian honors the exact provider transaction, beneficiary, amount, and idempotency contract",
+        "the relying party provisions and maintains the mapping issuer, party, operator, and provider trust roots out of band",
+        "the durable store runs under a separately provisioned non-owner role with no DELETE or TRUNCATE privilege on state and no UPDATE, DELETE, or TRUNCATE privilege on history; database-owner compromise remains outside this claim",
+        "the deployment supplies a durable fail-closed effect-reference binding store to the external custodian adapter",
+        "the configured project-system API and OAuth credentials resolve the intended company, project, and change-order namespace",
+        "the external evidence verifier truthfully checks completion evidence under the requirements committed by the signed action"
+      ],
+      "exclusions": [
+        "EMILIA does not hold funds, act as an escrow agent, determine licensure, or establish legal enforceability",
+        "cryptographic evidence does not prove workmanship, physical completion, identity, comprehension, voluntariness, fairness, or absence of fraud by an authentic trusted key",
+        "the guarantee does not cover payment routes or custodian operations that bypass the integrated mediation boundary",
+        "a project-system record is source evidence only and does not prove party acceptance, human approval, legal enforceability, or physical completion",
+        "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
+        "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
+      ],
+      "release_artifacts": [
+        "gate-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "gate-sdk",
+          "sha256": "4ed9777b461474b7008aed76d0c08d99af8d92c092c730c950bf04a60a3d1f01"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
         }
       ]
     }
@@ -2675,47 +4871,39 @@
   "evidence_files": [
     {
       "path": ".github/workflows/_publish-npm-package.yml",
-      "sha256": "9db69b551315564be93dd01715717dbb413482faa6f344d5dcf4fc8a20698e27"
+      "sha256": "26dffb62669244a32331b0b29befb22d0025691a84611b640758f269e3d830b9"
+    },
+    {
+      "path": ".github/workflows/_publish-pypi-package.yml",
+      "sha256": "38a7228200bad70d1ab7467108c72492a80c8b6fef49aa5e8550b2efdef1e7ac"
     },
     {
       "path": ".github/workflows/publish-gate.yml",
-      "sha256": "ee4eb6e66bcc249ee9aab97233e736486d021242045a27098782810909691440"
+      "sha256": "629abb37f70af11f8fca2431f248c4d03abd7d2d1c559c9b04136bf5d6a410eb"
     },
     {
-      "path": ".github/workflows/publish-issue.yml",
-      "sha256": "f545e4e2906300b8faa07296bfcecf66a3d76d5c2b7a8d80700bc11c12c215aa"
-    },
-    {
-      "path": ".github/workflows/publish-langchain-python.yml",
-      "sha256": "0088e6777d3c91614b8691da3adfe25a5bc0f8d742a9dc8e1b5d83ae7ec006e6"
-    },
-    {
-      "path": ".github/workflows/publish-langchain.yml",
-      "sha256": "e2b2f390c16890d14c6f743e1ee5adf4c7157af89743657c3b71200e6057b231"
-    },
-    {
-      "path": ".github/workflows/publish-mcp.yml",
-      "sha256": "e5b262417f800ccc47500e69e1665ab4e03f559f812425f63d2d05518ccf70c3"
-    },
-    {
-      "path": ".github/workflows/publish-python-sdk.yml",
-      "sha256": "dc6dc8b82d8d24ea42913e2b48442adef3cc314833c59885f322b936ba13b86c"
+      "path": ".github/workflows/publish-go-verify.yml",
+      "sha256": "e34988101df02fb996a1f6de3353a6207f3878c7c2e68fb56ad3b3821f85bc42"
     },
     {
       "path": ".github/workflows/publish-python-verify.yml",
-      "sha256": "1eeea0a835c7307ae5cb35dc3c44253618e45e0a6e72c92021cadd4696e2577a"
-    },
-    {
-      "path": ".github/workflows/publish-require-receipt.yml",
-      "sha256": "96d8e08645b9053db9dcad2d873ffda9a3e8c52407dd54de45693550a7e84051"
-    },
-    {
-      "path": ".github/workflows/publish-typescript-sdk.yml",
-      "sha256": "3ef7d961ba06b50e8a4801697fcd5d0630792f170539236b275b57d2f916bd83"
+      "sha256": "deec71e14254bb6ce400b155b000ec46f1f48f2429260fffa12cba9e827feb15"
     },
     {
       "path": ".github/workflows/publish-verify-sdk.yml",
-      "sha256": "2caaa58a4ac4d8c2222597dd7987079b6ace0c217be75a6c145a899324ae15ce"
+      "sha256": "57d7b298d66d145fb851874a655a385fef466895f3e4cd975e19b09f98834507"
+    },
+    {
+      "path": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js",
+      "sha256": "12f7725782d66d75d6eb9294939628209b2ad7885906d59c6d1e844e47f6e89e"
+    },
+    {
+      "path": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js",
+      "sha256": "de0a55ffa8c56fb2fb54ab8319f5d14af86bd224ca237b079dcb9ab132037cf0"
+    },
+    {
+      "path": "conformance/run-model-to-matter.mjs",
+      "sha256": "457548930a77ffa0915ae4e3a4ee8de1dd3bb71445c5716e9aaeefa6cb7ae5ea"
     },
     {
       "path": "conformance/runners/strict-json.mjs",
@@ -2723,23 +4911,35 @@
     },
     {
       "path": "conformance/vectors/aec-role.v1.json",
-      "sha256": "aa68f54f794373f95b7b1cb728ffd04c18ec7bd284129bd553d12cc5517dfb59"
+      "sha256": "b0f286cab68c22b608ece3af46174fbd66e27b893b4762d12fa320ea596353f2"
     },
     {
       "path": "conformance/vectors/authority.v1.json",
       "sha256": "6d5b49bb698e08346e93484a85c82502a84ad1c49d8d68ab7491fa9c4530a983"
     },
     {
+      "path": "conformance/vectors/grace-mobile-grid.v1.json",
+      "sha256": "3c5b90805a9756792540fe8c14fe3765329b6cd404437d99452cb62dca30b787"
+    },
+    {
+      "path": "conformance/vectors/model-to-matter.v1.json",
+      "sha256": "92a19544dff130da7b91507f7b86f521cb40230e58fc208c06d5c65b56e093ad"
+    },
+    {
       "path": "conformance/vectors/quorum.v1.json",
-      "sha256": "5fb57ed6d732f2509614818ab58bb5bef74a05d98345ddeaf1c644bae291627a"
+      "sha256": "ad9a79488fd9b2fe338a18212ee61e4de9f2a89b72889a70d16694ddfbe3db76"
     },
     {
       "path": "conformance/vectors/reliance.v1.json",
       "sha256": "450a9324d19120e38237a5403731ddd199f0b4940777dc669c9b3d601982b326"
     },
     {
-      "path": "conformance/vectors/revocation.exec.v1.json",
-      "sha256": "9e45d2188309302bb74eeb7eeae5d5f90a1ce99cfa7c0a8648182fe21cd3ba4b"
+      "path": "conformance/vectors/resolution.v1.json",
+      "sha256": "3d89e9f624e8c7058876ae404c7ec1e76293b4ef178bb8901ec31e72e44b5c5c"
+    },
+    {
+      "path": "conformance/vectors/revocation.exec.v2.json",
+      "sha256": "c0e6c0a36f5eea378da770c2fbd6f8257b2938aa856c7f93991e582a12bc6c8a"
     },
     {
       "path": "conformance/vectors/timestamp-proof.v1.json",
@@ -2747,7 +4947,23 @@
     },
     {
       "path": "conformance/vectors/trust-receipt.exec.v1.json",
-      "sha256": "0475a4f3ed8e477f5674b8a97d558700a4d820fa49055c5aae1aaa01b19a40b3"
+      "sha256": "095d50eb2199451344628fffe6e391cdad2718ad647a9dc952712eabefdecf51"
+    },
+    {
+      "path": "examples/action-escrow/scenario.test.mjs",
+      "sha256": "a1b6bf14e0e877d13131b2e814f8774dac3907faf6a90d257f7024f617dd445d"
+    },
+    {
+      "path": "examples/grace/live-control-room.mjs",
+      "sha256": "02901677973dd36f29b828369ba6c120bcd8c4e59738ce68e2a0a253aa0cb2b1"
+    },
+    {
+      "path": "examples/regulatory-mobile-oversight/demo.test.mjs",
+      "sha256": "49bbf1faa9311ef552e52c9c10ad18a0397dff85d009a94302b8608b2ab14728"
+    },
+    {
+      "path": "examples/regulatory-mobile-oversight/lib.mjs",
+      "sha256": "9a09b8387e3584d313056a105169c6ce07d3ca2fd37e9883beca31fb5e7def14"
     },
     {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
@@ -2763,7 +4979,7 @@
     },
     {
       "path": "lib/authority/proof.js",
-      "sha256": "1ba506a25b7c7b19e5f137388922b23ec799131a50f680c9e625579833f05c50"
+      "sha256": "e77921dfa09908e000c3e76e7b0a507eebbf8f081b41a7612b07015df02dddfd"
     },
     {
       "path": "lib/authority/resolver.js",
@@ -2771,23 +4987,103 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "4910755ecd87ae1b11207a81734e4d3ec7e53ba5f771af69f2cb93c7d7c2ad5c"
+      "sha256": "abbc9c55f5cdf96dfc22ffb10010d34f6c27fa8b43f50127f22ecab118fdeb82"
+    },
+    {
+      "path": "lib/grace/mobile-grid.js",
+      "sha256": "41cea8107b93b17e5b4b628e46c6e2cde58821fa53d6c5955554b9cb8a4d6cfa"
+    },
+    {
+      "path": "lib/guard-signoff.js",
+      "sha256": "5db2f49da8e160b277bc3d64cffa98d8acbaee13dc0703a15be971fab9692e77"
+    },
+    {
+      "path": "lib/integrations/action-escrow/escrow-com.js",
+      "sha256": "ab403d6d896ca5bf85c7d633de91e613d7174fb40d16add15e7570d8c43314ef"
+    },
+    {
+      "path": "lib/integrations/action-escrow/procore-change-order.js",
+      "sha256": "b62670c292197333b0ec3bfe44097d9ca0b0453d0447ca368022acc7168a3e49"
     },
     {
       "path": "lib/ncpdp/privacy.js",
-      "sha256": "df292a2464e9162fdda2bdc62e1d1fe7bec843af2dc3471e1c36780ffcce5333"
+      "sha256": "6ac93d6b25ff72985bae8ca65eaddbab2545cf634cb7d832a410c32d9870dc2b"
     },
     {
       "path": "lib/negotiate/evidence-challenge.js",
       "sha256": "5fbf1fba0ee5438aa4735da45dda7ee0f2c4cec39811afed68c9ce166479d327"
     },
     {
+      "path": "lib/signoff/decision-evidence.js",
+      "sha256": "9e42206c9e2f46c22b0ae27d72cd16793cd00817ed2bc200d6dac40c4bee0abb"
+    },
+    {
+      "path": "lib/webauthn.js",
+      "sha256": "6254a890590a347f8c37a0f05eb8eda47a3f9edfd4dc85e7a64139aba2d4b06b"
+    },
+    {
+      "path": "mobile/conformance/mobile-core.v1.json",
+      "sha256": "a2e4ba80e8f7f49b574fc7965288574c9f7f49f4ebcd8aa0281982a498f24e18"
+    },
+    {
+      "path": "packages/gate/action-escrow-custodian.js",
+      "sha256": "2776dea96be7a511a053c1807a7e5f4686cc7a2d582fcc1658df490119e1f77a"
+    },
+    {
+      "path": "packages/gate/action-escrow-custodian.test.js",
+      "sha256": "ffe14876c09da9b8f485936de041ccd30e7954fb8bab4fa060e0340ab7f4c6e8"
+    },
+    {
+      "path": "packages/gate/action-escrow-evidence.js",
+      "sha256": "882e363679ff1de269322ff79f5797b81eb24982bd6be52b3b633419db145242"
+    },
+    {
+      "path": "packages/gate/action-escrow-evidence.test.js",
+      "sha256": "4e253fdbea1317273d48a13785eed06c542c282b7c13233a403ff481ae90e96e"
+    },
+    {
+      "path": "packages/gate/action-escrow-package.js",
+      "sha256": "1410613070f6124b11b925b38c7499684162da534cf6f6222f698205df322d9f"
+    },
+    {
+      "path": "packages/gate/action-escrow-package.test.js",
+      "sha256": "4739d1ee8ec47f8d949a47268cb4bbd66c33e042aced7e04ce2a4cfe6a14b0f3"
+    },
+    {
+      "path": "packages/gate/action-escrow-postgres.js",
+      "sha256": "fb241be6a5171990447c33d76ec33919dc8dd128bf887750e9669d631145a383"
+    },
+    {
+      "path": "packages/gate/action-escrow-postgres.test.js",
+      "sha256": "978a18af69901da5d034359330c82fadc2c7b50aeb46f9d1f14c605574fcdc60"
+    },
+    {
+      "path": "packages/gate/action-escrow-verifiers.js",
+      "sha256": "580a8a23741568b0a2c9a44f3664d0c1b15a7a639b5bd2885ec2ff610a696be2"
+    },
+    {
+      "path": "packages/gate/action-escrow-verifiers.test.js",
+      "sha256": "bffc64cb8fdba6dfbef033c7eed57a8ecc74679448214e1a74dcb9dff9001d67"
+    },
+    {
+      "path": "packages/gate/action-escrow.js",
+      "sha256": "7ff8b7d05be9b39826444bf954f41697c1d938c0f5a445a37cfa8e48ea1d0cfe"
+    },
+    {
+      "path": "packages/gate/action-escrow.test.js",
+      "sha256": "5d36bb7be8e8725fe4dfb82cca0df73472805c3ab640c16fd85dcf18a1ecb95d"
+    },
+    {
       "path": "packages/gate/aec-execution.js",
-      "sha256": "2726c422d457cca136668acfb4d7e3b2dc8387c1ea2c2ca0f85f995dafc2928f"
+      "sha256": "35d292d2a87aec554a94fb9f4c18f1d39ed1c65d55d20415ebe68282473d1176"
     },
     {
       "path": "packages/gate/challenge-store.js",
       "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
+    },
+    {
+      "path": "packages/gate/deploy/sql/001-runtime.sql",
+      "sha256": "0f3539da67d89140ed64ff71c0e44bdb088e9e53640581d543dbc9ab0dfef671"
     },
     {
       "path": "packages/gate/evidence-atomic.test.js",
@@ -2795,15 +5091,23 @@
     },
     {
       "path": "packages/gate/evidence.js",
-      "sha256": "d036538b52c23a780493a856228d2020f006ce8bbf48769c9cf2e8e2881042af"
+      "sha256": "7d73301b90fad4c670de1d66fcedd5dae08a9cfe313066370c5f2ba178342c54"
     },
     {
       "path": "packages/gate/gate.test.js",
-      "sha256": "649905c1a59956219e8cf34346cefcc072ddf2025e990ce18afe28d6821a44b4"
+      "sha256": "58567dc983ed85cd9f26790944f7406ff88250ea29488380ca60865fed941e69"
     },
     {
       "path": "packages/gate/index.js",
-      "sha256": "dc9a9f788a8e22406cddce7a16897ed34a160dbed7f00abd1b008f4b4f84405c"
+      "sha256": "44af9e7369e34b1ae5efb2c033fbfa56a4ba5963a60c7bfe94e825cdc4675e05"
+    },
+    {
+      "path": "packages/gate/network-witness.js",
+      "sha256": "93fcd8c132172dc9e00f62f2d29fc8565e228d8cd2d5e9a20f998602e5f4a5d7"
+    },
+    {
+      "path": "packages/gate/network-witness.test.js",
+      "sha256": "882802cddeaddf695e100fd7db215b7658e9376bd929f5bbd77d3b4b1b4cbb4a"
     },
     {
       "path": "packages/gate/store-faults.test.js",
@@ -2815,19 +5119,35 @@
     },
     {
       "path": "packages/gate/store.js",
-      "sha256": "3500a7870f644bcfad1ad1247f054851f28a7fd682abc7624e30fb4bae1a928b"
+      "sha256": "0cf69bbbb9da415c4d84e688359b4d57d2d7f21da43b42c7ba65ec4799a0588e"
+    },
+    {
+      "path": "packages/gate/witness-postgres.js",
+      "sha256": "7cdc5d34e3eecf440cc076697be2a7a0e08f0872f6d346ceef315fae5f9eb304"
     },
     {
       "path": "packages/go-verify/evidence_chain.go",
-      "sha256": "2c1416ad111780b6004e5fd91d084ea0f58ab4456022f26623d61b8304f2028d"
+      "sha256": "7e4e8fdcd41ef5ac7f00d542e12a06078750466bb2e1bd5fb2b704392ef68a6a"
+    },
+    {
+      "path": "packages/go-verify/go-release.json",
+      "sha256": "70ae86b5af9b075fa131e4f98afd8493af334d7635a531aee7ddc2a36a4c8274"
+    },
+    {
+      "path": "packages/go-verify/resolution.go",
+      "sha256": "3659a04b8e7bcc0506808a444615e76f9c72db670f750d92fbbfd7693874e32a"
     },
     {
       "path": "packages/go-verify/revocation.go",
-      "sha256": "c8380d5c60948a392a79240c54528b9dce789f6b04bc63f9e3ecc6dbb875f9d8"
+      "sha256": "f32a94820160f8f59fb173bdc0406e57052429ff19e230dfd4fe84fbdfbe2a28"
     },
     {
       "path": "packages/go-verify/signoff.go",
-      "sha256": "66ed9726904ea60a1fef030fa9be50807c58312d87a17a30e87676fe474b9cf7"
+      "sha256": "f4be0784bc567ce9ffba7713f73658a8724c6573a6876dbeacb61fd0e6c766a8"
+    },
+    {
+      "path": "packages/go-verify/signoff_compatibility_test.go",
+      "sha256": "7cc3cc0001fa930f4595fcd6c29f22c604263aff09159f8b593217b68b7e9ec9"
     },
     {
       "path": "packages/go-verify/timestamp_proof.go",
@@ -2835,43 +5155,83 @@
     },
     {
       "path": "packages/go-verify/trust_receipt.go",
-      "sha256": "db485639f63d333b5045663a4559ec0edaca2b1563e1c9fa3a3eee3b9234c53e"
+      "sha256": "976c1f5f8bbba643600c90720a45b22c220a12e072abf27f8f40d8c90fe9e3ba"
+    },
+    {
+      "path": "packages/mobile/enrollment.js",
+      "sha256": "5e13966c263b313c45e39319e272213fecef1728b6ae71fb77bea9168f6948ff"
+    },
+    {
+      "path": "packages/mobile/enrollment.test.js",
+      "sha256": "58a9efffda68bfb3afcc9ce32788e5319fb831dae77e43f5c3a209150ce4adf3"
+    },
+    {
+      "path": "packages/mobile/government.js",
+      "sha256": "e408b736bbbaf381fbd8f6d9a632805ccafcd9b66a24ff714174d2f0ed5b1359"
+    },
+    {
+      "path": "packages/mobile/government.test.js",
+      "sha256": "2751add4d40ff58657270a5cdf6bf1689d9a6bcc2c653100bce9db74987c06ba"
+    },
+    {
+      "path": "packages/mobile/http.js",
+      "sha256": "ffe72fb25767b8b5c2e5e19546db907b8a794f995aab85259b92d0fca57af0f8"
+    },
+    {
+      "path": "packages/mobile/http.test.js",
+      "sha256": "65fa5ec9d9119e307b5f6045e25e29488fa79c963c12a63abae75f2b4ae8fda5"
+    },
+    {
+      "path": "packages/mobile/index.js",
+      "sha256": "1474a5faba742c4dbedc3b6643c62a3312652a62651c502e9f4ee79eef4bd5c8"
+    },
+    {
+      "path": "packages/mobile/index.test.js",
+      "sha256": "1acff3a2ecd9585ef16ef59b03601cfda6d52a83d5414bf6eb134c284060b991"
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
-      "sha256": "df7db65d9d95df54c478c0ae1f5a06b05c7551cc7fdc0038df7e5b0eefc2cf20"
+      "sha256": "24fd2a2e690f937b638ed39ead35aac609e2663dd2107465c0cf81f6eb1ad7bc"
     },
     {
       "path": "packages/verify/authority-proof.js",
-      "sha256": "7b0882964ac0d7284c785a8295f4352778d3b61c8110d13f8a69bf9c87dbf62f"
+      "sha256": "b32c9359594acd23bf677b97848dee4d0f2d66e7bf2dd661005c3dc80aa6f588"
     },
     {
       "path": "packages/verify/evidence-chain.js",
-      "sha256": "938f34392dc5af6f73805b94c24520f5a29dffc8fcd3c73e6c451496e69878d0"
+      "sha256": "b4a283a57a82a21004878177366953837ebefdcfa9a846842bd96654768b8e5e"
     },
     {
       "path": "packages/verify/index.js",
-      "sha256": "e81cfb587411e05a5e6d14387929b6e71eaecc79d8d083a9b062a583d4b9f650"
+      "sha256": "2e81591107752f5daaf888010e4b57a6e7f38ca5e8e5b4d20721f783187fa9e5"
     },
     {
       "path": "packages/verify/quorum.js",
-      "sha256": "81d80905a9538ad0efaaf7c23edb9cccf83d7b3eff6b7e241161c19ebd5680cf"
+      "sha256": "dda32ec2462bd228fabf18f62e047229dab2153fcaf24d26ecd3379e7fcaeb86"
     },
     {
       "path": "packages/verify/quorum.test.js",
-      "sha256": "293c478f790f59ed6bc95c55b1a9042a4ba9199dea851466bb145099622dbfd8"
+      "sha256": "a788f8af5e27748eb932a207e54a6cd38c5e33a18ed90c3ada7f8679cfa874d2"
     },
     {
       "path": "packages/verify/reliance.js",
-      "sha256": "f07a59767667ba688c33bd36c763b84d963b67e026962fcdabaa8ebdea053445"
+      "sha256": "ec4aaa03e090eda2598c32b467d4f53910c7cd2dea8b6d9bc702ba82a19e32da"
+    },
+    {
+      "path": "packages/verify/resolution.js",
+      "sha256": "517176437e86e5fc3743924379686de257f3c78a93bfb40c089e97b64defbbcf"
+    },
+    {
+      "path": "packages/verify/resolution.test.js",
+      "sha256": "c0f811ee03b1b37666a5c63130adcf5a68f2c4e4793e07ff75272a2309e1c7c5"
     },
     {
       "path": "packages/verify/revocation.js",
-      "sha256": "e53ec7458c085b1a57cdb827b2aec81acd2c1eb00db57e8e0515c470496a3340"
+      "sha256": "7cc22019f4ae8431cd125d9c5a4cb34595643e0271ef76b0aa2afdf99a2fa606"
     },
     {
       "path": "packages/verify/revocation.test.js",
-      "sha256": "2a8a2f1b63239359067e8fad46abf2dbec4b6b5a057554939807e6fee835df9e"
+      "sha256": "e08d30754acf5e701b08dc925565452051a87bc9b3cca8e2bb244a0622d33767"
     },
     {
       "path": "packages/verify/timestamp-proof.js",
@@ -2883,15 +5243,15 @@
     },
     {
       "path": "packages/verify/trust-receipt.test.js",
-      "sha256": "b681118669020ad0d172655ceb0388ab0dc65d7c64fcdeed41fb30abba994f14"
+      "sha256": "ce8514ad9732a19c501340bd8f7dfbccd4983b6c1da59d82c5b17498b1a7955a"
     },
     {
       "path": "release/release-packages.v1.json",
-      "sha256": "d574c70ae33cc6bc164980dc2100805b94cd6e38410d657e4dd8daf303ec4195"
+      "sha256": "a66c7f23910c1745fecee90b8a0273cbc27363b24d0dfff10af6df62cc6ae143"
     },
     {
       "path": "scripts/check-release-chain.mjs",
-      "sha256": "1359ebb8ad1ce3cacba2d9d82b9b22e1db50b5d257bab524a7c037c952098610"
+      "sha256": "d2643c06dd81890425b43b78c75a687f356ed1bf17e7b2691ac206178a56dfaf"
     },
     {
       "path": "scripts/python-artifact-integrity.mjs",
@@ -2899,7 +5259,7 @@
     },
     {
       "path": "scripts/require-release-approval.mjs",
-      "sha256": "bb388d7654be64ea9910fa4a45e94fa8ed93eea84e3d7fc3ff104d39c53073d4"
+      "sha256": "0ea6e19e1eb3296135459a6f05bf293863b6c5b97b0f9fd978fb95337bcbc268"
     },
     {
       "path": "scripts/verify-reproducible-package.mjs",
@@ -2915,11 +5275,19 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "e0d7fe11acf6ab9ac5870e7f4e30dfaa597563d42e01986c08ae5a4fd7be61a4"
+      "sha256": "1e4d9ac569ad5d1752428bf1994c2485ea85ff2ba2d9a2fba62e1ff06db5a4f8"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "c7fb351790af5b609e7054813e4c4d37fe793f5a4ffc55abdb184e14c2045a8a"
+      "sha256": "2c04142fb159e5ceca7cbf7d7cdd358da1c42d084767ff76a6782742a70555c0"
+    },
+    {
+      "path": "tests/action-escrow-escrow-com.test.js",
+      "sha256": "d1f7c408136b2dc025c0e4a7a5007c1e01cb97d6ceeb091a26cc421129cfe12a"
+    },
+    {
+      "path": "tests/action-escrow-procore.test.js",
+      "sha256": "f183ea0bf761a89815bb248446fbc827a10037b936801900bb91cc3b03a530ea"
     },
     {
       "path": "tests/aec-execution-gate.test.js",
@@ -2927,19 +5295,23 @@
     },
     {
       "path": "tests/aec-safety-critical.test.js",
-      "sha256": "9afedb2175cc12c85a83456cf44446d86bb77f3e722b6fa9af2781bd0385f6a1"
+      "sha256": "7f29883357aa8b8b1df4765a3fcf7b2634c1601088104f9717176e0b16def534"
     },
     {
       "path": "tests/authority-registry.test.js",
-      "sha256": "2eff50146fb38f9e8aaa995fbbefbde59bc4a2be2966c2f3c077c70138317bac"
+      "sha256": "1148057c6be0ad1819296f5921e5a34c715f09d2f8d438b1085b6766e8382215"
     },
     {
       "path": "tests/evidence-challenge-durable.test.js",
       "sha256": "17466f71be88b3fb2962df6fb90b4e252d89a780360a63e4903cbe8fec2898b4"
     },
     {
+      "path": "tests/grace-mobile-grid.test.js",
+      "sha256": "9f8a689884e6b89f39b448a803489ab3cedff870274f34de13ca3721e9701c41"
+    },
+    {
       "path": "tests/model-to-matter.test.js",
-      "sha256": "781bd8f5850475612a975dbd34084da4061f71d291e83ae714084f7a07426936"
+      "sha256": "7d2928f42971bd9533b8af2738124b56e98d1c58ecf56e37d82257c02575eed2"
     },
     {
       "path": "tests/ncpdp-privacy.test.js",
@@ -2947,11 +5319,11 @@
     },
     {
       "path": "tests/release-approval.test.js",
-      "sha256": "ef6240456b0dd5270356e934b2ecdc4aab44332cd4401847c89522a760778dd3"
+      "sha256": "b3a9a07fdd331b96e2e62d3626c57798935d3ab5515af4f2bf0945da5baf55a7"
     },
     {
       "path": "tests/release-chain-coverage.test.js",
-      "sha256": "f7eb3a4efca584b8c5919ca2eb967c180a35016ac9f76313605d9a7e168bae06"
+      "sha256": "90b0041c4f2ba38decde6cd05c5331ad20f2607fbc746954e731c7e471f44808"
     },
     {
       "path": "tests/release-reproducibility.test.js",
@@ -2959,11 +5331,27 @@
     },
     {
       "path": "tests/reliance-kernel.test.js",
-      "sha256": "9469c3a20fe7d5bc27a0a0cb1950cba4cd709f359ea3092ed9de8c3da9471412"
+      "sha256": "d722b375e51b3494f59e9552b8833571ba050475de44c770cf3e7cff321cbdbd"
     },
     {
       "path": "tests/role-non-substitution.test.js",
       "sha256": "6dbc42fe57390bc990b6f2c0554125cdff6f158de93ac722a4ebf1006d66e57b"
+    },
+    {
+      "path": "tests/signoff-decision-evidence.test.js",
+      "sha256": "eb24f08dfc28313c38b6840b5335d68469ebcffecf477702559bbfd4b533a008"
+    },
+    {
+      "path": "tests/v1-api.test.js",
+      "sha256": "a5afb933212b74860678daff024a658411e86dc6d0aa6ddcadf3091246a87ac2"
+    },
+    {
+      "path": "tests/webauthn-approve-route.test.js",
+      "sha256": "1cd8b468799d61258323232905298aaaf06cdb449a133b538ac71a060e595fd6"
+    },
+    {
+      "path": "tests/webauthn-lib.test.js",
+      "sha256": "82ade1064c9b8ac983bfee164a6444af62730a424451ab465ecd3c9b36dd88ba"
     }
   ]
 }

@@ -75,6 +75,17 @@ describe('readLimitedText', () => {
     const r = await readLimitedText({ headers: new Headers(), body }, 64);
     expect(r).toEqual({ ok: true, text: 'ok' });
   });
+
+  it('rejects malformed UTF-8 instead of replacement-decoding it', async () => {
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(Uint8Array.from([0xc3, 0x28]));
+        controller.close();
+      },
+    });
+    const r = await readLimitedText({ headers: new Headers(), body }, 64);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_utf8' });
+  });
 });
 
 describe('readLimitedJson — json()-only test-double path', () => {
@@ -145,6 +156,21 @@ describe('readLimitedJson — real stream path', () => {
   it('parses valid JSON from the stream', async () => {
     const r = await readLimitedJson(streamFrom('{"k":"v"}'), 64);
     expect(r).toEqual({ ok: true, value: { k: 'v' } });
+  });
+
+  it('rejects duplicate JSON member names before parsing', async () => {
+    const r = await readLimitedJson(streamFrom('{"action":"safe","action":"dangerous"}'), 128);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+    expect(r.detail).toMatch(/duplicate object member/);
+  });
+
+  it('maps duplicate JSON to invalidValue only when the caller explicitly requests that behavior', async () => {
+    const r = await readLimitedJson(
+      streamFrom('{"action":"safe","action":"dangerous"}'),
+      128,
+      { invalidValue: {} },
+    );
+    expect(r).toEqual({ ok: true, value: {} });
   });
 
   it('propagates a 413 from the stream cap', async () => {

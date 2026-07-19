@@ -324,7 +324,7 @@ test('online path fails closed when key discovery is unreachable', async () => {
   assert.match(result.error || '', /Failed to fetch operator key discovery/);
 });
 
-test('online path fails open on revocation lookup but still verifies signature', async () => {
+test('online path preserves signature verification but refuses acceptance when revocation is unavailable', async () => {
   const A = makeOperator('ep_operator_a');
   const receipt = issueReceipt(A, samplePayload('ep_receipt_011'));
   const doc = discoveryDoc(A);
@@ -335,8 +335,11 @@ test('online path fails open on revocation lookup but still verifies signature',
   };
   const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
   assert.equal(result.verified, true);
-  assert.equal(result.accepted, true, 'an unreachable revocation feed must not fail a valid receipt');
+  assert.equal(result.accepted, false, 'unknown revocation state must not become live acceptance');
   assert.equal(result.revocation_confirmed, false);
+  assert.equal(result.revocation_status, 'unavailable');
+  assert.equal(result.checks.not_revoked, false);
+  assert.match(result.error || '', /revocation status is unavailable/);
 });
 
 // ── 8. Trust-anchor injection — the DoD-audit finding ─────────────────────────

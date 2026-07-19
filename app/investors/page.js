@@ -52,10 +52,31 @@ export default function InvestorsPage() {
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56, maxWidth: 640 }}>
         <div className="ep-tag" style={{ color: color.gold, fontFamily: font.mono || font.sans, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 20 }}>Investor Inquiries</div>
         <h1 style={{ fontFamily: font.sans, fontSize: 40, fontWeight: 700, color: '#0C0A09', lineHeight: 1.1, marginBottom: 20, maxWidth: 560 }}>
-          Building the trust layer for a world humans and machines share.
+          The durable-consequence layer for machines that can change the world.
         </h1>
         <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
-          The protocol, the running verifiers, and the standards work are open and public. If you invest in infrastructure and open standards, or you can open a pilot door, we would like to talk.
+          AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact
+          human authorization and safely controls consequential outcomes. Gate enforces that
+          separation at the protected executor.
+        </p>
+        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
+          Gate turns that hierarchy into a product boundary. Action Escrow demonstrates the whole
+          chain on one exact release: a signed document is not payment authority, both parties
+          authorize the release, and Gate consumes that release authority once. CAID correlates
+          native action descriptions under pinned profiles without granting authority. Bounded
+          capabilities reserve before provider entry and keep uncertain outcomes indeterminate
+          until authenticated evidence reconciles them.
+        </p>
+        <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#57534E', maxWidth: 560, marginBottom: 12 }}>
+          The technical moat is open interoperability plus reproducible assurance: fail-closed
+          native verifiers, shared conformance vectors, scoped formal models, and an Assurance Plane
+          that re-performs evidence instead of trusting a dashboard.
+        </p>
+        <p style={{ fontFamily: font.sans, fontSize: 14, lineHeight: 1.55, color: '#78716C', maxWidth: 560, marginBottom: 12 }}>
+          CAID -00 is a private filing candidate, Bounded Capability is implemented architecture,
+          and AEC is an individual Internet-Draft; none is an adopted standard. No
+          physical hardware attestation in production or independently operated witness network
+          is claimed today.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 560 }}>
           The round materials, business model, and commercial detail are shared directly under NDA. Tell us a little below, or reach us at <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold, textDecoration: 'none' }}>team@emiliaprotocol.ai</a>.
