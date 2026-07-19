@@ -2,7 +2,15 @@
   "name": "emilia-protocol",
   "version": "1.0.0",
   "private": true,
-  "description": "EMILIA Protocol — Trust enforcement for high-risk actions. Open protocol for pre-action binding, policy-bound verification, one-time consumption, and accountable human signoff.",
+  "description": "EMILIA Protocol — an open verification protocol and consequence firewall for exact, authorized machine actions.",
+  "homepage": "https://www.emiliaprotocol.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git"
+  },
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20.0.0"

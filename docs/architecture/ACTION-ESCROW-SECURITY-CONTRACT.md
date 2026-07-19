@@ -56,6 +56,15 @@ provider and jurisdiction diligence.
 
 The provider call is an external effect. A timeout or lost response after the
 call begins is `release_indeterminate`, not proof that release failed.
+The durable reservation remains closed to another release call even if the
+original provider response arrives later. While the effect is indeterminate,
+`reconciled_at`, `provider_statement`, and `provider_verification` remain empty.
+EMILIA sets them only from an authoritative provider read whose transport is
+authenticated and whose statement verifier authenticates and binds the evidence
+to the exact provider, idempotency key, request, transaction, milestone, amount,
+currency, destination, agreement, document binding, and release action. Failed
+authentication leaves the release indeterminate. Only authenticated
+`not_released` evidence may reopen the release path.
 
 ## Signed Document-to-Action Binding
 
