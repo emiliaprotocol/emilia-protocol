@@ -38,6 +38,30 @@ const MAX_CURRENCY_BYTES = 32;
 const MAX_OPERATION_ID_BYTES = 128;
 const MAX_DELEGATES = 64;
 
+/** @typedef {import('node:crypto').KeyObject|string|Buffer} KeyMaterial */
+/**
+ * @typedef {object} CapabilityBudget
+ * @property {number} amount
+ * @property {string} currency
+ */
+/**
+ * @typedef {object} ReserveSpendOptions
+ * @property {string} [capabilityId]
+ * @property {string} [capabilityFingerprint]
+ * @property {string} [operationId]
+ * @property {number} [amount]
+ * @property {string} [currency]
+ * @property {number|(() => number)} [now]
+ */
+/**
+ * @typedef {object} CommitSpendOptions
+ * @property {string} [capabilityId]
+ * @property {string} [operationId]
+ * @property {string} [reservationToken]
+ * @property {string} [outcome]
+ * @property {number|(() => number)} [now]
+ */
+
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -248,6 +272,16 @@ function verifyTrustedIssuer(publicKey, trustedIssuerKeys) {
  * metadata; a holder cannot enlarge the budget by editing a bearer object.
  * For m-of-n > 1, the raw secret is not returned; distribute the returned
  * shares instead.
+ *
+ * @param {object} baseReceipt EP-RECEIPT-v1 document
+ * @param {object} [options]
+ * @param {KeyMaterial} [options.issuerPrivateKey]
+ * @param {CapabilityBudget} [options.budget]
+ * @param {string|number} [options.expiry]
+ * @param {{m:number,n:number}} [options.threshold]
+ * @param {any[]} [options.delegationChain]
+ * @param {string} [options.capabilityId]
+ * @param {Buffer|string} [options.secret]
  */
 export function mintCapabilityReceipt(baseReceipt, {
   issuerPrivateKey,
@@ -447,6 +481,7 @@ export function createMemoryCapabilityStore() {
       states.set(state.capability_id, { ...state, consumed_amount: 0, reserved_amount: 0 });
       return true;
     },
+    /** @param {ReserveSpendOptions} [options] */
     async reserveSpend({ capabilityId, capabilityFingerprint, operationId, amount, currency, now = Date.now } = {}) {
       validateOperationId(operationId);
       validateAmount(amount);
@@ -465,6 +500,7 @@ export function createMemoryCapabilityStore() {
       state.reserved_amount += amount;
       return { ok: true, operation_id: operationId, reservation_token: reservationToken, remaining: state.budget_amount - state.consumed_amount - state.reserved_amount };
     },
+    /** @param {CommitSpendOptions} [options] */
     async commitSpend({ capabilityId, operationId, reservationToken, outcome = 'executed', now = Date.now } = {}) {
       const operation = operations.get(operationId);
       const state = states.get(capabilityId);
@@ -530,6 +566,9 @@ export const CAPABILITY_SQL = Object.freeze({
  * connection with BEGIN/COMMIT/ROLLBACK. The state row is locked before the
  * operation row is inserted, making budget reservation linearizable per
  * capability and refusing all ambiguous database outcomes.
+ *
+ * @param {object} [options]
+ * @param {(callback: (query: Function) => any) => any} [options.transaction]
  */
 export function createPostgresCapabilityStore({ transaction } = {}) {
   if (typeof transaction !== 'function') throw new TypeError('createPostgresCapabilityStore requires a transaction(callback) function');
@@ -550,6 +589,7 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
           && Date.parse(row.expires_at) === state.expires_at;
       });
     },
+    /** @param {ReserveSpendOptions} [options] */
     async reserveSpend({ capabilityId, capabilityFingerprint, operationId, amount, currency, now = Date.now } = {}) {
       validateOperationId(operationId); validateAmount(amount); validateCurrency(currency);
       const at = nowMs(now);
@@ -571,6 +611,7 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
         return { ok: true, operation_id: operationId, reservation_token: token, remaining: available - amount };
       });
     },
+    /** @param {CommitSpendOptions} [options] */
     async commitSpend({ capabilityId, operationId, reservationToken, outcome = 'executed', now = Date.now } = {}) {
       validateOperationId(operationId);
       if (typeof reservationToken !== 'string' || reservationToken.length < 16) return { ok: false, reason: 'capability_reservation_token_invalid' };
@@ -610,6 +651,21 @@ function capabilityAmount(action, capability) {
  * and budget authority. The external function is entered only after the
  * atomic reservation succeeds. Any exception after entry permanently commits
  * the reserved amount as indeterminate.
+ *
+ * @param {object} [options]
+ * @param {object} [options.capabilityReceipt]
+ * @param {Buffer|string} [options.secret]
+ * @param {{amount:number,currency:string}} [options.action]
+ * @param {any} [options.store]
+ * @param {Function} [options.executeAction]
+ * @param {any} [options.gate]
+ * @param {object} [options.selector]
+ * @param {object|null} [options.observedAction]
+ * @param {string[]} [options.trustedIssuerKeys]
+ * @param {Function|null} [options.verifyBaseReceipt]
+ * @param {string} [options.operationId]
+ * @param {number|(() => number)} [options.now]
+ * @param {boolean} [options.thresholdSecretVerified]
  */
 export async function executeWithCapability({
   capabilityReceipt,
@@ -667,7 +723,10 @@ export async function executeWithCapability({
   }
 }
 
-/** Execute a capability requiring m-of-n Shamir shares. */
+/**
+ * Execute a capability requiring m-of-n Shamir shares.
+ * @param {Record<string, any>} [args] capabilityReceipt, shares, and executeWithCapability passthrough options
+ */
 export async function executeWithThreshold({ capabilityReceipt, shares, ...options } = {}) {
   const verified = verifyCapabilityReceipt(capabilityReceipt, { trustedIssuerKeys: options.trustedIssuerKeys || [] });
   if (!verified.ok) return { ok: false, reason: verified.reason };
@@ -686,6 +745,21 @@ export async function executeWithThreshold({ capabilityReceipt, shares, ...optio
  * parent budget is committed as `delegated` before the child is registered;
  * if child registration fails, the safe result is an orphaned child issuance
  * that must be reconciled, never a child with unbacked budget.
+ *
+ * @param {object} [options]
+ * @param {object} [options.parentCapabilityReceipt]
+ * @param {Buffer|string} [options.parentSecret]
+ * @param {KeyMaterial} [options.issuerPrivateKey]
+ * @param {CapabilityBudget} [options.budget]
+ * @param {string|number} [options.expiry]
+ * @param {{m:number,n:number}} [options.threshold]
+ * @param {string} [options.delegateId]
+ * @param {string} [options.capabilityId]
+ * @param {Buffer|string} [options.secret]
+ * @param {any} [options.store]
+ * @param {string[]} [options.trustedIssuerKeys]
+ * @param {string|null} [options.operationId]
+ * @param {number|(() => number)} [options.now]
  */
 export async function delegateCapabilityReceipt({
   parentCapabilityReceipt,
