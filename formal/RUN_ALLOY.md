@@ -1,99 +1,120 @@
-# Running Alloy on ep_relations.als
+# Running the Alloy models
 
-This document gives exact steps to run the Alloy Analyzer against the
-EP relational model and record the result.
+This document gives the exact steps to run the Alloy Analyzer against the EP
+relational models and record the result. As of the `formal/alloy-executed`
+change these models **run in CI on every push that touches `formal/**.als`**
+(`.github/workflows/alloy.yml`), so a counterexample now fails the build the
+same way the TLC models do.
+
+Models under `formal/`:
+
+| Model | What it covers |
+|-------|----------------|
+| `ep_relations.als`  | Handshake + signoff lifecycle, single-consume, write-path exclusivity |
+| `ep_federation.als` | Cross-issuer trust: authenticity, revocation, no trust laundering |
+| `ep_quorum.als`     | Two-person rule: self-approval impossible, one-slot-per-human/key |
+| `ep_delegation.als` | Capability delegation chain: acyclicity + non-increasing authority |
 
 ---
 
 ## Prerequisites
 
-- Java 11 or later installed (`java -version`)
-- Alloy 6.1.0 jar (the Alloy model checker, ~80 MB, no other dependencies)
+- Java 17 or later installed (`java -version`)
+- The Alloy 6.2.0 distribution jar (`org.alloytools.alloy.dist.jar`, ~21 MB,
+  bundles the pure-Java SAT4J solver, no native dependencies)
 
 ---
 
-## Step 1 — Download Alloy 6
+## Step 1 — Download Alloy 6.2.0
 
 ```bash
-curl -L -o alloy.jar \
-  https://github.com/AlloyTools/org.alloytools.alloy/releases/download/v6.1.0/org.alloytools.alloy.dist.jar
+curl -fsSL -o alloy.jar \
+  https://github.com/AlloyTools/org.alloytools.alloy/releases/download/v6.2.0/org.alloytools.alloy.dist.jar
+
+# Verify the pinned checksum (the same one CI enforces):
+echo "6b8c1cb5bc93bedfc7c61435c4e1ab6e688a242dc702a394628d9a9801edb78d  alloy.jar" | shasum -a 256 -c -
 ```
 
-Or download manually from:
-https://github.com/AlloyTools/org.alloytools.alloy/releases/tag/v6.1.0
-
-Verify the download:
-```bash
-java -jar alloy.jar --help 2>&1 | head -3
-```
+> Note: there is no `v6.1.0` release asset, and the account of "flat dist jar
+> only on v6.0.0" is wrong — `v6.2.0` ships `org.alloytools.alloy.dist.jar`.
+> That is the version the models were executed against and the version CI pins.
 
 ---
 
-## Step 2 — Run all assertions (GUI)
+## Step 2 — Run all commands (GUI, optional)
 
 ```bash
 java -jar alloy.jar formal/ep_relations.als
 ```
 
-In the Alloy Analyzer window:
-
-1. Select **Execute → Check All Assertions**
-2. Each of the 15 assertions should display: **"No counterexample found."**
-3. Run the predicates (`showLifecycle`, `showAdversarial`, etc.) to confirm the
-   model is non-vacuous (instances exist).
+In the Alloy Analyzer window, **Execute → Execute All**. Each `check` should
+report **"No counterexample found."** and each `run` predicate should report an
+instance (so the model is non-vacuous).
 
 ---
 
-## Step 3 — Run all assertions (headless / CI)
+## Step 3 — Run all commands headless (this is what CI does)
 
-The CI Java runner compiles and executes `AlloyCheck.java` against `alloy.jar`.
-See `.github/workflows/alloy.yml` for the full pipeline.
-
-To reproduce locally:
+The runner is a committed file, `formal/AlloyCheck.java`. It compiles each
+`.als` file, executes every `check` and `run` command against the SAT4J solver,
+and exits non-zero if any assertion produces a counterexample or any predicate
+is vacuous.
 
 ```bash
-# 1. Compile the runner (from repo root, after downloading alloy.jar)
-javac -cp alloy.jar AlloyCheck.java
-
-# 2. Run all checks
-java -cp .:alloy.jar AlloyCheck formal/ep_relations.als
+# from the repo root, with alloy.jar downloaded to the repo root:
+cd formal
+javac -cp ../alloy.jar AlloyCheck.java
+java -cp ../alloy.jar:. AlloyCheck \
+  ep_relations.als ep_federation.als ep_quorum.als ep_delegation.als 2>/dev/null
 ```
 
-Expected output:
-```
-Parsing: formal/ep_relations.als
-Parse OK.
-Commands: 20
-  check        NoDoubleConsumption ... No counterexample found.
-  check        RevokedNeverConsumed ... No counterexample found.
-  check        ConsumedWasVerified ... No counterexample found.
-  check        BindingHashIsolation ... No counterexample found.
-  check        TerminalStateIntegrity ... No counterexample found.
-  check        WritePathExclusive ... No counterexample found.
-  check        DelegationScopeRespected ... No counterexample found.
-  check        NoDelegationCycles ... No counterexample found.
-  check        PolicyHashConsistency ... No counterexample found.
-  check        MultiActorNoDoubleConsume ... No counterexample found.
-  check        EventStateExactCorrespondence ... No counterexample found.
-  check        SignoffBindingIntegrity ... No counterexample found.
-  check        SignoffConsumeOnce ... No counterexample found.
-  check        SignoffRequiresHandshake ... No counterexample found.
-  check        FullChainIntegrity ... No counterexample found.
-  run          showLifecycle ... instance found
-  run          showAdversarial ... instance found
-  run          showDelegation ... instance found
-  run          showMultiActorConsumption ... instance found
-  run          showSignoffLifecycle ... instance found
+(Kodkod's solver progress is written to stderr; `2>/dev/null` keeps the verdicts
+readable. The exit code still gates.)
 
-Results:
-  checks: 15 passed, 0 failed
-  runs:   5 satisfiable
-OK: all checks passed.
+Actual output (Alloy 6.2.0, 2026-07-18):
+
+```
+========================================================
+Model: ep_relations.als
+========================================================
+  check  NoDoubleConsumption                           No counterexample found. OK
+  check  RevokedNeverConsumed                          No counterexample found. OK
+  ... (15 checks total, all hold)
+  run    showLifecycle                                 Instance found. (non-vacuous)
+  ... (5 runs total, all satisfiable)
+
+========================================================
+Model: ep_federation.als
+========================================================
+  check  AcceptedIsAuthentic                           No counterexample found. OK
+  ... (7 checks total, all hold)
+  run    showFederation                                Instance found. (non-vacuous)
+
+========================================================
+Model: ep_quorum.als
+========================================================
+  check  SelfApprovalImpossible                        No counterexample found. OK
+  ... (6 checks total, all hold)
+  run    showStrongQuorum                              Instance found. (non-vacuous)
+
+========================================================
+Model: ep_delegation.als
+========================================================
+  check  DelegationAcyclic                             No counterexample found. OK
+  check  DelegationIdsUnique                           No counterexample found. OK
+  check  LeafIsNotItsOwnAncestor                       No counterexample found. OK
+  check  AuthorityNonIncreasing                        No counterexample found. OK
+  run    showChain                                     Instance found. (non-vacuous)
+
+========================================================
+Results: checks 32/32 held, runs 8/8 satisfiable
+OK: all assertions hold, all predicates consistent.
+========================================================
 ```
 
 ---
 
-## What Each Assertion Covers
+## What each `ep_relations.als` assertion covers
 
 | Assert | What it proves | Facts relied on |
 |--------|---------------|-----------------|
@@ -113,37 +134,35 @@ OK: all checks passed.
 | SignoffRequiresHandshake | No signoff challenge without a verified handshake | F26 |
 | FullChainIntegrity | Full signoff chain has one consistent binding | F26-F28 |
 
+`ep_delegation.als` adds the capability-chain invariants (DelegationAcyclic,
+DelegationIdsUnique, LeafIsNotItsOwnAncestor, AuthorityNonIncreasing), mirroring
+`packages/gate/capability-receipt.js` `assertDelegationChain()` and the
+`DelegationAuthorityNonIncreasing` invariant in `formal/ep_capability.tla`.
+
 ---
 
-## Updating PROOF_STATUS.md
+## If a counterexample is found
 
-After a successful run:
-
-1. Note the Alloy version (`java -jar alloy.jar --version 2>&1 | head -1`)
-2. Update `formal/PROOF_STATUS.md` A1-A15 status to `Verified (Alloy X.Y.Z, YYYY-MM-DD)`
-3. Commit alongside any fixes to `ep_relations.als`
-
-If a counterexample is found:
 1. Record the counterexample trace in `formal/alloy-counterexample-ANN.txt`
 2. Fix the assertion or the underlying model
-3. Re-run to confirm fix
+3. Re-run to confirm the fix
 4. File a critical bug referencing the counterexample
 
 ---
 
 ## CI Integration
 
-The Alloy CI workflow runs automatically on every push that touches `formal/*.als`:
+`.github/workflows/alloy.yml` runs on every push or PR that touches
+`formal/**.als`, `formal/AlloyCheck.java`, or the workflow itself. It downloads
+Alloy 6.2.0 (pinned tag + SHA-256), compiles `formal/AlloyCheck.java`, runs all
+four models, and fails the build if any assertion produces a counterexample.
+The captured verdicts are uploaded as the `alloy-output` artifact.
 
 ```yaml
-# .github/workflows/alloy.yml
 on:
   push:
     paths:
-      - 'formal/*.als'
+      - 'formal/**.als'
+      - 'formal/AlloyCheck.java'
       - '.github/workflows/alloy.yml'
-  workflow_dispatch:
 ```
-
-The workflow downloads Alloy 6.1.0, compiles the Java runner, and fails the build
-if any assertion produces a counterexample. See the workflow file for full details.

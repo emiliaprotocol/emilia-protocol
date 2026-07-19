@@ -31,10 +31,13 @@
  *                                          amount / leaf-as-parent rejections
  *   formal/ep_capability.tla             — DelegationAuthorityNonIncreasing
  *
- * STATUS: authored to the repo's Alloy convention (formal/ep_quorum.als,
- * formal/ep_relations.als). NOT executed in this environment — the Alloy 6 jar
- * (~80 MB) was not fetched here. Run per formal/RUN_ALLOY.md:
- *   java -jar alloy.jar formal/ep_delegation.als   (Execute -> Check All Assertions)
+ * STATUS: EXECUTED and gated. Run headless against Alloy 6.2.0 (SAT4J) via
+ * formal/AlloyCheck.java; all four assertions hold with no counterexample in
+ * the bounded scope and showChain is satisfiable (non-vacuous). Runs in CI on
+ * every push touching formal/**.als (.github/workflows/alloy.yml). Reproduce
+ * per formal/RUN_ALLOY.md:
+ *   cd formal && javac -cp ../alloy.jar AlloyCheck.java \
+ *     && java -cp ../alloy.jar:. AlloyCheck ep_delegation.als
  */
 
 module ep_delegation
