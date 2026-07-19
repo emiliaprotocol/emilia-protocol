@@ -94,7 +94,7 @@ the right first choice for this specific paper.
 | Tamarin core / quorum / composed lemma blocks | verbatim | `formal/PROOF_STATUS.md` (byte-for-byte) |
 | Ten strict composed lemmas verified; 2 deliberate falsifications | 10 / 2 | `formal/PROOF_STATUS.md`; `lib/proof-stats.json` `tamarin.verifiedObligations=10`, `deliberatelyUnsafeCounterexamples=2` |
 | TLA+ states / distinct / invariants | 413,137 / 45,342 / 26 | `formal/PROOF_STATUS.md`; `lib/proof-stats.json` `tla.invariants=26` |
-| Alloy assertions | 15 + 7 = 22 | `formal/PROOF_STATUS.md`; `lib/proof-stats.json` `alloy.assertions=22` |
+| Alloy assertions | 15 + 7 + 6 + 4 = 32 (four models) | `formal/PROOF_STATUS.md`; `lib/proof-stats.json` `alloy.assertions=32` (ep_relations 15, ep_federation 7, ep_quorum 6, ep_delegation 4 — all four CI-gated at Alloy 6.2.0) |
 | Rust external verifier commit / tree | `7faba360…` / `0553c5fa…` | `conformance/external/rust-cleanroom-jdieselny.v1.json` |
 | Rust clean-room bundle / hostility | 16-suite / 164-vector; 353 + 6 | `conformance/external/rust-cleanroom-jdieselny.v1.json`; `lib/proof-stats.json` `externalImplementation.vectors=164`, `hostilityCases=359` |
 | External reproduction (COSA / J Diesel NY) | 158 vectors | EP-EXTERNAL-VERIFICATION-STATEMENT record |

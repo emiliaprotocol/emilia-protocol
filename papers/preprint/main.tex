@@ -11,7 +11,7 @@
 %      1285c269b3d58e325c2432d59a95e598761abf3cf3c8f2933b82f21b59214888)
 %   - all Tamarin lemma output blocks -> formal/PROOF_STATUS.md (verbatim)
 %   - TLA+ 413,137 states / 45,342 distinct / 26 invariants -> formal/PROOF_STATUS.md
-%   - Alloy 15 + 7 = 22 assertions -> formal/PROOF_STATUS.md
+%   - Alloy 15 + 7 + 6 + 4 = 32 assertions (4 models) -> formal/PROOF_STATUS.md
 %   - Rust external verifier commit 7faba360..., 164 vectors, 353+6 hostility
 %     -> conformance/external/rust-cleanroom-jdieselny.v1.json
 % NOTE: lib/proof-stats.json currently reports conformance.vectors=232, which is
@@ -965,7 +965,7 @@ symbolic prover than to TLC brute force, which is one reason the Tamarin models
 exist.
 
 The quorum construction and the protocol's relational structure are separately
-checked in Alloy (6.1.0, SAT4J). One model proves fifteen assertions over the
+checked in Alloy (6.2.0, SAT4J). One model proves fifteen assertions over the
 receipt and signoff relations (no double consumption, revoked-never-consumed,
 consumed-was-verified, terminal-state integrity, write-path exclusivity, delegation
 scope containment and acyclicity, signoff binding integrity and consume-once, and
@@ -973,7 +973,15 @@ full-chain integrity). A federation model proves seven assertions about the
 cross-operator verification path (an accepted receipt is signed by an advertised
 key over an untampered payload, a tampered or unadvertised-key or revoked receipt
 is never accepted, historical keys still verify, no trust laundering, and
-observer-independent portability). These relational checks treat Ed25519
+observer-independent portability). A quorum model proves six assertions about the
+two-person rule: no signer self-approves, no human and no key fills two approver
+slots, the two-person rule holds under the modeled policy, and the ordered
+approval chain is acyclic and linear. A delegation model proves four assertions
+about capability delegation: the delegation chain is acyclic, delegation
+identifiers are unique, no leaf capability is its own ancestor, and authority is
+non-increasing from parent to child along the chain. Across the four models the
+analyzer discharges thirty-two assertions with no counterexample in the bounded
+scope. These relational checks treat Ed25519
 unforgeability as an abstract fact; they are structural, not cryptographic, which
 is precisely the gap the Tamarin models close.
 
