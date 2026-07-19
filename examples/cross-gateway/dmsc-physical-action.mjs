@@ -136,6 +136,19 @@ export function computeGatewayAction(request, { requestedAt = TIMES.requested, p
   });
 }
 
+/**
+ * @returns {{
+ *   approverId: string,
+ *   approverKeyId: string,
+ *   keyEntry: { approver_id: string, public_key: string, key_class: 'A', valid_from: string, valid_to: string },
+ *   signer: {
+ *     approverKeyId: string,
+ *     keyClass: 'A',
+ *     signedAt: string,
+ *     signWebAuthn: (digest: Buffer) => { authenticator_data: string, client_data_json: string, signature: string },
+ *   },
+ * }}
+ */
 function createClassAApprover({
   approverId = 'urn:example:human:port-b-duty-supervisor',
   approverKeyId = 'urn:example:key:port-b-duty-supervisor:1',
@@ -182,6 +195,18 @@ function createClassAApprover({
   };
 }
 
+/**
+ * @typedef {Object} StoreBackend
+ * @property {boolean} [durable]
+ * @property {(key: any, value: any) => Promise<boolean>} addIfAbsent
+ * @property {(key: any, expected: any, replacement: any) => Promise<boolean>} compareAndSet
+ * @property {(key: any, expected: any) => Promise<boolean>} deleteIfValue
+ * @property {(key: any) => Promise<boolean>} has
+ */
+
+/** @typedef {ReturnType<typeof createApprovalAuthority>} ApprovalAuthority */
+/** @typedef {ApprovalAuthority['verification']} PinnedVerification */
+
 export function createApprovalAuthority(options = {}) {
   const rpId = options.rpId ?? DEMO_RP_ID;
   const approver = createClassAApprover({
@@ -206,7 +231,14 @@ export function createApprovalAuthority(options = {}) {
   });
 }
 
-/** Gateway A may carry this receipt, but cannot choose which keys Gateway B trusts. */
+/**
+ * Gateway A may carry this receipt, but cannot choose which keys Gateway B trusts.
+ * @param {Object} [params]
+ * @param {object} [params.action]
+ * @param {ApprovalAuthority} [params.authority]
+ * @param {object} [params.policy]
+ * @param {string} [params.receiptId]
+ */
 export async function issueHumanAuthorization({
   action,
   authority,
@@ -282,6 +314,13 @@ function refusal(reason, base = null) {
 /**
  * Construct Gateway B. The default stores are atomic single-process reference
  * backends for a runnable demo; callers can inject shared durable backends.
+ * @param {Object} [params]
+ * @param {object} [params.policy]
+ * @param {PinnedVerification} [params.verification]
+ * @param {StoreBackend} [params.challengeBackend]
+ * @param {StoreBackend} [params.actionBackend]
+ * @param {Set<string>} [params.revokedEvidenceDigests]
+ * @param {() => string} [params.now]
  */
 export function createReceivingGateway({
   policy = DEMO_POLICY,
@@ -367,7 +406,15 @@ export function createReceivingGateway({
   });
 }
 
-/** Reperform Gateway B's decision with no network call and no mutable gateway log. */
+/**
+ * Reperform Gateway B's decision with no network call and no mutable gateway log.
+ * @param {object} bundle
+ * @param {Object} [options]
+ * @param {object} [options.policy]
+ * @param {PinnedVerification} [options.verification]
+ * @param {string} [options.pinnedGatewayDecisionKey]
+ * @param {Set<string>} [options.revokedEvidenceDigests]
+ */
 export function verifyAuditBundle(bundle, {
   policy = DEMO_POLICY,
   verification,

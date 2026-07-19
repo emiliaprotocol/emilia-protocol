@@ -10,11 +10,11 @@
 
 import { runDemo } from './_kit.mjs';
 
-await runDemo({
+await runDemo(/** @type {any} */ ({
   title: 'mcp-prod-deploy — deploy_production requires a receipt',
   tool: 'deploy_production',
   action: 'deploy.production',
   args: { service: 'payments-api', ref: 'a91f3c2', environment: 'production' },
   approver: 'ep:approver:on-call-sre (passkey)',
   agentLine: '"Tests are green — shipping payments-api@a91f3c2 to production."',
-});
+}));

@@ -31,7 +31,7 @@ const OUT = dirname(fileURLToPath(import.meta.url));
 function keyFromSeed(seedHex) {
   const pkcs8 = Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from(seedHex, 'hex')]);
   const priv = crypto.createPrivateKey({ key: pkcs8, format: 'der', type: 'pkcs8' });
-  const pub = crypto.createPublicKey(priv).export({ type: 'spki', format: 'der' }).toString('base64url');
+  const pub = crypto.createPublicKey(/** @type {any} */ (priv)).export({ type: 'spki', format: 'der' }).toString('base64url');
   return { priv, pub };
 }
 const cp = (n) => String.fromCodePoint(n);

@@ -130,7 +130,7 @@ export function run() {
   results.unverifiable = unverifiable;
 
   // 5b. unverifiable — no relying-party policy supplied (sufficiency is never bundle-chosen).
-  const noPolicy = evaluateAdmissibility({ action_digest: ACTION, components: baseComponents() }, {}, { as_of: AS_OF });
+  const noPolicy = evaluateAdmissibility({ action_digest: ACTION, components: baseComponents() }, /** @type {any} */ ({}), { as_of: AS_OF });
   assert.equal(noPolicy.verdict, 'unverifiable');
   results.no_policy = noPolicy;
 

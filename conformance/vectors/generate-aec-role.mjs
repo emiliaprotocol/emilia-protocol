@@ -22,7 +22,9 @@ const PKCS8_ED25519_PREFIX = Buffer.from('302e020100300506032b657004220420', 'he
 function keyFromSeed(seedHex) {
   const seed = Buffer.from(seedHex, 'hex');
   const privateKey = crypto.createPrivateKey({ key: Buffer.concat([PKCS8_ED25519_PREFIX, seed]), format: 'der', type: 'pkcs8' });
-  const pub = crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+  // Node's crypto.createPublicKey accepts a private KeyObject at runtime (it derives
+  // the public key), but @types/node's overloads don't include KeyObject — cast only.
+  const pub = crypto.createPublicKey(/** @type {any} */ (privateKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
   return { privateKey, pub };
 }
 const human = keyFromSeed('11'.repeat(32));

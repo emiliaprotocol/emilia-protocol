@@ -36,6 +36,23 @@ export function createReconciliationLedger() {
   });
 }
 
+/**
+ * @typedef {{ok:true, action_digest:string, evidence_digest:string,
+ *   effect_id:string, committed_at:string}} VerifiedProviderEvidence
+ */
+
+/**
+ * @param {object} [params]
+ * @param {{getOperation:(operationId:string)=>any}} [params.capabilityStore]
+ * @param {string} [params.capabilityId]
+ * @param {string} [params.operationId]
+ * @param {{amount?:number, currency?:string, [key:string]:any}} [params.action]
+ * @param {object} [params.providerEvidence]
+ * @param {string} [params.pinnedProviderKey]
+ * @param {string} [params.expectedProviderId]
+ * @param {{append:(record:object)=>any}} [params.ledger]
+ * @param {() => string} [params.now]
+ */
 export async function reconcileIndeterminateEffect({
   capabilityStore,
   capabilityId,
@@ -69,6 +86,7 @@ export async function reconcileIndeterminateEffect({
     throw new Error('capability operation is not bound to the expected action digest');
   }
 
+  /** @type {VerifiedProviderEvidence|null} */
   let verified = null;
   const durableReconciliation = await reconcileCapabilityOperation({
     store: capabilityStore,
@@ -99,11 +117,11 @@ export async function reconcileIndeterminateEffect({
     capability_id: capabilityId,
     capability_outcome: 'indeterminate',
     outcome: 'executed',
-    action_digest: verified.action_digest,
+    action_digest: /** @type {VerifiedProviderEvidence} */ (verified).action_digest,
     provider_id: expectedProviderId,
-    provider_effect_id: verified.effect_id,
-    provider_committed_at: verified.committed_at,
-    provider_evidence_digest: verified.evidence_digest,
+    provider_effect_id: /** @type {VerifiedProviderEvidence} */ (verified).effect_id,
+    provider_committed_at: /** @type {VerifiedProviderEvidence} */ (verified).committed_at,
+    provider_evidence_digest: /** @type {VerifiedProviderEvidence} */ (verified).evidence_digest,
     authenticated_provider_evidence: true,
     reexecuted: false,
     capability_reconciliation_idempotent: durableReconciliation.idempotent,

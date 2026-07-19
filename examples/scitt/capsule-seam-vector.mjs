@@ -47,7 +47,7 @@ const privateKey = crypto.createPrivateKey({
   format: 'der',
   type: 'pkcs8',
 });
-const publicKey = crypto.createPublicKey(privateKey);
+const publicKey = crypto.createPublicKey(/** @type {any} */ (privateKey));
 const spkiDer = publicKey.export({ type: 'spki', format: 'der' });
 const kid = crypto.createHash('sha256').update(spkiDer).digest().subarray(0, 16);
 

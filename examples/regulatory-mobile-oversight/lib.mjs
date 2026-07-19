@@ -108,7 +108,9 @@ function durableAuditLog() {
   let next = 0;
   return createAtomicEvidenceLog(backend, {
     streamId: 'synthetic-regulatory-mobile-demo',
-    recordIdFactory: () => `regulatory-mobile-audit-${String(++next).padStart(6, '0')}`,
+    recordIdFactory: /** @type {() => `${string}-${string}-${string}-${string}-${string}`} */ (
+      () => `regulatory-mobile-audit-${String(++next).padStart(6, '0')}`
+    ),
   });
 }
 
@@ -161,6 +163,9 @@ function buildSyntheticSystemOfRecord() {
   };
   return {
     record,
+    /**
+     * @param {Record<string, unknown>} input
+     */
     async resolve({ action_reference: actionReference, approver_id: approverId }) {
       if (actionReference !== record.action_reference || approverId !== APPROVER_ID) return null;
       return {
@@ -215,6 +220,15 @@ function makeSyntheticAppAttestHarness(platformRoot) {
     attestationKeyId: ATTESTATION_KEY_ID,
     environment: 'development',
     counterStore: monotonicCounterStore(),
+    /**
+     * @param {{
+     *   assertionObject: Buffer,
+     *   clientDataHash: Buffer,
+     *   appId: string,
+     *   keyId: string,
+     *   environment: string,
+     * }} input
+     */
     async verifyAssertion({ assertionObject, clientDataHash, appId, keyId, environment }) {
       try {
         const token = JSON.parse(assertionObject.toString('utf8'));
@@ -248,6 +262,10 @@ function makeSyntheticAppAttestHarness(platformRoot) {
   return { issueToken, verifier };
 }
 
+/**
+ * @param {{ challenge: *, passkey: *, attestationToken: string, signCount?: number }} params
+ * @returns {import('../../packages/mobile/index.js').MobileCeremonyResponse}
+ */
 function makeMobileResponse({ challenge, passkey, attestationToken, signCount = 7 }) {
   const clientData = Buffer.from(JSON.stringify({
     type: 'webauthn.get',
@@ -482,7 +500,7 @@ export async function buildSyntheticRegulatoryDemo() {
     rpId: RP_ID,
     allowedOrigins: [ORIGIN],
     acceptedApps: { ios: [APP_ID], android: [] },
-    enrollments: [{
+    enrollments: /** @type {import('../../packages/mobile/index.js').MobileEnrollment[]} */ ([{
       device_key_id: DEVICE_KEY_ID,
       credential_id: credentialId,
       public_key_spki: passkey.publicKeySpki,
@@ -493,7 +511,7 @@ export async function buildSyntheticRegulatoryDemo() {
       status: 'active',
       valid_from: '2026-01-01T00:00:00.000Z',
       valid_to: '2027-01-01T00:00:00.000Z',
-    }],
+    }]),
   });
   const platform = makeSyntheticAppAttestHarness(platformRoot);
   const auditLog = durableAuditLog();
@@ -510,6 +528,14 @@ export async function buildSyntheticRegulatoryDemo() {
     service,
     profiles: new Map([[profile.profile_id, profile]]),
     resolveRequest: (input) => systemOfRecord.resolve(input),
+    /**
+     * @param {{
+     *   caller?: { subject?: unknown },
+     *   profile_id?: unknown,
+     *   approver_id?: unknown,
+     *   device_key_id?: unknown,
+     * }} input
+     */
     authorize: (input) => caller.subject === 'ep:service:synthetic-utilization-review'
       && input.caller?.subject === caller.subject
       && input.profile_id === profile.profile_id
@@ -540,8 +566,12 @@ export async function buildSyntheticRegulatoryDemo() {
   const receipt = assembleAuthorizationReceipt({
     receiptId,
     action: challenge.action,
-    contexts: [result.class_a.context],
-    signoffs: [result.class_a.signoff],
+    contexts: /** @type {import('../../packages/issue/index.js').AuthorizationContext[]} */ (
+      /** @type {unknown} */ ([result.class_a.context])
+    ),
+    signoffs: /** @type {import('../../packages/issue/index.js').Signoff[]} */ (
+      [result.class_a.signoff]
+    ),
     committedAt: VERIFIED_AT,
     log: {
       privateKey: logKey.privateKey,

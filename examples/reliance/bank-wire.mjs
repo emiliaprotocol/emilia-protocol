@@ -29,7 +29,7 @@ const logKey = ed();
 const controller = ed();
 const cfo = p256();               // Class-A device (WebAuthn)
 const registryKey = crypto.createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from('c1'.repeat(32), 'hex')]), format: 'der', type: 'pkcs8' });
-const registryPub = crypto.createPublicKey(registryKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+const registryPub = crypto.createPublicKey(/** @type {any} */ (registryKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
 
 function signA(digestHex) {
   const challenge = Buffer.from(digestHex, 'hex').toString('base64url');

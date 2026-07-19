@@ -474,7 +474,7 @@ export function rebuildProjections(events, aggregateTypeFilter) {
 
   // Sort by created_at ascending to replay in order
   const sorted = [...filtered].sort(
-    (a, b) => new Date(a.created_at) - new Date(b.created_at),
+    (a, b) => /** @type {any} */ (new Date(a.created_at)) - /** @type {any} */ (new Date(b.created_at)),
   );
 
   for (const evt of sorted) {

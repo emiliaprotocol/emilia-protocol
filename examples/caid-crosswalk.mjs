@@ -171,6 +171,13 @@ export const crosswalkVerifiers = {
 
 // ── Compose ──────────────────────────────────────────────────────────────────
 export const REQUIREMENT = 'ep-action AND ap2-cart-mandate AND scitt-statement';
+/**
+ * @param {object} legs
+ * @param {any} [legs.epLeg]
+ * @param {any} [legs.ap2Leg]
+ * @param {any} [legs.scittLeg]
+ * @param {any} [action]
+ */
 export function buildCrosswalkChain({ epLeg, ap2Leg, scittLeg }, action = ACTION) {
   const components = [];
   if (epLeg) components.push({ type: 'ep-action', label: 'EP canonical action digest', evidence: epLeg });

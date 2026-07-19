@@ -159,7 +159,9 @@ async function main() {
         result = execute(name, args);
         console.log(`\n  ▶ ${name}(${JSON.stringify(args)}) — read-only, ran freely`);
       } else {
-        const d = evaluateGuardPolicy(guardInput);
+        // guardInput intentionally omits organizationId/actorId/authStrength — evaluateGuardPolicy
+        // (lib/guard-policies.js) documents them as required but never reads them.
+        const d = evaluateGuardPolicy(/** @type {any} */ (guardInput));
         console.log(`\n  🔎 Grok wants: ${name}(${JSON.stringify(args)})  →  EMILIA decision: ${d.decision}`);
 
         if (d.decision === 'deny') {

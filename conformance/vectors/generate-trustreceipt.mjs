@@ -22,6 +22,10 @@ function newP256() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   return { privateKey, publicKeyB64u: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 }
+/**
+ * @param {{ approverKeyId: string, privateKey: import('node:crypto').KeyObject, signedAt: string, crossOrigin?: boolean }} args
+ * @returns {import('../../packages/issue/index.js').Signer}
+ */
 function classASigner({ approverKeyId, privateKey, signedAt, crossOrigin = false }) {
   return {
     approverKeyId, keyClass: 'A', signedAt,
@@ -34,12 +38,26 @@ function classASigner({ approverKeyId, privateKey, signedAt, crossOrigin = false
   };
 }
 
+/**
+ * @typedef {Object} MintOptions
+ * @property {boolean} [legacy]
+ * @property {boolean} [downgradeClassA]
+ * @property {boolean} [crossOrigin]
+ * @property {string} [decision]
+ */
+
+/**
+ * @param {Record<string, unknown>} actionParams
+ * @param {MintOptions} [options]
+ */
 async function mint(actionParams, { legacy = false, downgradeClassA = false, crossOrigin = false, decision } = {}) {
   const action = { action_type: 'payment.release', policy_id: 'pol:test', initiator: 'ep:agent:1', params: actionParams };
   const logKp = generateEd25519KeyPair();
   const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
   if (decision !== undefined) {
-    for (const context of contexts) context.decision = decision;
+    // `decision` is a synthetic test-only field (signed-denial vector), not part of
+    // the real AuthorizationContext shape — local cast only, no runtime change.
+    for (const context of contexts) /** @type {any} */ (context).decision = decision;
   }
 
   // Downgrade-attack construction: the signoff is a bare Ed25519 Class-B software
@@ -123,7 +141,7 @@ add('accept_valid_receipt', true, valid.receipt, valid.verification);
 }
 { // I-JSON gate: a non-representable number in signed material is rejected fail-closed
   const m = await mint({ amount: 82000, currency: 'USD' });
-  m.receipt.action.params.rate = 1e-7; // outside the EP canonicalization profile
+  /** @type {any} */ (m.receipt.action.params).rate = 1e-7; // outside the EP canonicalization profile
   m.receipt.action_hash = `sha256:${crypto.createHash('sha256').update('x').digest('hex')}`;
   add('reject_non_canonicalizable_number', false, m.receipt, m.verification);
 }

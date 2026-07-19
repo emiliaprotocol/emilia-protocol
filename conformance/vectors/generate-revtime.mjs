@@ -22,7 +22,7 @@ function newSigner() {
     format: 'der',
     type: 'pkcs8',
   });
-  const publicKey = crypto.createPublicKey(privateKey);
+  const publicKey = crypto.createPublicKey(/** @type {any} */ (privateKey));
   return { privateKey, pub: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 }
 const sign = (obj, priv) => crypto.sign(null, Buffer.from(canon(obj), 'utf8'), priv).toString('base64url');

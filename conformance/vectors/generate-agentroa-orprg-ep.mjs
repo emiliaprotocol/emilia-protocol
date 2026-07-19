@@ -110,8 +110,8 @@ function ed25519(seedByte) {
   });
   return {
     privateKey,
-    publicKey: crypto.createPublicKey(privateKey),
-    spki: crypto.createPublicKey(privateKey)
+    publicKey: crypto.createPublicKey(/** @type {any} */ (privateKey)),
+    spki: crypto.createPublicKey(/** @type {any} */ (privateKey))
       .export({ type: 'spki', format: 'der' })
       .toString('base64url'),
   };
@@ -129,7 +129,7 @@ function p256(seedByte) {
     y: point.subarray(33, 65).toString('base64url'),
   };
   const privateKey = crypto.createPrivateKey({ key: jwk, format: 'jwk' });
-  const publicKey = crypto.createPublicKey(privateKey);
+  const publicKey = crypto.createPublicKey(/** @type {any} */ (privateKey));
   return {
     privateKey,
     publicKey,
@@ -483,7 +483,7 @@ const untrustedIssuer = baseVector(
   'reject_untrusted_issuer',
   'The ORPRG receipt carries a mathematically valid Ed25519 signature, but its issuer key is not in the relying party trust pins.',
 );
-untrustedIssuer.orprg.issuer_keys = {};
+untrustedIssuer.orprg.issuer_keys = /** @type {any} */ ({});
 untrustedIssuer.expect = { valid: false, first_valid: false, reason: 'untrusted_issuer' };
 
 const approvalStateOnly = baseVector(

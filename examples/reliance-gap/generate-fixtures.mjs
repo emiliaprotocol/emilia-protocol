@@ -37,7 +37,7 @@ const edFromSeed = (seedByte) => {
     key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from(seedByte.repeat(32), 'hex')]),
     format: 'der', type: 'pkcs8',
   });
-  return { privateKey, pub: crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).toString('base64url') };
+  return { privateKey, pub: crypto.createPublicKey(/** @type {any} */ (privateKey)).export({ type: 'spki', format: 'der' }).toString('base64url') };
 };
 const p256 = () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });

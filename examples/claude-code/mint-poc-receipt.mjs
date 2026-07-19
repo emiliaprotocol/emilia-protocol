@@ -49,7 +49,7 @@ if (fs.existsSync(keyPath)) {
 } else {
   const { privateKey } = crypto.generateKeyPairSync('ed25519');
   priv = privateKey;
-  spkiB64 = crypto.createPublicKey(priv).export({ type: 'spki', format: 'der' }).toString('base64url');
+  spkiB64 = crypto.createPublicKey(/** @type {any} */ (priv)).export({ type: 'spki', format: 'der' }).toString('base64url');
   fs.writeFileSync(keyPath, JSON.stringify({
     pkcs8: priv.export({ type: 'pkcs8', format: 'der' }).toString('base64'),
     spki: spkiB64,

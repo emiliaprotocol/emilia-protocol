@@ -41,14 +41,14 @@ async function main() {
   await pause(1100);
 
   // 2. The formally-verified policy engine decides. (real call)
-  const decision = evaluateGuardPolicy({
+  const decision = evaluateGuardPolicy(/** @type {any} */ ({
     actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
     amount: action.amount,
     currency: 'USD',
     actorRole: 'ai_agent',
     targetChangedFields: ['bank_account'],
     riskFlags: ['new_destination', 'after_hours'],
-  });
+  }));
   line('\n  [EMILIA] evaluateGuardPolicy() — formally-verified engine (TLA+ + Alloy)');
   line(`           decision: ${String(decision.decision).toUpperCase()}`);
   line(`           reason:   large release ≥ $50k + payee bank just changed`);

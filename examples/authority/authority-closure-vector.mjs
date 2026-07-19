@@ -28,7 +28,7 @@ function keyFromSeedHex(hex) {
   return crypto.createPrivateKey({ key: der, format: 'der', type: 'pkcs8' });
 }
 const registryKey = keyFromSeedHex('a1'.repeat(32));
-const registryPub = crypto.createPublicKey(registryKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+const registryPub = crypto.createPublicKey(/** @type {any} */ (registryKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
 
 // ── The org's authority registry (epoch 17): the CFO may release payments up to
 //    $50k; delegated from her, a manager may release up to $10k. ───────────────

@@ -56,6 +56,13 @@ import {
   verifyProcoreChangeOrderEvidence,
 } from '../../lib/integrations/action-escrow/procore-change-order.js';
 
+/**
+ * @typedef {import('../../packages/verify/document-action-binding.js').DocumentActionMaterialTerm} DocumentActionMaterialTerm
+ * @typedef {import('../../packages/verify/document-action-binding.js').DocumentActionBindingVerificationOptions} DocumentActionBindingVerificationOptions
+ * @typedef {import('../../packages/verify/document-action-binding.js').DocumentActionTemplate} DocumentActionTemplate
+ * @typedef {import('../../packages/verify/document-action-binding.js').DocumentActionParty} DocumentActionParty
+ */
+
 export const ACTION_ESCROW_VERSION = 'EP-ACTION-ESCROW-DEMO-v2';
 export const ACTION_ESCROW_ACTION = 'escrow.milestone.release';
 
@@ -97,6 +104,11 @@ const DEMO_BOUNDARIES = Object.freeze([
   'The scenario does not judge workmanship, physical completion, legal enforceability, identity, comprehension, voluntariness, or licensing.',
 ]);
 
+/**
+ * @param {unknown} condition
+ * @param {string} message
+ * @returns {asserts condition}
+ */
 function invariant(condition, message) {
   if (!condition) throw new Error(`Action Escrow invariant failed: ${message}`);
 }
@@ -127,7 +139,7 @@ function deterministicDemoKey(label) {
     format: 'der',
     type: 'pkcs8',
   });
-  const publicKeyObject = crypto.createPublicKey(privateKey);
+  const publicKeyObject = crypto.createPublicKey(/** @type {any} */ (privateKey));
   const publicKey = publicKeyBase64url(publicKeyObject);
   return {
     privateKey,
@@ -167,7 +179,7 @@ function deterministicP256Key(label) {
     y: point.subarray(33, 65).toString('base64url'),
   };
   const privateKey = crypto.createPrivateKey({ key: jwk, format: 'jwk' });
-  const publicKeyObject = crypto.createPublicKey(privateKey);
+  const publicKeyObject = crypto.createPublicKey(/** @type {any} */ (privateKey));
   const publicKey = publicKeyBase64url(publicKeyObject);
   return {
     privateKey,
@@ -280,6 +292,11 @@ function finalMaterialTerms() {
   };
 }
 
+/**
+ * @param {*} terms
+ * @param {string} projectRecordDigest
+ * @returns {DocumentActionMaterialTerm[]}
+ */
 function dabMaterialTerms(terms, projectRecordDigest) {
   return [
     { term_id: 'amendment_version', type: 'integer', value: terms.amendment_version },
@@ -820,6 +837,15 @@ function expectedBindings(recordOrExpected) {
   };
 }
 
+/**
+ * @param {{
+ *   mappingKey: *,
+ *   document: *,
+ *   releaseActionTemplate: DocumentActionTemplate,
+ *   parties: DocumentActionParty[],
+ * }} params
+ * @returns {DocumentActionBindingVerificationOptions}
+ */
 function bindingVerifierOptions({ mappingKey, document, releaseActionTemplate, parties }) {
   return {
     issuerKeys: {
@@ -832,7 +858,7 @@ function bindingVerifierOptions({ mappingKey, document, releaseActionTemplate, p
     allowedMediaTypes: ['application/pdf'],
     allowedPartyRoles: ['contractor', 'homeowner'],
     allowedActionTypes: [ACTION_ESCROW_ACTION],
-    requiredMaterialTermIds: REQUIRED_TERM_IDS,
+    requiredMaterialTermIds: /** @type {string[]} */ (REQUIRED_TERM_IDS),
     expectedBindingId: BINDING_ID,
     expectedAgreementId: AGREEMENT_ID,
     documentBytes: document.bytes,

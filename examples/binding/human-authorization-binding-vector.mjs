@@ -11,7 +11,7 @@ const digest = (o) => 'sha256:' + crypto.createHash('sha256').update(canon(o)).d
 const PKCS8 = Buffer.from('302e020100300506032b657004220420', 'hex');
 const seed = crypto.createHash('sha256').update('ep:binding-vector:v1').digest();
 const key = crypto.createPrivateKey({ key: Buffer.concat([PKCS8, seed]), format: 'der', type: 'pkcs8' });
-const pub = crypto.createPublicKey(key).export({ type: 'spki', format: 'der' }).toString('base64url');
+const pub = crypto.createPublicKey(/** @type {any} */ (key)).export({ type: 'spki', format: 'der' }).toString('base64url');
 
 const ACTION_DIGEST = 'sha256:' + 'a'.repeat(64);
 

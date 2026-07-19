@@ -132,8 +132,27 @@ function demoAssuranceProof(payload, { outcome, quorum, duplicateQuorum = false 
   };
 }
 
+/**
+ * @typedef {Object} DemoQuorum
+ * @property {boolean} [required]
+ * @property {number} [m]
+ * @property {string} [second_approver]
+ */
+
+/**
+ * @typedef {Object} SignActionOptions
+ * @property {string} [approver]
+ * @property {string} [outcome]
+ * @property {DemoQuorum|null} [quorum]
+ * @property {boolean} [tamper]
+ */
+
 // A named human's device signs the EXACT action. Minted locally here so the
 // demo is self-contained; in production it's a real Face ID / passkey signoff.
+/**
+ * @param {string} action
+ * @param {SignActionOptions} [options]
+ */
 export function signAction(action, { approver, outcome = 'allow_with_signoff', quorum = null, tamper = false } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');

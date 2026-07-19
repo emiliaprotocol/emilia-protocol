@@ -65,6 +65,10 @@ const SCENARIOS = [
 const ENFORCEMENT_MODES = { OBSERVE: 'observe', WARN: 'warn', ENFORCE: 'enforce' };
 
 // Mirrors the adapter inside app/api/v1/trust-receipts/route.js
+/**
+ * @param {{ body: any, actor_id: string, mode: string }} o
+ * @returns {any}
+ */
 function buildRulesEngineInput({ body, actor_id, mode }) {
   return {
     tenant_id: body.organization_id,

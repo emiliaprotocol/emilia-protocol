@@ -202,8 +202,8 @@ async function createMockScrapiTransparencyService({ port = 0 } = {}) {
     res.end(JSON.stringify({ error: 'not_found' }));
   });
 
-  await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
-  const address = server.address();
+  await new Promise((resolve) => server.listen(port, '127.0.0.1', /** @type {() => void} */ (resolve)));
+  const address = /** @type {{ port: number }} */ (server.address());
   return {
     url: `http://127.0.0.1:${address.port}`,
     publicKey: serviceKeys.publicKey,

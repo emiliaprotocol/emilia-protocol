@@ -20,6 +20,10 @@ function newP256() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   return { privateKey, publicKeyB64u: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 }
+/**
+ * @param {{ approverKeyId: string, privateKey: *, signedAt: string }} params
+ * @returns {import('../../packages/issue/index.js').Signer}
+ */
 function classASigner({ approverKeyId, privateKey, signedAt }) {
   return {
     approverKeyId, keyClass: 'A', signedAt,
@@ -62,6 +66,10 @@ async function buildBundle() {
 
 // Two-hop chain: root -> agentA (constraints {max_calls:5}) -> agentB. The leaf
 // either NARROWS (max_calls<=5, accept) or RELAXES (max_calls>5, reject).
+/**
+ * @param {number} leafMaxCalls
+ * @param {number|string} [leafCap]
+ */
 async function buildTwoHop(leafMaxCalls, leafCap = 500) {
   const root = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
   const approval = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
@@ -92,7 +100,7 @@ const add = (id, expectValid, b) => V.push({
 add('accept_valid_chain', true, await buildBundle());
 { const b = await buildBundle(); b.doc.delegation_chain[0].scope = ['treasury.wire']; add('reject_scope_violation', false, b); }
 { const b = await buildBundle(); b.doc.delegation_chain[0].max_value_usd = 999999; add('reject_tampered_proof', false, b); }
-{ const b = await buildBundle(); b.delegation_keys = {}; add('reject_unpinned_delegator', false, b); }
+{ const b = await buildBundle(); b.delegation_keys = /** @type {*} */ ({}); add('reject_unpinned_delegator', false, b); }
 { const b = await buildBundle(); b.root_verification = null; b.action_verification = null; add('reject_presenter_supplied_trust_roots', false, b); }
 { const b = await buildBundle(); delete b.root_verification.rp_id; add('reject_root_profile_without_rp_id', false, b); }
 { const b = await buildBundle(); delete b.root_verification.allowed_origins; add('reject_root_profile_without_allowed_origins', false, b); }

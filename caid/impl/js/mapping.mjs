@@ -162,6 +162,16 @@ export function mappingProfileHash(profile) {
   return hashJson(profile);
 }
 
+/**
+ * @param {any} source
+ * @param {Object} [params]
+ * @param {object} [params.profile]
+ * @param {object} [params.sourceDescriptor]
+ * @param {string} [params.expectedProfileHash]
+ * @param {boolean} [params.nativeVerified]
+ * @param {any[]} [params.definitions]
+ * @param {string} [params.suite]
+ */
 export function mapAction(source, {
   profile,
   sourceDescriptor,
@@ -229,6 +239,13 @@ export function mapAction(source, {
   }
 }
 
+/**
+ * @param {any} left
+ * @param {any} right
+ * @param {Object} [params]
+ * @param {any[]} [params.definitions]
+ * @param {string} [params.suite]
+ */
 export function compareMappedActions(left, right, { definitions, suite = 'jcs-sha256' } = {}) {
   const mapOne = (side) => mapAction(side?.source, {
     profile: side?.profile,

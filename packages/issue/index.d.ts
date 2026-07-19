@@ -103,6 +103,8 @@ export interface AuthorizationReceipt {
   signoffs: Signoff[];
   consumption: { nonce: string; state: string; committed_at: string };
   log_proof: {
+    /** Present ('EP-MERKLE-v2') for default v2 issuance; ABSENT for legacy v1 anchors. */
+    alg?: 'EP-MERKLE-v2';
     leaf_index: number;
     inclusion_path: Array<{ hash: string; position: 'left' | 'right' }>;
     checkpoint: { tree_size: number; root_hash: string; log_key_id: string; log_signature: string };
@@ -221,6 +223,35 @@ export function assembleAuthorizationReceipt(args: {
   committedAt: string;
   log: LogConfig;
 }): AuthorizationReceipt;
+
+/**
+ * LEGACY (EP-MERKLE-v1) assembler — sorted-pair, undomain-separated, no
+ * payload-bound leaf. DEPRECATED and INSECURE (leaf/branch second-preimage +
+ * CVE-2012-2459 root equivocation). Retained ONLY to produce compatibility
+ * artifacts for the opt-in legacy verification path; NEVER use for new issuance.
+ */
+export function assembleAuthorizationReceiptLegacyV1(args: {
+  receiptId: string;
+  action: ActionObject;
+  contexts: AuthorizationContext[];
+  signoffs: Signoff[];
+  committedAt: string;
+  log: LogConfig;
+}): AuthorizationReceipt;
+
+/**
+ * Build the canonical EP-MERKLE-v2 anchor for a receipt document payload — the
+ * default for all NEW anchored issuance.
+ */
+export function buildReceiptAnchorV2(
+  payload: Record<string, unknown>,
+  priorLeaves?: string[]
+): {
+  alg: 'EP-MERKLE-v2';
+  leaf_hash: string;
+  merkle_proof: Array<{ hash: string; position: 'left' | 'right' }>;
+  merkle_root: string;
+};
 
 export function issueAuthorizationReceipt(args: {
   receiptId?: string;

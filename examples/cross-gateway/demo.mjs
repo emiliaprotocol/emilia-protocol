@@ -103,7 +103,7 @@ async function gatewayACheck(gatewayA, action, receipt) {
 /** Run the cross-gateway lab and return a machine-readable result. */
 export async function runCrossGatewayLab() {
   // The approving humans and the issuer live in the sending organization.
-  const harness = createEg1Harness({ action: EXACT_ACTION, idPrefix: 'xgw' });
+  const harness = createEg1Harness({ action: /** @type {any} */ (EXACT_ACTION), idPrefix: 'xgw' });
   const pins = {
     issuerKey: harness.publicKey,
     approverKeys: harness.approverKeys,
@@ -216,7 +216,7 @@ export async function runCrossGatewayLab() {
   // 5. Gateway A allowing is not Gateway B accepting. A misconfigured Gateway
   //    A' pins a rogue issuer; Gateway B does not. Same artifact, two anchors,
   //    two verdicts.
-  const rogue = createEg1Harness({ action: EXACT_ACTION, idPrefix: 'xgw_rogue' });
+  const rogue = createEg1Harness({ action: /** @type {any} */ (EXACT_ACTION), idPrefix: 'xgw_rogue' });
   const misconfiguredA = makeGateway('gateway-a2.org-a.example', {
     issuerKey: rogue.publicKey,
     approverKeys: rogue.approverKeys,

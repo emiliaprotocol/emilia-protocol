@@ -23,6 +23,21 @@ import { verifyTrustReceipt } from '../../packages/verify/index.js';
 
 const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
 
+/**
+ * @typedef {Object} DemoActionParams
+ * @property {string} drug
+ * @property {string} patient_ref
+ * @property {string} ai_recommendation
+ * @property {string} clinician_decision
+ * @property {boolean} irreversible
+ */
+/**
+ * @typedef {Object} DemoAction
+ * @property {{system: string, resource: string}} target
+ * @property {DemoActionParams} parameters
+ * @property {string} policy_id
+ */
+
 // ── The pilot's policy and its enrolled licensed approver ────────────────────
 // In production the approver key is device-bound and enrolled once; OAIP (or its
 // auditor) pins the public key at enrollment. Here it is generated for the demo.
@@ -81,16 +96,16 @@ console.log('=== OAIP report validation (offline, no trust in the pilot) ===');
 const expectedPolicy = policyHash(policy);
 let approved = 0;
 for (const { receipt, verification } of monthlyLog) {
-  const r = verifyTrustReceipt(receipt, {
+  const r = verifyTrustReceipt(/** @type {Record<string, unknown>} */ (/** @type {unknown} */ (receipt)), {
     approverKeys: verification.approver_keys,
     logPublicKey: verification.log_public_key,
   });
   const policyOk = receipt.action.policy_id === policy.policy_id;
-  const humanApproved = receipt.action.parameters.clinician_decision === 'approved';
+  const humanApproved = (/** @type {DemoAction} */ (receipt.action)).parameters.clinician_decision === 'approved';
   const ok = r.valid && policyOk && humanApproved;
   if (ok) approved++;
   console.log(
-    `  ${receipt.action.target.resource}  ${receipt.action.parameters.drug.padEnd(20)}` +
+    `  ${(/** @type {DemoAction} */ (receipt.action)).target.resource}  ${(/** @type {DemoAction} */ (receipt.action)).parameters.drug.padEnd(20)}` +
     `  receipt:${r.valid ? 'valid' : 'INVALID'}  human-approved:${humanApproved}`,
   );
 }
@@ -102,8 +117,8 @@ console.log(`Policy pinned by OAIP: ${expectedPolicy.slice(0, 23)}...\n`);
 console.log('=== Refusal (a): pilot changed a decision after the clinician signed ===');
 const { receipt: r0 } = monthlyLog[0];
 const tampered = structuredClone(r0);
-tampered.action.parameters.drug = 'oxycodone 30mg';     // swap the signed drug
-const vA = verifyTrustReceipt(tampered, {
+(/** @type {DemoAction} */ (tampered.action)).parameters.drug = 'oxycodone 30mg';     // swap the signed drug
+const vA = verifyTrustReceipt(/** @type {Record<string, unknown>} */ (/** @type {unknown} */ (tampered)), {
   approverKeys: monthlyLog[0].verification.approver_keys,
   logPublicKey: monthlyLog[0].verification.log_public_key,
 });
@@ -116,7 +131,7 @@ const rogue = generateIssuerKeyBundle({
 const forged = decision({ n: '9999', drug: 'lisinopril 10mg', mrn: 'MRN-88213', at: '2026-07-31T00:00:00Z' });
 const { receipt: forgedReceipt } = await issueFromKeyBundle({ keys: rogue, action: forged, policy });
 // OAIP verifies against the ENROLLED approver key, not the key in the report.
-const vB = verifyTrustReceipt(forgedReceipt, {
+const vB = verifyTrustReceipt(/** @type {Record<string, unknown>} */ (/** @type {unknown} */ (forgedReceipt)), {
   approverKeys: monthlyLog[0].verification.approver_keys,   // the pinned, enrolled key
   logPublicKey: monthlyLog[0].verification.log_public_key,
 });

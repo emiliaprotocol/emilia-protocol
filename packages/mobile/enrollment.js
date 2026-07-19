@@ -97,6 +97,9 @@ export function buildMobileEnrollmentBinding(challenge) {
   };
 }
 
+/**
+ * @param {{ challengeRequestHash?: string, keyId?: string, publicKeySpki?: string }} [params]
+ */
 export function buildMobileAndroidKeyBinding({ challengeRequestHash, keyId, publicKeySpki } = {}) {
   if (!boundedBase64url(challengeRequestHash, 32) || Buffer.from(challengeRequestHash, 'base64url').length !== 32
       || !ANDROID_KEY_ID.test(keyId || '') || !isP256Spki(publicKeySpki)) {
@@ -149,6 +152,22 @@ function verifyAndroidDeviceKey(challenge, response) {
  * The platform adapter must verify App Attest or Play Integrity enrollment
  * evidence against the exact platform_request_hash.
  */
+/**
+ * @typedef {object} MobileEnrollmentServiceOptions
+ * @property {{ register: (challenge: any) => Promise<boolean>, consume: (challenge: any) => Promise<boolean>, durable?: boolean }} [challengeStore]
+ * @property {{ enrollAtomically: (args: any) => Promise<boolean>, durable?: boolean }} [directory]
+ * @property {(args: any) => Promise<any>} [verifyPasskeyRegistration]
+ * @property {(args: any) => Promise<any>} [verifyPlatformEnrollment]
+ * @property {(args: any) => Promise<boolean>} [authorizeEnrollment]
+ * @property {() => string} [clock]
+ * @property {number} [ttlMs]
+ * @property {number} [enrollmentValidityMs]
+ * @property {boolean} [allowEphemeral]
+ */
+
+/**
+ * @param {MobileEnrollmentServiceOptions} [params]
+ */
 export function createMobileEnrollmentService({
   challengeStore,
   directory,
@@ -183,6 +202,9 @@ export function createMobileEnrollmentService({
   }
 
   return {
+    /**
+     * @param {{ approverId?: string, platform?: string, appId?: string, rpId?: string, origin?: string, userName?: string, displayName?: string, caller?: any }} [params]
+     */
     async issue({ approverId, platform, appId, rpId, origin, userName, displayName, caller = null } = {}) {
       if (!ID.test(approverId || '') || !['ios', 'android'].includes(platform)
           || !ID.test(appId || '') || typeof rpId !== 'string' || !rpId
@@ -259,6 +281,9 @@ export function createMobileEnrollmentService({
       return { ok: true, verdict: 'issued', challenge: complete };
     },
 
+    /**
+     * @param {{ challenge?: any, response?: any, caller?: any }} [params]
+     */
     async complete({ challenge, response, caller = null } = {}) {
       if (!record(challenge) || challenge['@version'] !== 'AE-CHALLENGE-v1'
           || challenge.challenge_profile !== MOBILE_ENROLLMENT_CHALLENGE_VERSION

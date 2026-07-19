@@ -67,6 +67,15 @@ function snapshotJson(value) {
 
 /**
  * Ask EMILIA whether an action may proceed.
+ * @param {object} [opts]
+ * @param {string} [opts.actor]
+ * @param {string} [opts.entityId]
+ * @param {string} [opts.action]
+ * @param {object} [opts.context]
+ * @param {string} [opts.apiKey]
+ * @param {string} [opts.gateUrl]
+ * @param {typeof fetch} [opts.fetchImpl]
+ * @param {boolean} [opts.allowInsecureHttp]
  * @returns {Promise<{allow:boolean, deny:boolean, signoffRequired:boolean, decision:string, reason?:string, raw:object}>}
  */
 export async function guardAction({
@@ -181,7 +190,7 @@ export function requireReceiptForOpenAITool(fn, opts = {}) {
     const result = await gateFor(boundAction).run(receipt, {}, () => fn(executionArgs));
     if (!result.ok) {
       const reason = result.body?.rejected?.reason || (result.body?.required ? 'receipt_required' : 'refused');
-      const error = new Error(`EMILIA blocked "${boundAction}": ${reason}`);
+      const error = /** @type {Error & {emilia?: {status:any, reason:any, body:any}}} */ (new Error(`EMILIA blocked "${boundAction}": ${reason}`));
       error.emilia = { status: result.status, reason, body: result.body };
       throw error;
     }
@@ -228,13 +237,15 @@ export async function guard(action, opts = {}) {
  *
  * @param {Function} fn   your async tool implementation: (args) => result
  * @param {object} opts
- * @param {string} opts.action               canonical EMILIA action (required), e.g. 'payment.release'
+ * @param {string} [opts.action]             canonical EMILIA action (required), e.g. 'payment.release'
  * @param {string} [opts.actor]              defaults to fn.name
+ * @param {string} [opts.entityId]
  * @param {(args:any)=>object|object} [opts.context]
  * @param {(decision:object, args:any)=>Promise<{approved:true}>} [opts.onSignoff]
  * @param {string} [opts.apiKey]             EP API key (Authorization: Bearer …)
  * @param {string} [opts.gateUrl]
  * @param {typeof fetch} [opts.fetchImpl]
+ * @param {boolean} [opts.allowInsecureHttp]
  * @returns {(args:any)=>Promise<any>} a guarded function
  */
 export function withGuard(fn, opts = {}) {
@@ -276,12 +287,13 @@ export function withGuard(fn, opts = {}) {
  * can feed straight back to the model.
  *
  * @param {Array} toolCalls  `message.tool_calls` from an OpenAI-compatible response
- * @param {Record<string, {fn:Function, action?:string, context?:Function}>} tools
+ * @param {Record<string, {fn:Function, action?:string, actionFor?:Function, context?:Function, readOnly?:boolean}>} tools
  *        map of toolName → { fn, action|actionFor } or { fn, readOnly:true }
  * @param {object} [opts] receipt-gate options plus receipts keyed by call id/name
  * @returns {Promise<Array<{role:'tool', tool_call_id:string, name:string, content:string}>>}
  */
 export async function runToolCalls(toolCalls = [], tools = {}, opts = {}) {
+  /** @type {Array<{role:'tool', tool_call_id:string, name:string, content:string}>} */
   const out = [];
   for (const tc of toolCalls) {
     const name = tc.function?.name;

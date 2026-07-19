@@ -81,7 +81,7 @@ function defaultGetReceipt(input, config) {
  * name, description, and schema (thin Proxy — works with StructuredTool,
  * DynamicStructuredTool, or anything exposing `.invoke(input, config)`).
  *
- * @template T
+ * @template {{invoke?: (input:any, config?:any, ...rest:any[]) => any}} T
  * @param {T} tool a tool exposing `.invoke(input, config?)`
  * @param {object} opts
  * @param {string} [opts.action] canonical action_type the receipt must bind
@@ -94,7 +94,9 @@ function defaultGetReceipt(input, config) {
  *   (proves integrity, NOT issuer trust) — demo only.
  * @param {number} [opts.maxAgeSec=900]
  * @param {(input:any, config:any)=>(object|null|undefined)} [opts.getReceipt]
- * @param {{reserve:Function, commit:Function, release:Function}} [opts.store]
+ * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
+ *   commit:(id:string)=>Promise<boolean>|boolean,
+ *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]
  * @returns {T}
  */
 export function requireReceiptForLangChainTool(tool, opts = {}) {
@@ -144,7 +146,7 @@ export function requireReceiptForLangChainTool(tool, opts = {}) {
         boundAction = null;
       }
       if (typeof boundAction !== 'string' || !boundAction) {
-        const err = new Error('EMILIA blocked tool call: action_binding_invalid');
+        const err = /** @type {Error & {emilia?: {status:number, reason:string}}} */ (new Error('EMILIA blocked tool call: action_binding_invalid'));
         err.emilia = { status: 428, reason: 'action_binding_invalid' };
         throw err;
       }
@@ -155,7 +157,7 @@ export function requireReceiptForLangChainTool(tool, opts = {}) {
     );
     if (!r.ok) {
       const reason = r.body?.rejected?.reason || (r.body?.required ? 'receipt_required' : 'refused');
-      const err = new Error(`EMILIA blocked "${boundAction}": ${reason}`);
+      const err = /** @type {Error & {emilia?: {status:any, reason:any, body:any}}} */ (new Error(`EMILIA blocked "${boundAction}": ${reason}`));
       err.emilia = { status: r.status, reason, body: r.body };
       throw err;
     }
@@ -188,6 +190,12 @@ const DEFAULT_GATE = 'https://www.emiliaprotocol.ai/api/trust/gate';
  * LEGACY: ask a hosted EMILIA gate whether an action may proceed. The decision
  * is the operator's word, not offline-verifiable evidence — prefer
  * requireReceiptForLangChainTool for irreversible actions.
+ * @param {object} [opts]
+ * @param {string} [opts.actor]
+ * @param {string} [opts.action]
+ * @param {object} [opts.context]
+ * @param {string} [opts.gateUrl]
+ * @param {typeof fetch} [opts.fetchImpl]
  */
 export async function guardAction({ actor, action, context = {}, gateUrl = DEFAULT_GATE, fetchImpl } = {}) {
   if (!action) throw new Error('guardAction: `action` is required');

@@ -16,7 +16,7 @@ const hashPair = (a, b) => { const s = [a, b].sort(); return sha(s[0] + s[1]); }
 const PKCS8 = Buffer.from('302e020100300506032b657004220420', 'hex');
 function keyFromSeed(byte) {
   const priv = crypto.createPrivateKey({ key: Buffer.concat([PKCS8, Buffer.alloc(32, byte)]), format: 'der', type: 'pkcs8' });
-  const pub = crypto.createPublicKey(priv).export({ type: 'spki', format: 'der' }).toString('base64url');
+  const pub = crypto.createPublicKey(/** @type {any} */ (priv)).export({ type: 'spki', format: 'der' }).toString('base64url');
   return { priv, pub };
 }
 const KEY = keyFromSeed(0xA1);        // the canonical signer

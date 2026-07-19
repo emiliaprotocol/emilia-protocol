@@ -182,6 +182,10 @@ export function computeActaActionRef(evaluation) {
  * Build an EP-AEC custom verifier for one ACTA decision and one exact EP receipt.
  * The expected ACTA evaluation and EP artifact digest are relying-party inputs;
  * neither is read from unsigned presenter metadata.
+ * @param {Object} [params]
+ * @param {string} [params.expectedActionRef]
+ * @param {string} [params.expectedHumanAuthorizationDigest]
+ * @param {object} [params.policy]
  */
 export function createActaDecisionVerifier({
   expectedActionRef,

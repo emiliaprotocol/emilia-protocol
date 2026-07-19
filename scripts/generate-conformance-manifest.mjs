@@ -32,6 +32,10 @@ function parseStrictJson(text, label) {
   catch (error) { throw new Error(`${label}: ${error.message}`); }
 }
 
+/**
+ * @param {string} root
+ * @param {(path:string)=>boolean} [predicate]
+ */
 function filesUnder(root, predicate = () => true) {
   const out = [];
   const walk = (current) => {

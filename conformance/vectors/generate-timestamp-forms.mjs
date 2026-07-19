@@ -25,6 +25,18 @@ function newP256() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   return { privateKey, publicKeyB64u: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 }
+/**
+ * @param {Object} params
+ * @param {string} params.approverKeyId
+ * @param {import('node:crypto').KeyObject} params.privateKey
+ * @param {string} params.signedAt
+ * @returns {{
+ *   approverKeyId: string,
+ *   keyClass: 'A',
+ *   signedAt: string,
+ *   signWebAuthn: (digest: Buffer) => { authenticator_data: string, client_data_json: string, signature: string },
+ * }}
+ */
 function classASigner({ approverKeyId, privateKey, signedAt }) {
   return {
     approverKeyId, keyClass: 'A', signedAt,
@@ -40,10 +52,20 @@ function classASigner({ approverKeyId, privateKey, signedAt }) {
 // Mint a real receipt where issued_at/expires_at (inside the SIGNED context),
 // signed_at, committed_at and the key window all carry the given timestamp forms,
 // with the given required_approvals value inside the signed context.
+/**
+ * @param {Object} params
+ * @param {string} params.issuedAt
+ * @param {string} params.expiresAt
+ * @param {string} params.committedAt
+ * @param {string} params.keyFrom
+ * @param {string} params.keyTo
+ * @param {number|string} [params.requiredApprovals] - deliberately accepts malformed
+ *   (string) values too: these vectors exercise the type-confusion refusal path.
+ */
 async function mint({ issuedAt, expiresAt, committedAt, keyFrom, keyTo, requiredApprovals = 1 }) {
   const action = { action_type: 'payment.release', policy_id: 'pol:test', initiator: 'ep:agent:1', params: { amount: 82000, currency: 'USD' } };
   const kp = newP256(); const logKp = generateEd25519KeyPair();
-  const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals, issuedAt, expiresAt });
+  const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals: /** @type {any} */ (requiredApprovals), issuedAt, expiresAt });
   const signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId: 'ep:key:dir#1', signedAt: issuedAt, privateKey: kp.privateKey })]);
   const receipt = assembleAuthorizationReceipt({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
   const verification = { approver_keys: { 'ep:key:dir#1': { approver_id: 'ep:approver:dir', public_key: kp.publicKeyB64u, key_class: 'A', valid_from: keyFrom, valid_to: keyTo } }, log_public_key: logKp.publicKeyB64u };

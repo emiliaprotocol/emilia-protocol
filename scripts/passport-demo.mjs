@@ -57,6 +57,7 @@ function callService(receiptDoc) {
 
 const tamper = (() => { const r = mint('payment.release', trusted); r.payload.claim.context.reasons = ['(silently changed after signing)']; return r; })();
 
+/** @type {Array<[string, any]>} */
 const cases = [
   ['1. agent sends NO receipt', null],
   ['2. valid receipt, TRUSTED issuer, right action', mint('payment.release', trusted)],

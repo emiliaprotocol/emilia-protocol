@@ -138,7 +138,16 @@ async function main() {
   }
 
   let receiptSeq = 0;
+  /**
+   * @param {object} opts
+   * @param {string} opts.actionType
+   * @param {string} opts.subject
+   * @param {Record<string, any>} [opts.claimExtra]
+   * @param {string} [opts.tier]
+   * @param {string} [opts.approver]
+   */
   function agentReceipt({ actionType, subject, claimExtra = {}, tier = 'class_a', approver }) {
+    /** @type {{action_type:any, outcome?:string, [key:string]: any}} */
     const claim = { action_type: actionType, ...claimExtra };
     const payload = {
       receipt_id: `rcpt_demo_${String(++receiptSeq).padStart(3, '0')}`,

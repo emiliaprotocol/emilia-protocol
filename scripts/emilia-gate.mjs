@@ -53,7 +53,10 @@ const SAFE_READ_ONLY_PATTERNS = [
 function classifyCommand(cmd) {
   for (const p of MONEY_PATTERNS) {
     if (p.re.test(cmd)) {
-      const base = evaluateGuardPolicy({ actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION, riskFlags: [] });
+      // This classifier only knows actionType/riskFlags at this point (no tenant/actor
+      // context yet); evaluateGuardPolicy tolerates the other fields being absent at
+      // runtime (basePolicy defaults them via `|| []`/optional-chaining) — cast only.
+      const base = evaluateGuardPolicy(/** @type {Parameters<typeof evaluateGuardPolicy>[0]} */ ({ actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION, riskFlags: [] }));
       return { actionType: 'ai_agent_payment_action', engine: 'guard-policies', what: p.what, ...base };
     }
   }
@@ -108,7 +111,9 @@ function agentKey() {
 
 function signReceipt(verdict, subject, command) {
   const priv = agentKey();
-  const pub = crypto.createPublicKey(priv).export({ type: 'spki', format: 'der' }).toString('base64url');
+  // Node's crypto.createPublicKey accepts a private KeyObject at runtime (it derives
+  // the public key), but @types/node's overloads don't include KeyObject — cast only.
+  const pub = crypto.createPublicKey(/** @type {any} */ (priv)).export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
     receipt_id: `agtgate_${crypto.randomUUID()}`,
     issuer: 'ep_agent_gate',

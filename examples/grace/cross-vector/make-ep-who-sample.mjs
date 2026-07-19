@@ -66,5 +66,7 @@ const sample = {
 };
 writeFileSync(join(here, 'ep-receipt.sample.json'), JSON.stringify(sample, null, 2) + '\n');
 console.log('wrote ep-receipt.sample.json');
-console.log('receipt_id      :', receipt.receipt_id ?? receipt.payload?.receipt_id);
-console.log('subject digest  :', receipt.action_hash ?? receipt.payload?.action_hash);
+// Defensive fallback for an alternate (pre-v1) nested receipt shape; the current
+// AuthorizationReceipt type doesn't declare `.payload`, so this is a type-only cast.
+console.log('receipt_id      :', receipt.receipt_id ?? (/** @type {any} */ (receipt)).payload?.receipt_id);
+console.log('subject digest  :', receipt.action_hash ?? (/** @type {any} */ (receipt)).payload?.action_hash);

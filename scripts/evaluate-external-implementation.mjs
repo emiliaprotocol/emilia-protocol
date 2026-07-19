@@ -78,7 +78,7 @@ const publicKeyFile = pinnedEvidenceFile(
 );
 const statementGate = strictParseGate(statementFile.bytes.toString('utf8'));
 if (!statementGate.ok) throw new Error(`construction statement: ${statementGate.reason}`);
-const statement = JSON.parse(statementFile.bytes);
+const statement = JSON.parse(/** @type {string} */ (/** @type {any} */ (statementFile.bytes)));
 const statementVerification = verifyExternalVerificationStatement(statement, {
   pinnedVerifierKeys: [{
     verifier_id: pin.construction_evidence.verifier_id,
