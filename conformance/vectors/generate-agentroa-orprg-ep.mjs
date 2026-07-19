@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 //
-// Deterministic real-crypto fixtures joining:
+// Real-crypto fixtures joining:
 //   * draft-nivalto-agentroa-route-authorization-01 AER evidence,
 //   * the concrete ORPRG-JSON-JCS-ED25519-v1 profile, and
 //   * an EP Class-A WebAuthn quorum.
 //
 // Native verification and CAID correlation remain separate. A valid machine
 // permit never substitutes for the relying party's required human artifact.
+// P-256 ECDSA signatures use fresh randomness on regeneration; --check
+// normalizes only those signatures while checking every signed input and all
+// deterministic signatures byte-for-byte.
 
 import crypto from 'node:crypto';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 import { computeCaid } from '../../caid/impl/js/caid.mjs';
 import { mappingProfileHash } from '../../caid/impl/js/mapping.mjs';
@@ -530,8 +533,40 @@ const output = {
   vectors,
 };
 
-writeFileSync(
-  new URL('./agentroa-orprg-ep.v1.json', import.meta.url),
-  `${JSON.stringify(output, null, 2)}\n`,
-);
-console.log(`wrote agentroa-orprg-ep.v1.json — ${vectors.length} real-crypto vectors`);
+function normalizeP256Signatures(value, parentKey = null) {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeP256Signatures(item));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        parentKey === 'webauthn' && key === 'signature'
+          ? '<fresh-p256-ecdsa-signature>'
+          : normalizeP256Signatures(item, key),
+      ]),
+    );
+  }
+  return value;
+}
+
+const outputUrl = new URL('./agentroa-orprg-ep.v1.json', import.meta.url);
+const args = process.argv.slice(2);
+if (args.length > 1 || (args.length === 1 && args[0] !== '--check')) {
+  throw new Error('usage: generate-agentroa-orprg-ep.mjs [--check]');
+}
+
+if (args[0] === '--check') {
+  const checkedIn = JSON.parse(readFileSync(outputUrl, 'utf8'));
+  const expected = canonicalize(normalizeP256Signatures(output));
+  const actual = canonicalize(normalizeP256Signatures(checkedIn));
+  if (actual !== expected) {
+    console.error('agentroa-orprg-ep.v1.json is stale');
+    process.exitCode = 1;
+  } else {
+    console.log(`checked agentroa-orprg-ep.v1.json — ${vectors.length} real-crypto vectors`);
+  }
+} else {
+  writeFileSync(outputUrl, `${JSON.stringify(output, null, 2)}\n`);
+  console.log(`wrote agentroa-orprg-ep.v1.json — ${vectors.length} real-crypto vectors`);
+}

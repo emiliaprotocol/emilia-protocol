@@ -926,7 +926,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     const effectiveKeys = registry
       ? registry.keysValidAt(receipt?.payload?.created_at)
       : trustedKeys;
-    const v = verifyEmiliaReceipt(receipt, { trustedKeys: effectiveKeys, allowInlineKey, action, maxAgeSec });
+    const v = verifyEmiliaReceipt(receipt, {
+      trustedKeys: effectiveKeys,
+      allowInlineKey,
+      action,
+      maxAgeSec,
+      now,
+    });
     if (!v.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, `receipt_rejected:${v.reason}`, { rejected: v });
     }

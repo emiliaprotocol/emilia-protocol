@@ -8,11 +8,11 @@ what a host actually runs) is defined but hardware-gated — see
 
 | File | Role |
 | --- | --- |
-| `build-attestation.js` | Record format `EP-BUILD-ATTESTATION-v1` + fail-closed `verifyBuildAttestation()`; leaf binding, log inclusion (reuses `verifyMerkleAnchor`), optional live rebuild, optional TPM stub. |
+| `build-attestation.js` | Record format `EP-BUILD-ATTESTATION-v1` + fail-closed `verifyBuildAttestation()`; leaf binding, log inclusion (reuses `verifyMerkleAnchor`), optional live rebuild, and a fail-closed hook for the strict TPM adapter. |
 | `merkle-log.js` | Reference EP-MERKLE-v2 log builder: leaf hashing + inclusion proofs accepted by the production verifier. |
 | `reproducible-rebuild.mjs` | The live rebuild link. It fails closed unless the worktree is clean and HEAD exactly equals the attested commit, then wraps `scripts/verify-reproducible-package.mjs`. |
 | `verify-cli.mjs` | `emit` / `verify` / `demo` CLI. |
-| `build-attestation.test.js` | 25 vitest cases: happy path, multi-leaf inclusion, every fail-closed path, TPM boundary. |
+| `build-attestation.test.js` | Source, artifact, inclusion, rebuild, and TPM-hook fail-closed cases. |
 | `tpm-quote-verifier.js` | Strict TPM 2.0 `TPMS_ATTEST` adapter: verifier nonce, exact PCR allowlist/composite, quote signature, and pinned AK SPKI trust. |
 | `tpm2-tools-swtpm-quote.fixture.json` | Public-interoperability fixture captured from the official `tpm2_quote` → `tpm2_checkquote` flow using `swtpm`; explicitly not physical-hardware evidence. |
 

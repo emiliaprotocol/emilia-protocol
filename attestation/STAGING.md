@@ -1,10 +1,11 @@
 # Build / Binary Attestation — staging + honesty boundary
 
-Closes DoD-audit **GAP 5 (build/binary attestation)** at the software level. This
-is a **STAGE-track** deliverable: the reproducible-build → transparency-log links
-are real and tested; the TPM 2.0 hardware link is defined but **not** implemented,
-because it requires physical hardware not present in CI/dev. Nothing here fires an
-outbound or claims TPM attestation works.
+Closes DoD-audit **GAP 5 (build/binary attestation)** at the software-verifier
+level. The reproducible-build → transparency-log links and a strict TPM 2.0
+quote verifier are real and tested. The checked-in quote was produced by
+`tpm2-tools` against `swtpm`; it proves wire-level interoperability, not that a
+physical production host runs the attested binary. No physical TPM, manufacturer
+EK chain, measured-boot deployment, or production quote is claimed.
 
 ## The chain
 
@@ -20,11 +21,12 @@ pinned source commit
 
 | Link | Status | Evidence you can re-run |
 | --- | --- | --- |
-| **(1) Reproducible build → binary hash** | ✅ real, tested | `npm run release:verify:reproducible` builds `packages/verify` twice from a canonicalized input and refuses on byte drift. Two independent runs both produce `sha256 bf97b1646ca587df2824c9573896d6e69b6a3c59423108f16c44c9abb1fd571b` (at commit `1a2293e8`, `@emilia-protocol/verify@3.11.0`). |
+| **(1) Reproducible build → binary hash** | ✅ real, tested | `npm run release:verify:reproducible` builds `packages/verify` twice from canonicalized input and refuses on byte drift. The live attestation path additionally refuses unless the worktree is clean and checked-out HEAD exactly equals the attested source commit. |
 | **(2) Binary hash → transparency-log leaf** | ✅ real, tested | `attestation/merkle-log.js` builds an EP-MERKLE-v2 leaf `SHA-256(0x00 ‖ JCS(subject))` and an inclusion proof accepted by `verifyMerkleAnchor(..., { v2: true })` from `@emilia-protocol/verify`. Multi-leaf inclusion covered in the test suite. |
 | **(3) Leaf binding (source+binary → leaf)** | ✅ real, tested | The leaf commits to `{source_commit, package_path, artifact_filename, artifact_sha256}`. Flip any field and the leaf changes; a lifted proof from another build is rejected fail-closed (`build-attestation.test.js`). |
 | **(4a) Verifier: H == build(source)** | ✅ real, tested | `verifyBuildAttestation(record, { rebuild })` runs the reproducible build and rejects (`rebuild_mismatch`) if the claimed binary hash is not the deterministic build of the pinned source. |
 | **(4b) Verifier: L ∈ log under root R** | ✅ real, tested | Inclusion proof reconstructs the claimed root; a tampered root/proof is rejected (`log_inclusion_failed`). Optional signed checkpoint's `root_hash` must equal the inclusion root. |
+| **(4c) TPM quote verifier** | ✅ real, tested against software-TPM evidence | `verifyTpm2Quote()` parses the official TPM 2.0 structures and fails closed unless verifier nonce, exact PCR selection, known-good PCR values and composite, quote signature, safe clock, and pinned AK SPKI all match. |
 
 All fail-closed paths are exercised: malformed record, tampered hash, tampered
 root, lifted proof, throwing rebuild, non-hex rebuild, checkpoint mismatch, and a
@@ -37,19 +39,19 @@ Run it:
 node attestation/verify-cli.mjs demo packages/verify      # determinism proof + full software chain
 node attestation/verify-cli.mjs emit packages/verify > rec.json
 node attestation/verify-cli.mjs verify rec.json --rebuild  # live rebuild link
-npx vitest run attestation/build-attestation.test.js       # 25 tests
+npx vitest run attestation/build-attestation.test.js attestation/tpm-quote-verifier.test.js
 ```
 
-## What is HARDWARE-GATED (not done here)
+## What remains HARDWARE-GATED
 
-**Link (3), the TPM 2.0 quote.** `record.tpm_quote` is an **optional** field of
-format `EP-TPM-QUOTE-v1`. `verifyTpmQuote()` is a clearly-marked stub that
-**refuses by default** with `tpm-hardware-required`. Its interface accepts an
-injected `hardwareVerifier` so a real one drops in without changing the record
-format or the chain. A present-but-unverified quote never contributes a passing
-verdict; an injected verifier that *rejects* fails the record fail-closed.
+`record.tpm_quote` is an optional `EP-TPM-QUOTE-v1` field.
+`verifyBuildAttestation()` refuses to treat it as verified unless a verifier is
+injected. The repository supplies that verifier in `tpm-quote-verifier.js`; a
+deployment must inject it with verifier-owned nonce, AK fingerprints, PCR
+selection, and known-good PCR values. A present-but-unverified quote never
+contributes a passing TPM verdict, and a rejected quote fails the record closed.
 
-A real implementation needs, on the build/runtime host:
+A real physical deployment still needs, on the build/runtime host:
 
 1. A **TPM 2.0** (discrete or firmware) with an **Endorsement Key (EK)** and an
    enrolled **Attestation Key (AK)**, plus the EK certificate the buyer trusts.
@@ -57,11 +59,12 @@ A real implementation needs, on the build/runtime host:
    quoted PCR value is a function of what actually loads.
 3. A `TPM2_Quote` over that PCR set with the record's **nonce** for freshness,
    signed by the AK; verification of the AK→EK chain to the buyer's trust root.
-4. Wiring `hardwareVerifier` (e.g. `tpm2-tools`, Go `go-attestation`,
-   `tpm2-pytss`) to return `{ ok, pcrDigest }`.
+4. Supplying the resulting `EP-TPM-QUOTE-v1` evidence to
+   `verifyTpm2Quote()` under verifier-selected trust inputs.
 
-None of (1)–(3) exists in this CI/dev environment (no TPM, no EK cert, no AK
-enrollment), so this link is honestly left **pending: hardware-required**.
+None of (1)–(3) exists in this CI/dev environment. The software-TPM fixture has
+an AK and real quote signature but no physical-hardware or manufacturer trust
+property, so physical evidence remains **pending: hardware-required**.
 
 ## What a defense buyer completes
 
@@ -70,13 +73,17 @@ enrollment), so this link is honestly left **pending: hardware-required**.
 - Operate (or point at) a persistent, checkpointed, **witness-cosigned** log
   (`witness/`, `docs/security/TRANSPARENCY-LAYER-DESIGN.md`) rather than the
   in-memory reference builder, and carry the signed checkpoint in `log_entry.checkpoint`.
-- Provision TPM AK/EK enrollment and supply a `hardwareVerifier`, at which point
-  `verifyBuildAttestation` verifies all four links end-to-end.
+- Provision TPM AK/EK enrollment, measured boot/IMA, known-good PCR policy, and
+  a fresh quote. Then inject `verifyTpm2Quote` into
+  `verifyBuildAttestation` to verify all four links end to end.
 
 ## Honest claim inventory
 
-- **PROVEN:** the reproducible build is deterministic (two identical hashes, quoted
-  above); the log leaf binds source+binary; inclusion and rebuild links verify and
-  fail closed.
-- **NOT PROVEN / NOT CLAIMED:** that any TPM attests the running binary. No TPM was
-  present; the quote path is a stub. Do not represent TPM attestation as working.
+- **PROVEN:** the rebuild is tied to the exact clean checked-out source commit;
+  the log leaf binds source+binary; inclusion and rebuild links verify and fail
+  closed; the TPM adapter verifies real TPM wire structures, nonce, PCR policy,
+  signature, and pinned AK against a software-TPM fixture.
+- **NOT PROVEN / NOT CLAIMED:** that a physical production TPM attests the
+  running binary, that an AK chains to a trusted manufacturer EK, or that a
+  measured-boot policy is deployed. Do not market software-TPM interoperability
+  as physical-hardware attestation.

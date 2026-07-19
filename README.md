@@ -41,7 +41,7 @@ Dolev-Yao model**, and preserves **2 deliberately weakened variants that produce
 and stale-registry attack traces**. The live same-team conformance corpus contains **18 suites and
 251 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
-**6,692 automated tests across 348 files**.
+**6,719 automated tests across 351 files**.
 
 Each security claim names the enforcement path, positive and negative vectors, language coverage,
 formal scope or explicit gap, assumptions, exclusions, and evidence hash. Start with the
@@ -197,7 +197,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 | Metric | Value |
 |---|---|
-| Automated test cases | 6,692 across 348 files; all platform-applicable cases must pass |
+| Automated test cases | 6,719 across 351 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 verified (T1–T26), 0 errors — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 22 assertions across two models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |

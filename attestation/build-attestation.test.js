@@ -191,7 +191,7 @@ describe('verifyBuildAttestation — tamper / malformed input (fail-closed)', ()
   });
 });
 
-describe('TPM quote — hardware boundary (honest stub)', () => {
+describe('TPM quote — fail-closed deployment verifier boundary', () => {
   const goodQuote = {
     '@format': TPM_QUOTE_FORMAT,
     quoted: 'base64-tpms-attest',
