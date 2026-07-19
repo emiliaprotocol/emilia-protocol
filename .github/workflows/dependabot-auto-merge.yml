@@ -97,15 +97,12 @@ jobs:
           echo "- **eligible**: $ELIGIBLE"         >> "$GITHUB_STEP_SUMMARY"
           echo "- **reason**: $REASON"             >> "$GITHUB_STEP_SUMMARY"
 
-      # NOTE: An "Approve PR" step is intentionally absent. The
-      # `futureenterprises` org has "Allow GitHub Actions to create and
-      # approve pull requests" disabled, so a `gh pr review --approve`
-      # call would fail. Instead, we configure branch protection on
-      # `main` to NOT require approving review for Dependabot PRs (they
-      # already require all required-status-checks to pass via auto-merge).
-      # `gh pr merge --auto` queues the merge for whenever protection is
-      # satisfied — that includes both CI green and any approval already
-      # present, but it does not REQUIRE the workflow to add an approval.
+      # NOTE: An "Approve PR" step is intentionally absent. Organization
+      # policy does not allow GitHub Actions to approve pull requests, and
+      # main requires a human approval plus all required checks. This step
+      # only queues eligible updates; it never bypasses review or protection.
+      # A repository maintainer must still review and approve the Dependabot
+      # PR before GitHub can complete the queued merge.
 
       - name: Enable auto-merge (queues until branch protection is satisfied)
         if: steps.decide.outputs.eligible == 'true'

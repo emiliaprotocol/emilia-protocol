@@ -25,7 +25,7 @@ const CHECKS = [
   ['challenge_binding', 'The approval is bound to this exact action. Any altered parameter — amount, payee, target — invalidates it.'],
   ['user_verified', 'The approver passed biometric or PIN verification (Face ID · Touch ID · passkey) at the moment of approval.'],
   ['user_present', 'A human was physically present at the signing device.'],
-  ['signature', 'Signed by the approver’s enrolled device key (ECDSA P-256); receipts are signed by the issuer (Ed25519).'],
+  ['signature', 'Signed by an enrolled device key (ECDSA P-256); receipts are signed by the issuer (Ed25519). Attribution requires the relying party’s independently trusted key/directory binding.'],
   ['client_data_type', 'A genuine authenticator assertion — not a replayed enrollment ceremony.'],
   ['rp_id_hash', 'The signature is scoped to the expected service, not lifted from another site.'],
   ['anchor', 'For receipts: included in the published Merkle anchor — the history cannot be silently rewritten.'],
@@ -67,8 +67,9 @@ export default function AuditorsPage() {
         </div>
         <h1 style={{ ...styles.h1, maxWidth: 740 }}>Verify an authorization receipt yourself. Two minutes, offline, no one&rsquo;s word for it.</h1>
         <p style={{ ...styles.body, maxWidth: 700 }}>
-          An <strong>authorization receipt</strong> (formerly Trust Receipt) is a signed, machine-verifiable evidence packet proving that a named human
-          approved a specific AI-agent action before it executed. Unlike an audit log — which <em>asserts</em> what
+          An <strong>authorization receipt</strong> (formerly Trust Receipt) is a signed, machine-verifiable evidence packet proving that an enrolled
+          approver key authorized a specific AI-agent action before it executed. When the auditor independently trusts the
+          directory binding for that key, the receipt supports attribution to the named approver. Unlike an audit log — which <em>asserts</em> what
           happened inside a system you cannot inspect — a receipt is something you <strong>re-verify yourself</strong>,
           with public-key cryptography, without relying on the auditee&rsquo;s systems or on EMILIA.
         </p>
@@ -83,8 +84,10 @@ export default function AuditorsPage() {
         <ol style={{ ...styles.list, marginBottom: 36 }}>
           <li style={{ marginBottom: 14 }}>
             <strong style={{ color: color.t1 }}>Obtain the evidence packet.</strong> Request the receipt or device-signoff
-            JSON for the sampled action from the auditee. A conformant packet is self-contained — it carries its own
-            public key. If the auditee can only show you a dashboard, that is a finding, not evidence.
+            JSON for the sampled action from the auditee. Some packets carry a public key for a self-consistency check,
+            but a key carried by the artifact cannot establish its own identity. Obtain the relying party&rsquo;s
+            independently pinned issuer key and, for named-person attribution, the trusted approver-directory binding.
+            If the auditee can only show you a dashboard, that is a finding, not evidence.
           </li>
           <li style={{ marginBottom: 14 }}>
             <strong style={{ color: color.t1 }}>Re-verify it independently.</strong> Two equivalent paths:
@@ -96,8 +99,7 @@ export default function AuditorsPage() {
             (<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/python-verify" style={lnk} target="_blank" rel="noopener noreferrer">Python</a>,{' '}
             <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/go-verify" style={lnk} target="_blank" rel="noopener noreferrer">Go</a>) in the same
             public repository — three same-team reference ports, all held to the same published conformance
-            suites (33 public vector files, more than 350 accept/refuse cases), so the verdict does not depend on
-            which language your team runs.
+            suites (18 active suites and 251 vectors), so the verdict does not depend on which language your team runs.
           </li>
           <li style={{ marginBottom: 14 }}>
             <strong style={{ color: color.t1 }}>Read the checks.</strong> Each line is one verified property (table below).
@@ -124,7 +126,10 @@ export default function AuditorsPage() {
         <div style={{ background: '#FFFBEB', border: `1px solid ${color.gold}`, borderRadius: radius.base, padding: '18px 22px', marginBottom: 36 }}>
           <div style={{ fontWeight: 700, fontSize: 14.5, color: color.t1, marginBottom: 6 }}>The honest boundary: what offline verification does not prove</div>
           <p style={{ fontSize: 13.5, color: color.t2, lineHeight: 1.65, margin: 0 }}>
-            Offline verification proves the artifact is <strong>authentic, intact, and bound to the exact action</strong>.
+            Offline verification proves the artifact is <strong>authentic, intact, and bound to the exact action under
+            the verifier&rsquo;s pinned inputs</strong>. It does not independently prove the real-world identity of the
+            person named by an approver identifier; that attribution rests on the enrollment ceremony and directory
+            authority the auditor chooses to trust.
             A revocation can also be evidenced offline: a <strong>portable, signed revocation statement</strong>
             (EP-REVOCATION-v1) is checkable with <code>npx @emilia-protocol/verify revocation</code>, fail-closed, with no
             EP server. What offline checking cannot prove is a <strong>negative</strong> — the <em>absence</em> of a

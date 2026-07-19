@@ -171,7 +171,13 @@ export default function ActionEscrowExperience({ data }) {
           <div className={styles.sectionHeader}>
             <div>
               <span className={styles.eyebrow}>Release clearance</span>
-              <h2>Six evidence rows. No role substitution.</h2>
+              <h2>Six evidence rows. Two explicit approval seats.</h2>
+              <p>
+                This mutual-release demo requires both the homeowner and contractor. It does not
+                claim initiator exclusion: the contractor submits the milestone evidence and also
+                fills the contractor approval seat. Deployments that require initiator exclusion
+                set <code>prohibit_self_approval</code> and Gate refuses that overlap.
+              </p>
             </div>
             <button type="button" className={styles.replayButton} onClick={replayChecks} disabled={running}>
               <RefreshCw aria-hidden="true" size={17} className={running ? styles.spin : undefined} />

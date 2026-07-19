@@ -9,7 +9,10 @@ function read(relPath) {
 }
 
 function compact(value) {
-  return value.replace(/^\s*>\s?/gm, '').replace(/\s+/g, ' ');
+  return value
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/&(?:apos|rsquo);/g, '’')
+    .replace(/\s+/g, ' ');
 }
 
 describe('homepage category contract', () => {
@@ -77,7 +80,7 @@ describe('homepage category contract', () => {
 
   it('keeps the investor hierarchy exact and the assurance claims bounded', () => {
     const hierarchy =
-      'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact human authorization and safely controls consequential outcomes.';
+      'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact authorization by an enrolled approver under the relying party’s pinned directory, then safely controls consequential outcomes.';
     const homepage = compact(read('app/HomePageClient.js'));
     const gate = compact(read('app/gate/page.js'));
     const investors = compact(read('app/investors/page.js'));

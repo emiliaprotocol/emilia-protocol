@@ -1,7 +1,10 @@
 # EMILIA Protocol — Code Ownership
 #
-# Governance transition plan: working group target Q2 2026 (see GOVERNANCE.md).
-# Until then, all changes require review from the current maintainer.
+# Current governance is single-maintainer. Adding a genuinely independent
+# second owner/reviewer is an open governance milestone; no completed
+# transition is claimed. Until then, every path assigns review responsibility
+# to the current maintainer; administrator enforcement remains a separate
+# governance milestone.
 #
 # Format: pattern  @owner
 

@@ -34,8 +34,9 @@ model, no signatures-of-badness, no false positives: receipt or no execution.
 
 ## How it composes with the authorization stack
 
-> **AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact human
-> authorization and safely controls consequential outcomes.**
+> **AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA proves exact authorization
+> by an enrolled approver under the relying party’s pinned directory, then safely controls
+> consequential outcomes.**
 
 This is an interoperability position, not a replacement claim. EMILIA verifies
 AgentROA and the concrete `ORPRG-JSON-JCS-ED25519-v1` profile under separate
