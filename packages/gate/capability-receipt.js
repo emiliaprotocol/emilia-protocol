@@ -30,6 +30,7 @@ export const CAPABILITY_STATE_VERSION = 'EP-CAPABILITY-STATE-v1';
 export const CAPABILITY_SHARE_VERSION = 'EP-CAPABILITY-SHARE-v1';
 export const CAPABILITY_HASH_ALGORITHM = 'sha256';
 export const CAPABILITY_SCOPE_PROFILE = 'urn:emilia:scope:action-digest-set-v1';
+export const CAPABILITY_CAID_SCOPE_PROFILE = 'urn:emilia:scope:caid-set-v1';
 
 // 2^521 - 1 is a prime and is comfortably larger than a 256-bit secret.
 const FIELD = (2n ** 521n) - 1n;
@@ -40,6 +41,7 @@ const MAX_OPERATION_ID_BYTES = 128;
 const MAX_DELEGATES = 64;
 const MAX_SCOPE_ACTIONS = 256;
 const ACTION_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
+const CAID_RE = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -125,25 +127,28 @@ export function capabilityActionDigest(action) {
 }
 
 function normalizeCapabilityScope(scope) {
-  if (!isRecord(scope) || scope.profile !== CAPABILITY_SCOPE_PROFILE) {
-    throw new TypeError(`capability scope.profile must be ${CAPABILITY_SCOPE_PROFILE}`);
+  if (!isRecord(scope) || ![CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE].includes(scope.profile)) {
+    throw new TypeError(`capability scope.profile must be ${CAPABILITY_SCOPE_PROFILE} or ${CAPABILITY_CAID_SCOPE_PROFILE}`);
   }
-  if (!Array.isArray(scope.action_digests)
-      || scope.action_digests.length < 1
-      || scope.action_digests.length > MAX_SCOPE_ACTIONS
-      || scope.action_digests.some((digest) => typeof digest !== 'string' || !ACTION_DIGEST_RE.test(digest))) {
-    throw new TypeError('capability scope.action_digests must be a bounded non-empty array of SHA-256 digests');
+  const memberField = scope.profile === CAPABILITY_CAID_SCOPE_PROFILE ? 'caids' : 'action_digests';
+  const members = scope[memberField];
+  const memberPattern = scope.profile === CAPABILITY_CAID_SCOPE_PROFILE ? CAID_RE : ACTION_DIGEST_RE;
+  if (!Array.isArray(members)
+      || members.length < 1
+      || members.length > MAX_SCOPE_ACTIONS
+      || members.some((member) => typeof member !== 'string' || !memberPattern.test(member))) {
+    throw new TypeError(`capability scope.${memberField} must be a bounded non-empty array of canonical identifiers`);
   }
-  if (new Set(scope.action_digests).size !== scope.action_digests.length) {
-    throw new TypeError('capability scope.action_digests must not contain duplicates');
+  if (new Set(members).size !== members.length) {
+    throw new TypeError(`capability scope.${memberField} must not contain duplicates`);
   }
   if (typeof scope.operation_id_field !== 'string'
       || !/^[A-Za-z_][A-Za-z0-9_.-]{0,127}$/.test(scope.operation_id_field)) {
     throw new TypeError('capability scope.operation_id_field must name a closed action field');
   }
   return {
-    profile: CAPABILITY_SCOPE_PROFILE,
-    action_digests: [...scope.action_digests].sort(),
+    profile: scope.profile,
+    [memberField]: [...members].sort(),
     operation_id_field: scope.operation_id_field,
   };
 }
@@ -157,11 +162,24 @@ function valueAtPath(action, path) {
   return value;
 }
 
-export function verifyCapabilityScope(capability, action, operationId) {
+export function verifyCapabilityScope(capability, action, operationId, { resolveCaid = null } = {}) {
   try {
     const scope = normalizeCapabilityScope(capability?.scope);
     const actionDigest = capabilityActionDigest(action);
-    if (!scope.action_digests.includes(actionDigest)) {
+    let caid = null;
+    if (scope.profile === CAPABILITY_CAID_SCOPE_PROFILE) {
+      if (typeof resolveCaid !== 'function') {
+        return { ok: false, reason: 'capability_caid_resolver_required', action_digest: actionDigest };
+      }
+      const resolved = resolveCaid(structuredClone(action));
+      caid = typeof resolved === 'string' ? resolved : resolved?.caid;
+      if (typeof caid !== 'string' || !CAID_RE.test(caid)) {
+        return { ok: false, reason: 'capability_caid_resolution_failed', action_digest: actionDigest };
+      }
+      if (!scope.caids.includes(caid)) {
+        return { ok: false, reason: 'capability_action_out_of_scope', action_digest: actionDigest, caid };
+      }
+    } else if (!scope.action_digests.includes(actionDigest)) {
       return { ok: false, reason: 'capability_action_out_of_scope', action_digest: actionDigest };
     }
     if (valueAtPath(action, scope.operation_id_field) !== operationId) {
@@ -175,6 +193,7 @@ export function verifyCapabilityScope(capability, action, operationId) {
     return {
       ok: true,
       action_digest: actionDigest,
+      ...(caid ? { caid } : {}),
       operation_id_field: scope.operation_id_field,
     };
   } catch (error) {
@@ -215,10 +234,15 @@ function validateBaseReceipt(baseReceipt) {
   return structuredClone(baseReceipt);
 }
 
+export function capabilityBaseReceiptDigest(receipt) {
+  return `sha256:${sha256Hex(Buffer.from(canonicalize(receipt), 'utf8'))}`;
+}
+
 function capabilityUnsignedBody(receipt, capability) {
   return {
     '@version': CAPABILITY_RECEIPT_VERSION,
     base_receipt_id: receipt.payload.receipt_id,
+    base_receipt_digest: capabilityBaseReceiptDigest(receipt),
     capability,
   };
 }
@@ -236,6 +260,7 @@ function capabilityEnvelopeFingerprint(capabilityReceipt) {
   return `sha256:${sha256Hex(Buffer.from(canonicalize({
     '@version': CAPABILITY_RECEIPT_VERSION,
     base_receipt_id: capabilityReceipt.receipt.payload.receipt_id,
+    base_receipt_digest: capabilityBaseReceiptDigest(capabilityReceipt.receipt),
     capability: capabilityReceipt.capability,
     issuer_public_key: signature.public_key,
   }), 'utf8'))}`;
@@ -334,7 +359,6 @@ export function mintCapabilityReceipt(baseReceipt, {
   const normalizedThreshold = validateThreshold(threshold);
   const normalizedSecret = digestSecret(secret);
   const publicKey = publicKeyB64u(issuerPrivateKey);
-  if (receipt.public_key && receipt.public_key !== publicKey) throw new TypeError('issuerPrivateKey does not match base receipt public_key');
   const capability = {
     version: CAPABILITY_STATE_VERSION,
     id: validateCapabilityId(String(capabilityId)),
@@ -377,7 +401,6 @@ export function verifyCapabilityReceipt(capabilityReceipt, {
     if (!signature || !verifyTrustedIssuer(signature.public_key, trustedIssuerKeys, allowUntrustedIssuer)) {
       return { ok: false, reason: 'capability_issuer_not_trusted' };
     }
-    if (receipt.public_key && receipt.public_key !== signature.public_key) return { ok: false, reason: 'capability_issuer_mismatch' };
     const ok = verify(
       null,
       Buffer.from(canonicalize(capabilityUnsignedBody(receipt, capabilityReceipt.capability)), 'utf8'),
@@ -555,6 +578,24 @@ export function createMemoryCapabilityStore() {
       state.consumed_amount += operation.amount;
       return { ok: true, outcome, consumed: state.consumed_amount, remaining: state.budget_amount - state.consumed_amount - state.reserved_amount };
     },
+    async reconcileSpend({ capabilityId, operationId, actionDigest, evidenceDigest, outcome = 'executed', now = Date.now } = {}) {
+      const operation = operations.get(operationId);
+      if (!operation || operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_not_found' };
+      if (operation.status !== 'committed' || operation.outcome !== 'indeterminate') return { ok: false, reason: 'capability_operation_not_indeterminate' };
+      if (operation.action_digest !== actionDigest) return { ok: false, reason: 'capability_reconciliation_action_mismatch' };
+      if (outcome !== 'executed' || typeof evidenceDigest !== 'string' || !ACTION_DIGEST_RE.test(evidenceDigest)) {
+        return { ok: false, reason: 'capability_reconciliation_evidence_invalid' };
+      }
+      if (operation.reconciliation_outcome) {
+        return operation.reconciliation_outcome === outcome && operation.reconciliation_evidence_digest === evidenceDigest
+          ? { ok: true, idempotent: true, outcome }
+          : { ok: false, reason: 'capability_reconciliation_conflict' };
+      }
+      operation.reconciliation_outcome = outcome;
+      operation.reconciliation_evidence_digest = evidenceDigest;
+      operation.reconciled_at = nowMs(now);
+      return { ok: true, idempotent: false, outcome };
+    },
     getState(capabilityId) {
       const state = states.get(capabilityId);
       return state ? Object.freeze({ ...state }) : null;
@@ -588,18 +629,27 @@ CREATE TABLE IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE} (
   status TEXT NOT NULL CHECK (status IN ('reserved', 'committed')),
   reservation_token TEXT NOT NULL,
   outcome TEXT,
+  reconciliation_outcome TEXT CHECK (reconciliation_outcome IN ('executed')),
+  reconciliation_evidence_digest TEXT CHECK (reconciliation_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
   reserved_at TIMESTAMPTZ NOT NULL,
-  committed_at TIMESTAMPTZ
+  committed_at TIMESTAMPTZ,
+  reconciled_at TIMESTAMPTZ,
+  CHECK (
+    (reconciliation_outcome IS NULL AND reconciliation_evidence_digest IS NULL AND reconciled_at IS NULL)
+    OR
+    (reconciliation_outcome IS NOT NULL AND reconciliation_evidence_digest IS NOT NULL AND reconciled_at IS NOT NULL)
+  )
 );
 CREATE INDEX IF NOT EXISTS ${CAPABILITY_OPERATION_TABLE}_capability_idx ON ${CAPABILITY_OPERATION_TABLE}(capability_id);`;
 
 export const CAPABILITY_SQL = Object.freeze({
   register: `INSERT INTO ${CAPABILITY_STATE_TABLE} (capability_id, budget_amount, currency, expires_at, capability_fingerprint) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (capability_id) DO UPDATE SET capability_fingerprint = COALESCE(${CAPABILITY_STATE_TABLE}.capability_fingerprint, EXCLUDED.capability_fingerprint) WHERE ${CAPABILITY_STATE_TABLE}.budget_amount = EXCLUDED.budget_amount AND ${CAPABILITY_STATE_TABLE}.currency = EXCLUDED.currency AND ${CAPABILITY_STATE_TABLE}.expires_at = EXCLUDED.expires_at`,
   readState: `SELECT capability_id, capability_fingerprint, budget_amount, currency, consumed_amount, reserved_amount, expires_at FROM ${CAPABILITY_STATE_TABLE} WHERE capability_id = $1 FOR UPDATE`,
-  readOperation: `SELECT operation_id, capability_id, action_digest, amount, currency, status, reservation_token FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_id = $1 FOR UPDATE`,
+  readOperation: `SELECT operation_id, capability_id, action_digest, amount, currency, status, reservation_token, outcome, reconciliation_outcome, reconciliation_evidence_digest, reconciled_at FROM ${CAPABILITY_OPERATION_TABLE} WHERE operation_id = $1 FOR UPDATE`,
   insertOperation: `INSERT INTO ${CAPABILITY_OPERATION_TABLE} (operation_id, capability_id, action_digest, amount, currency, status, reservation_token, reserved_at) VALUES ($1, $2, $3, $4, $5, 'reserved', $6, $7)`,
   reserveState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount + $2 WHERE capability_id = $1 AND budget_amount - consumed_amount - reserved_amount >= $2`,
   commitOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET status = 'committed', outcome = $3, committed_at = $4 WHERE operation_id = $1 AND capability_id = $2 AND status = 'reserved' AND reservation_token = $5`,
+  reconcileOperation: `UPDATE ${CAPABILITY_OPERATION_TABLE} SET reconciliation_outcome = $3, reconciliation_evidence_digest = $4, reconciled_at = $5 WHERE operation_id = $1 AND capability_id = $2 AND status = 'committed' AND outcome = 'indeterminate' AND reconciliation_outcome IS NULL`,
   commitState: `UPDATE ${CAPABILITY_STATE_TABLE} SET reserved_amount = reserved_amount - $2, consumed_amount = consumed_amount + $2 WHERE capability_id = $1 AND reserved_amount >= $2`,
 });
 
@@ -667,6 +717,37 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
         return { ok: true, outcome, consumed: null, remaining: null };
       });
     },
+    async reconcileSpend({ capabilityId, operationId, actionDigest, evidenceDigest, outcome = 'executed', now = Date.now } = {}) {
+      validateOperationId(operationId);
+      if (typeof actionDigest !== 'string' || !ACTION_DIGEST_RE.test(actionDigest)
+          || typeof evidenceDigest !== 'string' || !ACTION_DIGEST_RE.test(evidenceDigest)
+          || outcome !== 'executed') {
+        return { ok: false, reason: 'capability_reconciliation_evidence_invalid' };
+      }
+      const at = nowMs(now);
+      return transaction(async (query) => {
+        const operationResult = await query(CAPABILITY_SQL.readOperation, [operationId]);
+        const operation = operationResult?.rows?.[0];
+        if (!operation || operation.capability_id !== capabilityId) return { ok: false, reason: 'capability_operation_not_found' };
+        if (operation.status !== 'committed' || operation.outcome !== 'indeterminate') return { ok: false, reason: 'capability_operation_not_indeterminate' };
+        if (operation.action_digest !== actionDigest) return { ok: false, reason: 'capability_reconciliation_action_mismatch' };
+        if (operation.reconciliation_outcome) {
+          return operation.reconciliation_outcome === outcome
+              && operation.reconciliation_evidence_digest === evidenceDigest
+            ? { ok: true, idempotent: true, outcome }
+            : { ok: false, reason: 'capability_reconciliation_conflict' };
+        }
+        const updated = await query(CAPABILITY_SQL.reconcileOperation, [
+          operationId,
+          capabilityId,
+          outcome,
+          evidenceDigest,
+          new Date(at).toISOString(),
+        ]);
+        if (updated?.rowCount !== 1) throw new Error('capability reconciliation transition conflicted; transaction must roll back');
+        return { ok: true, idempotent: false, outcome };
+      });
+    },
   };
 }
 
@@ -701,6 +782,7 @@ export async function executeWithCapability({
   observedAction = null,
   trustedIssuerKeys = [],
   verifyBaseReceipt = null,
+  resolveCaid = null,
   operationId = null,
   now = Date.now,
   thresholdSecretVerified = false,
@@ -720,7 +802,7 @@ export async function executeWithCapability({
   let scope;
   try {
     immutableAction = structuredClone(observedAction ?? action);
-    scope = verifyCapabilityScope(verified.capability, immutableAction, operationId);
+    scope = verifyCapabilityScope(verified.capability, immutableAction, operationId, { resolveCaid });
   } catch {
     return { ok: false, reason: 'capability_action_invalid' };
   }
@@ -763,15 +845,31 @@ export async function executeWithCapability({
       authorization,
       operation_id: operationId,
       action_digest: scope.action_digest,
+      ...(scope.caid ? { caid: scope.caid } : {}),
       observed_action: immutableAction,
       reservation: reserved,
     });
     const committed = await store.commitSpend({ capabilityId: verified.capability.id, operationId, reservationToken: reserved.reservation_token, outcome: 'executed', now });
     if (!committed?.ok) return { ok: false, reason: 'capability_commit_indeterminate', authorization, result, operation_id: operationId };
-    return { ok: true, result, authorization, operation_id: operationId, remaining: committed.remaining };
+    return {
+      ok: true,
+      result,
+      authorization,
+      operation_id: operationId,
+      action_digest: scope.action_digest,
+      ...(scope.caid ? { caid: scope.caid } : {}),
+      remaining: committed.remaining,
+    };
   } catch (error) {
     const committed = await store.commitSpend({ capabilityId: verified.capability.id, operationId, reservationToken: reserved.reservation_token, outcome: 'indeterminate', now }).catch(() => ({ ok: false }));
-    return { ok: false, reason: committed.ok ? 'effect_indeterminate' : 'capability_commit_indeterminate', authorization, operation_id: operationId };
+    return {
+      ok: false,
+      reason: committed.ok ? 'effect_indeterminate' : 'capability_commit_indeterminate',
+      authorization,
+      operation_id: operationId,
+      action_digest: scope.action_digest,
+      ...(scope.caid ? { caid: scope.caid } : {}),
+    };
   }
 }
 
@@ -785,6 +883,63 @@ export async function executeWithThreshold({ capabilityReceipt, shares, ...optio
   } catch (error) {
     return { ok: false, reason: error?.message === 'insufficient capability shares' ? 'insufficient_shares' : 'invalid_shares' };
   }
+}
+
+/**
+ * Authentically reconcile a committed indeterminate capability operation.
+ * The generic path records only a proven `executed` outcome and never restores
+ * budget. A deployment that wants to prove the effect boundary was not crossed
+ * needs a separate, action-specific negative-evidence profile.
+ */
+export async function reconcileCapabilityOperation({
+  store,
+  capabilityId,
+  operationId,
+  action,
+  evidence,
+  verifyEvidence,
+  now = Date.now,
+} = {}) {
+  if (!store || typeof store.reconcileSpend !== 'function') return { ok: false, reason: 'capability_reconciliation_store_required' };
+  try {
+    validateCapabilityId(capabilityId);
+    validateOperationId(operationId);
+  } catch {
+    return { ok: false, reason: 'capability_reconciliation_operation_invalid' };
+  }
+  if (typeof verifyEvidence !== 'function') return { ok: false, reason: 'capability_reconciliation_verifier_required' };
+  let actionDigest;
+  let verified;
+  try {
+    const immutableAction = structuredClone(action);
+    actionDigest = capabilityActionDigest(immutableAction);
+    verified = await verifyEvidence(structuredClone(evidence), {
+      capability_id: capabilityId,
+      operation_id: operationId,
+      action: immutableAction,
+      action_digest: actionDigest,
+    });
+  } catch {
+    return { ok: false, reason: 'capability_reconciliation_evidence_rejected' };
+  }
+  if (!isRecord(verified) || verified.valid !== true
+      || verified.outcome !== 'executed'
+      || verified.action_digest !== actionDigest
+      || typeof verified.evidence_digest !== 'string'
+      || !ACTION_DIGEST_RE.test(verified.evidence_digest)) {
+    return { ok: false, reason: 'capability_reconciliation_evidence_rejected' };
+  }
+  const result = await store.reconcileSpend({
+    capabilityId,
+    operationId,
+    actionDigest,
+    evidenceDigest: verified.evidence_digest,
+    outcome: 'executed',
+    now,
+  });
+  return result?.ok
+    ? { ok: true, outcome: 'executed', action_digest: actionDigest, evidence_digest: verified.evidence_digest, idempotent: result.idempotent === true }
+    : { ok: false, reason: result?.reason || 'capability_reconciliation_refused' };
 }
 
 /**
@@ -830,8 +985,11 @@ export async function delegateCapabilityReceipt({
     if (Date.parse(childExpiry) > Date.parse(parentExpiry)) return { ok: false, reason: 'delegated_capability_expiry_exceeds_parent' };
     const parentScope = normalizeCapabilityScope(verified.capability.scope);
     const childScope = normalizeCapabilityScope(scope ?? parentScope);
-    if (childScope.operation_id_field !== parentScope.operation_id_field
-        || childScope.action_digests.some((digest) => !parentScope.action_digests.includes(digest))) {
+    const parentMembers = parentScope.profile === CAPABILITY_CAID_SCOPE_PROFILE ? parentScope.caids : parentScope.action_digests;
+    const childMembers = childScope.profile === CAPABILITY_CAID_SCOPE_PROFILE ? childScope.caids : childScope.action_digests;
+    if (childScope.profile !== parentScope.profile
+        || childScope.operation_id_field !== parentScope.operation_id_field
+        || childMembers.some((member) => !parentMembers.includes(member))) {
       return { ok: false, reason: 'delegated_capability_scope_broadened' };
     }
     const parentOperationId = validateOperationId(operationId || `delegation:${childId}`);
@@ -899,8 +1057,10 @@ export default {
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityBaseReceiptDigest,
   capabilityActionDigest,
   verifyCapabilityScope,
   mintCapabilityReceipt,
@@ -911,5 +1071,6 @@ export default {
   createPostgresCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   delegateCapabilityReceipt,
 };

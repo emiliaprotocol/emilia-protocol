@@ -72,8 +72,10 @@ import {
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityBaseReceiptDigest,
   capabilityActionDigest,
   verifyCapabilityScope,
   mintCapabilityReceipt,
@@ -84,6 +86,7 @@ import {
   createPostgresCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   delegateCapabilityReceipt,
 } from './capability-receipt.js';
 import {
@@ -169,8 +172,10 @@ export {
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityBaseReceiptDigest,
   capabilityActionDigest,
   verifyCapabilityScope,
   mintCapabilityReceipt,
@@ -181,6 +186,7 @@ export {
   createPostgresCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   delegateCapabilityReceipt,
 } from './capability-receipt.js';
 export {
@@ -702,7 +708,9 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  * @param {object} [opts.capabilityStore] Marvel capability budget store. A
  *   capability run reserves here before the effect and commits after it.
  * @param {string[]} [opts.capabilityTrustedIssuerKeys] pinned capability
- *   envelope issuer keys. Defaults to trustedKeys when omitted.
+ *   envelope issuer keys. Required when capabilityStore is configured.
+ * @param {function} [opts.capabilityCaidResolver] relying-party-pinned resolver
+ *   for `urn:emilia:scope:caid-set-v1`. Missing resolver fails CAID scope closed.
  * @param {boolean} [opts.allowEphemeralStore=false] explicit test/demo opt-in for in-memory state
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
  * @param {boolean} [opts.allowInlineKey=false] accept the receipt's own key (integrity, NOT trust)
@@ -724,7 +732,7 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  *   Required whenever an admissibility profile is pinned. It must authenticate
  *   the presented packet or recompute the verdict and return the trusted block.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }) } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -1336,6 +1344,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       selector,
       observedAction,
       trustedIssuerKeys: effectiveCapabilityTrustedIssuerKeys,
+      resolveCaid: capabilityCaidResolver,
       operationId,
       now,
       executeAction,
@@ -1707,8 +1716,10 @@ export default {
   CAPABILITY_STATE_VERSION,
   CAPABILITY_SHARE_VERSION,
   CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   CAPABILITY_STATE_DDL,
   CAPABILITY_SQL,
+  capabilityBaseReceiptDigest,
   capabilityActionDigest,
   verifyCapabilityScope,
   mintCapabilityReceipt,
@@ -1719,6 +1730,7 @@ export default {
   createPostgresCapabilityStore,
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   ZK_RANGE_RECEIPT_VERSION,
   ZK_RANGE_SCHEME,
   ZK_RANGE_BACKEND_PACKAGE,

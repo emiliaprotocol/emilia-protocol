@@ -599,3 +599,30 @@ export interface QuorumResult {
 
 /** Verify an EP-QUORUM-v1 multi-party approval (composes verifyWebAuthnSignoff; fail-closed). */
 export function verifyQuorum(quorum: object, opts?: { rpId?: string; allowedOrigins?: string[] }): QuorumResult;
+
+/** AgentROA -01 native verifier. It verifies evidence; it never grants local authority by itself. */
+export const AGENTROA_DRAFT: 'draft-nivalto-agentroa-route-authorization-01';
+export function verifyAgentROA(
+  evidence: Record<string, unknown>,
+  context?: Record<string, unknown>
+): { valid: boolean; reason: string | null; action_digest?: string; decision?: string };
+
+/** Concrete EMILIA JSON/JCS/Ed25519 profile for the abstract ORPRG -00 model. */
+export const ORPRG_JSON_JCS_PROFILE: 'ORPRG-JSON-JCS-ED25519-v1';
+export const ORPRG_ACTION_PROFILE: 'ORPRG-JCS-ACTION-v1';
+export function computeOrprgActionDigest(action: Record<string, unknown>): string;
+export function verifyOrprgJsonJcsPermit(
+  input: Record<string, unknown> | string,
+  options?: Record<string, unknown>
+): { valid: boolean; reason: string | null; action_digest?: string };
+export function verifyOrprgJsonJcsPermitAsync(
+  input: Record<string, unknown> | string,
+  options?: Record<string, unknown>
+): Promise<{ valid: boolean; reason: string | null; action_digest?: string }>;
+export function createOrprgAecVerifier(
+  profile?: Record<string, unknown>
+): (evidence: Record<string, unknown>, context?: Record<string, unknown>) => {
+  valid: boolean;
+  reason: string | null;
+  action_digest?: string;
+};

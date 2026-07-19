@@ -3,6 +3,7 @@
 import {
   canonicalize,
   hashCanonical,
+  reconcileCapabilityOperation,
 } from '../../packages/gate/index.js';
 
 import { verifySignedProviderEvidence } from './provider.mjs';
@@ -63,13 +64,35 @@ export async function reconcileIndeterminateEffect({
   if (operation.amount !== action.amount || operation.currency !== action.currency) {
     throw new Error('capability operation does not match expected action');
   }
+  const expectedActionDigest = `sha256:${hashCanonical(action)}`;
+  if (operation.action_digest !== expectedActionDigest) {
+    throw new Error('capability operation is not bound to the expected action digest');
+  }
 
-  const verified = verifySignedProviderEvidence(providerEvidence, {
-    pinnedProviderKey,
-    expectedProviderId,
-    expectedOperationId: operationId,
-    expectedAction: action,
+  let verified = null;
+  const durableReconciliation = await reconcileCapabilityOperation({
+    store: capabilityStore,
+    capabilityId,
+    operationId,
+    action,
+    evidence: providerEvidence,
+    now: () => Date.parse(now()),
+    verifyEvidence: (presented) => {
+      verified = verifySignedProviderEvidence(presented, {
+        pinnedProviderKey,
+        expectedProviderId,
+        expectedOperationId: operationId,
+        expectedAction: action,
+      });
+      return {
+        valid: verified.ok === true,
+        outcome: 'executed',
+        action_digest: verified.action_digest,
+        evidence_digest: verified.evidence_digest,
+      };
+    },
   });
+  if (!durableReconciliation.ok) throw new Error(`capability reconciliation refused: ${durableReconciliation.reason}`);
   const recordBody = {
     '@version': RECONCILIATION_RECORD_VERSION,
     operation_id: operationId,
@@ -83,6 +106,7 @@ export async function reconcileIndeterminateEffect({
     provider_evidence_digest: verified.evidence_digest,
     authenticated_provider_evidence: true,
     reexecuted: false,
+    capability_reconciliation_idempotent: durableReconciliation.idempotent,
     reconciled_at: now(),
   };
   const record = {

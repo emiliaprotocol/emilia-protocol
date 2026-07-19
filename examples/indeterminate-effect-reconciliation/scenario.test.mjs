@@ -18,6 +18,7 @@ test('committed provider effect is not replayed after its response is lost', asy
     outcome: 'indeterminate',
     amount: 25_000,
     currency: 'USD',
+    action_digest: result.provider.action_digest,
   });
 
   assert.equal(result.retry.ok, false);
@@ -43,7 +44,7 @@ test('tampered provider evidence cannot reconcile an indeterminate operation', a
 
   await assert.rejects(
     () => harness.reconcile(evidence),
-    /provider evidence signature invalid/,
+    /capability_reconciliation_evidence_rejected/,
   );
 
   assert.equal(harness.reconciliationLedger.get(harness.operationId), null);
@@ -64,7 +65,7 @@ test('provider evidence for another action is refused even when authentically si
 
   await assert.rejects(
     () => harness.reconcile(wrongActionEvidence),
-    /provider evidence action digest mismatch/,
+    /capability_reconciliation_evidence_rejected/,
   );
 
   assert.equal(harness.reconciliationLedger.get(harness.operationId), null);

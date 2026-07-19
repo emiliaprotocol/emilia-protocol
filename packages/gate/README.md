@@ -374,6 +374,13 @@ equal the signed scope's field in the executor-observed action. The same digest
 is persisted with the reservation. A new operation ID therefore cannot relabel
 the same payment instruction after a timeout.
 
+The built-in `urn:emilia:scope:action-digest-set-v1` profile is exact-byte
+scope. `urn:emilia:scope:caid-set-v1` is also supported for interoperable
+material-action scope, but only when the deployment supplies its pinned CAID
+resolver as `capabilityCaidResolver`; a missing, unknown, or non-matching CAID
+fails closed. CAID correlates content here—it does not replace issuer trust,
+human authorization, holder proof, or durable budget state.
+
 ### Gate-integrated capability enforcement
 
 For an action that must be both human-authorized and budget-limited, pass the
@@ -384,6 +391,7 @@ or `guard()`:
 const gate = createTrustedActionFirewall({
   capabilityStore: postgresCapabilityStore,
   capabilityTrustedIssuerKeys: [capabilityIssuerPublicKey],
+  capabilityCaidResolver: resolveWithPinnedCaidRegistry, // for caid-set scopes
   // ...the ordinary Gate trust and durable evidence configuration
 });
 

@@ -7,6 +7,7 @@ import { canonicalize } from './execution-binding.js';
 import {
   executeWithCapability,
   executeWithThreshold,
+  reconcileCapabilityOperation,
   delegateCapabilityReceipt,
   createMemoryCapabilityStore,
   createPostgresCapabilityStore,
@@ -17,7 +18,9 @@ import {
   verifyCapabilityReceipt,
   CAPABILITY_RECEIPT_VERSION,
   CAPABILITY_SCOPE_PROFILE,
+  CAPABILITY_CAID_SCOPE_PROFILE,
   capabilityActionDigest,
+  capabilityBaseReceiptDigest,
 } from './capability-receipt.js';
 
 const NOW = Date.parse('2026-07-18T22:00:00.000Z');
@@ -84,6 +87,24 @@ test('capability metadata is issuer-signed and tamper-evident', () => {
   assert.equal(verifyCapabilityReceipt(minted.capabilityReceipt, { trustedIssuerKeys: ['wrong'] }).reason, 'capability_issuer_not_trusted');
 });
 
+test('capability issuer is separately pinned and signs the complete base-receipt digest', () => {
+  const receiptIssuer = issuer();
+  const capabilityIssuer = generateKeyPairSync('ed25519');
+  const capabilityIssuerPublicKey = capabilityIssuer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const minted = mintCapabilityReceipt(receiptIssuer.receipt, options({
+    issuerPrivateKey: capabilityIssuer.privateKey,
+  }));
+  assert.equal(verifyCapabilityReceipt(minted.capabilityReceipt, {
+    trustedIssuerKeys: [capabilityIssuerPublicKey],
+  }).ok, true);
+
+  const substituted = structuredClone(minted.capabilityReceipt);
+  substituted.receipt.payload.subject = 'attacker@example.test';
+  assert.equal(verifyCapabilityReceipt(substituted, {
+    trustedIssuerKeys: [capabilityIssuerPublicKey],
+  }).reason, 'capability_signature_invalid');
+});
+
 test('capability scope is mandatory, signed, exact, and operation-bound', async () => {
   const keys = issuer();
   assert.throws(
@@ -131,6 +152,43 @@ test('capability scope is mandatory, signed, exact, and operation-bound', async 
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 0);
 });
 
+test('CAID scope requires a pinned resolver and matches only an allowed CAID', async () => {
+  const keys = issuer();
+  const action = {
+    action_type: 'science.bio.experiment.execute.1',
+    operation_id: 'caid-op',
+    amount: 5,
+    currency: 'USD',
+  };
+  const caid = 'caid:1:science.bio.experiment.execute.1:jcs-sha256:AdzQBitumEFF9QO6nJ9YOexgCtOcHILorM5joy0-HzY';
+  const minted = mintCapabilityReceipt(keys.receipt, options({
+    issuerPrivateKey: keys.privateKey,
+    scope: {
+      profile: CAPABILITY_CAID_SCOPE_PROFILE,
+      operation_id_field: 'operation_id',
+      caids: [caid],
+    },
+  }));
+  const store = createMemoryCapabilityStore();
+  assert.equal(store.registerCapability(minted.capabilityReceipt), true);
+  const common = {
+    capabilityReceipt: minted.capabilityReceipt,
+    secret: minted.secret,
+    action,
+    operationId: 'caid-op',
+    store,
+    trustedIssuerKeys: [keys.receipt.public_key],
+    verifyBaseReceipt: () => true,
+    executeAction: async (_action, context) => context.caid,
+    now: NOW,
+  };
+  assert.equal((await executeWithCapability(common)).reason, 'capability_caid_resolver_required');
+  const result = await executeWithCapability({ ...common, resolveCaid: () => caid });
+  assert.equal(result.ok, true);
+  assert.equal(result.caid, caid);
+  assert.equal(result.result, caid);
+});
+
 test('atomic capability spending enforces the budget and consumes indeterminate effects', async () => {
   const keys = issuer();
   const minted = mintCapabilityReceipt(keys.receipt, options({ issuerPrivateKey: keys.privateKey }));
@@ -171,6 +229,32 @@ test('atomic capability spending enforces the budget and consumes indeterminate 
   });
   assert.equal(indeterminate.ok, false);
   assert.equal(indeterminate.reason, 'effect_indeterminate');
+  assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 100);
+
+  const evidenceDigest = `sha256:${'a'.repeat(64)}`;
+  const reconcile = () => reconcileCapabilityOperation({
+    store,
+    capabilityId: minted.capabilityReceipt.capability.id,
+    operationId: 'op_4',
+    action: scopedAction('op_4', { amount: 10 }),
+    evidence: { provider: 'test' },
+    now: NOW + 1,
+    verifyEvidence: (_evidence, context) => ({
+      valid: true,
+      outcome: 'executed',
+      action_digest: context.action_digest,
+      evidence_digest: evidenceDigest,
+    }),
+  });
+  assert.deepEqual(await reconcile(), {
+    ok: true,
+    outcome: 'executed',
+    action_digest: capabilityActionDigest(scopedAction('op_4', { amount: 10 })),
+    evidence_digest: evidenceDigest,
+    idempotent: false,
+  });
+  assert.equal((await reconcile()).idempotent, true);
+  assert.equal(store.getOperation('op_4').reconciliation_outcome, 'executed');
   assert.equal(store.getState(minted.capabilityReceipt.capability.id).consumed_amount, 100);
 });
 
@@ -423,7 +507,12 @@ function chainEntry({ delegation_id, parent, delegate = 'operator', amount, curr
 // thing standing between a forged chain and acceptance is the structural
 // ingest check, not the signature.
 function resignEnvelope(capabilityReceipt, privateKey) {
-  const body = { '@version': CAPABILITY_RECEIPT_VERSION, base_receipt_id: capabilityReceipt.receipt.payload.receipt_id, capability: capabilityReceipt.capability };
+  const body = {
+    '@version': CAPABILITY_RECEIPT_VERSION,
+    base_receipt_id: capabilityReceipt.receipt.payload.receipt_id,
+    base_receipt_digest: capabilityBaseReceiptDigest(capabilityReceipt.receipt),
+    capability: capabilityReceipt.capability,
+  };
   capabilityReceipt.capability_signature.value = sign(null, Buffer.from(canonicalize(body)), privateKey).toString('base64url');
   return capabilityReceipt;
 }

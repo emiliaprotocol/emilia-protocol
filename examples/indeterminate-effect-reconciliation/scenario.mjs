@@ -11,6 +11,8 @@ import {
   createGate,
   createMemoryCapabilityStore,
   executeWithCapability,
+  CAPABILITY_SCOPE_PROFILE,
+  capabilityActionDigest,
   mintDeviceSignoff,
   mintCapabilityReceipt,
 } from '../../packages/gate/index.js';
@@ -24,7 +26,7 @@ import {
 } from './reconciliation.mjs';
 
 const NOW = Date.parse('2026-07-19T04:00:00.000Z');
-const OPERATION_ID = 'payment-release:invoice-8841';
+const OPERATION_ID = 'invoice-8841';
 const SELECTOR = {
   protocol: 'demo',
   tool: 'release_payment',
@@ -125,6 +127,11 @@ export function createIndeterminateEffectHarness() {
     budget: { amount: 100_000, currency: 'USD' },
     expiry: new Date(NOW + 60_000).toISOString(),
     capabilityId: 'ep:capability:invoice-8841',
+    scope: {
+      profile: CAPABILITY_SCOPE_PROFILE,
+      operation_id_field: 'payment_instruction_id',
+      action_digests: [capabilityActionDigest(ACTION)],
+    },
   });
   const capabilityStore = createMemoryCapabilityStore();
   if (!capabilityStore.registerCapability(minted.capabilityReceipt)) {
@@ -196,6 +203,7 @@ export async function runIndeterminateEffectDemo() {
       outcome: operation.outcome,
       amount: operation.amount,
       currency: operation.currency,
+      action_digest: operation.action_digest,
     },
     retry: {
       ok: retry.ok,
