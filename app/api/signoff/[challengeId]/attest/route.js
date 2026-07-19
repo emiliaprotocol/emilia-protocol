@@ -70,7 +70,7 @@ export async function POST(request, { params }) {
   } catch (err) {
     // Log the raw error server-side only; never echo err.message/err.code back
     // to the client (may carry DB/internal detail — LOW audit finding).
-    logger.error('Signoff attestation error:', err.message, err.code);
+    logger.error('Signoff attestation error:', { message: err.message, code: err.code });
     return NextResponse.json({
       error: { code: 'EP-9001', message: 'Attestation could not be processed.', detail: null }
     }, { status: err.status || 500 });

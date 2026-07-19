@@ -261,7 +261,7 @@ export async function POST(request) {
           });
         }
       } catch (err) {
-        logger.error('[auto-submit] Canonical write failed for receipt %d: %s', index, err.message);
+        logger.error('[auto-submit] Canonical write failed for receipt', { index, error: err.message });
         canonicalErrors.push({
           index,
           reason: 'Internal write error',
