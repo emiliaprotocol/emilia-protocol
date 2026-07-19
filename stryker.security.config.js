@@ -1,5 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // High-assurance mutation gate for the acceptance and replay kernels.
+import { readFileSync } from 'node:fs';
+
+function mutationRange(file, startMarker, endMarker) {
+  const lines = readFileSync(file, 'utf8').split('\n');
+  const startIndex = lines.findIndex((line) => line.includes(startMarker));
+  const endIndex = lines.findIndex(
+    (line, index) => index >= startIndex && line.includes(endMarker),
+  );
+  if (startIndex < 0 || endIndex < startIndex) {
+    throw new Error(
+      `Mutation range markers not found in ${file}: ${startMarker} -> ${endMarker}`,
+    );
+  }
+  return `${file}:${startIndex + 1}-${endIndex + 1}`;
+}
+
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
 export default {
   testRunner: 'vitest',
@@ -18,10 +34,15 @@ export default {
     // of scope; signed-material extraction and strict time parsing do not.
     'packages/gate/store.js:58-66',
     'packages/gate/store.js:67-152',
-    // Keep this range anchored to createGate's durable-store admission and the
-    // first relying-party-pinned inputs to check(). It moved when business
-    // authorization validation was added above createGate.
-    'packages/gate/index.js:602-638',
+    // Resolve this range from semantic anchors. A fixed line range drifted into
+    // an unrelated helper when Gate composition code was inserted above
+    // createGate, producing untested mutants while the intended admission
+    // kernel escaped mutation.
+    mutationRange(
+      'packages/gate/index.js',
+      'if (capabilityStore &&',
+      'const businessExpected = businessAuthorizationRequirement(requirement);',
+    ),
     'packages/gate/breakglass.js:193-195',
     'packages/gate/breakglass.js:205-216',
     'packages/gate/breakglass.js:288-288',

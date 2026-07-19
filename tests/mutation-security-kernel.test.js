@@ -367,6 +367,75 @@ describe('mutation oracles for Gate admission inputs', () => {
     expect(result.evidence.logger).toBe('pinned');
   });
 
+  it('requires the complete capability-store contract and explicit issuer pins', () => {
+    const capabilityStore = {
+      registerCapability() {},
+      reserveSpend() {},
+      commitSpend() {},
+    };
+    for (const method of ['registerCapability', 'reserveSpend', 'commitSpend']) {
+      expect(() => createGate({
+        capabilityStore: { ...capabilityStore, [method]: undefined },
+        capabilityTrustedIssuerKeys: ['issuer-key'],
+        allowEphemeralStore: true,
+      }), method).toThrow(new RegExp(method));
+    }
+    for (const capabilityTrustedIssuerKeys of [
+      undefined,
+      null,
+      [],
+      [''],
+      [1],
+      ['issuer-key', ''],
+    ]) {
+      expect(() => createGate({
+        capabilityStore,
+        capabilityTrustedIssuerKeys,
+        allowEphemeralStore: true,
+      })).toThrow(/must explicitly pin at least one capability issuer/);
+    }
+    expect(() => createGate({
+      capabilityStore,
+      capabilityTrustedIssuerKeys: ['issuer-key'],
+      allowEphemeralStore: true,
+    })).not.toThrow();
+  });
+
+  it('passes the exact guarded action and receipt identity through the runtime monitor', async () => {
+    const { publicKey, receipt } = mintSoftwareReceipt('payment.release');
+    const runtimeMonitor = {
+      beginCheck: vi.fn(() => 'cycle-1'),
+      minimumAssuranceTier: vi.fn((tier) => tier),
+      getMode: vi.fn(() => 'normal'),
+      preflight: vi.fn(() => ({ ok: true })),
+      recordDecision: vi.fn(() => ({ ok: true })),
+    };
+    const gate = createGate({
+      manifest,
+      trustedKeys: [publicKey],
+      allowEphemeralStore: true,
+      runtimeMonitor,
+    });
+    const result = await gate.check({
+      selector: { protocol: 'mcp', tool: 'release_payment' },
+      receipt,
+    });
+
+    expect(runtimeMonitor.beginCheck).toHaveBeenCalledWith({
+      action: 'payment.release',
+      receipt_id: receipt.payload.receipt_id,
+    });
+    expect(runtimeMonitor.minimumAssuranceTier).toHaveBeenCalledWith('class_a');
+    expect(runtimeMonitor.recordDecision).toHaveBeenCalledWith(
+      'cycle-1',
+      expect.objectContaining({
+        guarded: true,
+        receipt_id: receipt.payload.receipt_id,
+      }),
+    );
+    expect(result._runtime_cycle_id).toBe('cycle-1');
+  });
+
   it('pins manifest quorum policy ahead of per-action and global fallback policies', async () => {
     const actionType = 'payment.release';
     const pinnedPolicy = {
