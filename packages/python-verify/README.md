@@ -38,9 +38,12 @@ verifier in the Python agent ecosystem (LangChain, CrewAI, AutoGen, LlamaIndex) 
 receipt minted anywhere can be verified offline, in the language your agent already speaks.
 
 ## Publishing (maintainers)
-```bash
-python -m build       # produces dist/*.whl + *.tar.gz (verified to build cleanly)
-twine upload dist/*   # your PyPI credentials — nothing is stored
-```
+
+Direct local upload is intentionally unsupported. Create the version-matching
+`python-verify-v<version>` tag from merged `main`, then manually dispatch
+`publish-python-verify.yml` with the exact typed confirmation and approve the
+protected `registry-publishing-approval` job. The workflow builds twice,
+attests the exact wheel and source distribution, publishes through PyPI OIDC,
+and byte-compares both registry artifacts.
 
 Apache-2.0.

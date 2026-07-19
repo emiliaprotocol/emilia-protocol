@@ -41,7 +41,7 @@ async function mintReceipt({ action, approver = 'ep:approver:human', approverKey
   const contexts = buildContexts({ action, policyHash: pHash, approvers: [approver], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
   const signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId, signedAt: ISSUED_AT, privateKey: kp.privateKey })]);
   const receipt = assembleAuthorizationReceipt({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: '2026-06-13T11:30:00.000Z', log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
-  const verification = { approver_keys: { [approverKeyId]: { public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
+  const verification = { approver_keys: { [approverKeyId]: { approver_id: approver, public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u, rp_id: 'rp', allowed_origins: ['https://test.emilia'] };
   return { receipt, verification, approver, approverKeyId };
 }
 const PROOF_FIELDS = ['delegation_id', 'delegator', 'delegatee', 'scope', 'max_value_usd', 'expires_at', 'constraints'];
@@ -58,7 +58,12 @@ async function buildValid() {
   const delegatorKp = generateEd25519KeyPair();
   const link = signedLink({ delegation_id: 'dlg:1', parent_ref: 'ep:approver:dir', delegator: 'ep:approver:dir', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: 1000, expires_at: EXPIRES_AT, constraints: {} }, delegatorKp);
   const doc = assembleProvenance({ rootSignoff: root, delegationChain: [link], actionApproval: approval, execution: { action_hash: approval.receipt.action_hash, irreversible: true, executed_at: ISSUED_AT } });
-  const opts = { now: NOW, delegationKeys: { 'ep:approver:dir': { public_key: delegatorKp.publicKeyB64u } } };
+  const opts = {
+    now: NOW,
+    delegationKeys: { 'ep:approver:dir': { public_key: delegatorKp.publicKeyB64u } },
+    rootVerification: root.verification,
+    actionVerification: approval.verification,
+  };
   return { doc, opts };
 }
 

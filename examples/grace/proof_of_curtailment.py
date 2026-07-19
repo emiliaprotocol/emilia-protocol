@@ -11,10 +11,15 @@
 #   1 AUTHORIZE  -> a named grid authority signs a bounded grid.curtailment order
 #   2 VERIFY/GATE-> the facility controller verifies it OFFLINE, fail-closed
 #   3 SHED       -> the scheduler drops compute (cache-first / cap clocks); watts fall
-#   4 MEASURE    -> an attested meter signs the power telemetry (dual-key, like COSA L5/L7)
+#   4 MEASURE    -> an attested meter signs ONLY physical measurement data
+#                   (dual-key, like COSA L5/L7); the meter is a physical witness
+#                   and carries NO market rules -- the baseline method binds at
+#                   the BUNDLE level, so changing a program's method never
+#                   requires re-provisioning meters
 #   5 PROVE      -> delivered kWh = baseline - actual, against a PINNED baseline method
 #   6 SETTLE     -> emit a Proof-of-Curtailment Bundle, verifiable by anyone, offline
-#   7 ADVERSARIAL-> tamper telemetry -> FAIL; forged order -> REFUSED; expired -> REFUSED
+#   7 ADVERSARIAL-> tamper telemetry -> FAIL; forged order -> REFUSED; expired
+#                   -> REFUSED; meter payload smuggling market rules -> REFUSED
 #
 # Everything verifies under the REAL published EMILIA verifier (emilia_verify,
 # EP-RECEIPT-v1, Ed25519 over RFC-8785/JCS-canonical bytes) with zero new crypto.
@@ -117,21 +122,24 @@ def gate(order: dict, trusted_pub: str, now: int) -> tuple[bool, str]:
 
 def measure_shed(target_delta_w: int) -> list[dict]:
     """COSA sheds compute; the attested meter records watts every 60s across the window.
-    Simulated here: the facility holds ~target reduction once posture is entered."""
+    Simulated here: the facility holds ~target reduction once posture is entered.
+    Each sample is pure physics: timestamp, watts, a quality flag, a sequence number."""
     samples = []
     for i in range(11):                     # 0..10 minutes inclusive
         t = WINDOW_START + i * 60
         actual = BASELINE_WATTS - (target_delta_w if i >= 1 else 0)  # ramps in after t0
-        samples.append({"t": t, "w": actual})
+        samples.append({"t": t, "w": actual, "q": "good", "seq": i})
     return samples
 
 
 def attest_telemetry(samples: list[dict]) -> dict:
-    """The meter signs the WHOLE telemetry payload -> any tampered sample breaks the sig."""
+    """The meter signs ONLY physical measurement data -> any tampered sample breaks
+    the sig. The meter is a physical witness: NO market rules (baseline_method_hash)
+    in its payload -- the method binds at the BUNDLE level, against the order, so a
+    program can change its baseline method without re-provisioning a single meter."""
     return issue({
         "meter_id": "meter:erc-dc-07/pdu-main",
         "unit": "watt",
-        "baseline_method_hash": BASELINE_METHOD_HASH,
         "samples": samples,
     }, METER_SK)
 
@@ -149,13 +157,26 @@ def delivered_kwh(samples: list[dict]) -> float:
 def verify_bundle(bundle: dict) -> tuple[bool, dict]:
     """Anyone can run this, offline, with no account and no trust in the operator."""
     checks = {}
+    # the meter is a physical witness: a meter payload smuggling market rules
+    # (baseline_method_hash) is REFUSED outright, fail-closed with a typed reason
+    if "baseline_method_hash" in bundle["telemetry"]["payload"]:
+        checks["meter_payload_physical_only"] = False
+        checks["reason"] = "meter_payload_carries_market_rules"
+        return False, checks
+    checks["meter_payload_physical_only"] = True
     checks["order"] = verify_receipt(bundle["order"], bundle["authority_pub"]).valid
     checks["acknowledgment"] = verify_receipt(bundle["acknowledgment"], bundle["facility_pub"]).valid
     checks["telemetry"] = verify_receipt(bundle["telemetry"], bundle["meter_pub"]).valid
-    # the baseline method is the one the order pinned -- can't be silently swapped
+    # the baseline method binds at the BUNDLE level, against the order --
+    # can't be silently swapped, and the meter never has to know it exists
     checks["method_pinned"] = (
-        bundle["telemetry"]["payload"]["baseline_method_hash"]
+        bundle["baseline_method_hash"]
         == bundle["order"]["payload"]["baseline_method_hash"]
+    )
+    # the bundle names exactly which signed meter payload it settles against
+    checks["meter_payload_bound"] = (
+        bundle["meter_payload_digest"]
+        == "sha256:" + sha256_hex(canonicalize(bundle["telemetry"]["payload"]))
     )
     # the claimed kWh must equal what the SIGNED samples actually integrate to
     recomputed = delivered_kwh(bundle["telemetry"]["payload"]["samples"])
@@ -193,13 +214,16 @@ def main() -> int:
     kwh = delivered_kwh(samples)
     line(f"\n  5. PROVE      delivered = baseline - actual = {kwh} kWh   (method {BASELINE_METHOD_HASH[:23]}...)")
 
-    # 6 SETTLE -- assemble + verify the bundle
+    # 6 SETTLE -- assemble + verify the bundle. The BUNDLE (not the meter) binds
+    # the order's baseline method to the digest of the signed meter payload.
     ack = issue({"acknowledges": "grid.curtailment", "facility": p["facility"],
                  "order_method_hash": p["baseline_method_hash"], "posture": "entered"}, FACILITY_SK)
     bundle = {
         "order": order, "authority_pub": AUTHORITY_PUB,
         "acknowledgment": ack, "facility_pub": FACILITY_PUB,
         "telemetry": telemetry, "meter_pub": METER_PUB,
+        "baseline_method_hash": p["baseline_method_hash"],
+        "meter_payload_digest": "sha256:" + sha256_hex(canonicalize(telemetry["payload"])),
         "delivered_kwh": kwh,
     }
     valid, checks = verify_bundle(bundle)
@@ -222,8 +246,17 @@ def main() -> int:
     ok3, why3 = gate(order, AUTHORITY_PUB, WINDOW_END + 1)   # after the window
     line(f"     c) replay after the window expires          -> {('PASS??' if ok3 else f'REFUSED ({why3})')}")
 
+    # a meter that smuggles market rules is no longer a physical witness:
+    # re-sign the telemetry WITH a baseline_method_hash inside -> REFUSED
+    smuggled = issue({**telemetry["payload"], "baseline_method_hash": p["baseline_method_hash"]}, METER_SK)
+    bad_meter = {**bundle, "telemetry": smuggled,
+                 "meter_payload_digest": "sha256:" + sha256_hex(canonicalize(smuggled["payload"]))}
+    v4, c4 = verify_bundle(bad_meter)
+    why4 = c4.get("reason", "refused")
+    line(f"     d) meter payload carrying market rules      -> {('VALID??' if v4 else f'REFUSED ({why4})')}")
+
     line("\n" + "=" * 70)
-    all_good = valid and not v and not ok2 and not ok3
+    all_good = valid and not v and not ok2 and not ok3 and not v4
     line(f"  RESULT: {'authorized, graceful, measured, reversible, tamper-evident.' if all_good else 'CHECK FAILED'}")
     line("=" * 70)
     return 0 if all_good else 1

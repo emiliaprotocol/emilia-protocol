@@ -20,9 +20,10 @@ vi.mock('@supabase/supabase-js', () => ({
 
 vi.mock('../lib/env.js', () => ({
   getSupabaseConfig: () => ({ url: 'https://fake.supabase.co', serviceRoleKey: 'fake-key' }),
+  getSiemConfig: () => ({ webhookUrl: null, disabled: true, isProduction: false }),
 }));
 
-const { authenticateRequest, hashApiKey } = await import('../lib/supabase.js');
+const { authenticateRequest, authEntityActor, authEntityDbId, authEntityId, hashApiKey } = await import('../lib/supabase.js');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -110,5 +111,29 @@ describe('authenticateRequest', () => {
     const result = await authenticateRequest(makeRequest('Bearer sk_live_notvalid'));
     expect(result.status).toBe(401);
     expect(result.code).toBe('missing_key');
+  });
+});
+
+describe('authenticated actor boundary helpers', () => {
+  it('returns stable route identity values without confusing database and public refs', () => {
+    const auth = { entity: { id: 'db-entity-1', entity_id: 'merchant-a' } };
+
+    expect(authEntityId(auth)).toBe('merchant-a');
+    expect(authEntityDbId(auth)).toBe('db-entity-1');
+  });
+
+  it('strips unrelated auth-row fields before canonical writes receive an actor', () => {
+    const actor = authEntityActor({
+      entity: {
+        id: 'db-entity-1',
+        entity_id: 'merchant-a',
+        private_key_encrypted: 'secret',
+        permissions: ['admin'],
+      },
+    });
+
+    expect(actor).toEqual({ id: 'db-entity-1', entity_id: 'merchant-a' });
+    expect(actor).not.toHaveProperty('private_key_encrypted');
+    expect(actor).not.toHaveProperty('permissions');
   });
 });

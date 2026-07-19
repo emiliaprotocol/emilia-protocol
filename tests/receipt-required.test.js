@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import crypto from 'node:crypto';
 import { resolve } from 'node:path';
 import {
   ACTION_RISK_MANIFEST_VERSION,
@@ -32,6 +33,41 @@ function fakeResponse() {
     status(code) { this.statusCode = code; return this; },
     json(body) { this.body = body; return this; },
   };
+}
+
+const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
+  : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
+    : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
+      : JSON.stringify(v));
+
+function mint(action, { outcome = 'allow_with_signoff', quorum = null } = {}) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const publicKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const payload = {
+    receipt_id: `rcpt_test_${crypto.randomBytes(6).toString('hex')}`,
+    subject: 'agent:test',
+    created_at: new Date().toISOString(),
+    claim: {
+      action_type: action,
+      outcome,
+      approver: 'ep:approver:test',
+      ...(quorum ? { quorum } : {}),
+    },
+  };
+  const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
+  return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: publicKeyB64u };
+}
+
+function fixtureAssurance(doc) {
+  const claim = doc?.payload?.claim || {};
+  const q = claim.quorum || {};
+  const signers = Array.isArray(q.signers) ? q.signers : [];
+  const threshold = Number(q.threshold ?? q.m ?? 0);
+  if (threshold >= 2 && new Set(signers).size >= threshold) {
+    return { ok: true, tier: 'quorum', reason: 'fixture_assurance_verified' };
+  }
+  if (claim.outcome === 'allow_with_signoff') return { ok: true, tier: 'class_a', reason: 'fixture_assurance_verified' };
+  return { ok: true, tier: 'software', reason: 'fixture_assurance_verified' };
 }
 
 describe('Action Risk Manifest', () => {
@@ -118,5 +154,44 @@ describe('Receipt Required challenge', () => {
     expect(res.statusCode).toBe(LEGACY_RECEIPT_REQUIRED_STATUS);
     expect(res.headers[RECEIPT_REQUIRED_HEADER]).toContain('action="payment.release"');
     expect(res.headers['WWW-Authenticate']).toContain('EMILIA realm="agent-actions"');
+  });
+
+  it('middleware enforces assuranceClass when configured', () => {
+    const res = fakeResponse();
+    const gate = requireEmiliaReceipt({
+      action: 'deploy.production',
+      statusCode: RECEIPT_REQUIRED_STATUS,
+      allowInlineKey: true,
+      assuranceClass: 'quorum',
+    });
+
+    let nextRan = false;
+    gate({ headers: {}, body: { emilia_receipt: mint('deploy.production') } }, res, () => {
+      nextRan = true;
+    });
+    expect(nextRan).toBe(false);
+    expect(res.statusCode).toBe(RECEIPT_REQUIRED_STATUS);
+    expect(res.body.rejected.reason).toBe('quorum_policy_required');
+
+    const ok = fakeResponse();
+    const verifiedGate = requireEmiliaReceipt({
+      action: 'deploy.production',
+      statusCode: RECEIPT_REQUIRED_STATUS,
+      allowInlineKey: true,
+      assuranceClass: 'quorum',
+      verifyAssurance: fixtureAssurance,
+    });
+    verifiedGate({
+      headers: {},
+      body: {
+        emilia_receipt: mint('deploy.production', {
+          quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
+        }),
+      },
+    }, ok, () => {
+      nextRan = true;
+    });
+    expect(nextRan).toBe(true);
+    expect(ok.statusCode).toBe(null);
   });
 });

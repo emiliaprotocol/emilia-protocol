@@ -2,7 +2,7 @@
  * EMILIA Protocol MCP Server — Test Suite
  *
  * Tests:
- *   - Tool definitions (34 tools, schema shape)
+ *   - Tool definitions (36 tools, schema shape)
  *   - maxItems: 50 on array-input tools
  *   - AutoReceiptMiddleware redaction logic
  *   - Tool handler return shapes (content[].type='text')
@@ -15,18 +15,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock the MCP SDK before importing anything that depends on it.
 // ---------------------------------------------------------------------------
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
-  Server: vi.fn().mockImplementation(() => ({
-    setRequestHandler: vi.fn(),
-    connect: vi.fn().mockResolvedValue(undefined),
-  })),
+  Server: vi.fn(function MockServer() {
+    this.setRequestHandler = vi.fn();
+    this.connect = vi.fn().mockResolvedValue(undefined);
+  }),
 }));
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+  StdioServerTransport: vi.fn(function MockTransport() {}),
 }));
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
   CallToolRequestSchema: 'CallToolRequestSchema',
   ListToolsRequestSchema: 'ListToolsRequestSchema',
   ListResourcesRequestSchema: 'ListResourcesRequestSchema',
+  ListResourceTemplatesRequestSchema: 'ListResourceTemplatesRequestSchema',
   ReadResourceRequestSchema: 'ReadResourceRequestSchema',
   ListPromptsRequestSchema: 'ListPromptsRequestSchema',
   GetPromptRequestSchema: 'GetPromptRequestSchema',
@@ -36,6 +37,7 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 // Import the modules under test.
 // ---------------------------------------------------------------------------
 import { AutoReceiptMiddleware } from '../auto-receipt.js';
+import { normalizeSecureBaseUrl } from '../index.js';
 
 // ---------------------------------------------------------------------------
 // We extract TOOLS by reading index.js source and importing only the TOOLS
@@ -56,6 +58,8 @@ const { default: _indexModule, TOOLS: toolsExport } = await (async () => {
 // back to parsing the literal from source. We can still test the shape via
 // the static list we know from reading the file.
 const EXPECTED_TOOL_NAMES = [
+  'ep_guard_action',
+  'ep_check_signoff',
   'ep_trust_profile',
   'ep_trust_evaluate',
   'ep_submit_receipt',
@@ -92,9 +96,51 @@ const EXPECTED_TOOL_NAMES = [
   'ep_revoke_handshake',
 ];
 
+it('refuses remote plaintext API endpoints while allowing loopback development', () => {
+  expect(() => normalizeSecureBaseUrl('http://api.example.test')).toThrow(/must use HTTPS/);
+  expect(normalizeSecureBaseUrl('http://127.0.0.1:8787/')).toBe('http://127.0.0.1:8787');
+  expect(() => new AutoReceiptMiddleware({ epApiUrl: 'http://collector.example.test' })).toThrow(/must use HTTPS/);
+});
+
+it('auto-receipt refuses duplicate-member and non-object collector responses', async () => {
+  const originalFetch = globalThis.fetch;
+  const middleware = new AutoReceiptMiddleware({ epApiUrl: 'https://collector.example.test' });
+  try {
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => '{"accepted":1,"accepted":2}' });
+    await expect(middleware._submitBatch([])).rejects.toThrow(/invalid JSON/);
+    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => '[]' });
+    await expect(middleware._submitBatch([])).rejects.toThrow(/invalid JSON/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 // Static TOOLS list reconstructed from the source (since TOOLS is not exported).
 // This mirrors exactly what index.js defines so we can test the schema shapes.
 const TOOLS = [
+  {
+    name: 'ep_guard_action',
+    description: 'Evaluate and gate an irreversible action before execution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organization_id: { type: 'string' },
+        action_type: { type: 'string' },
+        target_resource_id: { type: 'string' },
+        amount: { type: 'number' },
+        currency: { type: 'string' },
+        destination: { type: 'string' },
+        summary: { type: 'string' },
+        risk_flags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['organization_id', 'action_type', 'target_resource_id'],
+    },
+  },
+  {
+    name: 'ep_check_signoff',
+    description: 'Poll a pending authorization after ep_guard_action returns BLOCKED.',
+    inputSchema: { type: 'object', properties: { receipt_id: { type: 'string' } }, required: ['receipt_id'] },
+  },
   {
     name: 'ep_trust_profile',
     description: "Get an entity's full trust profile.",
@@ -297,8 +343,8 @@ const TOOLS = [
 // SECTION 1: Tool definitions
 // ---------------------------------------------------------------------------
 describe('Tool definitions', () => {
-  it('defines exactly 34 tools', () => {
-    expect(TOOLS).toHaveLength(34);
+  it('defines exactly 36 tools', () => {
+    expect(TOOLS).toHaveLength(36);
   });
 
   it('contains all expected tool names', () => {

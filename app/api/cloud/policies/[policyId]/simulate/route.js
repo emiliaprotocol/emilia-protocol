@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { checkClaimsAgainstPolicy, getRequiredPartiesForMode } from '@/lib/handshake/policy';
 import { checkAssuranceLevel } from '@/lib/handshake/invariants';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/cloud/policies/[policyId]/simulate
@@ -26,7 +29,9 @@ export async function POST(request, { params }) {
     requirePermission(auth, 'write');
 
     const { policyId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.scenario) {
       return epProblem(400, 'missing_scenario', 'Request body must include a "scenario" object');
@@ -43,7 +48,7 @@ export async function POST(request, { params }) {
 
     if (error) {
       logger.error('[cloud/policies/simulate] Query error:', error);
-      return epProblem(500, 'policy_query_failed', error.message);
+      return epDbError(500, 'policy_query_failed', error, 'cloud/policies/simulate');
     }
 
     if (!policy) {

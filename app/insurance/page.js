@@ -41,13 +41,13 @@ const FAQ = [
     + 'happened from recorded calls and emails after a loss, you get a cryptographic '
     + 'receipt: a named human signed the exact action (amount, payee, account) on their '
     + 'own device, verifiable offline by anyone.'],
-  ['Why is it deepfake-proof?',
+  ['Why is it deepfake-resistant?',
     'The approval is a hardware-held signature over the exact action, not a phone '
     + 'conversation. A cloned voice cannot produce the signature, so EP-QUORUM (the '
     + 'two-person rule) cannot be defeated the way a callback can.'],
   ['Is it vendor lock-in?',
-    'No. EMILIA Protocol is an open standard (Apache-2.0) published as IETF Internet-Drafts, '
-    + 'with independent verifiers in three languages. Carrier and insured can verify '
+    'No. EMILIA Protocol is an open protocol (Apache-2.0) published as IETF Internet-Drafts, '
+    + 'with reference verifiers in three languages (JS, Python, Go). Carrier and insured can verify '
     + 'receipts with open-source code, with no account and no trust in EMILIA.'],
 ];
 
@@ -155,7 +155,7 @@ export default function InsurancePage() {
           <p style={{ fontSize: 13, color: color.t3, maxWidth: 760, lineHeight: 1.6 }}>
             EMILIA proves a named human (or quorum) authorized this exact action before it
             executed. It does not prove the decision was correct, nor establish real-world
-            identity beyond the enrollment layer. Open standard (Apache-2.0), IETF
+            identity beyond the enrollment layer. Open protocol (Apache-2.0), IETF
             Internet-Drafts; no production deployment claim implied.
           </p>
         </section>

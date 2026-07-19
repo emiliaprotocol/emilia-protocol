@@ -1,0 +1,390 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		01E8C24E94DD26835D7336DF /* ApprovalViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF17E15552A9CF7EC51289F5 /* ApprovalViewModel.swift */; };
+		04FDD7D61C2302F37C87C7BF /* GovernmentApprovalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DF4662081B3CB1ED5BB2239 /* GovernmentApprovalApp.swift */; };
+		0D41BF79144A6FB0862AF175 /* MobileAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6816E1C43526C9993D515432 /* MobileAPI.swift */; };
+		16E288A618DC59CE061AAD5A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 35D83E2E13AE2787DD49709E /* Assets.xcassets */; };
+		1EEF2D4D464AB4CD07733BE7 /* ApprovalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCC19A8F18AF7066265A4EF /* ApprovalView.swift */; };
+		684AF4893CFDF54871F9BB09 /* SecureSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C3B7AA837027766F5A762C6 /* SecureSessionStore.swift */; };
+		72D3EB9584998B04FEE0E32B /* EmiliaMobile in Frameworks */ = {isa = PBXBuildFile; productRef = 2CD8417B6634BE765E5ADCE2 /* EmiliaMobile */; };
+		D7DAC012E0A109DAC92B6169 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 63C32FED57D685A8C4DF94CF /* PrivacyInfo.xcprivacy */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1C3B7AA837027766F5A762C6 /* SecureSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureSessionStore.swift; sourceTree = "<group>"; };
+		2DCC19A8F18AF7066265A4EF /* ApprovalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalView.swift; sourceTree = "<group>"; };
+		35D83E2E13AE2787DD49709E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3DF4662081B3CB1ED5BB2239 /* GovernmentApprovalApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GovernmentApprovalApp.swift; sourceTree = "<group>"; };
+		58E880CCE688957D2CF83B93 /* swift-mobile */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "swift-mobile"; path = "../../../sdks/swift-mobile"; sourceTree = SOURCE_ROOT; };
+		63C32FED57D685A8C4DF94CF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		644C1B82307E266BB67CA6AF /* GovernmentApproval.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GovernmentApproval.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6816E1C43526C9993D515432 /* MobileAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileAPI.swift; sourceTree = "<group>"; };
+		EF17E15552A9CF7EC51289F5 /* ApprovalViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalViewModel.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2605CDB167828618BFC3B6BB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				72D3EB9584998B04FEE0E32B /* EmiliaMobile in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5BB7BC56DD51D191489E1C53 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				644C1B82307E266BB67CA6AF /* GovernmentApproval.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7BD03C6950A23381B58207EE = {
+			isa = PBXGroup;
+			children = (
+				8544FF53EA63BE1D7E9E690E /* Packages */,
+				852BB7EC484EBB4D24BDF28D /* Sources */,
+				5BB7BC56DD51D191489E1C53 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		852BB7EC484EBB4D24BDF28D /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				2DCC19A8F18AF7066265A4EF /* ApprovalView.swift */,
+				EF17E15552A9CF7EC51289F5 /* ApprovalViewModel.swift */,
+				35D83E2E13AE2787DD49709E /* Assets.xcassets */,
+				3DF4662081B3CB1ED5BB2239 /* GovernmentApprovalApp.swift */,
+				6816E1C43526C9993D515432 /* MobileAPI.swift */,
+				63C32FED57D685A8C4DF94CF /* PrivacyInfo.xcprivacy */,
+				1C3B7AA837027766F5A762C6 /* SecureSessionStore.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		8544FF53EA63BE1D7E9E690E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				58E880CCE688957D2CF83B93 /* swift-mobile */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2820447296BEEF0D802DC51E /* GovernmentApproval */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BE3FC51ED14CE2A9D1260390 /* Build configuration list for PBXNativeTarget "GovernmentApproval" */;
+			buildPhases = (
+				42F4479D93404CAAF5BD435C /* Sources */,
+				02CE938D22F199AF95572248 /* Resources */,
+				2605CDB167828618BFC3B6BB /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GovernmentApproval;
+			packageProductDependencies = (
+				2CD8417B6634BE765E5ADCE2 /* EmiliaMobile */,
+			);
+			productName = GovernmentApproval;
+			productReference = 644C1B82307E266BB67CA6AF /* GovernmentApproval.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		ABFF384297D9B36D24B100E5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					2820447296BEEF0D802DC51E = {
+						DevelopmentTeam = 5M2Z48UQQY;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 4C9F1FDCDD9895A823EEEFFE /* Build configuration list for PBXProject "EmiliaGovernmentApproval" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 7BD03C6950A23381B58207EE;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				3250F8C2E6C173DF7AE2F962 /* XCLocalSwiftPackageReference "../../../sdks/swift-mobile" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5BB7BC56DD51D191489E1C53 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2820447296BEEF0D802DC51E /* GovernmentApproval */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		02CE938D22F199AF95572248 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				16E288A618DC59CE061AAD5A /* Assets.xcassets in Resources */,
+				D7DAC012E0A109DAC92B6169 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		42F4479D93404CAAF5BD435C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1EEF2D4D464AB4CD07733BE7 /* ApprovalView.swift in Sources */,
+				01E8C24E94DD26835D7336DF /* ApprovalViewModel.swift in Sources */,
+				04FDD7D61C2302F37C87C7BF /* GovernmentApprovalApp.swift in Sources */,
+				0D41BF79144A6FB0862AF175 /* MobileAPI.swift in Sources */,
+				684AF4893CFDF54871F9BB09 /* SecureSessionStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		051BDA36C862FED910E960E6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_ATTEST_ENVIRONMENT = production;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = GovernmentApproval.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5M2Z48UQQY;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "EMILIA Approver";
+				INFOPLIST_KEY_EmiliaAPIBaseURL = "https://www.emiliaprotocol.ai/api/";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Confirm a protected action with your device passkey.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.emiliaprotocol.approver;
+				PRODUCT_NAME = "EMILIA Approver";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		11D35C47B37EC9F2CF219876 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_ATTEST_ENVIRONMENT = development;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = GovernmentApproval.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 5M2Z48UQQY;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "EMILIA Approver";
+				INFOPLIST_KEY_EmiliaAPIBaseURL = "https://www.emiliaprotocol.ai/api/";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Confirm a protected action with your device passkey.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.emiliaprotocol.approver;
+				PRODUCT_NAME = "EMILIA Approver";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BBAA1E4117DC1E4468991739 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		F797794907125A65DD5B3D5A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4C9F1FDCDD9895A823EEEFFE /* Build configuration list for PBXProject "EmiliaGovernmentApproval" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F797794907125A65DD5B3D5A /* Debug */,
+				BBAA1E4117DC1E4468991739 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BE3FC51ED14CE2A9D1260390 /* Build configuration list for PBXNativeTarget "GovernmentApproval" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11D35C47B37EC9F2CF219876 /* Debug */,
+				051BDA36C862FED910E960E6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		3250F8C2E6C173DF7AE2F962 /* XCLocalSwiftPackageReference "../../../sdks/swift-mobile" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../sdks/swift-mobile";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2CD8417B6634BE765E5ADCE2 /* EmiliaMobile */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EmiliaMobile;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = ABFF384297D9B36D24B100E5 /* Project object */;
+}

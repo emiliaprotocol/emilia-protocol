@@ -18,6 +18,8 @@ import { logger } from '@/lib/logger';
 import { newEngagementId, deriveSlug } from '@/lib/trust-desk/ids';
 import { putEngagement, STATUS } from '@/lib/trust-desk/store';
 import { runPipeline } from '@/lib/trust-desk/pipeline';
+import { readEpJson } from '@/lib/http/route-body';
+import { enforceBodyByteLimit } from '@/lib/http/body-limit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -26,16 +28,14 @@ const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
 export async function POST(request) {
   try {
-    // Reject oversized uploads by declared Content-Length BEFORE buffering the
-    // multipart body into memory (request.formData()). The post-parse file cap
-    // below still enforces the exact 25 MB on the file itself; this is the cheap
-    // pre-buffer guard. +1 MB slack covers multipart field/boundary overhead.
-    const declaredLen = parseInt(request.headers.get('content-length') || '0', 10);
-    if (declaredLen && declaredLen > MAX_BYTES + 1024 * 1024) {
-      return epProblem(413, 'payload_too_large', 'request body exceeds the 25 MB limit');
-    }
+    // Reject oversized uploads before buffering multipart form data. +1 MB
+    // slack covers multipart field/boundary overhead.
+    const bodyLimit = await enforceBodyByteLimit(request, MAX_BYTES + 1024 * 1024);
+    if (!bodyLimit.ok) return epProblem(bodyLimit.status, bodyLimit.code, bodyLimit.detail);
 
-    const { fields, file } = await readBody(request);
+    const bodyRead = await readBody(request);
+    if (bodyRead.response) return bodyRead.response;
+    const { fields, file } = bodyRead;
 
     // Required fields.
     if (!fields.company?.trim() || !fields.contact_email?.trim()) {
@@ -164,8 +164,9 @@ async function readBody(request) {
     return { fields, file };
   }
   // JSON body
-  const body = await request.json().catch(() => ({}));
-  return { fields: body, file: null };
+  const parsed = await readEpJson(request, MAX_BYTES + 1024 * 1024, { invalidValue: {} });
+  if (!parsed.ok) return { response: parsed.response };
+  return { fields: parsed.value, file: null };
 }
 
 function safeName(name) {

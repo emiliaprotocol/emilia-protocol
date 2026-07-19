@@ -55,6 +55,47 @@ describe('SSO provider URL policy', () => {
     expect(result.valid).toBe(false);
     expect(result.error).toContain('could not be resolved safely');
   });
+
+  // Regression: IPv4-mapped IPv6 literals (::ffff:a.b.c.d) are net.isIP()===6, so
+  // the old guard routed them through the v6-only range checks and let the
+  // embedded private/link-local v4 (e.g. the cloud-metadata IP) through.
+  it.each([
+    'https://[::ffff:169.254.169.254]/latest/meta-data/', // link-local metadata, dotted
+    'https://[::ffff:127.0.0.1]/sso',                      // loopback, dotted
+    'https://[::ffff:10.0.0.1]/sso',                       // RFC1918, dotted
+    'https://[::ffff:a9fe:a9fe]/latest/meta-data/',        // metadata, hex form
+    'https://[::ffff:c0a8:0101]/sso',                      // 192.168.1.1, hex form
+    'https://[0:0:0:0:0:ffff:7f00:1]/sso',                 // loopback, expanded form
+  ])('rejects IPv4-mapped IPv6 private/link-local literal %s', async (url) => {
+    const result = await validateSsoProviderUrl(url, 'provider', { lookup: publicLookup });
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('blocked or private');
+  });
+
+  it('rejects a hostname that resolves to an IPv4-mapped IPv6 private address', async () => {
+    const result = await validateSsoProviderUrl('https://idp.attacker.test/sso', 'oidc_issuer', {
+      lookup: async () => [{ address: '::ffff:169.254.169.254', family: 6 }],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('resolves to a blocked or private host');
+  });
+
+  it('still accepts a normal public https provider host', async () => {
+    const result = await validateSsoProviderUrl('https://idp.example.com/sso/', 'oidc_issuer', {
+      lookup: async () => [{ address: '203.0.113.10', family: 4 }],
+    });
+    expect(result.valid).toBe(true);
+    expect(result.url).toBe('https://idp.example.com/sso');
+  });
+
+  it('does not misclassify a genuine public IPv6 that contains an ffff group', async () => {
+    // 2001:db8::ffff:a9fe:a9fe is NOT an IPv4-mapped address; it must not be
+    // rewritten to an embedded v4 and must pass as a public literal.
+    const result = await validateSsoProviderUrl('https://[2001:db8::ffff:a9fe:a9fe]/sso', 'provider', {
+      lookup: publicLookup,
+    });
+    expect(result.valid).toBe(true);
+  });
 });
 
 describe('OIDC redirect URI policy', () => {

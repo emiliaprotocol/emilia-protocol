@@ -5,6 +5,7 @@
 package emiliaverify
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -25,6 +26,27 @@ func sha256HexOf(v any) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// jsonNumEquals reports whether a decoded JSON value is a NUMBER equal to want.
+// Fail-closed: strings, bools, nil, and missing values are never equal. Handles
+// both decode modes used in this package (float64 from plain json.Unmarshal,
+// json.Number from UseNumber decoders), so an integer-valued token such as
+// "1.0" equals 1 exactly as it does after ECMAScript JSON.parse.
+func jsonNumEquals(v any, want float64) bool {
+	switch n := v.(type) {
+	case float64:
+		return n == want
+	case json.Number:
+		f, err := n.Float64()
+		return err == nil && f == want
+	case int:
+		return float64(n) == want
+	case int64:
+		return float64(n) == want
+	default:
+		return false
+	}
+}
+
 func withinWindowGo(t, frm, to string) bool {
 	ts, ok := parseMillis(t)
 	if !ok {
@@ -43,13 +65,13 @@ func withinWindowGo(t, frm, to string) bool {
 	return true
 }
 
-func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) bool {
+func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string, rpID string, allowedOrigins []string, requireOrigin bool) bool {
 	cdBytes, err := b64urlDecode(getStr(wa, "client_data_json"))
 	if err != nil {
 		return false
 	}
-	var client map[string]any
-	if json.Unmarshal(cdBytes, &client) != nil {
+	client, err := decodeStrictJSONObject(cdBytes)
+	if err != nil {
 		return false
 	}
 	if getStr(client, "type") != "webauthn.get" {
@@ -59,8 +81,29 @@ func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) 
 		return false
 	}
 	ad, err := b64urlDecode(getStr(wa, "authenticator_data"))
-	if err != nil || len(ad) < 37 || ad[32]&flagUV != flagUV {
+	if err != nil || len(ad) < 37 || ad[32]&flagUP != flagUP || ad[32]&flagUV != flagUV {
 		return false
+	}
+	if rpID != "" {
+		expected := sha256.Sum256([]byte(rpID))
+		if !bytes.Equal(expected[:], ad[:32]) {
+			return false
+		}
+	}
+	if requireOrigin {
+		originOK := false
+		for _, allowed := range allowedOrigins {
+			if getStr(client, "origin") == allowed {
+				originOK = true
+				break
+			}
+		}
+		if crossOrigin, ok := client["crossOrigin"].(bool); ok && crossOrigin {
+			originOK = false
+		}
+		if !originOK {
+			return false
+		}
 	}
 	signed := append(append([]byte{}, ad...), func() []byte { s := sha256.Sum256(cdBytes); return s[:] }()...)
 	der, err := base64.RawURLEncoding.DecodeString(b64urlPad(pubB64u))
@@ -83,8 +126,43 @@ func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) 
 	return ecdsa.VerifyASN1(pub, h[:], sig)
 }
 
+func trustReceiptCanonicalProfileOK(receipt map[string]any) bool {
+	leaf := map[string]any{}
+	for k, v := range receipt {
+		if k != "log_proof" && k != "approver_key_proofs" {
+			leaf[k] = v
+		}
+	}
+	if !IsCanonicalizable(leaf) {
+		return false
+	}
+	if lp := getMap(receipt["log_proof"]); lp != nil {
+		if cp := getMap(lp["checkpoint"]); cp != nil {
+			signedCP := map[string]any{}
+			for k, v := range cp {
+				if k != "log_signature" {
+					signedCP[k] = v
+				}
+			}
+			if !IsCanonicalizable(signedCP) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func contextAuthorizes(ctx map[string]any) bool {
+	decision, present := ctx["decision"]
+	if !present {
+		return true
+	}
+	typed, ok := decision.(string)
+	return ok && typed == "approved"
+}
+
 // VerifyTrustReceipt verifies an EP §6.2 Trust Receipt offline. opts keys:
-// approverKeys (map of approver_key_id -> {public_key,key_class,valid_from,valid_to}),
+// approverKeys (map of approver_key_id -> {approver_id,public_key,key_class,valid_from,valid_to}),
 // logPublicKey (string).
 func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceiptResult {
 	checks := map[string]bool{
@@ -96,12 +174,31 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 	}
 	approverKeys := getMap(opts["approverKeys"])
 	logPublicKey := getStr(opts, "logPublicKey")
+	rpID := getStr(opts, "rpId")
+	allowedOrigins, requireOrigin := stringSliceOption(opts, "allowedOrigins")
 	contexts, _ := receipt["contexts"].([]any)
 	signoffs, _ := receipt["signoffs"].([]any)
 	if receipt["action"] == nil || getStr(receipt, "action_hash") == "" {
 		return TrustReceiptResult{false, checks}
 	}
 	if len(contexts) == 0 || len(signoffs) == 0 {
+		return TrustReceiptResult{false, checks}
+	}
+	if !trustReceiptCanonicalProfileOK(receipt) {
+		return TrustReceiptResult{false, checks}
+	}
+
+	// I-JSON canonicalization gate (fail-closed) — identical guard to VerifyReceipt.
+	// Every field folded into a signed digest below is re-canonicalized; a value
+	// outside the profile canonicalizes differently across JS/Py/Go, so reject it
+	// here. Signature/proof fields are excluded from the check.
+	canonicalScope := map[string]any{}
+	for k, v := range receipt {
+		if k != "signoffs" && k != "log_proof" && k != "approver_key_proofs" {
+			canonicalScope[k] = v
+		}
+	}
+	if !IsCanonicalizable(canonicalScope) {
 		return TrustReceiptResult{false, checks}
 	}
 
@@ -135,6 +232,7 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		approver, signedAt string
 		ctx                map[string]any
 	}
+	validSignoffs := []approval{}
 	validApprovals := []approval{}
 	signaturesOK := len(signoffs) > 0
 	for _, so := range signoffs {
@@ -150,6 +248,14 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			signaturesOK = false
 			continue
 		}
+		// The pinned directory entry must bind this key to the approver named
+		// by the signed context. A valid key signature without this identity
+		// join cannot establish which principal approved.
+		boundApprover := getStr(keyEntry, "approver_id")
+		if boundApprover == "" || boundApprover != getStr(ctx, "approver") {
+			signaturesOK = false
+			continue
+		}
 		if !withinWindowGo(getStr(ctx, "issued_at"), getStr(keyEntry, "valid_from"), getStr(keyEntry, "valid_to")) {
 			signaturesOK = false
 			continue
@@ -159,16 +265,23 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			signaturesOK = false
 			continue
 		}
-		keyClass := getStr(s, "key_class")
-		if keyClass == "" {
-			keyClass = getStr(keyEntry, "key_class")
-		}
-		if keyClass == "" {
+		// The PINNED key entry's class is authoritative and takes precedence over
+		// the attacker-controlled signoff's declared key_class. Otherwise an
+		// attacker pins a Class-A (WebAuthn, user-presence/user-verification)
+		// approver but declares key_class:"B" and supplies a bare Ed25519 signature
+		// over the digest, downgrading to raw-signature verification with NO
+		// WebAuthn proof. A pinned Class-A key MUST be satisfied by a real WebAuthn
+		// assertion and is rejected if it only carries a raw signature. Mirrors
+		// index.js verifyTrustReceipt.
+		keyClass := getStr(keyEntry, "key_class")
+		// Key class is a relying-party directory fact. Missing defaults to B;
+		// the presented signoff cannot promote its own key to Class A.
+		if keyClass != "A" {
 			keyClass = "B"
 		}
 		var sigOK bool
 		if keyClass == "A" {
-			sigOK = getMap(s["webauthn"]) != nil && verifyClassAOverDigestGo(getMap(s["webauthn"]), digest, pub)
+			sigOK = getMap(s["webauthn"]) != nil && verifyClassAOverDigestGo(getMap(s["webauthn"]), digest, pub, rpID, allowedOrigins, requireOrigin)
 		} else {
 			sigOK = ed25519VerifyBytes(digest, pub, getStr(s, "signature"))
 		}
@@ -176,24 +289,48 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			signaturesOK = false
 			continue
 		}
-		validApprovals = append(validApprovals, approval{getStr(ctx, "approver"), getStr(s, "signed_at"), ctx})
+		verifiedSignoff := approval{getStr(ctx, "approver"), getStr(s, "signed_at"), ctx}
+		validSignoffs = append(validSignoffs, verifiedSignoff)
+		if contextAuthorizes(ctx) {
+			validApprovals = append(validApprovals, verifiedSignoff)
+		}
 	}
 	checks["signoff_signatures"] = signaturesOK
 
 	action := getMap(receipt["action"])
 	initiator := getStr(action, "initiator")
+	// A present-but-non-string initiator (e.g. ["alice"] or {"id":"alice"}) coerces
+	// to "" via getStr, which would SKIP the separation-of-duties check below and let
+	// the initiator double as the sole approver. Treat it as malformed -> fail-closed.
+	initiatorRaw, initiatorPresent := action["initiator"]
+	_, initiatorIsString := initiatorRaw.(string)
+	initiatorMalformed := initiatorPresent && initiatorRaw != nil && !initiatorIsString
 	approvers := make([]string, 0, len(validApprovals))
 	for _, a := range validApprovals {
 		approvers = append(approvers, a.approver)
 	}
+	// Canonical required_approvals coercion (fail-closed; mirrors packages/verify
+	// coerceRequiredApprovals and the Python verifier). The threshold MUST be an
+	// integer-valued JSON number. A string ("2"), a non-integer float, or any
+	// other type is malformed and forces the receipt to fail — a string must NEVER
+	// be silently ignored (that would let 1 signoff satisfy an under-approval).
 	required := 1
+	sodOK := true
 	for _, c := range contexts {
-		if ra, ok := getMap(c)["required_approvals"].(float64); ok && int(ra) > required {
+		v, present := getMap(c)["required_approvals"]
+		if !present || v == nil {
+			continue
+		}
+		ra, ok := toFloat(v)
+		if !ok || ra != float64(int(ra)) || int(ra) < 1 {
+			sodOK = false // non-integer threshold is malformed -> fail-closed
+			continue
+		}
+		if int(ra) > required {
 			required = int(ra)
 		}
 	}
-	sodOK := true
-	if initiator != "" && contains(approvers, initiator) {
+	if initiatorMalformed || (initiator != "" && contains(approvers, initiator)) {
 		sodOK = false
 	}
 	seen := map[string]bool{}
@@ -218,7 +355,49 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 					leaf[k] = v
 				}
 			}
-			checks["inclusion"] = VerifyMerkleAnchor(sha256HexOf(leaf), ipath, hexStrip(cp["root_hash"]))
+			// EP-MERKLE-v2 (default): domain-separated, payload-bound leaf + positional
+			// proof; when log_proof carries leaf_hash it must bind this receipt.
+			merkleAlg := getStr(lp, "alg")
+			if merkleAlg == "" {
+				merkleAlg = getStr(cp, "merkle_alg")
+			}
+			// Degenerate empty-path rule (fail-closed): with an empty
+			// inclusion_path the Merkle fold collapses to leafHash == root_hash,
+			// which is only a true inclusion statement for a SINGLE-LEAF tree.
+			// Without this gate, a forged checkpoint whose root_hash simply
+			// repeats the leaf hash would "include" the receipt at ANY claimed
+			// tree_size. An empty path is therefore accepted ONLY when
+			// checkpoint.tree_size is exactly 1 (and, since this shape carries
+			// an index, leaf_index, when present, is 0; a null leaf_index counts
+			// as present and refuses). Missing or non-numeric tree_size refuses.
+			// Applies to v2 AND opt-in legacy folds, evaluated before the
+			// Merkle fold. Mirrors packages/verify (JS) verifyTrustReceipt:
+			//   "empty inclusion_path requires checkpoint tree_size 1 (single-leaf tree)"
+			//   "empty inclusion_path requires leaf_index 0 in a single-leaf tree"
+			emptyPathRefused := false
+			if len(ipath) == 0 {
+				if !jsonNumEquals(cp["tree_size"], 1) {
+					emptyPathRefused = true
+				} else if li, present := lp["leaf_index"]; present && !jsonNumEquals(li, 0) {
+					emptyPathRefused = true
+				}
+			}
+			if emptyPathRefused {
+				checks["inclusion"] = false
+			} else if merkleAlg == MerkleV2Alg {
+				leafHash := leafHashV2(Canonicalize(leaf))
+				presented := hexStrip(lp["leaf_hash"])
+				if presented == "" {
+					presented = leafHash
+				}
+				checks["inclusion"] = presented == leafHash && verifyMerkleAnchorMode(leafHash, ipath, hexStrip(cp["root_hash"]), true)
+			} else if opts != nil && (opts["allowLegacyMerkle"] == true || opts["allowLegacyTrustReceiptMerkle"] == true) {
+				// Dormant legacy path: pre-v2 sorted-pair inclusion, opt-in only.
+				checks["inclusion"] = VerifyMerkleAnchor(sha256HexOf(leaf), ipath, hexStrip(cp["root_hash"]))
+			} else {
+				// Default (and every production gate): require EP-MERKLE-v2.
+				checks["inclusion"] = false
+			}
 			logSig := getStr(cp, "log_signature")
 			if logPublicKey != "" && logSig != "" {
 				signedCP := map[string]any{}
@@ -233,8 +412,8 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		}
 	}
 
-	windowsOK := len(validApprovals) > 0
-	for _, a := range validApprovals {
+	windowsOK := len(validSignoffs) > 0
+	for _, a := range validSignoffs {
 		if !withinWindowGo(a.signedAt, getStr(a.ctx, "issued_at"), getStr(a.ctx, "expires_at")) {
 			windowsOK = false
 		}

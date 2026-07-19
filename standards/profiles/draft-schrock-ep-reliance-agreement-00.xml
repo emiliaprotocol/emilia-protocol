@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-reliance-agreement-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Reliance Agreement">Reliance Agreements: Signed Liability Terms Conditioned on Authorization-Evidence Sufficiency</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-reliance-agreement-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="12"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>evidence</keyword>
+    <keyword>reliance</keyword>
+    <keyword>liability</keyword>
+    <keyword>indemnity</keyword>
+    <abstract>
+      <t>The authorization-evidence stack for high-risk agent actions
+      produces verdicts: signed artifacts are presented, replayed
+      against a relying party's pinned evidence policy, and found
+      admissible or not. The commercial layer above the verdict, who
+      bears the loss when a relying party acts on evidence that
+      satisfied the policy, exists today only in prose. Insurers
+      underwrite AI-agent operations against control standards written
+      in natural language; no interoperable signed object expresses
+      "if the presented evidence satisfies reliance profile P, these
+      liability terms apply between us." This document defines the
+      Reliance Agreement (EP-RELIANCE-AGREEMENT-v1): a machine-readable
+      object, signed by every party its own required-signer list names,
+      in which an issuer, a relying party, and optionally an
+      underwriter condition a liability shift or an indemnity (with cap
+      amounts as decimal strings) on authorization-evidence sufficiency,
+      referencing the evidence condition by digest of a reliance
+      profile rather than restating policy. It also defines the
+      Reliance Event (EP-RELIANCE-EVENT-v1), the per-action claim
+      instrument binding one action's evidence verdict to the
+      agreement. Verifying these objects proves who agreed to what
+      terms over which evidence conditions, and that a specific
+      reliance occurred inside the agreement's scope and window. The
+      object is the interoperable expression of an agreement, designed
+      to be incorporated by reference into a prose master agreement; it
+      is not a substitute for contract law, and enforceability is
+      jurisdiction-dependent and out of scope.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>Signed-evidence formats for agent actions answer "did a named
+      human authorize this exact action, and does the packet satisfy my
+      policy?" Authorization receipts
+      <xref target="I-D.schrock-ep-authorization-receipts"/> carry the
+      approval; evidence graphs and policy replay
+      <xref target="I-D.schrock-ep-action-evidence-graph"/> turn
+      heterogeneous artifacts into a closed verdict; assurance classes
+      <xref target="I-D.schrock-ep-assurance-classes"/> grade how
+      strong the human proof is. What none of these carries is the
+      commercial consequence of the verdict: when a bank wires funds, a
+      platform executes an irreversible action, or a processor
+      dispenses against evidence that satisfied the pinned policy, who
+      bears the loss if the underlying authorization was nonetheless
+      wrong?</t>
+      <t>The market has already priced this question. Insurance
+      products for AI-agent operations exist today: certification-plus-
+      coverage programs such as AIUC-1 with Lloyd's market capacity,
+      Munich Re's aiSure performance guarantees, and Armilla's
+      AI-liability coverage underwritten with Chaucer. These are
+      evidence that the economics exist ahead of the interoperable
+      object: each conditions coverage on controls and evidence
+      described in prose policy wordings and audit standards. A relying
+      party cannot mechanically discover, verify, or present the terms
+      it is relying under; an underwriter cannot mechanically bind
+      coverage to the exact evidence condition its actuaries priced;
+      and a dispute forum receives narrative, not signed structure.</t>
+      <t>This document defines the missing object. A Reliance Agreement
+      is a signed, portable, offline-verifiable statement by named
+      parties: if the evidence presented for an action in this scope
+      satisfies the reliance profile identified here by digest, then
+      these liability terms (a liability shift or an indemnity, with
+      caps, currency, and deductible) apply between us, in this window.
+      A Reliance Event is the per-action record that a specific relying
+      party relied, for a specific action digest, on a specific
+      evidence verdict, under a specific agreement. Together they make
+      the commitment and the reliance non-repudiable and portable. They
+      deliberately do not make either enforceable; see
+      <xref target="scope-honest"/>.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+        <t>Issuer: the party whose evidence infrastructure produces the
+        authorization evidence (typically the operator of the receipt
+        and verification stack). Relying party: the party that acts on
+        the evidence (executes the wire, dispenses, releases).
+        Underwriter: an optional third party that carries or reinsures
+        the financial exposure. Reliance profile: the relying-party
+        evidence policy object (for example EP-RELIANCE-PROFILE-v1)
+        that the reliance verdict is computed under, identified in this
+        document only by digest. Reliance result: the record of one
+        action's evidence verdict under a reliance profile.</t>
+      </section>
+    </section>
+    <section anchor="agreement">
+      <name>The Reliance Agreement (EP-RELIANCE-AGREEMENT-v1)</name>
+      <t>A Reliance Agreement is a JSON object. Its signable payload is
+      the object without the signatures member, serialized with JSON
+      Canonicalization Scheme (JCS) <xref target="RFC8785"/> and
+      prefixed with the domain-separation string
+      "EP-RELIANCE-AGREEMENT-v1" followed by a single NUL octet. Every
+      signature in the signatures array is an Ed25519
+      <xref target="RFC8032"/> signature over those exact bytes.</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "version": "EP-RELIANCE-AGREEMENT-v1",
+  "agreement_id": "ra:example-issuer:example-bank:2026-001",
+  "parties": {
+    "issuer":        { "id": "ep:org:example-issuer",
+                       "key_id": "ep:key:issuer-1" },
+    "relying_party": { "id": "ep:org:example-bank",
+                       "key_id": "ep:key:rp-1" },
+    "underwriter":   { "id": "ep:org:example-underwriter",
+                       "key_id": "ep:key:uw-1" }
+  },
+  "required_signers": ["issuer", "relying_party", "underwriter"],
+  "scope": {
+    "action_families": ["wire_transfer", "ach_credit"],
+    "jurisdictions": ["US-NY"],
+    "validity": { "not_before": "2026-01-01T00:00:00Z",
+                  "not_after":  "2027-01-01T00:00:00Z" }
+  },
+  "condition": {
+    "reliance_profile_digest": "sha256:<64 hex>",
+    "min_assurance_class": "V",
+    "max_staleness_sec": 300
+  },
+  "terms": {
+    "mode": "indemnity",
+    "cap_amount": "1000000.00",
+    "currency": "USD",
+    "per_action_cap": "250000.00",
+    "aggregate_cap": "1000000.00",
+    "deductible": "10000.00"
+  },
+  "recourse_ref": "https://example.com/master-agreement#annex-b",
+  "signatures": [
+    { "party": "issuer", "algorithm": "Ed25519",
+      "key_id": "ep:key:issuer-1", "signature_b64u": "..." },
+    { "party": "relying_party", "algorithm": "Ed25519",
+      "key_id": "ep:key:rp-1", "signature_b64u": "..." },
+    { "party": "underwriter", "algorithm": "Ed25519",
+      "key_id": "ep:key:uw-1", "signature_b64u": "..." }
+  ]
+}
+]]></sourcecode>
+      <section anchor="agreement-fields">
+        <name>Field Semantics</name>
+        <t>version MUST be EP-RELIANCE-AGREEMENT-v1. agreement_id
+        identifies the agreement for correlation; verification MUST NOT
+        depend on its uniqueness. parties declares the roles from the
+        closed set issuer, relying_party, underwriter; issuer and
+        relying_party are REQUIRED, underwriter is OPTIONAL, and an
+        unknown role name MUST be refused. Each party carries an id and
+        a key_id; the key_id names the key a verifier must have pinned
+        out of band, and a verifier MUST NOT trust any key material
+        carried in the object itself.</t>
+        <t>required_signers is the agreement's own effectiveness rule:
+        the list of roles whose signatures make the agreement
+        effective. It MUST be non-empty, MUST NOT contain duplicates or
+        undeclared roles, and MUST include both issuer and
+        relying_party (an agreement neither issued nor accepted is not
+        an agreement). An agreement missing any required signature, or
+        carrying any signature (required or not) that does not verify
+        under the pinned key for that party's key_id, is not effective
+        and MUST be refused.</t>
+        <t>scope.action_families is a non-empty list of the action
+        families the terms cover, from the same vocabulary the relying
+        party's evidence policy uses. scope.jurisdictions is an
+        OPTIONAL list of jurisdiction labels; it is descriptive
+        metadata for the prose master agreement, not a mechanism this
+        document verifies. scope.validity gives the window
+        (not_before, not_after) in which the agreement is effective;
+        both are REQUIRED and not_before MUST precede not_after.</t>
+        <t>condition.reliance_profile_digest is the heart of the
+        object: the sha256 digest of the JCS-canonical reliance profile
+        the terms are conditioned on. The agreement references evidence
+        policy by digest and never restates it; the profile itself is
+        exchanged, pinned, and replayed through the existing evidence
+        machinery. condition.min_assurance_class OPTIONALLY names the
+        minimum assurance class
+        <xref target="I-D.schrock-ep-assurance-classes"/> from the
+        closed set S, H, V, Q. condition.max_staleness_sec OPTIONALLY
+        bounds the acceptable age of the evidence verdict, in
+        seconds.</t>
+        <t>terms.mode is from the closed set liability_shift (the
+        issuer assumes the loss the relying party would otherwise bear)
+        and indemnity (the issuer or underwriter reimburses the relying
+        party up to the caps); any other value MUST be refused. Every
+        monetary amount (cap_amount REQUIRED; per_action_cap,
+        aggregate_cap, deductible OPTIONAL) MUST be a decimal string.
+        A monetary amount expressed as a JSON number MUST be refused:
+        floating-point representation of money is a correctness
+        failure, not a style choice, and a verifier that silently
+        accepts 0.1 + 0.2 semantics into a liability cap has already
+        lost the dispute. terms.currency MUST be a three-letter
+        uppercase currency code applying to all amounts in the
+        agreement. recourse_ref OPTIONALLY points to the prose master
+        agreement or dispute procedure this object is incorporated
+        into; see <xref target="scope-honest"/>.</t>
+      </section>
+    </section>
+    <section anchor="event">
+      <name>The Reliance Event (EP-RELIANCE-EVENT-v1)</name>
+      <t>A Reliance Event is the per-action claim instrument: the
+      relying party's signed record that, at a stated time, it relied
+      on a specific evidence verdict for a specific action under a
+      specific agreement. Its signable payload is the object without
+      the signature member, JCS-canonicalized and prefixed with
+      "EP-RELIANCE-EVENT-v1" followed by a single NUL octet, signed
+      Ed25519 by the agreement's relying party.</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "version": "EP-RELIANCE-EVENT-v1",
+  "event_id": "rev:example-bank:2026-07-08:0001",
+  "agreement_digest": "sha256:<64 hex>",
+  "action_digest": "sha256:<64 hex>",
+  "reliance_result_digest": "sha256:<64 hex>",
+  "relied_at": "2026-07-08T11:59:00Z",
+  "signature": { "party": "relying_party", "algorithm": "Ed25519",
+                 "signature_b64u": "..." }
+}
+]]></sourcecode>
+      <t>agreement_digest is the sha256 digest of the agreement's
+      domain-prefixed canonical payload (signatures excluded).
+      action_digest is the digest of the canonical action relied on,
+      the same digest the evidence stack binds receipts and verdicts
+      to. reliance_result_digest is the sha256 digest of the
+      JCS-canonical reliance result record. The result record MUST
+      carry the action_digest it attests and the action_family of the
+      action, and MAY carry the digest of the profile it was evaluated
+      under and the verdict itself. relied_at is the time of reliance
+      and MUST fall inside the agreement's validity window.</t>
+      <t>The three digests are the point of the object: the event joins
+      one action, one evidence verdict, and one set of agreed terms by
+      digest, so that no party can later substitute a different
+      verdict, a different action, or a different version of the terms
+      into the record of what happened.</t>
+    </section>
+    <section anchor="verification">
+      <name>Verification</name>
+      <t>Verification is offline, deterministic, and fail-closed: any
+      check that cannot be completed, any unknown vocabulary value, and
+      any malformed field yields a refusal with a stated reason, never
+      an exception and never a permissive default.</t>
+      <t>Agreement verification proceeds in order: (1) structure, with
+      all closed vocabularies (party roles, required_signers, terms
+      mode, assurance class) and the amounts-as-strings rule enforced;
+      (2) canonical form, computing the exact domain-prefixed JCS bytes
+      every signature covers; (3) the validity window against
+      verification time; (4) signatures: every role in required_signers
+      MUST have exactly one signature entry, every signature present
+      (required or not) MUST verify under the key pinned for that
+      party's key_id, and a missing pin is a refusal, not a skip.</t>
+      <t>Event verification proceeds in order: (1) event structure,
+      including digest formats and a relied_at that is parseable and
+      not in the future of verification time; (2) the referenced
+      agreement MUST verify, with the validity window evaluated at
+      relied_at, so the question answered is "was the agreement
+      effective when reliance occurred", not "is it effective now";
+      (3) the event's agreement_digest MUST equal the digest computed
+      over the supplied agreement; (4) the event's action_digest MUST
+      equal the action digest the supplied reliance result attests, and
+      the reliance_result_digest MUST equal the digest computed over
+      the supplied result; (5) the result's action family MUST be
+      inside the agreement scope, and when the result names the profile
+      it was evaluated under, that digest MUST equal the agreement's
+      condition.reliance_profile_digest; (6) the event signature MUST
+      verify under the pinned key of the agreement's relying party. A
+      signature by any other party, however valid, MUST be refused: the
+      claim instrument is meaningful only from the party that bore the
+      decision.</t>
+      <t>Event verification binds; it does not re-judge. Whether the
+      verdict inside the reliance result is honest is established by
+      replaying the evidence against the profile the agreement pins by
+      digest, using the evidence machinery of
+      <xref target="I-D.schrock-ep-action-evidence-graph"/>; this
+      document's verifier proves only that the claimed verdict, the
+      claimed action, and the agreed terms are the ones bound
+      together.</t>
+    </section>
+    <section anchor="scope-honest">
+      <name>What This Object Is and Is Not</name>
+      <t>This section is normative in spirit even where it uses no
+      capitalized keywords, because the most likely failure of this
+      object is overclaim by its own users.</t>
+      <t>A Reliance Agreement is the machine-readable EXPRESSION of a
+      reliance agreement, not a substitute for contract law. It is
+      designed to be incorporated by reference into a prose master
+      agreement, in the same way an ETSI signature policy
+      <xref target="ETSI-TS-119-172-1"/> or an eIDAS trust-service
+      practice statement gives a machine-checkable core its legal force
+      through the surrounding prose instrument. The recourse_ref field
+      exists exactly for that incorporation; a deployment that signs
+      the object without a governing prose agreement has produced
+      evidence of intent, not a contract, and should know the
+      difference.</t>
+      <t>Verifying the object proves WHO agreed (the pinned keys of the
+      named parties), to WHAT terms (mode, caps, currency, window,
+      scope), over WHICH evidence conditions (the profile digest and
+      assurance floor). It does not prove that any party will honor the
+      terms, that the terms are enforceable in any jurisdiction, that
+      the caps are funded, or that a court or arbitrator will read the
+      object the way its signers did. Enforceability is
+      jurisdiction-dependent and out of scope for this document.</t>
+      <t>A satisfied condition is not an automatic payout. The
+      agreement conditions liability terms on evidence sufficiency; it
+      does not adjudicate causation, loss quantum, exclusions, or fraud
+      by the relying party itself. Those live in the prose instrument
+      and its forum. What the objects contribute to that forum is
+      structure: a non-repudiable record of the terms, the evidence
+      condition, the verdict relied on, and the moment of reliance,
+      each bound by digest.</t>
+      <t>A Reliance Event records reliance; it does not create
+      entitlement. An event that verifies proves the relying party
+      claimed, under its own signature, to have relied on a specific
+      verdict for a specific action while the agreement was effective.
+      Whether that reliance was reasonable, whether the verdict was
+      honestly computed, and whether the loss claimed flows from the
+      action are questions for the evidence replay and the forum, in
+      that order.</t>
+    </section>
+    <section anchor="related">
+      <name>Relationship to Existing Work</name>
+      <t>Rules languages. LegalRuleML <xref target="LegalRuleML"/> and
+      the Accord Project's template model <xref target="Accord"/> are
+      substrates in which the semantics of an agreement like this one
+      could be expressed: LegalRuleML as a formal rule interchange for
+      legal norms, Accord as executable natural-language contract
+      templates. This document deliberately defines the minimal
+      interoperable OBJECT, not a rules language: three party roles, a
+      digest-referenced evidence condition, a closed two-mode term
+      vocabulary, string amounts, and multi-party signatures over
+      canonical bytes. A deployment that needs richer clause logic can
+      express it in those substrates and still exchange this object as
+      the interoperable core both sides verify.</t>
+      <t>The four-corner precedent. The closest historical precedent is
+      the IdenTrust (Identrus) four-corner model of the early 2000s:
+      banks issued identity certificates, relying banks obtained
+      structured warranty messaging around reliance on those
+      certificates, and liability flowed through operating rules
+      written in prose. It demonstrated that structured, bank-grade
+      reliance messaging is buildable and commercially wanted; it was
+      also proprietary, closed to one federation, and is defunct as a
+      scheme. This document is the open-standard version of that
+      lesson: the warranty-shaped object survives the federation that
+      first needed it only if anyone can implement and verify it.</t>
+      <t>Verifiable Credentials. The W3C Verifiable Credentials data
+      model <xref target="VC-DATA-MODEL"/> defines a termsOfUse
+      property as a generic extension point on credentials and
+      presentations. It carries no liability semantics: no party roles,
+      no caps, no evidence condition, no effectiveness rule. A VC
+      deployment could carry a Reliance Agreement digest inside
+      termsOfUse, but the agreement object itself, with its own
+      multi-party signatures, is what this document defines and what
+      termsOfUse lacks.</t>
+      <t>The prose market. AIUC-1 certification with Lloyd's market
+      coverage, Munich Re's aiSure, and Armilla's coverage underwritten
+      with Chaucer are named here neutrally as the market signal: the
+      willingness to price AI-agent liability against control evidence
+      already exists. Today each program binds coverage to controls
+      through prose wordings and bespoke audits. An interoperable
+      agreement object lets any such program state its evidence
+      condition as a pinned profile digest and its terms as a signed
+      object any relying party and any forum can verify; nothing in
+      this document depends on, or is endorsed by, any of those
+      programs.</t>
+      <t>The EP evidence stack. Authorization receipts
+      <xref target="I-D.schrock-ep-authorization-receipts"/> supply the
+      action-bound human approval; evidence graphs and policy replay
+      <xref target="I-D.schrock-ep-action-evidence-graph"/> compute the
+      admissibility verdict a reliance result records; assurance
+      classes <xref target="I-D.schrock-ep-assurance-classes"/> supply
+      the ordered vocabulary condition.min_assurance_class draws from.
+      This document adds no evidence type and no verdict; it adds the
+      commercial commitment layer that consumes them.</t>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>Dishonor. An agreement object cannot prevent a party from
+      dishonoring it. What it changes is the dispute: the commitment,
+      the evidence condition, the verdict, and the moment of reliance
+      are each signed or digest-bound, so dishonor becomes attributable
+      and the record is portable to whatever forum the prose master
+      agreement names. The object converts "we never agreed to that"
+      from a factual dispute into a cryptographic one.</t>
+      <t>Caps are claims, not escrow. cap_amount and its siblings are
+      signed statements of intent about financial exposure. Nothing in
+      this document funds, reserves, or escrows them, and a verifier
+      MUST NOT present a verified agreement as proof of ability to
+      pay.</t>
+      <t>Key compromise. A compromised signer key forges commitments:
+      an attacker holding the issuer key can sign agreements the issuer
+      never made, and one holding the relying-party key can fabricate
+      reliance events. Deployments MUST treat agreement-signing keys
+      with the same lifecycle discipline as receipt-signing keys,
+      including revocation statements; a verifier presented with a
+      revocation covering a signer key has a refusal reason, not a
+      judgment call. Rotation is why parties carry a key_id rather than
+      inline key material: the pin set is the verifier's own trust
+      decision, made out of band.</t>
+      <t>Digest substitution. The three digests in a reliance event are
+      only as good as the canonicalization they are computed over. Both
+      objects use JCS <xref target="RFC8785"/> with domain-separation
+      prefixes, so an agreement digest can never collide with an event
+      digest over the same bytes, and a reliance result is bound
+      byte-for-byte, not field-by-field. Verifiers MUST recompute every
+      digest from supplied objects and MUST NOT accept a digest match
+      asserted by any party.</t>
+      <t>Scope laundering. The event verifier refuses a result whose
+      action family is outside the agreement scope, and refuses a
+      result evaluated under a profile other than the one the agreement
+      pins when the result names its profile. It cannot detect a result
+      that omits its profile digest and was computed under a weaker
+      profile; deployments whose results omit the profile digest have
+      chosen to establish that binding by replay instead, and should
+      document that choice. The fail-closed floor remains: a result
+      naming no action family at all is refused, never waved
+      through.</t>
+      <t>Amounts. Monetary amounts are decimal strings and a JSON
+      number is refused outright. This is a security posture, not
+      pedantry: silent binary floating-point conversion of a liability
+      cap is an integrity failure that surfaces only at claim time,
+      which is the worst possible moment to discover it.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>A future revision will register the media types
+      application/ep-reliance-agreement+json and
+      application/ep-reliance-event+json. This revision requests no
+      IANA action.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8032.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <reference anchor="I-D.schrock-ep-authorization-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+          <front>
+            <title>Authorization Receipts for High-Risk Agent Actions</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
+        </reference>
+        <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
+          <front>
+            <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+        </reference>
+        <reference anchor="I-D.schrock-ep-assurance-classes" target="https://datatracker.ietf.org/doc/draft-schrock-ep-assurance-classes/">
+          <front>
+            <title>Assurance Classes for Authorization Receipts</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-assurance-classes-00"/>
+        </reference>
+        <reference anchor="LegalRuleML" target="https://docs.oasis-open.org/legalruleml/legalruleml-core-spec/v1.0/legalruleml-core-spec-v1.0.html">
+          <front>
+            <title>LegalRuleML Core Specification Version 1.0</title>
+            <author><organization>OASIS</organization></author>
+            <date year="2021" month="August"/>
+          </front>
+        </reference>
+        <reference anchor="Accord" target="https://accordproject.org/">
+          <front>
+            <title>Accord Project: Open Source Tools for Smart Legal Contracts</title>
+            <author><organization>Accord Project, a Series of LF Projects, LLC</organization></author>
+            <date year="2026"/>
+          </front>
+        </reference>
+        <reference anchor="VC-DATA-MODEL" target="https://www.w3.org/TR/vc-data-model-2.0/">
+          <front>
+            <title>Verifiable Credentials Data Model v2.0</title>
+            <author><organization>W3C</organization></author>
+            <date year="2025" month="May"/>
+          </front>
+        </reference>
+        <reference anchor="ETSI-TS-119-172-1" target="https://www.etsi.org/deliver/etsi_ts/119100_119199/11917201/">
+          <front>
+            <title>Electronic Signatures and Infrastructures (ESI); Signature Policies; Part 1: Building blocks and table of contents for human readable signature policy documents</title>
+            <author><organization>ETSI</organization></author>
+            <date year="2015" month="July"/>
+          </front>
+          <seriesInfo name="ETSI TS" value="119 172-1"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>A reference implementation is published Apache-2.0 in the
+      EMILIA Protocol repository
+      (packages/verify/reliance-agreement.js): a pure, offline,
+      fail-closed verifier for both objects (verifyRelianceAgreement,
+      verifyRelianceEvent) with no dependency beyond the platform
+      crypto library, plus signing helpers. A conformance suite of
+      sixteen vectors (conformance/vectors/reliance-agreement.v1.json,
+      exercised by tests/reliance-agreement.test.js) covers the happy
+      paths for both objects and the refusals specified here: a missing
+      required signature, an expired or not-yet-effective window, a cap
+      amount tampered after signing, a cap amount expressed as a JSON
+      number, an unknown terms mode, an unpinned required-signer key, a
+      required signer the agreement never declared, an event bound to a
+      different agreement digest, an event signed by a party other than
+      the relying party, a result attesting a different action, an
+      action family outside the agreement scope, a result altered after
+      the event bound it, reliance outside the agreement window, and a
+      result evaluated under a different profile than the agreement
+      pins.</t>
+    </section>
+  </back>
+</rfc>

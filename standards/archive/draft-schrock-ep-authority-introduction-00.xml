@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-authority-introduction-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Authority Introduction">Authority Documents and Graded Introduction: Trust Establishment for Agent-Action Evidence Without Prior Federation</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authority-introduction-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="3"/>
+    <area>sec</area>
+    <keyword>trust establishment</keyword>
+    <keyword>key rotation</keyword>
+    <keyword>introduction</keyword>
+    <keyword>AI agents</keyword>
+    <abstract>
+      <t>Every signed-evidence format in the agent-action space specifies
+      verification and defers acceptance to "a pinned issuer key,
+      distributed out of band." The result is that two organizations with
+      no prior relationship cannot begin relying on each other's evidence
+      without a human key ceremony. This document fills the acceptance
+      half. It defines the Authority Document: a signed, hash-chained,
+      sequence-numbered declaration of an organization's evidence-issuing
+      keys, with per-key validity windows, custody classes, and
+      revocation; rotations carry a continuity signature by a key from
+      the previous document, so first contact is the only leap of faith
+      and everything after is mechanical. Verification of an artifact
+      resolves the key that was valid AT ISSUANCE, so rotation never
+      breaks old evidence and compromise never retroactively voids honest
+      history. Acceptance itself becomes a graded, replayable verdict:
+      introduction evidence (chain consistency, domain binding,
+      transparency-log inclusion and age, endorsements by the relying
+      party's pinned anchors) is evaluated under a relying-party policy
+      per action class, so a young, unendorsed issuer can be acceptable
+      for low-value actions while insufficient for money movement, and
+      its acceptance widens mechanically as its verifiable history
+      accrues. Nothing in this document creates trust from nothing; it
+      makes the bootstrap checkable and the residual risk priced by the
+      relying party's own policy.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>The agent-action evidence stack has converged on a discipline
+      this document's siblings state as "verified versus accepted":
+      verifying an artifact (its signatures and bindings hold, given a
+      public key) is distinct from accepting it (the relying party
+      trusts the issuer, via out-of-band pinned key material). The
+      discipline is correct, and it has an unspecified half. How the
+      relying party comes to pin that key — how two strangers are
+      INTRODUCED — appears in no specification: one working group
+      explicitly forbids dynamic trust-anchor lookup, another flags the
+      absence of a well-known discovery path as unresolved, and every
+      receipt format, including this document's own family, writes
+      "pinned out of band" and moves on. Web transport had the same
+      problem and got a public-key infrastructure; agent evidence has
+      nothing.</t>
+      <t>The design here rejects two familiar shapes. It is not a
+      certificate-authority hierarchy: there is no root everyone must
+      trust, because the parties who rely on agent-action evidence
+      (banks, insurers, auditors, counterparties) do not share one
+      sovereign. And it is not trust-on-first-use alone, because TOFU
+      without history, consistency, or endorsement gives a relying
+      party nothing to grade. Instead: make the issuer's key history a
+      verifiable, append-only structure; harvest the trust roots that
+      already exist (domain control, transparency logs, peer
+      endorsement) as EVIDENCE rather than authority; and make
+      acceptance a policy verdict over that evidence, per action class,
+      replayable by any third party.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+      </section>
+    </section>
+    <section anchor="doc">
+      <name>The Authority Document (EP-AUTHORITY-DOC-v1)</name>
+      <t>An authority document is a JSON object, served from the
+      organization's own origin (RECOMMENDED:
+      /.well-known/ep-authority.json) and registrable to a transparency
+      service:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-AUTHORITY-DOC-v1",
+  "org": { "name": "...", "domain": "acme.example" },
+  "seq": 3,
+  "prev_doc_digest": "sha256:<core digest of doc seq 2>",
+  "root_key": "<b64url SPKI>",
+  "issuer_keys": [
+    { "kid": "<hex>", "key": "<b64url SPKI>",
+      "custody_class": "A",
+      "valid_from": "...", "valid_to": "...",
+      "revoked_at": "<OPTIONAL>" }
+  ],
+  "issued_at": "...",
+  "sig": "<root_key over the canonical core>",
+  "continuity_sig": "<by a key from the PREVIOUS doc>",
+  "endorsements": [ { "by_org": "...", "by_key": "...",
+                      "doc_digest": "...", "sig": "..." } ]
+}
+]]></sourcecode>
+      <t>The signed core is the document without sig, continuity_sig,
+      and endorsements; its canonical digest is the document's identity.
+      Endorsements are countersignatures over that digest by OTHER
+      authorities — third-party attestations that ride with the
+      document without being part of it.</t>
+    </section>
+    <section anchor="continuity">
+      <name>Rotation, Continuity, and Time-of-Issuance</name>
+      <t>Documents chain: seq increments by one, prev_doc_digest names
+      the previous core digest, and each rotation MUST carry a
+      continuity signature by the previous document's root key or one
+      of its non-revoked issuer keys. A verifier walking the chain
+      therefore needs exactly one leap — the first document it ever
+      saw — and every subsequent rotation is mechanically checkable. A
+      rotation without valid continuity MUST be flagged, never silently
+      accepted; whether endorsements can substitute for continuity is
+      the relying party's policy (<xref target="compromise"/>), not a
+      default.</t>
+      <t>Two invariants govern key resolution, and implementations
+      that miss either will hurt someone:</t>
+      <ol>
+        <li>Time of issuance. An artifact verifies against the key that
+        was valid WHEN THE ARTIFACT WAS ISSUED. Rotation never
+        invalidates previously issued evidence, and a revocation voids
+        a key only for signatures claimed at or after revoked_at —
+        honest history survives compromise.</li>
+        <li>Newest document authoritative. The newest document that
+        mentions a key identifier is authoritative for it. A
+        revocation recorded in document N MUST NOT be undone by
+        resolving the same key identifier against the pre-revocation
+        entry in document N-1.</li>
+      </ol>
+    </section>
+    <section anchor="equivocation">
+      <name>Anti-Equivocation</name>
+      <t>A malicious authority might show different documents to
+      different relying parties. Two defenses compose: the hash chain
+      makes any fork of history unpresentable to a party that holds
+      the other branch (prev-digest mismatch is a hard failure), and
+      registration of each document revision to a transparency service
+      <xref target="RFC9943"/> makes the document history globally
+      consistent — every relying party that checks inclusion is
+      checking the SAME history, which upgrades trust-on-first-use to
+      trust-on-first-use-with-global-consistency. Log registration is
+      an introduction-evidence input, not a prerequisite: its absence
+      is graded by policy, not hard-failed.</t>
+    </section>
+    <section anchor="graded">
+      <name>Introduction as Evidence: Graded, Replayable Acceptance</name>
+      <t>Acceptance is not a boolean in a config file; it is a verdict
+      over introduction evidence, evaluated under a RELYING-PARTY
+      policy, using the same closed five-verdict classification and
+      replay-digest discipline as the evidence-sufficiency layer this
+      family defines for actions
+      (<xref target="I-D.schrock-ep-action-evidence-graph"/>). The
+      evidence facts: the authority chain itself (consistent, signed,
+      no unexplained continuity breaks); domain binding (the relying
+      party's own attested observation that it fetched this document
+      digest from the organization's origin); transparency-log
+      inclusion and FIRST-LOGGED AGE (history is load-bearing: an
+      issuer whose documents have been logged, unforked, for a year is
+      a different risk than one logged yesterday); and endorsements,
+      graded by whether the endorser is among the relying party's own
+      pinned anchors.</t>
+      <t>Policies are per action class. A young, unendorsed issuer can
+      be admissible for low-value actions while missing_evidence for
+      money movement; when its logged history lengthens or a pinned
+      anchor endorses it, its acceptance widens with NO
+      reconfiguration on the relying party's side — the same policy
+      now evaluates to a wider verdict. Trust accrues in a public,
+      portable, verifiable form, and every relying party benefits from
+      the history every other interaction created. That property, not
+      any single mechanism in this document, is the point.</t>
+    </section>
+    <section anchor="compromise">
+      <name>Compromise Recovery</name>
+      <t>If an authority loses its keys entirely, continuity breaks by
+      construction. The recovery path is explicit rather than
+      exceptional: the successor document is published with no (or
+      invalid) continuity signature, the break is flagged by every
+      verifier, and the relying party's policy decides what
+      substitutes — typically an endorsement threshold (a quorum of
+      the relying party's pinned anchors countersigning the successor
+      document) plus a revocation statement over the compromised keys.
+      A relying party with no such policy simply continues to refuse:
+      fail closed is the default, recovery is opt-in.</t>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>Nothing creates trust from nothing, and this document does
+      not claim to. What it removes is the UNCHECKABILITY of the
+      bootstrap: first contact is one observation among several
+      gradable facts rather than a silent leap, and everything after
+      first contact is mechanical. The residual assumptions are named:
+      domain binding inherits the Web PKI and is worth exactly that;
+      log-backed consistency is as strong as the log's operator or the
+      cross-log witnessing above it; endorsements are as strong as the
+      endorser and mean nothing until a relying party pins one.
+      Key-resurrection (resolving a revoked key through an older
+      document) is defeated by the newest-document-authoritative rule;
+      fork-equivocation by the hash chain plus log consistency;
+      rotation-based history rewriting by time-of-issuance
+      resolution. The acceptance verdict inherits the fail-closed
+      precedence of the classification it reuses: no combination of
+      missing observations ever grades toward acceptance.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. A well-known URI
+      registration (ep-authority.json) is anticipated for a future
+      revision.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9943.xml"/>
+        <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
+          <front>
+            <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+        </reference>
+        <reference anchor="TUF" target="https://theupdateframework.io/">
+          <front>
+            <title>The Update Framework: root key rotation and continuity</title>
+            <author><organization>TUF Project</organization></author>
+            <date year="2024"/>
+          </front>
+        </reference>
+        <reference anchor="SPIFFE-FED" target="https://spiffe.io/docs/latest/architecture/federation/">
+          <front>
+            <title>SPIFFE Federation: trust bundle endpoints</title>
+            <author><organization>SPIFFE Project</organization></author>
+            <date year="2024"/>
+          </front>
+        </reference>
+      </references>
+    </references>
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>A reference implementation (document creation and rotation,
+      chain verification with continuity and fork detection,
+      time-of-issuance key resolution with the
+      newest-document-authoritative rule, endorsements, and graded
+      introduction verdicts with replay digests) is published
+      Apache-2.0 in the EMILIA Protocol repository
+      (lib/authority/authority-doc.js), with a test suite covering the
+      invariants in this document: rotation without continuity is
+      flagged; fork-equivocation is a hard failure; revocation voids
+      the future but not honest history; an unpinned endorsement never
+      satisfies a pinned-endorsement requirement; and the same chain,
+      observations, and policy replay to the same verdict and
+      digest.</t>
+    </section>
+  </back>
+</rfc>

@@ -9,6 +9,7 @@
   "receipt_submit_url": "https://emiliaprotocol.ai/api/receipts/submit",
   "receipt_confirm_url": "https://emiliaprotocol.ai/api/receipts/confirm",
   "agent_actions_url": "https://emiliaprotocol.ai/.well-known/agent-actions.json",
+  "agent_action_control_url": "https://www.emiliaprotocol.ai/.well-known/agent-action-control.json",
   "dispute_file_url": "https://emiliaprotocol.ai/api/disputes/file",
   "dispute_report_url": "https://emiliaprotocol.ai/api/disputes/report",
   "appeal_page_url": "https://emiliaprotocol.ai/appeal",

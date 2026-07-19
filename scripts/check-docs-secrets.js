@@ -158,7 +158,8 @@ const SAFE_HOSTS = new Set([
   "mozilla.org",
   "w3.org",
   "apache.org",
-  // Government / grant-program domains (referenced in docs/grant-applications/)
+  "iso.org",
+  // Government / grant-program domains (referenced in archived grant/application drafts)
   "nsf.gov",
   "sam.gov",
   "research.gov",
@@ -233,7 +234,7 @@ const SAFE_HOSTS = new Set([
   "nist.gov",
   "ietf.org", // datatracker.ietf.org — the EP Internet-Draft lives there
   "aaif.io", // Agentic AI Foundation — proposal + working-group docs
-  // Grant programs / solicitation portals cited in docs/grant-applications/.
+  // Grant programs / solicitation portals cited in archived grant/application drafts.
   "federalregister.gov", // NIST AI Consortium Federal Register notice
   "grants.gov",
   "sam.gov",
@@ -244,11 +245,11 @@ const SAFE_HOSTS = new Set([
   "iarpa.gov",
   "forms.gle", // Anthropic External Researcher Access application form
   "fedscoop.com", // cited news source on the NIST consortium relaunch
-  // Schmidt Sciences funder domains cited in docs/grant-applications/schmidt-sciences/
+  // Schmidt Sciences funder domains cited in archived grant/application drafts.
   "schmidtsciences.org",
   "schmidtsciencefellows.org",
   "albany.edu", // University at Albany OCFR — academic-channel example for the Schmidt RFP
-  // AI-safety / philanthropic funders cited in docs/grant-applications/ai-safety-philanthropy/
+  // AI-safety / philanthropic funders cited in archived grant/application drafts.
   "manifund.org",
   "effectivealtruism.org", // funds.effectivealtruism.org (LTFF), forum.effectivealtruism.org
   "foresight.org",
@@ -264,14 +265,14 @@ const SAFE_HOSTS = new Set([
   "orcid.org",
   "doi.org",
   // Open-source-infrastructure funders cited in
-  // docs/grant-applications/oss-infra-funders/.
+  // archived oss-infrastructure funder drafts.
   "sovereign.tech",   // Sovereign Tech Agency (Fund / Standards / Fellowship)
   "opentech.fund",    // Open Technology Fund (FOSS Sustainability Fund)
   "floss.fund",       // FLOSS/fund (Zerodha-backed OSS funding)
   "alpha-omega.dev",  // Alpha-Omega (Linux Foundation / OpenSSF)
   "openssf.org",      // Open Source Security Foundation
   "senate.gov", // public oversight-letter citation in the crumple-zone framing
-  // Agency SBIR portals cited in docs/grant-applications/ (DHS + NIST + DoD).
+  // Agency SBIR portals cited in archived grant/application drafts (DHS + NIST + DoD).
   "sbir.gov",
   "dhs.gov", // sbir2.st.dhs.gov, st.dhs.gov
   "st.dhs.gov",
@@ -279,6 +280,7 @@ const SAFE_HOSTS = new Set([
   "treasury.gov",
   "cms.gov",
   "hhs.gov",
+  "ncpdp.org", // NCPDP standards-body public URLs cited in the Rx-reliance companion (standards.ncpdp.org)
   "fiscal.treasury.gov",
   // Buyer-domain examples cited illustratively in federation / pilot docs.
   // These are real corporate hosts but their use here is illustrative

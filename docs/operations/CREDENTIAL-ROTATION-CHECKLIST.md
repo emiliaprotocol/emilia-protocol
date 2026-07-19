@@ -1,9 +1,11 @@
 # Credential Rotation Checklist
 
-**Status:** PENDING — do these in order, do them today.
+**Status:** PARTIAL — npm write credentials closed 2026-07-10; database
+password rotation remains pending.
 **Why:** Two credentials leaked in conversation transcript during the
-2026-04-26 Supabase wipe + npm publish work. Both are valid until
-rotated.
+2026-04-26 Supabase wipe + npm publish work. The npm credential can no longer
+authenticate; the database credential still requires owner verification and
+rotation.
 
 ---
 
@@ -14,10 +16,10 @@ transcript when the Supabase wipe + re-migration was being driven via
 the CLI. The literal value is **NOT** stored in this file. Pull it
 from your password manager or the original transcript if you need to
 identify which credential to revoke.
-**Project:** `xmiiwehtivksdjbultym` (EMILIA Protocol production)
+**Project:** EMILIA Protocol production Supabase project (`<project-ref>`)
 
 ### Steps
-1. Open https://supabase.com/dashboard/project/xmiiwehtivksdjbultym/settings/database
+1. Open `https://supabase.com/dashboard/project/<project-ref>/settings/database`
 2. Click "Reset database password"
 3. Generate a new password using a password manager (≥24 chars, no
    reused fragments). Store in 1Password under "EMILIA Protocol — DB".
@@ -31,7 +33,7 @@ identify which credential to revoke.
    password directly:
    ```bash
    # If using a URL with embedded password, regenerate it
-   echo "postgres://postgres.xmiiwehtivksdjbultym:NEW_PW@aws-...:5432/postgres" \
+   echo "postgres://postgres.<project-ref>:NEW_PW@aws-...:5432/postgres" \
      | vercel env add POSTGRES_URL production
    ```
 6. Trigger a redeploy to pick up the new env var:
@@ -54,46 +56,45 @@ identify which credential to revoke.
 
 ---
 
-## 2. npm token
+## 2. npm write credentials
 
 **Leaked value:** redacted — appears in the 2026-04-26 conversation
 transcript inside an `.npmrc` paste during the
 `@emilia-protocol/verify@1.0.0` publish work. The literal token is
-**NOT** stored in this file. Use the npm dashboard to find and revoke
-the most recent classic token in your account.
+**NOT** stored in this file. The leaked April token is expired. The only newer
+active write token was deleted from the npm dashboard on 2026-07-10, and the
+dashboard then showed only expired token rows.
 **Scope:** `@emilia-protocol/*` packages
+
+Package publication uses GitHub Actions OIDC trusted publishing and the
+owner-approved workflow described in `NPM-PUBLISH-CHECKLIST.md`. A local or CI
+write token is not a supported fallback.
 
 ### Steps
 1. Open https://www.npmjs.com/settings/emiliaprotocol/tokens
-2. Identify the leaked token by its creation date (around the 1.0.0
-   publish on 2026-04-26) or by checking your local `~/.npmrc` for
-   the `_authToken=` value, then matching that prefix on the dashboard.
-3. Click "Revoke" → confirm.
-4. Create a fresh **Granular Access Token** (NOT a classic token):
-   - Name: `emilia-protocol-publish-2026-q2`
-   - Expiration: 90 days
-   - Permissions:
-     - Packages: `@emilia-protocol/*` → Read and write
-     - Organization: `emilia-protocol` → Read only
-   - IP allowlist: leave empty (you publish from variable IPs)
-   - 2FA: required for publish (already set)
-5. Save the new token in 1Password under "EMILIA Protocol — npm".
-6. If your local `~/.npmrc` has the leaked token, update it:
+2. Identify the leaked token by its creation date (around the 1.0.0 publish on
+   2026-04-26). Also identify every other active token with package-write or
+   organization-write permission; trusted publishing makes those credentials
+   unnecessary for releases.
+3. Revoke the leaked token and every unneeded write-capable token. Do not create
+   a replacement publish token.
+4. Remove any registry token from the user npm configuration:
    ```bash
-   # Confirm what's there
-   grep '^//registry.npmjs.org' ~/.npmrc
-   # Replace with the new token
-   npm login --scope=@emilia-protocol --auth-type=web
-   # OR manually:
-   echo "//registry.npmjs.org/:_authToken=NEW_TOKEN_VALUE" >> ~/.npmrc
+   npm config delete //registry.npmjs.org/:_authToken --location=user
    ```
+5. Read back all seven package trusted-publisher mappings with the commands in
+   `NPM-PUBLISH-CHECKLIST.md`. Use interactive web authentication for account
+   administration; never persist a package-write token for publication.
+6. Confirm repository and CI secrets do not contain `NPM_TOKEN` or another npm
+   registry write credential. A broken OIDC relationship must fail closed.
 
 ### Confirm done
-- [ ] Old token revoked on npmjs.com
-- [ ] New granular token created with 90-day expiry
-- [ ] New token stored in password manager
-- [ ] Local `~/.npmrc` updated
-- [ ] Test: `npm whoami` returns `emiliaprotocol`
+- [x] Leaked token is expired and cannot authenticate (verified 2026-07-10)
+- [x] No active package/org write token remains (verified 2026-07-10)
+- [x] No replacement publish token created
+- [x] Local `~/.npmrc` contains no registry auth token (verified 2026-07-10)
+- [x] All seven OIDC trusted-publisher mappings read back correctly (verified 2026-07-10)
+- [x] No npm write credential is stored in GitHub Actions or Vercel (verified 2026-07-10)
 - [ ] Mark this checklist complete in the next commit message
 
 ---
@@ -102,7 +103,8 @@ the most recent classic token in your account.
 
 Send a one-line confirmation in our next message:
 
-> "Rotated DB password and npm token; old credentials revoked."
+> "Rotated the DB password; revoked npm write credentials and removed the local
+> token fallback."
 
 That's the verification step that closes the audit finding.
 

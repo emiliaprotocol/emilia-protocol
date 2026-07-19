@@ -1,0 +1,3286 @@
+{
+  "suite": "EP-DELEGATION-INTEGRITY-v1",
+  "profile": "Delegation-integrity conformance vectors (real Class-A/B receipts + real Ed25519 delegation proofs). verifyProvenanceOffline(input.provenance_chain, {delegationKeys: input.delegation_keys, now: input.now_ms}) MUST return expect.valid; each refusal trips expect.check and emits an error containing expect.error_includes.",
+  "description": "Positive controls plus two classic delegation attacks refused fail-closed: (1) AUTHORITY LAUNDERING — a child scope/cap the ancestor chain never conferred (incl. wildcard widening); (2) DELEGATION CHAIN POISONING — an unsigned, tampered, wrong-key, or spliced/unanchored link. Plus the ROOT case: no human root signoff yields no authority.",
+  "algorithm": "Ed25519 delegation proofs over RFC 8785 (JCS) canonical fields; Class-A human signoffs over WebAuthn-shaped P-256/ES256; verifier packages/verify/provenance.js",
+  "vectors_version": "1.0.0",
+  "count": 14,
+  "vectors": [
+    {
+      "id": "accept_valid_narrowing_chain",
+      "kind": "positive",
+      "description": "Control: signed, human-rooted chain narrowing payment.* down to payment.release. ACCEPTS.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:zJ3_FWnJB5Q",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "U0MEKArkJj_sQ-MNaWsXWQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:e9b94ba90d139169ecf174c870e4279e663a9b8bf0f17bf29f24a07be50d78a8",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNmJsTHFRMFRrV25zOFhUSWNPUW5ubVk2bTR2dzhYdnlueVNnZS1VTmVLZyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQDuhRrEDAW4gkN8CEutzi618lZbtR39n8xv4z7CJnGEvAIgbwHgyvaOcadF2e0ajkMjyKBg3u9Kqc1Bke34SuP5-MU"
+                  },
+                  "signature": "MEUCIQDuhRrEDAW4gkN8CEutzi618lZbtR39n8xv4z7CJnGEvAIgbwHgyvaOcadF2e0ajkMjyKBg3u9Kqc1Bke34SuP5-MU"
+                }
+              ],
+              "consumption": {
+                "nonce": "K0ZU34u3mpllb8e970rQzA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:24d7d84c9e114de3c94caca3564b8daad33a9e0aa27b8022101adc2e5f6d9546",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:24d7d84c9e114de3c94caca3564b8daad33a9e0aa27b8022101adc2e5f6d9546",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "fs-qSMfLFolIsUe-OLNKHrhev0bpeKhGYXubLnajLdyVP0DvET3gI1Lw-f7cz6ouOJt5pvdvTWcB_NqD_k1pDA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEub5uziMj04f5KWhC7g5qN_8T8PDUwogOCeCaRdRb9NTF93jCPw5AiumEVj4EyY0RAlO-vjX1gVQxkvDLltA3Yg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEANR1PX31Ahhv12YU9YMorm3JYvTs2TSz7zg2UszP2VYM"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "AAxjvRUpBBkOYCw_tPrZAtCm8EKhdjwOIK7lTbY7WqymzkJPJMwWU5QBTDfvqyiSjkhi6lq38Z_rkTgRq3ESDQ",
+                "public_key": "MCowBQYDK2VwAyEA93nfCa60jW6MPNZ5fLgeMIUZIzh8nK1IUuKNv3kEWGc"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:ZE1u-CyfAKY",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "h8gVhwPC-4bUNn4Doc7ezw",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:045b061a617144fe56dbb19d6512538123d709e5b8c64ad8e85552b14cff90a9",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQkZzR0dtRnhSUDVXMjdHZFpSSlRnU1BYQ2VXNHhrclk2RlZTc1V6X2tLayIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQDvmuDaFvD0dQxN4_v3Q70uAtBAwLjmDdvapGMbBoDZvAIhANtn5MnDfPfFtStlvqU8NjaAJ8mNpr84c8Tz0xXsaVGJ"
+                  },
+                  "signature": "MEYCIQDvmuDaFvD0dQxN4_v3Q70uAtBAwLjmDdvapGMbBoDZvAIhANtn5MnDfPfFtStlvqU8NjaAJ8mNpr84c8Tz0xXsaVGJ"
+                }
+              ],
+              "consumption": {
+                "nonce": "4R2Udi3ajaWiNe1DsftaBA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:c4cb94f8b99b962dcdd90dd1511f8de5f1688e07983fee3392760535883ec70b",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:c4cb94f8b99b962dcdd90dd1511f8de5f1688e07983fee3392760535883ec70b",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "FchTNXnk_RcH-vyTtUFs3f4mbBhWJrbTpaDruudv0JKmactzPBZZfDFdduinLRVVofHMWd2Tnnv2yA3jIUUnAA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESybNBxM4iaXKSfanbRon-wy8TaBEFXXbtwJIGHYuO4IK7G2LpOC94Z5qWraSvtuzcuNbsWe_gAF8u545sIQynw",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAmy5o9Kh350MXiCmZ1mx8yCrdkBUZeONn-2dE6txRsOo"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.241Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEA93nfCa60jW6MPNZ5fLgeMIUZIzh8nK1IUuKNv3kEWGc"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEub5uziMj04f5KWhC7g5qN_8T8PDUwogOCeCaRdRb9NTF93jCPw5AiumEVj4EyY0RAlO-vjX1gVQxkvDLltA3Yg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEANR1PX31Ahhv12YU9YMorm3JYvTs2TSz7zg2UszP2VYM",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESybNBxM4iaXKSfanbRon-wy8TaBEFXXbtwJIGHYuO4IK7G2LpOC94Z5qWraSvtuzcuNbsWe_gAF8u545sIQynw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAmy5o9Kh350MXiCmZ1mx8yCrdkBUZeONn-2dE6txRsOo",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "id": "accept_two_hop_narrowing",
+      "kind": "positive",
+      "description": "Control: two-hop chain, each hop scope-contained by the prior. ACCEPTS.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:WDbBEPn6wH8",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "UAVexo7jdNt5IJsHmDSXEg",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:80b7fd3545eec9747c685bcce2142c4600ae5ab11bf31c79f6055185449f562b",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZ0xmOU5VWHV5WFI4YUZ2TTRoUXNSZ0N1V3JFYjh4eDU5Z1ZSaFVTZlZpcyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQDMz2Y-6a_EPALVe_8l0MLyt_-wj1cGg7fkAgIrsnfK2wIhAJ9P1KHhpJe-7pstO7-ozCl1pknERgRF-Jm9kQ4xs7ot"
+                  },
+                  "signature": "MEYCIQDMz2Y-6a_EPALVe_8l0MLyt_-wj1cGg7fkAgIrsnfK2wIhAJ9P1KHhpJe-7pstO7-ozCl1pknERgRF-Jm9kQ4xs7ot"
+                }
+              ],
+              "consumption": {
+                "nonce": "7kwA7tflExqZXoWFAaDCUA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:556eb81534aae1b6dcafb3e49f148cd41ab0980ac7acf7745a665f42aa3b128a",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:556eb81534aae1b6dcafb3e49f148cd41ab0980ac7acf7745a665f42aa3b128a",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "ZVFxsKFsojY7LoOm_F2y8QTPDMqAEl62v2xaSSAKAQQgZk0xSeS7Jv2ukz4qZznYYPh21KftqEGXAzB1j4U8Cw"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEw0fs_MJg2R5OF4kK-m1JiYi-PzGLBSa2O4NX5TlFLmYazgUFufhdiCPP7kgU_SioOFPbLjjsoFC79VWaTuHWhQ",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAxaD2pgV6r6YlbfSYqbZaCuByYxCf7Q6rNKL51uvecqs"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:A",
+              "scope": [
+                "payment.*"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OkEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC4qIl19",
+                "signature_b64u": "KESP7vtFpRNryM2JE4E6gCFhwuLhwdvCC3-wsYjeUh4ou2DgpQlvOAHC3Exwvjifdy4Ri74y078h_168BtCIAA",
+                "public_key": "MCowBQYDK2VwAyEAl5knRVAsqGY8jyqVrEacFS-jEXVWCuBDnzRM6NT5fmY"
+              }
+            },
+            {
+              "sequence": 1,
+              "delegation_id": "dlg:2",
+              "parent_ref": "ep:agent:A",
+              "delegator": "ep:agent:A",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 500,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjIiLCJkZWxlZ2F0b3IiOiJlcDphZ2VudDpBIiwiZXhwaXJlc19hdCI6IjIwMjYtMDYtMTNUMTg6MDA6MDAuMDAwWiIsIm1heF92YWx1ZV91c2QiOjUwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "llItduR7Ddw0mRuNXEMnNeo3NifFHGXPLO1IQfFXSNdylHb0DLXpd2AdhmNJXpdrMlHoNgaEHNJfyr7DWy1_Cw",
+                "public_key": "MCowBQYDK2VwAyEAjnMaPx5GwGS0S2Bp1KLqwvX_7_R8WS5h2uA5SFH311s"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:JnnnbC9cpgw",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "sUkPjP1L2-02onKESwVjSQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:4a4c212e0c1bd5b30108af2e89d5ae4ced19769795a5205d39b87b193fc66509",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiU2t3aExnd2IxYk1CQ0s4dWlkV3VUTzBaZHBlVnBTQmRPYmg3R1RfR1pRayIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEQCIFjALPUhG8lIDHutxQYMTFUTRhPKFP9X7U976B_Mknt5AiAA2SOTWisGtm_t4DsP_DHduhgvyRzr_JB9jW0BL7SFYQ"
+                  },
+                  "signature": "MEQCIFjALPUhG8lIDHutxQYMTFUTRhPKFP9X7U976B_Mknt5AiAA2SOTWisGtm_t4DsP_DHduhgvyRzr_JB9jW0BL7SFYQ"
+                }
+              ],
+              "consumption": {
+                "nonce": "w7DYl9lX1-45KLUiNmVUdA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:c2a7b717d65346dfd097ed5bb102e312b0cf5c3ea7ff0c8dfe487fb440e5ce19",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:c2a7b717d65346dfd097ed5bb102e312b0cf5c3ea7ff0c8dfe487fb440e5ce19",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "gPFSd5ySYh7Kz_4B66WaibRc1TrpBfoTN5nyGkKnxR13GMs86Y0VOsrfW0zh20sx48ZKBnUmhCAlMRHZ0R09Cw"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElszJ7RKHkS9NZ07ySXcHVoTcvo3K1Y7ra0ptV9lG52cQIsHyoF6VuvkO79YjEUegGdv6cJxQkX4JJitd-uhGdg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAkaqlUJqJCtINl92Gg9Zl6qyxXUF7sZsDTnvnGr2hiWI"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 2,
+            "assembled_at": "2026-07-09T20:57:12.243Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAl5knRVAsqGY8jyqVrEacFS-jEXVWCuBDnzRM6NT5fmY"
+          },
+          "ep:agent:A": {
+            "public_key": "MCowBQYDK2VwAyEAjnMaPx5GwGS0S2Bp1KLqwvX_7_R8WS5h2uA5SFH311s"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEw0fs_MJg2R5OF4kK-m1JiYi-PzGLBSa2O4NX5TlFLmYazgUFufhdiCPP7kgU_SioOFPbLjjsoFC79VWaTuHWhQ",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAxaD2pgV6r6YlbfSYqbZaCuByYxCf7Q6rNKL51uvecqs",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElszJ7RKHkS9NZ07ySXcHVoTcvo3K1Y7ra0ptV9lG52cQIsHyoF6VuvkO79YjEUegGdv6cJxQkX4JJitd-uhGdg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAkaqlUJqJCtINl92Gg9Zl6qyxXUF7sZsDTnvnGr2hiWI",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "id": "accept_wildcard_within_parent",
+      "kind": "positive",
+      "description": "Control: a child wildcard payment.* that stays within the parent wildcard payment.*. ACCEPTS (narrowing/equal, not widening).",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:0FK6295vk2w",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "t2hY_KmXBXnVaCveBFwvBw",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:f32c55759bd0110b4fbb54491d2e4a1ef4e8146080407e4d0201c0c32acbf817",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOHl4VmRadlFFUXRQdTFSSkhTNUtIdlRvRkdDQVFINU5BZ0hBd3lyTC1CYyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQDutIAN48whdQI_qMDtmtOZZpfI-U0vDBxn32bB43h-eAIgM7g7z0IXsUIjj3J6Oa7zdTrWcrleh9nrDId96zXwzWo"
+                  },
+                  "signature": "MEUCIQDutIAN48whdQI_qMDtmtOZZpfI-U0vDBxn32bB43h-eAIgM7g7z0IXsUIjj3J6Oa7zdTrWcrleh9nrDId96zXwzWo"
+                }
+              ],
+              "consumption": {
+                "nonce": "ZsW2dnWDwDGmAkR65cZrcg",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:090d0ad5fc476272fd7c09a0f9147507587329da8a0ce6d1909f50d54969d7d5",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:090d0ad5fc476272fd7c09a0f9147507587329da8a0ce6d1909f50d54969d7d5",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "xbHSmTuJJQGlgZNz0fHn1RrekShaqjplh9dg6vZvo9nTl79O0XgYi2S5x-qG3v6HjcoCcpnApTYc4tUsnlcQAQ"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEy43HGaMwXQHQ5ptwxS6peh7zrGYwjgEroeutdAEmBXUoAN7yFZY80sGagqGCa393MSQg_5gYF998UdDN8bKIRQ",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAjWZ1sOUMxrx1bPEDG-LTBLVmnp0FWS_xW8VSLg2nSms"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.*"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC4qIl19",
+                "signature_b64u": "kNx4y99z-5-zTkPjrND-7eEc86ywTypWe0cmY8wkuRiqAcRdrrY7hFi51BuyWKY1GtoBJH-T5CKu2rTofqbyAQ",
+                "public_key": "MCowBQYDK2VwAyEAaVVHHY5qSSCt98VWlwmI-kgLNmNLyFXu0OAhvcSIgRc"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:KMNIZqQHNNo",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "4g4EZ6YDUcmTx0hGByOk4g",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:493d99adf86fe75578892989a42b8899497df9eeda562d58a1a4429dbf150f17",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiU1QyWnJmaHY1MVY0aVNtSnBDdUltVWw5LWU3YVZpMVlvYVJDbmI4VkR4YyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQCJbfOgMXqjErmxiSd6Dm0JaI38fOwJi3wBabZDrWEliwIgbng_dmCETiNUql9-JS3cU8oCy5dUGlOK92u5kfTYsik"
+                  },
+                  "signature": "MEUCIQCJbfOgMXqjErmxiSd6Dm0JaI38fOwJi3wBabZDrWEliwIgbng_dmCETiNUql9-JS3cU8oCy5dUGlOK92u5kfTYsik"
+                }
+              ],
+              "consumption": {
+                "nonce": "A6-khlwTyJC-7A8VRuRQhQ",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:bedd4f324e4944199202d93966ef3e07c7734eb7ec1866f1f55ffe610e89b0a2",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:bedd4f324e4944199202d93966ef3e07c7734eb7ec1866f1f55ffe610e89b0a2",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "E_VslKg-MT4-gdWHJvupPVoIFXS0z1fJvZwj4KtooAYrhfzCPON-9UewCgH0yMokx-f5Sk6MYJ9yvLSJF2z7BQ"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE_CaMUpDhSjfydoG_j7aAQH_vsiUfQzibZtGHhQ9uSCXZQpuIllGp-lKrTlT0ACbgRw4arpSfx7WZnKURtVEUjg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAIsUkBIxNruffo2tMkwh0A_Bu1ATmqvOtnJHiKEvUjkQ"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.243Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAaVVHHY5qSSCt98VWlwmI-kgLNmNLyFXu0OAhvcSIgRc"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEy43HGaMwXQHQ5ptwxS6peh7zrGYwjgEroeutdAEmBXUoAN7yFZY80sGagqGCa393MSQg_5gYF998UdDN8bKIRQ",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAjWZ1sOUMxrx1bPEDG-LTBLVmnp0FWS_xW8VSLg2nSms",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE_CaMUpDhSjfydoG_j7aAQH_vsiUfQzibZtGHhQ9uSCXZQpuIllGp-lKrTlT0ACbgRw4arpSfx7WZnKURtVEUjg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAIsUkBIxNruffo2tMkwh0A_Bu1ATmqvOtnJHiKEvUjkQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": true
+      }
+    },
+    {
+      "id": "reject_scope_broadening",
+      "kind": "authority_laundering",
+      "description": "Child claims scope treasury.wire that the root authority (payment.*) never conferred. MUST refuse: scope_containment.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:QlxgwWeyM1Y",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "l18hLr_rJjWFLm_MZRiYzg",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:762e22a581b5154f813ba68598e13d0609913abc49a9bde7c88cc232a84a6132",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZGk0aXBZRzFGVS1CTzZhRm1PRTlCZ21ST3J4SnFiM255SXpDTXFoS1lUSSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIC0ta43palhHlXxyibZL1mGJN-ntqZI2XsNJwCKt7szTAiEAxP1KY3MnkVnXVWWsEYNUqxRHtnBAe6NjVn_tMz7x6pk"
+                  },
+                  "signature": "MEUCIC0ta43palhHlXxyibZL1mGJN-ntqZI2XsNJwCKt7szTAiEAxP1KY3MnkVnXVWWsEYNUqxRHtnBAe6NjVn_tMz7x6pk"
+                }
+              ],
+              "consumption": {
+                "nonce": "yBGmXClzQEP71zKIy-7P7g",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:52704623622c89bba21496632e4fda81cba44fadef1bda360536efc9911a88e0",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:52704623622c89bba21496632e4fda81cba44fadef1bda360536efc9911a88e0",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "khpQWtjZOgToW-YF3tIJPh5MVdbYjnnYVJFvZZRm0tg1LQJ7Ij7t5u12CRCRMd9cusbgS2n1XRDEVB4Y6Mb5Cg"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEq_xtuaenU_LZq2hijBtcvlleyjZk7Af-sl0XJAwfm8f6iujzetugTBR0UnHjZkPX6WOhNNQSy81tCZyl6Fhy3Q",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAfgeH9Oz-9ovVtSWMJ2iNwZCR8pstsQn3mw2W7k9UkC8"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "treasury.wire"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsidHJlYXN1cnkud2lyZSJdfQ",
+                "signature_b64u": "LuKbsIWZ165iClZBJoHKU3UK86EGnqO7QLUP89GW2VkuPMiCHr03c8Jg7QXxyi4J2g896vXuAEqMFybQr6INDw",
+                "public_key": "MCowBQYDK2VwAyEAY0eGSvZwapVWwLLaAhWcTRMwNySZQodMcAg_N0wqNwI"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:RtGXXVsbFWc",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "Rpyc6wRhTlpsSxZGHZQVDQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:2855411b5b2aa11a72ecd1a87cf2d1b4e57522f09b38a14234344aaa3e83abb0",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiS0ZWQkcxc3FvUnB5N05Hb2ZQTFJ0T1YxSXZDYk9LRkNORFJLcWo2RHE3QSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQCv5fymUfJyr7zPLseA_0-q88LsFS7Bvy4Lm_EvK6lwIgIgJA6Cddc1LucA0OSKAV6ISA7aAxtSHJr9Sq22IhSjmN4"
+                  },
+                  "signature": "MEUCIQCv5fymUfJyr7zPLseA_0-q88LsFS7Bvy4Lm_EvK6lwIgIgJA6Cddc1LucA0OSKAV6ISA7aAxtSHJr9Sq22IhSjmN4"
+                }
+              ],
+              "consumption": {
+                "nonce": "M60kYIPGlXd7wR_QC5Zsug",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:9faedae2b24059be49693b704476e17c07b972ae0ffd973395812e7d29a4fd69",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:9faedae2b24059be49693b704476e17c07b972ae0ffd973395812e7d29a4fd69",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "eosDUgMW7znWZhczIHFpPT_R8Jpa5UJh5kxAP0POgOkc5Q1AS423M7o7LzlCgfQuddwGbw02tSk1JSuHptneAg"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwWyKHTmBvl8tjr3-sA0b3_vhfSSGhz0ghq4IeqyOTWsCRaWHg1U3LhHmxBlq6CK1V2ajh9HU8METgT-v26Ap0Q",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEA2UmscOpr7PdU272pfRV1RjQgmcCvxOO01xittbL4dSQ"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.243Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAY0eGSvZwapVWwLLaAhWcTRMwNySZQodMcAg_N0wqNwI"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEq_xtuaenU_LZq2hijBtcvlleyjZk7Af-sl0XJAwfm8f6iujzetugTBR0UnHjZkPX6WOhNNQSy81tCZyl6Fhy3Q",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAfgeH9Oz-9ovVtSWMJ2iNwZCR8pstsQn3mw2W7k9UkC8",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEwWyKHTmBvl8tjr3-sA0b3_vhfSSGhz0ghq4IeqyOTWsCRaWHg1U3LhHmxBlq6CK1V2ajh9HU8METgT-v26Ap0Q",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEA2UmscOpr7PdU272pfRV1RjQgmcCvxOO01xittbL4dSQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "scope_containment",
+        "error_includes": "exceeds parent scope"
+      }
+    },
+    {
+      "id": "reject_wildcard_widen",
+      "kind": "authority_laundering",
+      "description": "Root confers only the concrete scope payment.release; child uses wildcard payment.* to widen beyond it. MUST refuse: scope_containment.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:45nGsAjA9yU",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "qO_h3U2_jH0cyHtVk5hl0g",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:57f2e1abafb04f5e2760f742d5e253d9f9e5efe8c417d4a546edd7b8e8d45cbd",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVl9MaHE2LXdUMTRuWVBkQzFlSlQyZm5sNy1qRUY5U2xSdTNYdU9qVVhMMCIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIH4kkg_-aAnwozWppapNEZABaH59e3_JtkdpHRKFRMQZAiEAmXHZ8k-ES3EKhLIJCy8vUP4kAEb5sF9s8BKp51Z0jdk"
+                  },
+                  "signature": "MEUCIH4kkg_-aAnwozWppapNEZABaH59e3_JtkdpHRKFRMQZAiEAmXHZ8k-ES3EKhLIJCy8vUP4kAEb5sF9s8BKp51Z0jdk"
+                }
+              ],
+              "consumption": {
+                "nonce": "lrGuXtvzdnfJn2sxp82hmQ",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:5f9098c816ec12d96f1301aff977daae75af2bd92b7a696a4f625ee3736d16e1",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:5f9098c816ec12d96f1301aff977daae75af2bd92b7a696a4f625ee3736d16e1",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "L7lw67RYd03qLh-suz__g_E8mXW8BmWv7rubluDpMrhVkSGLaGvWf1EDgGIHfHRVOCqVKNAHn0zC3JSEdZDeAg"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEohd6mTwjaccUlaKH5pLmXNDmiY1ViTS9LtsWDvlmNwuTc0ccXmGvy8bo7BatzKbru0XSyWHL4bwwSOVaxHQ-Ww",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAu0E_vKs9-pKKw8ARUCQyKv442WW_kNdDYeBXccizkkk"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.*"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC4qIl19",
+                "signature_b64u": "Rh0jk3LfMP-IuNfjw1NfzUdJcby9Tda3jZmQTvCvAQGsG76u9vzaF_rudZqiQuNNBJ7zvcIeXnkcjgYQqizPCA",
+                "public_key": "MCowBQYDK2VwAyEAh2RN1A-eH4Jn6du0sk9TyRBK4LF-zEc5ci5DpXg0BHI"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:CszJ0z1adRQ",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "dmpNJpf8wRxmp1CYcHkpUA",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:7f40bf0a51f0a757e633b5dd1d0314bb3aff8c9c369c24fbf3595bf8772cbd34",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZjBDX0NsSHdwMWZtTTdYZEhRTVV1enJfakp3Mm5DVDc4MWxiLUhjc3ZUUSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQCDkcQSy36A1CWqj-U0Dp3XCQWky4547ATdMDqyKLTb2gIgDPlP8xYnu0KPUG9Mt7v9BTK2k42hm1X3WiGszq_dygM"
+                  },
+                  "signature": "MEUCIQCDkcQSy36A1CWqj-U0Dp3XCQWky4547ATdMDqyKLTb2gIgDPlP8xYnu0KPUG9Mt7v9BTK2k42hm1X3WiGszq_dygM"
+                }
+              ],
+              "consumption": {
+                "nonce": "BBzJV3Fjz-TuNma8ZhZRAg",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:fa312f8e7b704ef49160dbc95b8038bed1328ae30f5f7d43576bcba3664572be",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:fa312f8e7b704ef49160dbc95b8038bed1328ae30f5f7d43576bcba3664572be",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "-TWSCTEB5oyH5X7zXNDm6VITkJSNq3IBAs7LM8NDKR1gsEr7FhguE6_VRlAGElZC-SsFhvX0BhEgW_pIav3WDw"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER6kh6KSUSVE6wprjrpqtbeIIiBfAAR01CzTd-DC_kF_GwTODgcoo64Jgi80vGRE8Tkd7gKgfKhsejUXeNXXMgA",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEATvqD6Yoi39T_A2uoUX3NAT3tLFZ-kpTceeUhzByG_oY"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.244Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAh2RN1A-eH4Jn6du0sk9TyRBK4LF-zEc5ci5DpXg0BHI"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEohd6mTwjaccUlaKH5pLmXNDmiY1ViTS9LtsWDvlmNwuTc0ccXmGvy8bo7BatzKbru0XSyWHL4bwwSOVaxHQ-Ww",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAu0E_vKs9-pKKw8ARUCQyKv442WW_kNdDYeBXccizkkk",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER6kh6KSUSVE6wprjrpqtbeIIiBfAAR01CzTd-DC_kF_GwTODgcoo64Jgi80vGRE8Tkd7gKgfKhsejUXeNXXMgA",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEATvqD6Yoi39T_A2uoUX3NAT3tLFZ-kpTceeUhzByG_oY",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "scope_containment",
+        "error_includes": "exceeds parent scope"
+      }
+    },
+    {
+      "id": "reject_cap_broadening",
+      "kind": "authority_laundering",
+      "description": "Child raises the value cap ($999999) above the parent cap ($1000) it was delegated. MUST refuse: scope_containment (cap containment).",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:NdNuzEXXVmY",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "OYzPnDdlTrXnicx9pQNADQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:6b671326fc543120e4e5b90369cc49a8867f3c946140a8ade3ddab1c4e35a8c9",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYTJjVEp2eFVNU0RrNWJrRGFjeEpxSVpfUEpSaFFLaXQ0OTJySEU0MXFNayIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQCSmel1JdnWEM_CvQ1RUc5_p-BIk_Fv59OQBrXS65R3BAIhAMiNwNo7PY9tLgkXd4wbz8VuFHBACS7qCwPUYUH-8Y6v"
+                  },
+                  "signature": "MEYCIQCSmel1JdnWEM_CvQ1RUc5_p-BIk_Fv59OQBrXS65R3BAIhAMiNwNo7PY9tLgkXd4wbz8VuFHBACS7qCwPUYUH-8Y6v"
+                }
+              ],
+              "consumption": {
+                "nonce": "jSP9LhgtmKr7P2kCmkgqwA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:ca6ecd495c34cef644b6ea81b658c9b1c579a14046a5de0322465438c2b771d3",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:ca6ecd495c34cef644b6ea81b658c9b1c579a14046a5de0322465438c2b771d3",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "NI4lDoa0jPokbL0LvSyaHsHrTi-KKZdPHKJPKCLMiPPTkUftPF8ZNXrYz3xI1EvrAxh6LImmi6UKH4EsgUNxDg"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYF6Jf7npWCuqrmEY75JqfW0OlJhm5K2Ch7x66m6mbsX8W07xsjP1zUGwXpRV6Onkk64Xcd8CWTiSzfQuBfHJmA",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEARApaZbL0qsy9ptR-CIFZsf1edM3W3fFJkbD_IsEBCdQ"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:A",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OkEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "zRrdvkpm0R6Pj4k14Mc_PXlDsw4nnzYUnCYZ1txVLfYtwnWwdVkljHz1anHkwikHhDzEL5UHmnWhDxCWdhRmDg",
+                "public_key": "MCowBQYDK2VwAyEAS9NOQEZjCYnIkw8v0pwzv9PmrxUvfRv6e7aDnG5Kefs"
+              }
+            },
+            {
+              "sequence": 1,
+              "delegation_id": "dlg:2",
+              "parent_ref": "ep:agent:A",
+              "delegator": "ep:agent:A",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 999999,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjIiLCJkZWxlZ2F0b3IiOiJlcDphZ2VudDpBIiwiZXhwaXJlc19hdCI6IjIwMjYtMDYtMTNUMTg6MDA6MDAuMDAwWiIsIm1heF92YWx1ZV91c2QiOjk5OTk5OSwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "GyO9PyKiwygrivZ1YD2owaXSFXC_xPAriuUoR10Xyo1ZRuDJPbQk4iarl_5KM5RoTIUa993siNOLCOgAAQvxBA",
+                "public_key": "MCowBQYDK2VwAyEAO1m7oFdWPCCIN09ukuKV7CJuhCNNamq5mv7HjSHIYFk"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:cWomUMt64Pk",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "OLemYYUCBFBfJWhRcx39yQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:0de1c963e3051a8ad916ab4516ff75fd4e701bfc8c77e2b0d9f574fa8ac4dcfa",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRGVISlktTUZHb3JaRnF0RkZ2OTFfVTV3R195TWQtS3cyZlYwLW9yRTNQbyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQChyNQoCiM9hbttDosPmXlUcWR7sYhUcD39psyV0SSSaAIgaT96qUgqG6r_1kfXvy8O6z44ahCO38eJxsE24mIOB44"
+                  },
+                  "signature": "MEUCIQChyNQoCiM9hbttDosPmXlUcWR7sYhUcD39psyV0SSSaAIgaT96qUgqG6r_1kfXvy8O6z44ahCO38eJxsE24mIOB44"
+                }
+              ],
+              "consumption": {
+                "nonce": "ecU5CKmM9c-1LpyGXjHzqg",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:6dd962afc176ae990450f4fadda59acf6b52f6505de72122657b6b7975cc9f11",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:6dd962afc176ae990450f4fadda59acf6b52f6505de72122657b6b7975cc9f11",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "Md_u7U-l4CX1fDRMj-r2S3JVk7tQUIJyWD-qfrxo9zkA_W3SJ23tCy4k9g0RIQPvE01KNbtIyzTh_5g8X6q5AA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuM2xK4kRYyE8uMDLNREaTcaWTvot1twpTQ34CHncAbS8hKHGxjVY9yZHFd5hrQkoKCt_iSPzZvwIEXqSZF8Eew",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEANYSfQHitKEgS53880Ek2i45WvsLcZT34IPz8Pa4aTsM"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 2,
+            "assembled_at": "2026-07-09T20:57:12.245Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAS9NOQEZjCYnIkw8v0pwzv9PmrxUvfRv6e7aDnG5Kefs"
+          },
+          "ep:agent:A": {
+            "public_key": "MCowBQYDK2VwAyEAO1m7oFdWPCCIN09ukuKV7CJuhCNNamq5mv7HjSHIYFk"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYF6Jf7npWCuqrmEY75JqfW0OlJhm5K2Ch7x66m6mbsX8W07xsjP1zUGwXpRV6Onkk64Xcd8CWTiSzfQuBfHJmA",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEARApaZbL0qsy9ptR-CIFZsf1edM3W3fFJkbD_IsEBCdQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuM2xK4kRYyE8uMDLNREaTcaWTvot1twpTQ34CHncAbS8hKHGxjVY9yZHFd5hrQkoKCt_iSPzZvwIEXqSZF8Eew",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEANYSfQHitKEgS53880Ek2i45WvsLcZT34IPz8Pa4aTsM",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "scope_containment",
+        "error_includes": "valid cap within parent cap"
+      }
+    },
+    {
+      "id": "reject_unsigned_link",
+      "kind": "chain_poisoning",
+      "description": "A link with no cryptographic proof spliced into the chain. MUST refuse fail-closed: delegations_signed.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:2nuB0M3LcpE",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "mM_xE6g0HKj_AWQ6sDjAvQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:232e710d72306d4fd223eefdf5770157322fdff018678f2b05e33a77c3ccbabd",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSXk1eERYSXdiVV9TSS03OTlYY0JWekl2M19BWVo0OHJCZU02ZDhQTXVyMCIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQCS7_hX7yqmjjiODlW7AQNrjjM0xtzNafnwowC3Z0mu6AIgXGxLcojuyh3QnqJ9UlAR2oLV7Du9e1ZvxvVeAi4hA1s"
+                  },
+                  "signature": "MEUCIQCS7_hX7yqmjjiODlW7AQNrjjM0xtzNafnwowC3Z0mu6AIgXGxLcojuyh3QnqJ9UlAR2oLV7Du9e1ZvxvVeAi4hA1s"
+                }
+              ],
+              "consumption": {
+                "nonce": "rKHSF4k_nlx8vUjOZXBLUw",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:024e9475b1b42b81b9a979752fb01f72936e824b1ff4a1a3994e5f449e9ea8c4",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:024e9475b1b42b81b9a979752fb01f72936e824b1ff4a1a3994e5f449e9ea8c4",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "-UUWr6ko9IAjZdH1EkPJreR2LeCrqwv7v4U6jQYExGIVk3g_y11SMSJ6OXKz88fWyYqaotOI-CjbYYphq_wEBg"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8O0WHGa4Nd4Flnk5sJM_G10VrgvQTmcqzVJoZcCNx5uzCs9qZoPoQ8_ntzUf2qJYDeghIqYO7eObPk8khyZqSg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAKJqEdT3X3xKl-1_hlt62Sm98yhamOLAbGVDuaroOrnY"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {}
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:YKHL2EMWtQw",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "TpMGNlbrOI14ntlQrMIUmQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:b59579ad0b800199ea89de9d10c8f37b7952350039d504f6cc08ca52001f769b",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidFpWNXJRdUFBWm5xaWQ2ZEVNanplM2xTTlFBNTFRVDJ6QWpLVWdBZmRwcyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQD-Zm3bUxYymsAHJsHTFZIgLBaIRlY0wA8-_PZNLJok5wIhANGJIXZv4-f1AU_2FhZx-nzT5dhlvMbN3qVJzUcQxi3H"
+                  },
+                  "signature": "MEYCIQD-Zm3bUxYymsAHJsHTFZIgLBaIRlY0wA8-_PZNLJok5wIhANGJIXZv4-f1AU_2FhZx-nzT5dhlvMbN3qVJzUcQxi3H"
+                }
+              ],
+              "consumption": {
+                "nonce": "_XYkj5mRlyEqk-2ZIJb6Eg",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:5e4f6048ab37fcf5555b42fa75ce0c2fe2216b0b80622d592ed80ad0f4ac5933",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:5e4f6048ab37fcf5555b42fa75ce0c2fe2216b0b80622d592ed80ad0f4ac5933",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "-Ol8OV1-edITeKw7mYczpoC_j6XfNm4dzGQOWU0eRhkXNVARPohzXq-Bx2XotNWuIyEZo77XeWJGpC-AEz3oCQ"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESNGQfn0qCC69Mv29FsXfbqhvjUXUPET7oGMu9LNpLajZQFcw_elKygVheYejvXfMhH6Jq2ccKtRgrUkRDi7V1w",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEA71PZo0qAZYHw9qvtETvz91xwidHuprXrm97NIor4Hn4"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.245Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {},
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE8O0WHGa4Nd4Flnk5sJM_G10VrgvQTmcqzVJoZcCNx5uzCs9qZoPoQ8_ntzUf2qJYDeghIqYO7eObPk8khyZqSg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAKJqEdT3X3xKl-1_hlt62Sm98yhamOLAbGVDuaroOrnY",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESNGQfn0qCC69Mv29FsXfbqhvjUXUPET7oGMu9LNpLajZQFcw_elKygVheYejvXfMhH6Jq2ccKtRgrUkRDi7V1w",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEA71PZo0qAZYHw9qvtETvz91xwidHuprXrm97NIor4Hn4",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "delegations_signed",
+        "error_includes": "no verifiable proof"
+      }
+    },
+    {
+      "id": "reject_tampered_link_fields",
+      "kind": "chain_poisoning",
+      "description": "A validly-signed link whose scope/cap were widened after signing; the proof no longer covers the visible fields. MUST refuse: delegations_signed (proof not over own fields).",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:jk0mnVnywPc",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "wMF0LwNeLq2-VwK4IDXhRQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:a008ed89110510e5d659b1a0d1cf2eabdc6fed8dc4b1f2d2bb201952d1c586c1",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib0FqdGlSRUZFT1hXV2JHZzBjOHVxOXh2N1kzRXNmTFN1eUFaVXRIRmhzRSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQDwQst7Yj-xtKZXqMausxiTmoedzCEeEJvOYJR0Y7kougIhAOxi9YB2W9ZdOO-p4uG0fpgAhPWqE995sP_P8QzD_Kre"
+                  },
+                  "signature": "MEYCIQDwQst7Yj-xtKZXqMausxiTmoedzCEeEJvOYJR0Y7kougIhAOxi9YB2W9ZdOO-p4uG0fpgAhPWqE995sP_P8QzD_Kre"
+                }
+              ],
+              "consumption": {
+                "nonce": "06fvxLOXflXne1bXZ6VkAA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:54e5b9cc7d6c218affdb9ed9d032070b38173b69fbc4f527d4f40253a1c6295b",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:54e5b9cc7d6c218affdb9ed9d032070b38173b69fbc4f527d4f40253a1c6295b",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "f14zYD0fPkCvcYdqJLeB-mrMA-NQXdrUKELx7VEbcQzd-MXcR9xx1ZvBPO8NVlqbyCNikodHat20o-VoA78vAA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmz-HQ43-yteTw5NCqrZiDA24Td2anKm-g0EdhmAPLZ3FP7VoJGEKfFWy5Tq5gL4WR3kDsTDB9PdddBRIRr3zfg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEActdOActDgCrs5umRVdZhaRj2yjOSEA_Ol0o0st78PDg"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.*",
+                "admin.*"
+              ],
+              "max_value_usd": 1000000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "ic3ourjREE8EErj9I_6RkPibboEhvyYVZSCTD_7XUsv4GRMnJ3pYoLxTj7ZAWCHCKq1y1ZhjGfCkvij6AITKDQ",
+                "public_key": "MCowBQYDK2VwAyEAHsy4QaQvkKeCKTCMb7C1VWIe7dd1XLaQsIuWRsELE64"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:UHCFbcZThxA",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "cUqadH5-jBABZKS3Qhj9lg",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:3a4cff1269013013de4589ccecefa9ef432f3724bf566bd2ed3c5904787c4084",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiT2t6X0Vta0JNQlBlUlluTTdPLXA3ME12TnlTX1ZtdlM3VHhaQkhoOFFJUSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQD6ZoHk2z1oW8ZUDvc98AbHYpw8UWf8Fa4bLYAgV2qUIwIhALxD7bMBWIwYOF1DJLOrSilHZnFhesqvHKw5tqEyvOVR"
+                  },
+                  "signature": "MEYCIQD6ZoHk2z1oW8ZUDvc98AbHYpw8UWf8Fa4bLYAgV2qUIwIhALxD7bMBWIwYOF1DJLOrSilHZnFhesqvHKw5tqEyvOVR"
+                }
+              ],
+              "consumption": {
+                "nonce": "_up-FhzgKP61n3-dswvxJA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:662966ad9f8eacfc91e3884971c9cffad359a8fe33094ce5ade8a1aac12bca8e",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:662966ad9f8eacfc91e3884971c9cffad359a8fe33094ce5ade8a1aac12bca8e",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "9hmHeS7E4Y2Y1Jul_4emyQPszQM3SvOXFB6Gd7xqt-MTL1FB_wF8mf68WbCE6DPU_UrP3yMztEmAvuQHFkvfDw"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEawNlnEWp31UynjzFMpX_3_IWP8arC0wSBjZ9OJWOYdwIhYqHStxn28GrscsR3-SDvAKqmh0-mDCkgcsgE6--zw",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAAPgW1x7px_mjOTZlziaDthcgK8lh0UDdbLmUXTkgVWs"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.245Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAHsy4QaQvkKeCKTCMb7C1VWIe7dd1XLaQsIuWRsELE64"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmz-HQ43-yteTw5NCqrZiDA24Td2anKm-g0EdhmAPLZ3FP7VoJGEKfFWy5Tq5gL4WR3kDsTDB9PdddBRIRr3zfg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEActdOActDgCrs5umRVdZhaRj2yjOSEA_Ol0o0st78PDg",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEawNlnEWp31UynjzFMpX_3_IWP8arC0wSBjZ9OJWOYdwIhYqHStxn28GrscsR3-SDvAKqmh0-mDCkgcsgE6--zw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAAPgW1x7px_mjOTZlziaDthcgK8lh0UDdbLmUXTkgVWs",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "delegations_signed",
+        "error_includes": "does not sign the delegation"
+      }
+    },
+    {
+      "id": "reject_wrong_key_link",
+      "kind": "chain_poisoning",
+      "description": "A link whose proof is self-consistent but signed by a key NOT the one pinned to the delegator. MUST refuse: proof_key_bound.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:FjachlDBJW8",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "yadPGGC8qJkrYQ1BzWD0aQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:fca9eb318ed12169165fd143594e6de662f0cc8693ed6e2d38a6030b001e215a",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiX0tuck1ZN1JJV2tXWDlGRFdVNXQ1bUx3eklhVDdXNHRPS1lEQ3dBZUlWbyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEQCIHWtBcXkTqVcT_cBUcVvori1BZaNHEHvo5vLiyQhhWbWAiB38fA78G2taesSVqvsE4pNgsJJYrCVwXqlhnpYcoGkBA"
+                  },
+                  "signature": "MEQCIHWtBcXkTqVcT_cBUcVvori1BZaNHEHvo5vLiyQhhWbWAiB38fA78G2taesSVqvsE4pNgsJJYrCVwXqlhnpYcoGkBA"
+                }
+              ],
+              "consumption": {
+                "nonce": "e8najSQrHSlyUeJwA0znwg",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:e0a17179bf245b21136342c750dcb49320fe1a5f052e999060e925ccc9aebc95",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:e0a17179bf245b21136342c750dcb49320fe1a5f052e999060e925ccc9aebc95",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "F-SzgRtu5Fpw-A5E2vJDHyhTedPTd1fOTACkV3PiztsuJc--19RLXHyxPcbklzJJd89xtghkd4rg-6TAU7jLDg"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER3WagYiyvktMWAGyMuUkgvwUGmS7F_6_D7tTF9Ds5V9zMM6NYEj5YiAM3DwHjaNUyEJagChKmrm6nMfE6Xd_Nw",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAYpZ5AsTHRw_FPZYezcsZ1h3D2htSYTeO3vI9Fhx-un8"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "OURiiHV55WUA4c8rYNVfC8Ih2gAb-zgwGDPRAwF1W9Gjq_oQcmzMNImtM5aImXDmQz5mpNFNr78Hh3lk0KToBw",
+                "public_key": "MCowBQYDK2VwAyEArHcPCM-QCHSKvjzxKesi_OADJnDRkp8rBdw9FLP-oyY"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:84K6NxOR7QE",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "vlsXo_UVLedzUcBFJdF7fQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:27c1d153bb83283a08b4d2f4055ffe5bac6da2f75f3595143b4622675094b9e1",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSjhIUlU3dURLRG9JdE5MMEJWXy1XNnh0b3ZkZk5aVVVPMFlpWjFDVXVlRSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQC2WXO-HBLgEdzoia4_h5tdS6cysim8QdLwWv-BainvlgIhAPaC5mE5Pux4s5-UdhvaV2Qp5QftHD8oIPz9vqFcXt21"
+                  },
+                  "signature": "MEYCIQC2WXO-HBLgEdzoia4_h5tdS6cysim8QdLwWv-BainvlgIhAPaC5mE5Pux4s5-UdhvaV2Qp5QftHD8oIPz9vqFcXt21"
+                }
+              ],
+              "consumption": {
+                "nonce": "DxpLmrIYf4iGBbzCXR3D7w",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:94324b548629cf3f93fd30517ec2e3c9ef7d9e9d9edb749b91472e116bb093b2",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:94324b548629cf3f93fd30517ec2e3c9ef7d9e9d9edb749b91472e116bb093b2",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "HW8Wt917_lElwFoeeNXmXcTDbMEkEH8yXOYNwU5ciw0uxe8lVjhPk2biuX__VlvyVMHJ7Ke_JwDv5EciUYGCCQ"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbMnkJitliGTrjg3QELvATXlD_5Qb3TeqsQ09b3jEWX_6KfN46j7XDhRMnXv-JdXx4nV_naBQ6ZHlZuvNOgqsiw",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEARJwAKyGuzttOsQ98uK5Hb8YZPGcF0rBV-Lnfx5T4yHs"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.246Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEA0iq2k9A1WxFJmHQu4cF_v63rVvrIhLSZ8XJWyJ3dHAg"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAER3WagYiyvktMWAGyMuUkgvwUGmS7F_6_D7tTF9Ds5V9zMM6NYEj5YiAM3DwHjaNUyEJagChKmrm6nMfE6Xd_Nw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAYpZ5AsTHRw_FPZYezcsZ1h3D2htSYTeO3vI9Fhx-un8",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbMnkJitliGTrjg3QELvATXlD_5Qb3TeqsQ09b3jEWX_6KfN46j7XDhRMnXv-JdXx4nV_naBQ6ZHlZuvNOgqsiw",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEARJwAKyGuzttOsQ98uK5Hb8YZPGcF0rBV-Lnfx5T4yHs",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "proof_key_bound",
+        "error_includes": "not the key bound to delegator"
+      }
+    },
+    {
+      "id": "reject_spliced_broken_binding",
+      "kind": "chain_poisoning",
+      "description": "A second hop inserted whose delegator/parent_ref do not bind to the prior hop delegatee (splice/reorder). MUST refuse: chain_links_bound.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:sh356iJw3lE",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "_Um83hwOUnLkY_6oeV0vZw",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:57808136bbc1c3a31e5ff12e4559c0689487ab052f077a0aeea38895bd2fdeed",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVjRDQk5ydkJ3Nk1lWF9FdVJWbkFhSlNIcXdVdkIzb0s3cU9JbGIwdjN1MCIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCID7zkakgDmEZ9Gh0ZEVUjbBrkfCIO9uJzpPQzRA9JJ3TAiEAzs_9z1zklL9vUsmcl7HV2PG4U2-MzOK_3nC4KzoiJRQ"
+                  },
+                  "signature": "MEUCID7zkakgDmEZ9Gh0ZEVUjbBrkfCIO9uJzpPQzRA9JJ3TAiEAzs_9z1zklL9vUsmcl7HV2PG4U2-MzOK_3nC4KzoiJRQ"
+                }
+              ],
+              "consumption": {
+                "nonce": "BQ0P68R9uxIBo6J7gjDLAQ",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:7b62197f6c1e574f33a6fd12d271c2c05f8cc054422ac0cebac739ea13b69108",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:7b62197f6c1e574f33a6fd12d271c2c05f8cc054422ac0cebac739ea13b69108",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "cj15lKls5em5ogJc_Mp1ycaWJ-uco6kKHey9CHejoNe7hCW2CvT4T8O2NOys-vaTTTPxXX3g89HxticH3Ra3CA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJuT8ODaTIrv--TMRTa3QOd7ddyYONfOBhFw4DExvBv6LcRmTL6OJ4vdBLDxQIqOzYVxzwFN-LfXf4WlSULUZZg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAKealwXcO_cloRLD3cfIAGxF0YVQXA_O_1mMBrw-J02o"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:A",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OkEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "UC28UdzMvgGze4pp3HAELWOI1kZVDX3Q80L_SzizWTTOaQLSgES48GVT08S7J_uaaWiVCWPXsTt9FXJXz8RrCQ",
+                "public_key": "MCowBQYDK2VwAyEAs-nx-QcWs2lZ1dhk60dq-9qEyUoMl3rYIOi2t5lY9Tg"
+              }
+            },
+            {
+              "sequence": 1,
+              "delegation_id": "dlg:2",
+              "parent_ref": "ep:agent:STRANGER",
+              "delegator": "ep:agent:STRANGER",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 500,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjIiLCJkZWxlZ2F0b3IiOiJlcDphZ2VudDpTVFJBTkdFUiIsImV4cGlyZXNfYXQiOiIyMDI2LTA2LTEzVDE4OjAwOjAwLjAwMFoiLCJtYXhfdmFsdWVfdXNkIjo1MDAsInNjb3BlIjpbInBheW1lbnQucmVsZWFzZSJdfQ",
+                "signature_b64u": "luy57P8_LXNQiOGdPmimW59MNy1OMSWbE-m5Ucbz84RkEIKrLwIEpo7vXDj-ECZTCs9-MhBcdMFFGKqyevsgCw",
+                "public_key": "MCowBQYDK2VwAyEAO2JtKScWzAmyrVzysU4TnhQner-YHlHIqz60YVwsz10"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:De_UFM7KqwM",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "vF72ZBrkmveepGzZCRBZ3A",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:337a704b396f8f73a5f516c2085dfb4082f6c7023b6b666ee26f591eb2fd5d05",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTTNwd1N6bHZqM09sOVJiQ0NGMzdRSUwyeHdJN2EyWnU0bTlaSHJMOVhRVSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEQCIBxe1DOLZuuq_i_vzvebogrToFOTIiOh71mSVp4V7H1JAiBVOOxapk0l55UM1DmhArkagpXyQe_DeKV6xYEyEu5bNg"
+                  },
+                  "signature": "MEQCIBxe1DOLZuuq_i_vzvebogrToFOTIiOh71mSVp4V7H1JAiBVOOxapk0l55UM1DmhArkagpXyQe_DeKV6xYEyEu5bNg"
+                }
+              ],
+              "consumption": {
+                "nonce": "UA6e0S9NaFcUP6pOBnIBiw",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:24b01f9d94ba2fb00c6c7fed8388c26a0497459cc2285ec5a3f5aa592f9987c2",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:24b01f9d94ba2fb00c6c7fed8388c26a0497459cc2285ec5a3f5aa592f9987c2",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "WCAudkpOPePCFjyNWteszLx1zvlgziFmifqHbHPB93dCUU1UnDxn7D6FtOWpl1RCPQyLuMtcWO-U8D7rsRpiBg"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmKVMD4VFzHAv_6lzHkuutfGr8cTOUkhythCo4x4wPumJd0jxQyHQRDuGcVerbfRWihUjjWgd9T9QJd52FoaNyg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAroFjbgYVVyONuVQWm8aBnq3SyWWqMhJeaXX_Dl5y8dQ"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 2,
+            "assembled_at": "2026-07-09T20:57:12.246Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAs-nx-QcWs2lZ1dhk60dq-9qEyUoMl3rYIOi2t5lY9Tg"
+          },
+          "ep:agent:STRANGER": {
+            "public_key": "MCowBQYDK2VwAyEAO2JtKScWzAmyrVzysU4TnhQner-YHlHIqz60YVwsz10"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJuT8ODaTIrv--TMRTa3QOd7ddyYONfOBhFw4DExvBv6LcRmTL6OJ4vdBLDxQIqOzYVxzwFN-LfXf4WlSULUZZg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAKealwXcO_cloRLD3cfIAGxF0YVQXA_O_1mMBrw-J02o",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmKVMD4VFzHAv_6lzHkuutfGr8cTOUkhythCo4x4wPumJd0jxQyHQRDuGcVerbfRWihUjjWgd9T9QJd52FoaNyg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAroFjbgYVVyONuVQWm8aBnq3SyWWqMhJeaXX_Dl5y8dQ",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "chain_links_bound",
+        "error_includes": "does not bind to prior delegatee"
+      }
+    },
+    {
+      "id": "reject_unanchored_head",
+      "kind": "chain_poisoning",
+      "description": "Chain head names a delegator/parent_ref that is not an approver on the root human signoff. MUST refuse: chain_anchored.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:eNXwRO1yPBk",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "8DwhpR86VM6CUh2QAjQfQQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:88701bbcade5744d14b24a03a1b9ecd360f934f8859c6b8541eec9b4829c0c5e",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiaUhBYnZLM2xkRTBVc2tvRG9ibnMwMkQ1TlBpRm5HdUZRZTdKdElLY0RGNCIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQCEqU35P0LKxvgCiNtPISHA5_R4QexiRRlOzkz7VjhVIgIgbzC7NqMxTe0L6Ese0-KhAQRIH9-uv5JEPfDPHwNjeAs"
+                  },
+                  "signature": "MEUCIQCEqU35P0LKxvgCiNtPISHA5_R4QexiRRlOzkz7VjhVIgIgbzC7NqMxTe0L6Ese0-KhAQRIH9-uv5JEPfDPHwNjeAs"
+                }
+              ],
+              "consumption": {
+                "nonce": "Yhk_WNhCwqY986YCONZUuQ",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:8009079df2e891f2920272dab1280f41dfc6f5b95c2b277d1929c2e854381cbe",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:8009079df2e891f2920272dab1280f41dfc6f5b95c2b277d1929c2e854381cbe",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "HX3-4lrWz8PXBcTLdSJEkJvj1_Rc1b3ntw1d_U7f-IM1p1Ges1RSluhJAD3S0A96Tt2GLHPH7L_727oiU43BBQ"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiBynULCoq-dvloOa7YP2uNX3ZnlvLFEJ4PUhnUNpKdCNSvMlImvaIptkZrzIjnsDFlSgvgZhhf_Kfci8eBWUPg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAiANqPzsinXozgm0CpmZFBWU9yKoKVDQemZZUeI6ngOI"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:STRANGER",
+              "delegator": "ep:approver:STRANGER",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpTVFJBTkdFUiIsImV4cGlyZXNfYXQiOiIyMDI2LTA2LTEzVDE4OjAwOjAwLjAwMFoiLCJtYXhfdmFsdWVfdXNkIjoxMDAwLCJzY29wZSI6WyJwYXltZW50LnJlbGVhc2UiXX0",
+                "signature_b64u": "JV1E0AAUW5jIucjy4RRsIK2hf7500_kn3Oa7-2ySzwzSXt7a1GjzoO7Mxq5x4WvMkzgXHZTGM3A_0UWqRwTQCw",
+                "public_key": "MCowBQYDK2VwAyEAl7jsWYjtsbnAHXeeI-Tcqe5MAtyRBqY-B60MFGDZk5Y"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:XEodhvVQJLU",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "pgw_NfQ_GmT_vw-xcUeyFQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:4f98c49a04272133f5f66cbc9fbd3dda37fe5d65a01b4183199561115f3fd15b",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVDVqRW1nUW5JVFAxOW15OG43MDkyamYtWFdXZ0cwR0RHWlZoRVY4XzBWcyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQD0ySzIm_tNKyNB3dVhc76GKtCKBhq01ydZRAq3egUndwIhAITrbGiMi3711ZUH9e7f6pIQAQSi-YkI-nFa-716xsaT"
+                  },
+                  "signature": "MEYCIQD0ySzIm_tNKyNB3dVhc76GKtCKBhq01ydZRAq3egUndwIhAITrbGiMi3711ZUH9e7f6pIQAQSi-YkI-nFa-716xsaT"
+                }
+              ],
+              "consumption": {
+                "nonce": "1OGi9c94AChe443bEKxquw",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:28ae7c764002234a15c6cfae4b88d23f1295bc16293e1ccc15ad21fa8a98e067",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:28ae7c764002234a15c6cfae4b88d23f1295bc16293e1ccc15ad21fa8a98e067",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "uRPHZLZvZrxURldy1A_Usrog7AJFLz8dJ4LL1D3rTwz_CviqGKDTXIQHfPWh9Z1bDqLfk1E6uggXrU65XIbpAA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFrCv_K_uOiMjGfig80a0zyjnC9nemfrB3E6b36x5iqaEKjdW9KnrL0QHmZ8X4Tv9cYIX5yqEEXO1zzmRvN8F4A",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAOvoiuI4c1pi3sSxwBKyS78PVEug4nlKbGSlktQxYKcE"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.247Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:STRANGER": {
+            "public_key": "MCowBQYDK2VwAyEAl7jsWYjtsbnAHXeeI-Tcqe5MAtyRBqY-B60MFGDZk5Y"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiBynULCoq-dvloOa7YP2uNX3ZnlvLFEJ4PUhnUNpKdCNSvMlImvaIptkZrzIjnsDFlSgvgZhhf_Kfci8eBWUPg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAiANqPzsinXozgm0CpmZFBWU9yKoKVDQemZZUeI6ngOI",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFrCv_K_uOiMjGfig80a0zyjnC9nemfrB3E6b36x5iqaEKjdW9KnrL0QHmZ8X4Tv9cYIX5yqEEXO1zzmRvN8F4A",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAOvoiuI4c1pi3sSxwBKyS78PVEug4nlKbGSlktQxYKcE",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "chain_anchored",
+        "error_includes": "does not name a root-receipt approver"
+      }
+    },
+    {
+      "id": "reject_non_human_root",
+      "kind": "root_authority",
+      "description": "Root receipt carries only a Class-B (software) signoff, no human key_class in [A]. Authority from nothing. MUST refuse: root_human_signoff.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:kxJIsaAfjfU",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:bot",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "HG17-3VwgSchLO1xEtloLg",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:dee31ff062d31765687d6a9c46945ce855a381970cc194ef4c309ec264fe11c8",
+                  "key_class": "B",
+                  "approver_key_id": "ep:key:bot#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "signature": "8lMPXzrtOGoaZFIY3-a5-s45zPbRgBPcWn8HFHnDAPt1V7buN5SsVkAidXa32q41lSICBK8GS7pYNK-bVcRqAw"
+                }
+              ],
+              "consumption": {
+                "nonce": "7rd-vW6-FM2jqZHHKLuyFg",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:976470efdba347a139ad16c44f3b127ec71267597a9f9978fe41ccbdfc3a295e",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:976470efdba347a139ad16c44f3b127ec71267597a9f9978fe41ccbdfc3a295e",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "HdJ_7iBIybB3GrX65TRrv5w6Lh_EPT9JeHwwCn86C_4r0EHtvOkT_qsJLHyZSQ_LJpRDp2JSWsPgiX7zf7f3AA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:bot#1": {
+                  "approver_id": "ep:approver:bot",
+                  "public_key": "MCowBQYDK2VwAyEASMeMWYUk9EUNVOEaU71RugHG-zStJ6BmPILDEy14vMo",
+                  "key_class": "B",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAN-OTmt_Jo16QJEsjUwtaobNtFmrZQknb76G76tHjei0"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:bot",
+              "delegator": "ep:approver:bot",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3Zlcjpib3QiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "zN7kpH_1E9f9S_Wn-fe8b91rESmxmeGKG2re6TewvqboXr8140FWaM0GLaTpvVRAZxtkY9mYtrkdEfBX5sTvBg",
+                "public_key": "MCowBQYDK2VwAyEA_a2zJDBVo2Fw_ZbJYyliUZBqa5jLiHZpz4bWJwL9HSI"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:vTN8V81rCEo",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "fIwyjrAz0aU7ZJ-1BEiaZQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:3cee12581c2b0e16607f31f80386d523b5e0accba977817de925604faadfb69a",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUE80U1dCd3JEaFpnZnpINEE0YlZJN1hnck11cGQ0Rjk2U1ZnVDZyZnRwbyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQCn5VC0IJXztP5hxJ_jb5OVyc-J_nEpD0BkmdG7EmraiQIhALcThU94G8t1klNDqmK3uMzx6b0d_ChkPs71-JsDNMcY"
+                  },
+                  "signature": "MEYCIQCn5VC0IJXztP5hxJ_jb5OVyc-J_nEpD0BkmdG7EmraiQIhALcThU94G8t1klNDqmK3uMzx6b0d_ChkPs71-JsDNMcY"
+                }
+              ],
+              "consumption": {
+                "nonce": "n047vEK4NJrQbP99fRSuzA",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:e26dfc05160a1fc134756c18342bb91fd2785e2011bfe5a4808da9dd63de7c84",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:e26dfc05160a1fc134756c18342bb91fd2785e2011bfe5a4808da9dd63de7c84",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "QVDj2h_qV2kXD6OdFrUp18xOiN_5CVB1Rrmrm-Kh6suYbQBcCmG8D2cPQI10NzZbPMorKifcY4TvCKxI95wZDQ"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEx_LLtfwmqUSW4qeycf9UGsO6r3QyX0Bv-fWU2XoRF_BL7KON9Zy_hYcIcRbHMeCbH5NzuNalPwA4MJ9Bqrw-hg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEASnSZoplc-vaiWI6E86563McUBaHOXKViKUHt4k0EuDc"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.247Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:bot": {
+            "public_key": "MCowBQYDK2VwAyEA_a2zJDBVo2Fw_ZbJYyliUZBqa5jLiHZpz4bWJwL9HSI"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:bot#1": {
+              "approver_id": "ep:approver:bot",
+              "public_key": "MCowBQYDK2VwAyEASMeMWYUk9EUNVOEaU71RugHG-zStJ6BmPILDEy14vMo",
+              "key_class": "B",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAN-OTmt_Jo16QJEsjUwtaobNtFmrZQknb76G76tHjei0",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEx_LLtfwmqUSW4qeycf9UGsO6r3QyX0Bv-fWU2XoRF_BL7KON9Zy_hYcIcRbHMeCbH5NzuNalPwA4MJ9Bqrw-hg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEASnSZoplc-vaiWI6E86563McUBaHOXKViKUHt4k0EuDc",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "root_human_signoff",
+        "error_includes": "no human signoff"
+      }
+    },
+    {
+      "id": "reject_missing_root",
+      "kind": "root_authority",
+      "description": "The root human signoff is absent. No authority can be derived from nothing. MUST refuse: root_receipt_valid.",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmUP_g_H9SEbdjSHuPMNalIv8Y1938Rs_VOR-0d6A2yRBh-nXTF9J-wTJykChkeuBwXx-Fs9EbPGrYChwL2NT2g",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAT3_k8zuJyWM7YpjydTAygGWZhHyVKon-V0qgBUfaNbo"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:dir",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpkaXIiLCJleHBpcmVzX2F0IjoiMjAyNi0wNi0xM1QxODowMDowMC4wMDBaIiwibWF4X3ZhbHVlX3VzZCI6MTAwMCwic2NvcGUiOlsicGF5bWVudC5yZWxlYXNlIl19",
+                "signature_b64u": "LfTbhayfZjzTqZnAdA4f5TfNvoYkkddEJQ7S9rG_NZo53ZW60l5nH9wYrrKr84zgvfSC228HqIB9duzYPRmACg",
+                "public_key": "MCowBQYDK2VwAyEAKItZPKRlXQbDgh4SjhtJqhvlWdsZHxYXPdL31e2V3vQ"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:AW4QEdeH6Tw",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "Br2Z5nXIxczTKXBJfaITuA",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:8e42fc491bc8fe513d534768df8ea529d6b8145ba31390970c74a2ad2b068921",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiamtMOFNSdklfbEU5VTBkbzM0NmxLZGE0RkZ1akU1Q1hESFNpclNzR2lTRSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIAeJBn6txh3w-1MXvEQK9Nub2BdCgaHNa_cESaUtxKqoAiEA22Cc2spelRQGLfeUVSnWUw1sF4d3nf0t8_wgA_zp_DM"
+                  },
+                  "signature": "MEUCIAeJBn6txh3w-1MXvEQK9Nub2BdCgaHNa_cESaUtxKqoAiEA22Cc2spelRQGLfeUVSnWUw1sF4d3nf0t8_wgA_zp_DM"
+                }
+              ],
+              "consumption": {
+                "nonce": "Jpo9v_XSlOSimw21yS2G2w",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:85ef0e75aa29aa65f1e65b0dc77630dd19e347edc10a5c888c9e2e52970c1721",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:85ef0e75aa29aa65f1e65b0dc77630dd19e347edc10a5c888c9e2e52970c1721",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "esa1I17CE9O-MaBg5mDpuF9qL3Enml8huerUwP1UBN3jy-nuDYs9vqYelzoYmFZyj3slo6JZj4Olu0EEtddMAw"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYOKns9mR_KUDJWWslWh5T6YUh2YFun1LAZ8Qi_dXkyHiiyBWOKc2Y1vdTt8k0jIIN4amz4tjeiuxx_i3-stXgg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEA_0cfz0xO4AEl6RLGY5b9wlIaNhxkSIeKndxAesB_ygM"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.247Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:dir": {
+            "public_key": "MCowBQYDK2VwAyEAKItZPKRlXQbDgh4SjhtJqhvlWdsZHxYXPdL31e2V3vQ"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmUP_g_H9SEbdjSHuPMNalIv8Y1938Rs_VOR-0d6A2yRBh-nXTF9J-wTJykChkeuBwXx-Fs9EbPGrYChwL2NT2g",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAT3_k8zuJyWM7YpjydTAygGWZhHyVKon-V0qgBUfaNbo",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYOKns9mR_KUDJWWslWh5T6YUh2YFun1LAZ8Qi_dXkyHiiyBWOKc2Y1vdTt8k0jIIN4amz4tjeiuxx_i3-stXgg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEA_0cfz0xO4AEl6RLGY5b9wlIaNhxkSIeKndxAesB_ygM",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "root_receipt_valid",
+        "error_includes": "missing root_signoff"
+      }
+    },
+    {
+      "id": "reject_forged_parent_ref_anchor",
+      "kind": "chain_poisoning",
+      "description": "Authority laundering via the unsigned parent_ref. A validly-signed head link whose delegator is a stranger sets parent_ref to a real root approver (ep:approver:dir). parent_ref is not a signed proof field, so it MUST NOT anchor the chain to that human. Regression for the head-anchoring hole (was accepted before the fix).",
+      "input": {
+        "provenance_chain": {
+          "@version": "EP-PROVENANCE-CHAIN-v1",
+          "root_signoff": {
+            "receipt": {
+              "receipt_id": "ep:receipt:eNXwRO1yPBk",
+              "action": {
+                "action_type": "payment.*",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:bb82e60a613ca9ef0131ea054412f27565fce911570c1dceb6d8e5c95c540af4",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "8DwhpR86VM6CUh2QAjQfQQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:88701bbcade5744d14b24a03a1b9ecd360f934f8859c6b8541eec9b4829c0c5e",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiaUhBYnZLM2xkRTBVc2tvRG9ibnMwMkQ1TlBpRm5HdUZRZTdKdElLY0RGNCIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEUCIQCEqU35P0LKxvgCiNtPISHA5_R4QexiRRlOzkz7VjhVIgIgbzC7NqMxTe0L6Ese0-KhAQRIH9-uv5JEPfDPHwNjeAs"
+                  },
+                  "signature": "MEUCIQCEqU35P0LKxvgCiNtPISHA5_R4QexiRRlOzkz7VjhVIgIgbzC7NqMxTe0L6Ese0-KhAQRIH9-uv5JEPfDPHwNjeAs"
+                }
+              ],
+              "consumption": {
+                "nonce": "Yhk_WNhCwqY986YCONZUuQ",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:8009079df2e891f2920272dab1280f41dfc6f5b95c2b277d1929c2e854381cbe",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:8009079df2e891f2920272dab1280f41dfc6f5b95c2b277d1929c2e854381cbe",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "HX3-4lrWz8PXBcTLdSJEkJvj1_Rc1b3ntw1d_U7f-IM1p1Ges1RSluhJAD3S0A96Tt2GLHPH7L_727oiU43BBQ"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiBynULCoq-dvloOa7YP2uNX3ZnlvLFEJ4PUhnUNpKdCNSvMlImvaIptkZrzIjnsDFlSgvgZhhf_Kfci8eBWUPg",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAiANqPzsinXozgm0CpmZFBWU9yKoKVDQemZZUeI6ngOI"
+            },
+            "human_key_classes": [
+              "A"
+            ]
+          },
+          "delegation_chain": [
+            {
+              "sequence": 0,
+              "delegation_id": "dlg:1",
+              "parent_ref": "ep:approver:dir",
+              "delegator": "ep:approver:STRANGER",
+              "delegatee": "ep:agent:1",
+              "scope": [
+                "payment.release"
+              ],
+              "max_value_usd": 1000,
+              "expires_at": "2026-06-13T18:00:00.000Z",
+              "constraints": {},
+              "proof": {
+                "algorithm": "Ed25519",
+                "signed_payload_b64u": "eyJjb25zdHJhaW50cyI6e30sImRlbGVnYXRlZSI6ImVwOmFnZW50OjEiLCJkZWxlZ2F0aW9uX2lkIjoiZGxnOjEiLCJkZWxlZ2F0b3IiOiJlcDphcHByb3ZlcjpTVFJBTkdFUiIsImV4cGlyZXNfYXQiOiIyMDI2LTA2LTEzVDE4OjAwOjAwLjAwMFoiLCJtYXhfdmFsdWVfdXNkIjoxMDAwLCJzY29wZSI6WyJwYXltZW50LnJlbGVhc2UiXX0",
+                "signature_b64u": "JV1E0AAUW5jIucjy4RRsIK2hf7500_kn3Oa7-2ySzwzSXt7a1GjzoO7Mxq5x4WvMkzgXHZTGM3A_0UWqRwTQCw",
+                "public_key": "MCowBQYDK2VwAyEAl7jsWYjtsbnAHXeeI-Tcqe5MAtyRBqY-B60MFGDZk5Y"
+              }
+            }
+          ],
+          "execution": {
+            "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+            "irreversible": true,
+            "executed_at": "2026-06-13T11:00:00.000Z"
+          },
+          "action_approval": {
+            "receipt": {
+              "receipt_id": "ep:receipt:XEodhvVQJLU",
+              "action": {
+                "action_type": "payment.release",
+                "policy_id": "pol:test",
+                "initiator": "ep:agent:1",
+                "params": {
+                  "amount": 100
+                }
+              },
+              "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+              "contexts": [
+                {
+                  "ep_version": "1.0",
+                  "context_type": "ep.signoff.v1",
+                  "action_hash": "sha256:2f6d75271f61c3a34e2642a48b0c35a23d5b233c464b09620d4f9bb60991b73a",
+                  "policy_id": "pol:test",
+                  "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                  "initiator": "ep:agent:1",
+                  "approver": "ep:approver:dir",
+                  "approver_index": 1,
+                  "required_approvals": 1,
+                  "nonce": "pgw_NfQ_GmT_vw-xcUeyFQ",
+                  "issued_at": "2026-06-13T11:00:00.000Z",
+                  "expires_at": "2026-06-13T18:00:00.000Z"
+                }
+              ],
+              "signoffs": [
+                {
+                  "context_hash": "sha256:4f98c49a04272133f5f66cbc9fbd3dda37fe5d65a01b4183199561115f3fd15b",
+                  "key_class": "A",
+                  "approver_key_id": "ep:key:dir#1",
+                  "signed_at": "2026-06-13T11:00:00.000Z",
+                  "webauthn": {
+                    "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVDVqRW1nUW5JVFAxOW15OG43MDkyamYtWFdXZ0cwR0RHWlZoRVY4XzBWcyIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                    "signature": "MEYCIQD0ySzIm_tNKyNB3dVhc76GKtCKBhq01ydZRAq3egUndwIhAITrbGiMi3711ZUH9e7f6pIQAQSi-YkI-nFa-716xsaT"
+                  },
+                  "signature": "MEYCIQD0ySzIm_tNKyNB3dVhc76GKtCKBhq01ydZRAq3egUndwIhAITrbGiMi3711ZUH9e7f6pIQAQSi-YkI-nFa-716xsaT"
+                }
+              ],
+              "consumption": {
+                "nonce": "1OGi9c94AChe443bEKxquw",
+                "state": "COMMITTED",
+                "committed_at": "2026-06-13T11:30:00.000Z"
+              },
+              "log_proof": {
+                "alg": "EP-MERKLE-v2",
+                "leaf_hash": "sha256:28ae7c764002234a15c6cfae4b88d23f1295bc16293e1ccc15ad21fa8a98e067",
+                "leaf_index": 0,
+                "inclusion_path": [],
+                "checkpoint": {
+                  "tree_size": 1,
+                  "root_hash": "sha256:28ae7c764002234a15c6cfae4b88d23f1295bc16293e1ccc15ad21fa8a98e067",
+                  "log_key_id": "ep:log:test#1",
+                  "merkle_alg": "EP-MERKLE-v2",
+                  "log_signature": "uRPHZLZvZrxURldy1A_Usrog7AJFLz8dJ4LL1D3rTwz_CviqGKDTXIQHfPWh9Z1bDqLfk1E6uggXrU65XIbpAA"
+                }
+              }
+            },
+            "verification": {
+              "approver_keys": {
+                "ep:key:dir#1": {
+                  "approver_id": "ep:approver:dir",
+                  "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFrCv_K_uOiMjGfig80a0zyjnC9nemfrB3E6b36x5iqaEKjdW9KnrL0QHmZ8X4Tv9cYIX5yqEEXO1zzmRvN8F4A",
+                  "key_class": "A",
+                  "valid_from": "2026-01-01T00:00:00Z",
+                  "valid_to": "2036-01-01T00:00:00Z"
+                }
+              },
+              "log_public_key": "MCowBQYDK2VwAyEAOvoiuI4c1pi3sSxwBKyS78PVEug4nlKbGSlktQxYKcE"
+            }
+          },
+          "provenance_metadata": {
+            "chain_depth": 1,
+            "assembled_at": "2026-07-09T20:57:12.247Z",
+            "note": "Composition of existing EP-RECEIPT-v1 receipts + DRP delegation references. No new trust."
+          }
+        },
+        "delegation_keys": {
+          "ep:approver:STRANGER": {
+            "public_key": "MCowBQYDK2VwAyEAl7jsWYjtsbnAHXeeI-Tcqe5MAtyRBqY-B60MFGDZk5Y"
+          }
+        },
+        "now_ms": 1781352000000,
+        "root_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiBynULCoq-dvloOa7YP2uNX3ZnlvLFEJ4PUhnUNpKdCNSvMlImvaIptkZrzIjnsDFlSgvgZhhf_Kfci8eBWUPg",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAiANqPzsinXozgm0CpmZFBWU9yKoKVDQemZZUeI6ngOI",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        },
+        "action_verification": {
+          "approver_keys": {
+            "ep:key:dir#1": {
+              "approver_id": "ep:approver:dir",
+              "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFrCv_K_uOiMjGfig80a0zyjnC9nemfrB3E6b36x5iqaEKjdW9KnrL0QHmZ8X4Tv9cYIX5yqEEXO1zzmRvN8F4A",
+              "key_class": "A",
+              "valid_from": "2026-01-01T00:00:00Z",
+              "valid_to": "2036-01-01T00:00:00Z"
+            }
+          },
+          "log_public_key": "MCowBQYDK2VwAyEAOvoiuI4c1pi3sSxwBKyS78PVEug4nlKbGSlktQxYKcE",
+          "rp_id": "rp",
+          "allowed_origins": [
+            "https://test.emilia"
+          ]
+        }
+      },
+      "expect": {
+        "valid": false,
+        "check": "chain_anchored",
+        "error_includes": "does not name a root-receipt approver"
+      }
+    }
+  ]
+}

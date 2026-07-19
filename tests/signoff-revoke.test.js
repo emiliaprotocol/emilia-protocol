@@ -208,7 +208,11 @@ describe('revokeChallenge — happy path', () => {
     expect(result.status).toBe('revoked');
   });
 
-  it('emits revoked event with system actor ref', async () => {
+  it('emits revoked event attributed to the accountable actor who revoked', async () => {
+    // The revocation authorization check (revoke.js) has already proven the
+    // caller IS the accountable actor, so the audit event must record WHO
+    // revoked (entity-alice), not a generic 'system' — otherwise the trail
+    // cannot say which accountable party pulled the challenge.
     const challenge = validChallenge({ status: 'challenge_issued' });
     const revoked = { ...challenge, status: 'revoked' };
     const supabase = makeChallengeMock({ challenge, updatedChallenge: revoked });
@@ -218,7 +222,7 @@ describe('revokeChallenge — happy path', () => {
 
     expect(mockRequireSignoffEvent).toHaveBeenCalledWith(expect.objectContaining({
       eventType: 'revoked',
-      actorEntityRef: 'system',
+      actorEntityRef: 'entity-alice',
       detail: { reason: 'test' },
     }));
   });

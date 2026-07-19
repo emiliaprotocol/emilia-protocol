@@ -1,20 +1,19 @@
 export const metadata = {
-  title: 'EP Cloud — Hosted authorization receipts + Signoff Workflow',
+  title: 'EMILIA Gate Cloud — Managed Consequence Firewall',
   description:
-    'Managed deployment of the EMILIA Protocol runtime. Hosted handshake ' +
-    'service, trust desk for named signoff, receipt explorer, and ' +
-    'observability — without operating the runtime yourself.',
+    'Managed policy, exact-action approval orchestration, durable consumption, '
+    + 'evidence operations, and monitoring for EMILIA Gate deployments.',
   alternates: { canonical: '/product/cloud' },
   openGraph: {
-    title: 'EMILIA Cloud',
+    title: 'EMILIA Gate Cloud',
     description:
-      'Hosted EP runtime with managed authorization receipts, named-signoff ' +
-      'workflow, and receipt explorer.',
+      'Managed consequence-firewall operations with customer-pinned trust and '
+      + 'open, independently reproducible evidence.',
     url: 'https://www.emiliaprotocol.ai/product/cloud',
     type: 'article',
   },
   keywords: [
-    'EP Cloud',
+    'EMILIA Gate Cloud',
     'hosted AI authorization',
     'managed authorization receipts',
     'signoff workflow as a service',

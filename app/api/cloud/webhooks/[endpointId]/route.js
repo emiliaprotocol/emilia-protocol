@@ -2,10 +2,18 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { getServiceClient } from '@/lib/supabase';
 import { validateWebhookUrl } from '@/lib/cloud/webhooks';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
+
+// Columns safe to return on any read/update response. Deliberately EXCLUDES
+// `secret` (the plaintext whsec_... HMAC signing key): it is shown exactly once
+// at creation (registerEndpoint / POST) and must never be re-served on GET/PUT.
+const PUBLIC_ENDPOINT_COLUMNS =
+  'endpoint_id, url, events, status, failure_count, last_success_at, last_failure_at, created_at, updated_at';
 
 /**
  * GET /api/cloud/webhooks/[endpointId]
@@ -24,14 +32,14 @@ export async function GET(request, { params }) {
 
     const { data: endpoint, error } = await supabase
       .from('webhook_endpoints')
-      .select('*')
+      .select(PUBLIC_ENDPOINT_COLUMNS) // never fetch/serialize the plaintext HMAC secret on read
       .eq('endpoint_id', endpointId)
       .eq('tenant_id', auth.tenantId)
       .maybeSingle();
 
     if (error) {
       logger.error('[cloud/webhooks] GET error:', error);
-      return epProblem(500, 'webhook_query_failed', error.message);
+      return epDbError(500, 'webhook_query_failed', error, 'cloud/webhooks/id');
     }
 
     if (!endpoint) {
@@ -66,8 +74,10 @@ export async function PUT(request, { params }) {
     requirePermission(auth, 'write');
 
     const { endpointId } = await params;
-    const body = await request.json();
-    const supabase = getServiceClient();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
+    const supabase = getGuardedClient();
 
     // Verify ownership
     const { data: existing, error: lookupErr } = await supabase
@@ -79,7 +89,7 @@ export async function PUT(request, { params }) {
 
     if (lookupErr) {
       logger.error('[cloud/webhooks] PUT lookup error:', lookupErr);
-      return epProblem(500, 'webhook_query_failed', lookupErr.message);
+      return epDbError(500, 'webhook_query_failed', lookupErr, 'cloud/webhooks/id');
     }
 
     if (!existing) {
@@ -120,12 +130,13 @@ export async function PUT(request, { params }) {
       .from('webhook_endpoints')
       .update(update)
       .eq('endpoint_id', endpointId)
-      .select()
+      .eq('tenant_id', auth.tenantId) // carry tenant scope into the mutation itself (defense-in-depth)
+      .select(PUBLIC_ENDPOINT_COLUMNS) // never return the plaintext HMAC secret on update
       .single();
 
     if (updateErr) {
       logger.error('[cloud/webhooks] PUT update error:', updateErr);
-      return epProblem(500, 'webhook_update_failed', updateErr.message);
+      return epDbError(500, 'webhook_update_failed', updateErr, 'cloud/webhooks/id');
     }
 
     return NextResponse.json({
@@ -154,7 +165,7 @@ export async function DELETE(request, { params }) {
     requirePermission(auth, 'write');
 
     const { endpointId } = await params;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Verify ownership
     const { data: existing, error: lookupErr } = await supabase
@@ -166,7 +177,7 @@ export async function DELETE(request, { params }) {
 
     if (lookupErr) {
       logger.error('[cloud/webhooks] DELETE lookup error:', lookupErr);
-      return epProblem(500, 'webhook_query_failed', lookupErr.message);
+      return epDbError(500, 'webhook_query_failed', lookupErr, 'cloud/webhooks/id');
     }
 
     if (!existing) {
@@ -183,11 +194,12 @@ export async function DELETE(request, { params }) {
     const { error: deleteErr } = await supabase
       .from('webhook_endpoints')
       .delete()
-      .eq('endpoint_id', endpointId);
+      .eq('endpoint_id', endpointId)
+      .eq('tenant_id', auth.tenantId); // carry tenant scope into the mutation itself (defense-in-depth)
 
     if (deleteErr) {
       logger.error('[cloud/webhooks] DELETE error:', deleteErr);
-      return epProblem(500, 'webhook_delete_failed', deleteErr.message);
+      return epDbError(500, 'webhook_delete_failed', deleteErr, 'cloud/webhooks/id');
     }
 
     return NextResponse.json({

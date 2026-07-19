@@ -1,0 +1,371 @@
+/*
+ * EP-RELIANCE-COMPOSED-v2
+ *
+ * One symbolic Dolev-Yao model for the complete high-assurance path:
+ * signed RP challenge -> canonical action identifier -> two distinct UV-gated
+ * human approvals -> exact issuer and authority pins -> authenticated registry
+ * epoch/head -> fresh revocation state -> one-time consumption -> execution.
+ *
+ * The attacker controls the network, chooses candidate actions, profiles,
+ * audiences, registry views, and artifact combinations, and can reveal every
+ * long-term key. Guarantees that depend on an unrevealed key say so in the
+ * lemma. WebAuthn internals, wall-clock arithmetic, JCS injectivity, policy
+ * authorship, and the correctness of the externally pinned registry head are
+ * explicit assumptions rather than hidden proof claims.
+ */
+
+theory ep_reliance_composed
+begin
+
+builtins: signing, hashing
+
+/* ---------------------------- key enrollment ---------------------------- */
+
+rule Register_Relying_Party:
+    [ Fr(~ltk) ]
+  --[ RegisterRP($RP) ]->
+    [ !RPLtk($RP, ~ltk), !RPPk($RP, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Human:
+    [ Fr(~ltk) ]
+  --[ RegisterHuman($H) ]->
+    [ !HumanLtk($H, ~ltk), !HumanPk($H, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Issuer:
+    [ Fr(~ltk) ]
+  --[ RegisterIssuer($I) ]->
+    [ !IssuerLtk($I, ~ltk), !IssuerPk($I, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Authority:
+    [ Fr(~ltk) ]
+  --[ RegisterAuthority($A) ]->
+    [ !AuthorityLtk($A, ~ltk), !AuthorityPk($A, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Revoker:
+    [ Fr(~ltk) ]
+  --[ RegisterRevoker($R) ]->
+    [ !RevokerLtk($R, ~ltk), !RevokerPk($R, pk(~ltk)), Out(pk(~ltk)) ]
+
+/* Trust roots and the exact authenticated registry checkpoint arrive out of
+ * band. Receipt-carried keys, issuer classes, epochs, and heads never create a
+ * pin. The verifier pins two distinct approver identities and keys. */
+rule Pin_Roots_And_Registry_View:
+    [ In(<V, RP, H1, H2, I, A, R, epoch, head>)
+    , !RPPk(RP, pkRP), !HumanPk(H1, pkH1), !HumanPk(H2, pkH2)
+    , !IssuerPk(I, pkI), !AuthorityPk(A, pkA), !RevokerPk(R, pkR) ]
+  --[ RootsPinned(V, RP, H1, H2, I, A, R)
+    , RegistryViewPinned(V, A, epoch, head)
+    , Neq(H1, H2), Neq(pkH1, pkH2) ]->
+    [ !PinnedRPPk(V, RP, pkRP)
+    , !PinnedHumanPk(V, H1, pkH1), !PinnedHumanPk(V, H2, pkH2)
+    , !PinnedIssuerPk(V, I, pkI), !PinnedAuthorityPk(V, A, pkA)
+    , !PinnedRevokerPk(V, R, pkR), !PinnedRegistryView(V, A, epoch, head) ]
+
+/* ----------------------- challenge, CAID, approvals --------------------- */
+
+/* CAID is not an attacker-supplied label. The RP computes it from the action
+ * family and material fields, then signs it with the profile, audience,
+ * initiator, and fresh challenge nonce. */
+rule RP_Issue_Challenge:
+    [ !RPLtk(RP, ltkRP), In(<Init, family, material, profile, audience>), Fr(~nonce) ]
+  --[ ChallengeIssued(RP, Init, family, material,
+                      <'caid_v1', family, h(material)>, profile, audience, ~nonce) ]->
+    [ !OpenChallenge(RP, Init, family, material,
+                     <'caid_v1', family, h(material)>, profile, audience, ~nonce)
+    , Out(<RP, Init, family, material, <'caid_v1', family, h(material)>,
+           profile, audience, ~nonce,
+           sign(<'ep_challenge_v2', RP, Init,
+                 <'caid_v1', family, h(material)>, profile, audience, ~nonce>, ltkRP)>) ]
+
+/* Any enrolled human may inspect a challenge. The signer slot is bound into
+ * the UV event and signature, so one signature cannot be replayed into two
+ * quorum seats. */
+rule Human_Inspect_And_UV:
+    [ In(<RP, Init, family, material, caid, profile, audience, nonce, challengeSig, H, slot>)
+    , !RPPk(RP, pkRP), !HumanPk(H, pkH) ]
+  --[ Eq(caid, <'caid_v1', family, h(material)>)
+    , Eq(verify(challengeSig,
+               <'ep_challenge_v2', RP, Init, caid, profile, audience, nonce>, pkRP), true)
+    , UV(H, slot, RP, Init, caid, profile, audience, nonce) ]->
+    [ UVDone(H, slot, RP, Init, caid, profile, audience, nonce) ]
+
+rule Human_Sign_Approval:
+    [ UVDone(H, slot, RP, Init, caid, profile, audience, nonce)
+    , !HumanLtk(H, ltkH) ]
+  --[ HumanSigned(H, slot, RP, Init, caid, profile, audience, nonce) ]->
+    [ Out(<H, slot,
+           sign(<'ep_approval_v2', H, slot, RP, Init, caid, profile, audience, nonce>, ltkH)>) ]
+
+/* The attacker may request authentic authority and revocation artifacts for
+ * arbitrary tuples, including stale or equivocating registry views. Strict
+ * acceptance therefore rests on exact tuple and pinned-view binding, not on
+ * assuming other signed artifacts do not exist. */
+rule Authority_Issue_Scoped_Proof:
+    [ !AuthorityLtk(A, ltkA)
+    , In(<H, RP, Init, caid, profile, audience, nonce, epoch, head>) ]
+  --[ AuthorityIssued(A, H, RP, Init, caid, profile, audience, nonce, epoch, head) ]->
+    [ Out(<A, epoch, head,
+           sign(<'ep_authority_v2', A, H, RP, Init, caid, profile,
+                 audience, nonce, epoch, head>, ltkA)>) ]
+
+rule Revoker_Issue_Fresh_State:
+    [ !RevokerLtk(R, ltkR), In(<RP, Init, caid, profile, audience, nonce>) ]
+  --[ RevocationCurrent(R, RP, Init, caid, profile, audience, nonce) ]->
+    [ Out(<R,
+           sign(<'ep_revocation_v2', R, RP, Init, caid, profile,
+                 audience, nonce, 'current'>, ltkR)>) ]
+
+/* ----------------------------- receipt issue ---------------------------- */
+
+rule Issuer_Assemble_Receipt:
+    [ In(<RP, Init, family, material, caid, profile, audience, nonce, challengeSig>)
+    , In(<H1, 'slot_1', humanSig1>), In(<H2, 'slot_2', humanSig2>)
+    , In(<A, epoch, head, authoritySig>), In(<R, revocationSig>)
+    , !RPPk(RP, pkRP), !HumanPk(H1, pkH1), !HumanPk(H2, pkH2)
+    , !AuthorityPk(A, pkA), !RevokerPk(R, pkR), !IssuerLtk(I, ltkI) ]
+  --[ Eq(caid, <'caid_v1', family, h(material)>)
+    , Eq(verify(challengeSig,
+               <'ep_challenge_v2', RP, Init, caid, profile, audience, nonce>, pkRP), true)
+    , Eq(verify(humanSig1,
+               <'ep_approval_v2', H1, 'slot_1', RP, Init, caid, profile, audience, nonce>, pkH1), true)
+    , Eq(verify(humanSig2,
+               <'ep_approval_v2', H2, 'slot_2', RP, Init, caid, profile, audience, nonce>, pkH2), true)
+    , Eq(verify(authoritySig,
+               <'ep_authority_v2', A, H1, RP, Init, caid, profile,
+                 audience, nonce, epoch, head>, pkA), true)
+    , Eq(verify(revocationSig,
+               <'ep_revocation_v2', R, RP, Init, caid, profile,
+                 audience, nonce, 'current'>, pkR), true)
+    , Neq(H1, H2), Neq(H1, Init), Neq(H2, Init)
+    , IssuerReceipt(I, H1, H2, RP, Init, family, material, caid,
+                    profile, audience, nonce, A, R, epoch, head) ]->
+    [ Out(<I, H1, H2, RP, Init, family, material, caid, profile,
+           audience, nonce, A, R, epoch, head, challengeSig, humanSig1,
+           humanSig2, authoritySig, revocationSig,
+           sign(<'ep_receipt_v2', I, H1, H2, RP, Init, family, h(material),
+                 caid, profile, audience, nonce, A, R, epoch, head,
+                 challengeSig, humanSig1, humanSig2, authoritySig,
+                 revocationSig>, ltkI)>) ]
+
+/* ------------------------ strict acceptance path ------------------------ */
+
+rule Verify_Consume_And_Execute:
+    [ In(<I, H1, H2, RP, Init, family, material, caid, profile,
+          audience, nonce, A, R, epoch, head, challengeSig, humanSig1,
+          humanSig2, authoritySig, revocationSig, issuerSig>)
+    , !PinnedRPPk(V, RP, pkRP), !PinnedHumanPk(V, H1, pkH1)
+    , !PinnedHumanPk(V, H2, pkH2), !PinnedIssuerPk(V, I, pkI)
+    , !PinnedAuthorityPk(V, A, pkA), !PinnedRevokerPk(V, R, pkR)
+    , !PinnedRegistryView(V, A, epoch, head) ]
+  --[ Eq(V, audience), Eq(caid, <'caid_v1', family, h(material)>)
+    , Eq(verify(challengeSig,
+               <'ep_challenge_v2', RP, Init, caid, profile, audience, nonce>, pkRP), true)
+    , Eq(verify(humanSig1,
+               <'ep_approval_v2', H1, 'slot_1', RP, Init, caid, profile, audience, nonce>, pkH1), true)
+    , Eq(verify(humanSig2,
+               <'ep_approval_v2', H2, 'slot_2', RP, Init, caid, profile, audience, nonce>, pkH2), true)
+    , Eq(verify(authoritySig,
+               <'ep_authority_v2', A, H1, RP, Init, caid, profile,
+                 audience, nonce, epoch, head>, pkA), true)
+    , Eq(verify(revocationSig,
+               <'ep_revocation_v2', R, RP, Init, caid, profile,
+                 audience, nonce, 'current'>, pkR), true)
+    , Eq(verify(issuerSig,
+               <'ep_receipt_v2', I, H1, H2, RP, Init, family, h(material),
+                 caid, profile, audience, nonce, A, R, epoch, head,
+                 challengeSig, humanSig1, humanSig2, authoritySig,
+                 revocationSig>, pkI), true)
+    , Neq(H1, H2), Neq(pkH1, pkH2), Neq(H1, Init), Neq(H2, Init)
+    , Consume(<RP, nonce>)
+    , AcceptedStrict(V, I, H1, H2, RP, Init, family, material, caid,
+                     profile, nonce, A, R, epoch, head)
+    , Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) ]->
+    [ ]
+
+/* Unsafe comparison path 1: all strict bindings except one-time consumption.
+ * Its injectivity lemma MUST be falsified by same-challenge replay. */
+rule Verify_And_Execute_Without_Consumption:
+    [ In(<I, H1, H2, RP, Init, family, material, caid, profile,
+          audience, nonce, A, R, epoch, head, challengeSig, humanSig1,
+          humanSig2, authoritySig, revocationSig, issuerSig>)
+    , !PinnedRPPk(V, RP, pkRP), !PinnedHumanPk(V, H1, pkH1)
+    , !PinnedHumanPk(V, H2, pkH2), !PinnedIssuerPk(V, I, pkI)
+    , !PinnedAuthorityPk(V, A, pkA), !PinnedRevokerPk(V, R, pkR)
+    , !PinnedRegistryView(V, A, epoch, head) ]
+  --[ Eq(V, audience), Eq(caid, <'caid_v1', family, h(material)>)
+    , Eq(verify(challengeSig, <'ep_challenge_v2', RP, Init, caid, profile, audience, nonce>, pkRP), true)
+    , Eq(verify(humanSig1, <'ep_approval_v2', H1, 'slot_1', RP, Init, caid, profile, audience, nonce>, pkH1), true)
+    , Eq(verify(humanSig2, <'ep_approval_v2', H2, 'slot_2', RP, Init, caid, profile, audience, nonce>, pkH2), true)
+    , Eq(verify(authoritySig, <'ep_authority_v2', A, H1, RP, Init, caid, profile, audience, nonce, epoch, head>, pkA), true)
+    , Eq(verify(revocationSig, <'ep_revocation_v2', R, RP, Init, caid, profile, audience, nonce, 'current'>, pkR), true)
+    , Eq(verify(issuerSig, <'ep_receipt_v2', I, H1, H2, RP, Init, family, h(material), caid, profile, audience, nonce, A, R, epoch, head, challengeSig, humanSig1, humanSig2, authoritySig, revocationSig>, pkI), true)
+    , Neq(H1, H2), Neq(pkH1, pkH2), Neq(H1, Init), Neq(H2, Init)
+    , ExecutedUnchecked(V, I, H1, H2, RP, Init, family, material,
+                        caid, profile, nonce, A, R, epoch, head) ]->
+    [ ]
+
+/* Unsafe comparison path 2: verifies the authority signature but accepts the
+ * registry epoch/head that happened to be presented instead of the exact
+ * checkpoint pinned by V. The expected falsification demonstrates stale-view
+ * and equivocation acceptance if this equality is omitted. */
+rule Verify_And_Execute_With_Unpinned_Registry_View:
+    [ In(<I, H1, H2, RP, Init, family, material, caid, profile,
+          audience, nonce, A, R, epoch, head, challengeSig, humanSig1,
+          humanSig2, authoritySig, revocationSig, issuerSig>)
+    , !PinnedRPPk(V, RP, pkRP), !PinnedHumanPk(V, H1, pkH1)
+    , !PinnedHumanPk(V, H2, pkH2), !PinnedIssuerPk(V, I, pkI)
+    , !PinnedAuthorityPk(V, A, pkA), !PinnedRevokerPk(V, R, pkR)
+    , !PinnedRegistryView(V, A, pinnedEpoch, pinnedHead) ]
+  --[ Eq(V, audience), Eq(caid, <'caid_v1', family, h(material)>)
+    , Eq(verify(challengeSig, <'ep_challenge_v2', RP, Init, caid, profile, audience, nonce>, pkRP), true)
+    , Eq(verify(humanSig1, <'ep_approval_v2', H1, 'slot_1', RP, Init, caid, profile, audience, nonce>, pkH1), true)
+    , Eq(verify(humanSig2, <'ep_approval_v2', H2, 'slot_2', RP, Init, caid, profile, audience, nonce>, pkH2), true)
+    , Eq(verify(authoritySig, <'ep_authority_v2', A, H1, RP, Init, caid, profile, audience, nonce, epoch, head>, pkA), true)
+    , Eq(verify(revocationSig, <'ep_revocation_v2', R, RP, Init, caid, profile, audience, nonce, 'current'>, pkR), true)
+    , Eq(verify(issuerSig, <'ep_receipt_v2', I, H1, H2, RP, Init, family, h(material), caid, profile, audience, nonce, A, R, epoch, head, challengeSig, humanSig1, humanSig2, authoritySig, revocationSig>, pkI), true)
+    , Neq(H1, H2), Neq(pkH1, pkH2), Neq(H1, Init), Neq(H2, Init)
+    , ExecutedUncheckedRegistry(V, A, epoch, head, pinnedEpoch, pinnedHead) ]->
+    [ ]
+
+/* ----------------------------- compromise ------------------------------- */
+
+rule Reveal_Human_Key:
+    [ !HumanLtk(H, ltk) ] --[ RevealHuman(H) ]-> [ Out(ltk) ]
+
+rule Reveal_Issuer_Key:
+    [ !IssuerLtk(I, ltk) ] --[ RevealIssuer(I) ]-> [ Out(ltk) ]
+
+rule Reveal_Authority_Key:
+    [ !AuthorityLtk(A, ltk) ] --[ RevealAuthority(A) ]-> [ Out(ltk) ]
+
+rule Reveal_Revoker_Key:
+    [ !RevokerLtk(R, ltk) ] --[ RevealRevoker(R) ]-> [ Out(ltk) ]
+
+rule Reveal_RP_Key:
+    [ !RPLtk(RP, ltk) ] --[ RevealRP(RP) ]-> [ Out(ltk) ]
+
+restriction Equality:
+  "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+restriction Inequality:
+  "All x #i. Neq(x, x) @ #i ==> F"
+
+restriction ConsumeOnce:
+  "All x #i #j. Consume(x) @ #i & Consume(x) @ #j ==> #i = #j"
+
+restriction OneHumanEnrollment:
+  "All H #i #j. RegisterHuman(H) @ #i & RegisterHuman(H) @ #j ==> #i = #j"
+
+/* -------------------------------- lemmas -------------------------------- */
+
+lemma executable_composed_reliance:
+  exists-trace
+  "Ex V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    & not (H1 = H2) & not (H1 = Init) & not (H2 = Init)
+    & not (Ex #r. RevealHuman(H1) @ #r)
+    & not (Ex #r. RevealHuman(H2) @ #r)
+    & not (Ex #r. RevealIssuer(I) @ #r)
+    & not (Ex #r. RevealAuthority(A) @ #r)
+    & not (Ex #r. RevealRevoker(R) @ #r)
+    & not (Ex #r. RevealRP(RP) @ #r)"
+
+lemma execution_requires_full_composition:
+  "All V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    & not (Ex #r. RevealHuman(H1) @ #r & #r < #i)
+    & not (Ex #r. RevealHuman(H2) @ #r & #r < #i)
+    & not (Ex #r. RevealIssuer(I) @ #r & #r < #i)
+    & not (Ex #r. RevealAuthority(A) @ #r & #r < #i)
+    & not (Ex #r. RevealRevoker(R) @ #r & #r < #i)
+    & not (Ex #r. RevealRP(RP) @ #r & #r < #i)
+    ==> (Ex audience #c #s1 #s2 #a #r #s #p.
+          ChallengeIssued(RP, Init, family, material, caid, profile, audience, nonce) @ #c
+        & HumanSigned(H1, 'slot_1', RP, Init, caid, profile, audience, nonce) @ #s1
+        & HumanSigned(H2, 'slot_2', RP, Init, caid, profile, audience, nonce) @ #s2
+        & AuthorityIssued(A, H1, RP, Init, caid, profile, audience, nonce, epoch, head) @ #a
+        & RevocationCurrent(R, RP, Init, caid, profile, audience, nonce) @ #r
+        & IssuerReceipt(I, H1, H2, RP, Init, family, material, caid,
+                        profile, audience, nonce, A, R, epoch, head) @ #s
+        & RegistryViewPinned(V, A, epoch, head) @ #p
+        & #c < #s1 & #c < #s2 & #s1 < #s & #s2 < #s
+        & #a < #s & #r < #s & #s < #i & #p < #i)"
+
+lemma caid_binds_family_and_material:
+  "All V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    ==> caid = <'caid_v1', family, h(material)>"
+
+lemma initiator_cannot_self_approve:
+  "not (Ex V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    & (H1 = Init | H2 = Init))"
+
+lemma no_single_signer_fills_quorum:
+  "not (Ex V I H RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H, H, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i)"
+
+lemma no_issuer_laundering:
+  "All V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    & not (Ex #r. RevealIssuer(I) @ #r & #r < #i)
+    ==> (Ex audience #s.
+          IssuerReceipt(I, H1, H2, RP, Init, family, material, caid,
+                        profile, audience, nonce, A, R, epoch, head) @ #s
+        & #s < #i)"
+
+lemma strict_registry_view_is_exact:
+  "All V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    ==> (Ex #p. RegistryViewPinned(V, A, epoch, head) @ #p & #p < #i)"
+
+lemma no_cross_action_profile_or_audience_replay:
+  "not (Ex V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    & not (Ex #r. RevealHuman(H1) @ #r & #r < #i)
+    & not (Ex #r. RevealHuman(H2) @ #r & #r < #i)
+    & not (Ex #r. RevealRP(RP) @ #r & #r < #i)
+    & not (Ex #c. ChallengeIssued(RP, Init, family, material, caid,
+                                   profile, V, nonce) @ #c & #c < #i))"
+
+lemma execution_has_honest_approvals_or_prior_compromise:
+  "All V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    ==> ((Ex #s1. HumanSigned(H1, 'slot_1', RP, Init, caid, profile, V, nonce) @ #s1 & #s1 < #i)
+         | (Ex #k1. RevealHuman(H1) @ #k1 & #k1 < #i))
+      & ((Ex #s2. HumanSigned(H2, 'slot_2', RP, Init, caid, profile, V, nonce) @ #s2 & #s2 < #i)
+         | (Ex #k2. RevealHuman(H2) @ #k2 & #k2 < #i))"
+
+lemma injective_execution_with_consumption:
+  "All V I H1 H2 RP Init family material caid profile nonce A R epoch head #i.
+      Executed(V, I, H1, H2, RP, Init, family, material, caid,
+               profile, nonce, A, R, epoch, head) @ #i
+    ==> not (Ex V2 I2 X1 X2 Init2 family2 material2 caid2 profile2 A2 R2 epoch2 head2 #j.
+          Executed(V2, I2, X1, X2, RP, Init2, family2, material2, caid2,
+                   profile2, nonce, A2, R2, epoch2, head2) @ #j
+        & not (#j = #i))"
+
+lemma unchecked_composition_is_injective:
+  "All V I H1 H2 RP Init family material caid profile nonce A R epoch head #i #j.
+      ExecutedUnchecked(V, I, H1, H2, RP, Init, family, material,
+                        caid, profile, nonce, A, R, epoch, head) @ #i
+    & ExecutedUnchecked(V, I, H1, H2, RP, Init, family, material,
+                        caid, profile, nonce, A, R, epoch, head) @ #j
+    ==> #i = #j"
+
+lemma unchecked_registry_view_is_current:
+  "All V A epoch head pinnedEpoch pinnedHead #i.
+      ExecutedUncheckedRegistry(V, A, epoch, head, pinnedEpoch, pinnedHead) @ #i
+    ==> epoch = pinnedEpoch & head = pinnedHead"
+
+end

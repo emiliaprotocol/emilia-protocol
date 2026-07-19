@@ -4,20 +4,31 @@
 
 export const runtime = 'nodejs';
 
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { upsertConnection, listConnections, spOrigin } from '@/lib/sso/config';
 import { validateOidcRedirectUri, validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { seal } from '@/lib/crypto/secret-box';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '@/lib/logger.js';
+import { refuseObserveScope } from '@/lib/auth/observe-scope';
+import { hasApiPermission } from '@/lib/auth-permissions.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 export async function POST(request) {
   const auth = await authenticateRequest(request);
   if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+  { const denied = refuseObserveScope(auth, epProblem); if (denied) return denied; }
+  if (!hasApiPermission(auth, 'sso.manage')) {
+    return epProblem(403, 'insufficient_permissions', 'SSO configuration requires sso.manage or admin permission');
+  }
   const tenant = authEntityId(auth);
 
-  let body;
-  try { body = await request.json(); } catch { return epProblem(400, 'invalid_json', 'Body must be valid JSON'); }
+  const parsed = await readEpJson(request, MAX_BODY_BYTES);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
   const protocol = body.protocol;
   if (!['saml', 'oidc'].includes(protocol)) {
@@ -73,6 +84,10 @@ export async function POST(request) {
 export async function GET(request) {
   const auth = await authenticateRequest(request);
   if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+  { const denied = refuseObserveScope(auth, epProblem); if (denied) return denied; }
+  if (!hasApiPermission(auth, 'sso.read') && !hasApiPermission(auth, 'sso.manage')) {
+    return epProblem(403, 'insufficient_permissions', 'SSO configuration requires sso.read, sso.manage, or admin permission');
+  }
   const tenant = authEntityId(auth);
   const { connections, error } = await listConnections(tenant);
   if (error) return epProblem(503, 'config_read_failed', 'Could not list SSO connections');

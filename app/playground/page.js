@@ -27,9 +27,27 @@ const badge = (bg, fg, border) => ({
   background: bg, color: fg, border: `1px solid ${border}`,
 });
 
+const SENSITIVE_FIELD_RE = /(api[_-]?key|new[_-]?key|private[_-]?key|secret|token|password|credential)/i;
+const SECRET_VALUE_RE = /^(ep|ept)_(live|test|scim)_[a-z0-9_-]{12,}$/i;
+
+function redactForDisplay(value, depth = 0) {
+  if (depth > 8) return '[truncated]';
+  if (typeof value === 'string') {
+    if (SECRET_VALUE_RE.test(value) || value.includes('-----BEGIN ')) return '[redacted]';
+    return value;
+  }
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(item => redactForDisplay(item, depth + 1));
+  return Object.fromEntries(Object.entries(value).map(([key, nested]) => [
+    key,
+    SENSITIVE_FIELD_RE.test(key) ? '[redacted]' : redactForDisplay(nested, depth + 1),
+  ]));
+}
+
 function ResultPanel({ title, data, status }) {
   if (!data) return null;
   const isOk = status === 'success';
+  const displayData = typeof data === 'string' ? data : redactForDisplay(data);
   return (
     <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, marginTop: 12, overflow: 'hidden' }}>
       <div style={{ padding: '12px 16px', borderBottom: `1px solid ${color.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -41,7 +59,7 @@ function ResultPanel({ title, data, status }) {
         )}>{isOk ? 'SUCCESS' : 'ERROR'}</span>
       </div>
       <pre style={{ ...mono, padding: 16, margin: 0, color: color.t2, whiteSpace: 'pre-wrap', wordBreak: 'break-all', maxHeight: 300, overflow: 'auto' }}>
-        {typeof data === 'string' ? data : JSON.stringify(data, null, 2)}
+        {typeof displayData === 'string' ? displayData : JSON.stringify(displayData, null, 2)}
       </pre>
     </div>
   );
@@ -76,7 +94,7 @@ export default function PlaygroundPage() {
   async function createEntity(name) {
     const { ok, data } = await apiCall('POST', '/api/entity', { name });
     if (ok && data?.entity_id) {
-      setEntities(prev => [...prev, { id: data.entity_id, name, api_key: data.api_key }]);
+      setEntities(prev => [...prev, { id: data.entity_id, name }]);
       setStep(s => Math.max(s, 1));
     }
   }

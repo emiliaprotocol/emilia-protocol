@@ -1,6 +1,6 @@
-# EP Cloud
+# EMILIA Gate Cloud
 
-EP Cloud is the managed control plane for teams that want the fastest path from protocol adoption to production control.
+EMILIA Gate Cloud is the managed control plane for teams that want the fastest path from protocol adoption to production control.
 
 ## What it includes
 
@@ -22,4 +22,4 @@ Open protocol adoption is important. But production control requires:
 - evidence retention
 - fast deployment
 
-EP Cloud provides that layer.
+EMILIA Gate Cloud provides that layer.

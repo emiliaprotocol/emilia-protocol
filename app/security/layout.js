@@ -1,15 +1,20 @@
+import proofStats from '@/lib/proof-stats.json';
+
+const evidence = `${proofStats.securityCase.claims} executable security claims, `
+  + `${proofStats.tamarin.verifiedObligations} composed Tamarin obligations, `
+  + `${proofStats.conformance.vectors} conformance vectors, and `
+  + `${proofStats.externalImplementation.hostilityCases} external hostility cases`;
+
 export const metadata = {
-  title: 'Trust & Security — EMILIA Protocol',
+  title: 'Trust & Security — Machine-Verifiable Security Case',
   description:
-    'Security posture, compliance roadmap, and responsible-disclosure ' +
-    'process for EMILIA Protocol. Apache 2.0 reference runtime with formal ' +
-    'verification (26 TLA+ theorems, 35 Alloy facts) in CI; SOC 2 Type I, ' +
-    'external cryptographic-protocol review, and bug bounty in roadmap.',
+    `EMILIA Protocol security posture backed by ${evidence}. `
+    + 'Includes formal scope, assumptions, exclusions, conformance, and disclosure policy.',
   alternates: { canonical: '/security' },
   openGraph: {
     title: 'EMILIA Protocol Trust & Security',
     description:
-      'Compliance posture, formal verification, and disclosure policy.',
+      `Machine-verifiable security evidence: ${evidence}.`,
     url: 'https://www.emiliaprotocol.ai/security',
     type: 'website',
   },

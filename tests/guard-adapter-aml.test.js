@@ -11,6 +11,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const store = { aml_history: [], audit_events: [] };
+const failures = { amlLookup: false, amlInsert: false };
 const inserted = []; // every inserted row, in order (back-compat assertions)
 const mockGetGuardedClient = vi.fn(() => ({ from: (t) => new Q(t) }));
 vi.mock('@/lib/supabase', () => ({
@@ -28,12 +29,18 @@ class Q {
   order() { return this; }
   limit(n) { this._limit = n; return this; }
   async insert(row) {
+    if (this.table === 'aml_history' && failures.amlInsert) {
+      return { error: { message: 'aml history unavailable' } };
+    }
     const r = { occurred_at: new Date().toISOString(), ...row };
     (store[this.table] ||= []).push(r);
     inserted.push(r);
     return { error: null };
   }
   then(resolve) {
+    if (this.table === 'aml_history' && failures.amlLookup) {
+      return resolve({ data: null, error: { message: 'aml history unavailable' } });
+    }
     let rows = (store[this.table] || []).filter((r) => this.filters.every((f) => f(r)));
     rows = rows.slice().reverse(); // newest-first (insert order ascending)
     if (this._limit) rows = rows.slice(0, this._limit);
@@ -86,6 +93,8 @@ beforeEach(() => {
   inserted.length = 0;
   store.aml_history = [];
   store.audit_events = [];
+  failures.amlLookup = false;
+  failures.amlInsert = false;
   mockGetGuardedClient.mockClear();
 });
 
@@ -97,11 +106,18 @@ describe('guard adapter + AML', () => {
     expect(inserted).toHaveLength(0);
   });
 
-  it('allows a clean financial action (no AML signals)', async () => {
+  it('a clean financial action carries no AML signals (floored to signoff, not AML-escalated)', async () => {
+    // AML intent: a clean action produces NO aml_signals. The decision is
+    // allow_with_signoff because the mint-time key-class floor escalates a
+    // large_payment_release that would otherwise be a bare allow — this is a
+    // base-policy property, independent of AML. aml_signals is still null,
+    // which is the assertion that isolates the AML behavior.
     const res = await precheck(baseBody());
     expect(res.status).toBe(201);
     const json = await res.json();
-    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW);
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(json.signoff_required).toBe(true);
+    expect(json.required_assurance).toBe('A');
     expect(json.aml_signals).toBeNull();
   });
 
@@ -167,19 +183,85 @@ describe('guard adapter + AML history (self-lookup)', () => {
     expect(store.aml_history.filter((h) => h.counterparty === 'smurf trading').length).toBe(3);
   });
 
-  it('a first-ever transfer to a counterparty (clean amount) allows and records history', async () => {
+  it('a first-ever transfer to a counterparty (clean amount) records history and raises no AML signal', async () => {
+    // History-recording intent preserved: the transfer is persisted to
+    // aml_history so future prechecks can build a window from it. The decision
+    // is allow_with_signoff due to the large_payment_release key-class floor
+    // (not AML), and the clean counterparty contributes no aml_signals.
     const res = await precheck(baseBody({ counterparty_name: 'Acme Widgets', amount: 2000 }));
     const json = await res.json();
-    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW);
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(json.aml_signals).toBeNull();
     expect(store.aml_history.some((h) => h.counterparty === 'acme widgets' && Number(h.amount) === 2000)).toBe(true);
   });
 
-  it('caller-supplied recent_amounts still take precedence over history', async () => {
+  it('caller-supplied recent_amounts supplement authoritative history', async () => {
     // History is empty, but the caller reports a structuring window directly.
     const res = await precheck(baseBody({ counterparty_name: 'Reported Co', amount: 9500, recent_amounts: [9400, 9600] }));
     const json = await res.json();
     expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
     expect(json.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
+  });
+
+  it('does not let caller-supplied recent_amounts erase authoritative history', async () => {
+    const occurred_at = new Date().toISOString();
+    store.aml_history.push(
+      { tenant_id: 'ep_entity_acme', counterparty: 'smurf trading', amount: 9400, occurred_at },
+      { tenant_id: 'ep_entity_acme', counterparty: 'smurf trading', amount: 9600, occurred_at },
+    );
+
+    const res = await precheck(baseBody({
+      counterparty_name: 'Smurf Trading',
+      amount: 9500,
+      recent_amounts: [],
+    }));
+    const json = await res.json();
+
+    expect(json.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
+  });
+
+  it('does not let an explicit aml block mask the action counterparty', async () => {
+    const res = await precheck(baseBody({
+      counterparty_name: 'Blocked Person Alpha',
+      aml: { counterpartyName: 'Safe Person', amount: 2000, recentAmounts: [] },
+    }));
+    const json = await res.json();
+
+    expect(json.decision).toBe(GUARD_DECISIONS.DENY);
+    expect(json.aml_signals.some((s) => s.startsWith('sanctions_match'))).toBe(true);
+  });
+
+  it('fails closed in enforce mode when authoritative AML history cannot be read', async () => {
+    failures.amlLookup = true;
+
+    const res = await precheck(baseBody({ counterparty_name: 'Acme Widgets' }));
+    const json = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(`${json.code ?? ''} ${json.type ?? ''}`).toMatch(/aml_history_unavailable/);
+  });
+
+  it('fails closed in enforce mode when AML history cannot be recorded', async () => {
+    failures.amlInsert = true;
+
+    const res = await precheck(baseBody({ counterparty_name: 'Acme Widgets' }));
+    const json = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(`${json.code ?? ''} ${json.type ?? ''}`).toMatch(/aml_history_write_failed/);
+  });
+
+  it('permits observe-only diagnostics to degrade when AML history is unavailable', async () => {
+    failures.amlLookup = true;
+
+    const res = await precheck(baseBody({
+      counterparty_name: 'Acme Widgets',
+      enforcement_mode: 'observe',
+    }));
+    const json = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(json.decision).toBe(GUARD_DECISIONS.OBSERVE);
   });
 });
 
@@ -204,11 +286,46 @@ describe('guard adapter + PIP-007 initiator attestation', () => {
     expect(json.initiator_attestation.policy_basis).toContain('/rule:payment-threshold-single');
   });
 
-  it('omits the attestation (null) on a clean ALLOW', async () => {
-    const res = await precheck(baseBody());
+  it('omits the attestation (null) on a genuinely clean ALLOW', async () => {
+    // The "null attestation on a clean ALLOW" invariant is preserved by routing
+    // through a genuinely non-critical action (benefit_address_change with a
+    // cosmetic display_name change), which the key-class floor does NOT escalate.
+    // large_payment_release can no longer produce a clean ALLOW (it is floored),
+    // so we exercise this invariant on an action type that still default-allows.
+    const BENIGN_SPEC = {
+      adapterName: 'gov.benefit-address-change',
+      actionType: GUARD_ACTION_TYPES.BENEFIT_ADDRESS_CHANGE,
+      policyId: 'gov.benefit-address-change.v1',
+      targetResourceField: 'benefit_case_id',
+      actorRole: 'caseworker',
+    };
+    const req = new Request('https://www.emiliaprotocol.ai/api/v1/adapters/gov/benefit-address-change/precheck', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ep_live_test', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        organization_id: 'ep_entity_acme',
+        benefit_case_id: 'bc_1',
+        target_changed_fields: ['display_name'],
+        enforcement_mode: 'enforce',
+        before_state: { display_name: 'A' },
+        after_state: { display_name: 'B' },
+      }),
+    });
+    const res = await runGuardPrecheck(req, BENIGN_SPEC);
     const json = await res.json();
     expect(json.decision).toBe(GUARD_DECISIONS.ALLOW);
     expect(json.initiator_attestation).toBeNull();
+  });
+
+  it('mints a floor attestation on a floored large_payment_release (was a bare ALLOW)', async () => {
+    // The formerly-clean sub-$50k large_payment_release is now floored to
+    // signoff, so the initiator attestation is minted (no longer null). It
+    // reflects the key-class floor's signoff-required escalation.
+    const res = await precheck(baseBody());
+    const json = await res.json();
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(json.initiator_attestation).not.toBeNull();
+    expect(json.initiator_attestation.escalation_trigger).toBe('policy_rule');
   });
 
   it('observe mode still records the would-be attestation (signoffRequired preserved)', async () => {

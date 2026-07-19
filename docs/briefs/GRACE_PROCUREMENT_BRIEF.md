@@ -83,11 +83,11 @@ verifies for settlement review; auto-revert. (This stage requires a host facilit
 - **Open standard** (Apache-2.0), not slideware — receipts verify even if the vendor disappears.
 - **IETF Internet-Drafts** (authorization receipts; multi-party quorum); the `grid.curtailment`
   profile is specified as PIP-014 on top of the receipts draft.
-- **Formal verification:** 26 TLA+ invariants (TLC model checker) and 35 Alloy facts with 22
-  assertions; 85 adversarial red-team cases; **4,220 automated tests passing (4,249 total)**.
-- **Cross-language verifiers:** three independent implementations (JavaScript, Python, Go) agreeing
-  byte-for-byte across the conformance suite, so auditors verify a bundle against source and
-  mathematics, not a vendor's word.
+- **Formal verification:** 26 TLA+ invariants (TLC model checker) and 35 Alloy facts with 32
+  assertions across four models; 85 adversarial red-team cases; **6,729 automated test cases across 353 files, with every platform-applicable case required to pass**.
+- **Cross-language verifiers:** JavaScript, Python, and Go reference verifiers agreeing byte-for-byte
+  across the conformance suite, so auditors verify a bundle against source and mathematics, not a
+  vendor's word. This is a consistency check, not a clean-room independent-implementation claim.
 - **Security posture:** GRACE rejects spoofed, stale, and replayed curtailment orders as rigorously
   as it proves legitimate ones — a forged "throttle" is refused fail-closed against a pinned key, so
   adopting GRACE does not become a new attack surface on your own cluster.

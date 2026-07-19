@@ -36,8 +36,8 @@ additive: a single-approver policy is the degenerate one-member case, and the
 existing offline receipt verifier is reused per member. We give the predicate,
 an incremental server-side admission rule that keeps a non-conforming signer
 out of the trail before it is recorded, and an adversarial conformance suite
-of eleven vectors that three independent implementations (JavaScript, Python,
-Go) are required to agree on. We are deliberate about limitations: a quorum
+of thirteen vectors that the JavaScript, Python, and Go reference verifiers are
+required to agree on. We are deliberate about limitations: a quorum
 raises the cost of unilateral action and makes every approval attributable,
 but it does not defeat collusion among the required number of humans, an
 enrollment that lets one human hold multiple identities, or simultaneous
@@ -79,9 +79,9 @@ predicate over EP signoffs. Our contributions are:
    out-of-order, stale, or invalid signer *before* it enters the trail —
    while requiring the executing system to nonetheless re-check the full
    predicate, because it does not trust the orchestrator.
-3. **An adversarial conformance suite** (Section 6) of eleven vectors carrying
-   real WebAuthn assertions, against which three independent implementations
-   are required to agree, separating "too strict" failures (denying valid
+3. **An adversarial conformance suite** (Section 6) of thirteen vectors carrying
+   real WebAuthn assertions, against which the JavaScript, Python, and Go
+   reference verifiers are required to agree, separating "too strict" failures (denying valid
    quorums) from the security-critical "too lenient" failures.
 4. **An explicit threat model and limitation statement** (Sections 3, 7) that
    states what multi-party authorization does *not* prevent.
@@ -212,7 +212,7 @@ what the operator asserts.
 
 ## 6. Conformance and Implementation
 
-We maintain an adversarial conformance suite, `EP-QUORUM-v1`, of eleven vectors
+We maintain an adversarial conformance suite, `EP-QUORUM-v1`, of thirteen vectors
 that each carry real Class-A WebAuthn (ES256) assertions:
 
 | Vector | Expect | Exercises |
@@ -227,9 +227,10 @@ that each carry real Class-A WebAuthn (ES256) assertions:
 | `reject_one_bad_signature` | not satisfied | One invalid signature |
 | `reject_wrong_role` | not satisfied | Valid signature, off-roster approver |
 
-The suite is run against three independent implementations — JavaScript,
-Python, and Go — which are required to agree on every vector; divergence is a
-conformance defect. The "accept" vectors guard against an over-strict verifier
+The suite is run against the JavaScript, Python, and Go reference verifiers,
+which are required to agree on every vector; divergence is a conformance defect.
+This is a cross-language consistency check, not a clean-room independent-
+implementation claim. The "accept" vectors guard against an over-strict verifier
 (denying valid quorums); the "reject" vectors guard the security-critical
 direction (a verifier that accepts something it must not). The mechanism is
 implemented in the EP reference codebase: a pure predicate (`quorumGate`) and

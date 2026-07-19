@@ -11,7 +11,7 @@ export const metadata = {
     title: 'EMILIA for insurers — verifiable proof a human authorized the transfer',
     description:
       'The dual-authorization control you already require, finally machine-checkable '
-      + 'and deepfake-proof. An offline-verifiable authorization receipt for '
+      + 'and deepfake-resistant. An offline-verifiable authorization receipt for '
       + 'funds-transfer-fraud, social engineering, and agentic-AI risk.',
     url: 'https://www.emiliaprotocol.ai/insurance',
     type: 'article',

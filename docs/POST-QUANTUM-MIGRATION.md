@@ -160,3 +160,48 @@ Without this checkpoint, the entire v1 historical log loses evidentiary value th
 - Authority key management: `AUTHORITY-GOVERNANCE.md` — maintainer HSM policy will need PQ-capable hardware by Phase 2.
 - Federation: `FEDERATION-SEMANTICS.md` — cross-certs include PQ keys by Phase 2.
 - Conformance: the conformance test suite will bump in lockstep with protocol versions.
+
+---
+
+## 9. EP-HYBRID-v1 hybrid envelope (opt-in prototype: `lib/quantum-safe.js`)
+
+**Scope:** An opt-in, repository-local envelope for long-lived artifacts. It is not wired into default `EP-RECEIPT-v1` issuance, the public `packages/verify` API, transparency-log checkpoints, directory keys, or deployed Gate receipts. The implementation is `signHybrid` / `verifyHybrid` in `lib/quantum-safe.js`.
+
+**Honest status.** This section does NOT change EP's security posture today. EP is not post-quantum secure today, and no default receipt is advertised as quantum-safe. The prototype signs a domain-separated transcript with Ed25519 and ML-DSA-65, and verification requires both legs. `@noble/post-quantum` is a pure-JS implementation of FIPS 204 and is not a FIPS-validated module; the prototype is not a FIPS validation or production HSM integration.
+
+### 9.1. Envelope
+
+```
+{
+  "type": "EP-HYBRID-SIGNATURE-v1",
+  "payload_sha256": "<sha256 hex>",
+  "key_ids": { "ed25519": "<id or null>", "ml_dsa65": "<id or null>" },
+  "signatures": { "ed25519": "<base64url>", "ml_dsa65": "<base64url>" }
+}
+```
+
+v1 is a fixed two-algorithm hybrid. The verifier requires exactly the envelope members and exactly one signature per leg; extra members refuse. Both the envelope type and key identifiers are committed into the domain-separated signing transcript, while the relying party still supplies the trusted public keys out of band.
+
+### 9.2. Anti-stripping rule (normative)
+
+Every signature in the envelope MUST be computed over a domain-separated signing input that includes the fixed type, algorithm names, key identifiers, and exact payload bytes:
+
+```
+signing_input = UTF8("EP-HYBRID-SIGNATURE-v1") || 0x00
+             || UTF8(JSON.stringify({ algorithms, key_ids })) || 0x00
+             || payload
+```
+
+This is the transcript-commitment rule of section 4.1 applied to the infrastructure-key envelope. Because both legs sign a byte string that commits to `["Ed25519", "ML-DSA-65"]`, an attacker who strips the ML-DSA-65 signature and presents the Ed25519 signature as if a classical-only signature were the whole intent fails twice: the presented algorithm set no longer matches what the verifier requires, and the Ed25519 signature does not verify over the bare message, nor over any signing input that commits to a reduced set. The test suite exercises the stripping path, the algo-set tampering path, and the direct cryptographic commitment (the hybrid Ed25519 signature verifies only over the input committing to the full set).
+
+The prototype returns structured refusal results and requires both trusted public keys; it does not by itself establish a post-quantum security certification or a production deployment status.
+
+### 9.3. Retroactive-forgery defense: re-anchor BEFORE a CRQC exists
+
+A hybrid envelope protects signatures made from now on. It does nothing for the historical record by itself. Once a CRQC exists, any classical-only signature stops being evidence about the past, because a forger with a CRQC can mint a "historical" Ed25519 signature at will. The defense, in the style of RFC 4998 evidence-record renewal, is timestamp-and-renew while the old algorithm is still secure:
+
+1. BEFORE any CRQC exists, produce a PQ-signed checkpoint (EP-HYBRID-v1 or pure ML-DSA/SLH-DSA) over the Merkle roots of the historical log heads and anchored receipts. This is the same requirement as the Phase 3.5 classical-sunset checkpoint in section 5.
+2. The PQ signature over the historical roots proves those roots existed before the PQ signature was made. A forgery created after a classical break cannot be inside a checkpoint that was published, mirrored, and witnessed before the break.
+3. Renewal is periodic, not one-shot: re-sign the accumulated evidence with then-current primitives before each incumbent algorithm weakens, exactly as RFC 4998 chains ArchiveTimeStamps.
+
+The value of this defense depends entirely on the checkpoint existing BEFORE the break. It cannot be produced retroactively. That is why the envelope and the verifier land now, years ahead of need.

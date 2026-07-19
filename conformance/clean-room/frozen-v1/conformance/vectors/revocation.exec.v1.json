@@ -1,0 +1,192 @@
+{
+  "suite": "EP-REVOCATION-v1",
+  "profile": "Executable revocation-statement vectors (real Ed25519). verifyRevocation(target, statement, opts) must return expect.valid.",
+  "vectors_version": "1.0.0",
+  "count": 6,
+  "vectors": [
+    {
+      "id": "accept_pinned_exact_binding",
+      "expect": {
+        "valid": true
+      },
+      "target": {
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "revocation": {
+        "@version": "EP-REVOCATION-v1",
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "revoker_id": "ep:revoker:ig_okafor",
+        "revoked_at": "2026-06-20T12:00:00.000Z",
+        "reason": "authority withdrawn",
+        "proof": {
+          "algorithm": "Ed25519",
+          "revoker_key_id": "rk1",
+          "public_key": "MCowBQYDK2VwAyEAudmX9Ap8KZCx67vgomvrDmyvwqvwRqzZXSidLrkUnxs",
+          "signature_b64u": "-FBl5X2K8GRiyazZ4UkP8emmRuM-LseKsteWBeiS2FKBK_I5A74QWofphaJcr8tY3u1YyV3sug9vZ0l9yEIKAQ"
+        }
+      },
+      "revoker_keys": {
+        "ep:revoker:ig_okafor": {
+          "public_key": "MCowBQYDK2VwAyEAudmX9Ap8KZCx67vgomvrDmyvwqvwRqzZXSidLrkUnxs"
+        }
+      }
+    },
+    {
+      "id": "reject_unpinned_revoker",
+      "expect": {
+        "valid": false
+      },
+      "target": {
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "revocation": {
+        "@version": "EP-REVOCATION-v1",
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "revoker_id": "ep:revoker:ig_okafor",
+        "revoked_at": "2026-06-20T12:00:00.000Z",
+        "reason": "authority withdrawn",
+        "proof": {
+          "algorithm": "Ed25519",
+          "revoker_key_id": "rk1",
+          "public_key": "MCowBQYDK2VwAyEAmCpBpNtDP8XE3sngmS8iDuzW6iifFL8ESywQdfLbxx8",
+          "signature_b64u": "_tZyfk3Ywrw4zi2aYPmEkA5tPqA5PpqoXnY2dV0bSMgclD4-zKgKgMST7X0gYzWxMvU5PAckk-0Rd2ryKKsCCQ"
+        }
+      },
+      "revoker_keys": {}
+    },
+    {
+      "id": "reject_key_substitution",
+      "expect": {
+        "valid": false
+      },
+      "target": {
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "revocation": {
+        "@version": "EP-REVOCATION-v1",
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "revoker_id": "ep:revoker:ig_okafor",
+        "revoked_at": "2026-06-20T12:00:00.000Z",
+        "reason": "authority withdrawn",
+        "proof": {
+          "algorithm": "Ed25519",
+          "revoker_key_id": "rk1",
+          "public_key": "MCowBQYDK2VwAyEArcQjMq5lM35-tSQL_fDtLUihUSGE3ERYAo7IpXumSPc",
+          "signature_b64u": "EMiDXQb-2bytO67ctOkNzmAkLUx6LmY0pCMrorxEOxfwEn62F6A04zd7ZlqOqC0Sr5YlSIgk8o03R7q2Q3spDA"
+        }
+      },
+      "revoker_keys": {
+        "ep:revoker:ig_okafor": {
+          "public_key": "MCowBQYDK2VwAyEA-1uum1oARnxkF7J-gFFEeQhTZxu8v_n-_gTZnyhBSUw"
+        }
+      }
+    },
+    {
+      "id": "reject_revoke_a_for_b",
+      "expect": {
+        "valid": false
+      },
+      "target": {
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "revocation": {
+        "@version": "EP-REVOCATION-v1",
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "revoker_id": "ep:revoker:ig_okafor",
+        "revoked_at": "2026-06-20T12:00:00.000Z",
+        "reason": "authority withdrawn",
+        "proof": {
+          "algorithm": "Ed25519",
+          "revoker_key_id": "rk1",
+          "public_key": "MCowBQYDK2VwAyEAfelo3MGYp7wANIAO2tHpRQXAXcFmFZu_hGuvWCRDM2A",
+          "signature_b64u": "p5ARZXYHkDWCcyGW8D0RFcT_vDF_LAtWh-EFgDBE6YoK6FpyRCppTzfsoVi0zYKexmgDO_g7kHp-MmvgOoYLBQ"
+        }
+      },
+      "revoker_keys": {
+        "ep:revoker:ig_okafor": {
+          "public_key": "MCowBQYDK2VwAyEAfelo3MGYp7wANIAO2tHpRQXAXcFmFZu_hGuvWCRDM2A"
+        }
+      }
+    },
+    {
+      "id": "reject_tampered_field",
+      "expect": {
+        "valid": false
+      },
+      "target": {
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "revocation": {
+        "@version": "EP-REVOCATION-v1",
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "revoker_id": "ep:revoker:ig_okafor",
+        "revoked_at": "2026-06-20T12:00:00.000Z",
+        "reason": "tampered after signing",
+        "proof": {
+          "algorithm": "Ed25519",
+          "revoker_key_id": "rk1",
+          "public_key": "MCowBQYDK2VwAyEAFHAPm93OHg3Mv96lvScOLfyFvYhK_TZBh96PhvjA1OI",
+          "signature_b64u": "1WWdH6i5SIj8xlQy_o6ivCalqC6oBARfwawiK1y4c4o0XFMIed0lU_RJFOjoDOhc_jqYd-t55MkOX2iaDw4MCA"
+        }
+      },
+      "revoker_keys": {
+        "ep:revoker:ig_okafor": {
+          "public_key": "MCowBQYDK2VwAyEAFHAPm93OHg3Mv96lvScOLfyFvYhK_TZBh96PhvjA1OI"
+        }
+      }
+    },
+    {
+      "id": "reject_stale_freshness",
+      "expect": {
+        "valid": false
+      },
+      "target": {
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "revocation": {
+        "@version": "EP-REVOCATION-v1",
+        "target_type": "receipt",
+        "target_id": "rcpt_x",
+        "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "revoker_id": "ep:revoker:ig_okafor",
+        "revoked_at": "2020-01-01T00:00:00.000Z",
+        "reason": "authority withdrawn",
+        "proof": {
+          "algorithm": "Ed25519",
+          "revoker_key_id": "rk1",
+          "public_key": "MCowBQYDK2VwAyEAm8znzzXZ8zF2sULjQjWIWmnzg7aVh-wXpvuTCUejOSE",
+          "signature_b64u": "PPIMd9_njRjmgFlZg-hLZm-nL5oU3ELldaVjAislSuN2ZWscLarOp65_SilvZLHuhcSQp2J1jzifxFrvskjlDQ"
+        }
+      },
+      "revoker_keys": {
+        "ep:revoker:ig_okafor": {
+          "public_key": "MCowBQYDK2VwAyEAm8znzzXZ8zF2sULjQjWIWmnzg7aVh-wXpvuTCUejOSE"
+        }
+      },
+      "max_age_seconds": 3600,
+      "now": "2026-06-20T12:00:00.000Z"
+    }
+  ]
+}

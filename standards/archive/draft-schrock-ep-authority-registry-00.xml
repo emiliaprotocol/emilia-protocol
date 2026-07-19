@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-authority-registry-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Human Authority Registry">A Human Authority Registry for Agent-Action Authorization</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authority-registry-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="2"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>authorization</keyword>
+    <keyword>authority</keyword>
+    <keyword>registry</keyword>
+    <keyword>separation of duties</keyword>
+    <abstract>
+      <t>Workload-identity work answers "which machine acted" and
+      token work answers "what was requested." Neither answers a
+      question a high-consequence authorization depends on: <em>is the
+      human whose signature backs this action actually entitled to
+      approve this class of action, for this organization, right now, with
+      this key — and are they barred from approving their own request?</em></t>
+      <t>This document defines the Human Authority Registry: the
+      authoritative record a verifier or enforcement point consults to
+      decide whether an authorization receipt
+      <xref target="I-D.schrock-ep-authorization-receipts"/> was produced
+      by an in-scope, currently authorized approver. It specifies the
+      registry entry (approver identity, organization, permitted action
+      classes, maximum assurance class, validity window, signing keys,
+      revocation status, self-approval and quorum constraints), the
+      verification rule binding a receipt to an active entry, and how the
+      relevant registry state is distributed for offline checking. It is
+      complementary to workload-identity and delegation work, not a
+      replacement for either.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section>
+      <name>Introduction</name>
+      <t>An authorization receipt proves that some keyholder signed an
+      exact action. Whether that keyholder was <em>allowed</em> to
+      authorize that action is a separate question, and it is the
+      question that turns a signature into an accountable authorization.
+      Today that entitlement lives in scattered, operator-internal
+      places: an IAM group, a spreadsheet of approvers, an application's
+      own database. None of it is portable, and none of it lets a third
+      party — an auditor, a counterparty, a regulator — confirm offline
+      that the human who signed was authorized to.</t>
+      <t>This document defines a registry for exactly that: the record of
+      which humans may approve which action classes, for which
+      organization, during which window, with which keys, subject to
+      revocation and separation-of-duties constraints. It is deliberately
+      about <em>human authority for actions</em>, distinct from workload
+      identity (which principal is running) and from delegation of
+      machine scope. It composes with the authorization-receipt and
+      enforcement-point profiles: the receipt carries the signature, the
+      registry says whether the signer was entitled, and the enforcement
+      point consults both.</t>
+    </section>
+
+    <section>
+      <name>Terminology</name>
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+      NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+      "MAY", and "OPTIONAL" in this document are to be interpreted as
+      described in BCP 14 <xref target="RFC2119"/>
+      <xref target="RFC8174"/> when, and only when, they appear in all
+      capitals, as shown here.</t>
+      <dl>
+        <dt>Approver</dt>
+        <dd>A named, accountable human entitled to authorize actions.</dd>
+        <dt>Registry</dt>
+        <dd>The authoritative collection of authority entries defined
+        here.</dd>
+        <dt>Entry</dt>
+        <dd>One approver's authority record (<xref target="entry"/>).</dd>
+      </dl>
+    </section>
+
+    <section anchor="entry">
+      <name>Authority Entry</name>
+      <t>An authority entry is a record with at least the following
+      fields:</t>
+      <dl>
+        <dt>approver_id (REQUIRED)</dt>
+        <dd>A stable identifier for the accountable human.</dd>
+        <dt>org (REQUIRED)</dt>
+        <dd>The organization on whose behalf the approver may authorize.</dd>
+        <dt>action_classes (REQUIRED)</dt>
+        <dd>The set of action types or classes the approver may
+        authorize. An authorization for an action outside this set MUST
+        NOT be accepted.</dd>
+        <dt>max_assurance_class (REQUIRED)</dt>
+        <dd>The highest assurance class the approver may assert (see the
+        assurance-class taxonomy). An entry does not raise a receipt's
+        proven class; it bounds it.</dd>
+        <dt>keys (REQUIRED)</dt>
+        <dd>The public key(s) the approver signs with. A receipt whose
+        signing key is not among these MUST NOT be attributed to this
+        approver.</dd>
+        <dt>valid_from / valid_until (REQUIRED)</dt>
+        <dd>The window during which the entry is effective. An
+        authorization timestamped outside the window MUST be refused.</dd>
+        <dt>revoked (REQUIRED)</dt>
+        <dd>Revocation status and effective time. A key or entry revoked
+        as of time T invalidates authorizations produced after T.</dd>
+        <dt>self_approval_forbidden (REQUIRED)</dt>
+        <dd>Whether this approver may authorize an action they also
+        initiated. When true (the RECOMMENDED default for high-risk
+        actions), an authorization whose initiator equals the approver
+        MUST be refused.</dd>
+        <dt>quorum_eligible (OPTIONAL)</dt>
+        <dd>Whether this approver may count toward a Class Q quorum, and
+        any group constraints on distinctness.</dd>
+      </dl>
+    </section>
+
+    <section anchor="verify">
+      <name>Verification Rule</name>
+      <t>An authorization receipt is <em>authority-backed</em> for an
+      action if and only if, at the authorization time:</t>
+      <ol>
+        <li>the receipt's signing key resolves to a registry entry;</li>
+        <li>the entry is within its validity window and not revoked as of
+        the authorization time;</li>
+        <li>the action's class is within the entry's
+        <tt>action_classes</tt>;</li>
+        <li>the receipt's proven assurance class does not exceed the
+        entry's <tt>max_assurance_class</tt>;</li>
+        <li>if <tt>self_approval_forbidden</tt> is true, the approver is
+        not the initiator of the action; and</li>
+        <li>for a Class Q authorization, each contributing approver
+        satisfies (1)–(5) and the approvers are distinct and
+        quorum-eligible.</li>
+      </ol>
+      <t>If any condition fails, the receipt MUST NOT be treated as
+      authority-backed, and a verifier that cannot resolve the entry MUST
+      fail closed.</t>
+    </section>
+
+    <section anchor="offline">
+      <name>Offline Verification</name>
+      <t>Auditors, counterparties, and edge deployments frequently verify
+      without live access to the registry. A registry operator SHOULD
+      publish signed, timestamped registry snapshots (or per-entry signed
+      attestations) so a relying party can perform the
+      <xref target="verify"/> checks offline against a snapshot whose
+      freshness it can bound. A snapshot older than a relying party's
+      freshness policy MUST be treated as unable to establish authority,
+      not as granting it.</t>
+    </section>
+
+    <section>
+      <name>Relationship to Other Work</name>
+      <t>This registry is about human approval authority for actions. It
+      is orthogonal to workload identity (WIMSE), which establishes which
+      software principal is running, and complementary to delegation and
+      authorization-evidence-chain work
+      <xref target="I-D.schrock-ep-authorization-evidence-chain"/>, which
+      binds a delegation from a human authority root down to an acting
+      agent. The registry is the source of truth for the human-authority
+      root those chains terminate in, and the entitlement an enforcement
+      point checks a receipt against.</t>
+    </section>
+
+    <section>
+      <name>Security Considerations</name>
+      <t><strong>The registry is a trust root; protect it accordingly.</strong>
+      Whoever can write an entry can authorize approvers. Registry writes
+      MUST be strongly controlled and auditable, and snapshots MUST be
+      signed so relying parties detect tampering.</t>
+      <t><strong>Revocation propagation.</strong> The security of
+      revocation depends on relying parties consulting sufficiently fresh
+      state. Offline verifiers MUST enforce a freshness bound on
+      snapshots; a stale snapshot cannot be used to accept an
+      authorization from a since-revoked key.</t>
+      <t><strong>Separation of duties.</strong> The
+      <tt>self_approval_forbidden</tt> and quorum-distinctness rules are
+      the defense against a single compromised or coerced insider
+      authorizing their own high-risk action; they MUST be enforced at
+      verification, not merely recorded.</t>
+      <t><strong>Bounding, not granting.</strong> An entry bounds what an
+      approver may assert; it never raises a receipt's proven assurance
+      class. Proven assurance still comes from the receipt's own evidence.</t>
+    </section>
+
+    <section>
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>Normative References</name>
+      <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174">
+        <front>
+          <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+          <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+          <date year="2017" month="May"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+      </reference>
+      <reference anchor="I-D.schrock-ep-authorization-receipts">
+        <front>
+          <title>Authorization Receipts for High-Risk Agent Actions (EP)</title>
+          <author fullname="I. Schrock" initials="I." surname="Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+      </reference>
+    </references>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="I-D.schrock-ep-authorization-evidence-chain">
+        <front>
+          <title>Authorization Evidence Chain (EP)</title>
+          <author fullname="I. Schrock" initials="I." surname="Schrock"/>
+          <date year="2026" month="June"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-00"/>
+      </reference>
+    </references>
+  </back>
+</rfc>

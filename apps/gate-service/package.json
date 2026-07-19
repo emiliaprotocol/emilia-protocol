@@ -1,0 +1,27 @@
+{
+  "name": "@emilia-protocol/gate-service",
+  "version": "0.2.0",
+  "private": true,
+  "description": "BYOC HTTP enforcement service for exact-action authorization and durable consequence control.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "exports": {
+    ".": "./src/runtime.js",
+    "./auth": "./src/auth.js",
+    "./config": "./src/config.js",
+    "./github-client": "./src/github-client.js",
+    "./production-config": "./src/production-config.js",
+    "./routes": "./src/routes.js",
+    "./server": "./src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pg": "8.22.0"
+  },
+  "license": "Apache-2.0"
+}

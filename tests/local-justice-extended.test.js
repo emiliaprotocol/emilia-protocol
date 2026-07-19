@@ -354,6 +354,38 @@ describe('checkAbuse — graceful DB error handling', () => {
     const result = await checkAbuse(db, 'report', { entity_id: 'e1', report_type: 'fraud' });
     expect(result.allowed).toBe(true);
   });
+
+  it('throws when strict callers require an authoritative abuse check', async () => {
+    const rejectingChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockReturnValue(Promise.reject(new Error('DB error'))),
+    };
+    const db = { from: vi.fn().mockReturnValue(rejectingChain) };
+
+    await expect(checkAbuse(
+      db,
+      'report',
+      { entity_id: 'e1', report_type: 'fraud' },
+      { failClosed: true },
+    )).rejects.toThrow('DB error');
+  });
+
+  it('treats a Supabase error result as unavailable in strict mode', async () => {
+    const failingChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      gte: vi.fn().mockResolvedValue({ count: null, error: new Error('query failed') }),
+    };
+    const db = { from: vi.fn().mockReturnValue(failingChain) };
+
+    await expect(checkAbuse(
+      db,
+      'report',
+      { entity_id: 'e1', report_type: 'fraud' },
+      { failClosed: true },
+    )).rejects.toThrow('query failed');
+  });
 });
 
 // =============================================================================

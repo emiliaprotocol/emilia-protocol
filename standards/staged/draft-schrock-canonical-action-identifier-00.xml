@@ -1,0 +1,792 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-canonical-action-identifier-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="CAID">The Canonical Action Identifier (CAID)</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="14"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>action</keyword>
+    <keyword>canonicalization</keyword>
+    <keyword>digest</keyword>
+    <keyword>identifier</keyword>
+    <abstract>
+      <t>Authorization, delegation, execution, and audit artifacts often
+      identify an action using format-local content and digests. Those
+      digests are not directly comparable when the formats select or
+      encode material action fields differently. This document defines
+      the Canonical Action IDentifier (CAID): a typed action object, a
+      canonicalization and digest suite, a compact identifier string,
+      and immutable action-type definitions with required material
+      fields. It also defines an Action-Mapping Profile for projecting
+      independently verified native artifacts into a common action type,
+      with the closed results EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT,
+      and INDETERMINATE. CAID carries no trust semantics. It does not
+      establish identity, authority, authorization, execution, safety,
+      or legal reliance.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>Many formats for permits, receipts, mandates, delegation, and
+      outcome evidence reference "the action" by digest. Each format
+      selects an action representation and canonicalization appropriate
+      to its own protocol. The resulting identifiers are useful inside
+      that format but are not necessarily comparable across formats.</t>
+      <t>This creates two interoperability risks. The first is the
+      material-fields failure: a digest over an underspecified object
+      can omit the facts a relying party considers material. A
+      digest computed over {"action": "wire"} commits to no amount, no
+      currency, and no beneficiary; the artifact carrying it looks
+      cryptographically bound to an action while committing to nothing
+      that makes the action consequential. The second is the join
+      failure: absent an agreed common definition, two artifacts about
+      the same action, issued by different systems in different
+      formats, can carry digests that cannot be compared without an
+      explicit, reviewable mapping.</t>
+      <t>This document defines the Canonical Action IDentifier (CAID)
+      to close both gaps. A CAID names typed content: an action object
+      that declares its own type, carries every material field that
+      type requires, is canonicalized under a registered suite, and is
+      digested. The identifier is a compact string embedding the
+      version, the action type, the suite, and the digest. When formats
+      cannot emit the same action object, an Action-Mapping Profile
+      (<xref target="mapping"/>) defines a relying-party-pinned,
+      loss-aware projection into the common type and abstains when the
+      comparison cannot be made.</t>
+      <t>As informative examples of the artifact classes that can
+      carry a CAID: authorization receipts
+      <xref target="I-D.schrock-ep-authorization-receipts"/>, permit
+      receipts <xref target="I-D.lee-orprg-permit-receipts"/>, and
+      execution outcome attestations
+      <xref target="I-D.morrow-sogomonian-exec-outcome-attest"/> each
+      reference an action by digest and could carry a CAID in place of
+      or alongside their existing action reference. These citations
+      are examples only; this document neither depends on nor modifies
+      any of them, and carrying a CAID changes nothing about how any
+      such artifact is verified.</t>
+      <t>A CAID deliberately carries no trust semantics. It does not
+      assert that an action was authorized, executed, safe, or wise.
+      <xref target="not"/> states the boundary normatively.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+        <dl newline="false" spacing="normal">
+          <dt>Action object:</dt>
+          <dd>The typed data object, defined in
+          <xref target="object"/>, over which a CAID's digest is
+          computed.</dd>
+          <dt>Action type:</dt>
+          <dd>A versioned type name whose definition
+          (<xref target="types"/>) declares the material fields an
+          action object of that type is required to carry.</dd>
+          <dt>Material field:</dt>
+          <dd>A field that a type definition declares REQUIRED because
+          its absence would leave the digest uncommitted to something
+          that makes the action consequential.</dd>
+          <dt>Suite:</dt>
+          <dd>A registered pairing of a canonicalization scheme and a
+          digest algorithm (<xref target="suites"/>).</dd>
+          <dt>Definition source:</dt>
+          <dd>A collection of type definitions in the schema of
+          <xref target="schema"/> that an implementation is configured
+          with: the public registry, a local definitions file, or
+          both.</dd>
+          <dt>Issuer:</dt>
+          <dd>The party that constructs an action object and computes
+          its CAID.</dd>
+          <dt>Verifier:</dt>
+          <dd>The party that checks a presented CAID against a
+          presented action object by recomputation
+          (<xref target="verification"/>).</dd>
+          <dt>Mapping profile:</dt>
+          <dd>A hash-identified projection, pinned by the relying
+          party, from one exact source format and version into one CAID
+          action type (<xref target="mapping"/>).</dd>
+          <dt>Native verifier:</dt>
+          <dd>The verifier defined by a source artifact's own
+          specification. Native verification precedes mapping and is
+          outside the CAID trust boundary.</dd>
+        </dl>
+      </section>
+    </section>
+    <section anchor="object">
+      <name>The Action Object</name>
+      <t>An action object is a JSON object (or, under a CBOR suite, a
+      CBOR map) that identifies material action content. The
+      same object is referenced, by CAID, from pre-execution artifacts
+      (permits, challenges, receipts) and post-execution artifacts
+      (outcome attestations, audit records, reliance events).</t>
+      <t>An action object:</t>
+      <ul spacing="normal">
+        <li>MUST contain an action_type member whose value is a
+        registered or locally defined versioned type name
+        (<xref target="types"/>). The type is inside the digested
+        content, so the type asserted by an identifier cannot be
+        swapped without changing the digest.</li>
+        <li>MUST contain every REQUIRED material field of that type,
+        encoded per the field types the type definition declares
+        (<xref target="fieldtypes"/>).</li>
+        <li>MAY contain additional members beyond those the type
+        definition declares. Extra members are covered by the
+        digest.</li>
+        <li>MUST NOT encode money or quantity values as JSON numbers
+        where the type definition declares the field amount-string.
+        Floating-point and precision malleability across languages
+        makes numeric encodings of money unsafe for
+        canonicalization.</li>
+        <li>Numbers follow a value-based rule: a JSON number is
+        accepted if and only if its IEEE 754 double-precision value is
+        an integer with magnitude at most 2^53-1, and it is serialized
+        as that integer in plain decimal form. The literal form is
+        irrelevant: the literals 1e3 and 2.0 denote the integers 1000
+        and 2, exactly as an ECMAScript JSON parser sees them.
+        Fractional, NaN, infinite, and out-of-range values are refused
+        as unsupported_number by every conforming implementation, at
+        any depth. Fractional quantities are carried as strings.
+        Rationale: ECMAScript number serialization is the leading
+        source of cross-language canonicalization divergence, and a
+        rule over the parsed value is the only one that every language
+        can implement identically; a rule over the literal form cannot
+        be enforced by implementations, such as ECMAScript, whose JSON
+        parsers do not preserve it.</li>
+      </ul>
+    </section>
+    <section anchor="identifier">
+      <name>Suites and the Identifier</name>
+      <section anchor="suites">
+        <name>Suites</name>
+        <t>A suite names a canonicalization scheme and a digest
+        algorithm. This document defines two suites; the suite
+        registry (<xref target="iana"/>) carries one entry per
+        suite.</t>
+        <dl newline="false" spacing="normal">
+          <dt>jcs-sha256:</dt>
+          <dd>The JSON Canonicalization Scheme
+          <xref target="RFC8785"/> followed by SHA-256
+          <xref target="RFC6234"/>. Support for this suite is
+          REQUIRED for conforming implementations.</dd>
+          <dt>cbor-sha256:</dt>
+          <dd>CBOR core deterministic encoding
+          (<xref target="RFC8949" sectionFormat="of" section="4.2"/>)
+          followed by SHA-256 <xref target="RFC6234"/>. This suite is
+          defined in this version; implementations MAY support
+          it.</dd>
+        </dl>
+      </section>
+      <section anchor="digest">
+        <name>The Digest</name>
+        <t>The digest is computed directly over the canonical bytes of
+        the action object:</t>
+        <sourcecode type=""><![CDATA[
+digest = SHA-256(canonical_bytes(action_object))
+]]></sourcecode>
+        <t>There is deliberately NO domain separation prefix. The
+        object is self-typed via its action_type member, and a design
+        goal of CAID is that existing artifact formats can adopt the
+        identical digest they may already compute over canonical
+        bytes. Conforming verifiers MUST check that the in-object
+        action_type equals the action type carried in the CAID string
+        (<xref target="verification"/>); that check, not a byte
+        prefix, is where cross-context reinterpretation dies.
+        <xref target="security"/> states this trade explicitly.</t>
+      </section>
+      <section anchor="syntax">
+        <name>Identifier Syntax</name>
+        <t>The identifier is a compact string:</t>
+        <sourcecode type=""><![CDATA[
+caid:1:<action_type>:<suite>:<digest-b64url>
+]]></sourcecode>
+        <t>For example:</t>
+        <sourcecode type=""><![CDATA[
+caid:1:payment.release.1:jcs-sha256:qL8R4QIcQ_ZsRqOAbeRfcZhilN_MksRt
+DaErMPJk0vM
+]]></sourcecode>
+        <t>(The example digest is shown wrapped for column width; the
+        identifier itself contains no whitespace.)</t>
+        <t>The grammar, in the ABNF of <xref target="RFC5234"/>:</t>
+        <sourcecode type="abnf"><![CDATA[
+caid          = "caid:" caid-version ":" action-type ":"
+                suite ":" digest
+
+caid-version  = "1"
+
+action-type   = 1*( name-segment "." ) type-version
+name-segment  = lower-char *( lower-char / DIGIT / "-" )
+type-version  = pos-int
+pos-int       = %x31-39 *DIGIT   ; positive integer, no leading zero
+
+suite         = lower-char *( lower-char / DIGIT / "-" )
+
+digest        = 1*b64url-char
+b64url-char   = %x41-5A / %x61-7A / DIGIT / "-" / "_"
+                                 ; A-Z / a-z / 0-9 / "-" / "_"
+
+lower-char    = %x61-7A          ; a-z
+]]></sourcecode>
+        <t>DIGIT is the core rule of <xref target="RFC5234"/>.</t>
+        <t>caid-version is the version of this identifier syntax and
+        is "1" for this document. action-type is one or more lowercase
+        dotted name segments followed by a final segment that is the
+        integer version of the type (for example, payment.release.1).
+        suite is a name from the suite registry, lowercase. digest is
+        the digest encoded in base64url
+        (<xref target="RFC4648" sectionFormat="of" section="5"/>),
+        unpadded and case-sensitive; for the two suites defined here
+        the digest is exactly 43 characters, encoding 32 octets.</t>
+      </section>
+      <section anchor="parsing">
+        <name>Parsing</name>
+        <t>Parsers are strict. A conforming parser:</t>
+        <ul spacing="normal">
+          <li>MUST refuse base64url padding characters ("=") in the
+          digest.</li>
+          <li>MUST refuse uppercase characters in the action-type or
+          suite fields. The digest field is case-sensitive and both
+          cases are significant there.</li>
+          <li>MUST refuse empty segments anywhere in the string,
+          including empty dotted segments within the action type.</li>
+          <li>MUST refuse any content after the digest, including
+          trailing separators, whitespace, or additional fields.</li>
+          <li>MUST refuse a digest that does not decode to exactly the
+          digest length of the named suite, or whose final character
+          encodes nonzero unused bits.</li>
+          <li>MUST treat an unknown caid-version as a refusal, never
+          as a value to be guessed at or parsed leniently.</li>
+          <li>MUST treat an unknown suite as a refusal, never as a
+          suite to be guessed.</li>
+        </ul>
+      </section>
+      <section anchor="equality">
+        <name>Equality</name>
+        <t>Two CAIDs are equal if and only if their strings are
+        byte-equal. Cross-suite equivalence is out of scope: no
+        procedure in this document relates a jcs-sha256 CAID to a
+        cbor-sha256 CAID for the same object. An artifact MAY carry
+        multiple CAIDs for one action, one per suite its issuer
+        computed.</t>
+        <t>Direct CAID equality is content equality, not inferred
+        semantic equality. The strings "1.50" and "1.5" are different
+        content and yield different digests. Per-field normalization
+        guidance lives in the type definition's digest_notes
+        (<xref target="schema"/>), and normalization is the issuer's
+        job: the issuer normalizes before computing the CAID, and no
+        party renormalizes afterward.</t>
+        <t>When two native formats cannot produce byte-equal action
+        objects, the Action-Mapping Profile in <xref target="mapping"/>
+        provides a narrower result: equivalence of the material
+        projection under exact profiles pinned by a relying party. It
+        does not claim general semantic equivalence.</t>
+      </section>
+    </section>
+    <section anchor="types">
+      <name>Action Types and the Registry</name>
+      <section anchor="names">
+        <name>Type Names and Versioning</name>
+        <t>An action type name is one or more lowercase dotted name
+        segments with a final segment that is the integer version of
+        the type, per the action-type rule of
+        <xref target="syntax"/>. Registered types live in the CAID
+        action type registry (<xref target="iana"/>), one entry
+        per versioned type.</t>
+        <t>Once a version is active, every declaration that affects
+        validation or material meaning is immutable. Adding or removing
+        a required or optional field, retyping a field, changing an enum
+        set or normalization rule, or changing a field's semantics MUST
+        be published as a new version of the type (payment.release.2),
+        never as an in-place edit. This immutability is required so a
+        later verifier can reproduce an earlier result.</t>
+      </section>
+      <section anchor="schema">
+        <name>The Type Definition Schema</name>
+        <t>The entry schema below is normative, and it is normative
+        for local definitions too: a private deployment carries its
+        own definitions in this same schema
+        (<xref target="local"/>).</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "action_type": "payment.release.1",
+  "status": "active",
+  "risk_class": "irreversible-financial",
+  "summary": "Release of a payment instruction to settlement.",
+  "required_fields": [
+    {"name": "amount", "type": "amount-string",
+     "notes": "decimal string, no exponent, no leading '+',
+               no thousands separators"},
+    {"name": "currency", "type": "enum",
+     "values_ref": "ISO 4217 alpha-3"},
+    {"name": "beneficiary_account", "type": "digest",
+     "notes": "sha256:<lowercase hex> of the normalized account
+               identifier; normalization stated by the issuing
+               system of record"},
+    {"name": "payment_instruction_id", "type": "string"}
+  ],
+  "optional_fields": [
+    {"name": "memo", "type": "string"}
+  ],
+  "digest_notes": "amounts never renormalized after signing; the
+                   system of record's form is canonical",
+  "references": []
+}
+]]></sourcecode>
+        <t>action_type is the versioned type name. status is the
+        lifecycle state of the entry. risk_class is a descriptive
+        label for the consequence class of the action; it carries no
+        verification semantics. required_fields declares the material
+        fields, each with a name, a field type from
+        <xref target="fieldtypes"/>, and optional notes or a
+        values_ref naming an external value set. optional_fields
+        declares fields the type recognizes but does not require.
+        digest_notes carries per-type normalization guidance for
+        issuers. references carries citations for the type's
+        semantics.</t>
+      </section>
+      <section anchor="fieldtypes">
+        <name>Field Types</name>
+        <t>The set of field types in version 1 is closed:</t>
+        <dl newline="false" spacing="normal">
+          <dt>string:</dt>
+          <dd>A JSON string.</dd>
+          <dt>amount-string:</dt>
+          <dd>A decimal amount carried as a string: an optional
+          leading "-", one or more digits, and an optional "." with
+          one or more digits. No exponent, no leading "+", no
+          thousands separators.</dd>
+          <dt>digest:</dt>
+          <dd>The literal prefix "sha256:" followed by 64 lowercase
+          hexadecimal characters. Used where a raw identifier must
+          not appear in the object (<xref target="security"/>).</dd>
+          <dt>enum:</dt>
+          <dd>A string constrained to a value set named by the field's
+          values_ref.</dd>
+          <dt>timestamp:</dt>
+          <dd>An RFC 3339 <xref target="RFC3339"/> timestamp in UTC
+          with the "Z" designator.</dd>
+          <dt>integer:</dt>
+          <dd>A JSON integer. For counts only, never for money.</dd>
+          <dt>boolean:</dt>
+          <dd>A JSON boolean.</dd>
+          <dt>object:</dt>
+          <dd>A JSON object, itself subject to the number restriction
+          of <xref target="object"/>.</dd>
+          <dt>array:</dt>
+          <dd>A JSON array, itself subject to the number restriction
+          of <xref target="object"/>.</dd>
+        </dl>
+      </section>
+      <section anchor="local">
+        <name>Definition Sources and Unknown Types</name>
+        <t>There is no reserved private-use name syntax. The
+        distinction between registered and local types is presence: a
+        type is either present in a definition source the
+        implementation is configured with (the public registry, or a
+        local definitions file in the same schema) or it is unknown.
+        A deployment inside a single vendor's boundary can therefore
+        use CAID with purely local definitions. Cross-domain use
+        requires the parties to pin the same exact definition or
+        registry snapshot. A local definition that collides by name
+        with a different registered definition MUST NOT be treated as
+        interoperable.</t>
+        <t>An unknown type is a refusal for a conforming issuer
+        (<xref target="computation"/>). For a verifier, accepting an
+        identifier whose type is unknown is a policy decision: a
+        verifier MAY offer an accept-unregistered option, and that
+        option MUST default to off.</t>
+      </section>
+    </section>
+    <section anchor="computation">
+      <name>Computation</name>
+      <t>A conforming issuer computes a CAID from an action object, a
+      suite, and its configured definition sources, in the following
+      order. Each check that fails contributes a refusal reason from
+      the closed set below; the reason strings are normative.</t>
+      <ol spacing="normal">
+        <li>The action_type member is present and its value matches
+        the action-type grammar of <xref target="syntax"/>, else
+        invalid_action_type.</li>
+        <li>The type is resolvable in the configured definition
+        sources, else unknown_action_type.</li>
+        <li>Every REQUIRED field of the type definition is present,
+        else missing_material_field:&lt;name&gt; for each absent
+        field.</li>
+        <li>Every present field that the type definition declares is
+        valid for its declared field type, else
+        mistyped_field:&lt;name&gt; for each violation. An
+        amount-string violation MAY be refined to
+        invalid_amount:&lt;name&gt;.</li>
+        <li>The requested suite is known, else unknown_suite.</li>
+        <li>Every number in the object, at any depth, satisfies the
+        value-based rule of <xref target="object"/> (an integer with
+        magnitude at most 2^53-1 after IEEE 754 double-precision
+        parsing), else unsupported_number.</li>
+        <li>Canonicalize under the suite, digest, and emit the CAID
+        string and the digest.</li>
+      </ol>
+      <t>On success the issuer emits the identifier and the digest. On
+      any failure the issuer emits the accumulated refusal reasons and
+      NO identifier. Computation is fail-closed: malformed or junk
+      input, of any shape, yields refusal reasons, never an exception
+      or a partial identifier.</t>
+    </section>
+    <section anchor="verification">
+      <name>Verification</name>
+      <t>A conforming verifier checks a presented CAID string against
+      a presented action object, using its own configured definition
+      sources, in the following order:</t>
+      <ol spacing="normal">
+        <li>Strict-parse the CAID string per
+        <xref target="parsing"/>, else malformed_caid.</li>
+        <li>The in-object action_type equals the action type carried
+        in the CAID string, else action_type_mismatch. This check is
+        mandatory; see <xref target="digest"/> and
+        <xref target="security"/>.</li>
+        <li>Recompute the digest over the presented object under the
+        suite named in the CAID; the recomputed digest is equal to the
+        presented digest, else digest_mismatch.</li>
+        <li>Run the same material validation as computation
+        (<xref target="computation"/>, steps 1 through 6). An
+        identifier whose object fails that validation is
+        invalid_object, not merely mismatched: a digest that matches
+        an invalid object still binds nothing material.</li>
+      </ol>
+      <t>The result is a validity bit and the list of reasons.
+      Verification is deterministic and offline: the same inputs
+      produce the same reasons in the same order, and any third party
+      with the object, the identifier, and the definitions can replay
+      the check without contacting anyone.</t>
+    </section>
+    <section anchor="mapping">
+      <name>Action-Mapping Profile</name>
+      <t>Two native formats can represent the same material action with
+      different member names, nesting, or format-local metadata. Direct
+      digest comparison cannot establish whether those representations
+      denote the same material action. This section defines a narrow,
+      explicit projection into a common CAID action type. The projection
+      is identified by its digest and pinned by the relying party.</t>
+      <t>A mapping result is content correlation only. It does not
+      establish identity, authority, authorization, provenance,
+      execution, or legal reliance.</t>
+      <section anchor="mapping-boundary">
+        <name>Native Verification Boundary</name>
+        <t>Before mapping, each source artifact MUST be verified under
+        its native specification and the relying party's native trust
+        anchors. The source object supplied to the mapper MUST be the
+        payload whose integrity that native verification established,
+        or a projection for which the native adapter has established
+        that every mapped source field is covered by the native
+        integrity mechanism. A mapper MUST NOT read an unsigned sibling
+        member and treat it as part of a signed payload.</t>
+        <t>The source media type, schema identifier, and version supplied
+        to the mapper MUST come from relying-party configuration or the
+        native verifier. They MUST NOT be accepted solely from a label
+        inside the presenter-controlled artifact. CAID mapping does not
+        replace native verification.</t>
+        <t>The mapping interface MUST receive an affirmative native
+        verification result through a relying-party-controlled adapter or
+        equivalent trusted call path. That result is an API precondition,
+        not a member a presenter can place in the artifact. A missing or
+        negative native-verification result yields INDETERMINATE.</t>
+      </section>
+      <section anchor="mapping-object">
+        <name>Mapping Profile Object</name>
+        <t>A version 1 profile is a JSON object with the following
+        shape:</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "@version": "CAID-MAPPING-PROFILE-v1",
+  "profile_id": "urn:example:map:checkout-to-order:1",
+  "source_format": {
+    "media_type": "application/example-checkout+json",
+    "schema": "urn:example:checkout:1",
+    "version": "1"
+  },
+  "target_action_type": "order.place.1",
+  "loss_policy": "no-material-field-loss",
+  "material_source_paths": [
+    "/checkout/order_id",
+    "/checkout/merchant_id",
+    "/checkout/total_amount",
+    "/checkout/currency",
+    "/checkout/line_items",
+    "/checkout/customer_id",
+    "/checkout/fulfillment"
+  ],
+  "rules": [
+    {"source_path": "/checkout/order_id",
+     "target_field": "order_id", "transform": "copy"},
+    {"source_path": "/checkout/merchant_id",
+     "target_field": "merchant_ref", "transform": "sha256-utf8"},
+    {"source_path": "/checkout/total_amount",
+     "target_field": "total_amount", "transform": "copy"},
+    {"source_path": "/checkout/currency",
+     "target_field": "currency", "transform": "copy"},
+    {"source_path": "/checkout/line_items",
+     "target_field": "items_digest", "transform": "sha256-jcs"},
+    {"source_path": "/checkout/customer_id",
+     "target_field": "customer_ref", "transform": "sha256-utf8"},
+    {"source_path": "/checkout/fulfillment",
+     "target_field": "fulfillment_ref", "transform": "sha256-jcs"}
+  ]
+}
+]]></sourcecode>
+        <t>The profile digest is the lowercase hexadecimal SHA-256
+        digest of the profile's JCS serialization, prefixed with
+        "sha256:". The relying party MUST pin that exact digest. A
+        profile identifier by itself is not a trust anchor.</t>
+        <t>Version 1 is a closed object model. A mapper MUST reject an
+        unknown member in the top-level profile, source_format object, or
+        rule object. This prevents a misspelled or future policy member from
+        being covered by the profile digest while being silently ignored by
+        the mapping algorithm.</t>
+        <t>source_format binds the exact media type, schema identifier,
+        and version accepted by the profile. target_action_type names a
+        type from a definition source pinned by the relying party.
+        loss_policy MUST be "no-material-field-loss" in version 1.
+        source_path values are JSON Pointers <xref target="RFC6901"/>.
+        Every material_source_paths entry MUST have exactly one rule,
+        and every REQUIRED field of the target action type MUST be the
+        target of exactly one rule. Duplicate target fields, malformed
+        pointers, missing fields, and unknown transforms are mapping
+        failures.</t>
+        <t>The version 1 transform set is closed:</t>
+        <dl newline="false" spacing="normal">
+          <dt>copy:</dt>
+          <dd>Copy the source value after confirming that it has a
+          conforming JCS representation.</dd>
+          <dt>sha256-utf8:</dt>
+          <dd>For a source string, emit "sha256:" followed by the
+          lowercase hexadecimal SHA-256 digest of its UTF-8 bytes.</dd>
+          <dt>sha256-jcs:</dt>
+          <dd>Emit "sha256:" followed by the lowercase hexadecimal
+          SHA-256 digest of the source value's JCS representation.</dd>
+        </dl>
+        <t>A mapper MUST refuse an unregistered transform. Version 1
+        performs no unit conversion, currency conversion, date
+        inference, case folding, or lossy normalization.</t>
+      </section>
+      <section anchor="mapping-algorithm">
+        <name>Mapping and Comparison Algorithm</name>
+        <t>For each source, a conforming mapper:</t>
+        <ol spacing="normal">
+          <li>Requires an affirmative native-verification result from the
+          trusted adapter.</li>
+          <li>Validates the complete profile shape and closed transform
+          set.</li>
+          <li>Recomputes the profile digest and compares it to the
+          relying-party pin.</li>
+          <li>Compares the verifier-derived source descriptor to the
+          profile's source_format object.</li>
+          <li>Confirms one-to-one coverage of material source paths and
+          all REQUIRED target fields.</li>
+          <li>Computes a source digest over the complete source object
+          for reproducibility.</li>
+          <li>Extracts and transforms every rule. A missing path or
+          mistyped value is a mapping failure.</li>
+          <li>Computes a CAID for the projected action under
+          <xref target="computation"/>.</li>
+        </ol>
+        <t>Comparison of two mapping results returns exactly one of:</t>
+        <dl newline="false" spacing="normal">
+          <dt>EQUIVALENT_UNDER_PROFILE:</dt>
+          <dd>Both mappings succeeded, both target the same action
+          type, and the resulting CAID strings are byte-equal.</dd>
+          <dt>NOT_EQUIVALENT:</dt>
+          <dd>Both mappings succeeded and target the same action type,
+          but the resulting CAIDs differ.</dd>
+          <dt>INDETERMINATE:</dt>
+          <dd>Either native verification did not succeed, either mapping
+          failed, either profile was not pinned, a
+          source descriptor differed, a target action type differed, or
+          any required fact was absent or ambiguous.</dd>
+        </dl>
+        <t>A consumer MUST NOT convert INDETERMINATE into equivalence.
+        It also MUST NOT treat EQUIVALENT_UNDER_PROFILE as authorization.
+        Authorization remains a separate relying-party decision over
+        separately verified evidence.</t>
+        <t>For reproducibility, each successful per-source mapping result
+        MUST carry the complete source-object digest, mapping-profile digest,
+        projected action object, resulting CAID, and suite. A comparison
+        result MUST retain both per-source mapping results. A consumer that
+        persists or transmits only the final verdict or CAID loses the
+        information needed to reproduce which profiles and source objects
+        produced that result.</t>
+      </section>
+      <section anchor="mapping-assumption">
+        <name>Completeness Assumption</name>
+        <t>The algorithm proves that a pinned profile maps every field
+        the target action type declares material. It cannot prove that
+        the profile author correctly identified every material concept
+        in the native source schema. The relying party's selection and
+        review of mapping profiles is therefore an explicit policy
+        assumption. Profiles SHOULD be versioned, publicly reviewable,
+        and accompanied by positive, negative, and indeterminate
+        conformance vectors.</t>
+      </section>
+    </section>
+    <section anchor="not">
+      <name>What a CAID Is Not</name>
+      <t>Under the selected suite's security assumptions, recomputing a CAID
+      establishes that an identifier commits to the supplied canonical typed
+      content. Comparing CAIDs emitted directly from the same action type, or
+      emitted through pinned Action-Mapping Profiles, provides the scoped
+      matching result defined here. It does not prove that the action was authorized,
+      executed, safe, or wise. It confers no trust, names no humans,
+      and replaces no verifier: every artifact that carries a CAID
+      still verifies inside its own trust boundary under its own
+      specification, exactly as it did before carrying one.</t>
+      <t>In particular:</t>
+      <ul spacing="normal">
+        <li>A CAID is not authorization. Possession of an identifier,
+        or of the object it digests, authorizes nothing.</li>
+        <li>A CAID is not identity. It names content, not any human,
+        agent, workload, or organization.</li>
+        <li>A CAID is not proof of execution or of outcome. An
+        artifact asserting execution proves that under its own
+        specification, or not at all.</li>
+        <li>Composition joins on the identifier and never ingests
+        another verifier's evidence. When two artifacts about one
+        action are composed, the join key is the CAID; each leg's
+        evidence is verified by that leg's own verifier under that
+        leg's own trust anchors, and no verifier imports another's
+        conclusions into its own trust boundary.</li>
+      </ul>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>Digest strength. The binding between an identifier and its
+      content rests on the second-preimage resistance of SHA-256. If
+      SHA-256 weakens, the migration path is suite agility: a new
+      suite is registered and issuers move to it, emitting new
+      identifiers. There is no in-place algorithm change within a
+      suite, ever.</t>
+      <t>No domain separation. The digest input carries no domain
+      separation prefix, deliberately, so that existing formats can
+      adopt a digest they may already compute over canonical bytes
+      (<xref target="digest"/>). The compensating control is
+      mandatory: verifiers MUST enforce the check that the in-object
+      action_type equals the type carried in the CAID string.
+      Skipping that check re-opens cross-context reinterpretation, in
+      which bytes canonicalized for one context are presented under a
+      type label from another. The check is step 2 of
+      <xref target="verification"/> and is not optional.</t>
+      <t>Personally identifiable information. Action objects, CAIDs, and
+      their correlations should be assumed to travel and to appear in logs.
+      A plain SHA-256 digest of a low-entropy identifier is pseudonymous, not
+      anonymous: an observer can test likely account, patient, or order
+      identifiers by dictionary attack. The digest field type keeps raw
+      values out of the action object but does not by itself provide
+      confidentiality or unlinkability. Type authors handling personal data
+      SHOULD prefer high-entropy opaque references or a deployment-specific
+      privacy-preserving commitment scheme, document its normalization and
+      correlation scope, and avoid placing unnecessary personal data in the
+      action object. A deployment-specific scheme can require an explicit
+      mapping profile for cross-domain joins.</t>
+      <t>Canonicalization malleability. Cross-language number
+      serialization is the historical source of canonicalization
+      divergence, which is why numbers are restricted to the
+      value-based integer rule and money is carried as amount-string
+      (<xref target="object"/>). JCS and CBOR core deterministic
+      encoding are the only permitted canonical forms; no other
+      serialization, however stable it appears, is a conforming
+      digest input.</t>
+      <t>A CAID is not a capability. Possession of an identifier
+      proves nothing and grants nothing. Identifiers SHOULD be treated
+      as public values: they may appear in logs, URLs, and audit
+      records without weakening anything. Protocols MUST NOT treat
+      knowledge of a CAID as evidence of anything beyond knowledge of
+      the object's content.</t>
+      <t>Profile-bounded equivalence. Direct CAID verification does not
+      infer semantic equality. The Action-Mapping Profile makes only a
+      narrower statement about material projections under exact pinned
+      profiles. A malicious or incomplete profile can omit a concept
+      that the relying party should have considered material. Profile
+      selection is therefore a relying-party policy decision; unpinned,
+      lossy, or ambiguous mappings MUST yield INDETERMINATE.</t>
+      <t>Native integrity coverage. A valid native signature does not
+      make unsigned members beside the signed payload trustworthy. A
+      native adapter MUST establish that every mapped field is covered
+      by the native integrity mechanism. The source descriptor is
+      verifier-derived, not presenter-asserted
+      (<xref target="mapping-boundary"/>).</t>
+      <t>Definition stability. A versioned action-type definition is
+      immutable once active. Cross-domain verifiers MUST pin an exact
+      definition source or registry snapshot. A local and a registered
+      definition that share a name but differ in validation semantics
+      MUST NOT be treated as the same type.</t>
+      <t>Duplicate object member names. A raw JSON parser feeding CAID
+      computation or mapping MUST reject duplicate member names before
+      constructing the data model. Accepting duplicate names can make
+      the native verifier and mapper select different values.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document requests no immediate IANA actions.</t>
+      <t>Two registries are described: the CAID action type registry
+      (<xref target="types"/>), whose entries follow the normative
+      schema of <xref target="schema"/>, and the CAID suite registry
+      (<xref target="suites"/>), which for this version contains
+      jcs-sha256 and cbor-sha256. Both are published as
+      machine-readable JSON under a public-domain dedication and are
+      maintained by the author's organization pending adoption. Active
+      entries are immutable in every field that affects validation or
+      material meaning. The stated intent is to transition maintenance
+      to IANA or another neutral standards body if this specification
+      is adopted. A future revision would then specify registration
+      policies for both registries.</t>
+      <t>A URN namespace registration for CAID identifiers may be
+      useful in the future; it is out of scope for this revision.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8949.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6234.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4648.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5234.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6901.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-receipts.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.lee-orprg-permit-receipts.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.morrow-sogomonian-exec-outcome-attest.xml"/>
+      </references>
+    </references>
+    <section anchor="acknowledgments">
+      <name>Acknowledgments</name>
+      <t>The separation between cryptographic validity and authority in
+      this document was sharpened by review from Eric Rescorla. Linda
+      Dunbar's cross-administrative-domain Agent Gateway scenarios
+      motivated the requirement for a reproducible action join across
+      operator boundaries. Chris Hood's work on agent transport and
+      composition helped expose the need to keep action identity
+      independent from any one authorization artifact. These
+      acknowledgments do not imply endorsement of this document.</t>
+    </section>
+  </back>
+</rfc>

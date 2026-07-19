@@ -1,0 +1,16 @@
+{
+  "@type": "EP-RELIANCE-PROFILE-v1",
+  "profile_id": "ep:profile:demo:prescriber-ehr@v1",
+  "party": "prescriber EHR",
+  "description": "Surfaces the determination to the prescriber only when a two-person quorum (reviewer plus pharmacist) is bound to the exact transaction.",
+  "required_assurance": "quorum",
+  "required_authority": false,
+  "accepted_registry_keys": [],
+  "accepted_issuer_keys": [
+    "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU"
+  ],
+  "accepted_policy_hashes": [],
+  "required_evidence": [
+    "receipt"
+  ]
+}

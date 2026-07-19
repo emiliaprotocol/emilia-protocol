@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-recourse-reference.schema.json",
+  "title": "EP-RECOURSE-REFERENCE-v1",
+  "description": "A signed, offline-verifiable reference to WHO stands behind a specific authorized agent action, and under what terms. EMILIA proves the reference — that a named responsible party committed to these terms and bound the commitment to a GENUINE authorization for this EXACT action. EMILIA does NOT bear the loss, adjudicate coverage, determine solvency, or make any legal determination: it is claim-not-guarantee, evidence-not-adjudication. It composes above the authorization receipt (draft-schrock-ep-authorization-receipts) by digest, and is the socket an insurer / surety / employer / facilitator plugs into. Extends the named-owner liability block in lib/provenance/chain.js.",
+  "type": "object",
+  "required": ["@type", "@version", "subject_digest", "authorization", "responsible_party", "coverage", "status_url", "signature", "issuer_key"],
+  "additionalProperties": false,
+  "properties": {
+    "@type": { "const": "ep.recourse-reference" },
+    "@version": { "const": "EP-RECOURSE-REFERENCE-v1" },
+    "subject_digest": {
+      "description": "SHA-256 over JCS(action) — the exact action this recourse is FOR. Same join key as the authorization receipt and the capsule seam.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authorization": {
+      "description": "The authorization this recourse rides. receipt_payload_digest binds the reference to a GENUINE approval — recourse cannot be attached to a bare claim or a forged authorization.",
+      "type": "object",
+      "required": ["receipt_id", "receipt_payload_digest"],
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": { "type": "string" },
+        "receipt_payload_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "responsible_party": {
+      "description": "WHO is on the hook. EMILIA proves this party SIGNED the commitment; it does not verify solvency or enforce payment.",
+      "type": "object",
+      "required": ["entity", "role"],
+      "additionalProperties": false,
+      "properties": {
+        "entity": { "type": "string", "description": "stable id (did:web / urn / issuer entity id) of the responsible legal entity" },
+        "legal_name": { "type": "string" },
+        "role": {
+          "description": "self = the operator stands behind their own agent; employer = the deploying org; third_party = an external guarantor/insurer/surety.",
+          "enum": ["self", "employer", "third_party"]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["action_class", "limit", "window"],
+      "additionalProperties": false,
+      "properties": {
+        "action_class": { "type": "string", "pattern": "^urn:ep:action:[a-z0-9_]+\\.[a-z0-9_.]+$" },
+        "limit": {
+          "type": "object",
+          "required": ["amount", "currency"],
+          "additionalProperties": false,
+          "properties": {
+            "amount": { "type": "string", "description": "decimal string (I-JSON: not a float)" },
+            "currency": { "type": "string" }
+          }
+        },
+        "exclusions_digest": {
+          "description": "SHA-256 of the canonical exclusions document. EMILIA binds the exclusions by hash; it does NOT interpret them or decide whether a loss is covered — that adjudication is the responsible party's.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "window": {
+          "type": "object",
+          "required": ["not_before", "not_after"],
+          "additionalProperties": false,
+          "properties": {
+            "not_before": { "type": "string", "format": "date-time" },
+            "not_after": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+    "dispute_endpoint": { "type": "string", "description": "where a claimant files (opaque to EMILIA)" },
+    "settlement_instruction": { "type": "string", "description": "opaque reference to how settlement occurs (EMILIA never moves funds)" },
+    "evidence_requirements": {
+      "description": "the evidence artifacts a claim must present (e.g. EP-RECEIPT-v1, EP-EXECUTION-ATTESTATION-v1) — the reason EMILIA receipts make the action underwritable at all.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "retention": { "type": "string", "description": "receipt/evidence retention policy reference" },
+    "status_url": {
+      "description": "revocation/status endpoint. Offline verification proves the SIGNED terms; whether the recourse is still LIVE is server-state, checked here (same authenticity-vs-currency split as receipt revocation).",
+      "type": "string"
+    },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "signature": {
+      "type": "object",
+      "required": ["algorithm", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": { "enum": ["Ed25519"] },
+        "value": { "type": "string" }
+      }
+    },
+    "issuer_key": {
+      "description": "base64url SPKI DER of the responsible party's signing key. ACCEPTANCE requires the relying party (gateway/claimant) to have PINNED this issuer out-of-band — a self-asserted recourse reference VERIFIES but is never ACCEPTED unpinned (same verified-vs-accepted discipline as federation).",
+      "type": "string"
+    }
+  }
+}

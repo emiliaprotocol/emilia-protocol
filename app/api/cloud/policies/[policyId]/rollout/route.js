@@ -2,9 +2,12 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { loadPolicyById } from '@/lib/handshake/policy';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/cloud/policies/[policyId]/rollout
@@ -34,10 +37,28 @@ export async function POST(request, { params }) {
     requirePermission(auth, 'admin');
 
     const { policyId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.version || !body.environment) {
       return epProblem(400, 'missing_rollout_params', 'Both "version" and "environment" are required');
+    }
+
+    // ── Environment-scope enforcement (Sentrix HIGH finding a) ─────────────────
+    // An API key can be scoped to a single environment: tenant_api_keys.environment,
+    // surfaced as auth.environment by authenticateCloudRequest(). A key scoped to
+    // environment X MUST NOT initiate — or supersede — a rollout targeting a different
+    // environment (e.g. a staging-scoped key POSTing {environment:'production'} to flip
+    // a production rollout active). When the key carries an environment scope, the
+    // request's target environment MUST equal it. Keys with no scope (auth.environment
+    // falsy) are unrestricted here and fall through to the permission check above.
+    if (auth.environment && body.environment !== auth.environment) {
+      return epProblem(
+        403,
+        'environment_scope_mismatch',
+        `This API key is scoped to environment "${auth.environment}" and cannot roll out to "${body.environment}".`,
+      );
     }
 
     const strategy = body.strategy || 'immediate';
@@ -56,7 +77,7 @@ export async function POST(request, { params }) {
 
     // Resolve the route policyId to its policy_key; the version to roll out is
     // the handshake_policies row with this key and body.version.
-    const policy = await loadPolicyById(supabase, policyId);
+    const policy = await loadPolicyById(supabase, policyId, { tenantId: auth.tenantId });
     if (!policy) {
       return EP_ERRORS.NOT_FOUND('Policy');
     }
@@ -71,7 +92,7 @@ export async function POST(request, { params }) {
 
     if (vErr) {
       logger.error('[cloud/policies/rollout] Version query error:', vErr);
-      return epProblem(500, 'rollout_query_failed', vErr.message);
+      return epDbError(500, 'rollout_query_failed', vErr, 'cloud/policies/rollout');
     }
 
     if (!versionRow) {
@@ -79,6 +100,29 @@ export async function POST(request, { params }) {
     }
 
     const now = new Date().toISOString();
+
+    // ── FAIL-CLOSED TODO: Accountable Signoff enforcement (Sentrix HIGH finding b) ──
+    // docs/architecture/ADAPTIVE_SCORING.md §8.2 ("Policy Rollout Attacks") and the
+    // pipeline diagram (step 4: "Accountable Signoff on rollout", and §7 Phase 2:
+    // "Rollout via POST /api/cloud/policies/*/rollout with Accountable Signoff")
+    // REQUIRE a verified human authorization (Accountable Signoff) before a policy
+    // rollout is activated. The two mutations immediately below — superseding the prior
+    // active rollout and inserting the new status:'active' row — ARE the activation, and
+    // they currently run with NO signoff check. The documented control is not enforced.
+    //
+    // The verification machinery exists (lib/signoff: consumeSignoff / isSignoffConsumed
+    // / requireSignoffEvent, keyed by signoff_id + bindingHash + executionRef), but the
+    // wire contract for THIS route is undefined: the request body has no documented
+    // signoff field (see the JSDoc above, docs/api/ROUTES.md, docs/api/EXAMPLES.md),
+    // policy_rollouts (migration 068) has no column to record the authorizing signoff,
+    // and there is no defined binding-hash construction for a rollout action. Enforcing
+    // here would mean inventing that format; that belongs in a dedicated change
+    // (route body + migration + binding-hash spec), not this security hotfix.
+    //
+    // TODO(security/signoff): immediately before the supersede+insert below, require a
+    // valid, approved, unconsumed Accountable Signoff bound to
+    // {policy_key, version, environment} and fail closed with
+    // epProblem(403, 'signoff_required', ...) when it is missing or invalid.
 
     // For immediate rollouts, supersede any currently active rollout for this
     // (policy_key, environment) combination. Because each version is its own
@@ -94,7 +138,7 @@ export async function POST(request, { params }) {
 
       if (keyErr) {
         logger.error('[cloud/policies/rollout] Key version query error:', keyErr);
-        return epProblem(500, 'rollout_query_failed', keyErr.message);
+        return epDbError(500, 'rollout_query_failed', keyErr, 'cloud/policies/rollout');
       }
 
       const keyPolicyIds = (keyVersions || []).map((r) => r.policy_id);
@@ -127,7 +171,7 @@ export async function POST(request, { params }) {
 
     if (insertErr) {
       logger.error('[cloud/policies/rollout] Insert error:', insertErr);
-      return epProblem(500, 'rollout_insert_failed', insertErr.message);
+      return epDbError(500, 'rollout_insert_failed', insertErr, 'cloud/policies/rollout');
     }
 
     return NextResponse.json({

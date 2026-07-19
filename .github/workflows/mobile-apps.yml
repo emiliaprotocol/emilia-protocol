@@ -1,0 +1,173 @@
+name: Mobile Apps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/.well-known/**'
+      - 'app/api/v1/mobile/**'
+      - 'app/mobile/**'
+      - 'apps/secure-app/**'
+      - 'docs/mobile/**'
+      - 'examples/mobile-government/**'
+      - 'lib/rate-limit.js'
+      - 'lib/mobile/**'
+      - 'lib/write-guard.js'
+      - 'middleware.js'
+      - 'mobile/**'
+      - 'openapi.yaml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'packages/mobile/**'
+      - 'sdks/kotlin-mobile/**'
+      - 'sdks/swift-mobile/**'
+      - 'scripts/check-mobile-production.mjs'
+      - 'scripts/check-mobile-release.mjs'
+      - 'scripts/check-write-discipline.js'
+      - 'scripts/test-mobile-migration.sh'
+      - 'supabase/migrations/*mobile*.sql'
+      - 'tests/mobile-production-*.test.js'
+      - 'tests/mobile-production-migration.sql'
+      - 'tests/conformance.test.js'
+      - 'tests/security.test.js'
+      - 'tests/write-guard-extended.test.js'
+      - '.github/workflows/mobile-apps.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/.well-known/**'
+      - 'app/api/v1/mobile/**'
+      - 'app/mobile/**'
+      - 'apps/secure-app/**'
+      - 'docs/mobile/**'
+      - 'examples/mobile-government/**'
+      - 'lib/rate-limit.js'
+      - 'lib/mobile/**'
+      - 'lib/write-guard.js'
+      - 'middleware.js'
+      - 'mobile/**'
+      - 'openapi.yaml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'packages/mobile/**'
+      - 'sdks/kotlin-mobile/**'
+      - 'sdks/swift-mobile/**'
+      - 'scripts/check-mobile-production.mjs'
+      - 'scripts/check-mobile-release.mjs'
+      - 'scripts/check-write-discipline.js'
+      - 'scripts/test-mobile-migration.sh'
+      - 'supabase/migrations/*mobile*.sql'
+      - 'tests/mobile-production-*.test.js'
+      - 'tests/mobile-production-migration.sql'
+      - 'tests/conformance.test.js'
+      - 'tests/security.test.js'
+      - 'tests/write-guard-extended.test.js'
+      - '.github/workflows/mobile-apps.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  protocol-and-server:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: mobile-contract
+          POSTGRES_DB: mobile_contract
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mobile_contract"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Check release invariants
+        run: npm run mobile:release-check
+      - name: Enforce trust-table write discipline
+        run: node scripts/check-write-discipline.js
+      - name: Run server-side mobile conformance
+        env:
+          # Swift/CryptoKit and Android execute in their native jobs below.
+          MOBILE_CONFORMANCE_PORTS: javascript
+        run: npm run mobile:conformance
+      - name: Run production adapters and routes
+        run: npx vitest run tests/mobile-production-attestation.test.js tests/mobile-production-routes.test.js tests/mobile-production-runtime.test.js tests/mobile-production-store.test.js
+      - name: Run mobile package hostility suite
+        run: node --test packages/mobile/*.test.js
+      - name: Execute the production migration contract
+        env:
+          MOBILE_TEST_DATABASE_URL: postgresql://postgres:mobile-contract@127.0.0.1:5432/mobile_contract
+        run: npm run mobile:db-contract
+
+  ios:
+    runs-on: macos-15
+    env:
+      # macos-15 still defaults to Xcode 16.4 / Swift 6.1. The checked-in
+      # package manifest requires Swift tools 6.2, which is installed here.
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Lint privacy and entitlement manifests
+        run: |
+          plutil -lint examples/mobile-government/ios/Sources/PrivacyInfo.xcprivacy
+          plutil -lint examples/mobile-government/ios/GovernmentApproval.entitlements
+      - name: Test Swift SDK
+        run: swift test --package-path sdks/swift-mobile
+      - name: Compile the iOS app without signing
+        run: |
+          xcodebuild \
+            -project examples/mobile-government/ios/EmiliaGovernmentApproval.xcodeproj \
+            -scheme GovernmentApproval \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/emilia-ios" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Test SDK and compile debug app
+        working-directory: sdks/kotlin-mobile
+        run: ./gradlew test :sample:assembleDebug :sample:lintDebug --no-daemon
+
+  secure-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/secure-app
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/secure-app/package-lock.json
+      - name: Install secure-app dependencies
+        run: npm ci --ignore-scripts
+      - name: Audit secure-app dependency tree
+        run: npm audit --omit=dev --audit-level=high
+      - name: Run secure-app protocol tests
+        run: npm test
+      - name: Validate Expo dependency compatibility
+        run: npx expo-doctor

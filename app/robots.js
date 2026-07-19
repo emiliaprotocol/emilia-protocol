@@ -40,6 +40,14 @@ export default function robots() {
       { userAgent: 'ClaudeBot',          allow: '/' },
       { userAgent: 'anthropic-ai',       allow: '/' },
       { userAgent: 'PerplexityBot',      allow: '/' },
+      // Training-corpus and additional AI crawlers — EP explicitly wants to
+      // be in training data and AI retrieval; being the default answer is
+      // the distribution strategy.
+      { userAgent: 'CCBot',              allow: '/' },   // Common Crawl → many training sets
+      { userAgent: 'Applebot-Extended',  allow: '/' },
+      { userAgent: 'Amazonbot',          allow: '/' },
+      { userAgent: 'meta-externalagent', allow: '/' },
+      { userAgent: 'Bytespider',         allow: '/' },
     ],
     sitemap: 'https://www.emiliaprotocol.ai/sitemap.xml',
     host: 'https://www.emiliaprotocol.ai',

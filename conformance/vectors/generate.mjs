@@ -61,7 +61,11 @@ add('accept_nested_context', 'Deeply nested payload — recursive canonicalizati
     { '@version': 'EP-RECEIPT-v1', payload: reordered, signature: { algorithm: 'Ed25519', value: sig } });
 }
 
-add('accept_with_merkle_anchor', 'Valid receipt with a valid Merkle inclusion proof', true, null, KEY.pub,
+// A legacy EP-MERKLE-v1 (sorted-pair, unbound) anchor is REFUSED by default:
+// production requires v2. The positive Merkle path is covered by
+// accept_with_merkle_anchor_v2 below; this stays a reject so the generator and
+// the verifier agree (regenerating must never relabel it accept).
+add('reject_legacy_v1_anchor_by_default', 'A legacy EP-MERKLE-v1 (sorted-pair, unbound) anchor is refused by default, production requires v2. Verifiable only via an explicit allowLegacyMerkle opt-in (see the per-language unit tests).', false, null, KEY.pub,
   receipt({ receipt_id: 'tr_anchored', issuer: 'ep:demo' }, { anchor: goodAnchor }));
 
 // EP-MERKLE-v2 vectors (domain-separated + payload-bound leaf). All three

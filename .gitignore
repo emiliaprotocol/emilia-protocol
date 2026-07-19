@@ -1,7 +1,10 @@
-node_modules/
+# no trailing slash — also catches node_modules SYMLINKS (a remote-sandbox
+# symlink slipped past `node_modules/`, which only matches directories)
+node_modules
 .next/
 .env
 .env.local
+.env.production
 .env*.local
 .stripe-vars.json
 .emilia/
@@ -30,6 +33,12 @@ integrations/langchain-emilia/dist/
 .serena/
 coverage/
 test-results/
+reports/mutation/
+/release-artifacts/
+/registry-copy/
+formal/tamarin/run-output/
+formal/tamarin/run-output-receipt/
+formal/tamarin/run-output-quorum/
 
 # Supabase CLI local cache — these change per-developer and per-link
 supabase/.temp/
@@ -49,3 +58,64 @@ staircase-results.json
 
 # crash-test runtime output
 emilia-workpaper/
+
+# Attorney-prep IP packet — MUST NOT reach the public repo (patent-clock /
+# attorney-work-product privilege risk). Local-only; keep untracked. Security
+# sweep HIGH finding: docs/ip/ was untracked but not ignored — one `git add .`
+# from irreversibly publishing invention-disclosure + claim strategy.
+docs/ip/
+
+# Local GRACE investor/strategy drafts — internal until finalized (fund targets,
+# warm-intro map, raise figures). This repo is the PUBLIC mirror; keep these out
+# until deliberately published (git add -f when ready).
+docs/grace-raise/
+
+# Local strategy stash — targeting plans and build direction (competitive
+# intel; the public repo must never carry the parcel map or the build queue).
+docs/strategy-private/
+
+# ── Private business material (2026-07-05) — NOT the open protocol ──
+# Removed from public tracking to keep GTM/competitive/fundraising strategy
+# out of competitors' hands. Files remain LOCAL (working tree), just untracked.
+docs/strategy/
+docs/marketing/
+docs/outreach/
+docs/positioning/
+docs/pilots/
+docs/seo/
+docs/legal/
+docs/launch/
+docs/distribution/
+docs/archive/grants-and-applications-2026-06-29/
+docs/archive/competitive-analysis-raw.md
+docs/TARGET-LIST-AND-OUTREACH.md
+docs/INVESTOR-NARRATIVE.md
+docs/ECONOMIC-MOAT.md
+docs/CEO-ROLE-SPEC.md
+docs/FOCUS-RECOMMENDATION.md
+docs/WHAT-THE-WINNER-HAS.md
+docs/NIST-ENGAGEMENT-PLAN.md
+docs/OUTREACH-EMAILS.md
+docs/PILOT-OUTREACH-EMAILS.md
+docs/SEND_TOMORROW_INDEX.md
+docs/FINANCIAL-INSTITUTIONS-PILOT-PROPOSAL.md
+docs/GOVERNMENT-PILOT-PROPOSAL.md
+docs/MN-FRAUD-OVERSIGHT-ONE-PAGER.md
+docs/TRUST-DESK-AUTOMATION-SPEC.md
+docs/TRUST-DESK-LAUNCH-RUNBOOK.md
+docs/EP-EVOLUTION-VISION-v2.md
+docs/VISION-BITCOIN-OF-TRUST.md
+docs/LAUNCH.md
+
+# 2026-07-11 (Fable): two files slipped past the 2026-07-05 sweep and sat public.
+# The sweep ignored docs/outreach/ but not TOP-LEVEL outreach/, and INVESTOR_ONE_PAGER
+# lived in the otherwise-public docs/briefs/ collateral dir. Both now untracked.
+outreach/
+docs/briefs/INVESTOR_ONE_PAGER.md
+
+# Fundraising / investor decks are private — never in the public served path (docs/strategy-private/decks/).
+# EXCEPTION (2026-07-09, Iman's call): emilia-seed-deck.pdf is a PUBLIC-SAFE overview
+# (no raise amount, no use-of-funds, no target lists) whose link was sent to investors,
+# so it is served publicly. The confidential raise deck stays in docs/strategy-private/decks/.
+public/briefs/emilia-informational-deck.pdf
+public/briefs/emilia-investor-onepager.pdf

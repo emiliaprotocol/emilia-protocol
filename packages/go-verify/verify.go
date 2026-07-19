@@ -16,13 +16,13 @@
 package emiliaverify
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math"
 	"sort"
 	"strconv"
@@ -304,8 +304,26 @@ func IsCanonicalizable(v any) bool {
 		return err == nil && !math.IsNaN(f) && !math.IsInf(f, 0) && math.Trunc(f) == f && math.Abs(f) <= maxSafeInteger
 	case float64:
 		return !math.IsNaN(val) && !math.IsInf(val, 0) && math.Trunc(val) == val && math.Abs(val) <= maxSafeInteger
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case int:
+		return int64(val) >= -maxSafeInteger && int64(val) <= maxSafeInteger
+	case int8:
 		return true
+	case int16:
+		return true
+	case int32:
+		return true
+	case int64:
+		return val >= -maxSafeInteger && val <= maxSafeInteger
+	case uint:
+		return uint64(val) <= maxSafeInteger
+	case uint8:
+		return true
+	case uint16:
+		return true
+	case uint32:
+		return true
+	case uint64:
+		return val <= maxSafeInteger
 	case map[string]any:
 		for _, e := range val {
 			if !IsCanonicalizable(e) {
@@ -391,20 +409,18 @@ func hashPairV2(left, right string) string {
 }
 
 func b64urlDecode(s string) ([]byte, error) {
-	if m := len(s) % 4; m != 0 {
-		s += strings.Repeat("=", 4-m)
+	if s == "" || strings.ContainsAny(s, "+/=") || len(s)%4 == 1 {
+		return nil, fmt.Errorf("value is not canonical base64url")
 	}
-	return base64.URLEncoding.DecodeString(s)
+	decoded, err := base64.RawURLEncoding.Strict().DecodeString(s)
+	if err != nil || base64.RawURLEncoding.EncodeToString(decoded) != s {
+		return nil, fmt.Errorf("value is not canonical base64url")
+	}
+	return decoded, nil
 }
 
 func decodeJSON(data []byte) (map[string]any, error) {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	var doc map[string]any
-	if err := dec.Decode(&doc); err != nil {
-		return nil, err
-	}
-	return doc, nil
+	return decodeStrictJSONObject(data)
 }
 
 func contains(list []string, s string) bool {

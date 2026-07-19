@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+# emilia-gate reference chart (EP-GATE-HELM-v1) — optional ServiceMonitor STUB.
+# Gated behind metrics.enabled; scrapes the gate's /metrics endpoint. Requires
+# the Prometheus Operator CRDs (monitoring.coreos.com/v1) to be installed —
+# installing this chart with metrics.enabled=true on a cluster without them
+# will fail at apply time. Stub: adapt relabelings/TLS to your monitoring
+# stack.
+{{- if .Values.metrics.enabled }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $fullname := default (printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-") .Values.fullnameOverride }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: trusted-action-firewall
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version }}
+    emiliaprotocol.ai/chart-contract: EP-GATE-HELM-v1
+    emiliaprotocol.ai/maturity: experimental
+    {{- with .Values.metrics.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: {{ .Values.metrics.path }}
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.metrics.serviceMonitor.scrapeTimeout }}
+{{- end }}

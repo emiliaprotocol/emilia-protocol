@@ -4,7 +4,7 @@
   "vectors_version": "1.0.0",
   "description": "Adversarial conformance vectors for the EMILIA Protocol Class-A human device signoff: a WebAuthn assertion whose challenge is the SHA-256 of the JCS-canonicalized authorization context. An EP-SIGNOFF-v1 conformant verifier MUST return expect.valid for every vector.",
   "scope_note": "These exercise the OFFLINE assertion verifier (cryptographic, action-binding, audience, lifecycle/UV). Replay / one-time consumption and enrollment-active are SERVER-STATE checks (the nonce is the global consumption key) and are out of scope for offline assertion vectors. failure_class follows the verifier taxonomy discussed on secdispatch (S. Bu, 2026-06).",
-  "count": 9,
+  "count": 13,
   "vectors": [
     {
       "id": "accept_valid",
@@ -14,7 +14,10 @@
         "valid": true
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7onGEL0wrYF37XxDfS0EP7vvBeDwOiyWjno9SCnBCvAoo79M_NSFXeP6DfRiX8gO8go9bDPqQGgu0w2740Vwjg",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE__Ru2WP_4gFjGP4Ue7c19QGUGMFyMkdm9MaswLktJx4sayq8PgZc9KX7E-TMViS8mwb2_-4RcSVoLWckUQH5Fg",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -22,7 +25,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_6c2078dc54fa3797405e7eb42e344f44",
+          "nonce": "sig_ec3ed6c9d629f7a8827bd3511626e135",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -30,8 +33,8 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiaDNncDJfTDBiU0F3a1FqRXFrYmt5XzlLNFhGR21kOUF0YXd6YUVoQUdnZyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEYCIQDXbpK1dOzKqSqZJpOLI-_4yNmqixAO0vy_ZMjKaY7ypAIhAIp6VqQ77dj1X0vZ-UORMZ3FP0MutqIQwXbL-P7Jo9px"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicXFiSHhZQTBPeDA4akEtTHVVaF9LNjFLZ2lVOGZnYVl0Q1ZDbjdMSzJRVSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEQCIBvtCC9DVy8iVcqxAajU2uhp8KFNtwEXHkTaxrr-8Tq-AiAhegO5o3Fx3ry3DMmoaNTQbB3dKQHMvo3Kx-TQihFO5w"
         }
       }
     },
@@ -43,7 +46,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsSqZUIfjNRvHQgeEe5ErQnZ847QIexhe9POG1kEW_mRLssPfL5_TMc8zu3vm67lTCNssCBnYKDyzNHPCtT43Sw",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEm6U7-_SKpChYwBw4mT_vwE93EtaOsDOYHFJJAQBOtCvnXjfR5oXpkKNlFueL_gp_zuoYmO2qxjxlXoMF_0w-cA",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -51,7 +57,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_a64028386fec3015a71eec973f29f952",
+          "nonce": "sig_42031dee9ab4f3f75c469c6c3a7f10f7",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -59,8 +65,8 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiZnBXM0hUN0hMQWRTZjVFNEFKeHItU3o2RjRReTV1Y0ZIeDI1TWR2Vk1zbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEYCIQDg1zG26OloJ5lPBwflue1OoLIjRMn8LuLbpiG3fIctqwIhALTRcZtCLsWh1L7MkeuzYTPJzo83aR4xRjRwcpYuuWKi"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiNTBDRkNGLU12OXp2dzN2RUV3Q3MxTzA4TlFxd3FTR2xuX1pWUXEzN1hRdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEUCIFGqzFLWBAQoGxskXv51HT-pgI_3NGSsBGuXsJ0Oh77DAiEAwdS2WKDGgg6c5bvhvkN6qwUcOgkORsXwDYn698h15Qo"
         }
       }
     },
@@ -72,7 +78,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoWDQlo4k3a_yL208vcchHtjBKwQPY1TMP1d6pgsOgDV6Pvil0rQHT_TGc9F8toyRN3Kb9n_pXjvUA2M0hW6LJQ",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETuCBgWu6xTwJ-hmC_Km80OB_EHOVyx2L18z6nCsZAJcas9Z27ped_2mycS3h76lRIuXRw6eQDpLYH6eTFeOGfQ",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -80,7 +89,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_0cba37eb312ec2fd234d5c3b462b5e48",
+          "nonce": "sig_c1353cec8674a4993c36f6312173b9e4",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -88,8 +97,8 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoialhTVVJCbFg2YzFWVmo3TWxLa1ZQWERKNFFtcHJRSFBXb0hJTVpkQjFybyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEUCIQDRJi6O50v29d_t5CCOuVTZbPmFyhDFw0NtGFFcIHZGBAIgAMy9mDSjH8FNDtepuhvvxqI_CAnVkcfRvRewrLPFCRU"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTnVrZ0UtUnRnSzF6SUJtQW5vQzJhQVZDV3FpYzBJTHN2MGN4Um1mdHhWayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEUCID7-DKZFN8IxzvACSJkK_QMqD3HU9KjHi64VpSOujbWnAiEAkibLB64E5dtH9z3LU-UDA44YcIS9E1RbViX4OXTeSIs"
         }
       }
     },
@@ -101,7 +110,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmftnbVSG61Cu76qRd0WVsQQ-PLcwJhdpE14Nixr5hm91iFl9sd-1S703EdmBZTEo_r1jR5FAz8nkAzQDPX2k9Q",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4NIbXS_Jayhmt8--Hm-PkLS7MYecu6JAVIuxV39o5ITciO11C5-AoJQw8L2MInin8fLTuDSdMVF3VAEVi4odGA",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -109,7 +121,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_24c6d56ba06dc99605786f2da13be569",
+          "nonce": "sig_25bbe91e0a9991a049c070a81fc95ab2",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -117,7 +129,7 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicGVZVERyQkxCamg0NVVCVmVlZEY4c00tOTBuMlcwQmRBcHNHUzQ3clA3cyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSlc1dzd1MWIyeG40LXduU29odGRyc2k5TW5yei14eEVMUFFPVktOZGdMZyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
           "signature": "bm90LWEtdmFsaWQtZWNkc2Etc2lnbmF0dXJl"
         }
       }
@@ -130,7 +142,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEbYN24XNNg0pb_fsDteCvVePOwYV6rVjC_uxffYWty6W6M4IErYlXn2J9lTrK8irj0o05cNjmdj9T5cZ2r_pLiw",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEb5oi3WifBMmvGJavuNr58YwQyV5beA41IArXfUtb5saD5-gC9CAxd3g2TIXq0XRHSekajdFgKMFtFZ23DKEiIg",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -138,7 +153,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_836cb3d11fa468c2952e5da018350d80",
+          "nonce": "sig_89d95a1bdf553c88a13308c89f09bc46",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -146,8 +161,8 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib3RIWHlYSVhGaDQ4eHNFbk5tQjhGRHNqNjc3TThZbmFudl9leXNEcHRCTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEQCIGv4xJy3Y4g_a-q-S6d6eMjKhPqOiBI-lzfPgTMijus2AiBr9MwSz7MpY0NnDD5iRSbjRONnaL0Gpo-e82C_qjVD1Q"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSlpFXzYyWUdCWjlfMVNTZlBFSUoxQWM5MktISmFuOW5HZGZ6QU1OaHpuVSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEQCIAyz2QUXOnzmK5PBg2HEU2jXScpzj2yD5M1xI9PScdjUAiAhSVcW1Z3IF1RzUa9vXj6kdxcTU6DwY6snhf6NDi-z0A"
         }
       }
     },
@@ -159,7 +174,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjcHs2uCHdiV_vthmXdZNVfHRb9UeN3eokSO3JdYZshsBDcoxlckyvSGLk0SdRiG7qPZtHiDYfNwgVvcdyL5nOQ",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPrRrdsTUxm6zZL0rAEhfAgtEppdZgyO4KUIqWEu6oyBFOE-W6djXUM9BhKuHekZ-rpNtYhLPVLPsmqwL4MYWXQ",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -175,8 +193,8 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidTJQdHRDcFdnRGxLeWp0ZlhmaEJvbnBlM1RER2xmeWNtWW1EcnRyRVFVZyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEUCIQCBWAzR0hbVaHXeTwY_0W5EYmG6vENxbS2IlN1J7bXbkwIgd6u3CLCRY9_zA5ZbMdgyo4ZwK6VLtE50UNZrdVH7mJs"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibmRGSHV2MElmY0pMRzhxRWgyMlhidjNmOXlzcHVmTXZzVmtSWmtkT0MtNCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEQCIEDhHe5PhAWKMne5H48lFxmmRTiDE5IFolfMsx-Cq6fUAiByU0gfzozG-8CqxM7QmLS80eaF93QtmFeV2f9-Zmkfwg"
         }
       }
     },
@@ -188,7 +206,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEiFqy35G49a-DRGkihCTP6fYe7Tp03sqrkm0ty4hLhkV9UsYKt2up6lKr2fap59C14oHYST4yZwvVcNY_CyXmSA",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETPbucW3whRWeGrJ_f88GImhi-_0CJAWt3lrdIcaAnwTbsccD8_rVKUwU_3czcQdgIWkSCnDNa2PZS-tTHG54Jw",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -196,7 +217,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_d7885a1f2978389bdea1f27e6f000fbf",
+          "nonce": "sig_73b250939dfb838321b005df26cd543c",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -204,8 +225,136 @@
         },
         "webauthn": {
           "authenticator_data": "nBgN4M1pnueIl8R8_bPn7h11kG4xt3RqR0fepTaQmDcFAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNTV0UUVpM2dqTzJhUy16TXFMa0xmUTFkcGRyenNKNHhfRTlVUGNINElyUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEUCIQDnoL83jFA555QDX85qxJ38anFxYxEZEvFJ7LDCA1V0wgIgOYJAqK413cx5s9jOwMNffcSky1nPPiJXd2IBFLvyp68"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoieUYxVEEtT0RUb19ZYXQ3TG1VbGFjQ2ZoWFROSUQxcW80OGUtR3VLU1FyNCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEYCIQDB9962RikE2CKaHFpqfMruzxXi2QUoyN566kg8gsIzDAIhALjne7BnCv8TQYd0w0BZYX1BMYucg7lASOrzaxgU82fI"
+        }
+      }
+    },
+    {
+      "id": "reject_audience_wrong_origin",
+      "description": "The assertion came from an origin outside the relying party allowlist",
+      "failure_class": "operation/audience",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5WCJyG9JE2Uzn-6Er8enVJonxg8OcmctDUJEz-nYABqoPpcNr0gpnntYb2j03kJ1omtH0jl0hqyN3u5Gud39_Q",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_64bcb835753480b67111f2593fa8826c",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSjVJVjFnLXJyWjVWaDBYZmdsWndMSXNOTkFHMWxQR25zdEg2QmJGTV9tSSIsIm9yaWdpbiI6Imh0dHBzOi8vZXZpbC5lbWlsaWFwcm90b2NvbC5haSJ9",
+          "signature": "MEYCIQDas2TSTCybtISFk3xgyVJGcpj2L7ShTAGBKhjtUCRJngIhAKqU5QY96i8PIxZY1yFDJc0k9V6eTUw8JZAlqXMUCz2g"
+        }
+      }
+    },
+    {
+      "id": "reject_parser_duplicate_challenge",
+      "description": "Signed clientDataJSON contains duplicate challenge members and is therefore ambiguous",
+      "failure_class": "structural",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZ96CuoPlPQ1_BO7waSJswZ544wtNqKJkGs7spV4XMtM3hoWr7EZg8BedKj0UDk2PuywUm3uYgWjwaDhoyqQdMQ",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_e09553a1116528f58db7ec1877e11792",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYXR0YWNrZXItY29udHJvbGxlZCIsImNoYWxsZW5nZSI6Imtpcjk1eUxQa0l1cjBYWlZuNHVrY1c5dHBPLUpkaVlSSUtIYlJFZVQ1dVkiLCJvcmlnaW4iOiJodHRwczovL3d3dy5lbWlsaWFwcm90b2NvbC5haSJ9",
+          "signature": "MEQCICVnmWy1lsEe3qyxzH4jUnAh7-OCe7cvRjQMxZ3fHfV9AiAJ8Ao2XOnKTQndJa6TrU6wfDL3pW71gQHYHqO3rKaGbQ"
+        }
+      }
+    },
+    {
+      "id": "reject_parser_invalid_utf8",
+      "description": "Signed clientDataJSON contains malformed UTF-8 and must not be replacement-decoded",
+      "failure_class": "structural",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2mkHVXXSAa3-O3ii102ceOv9Bx25z8pBxfHcFunypVDOEI2aquyPNswpD3s1v4qJ-k__41AfZO-AondVCe5RjA",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_0cf9ba861b1cb8b5ae16a73a9e1a7def",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQWFlVUdtTjhlWVZKSkJlUVVhSmJIRGxDeklFTW9SbnlYb3dGTDFOTlhzMCIsIm9yaWdpbiI6IsMoIn0",
+          "signature": "MEQCIHwE53gk-y7wmDr9G2ysMNOTrAursEyt30xhR4Ua6Rb2AiAUybIjEWqdD_Txt3lJGM6xR9HZEVoGWpxIlyo3Tc0Qmg"
+        }
+      }
+    },
+    {
+      "id": "reject_encoding_padded_client_data",
+      "description": "clientDataJSON uses a padded alias instead of canonical unpadded base64url",
+      "failure_class": "structural",
+      "expect": {
+        "valid": false
+      },
+      "rp_id": "emiliaprotocol.ai",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEU9v6cd5ggLGlpn8QJbB4d94-9rptgLc0QtMt8MPxo8wnCDwfSpmETbYxthBBjDb7wZAqmasFJV3N6CuKH00eDg",
+      "signoff": {
+        "@type": "ep.signoff",
+        "context": {
+          "ep_version": "1.0",
+          "context_type": "ep.signoff.v1",
+          "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
+          "policy": "policy_default_large_payment_release",
+          "nonce": "sig_3f9f0dcaf6bc21c8604c79c232d1d92f",
+          "approver": "ep:approver:jchen",
+          "initiator": "ent_agent_7",
+          "issued_at": "2026-06-11T00:00:00.000Z",
+          "expires_at": "2026-06-11T00:05:00.000Z"
+        },
+        "webauthn": {
+          "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRUZwT3J2MGVrTWNnR1ZGYUZ3MGhfZTFNV1Aybk10NzRZLW9PakltWS1nayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0=",
+          "signature": "MEYCIQDhurxdXRfAWC9i1PB489KZqWYKQ983GmFdIDy71Ht6KgIhAN293ZbCgBlA4bejr0twGe3ahYO0DAQoyIyGqQjYiwi5"
         }
       }
     },
@@ -217,7 +366,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEx4YHXWKgprOiluqtFhJ-HvOCYSR--JA_U0LQ-e5QFjNRaALfbMV9sPuT9tAFpDdhJSlIE-OqogL2mVw0d2GBdg",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEj6W65ZwQyFxWA3h0Fb5SyRntneWMoDwpV4jINlmRj_xkzsY-p_7WCNyaBj4PpGYM_iYtq-TSvgxJ5YMviNuxlw",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -225,7 +377,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_d273eff5ff5479e1bcbf6d8899272d3f",
+          "nonce": "sig_bed5a93dade85c9d67a11284912b0f8f",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -233,8 +385,8 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUBAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOUNpd01SNWtydXl1cGc0bC0zY0ZCa2xSV1R1cGljcVlfb0s0SnVaN0N0YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEUCIFQNeLoMyGFsf4X0ZRHjHPltaMU6mgFOMs1dcAErV_7gAiEAi9mrER4f8NIb4sNsXp_ZHsxpIHOpnNOTlR-2-Tqms88"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib1Q3WGpzblFQSFVIZHdRb3VEZ3gyTkRwLWZyNlhUVDhxeURyYUVvVU91ayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEQCIF2mGkufVlw2gGU9gVqKhs2WsW0WC6OobK3Pcj_e7V5-AiBjIGEHKy5-RDrX1yOAEQf_3KRTElfV0yMyEktvCxIglg"
         }
       }
     },
@@ -246,7 +398,10 @@
         "valid": false
       },
       "rp_id": "emiliaprotocol.ai",
-      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEP7vGx3Pvp0Lne2PNirBU1DgCe5Ty5eBmVcJ1LuTMmUsYVAAE9AbtOAG7fEaxoy0cLI-1YdSXl30anYpBrZODKA",
+      "allowed_origins": [
+        "https://www.emiliaprotocol.ai"
+      ],
+      "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEldHgx9ruGFdQ2P8EddmUkFJg3J9Ne0WA-zDwY8fk5b6waVLm8jdDcq9AzN8nuVhFNNcuMgXwesOH50aS3WCRPw",
       "signoff": {
         "@type": "ep.signoff",
         "context": {
@@ -254,7 +409,7 @@
           "context_type": "ep.signoff.v1",
           "action_hash": "55b40bc15e97392dc198b8961917a238ae5b645700ca2ed20e2ac6913e8fb459",
           "policy": "policy_default_large_payment_release",
-          "nonce": "sig_69ecce5436f27236f40be865862f29f6",
+          "nonce": "sig_7ea0ff95cf140a1b684ec050f50ee612",
           "approver": "ep:approver:jchen",
           "initiator": "ent_agent_7",
           "issued_at": "2026-06-11T00:00:00.000Z",
@@ -262,8 +417,8 @@
         },
         "webauthn": {
           "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUEAAAACQ",
-          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQ1kzeWFuSmdUVHFXa3hxbmUwNjlSekNKRk9BTnVRWE5vdHNXbG0wZTR1YyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-          "signature": "MEYCIQDB0gN_CJCT0atufdtrGrP8P1O-BxrZJ1uqji8xtTOzeAIhAK41uJntZ9JxZ5C1h_b_tIJ6qamgtDK5dUPxAFdFP2th"
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibEI2TTAtamFEYzVUNDVsS1FOWjNnUmR1VDBzX01fdks2UEVyaE5wOV82dyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+          "signature": "MEUCIDdN6gMLjI6Ul1B-UFQk1uH19Lr43KLJU0cQwN0WZFu1AiEA46OISECysrqIyelkzmq10Bk488hVUZhIPNaoJyr_jFs"
         }
       }
     }

@@ -3,6 +3,7 @@ import { join } from 'path';
 import { JetBrains_Mono, Outfit, Space_Grotesk } from 'next/font/google';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { safeHref } from '@/lib/safe-href';
 
 // Self-host the spec page's three custom fonts so the spec renders without
 // blocking on Google Fonts CSS and so the @next/next/no-page-custom-font
@@ -17,7 +18,7 @@ const SPEC_FONT_CLASS = `${jetBrainsMono.className} ${outfit.className} ${spaceG
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
   // claiming RFC status for an individual I-D overstates IETF standing.
-  title: 'draft-schrock-ep-authorization-receipts-03 — EMILIA Protocol Specification',
+  title: 'draft-schrock-ep-authorization-receipts-06 — EMILIA Protocol Specification',
   description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
 };
 
@@ -85,12 +86,12 @@ function inlineFormat(text) {
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
   text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => `<a href="${safeHref(url)}">${label}</a>`);
   return text;
 }
 
 export default function SpecPage() {
-  const mdPath = join(process.cwd(), 'standards', 'draft-schrock-ep-authorization-receipts-03.md');
+  const mdPath = join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-06.md');
   const md = readFileSync(mdPath, 'utf8');
   const html = mdToHtml(md);
 
@@ -123,11 +124,11 @@ export default function SpecPage() {
       `}} />
       <SiteNav activePage="Spec" />
       <div className="spec-content">
-        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-03 · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
+        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-06 · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
         <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#7a809a', marginBottom: 8 }}>Canonical copy on the <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" target="_blank" rel="noopener noreferrer">IETF datatracker</a>. Conformance vectors: <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONFORMANCE.md" target="_blank" rel="noopener noreferrer">CONFORMANCE.md</a>. Multi-party companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-quorum</a>. Composition companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-authorization-evidence-chain</a>. Preprint: <a href="https://doi.org/10.5281/zenodo.20780638" target="_blank" rel="noopener noreferrer">Zenodo DOI</a>. Composition layer: <a href="/evidence-chain">Authorization Evidence Chains</a>.</p>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="spec-footer">
-          EMILIA Protocol — draft-schrock-ep-authorization-receipts-03 — Apache 2.0 License
+          EMILIA Protocol — draft-schrock-ep-authorization-receipts-06 — Apache 2.0 License
         </div>
       </div>
       <SiteFooter />

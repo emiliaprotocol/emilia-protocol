@@ -38,6 +38,13 @@ export async function POST(request, { params }) {
     if (!body.approver_id || !APPROVER_ID_PATTERN.test(body.approver_id)) {
       return epProblem(400, 'invalid_approver_id', 'approver_id is required (3-128 chars of [A-Za-z0-9:_.@-])');
     }
+    const requestedDecision = body.decision ?? 'approved';
+    if (requestedDecision !== 'approved' && requestedDecision !== 'rejected' && requestedDecision !== 'denied') {
+      return epProblem(400, 'invalid_decision', 'decision must be approved, rejected, or denied');
+    }
+    // The public API retains `rejected` for backward compatibility; the signed
+    // wire value is the draft's canonical `denied` terminal outcome.
+    const signedDecision = requestedDecision === 'approved' ? 'approved' : 'denied';
 
     const supabase = getGuardedClient();
     const loaded = await loadSignoffForSigning(supabase, signoffId);
@@ -112,6 +119,7 @@ export async function POST(request, { params }) {
       signoffId,
       issuedAt: issuedAt.toISOString(),
       expiresAt: ctxExpiry.toISOString(),
+      decision: signedDecision,
       displayHash,
     });
     const challenge = contextHashBytes(context).toString('base64url');

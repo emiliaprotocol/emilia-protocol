@@ -74,10 +74,29 @@ describe('waitlist route', () => {
 
   it('uses entities.entity_number, not UUID id, when assigning claimed_number', async () => {
     const res = await POST(request({ email: ' New@Example.COM ' }));
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(202);
     const body = await res.json();
-    expect(body.id).toBe(51);
-    expect(body.email).toBe('new@example.com');
+    expect(body).toEqual({
+      ok: true,
+      status: 'received',
+      message: 'If this address is eligible, it has been added to the waitlist.',
+    });
     expect(state.inserts[0].row.claimed_number).toBe(51);
+    expect(state.inserts[0].row.email).toBe('new@example.com');
+  });
+
+  it('returns the same response for an existing email to prevent enumeration', async () => {
+    state.existing = { id: 'waitlist-existing' };
+
+    const res = await POST(request({ email: 'known@example.com' }));
+    const body = await res.json();
+
+    expect(res.status).toBe(202);
+    expect(body).toEqual({
+      ok: true,
+      status: 'received',
+      message: 'If this address is eligible, it has been added to the waitlist.',
+    });
+    expect(state.inserts).toEqual([]);
   });
 });

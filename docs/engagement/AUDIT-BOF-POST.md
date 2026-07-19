@@ -32,22 +32,22 @@ I want to pick up one specific thread. Kieran asked for "a receipt/evidence form
 
 We have been building exactly this in the open, as filed Internet-Drafts, and would be glad to contribute them as input rather than as competing proposals:
 
-- draft-schrock-ep-authorization-receipts — a named principal authorizes an exact action; the receipt is offline-verifiable, OAuth-independent, and needs no trust in the operator and no online introspection endpoint. A direct answer to Kieran's ask: it binds to the action payload regardless of what the downstream resource speaks.
+- draft-schrock-ep-authorization-receipts: a named principal authorizes an exact action; the receipt is offline-verifiable, OAuth-independent, and needs no trust in the operator and no online introspection endpoint. A direct answer to Kieran's ask: it binds to the action payload regardless of what the downstream resource speaks.
   https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/
 
-- draft-schrock-ep-authorization-evidence-chain — composition of heterogeneous receipts across hops, which is precisely the "non-OAuth hop" case that falls out of scope once delegation-chain semantics are excluded.
+- draft-schrock-ep-authorization-evidence-chain: composition of heterogeneous receipts across hops, which is precisely the "non-OAuth hop" case that falls out of scope once delegation-chain semantics are excluded.
   https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/
 
-- draft-schrock-ep-quorum — the multi-party (M-of-N) authorization case.
+- draft-schrock-ep-quorum: the multi-party (M-of-N) authorization case.
   https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/
 
-To keep this grounded rather than aspirational: there are three independent verifiers (JavaScript, Python, Go) that agree over a public conformance suite, plus machine-checked TLA+/Alloy models of the core properties. And it has been run by someone other than the author: an outside implementer recently verified the artifacts from a clean machine — the public one-liner
+To keep this grounded rather than aspirational: there are three cross-language reference verifiers (JavaScript, Python, Go) that agree over a public conformance suite: one team's ports, a consistency check rather than clean-room independent implementations (independent implementations remain future interoperability evidence), plus machine-checked TLA+/Alloy models of the core state machine and quorum. And it has been run by someone other than the author: an outside implementer recently verified the artifacts from a clean machine. The public one-liner
 
     npx -y @emilia-protocol/crash-test
 
-produces the workpaper, the genuine receipt verifies offline, the forged copy is rejected, and the JS/Python/Go conformance vectors agree — and reported that result on the IETF SecDispatch list, in the authorization-evidence survey thread. If the WG wants a verifier-side conformance target, the vectors already exist and have been checked independently.
+produces the workpaper, the genuine receipt verifies offline, the forged copy is rejected, and the JS/Python/Go conformance vectors agree, and reported that result on the IETF SecDispatch list, in the authorization-evidence survey thread. If the WG wants a verifier-side conformance target, the vectors already exist and have been checked independently.
 
-We also helped put together a short cross-draft survey that maps the adjacent efforts in this space (DRP/Nelson, PSEA, EP, and others) onto a single verifier-side matrix — useful prior art for triaging what is and isn't already covered, and where the real gaps are. Happy to share it with anyone interested.
+We also helped put together a short cross-draft survey that maps the adjacent efforts in this space (DRP/Nelson, PSEA, EP, and others) onto a single verifier-side matrix, useful prior art for triaging what is and isn't already covered, and where the real gaps are. Happy to share it with anyone interested.
 
 I see all of this as complementary: Mirja's audit-architecture as the frame, Henk's verifiable agent conversations / trajectories as the spine, and an OAuth-independent, action-bound, offline-verifiable receipt as one of the building blocks that hangs off it. Happy to share drafts, vectors, or the survey with anyone interested.
 

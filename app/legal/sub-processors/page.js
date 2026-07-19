@@ -65,7 +65,7 @@ export default function SubProcessorsPage() {
 
         <h2 style={styles.h2}>International transfers</h2>
         <p style={styles.body}>
-          Where a sub-processor processes personal data outside the customer's region (typically EU/EEA/UK/Swiss data transferred to the United States), we rely on EU Standard Contractual Clauses and the UK addendum where applicable. Region-pinned processing is available by arrangement on EP Enterprise engagements — contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a> for the data-residency configuration.
+          Where a sub-processor processes personal data outside the customer's region (typically EU/EEA/UK/Swiss data transferred to the United States), we rely on EU Standard Contractual Clauses and the UK addendum where applicable. Region-pinned processing is available by arrangement on EMILIA Gate Enterprise engagements — contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a> for the data-residency configuration.
         </p>
 
         <h2 style={styles.h2}>Contact</h2>

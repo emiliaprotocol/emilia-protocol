@@ -146,6 +146,7 @@ function mintReceipt({
       '@version': 'EP-AUTHORIZATION-RECEIPT-VERIFICATION-v1',
       approver_keys: {
         [approverKeyId]: {
+          approver_id: approver,
           public_key: approverKp.publicKeyB64u,
           key_class: keyClass,
           valid_from: '2026-01-01T00:00:00Z',
@@ -153,6 +154,8 @@ function mintReceipt({
         },
       },
       log_public_key: logKp.publicKeyB64u,
+      rp_id: 'rp',
+      allowed_origins: ['https://test.emilia'],
     };
     return { receipt, verification, approver, approverKeyId };
   });
@@ -251,6 +254,8 @@ const baseOpts = (b, over = {}) => ({
   now: NOW,
   humanKeyClasses: ['A'],
   delegationKeys: b.delegationKeys,
+  rootVerification: b.root.verification,
+  actionVerification: b.approval.verification,
   ...over,
 });
 

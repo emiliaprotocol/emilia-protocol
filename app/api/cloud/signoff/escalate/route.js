@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/cloud/signoff/escalate
@@ -19,7 +22,9 @@ export async function POST(request) {
     if (!auth) return EP_ERRORS.UNAUTHORIZED();
     requirePermission(auth, 'write');
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.challenge_id) {
       return epProblem(400, 'missing_challenge_id', '"challenge_id" is required');
@@ -40,7 +45,7 @@ export async function POST(request) {
 
     if (lookupErr) {
       logger.error('[cloud/signoff/escalate] Lookup error:', lookupErr);
-      return epProblem(500, 'escalation_lookup_failed', lookupErr.message);
+      return epDbError(500, 'escalation_lookup_failed', lookupErr, 'cloud/signoff/escalate');
     }
 
     if (!challenge) {

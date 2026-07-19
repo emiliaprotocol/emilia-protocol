@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -25,7 +26,7 @@ export async function GET(request, { params }) {
       .maybeSingle();
 
     if (error) {
-      return epProblem(500, 'signoff_challenge_fetch_failed', error.message);
+      return epDbError(500, 'signoff_challenge_fetch_failed', error, 'signoff/challenge');
     }
 
     if (!challenge) {
@@ -33,7 +34,7 @@ export async function GET(request, { params }) {
     }
 
     // ── Authorization: caller must be the accountable actor or have operator permissions ──
-    const callerEntityId = auth.entityId || auth.entity_id;
+    const callerEntityId = authEntityId(auth);
     const isAccountableActor = callerEntityId && callerEntityId === challenge.accountable_actor_ref;
     const hasOperatorPermission = auth.permissions?.includes('signoff.view') || auth.permissions?.includes('operator');
 

@@ -1,0 +1,203 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "EMILIA Gate Service API",
+    "version": "0.2.0",
+    "description": "Fail-closed complete mediation for GitHub repository deletion. An indeterminate outcome means the external effect may have occurred and must never be retried automatically."
+  },
+  "servers": [{ "url": "http://127.0.0.1:8787" }],
+  "paths": {
+    "/v1/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "description": "Process-only liveness. Does not access dependencies.",
+        "responses": { "200": { "description": "Process is alive" } }
+      }
+    },
+    "/v1/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "description": "Bounded, coalesced dependency readiness.",
+        "responses": {
+          "200": { "description": "Dependencies are ready" },
+          "503": { "description": "Starting, shutting down, timed out, or dependency unavailable" }
+        }
+      }
+    },
+    "/v1/actions": {
+      "post": {
+        "operationId": "createAction",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAction" }
+            }
+          }
+        },
+        "parameters": [{ "$ref": "#/components/parameters/Receipt" }],
+        "responses": {
+          "200": { "description": "Action executed" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Principal is not authorized for the target" },
+          "428": {
+            "description": "Exact receipt required; resume the returned action rather than creating another row",
+            "headers": { "Receipt-Required": { "$ref": "#/components/headers/ReceiptRequired" } }
+          },
+          "502": { "description": "Provider outcome unavailable" },
+          "503": { "description": "Required durable dependency unavailable" },
+          "504": { "description": "Provider timeout; DELETE outcomes are indeterminate" }
+        }
+      }
+    },
+    "/v1/actions/{id}": {
+      "get": {
+        "operationId": "getAction",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/ActionId" }],
+        "responses": {
+          "200": { "description": "Caller-owned redacted action record" },
+          "401": { "description": "Authentication required" },
+          "404": { "description": "No caller-owned action exists" },
+          "503": { "description": "Action store unavailable" }
+        }
+      }
+    },
+    "/v1/actions/{id}/execute": {
+      "post": {
+        "operationId": "resumeAction",
+        "description": "Atomically claims and resumes one challenged action row, then re-observes the target before any effect.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/ActionId" },
+          { "$ref": "#/components/parameters/Receipt" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResumeAction" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Original action row executed" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Principal is not authorized for the stored target" },
+          "409": { "description": "Binding mismatch, concurrent claim, or action is no longer resumable" },
+          "428": {
+            "description": "Receipt invalid or target changed; use the refreshed binding on the same row",
+            "headers": { "Receipt-Required": { "$ref": "#/components/headers/ReceiptRequired" } }
+          },
+          "502": { "description": "Provider outcome unavailable" },
+          "503": { "description": "Required durable dependency unavailable" },
+          "504": { "description": "Provider timeout; DELETE outcome is indeterminate" }
+        }
+      }
+    },
+    "/v1/evidence/head": {
+      "get": {
+        "operationId": "getEvidenceHead",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/Tenant" }, { "$ref": "#/components/parameters/Gate" }, { "$ref": "#/components/parameters/EvidenceAction" }],
+        "responses": { "200": { "description": "Scoped evidence head" }, "401": { "description": "Authentication required" }, "403": { "description": "Scope denied" }, "503": { "description": "Evidence unavailable" } }
+      }
+    },
+    "/v1/evidence/records/{recordId}": {
+      "get": {
+        "operationId": "getEvidenceRecord",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/RecordId" }, { "$ref": "#/components/parameters/Tenant" }, { "$ref": "#/components/parameters/Gate" }, { "$ref": "#/components/parameters/EvidenceAction" }],
+        "responses": { "200": { "description": "Redacted scoped evidence record" }, "401": { "description": "Authentication required" }, "403": { "description": "Scope denied" }, "404": { "description": "Record not found in action scope" }, "503": { "description": "Evidence unavailable" } }
+      }
+    },
+    "/v1/evidence/history": {
+      "get": {
+        "operationId": "getEvidenceHistory",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/Tenant" }, { "$ref": "#/components/parameters/Gate" }, { "$ref": "#/components/parameters/EvidenceAction" }, { "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Paginated redacted action evidence" }, "401": { "description": "Authentication required" }, "403": { "description": "Scope denied" }, "503": { "description": "Evidence unavailable" } }
+      }
+    },
+    "/v1/evidence/verify": {
+      "get": {
+        "operationId": "verifyEvidence",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/Tenant" }, { "$ref": "#/components/parameters/Gate" }, { "$ref": "#/components/parameters/EvidenceAction" }],
+        "responses": { "200": { "description": "Evidence chain verified" }, "409": { "description": "Tamper, fork, rollback, or malformed chain detected" }, "401": { "description": "Authentication required" }, "403": { "description": "Scope denied" }, "503": { "description": "Evidence unavailable" } }
+      }
+    },
+    "/v1/evidence/export": {
+      "get": {
+        "operationId": "exportEvidence",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/Tenant" }, { "$ref": "#/components/parameters/Gate" }, { "$ref": "#/components/parameters/EvidenceAction" }, { "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": { "200": { "description": "Paginated redacted evidence export with verification" }, "409": { "description": "Export returned with a failed chain verification" }, "401": { "description": "Authentication required" }, "403": { "description": "Scope denied" }, "503": { "description": "Evidence unavailable" } }
+      }
+    },
+    "/v1/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "description": "Authenticated operational counters, including non-authoritative telemetry drops.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/Tenant" }, { "$ref": "#/components/parameters/Gate" }, { "$ref": "#/components/parameters/EvidenceAction" }],
+        "responses": { "200": { "description": "Operational counters" }, "401": { "description": "Authentication required" }, "403": { "description": "Scope denied" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer" }
+    },
+    "headers": {
+      "ReceiptRequired": {
+        "description": "Machine-readable EMILIA receipt requirement",
+        "schema": { "type": "string" }
+      }
+    },
+    "parameters": {
+      "ActionId": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "minLength": 16, "maxLength": 128 } },
+      "RecordId": { "name": "recordId", "in": "path", "required": true, "schema": { "type": "string", "minLength": 16, "maxLength": 256 } },
+      "Receipt": { "name": "X-EMILIA-Receipt", "in": "header", "required": false, "schema": { "type": "string" } },
+      "Tenant": { "name": "tenant_id", "in": "query", "required": true, "schema": { "type": "string", "maxLength": 256 } },
+      "Gate": { "name": "gate_id", "in": "query", "required": true, "schema": { "type": "string", "maxLength": 256 } },
+      "EvidenceAction": { "name": "action_id", "in": "query", "required": true, "schema": { "type": "string", "maxLength": 128 } },
+      "Cursor": { "name": "cursor", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 0, "default": 0 } },
+      "Limit": { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }
+    },
+    "schemas": {
+      "CreateAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "owner", "repo"],
+        "properties": {
+          "action": { "const": "github.repo.delete" },
+          "owner": { "type": "string", "maxLength": 100 },
+          "repo": { "type": "string", "maxLength": 100 }
+        }
+      },
+      "ResumeAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "challenge_binding"],
+        "properties": {
+          "action": { "const": "github.repo.delete" },
+          "challenge_binding": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      },
+      "ActionStatus": {
+        "type": "string",
+        "enum": ["observing", "authorizing", "challenged", "executing", "succeeded", "failed", "indeterminate"]
+      },
+      "Indeterminate": {
+        "type": "object",
+        "description": "The external effect may have occurred. The effect must not be retried automatically; reconcile it with the provider.",
+        "properties": {
+          "status": { "const": "indeterminate" },
+          "error": { "type": "object" }
+        }
+      }
+    }
+  }
+}

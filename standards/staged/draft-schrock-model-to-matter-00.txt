@@ -1,0 +1,728 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Experimental                               14 July 2026
+Expires: 15 January 2027
+
+
+  Model-to-Matter: Authorization Evidence for Model-Directed Physical
+                               Execution
+                    draft-schrock-model-to-matter-00
+
+Abstract
+
+   Advanced models and agents can propose experimental workflows and
+   invoke systems that produce physical effects.  Before acting, a
+   physical executor may need evidence from several independent
+   authorities: model provenance, a safety assessment, institutional
+   authority, a domain review, an external screening service, and an
+   accountable human.  Those artifacts are commonly evaluated separately
+   and may not bind the same action.  This document defines Model-to-
+   Matter, an experimental executor-side applicability profile for
+   composing those artifacts over one canonical, digest-only action.  It
+   specifies an executor-owned acceptance profile, normalized signed
+   evidence adapters, a registered challenge, closed clearance and
+   refusal verdicts, atomic single-use clearance consumption, and an
+   optional executor-signed effect statement.  The profile does not
+   perform domain screening, determine scientific safety, authorize an
+   institution, or establish physical truth.  It standardizes the point
+   at which an executor refuses to act unless the authorities it
+   independently trusts agree about the same action.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 15 January 2027.
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 1]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Scope and Non-Goals . . . . . . . . . . . . . . . . . . .   3
+   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   3
+   3.  Architecture  . . . . . . . . . . . . . . . . . . . . . . . .   4
+   4.  Model-to-Matter Action Object . . . . . . . . . . . . . . . .   4
+   5.  Relying-Party Profile . . . . . . . . . . . . . . . . . . . .   6
+   6.  Normalized Evidence Artifacts . . . . . . . . . . . . . . . .   6
+   7.  Registered Challenge  . . . . . . . . . . . . . . . . . . . .   7
+   8.  Clearance Evaluation  . . . . . . . . . . . . . . . . . . . .   8
+   9.  HTTP Integration  . . . . . . . . . . . . . . . . . . . . . .   9
+   10. Executor Effect Statement . . . . . . . . . . . . . . . . . .   9
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  11
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
+   14. Implementation Status . . . . . . . . . . . . . . . . . . . .  11
+   15. Normative References  . . . . . . . . . . . . . . . . . . . .  11
+   16. Informative References  . . . . . . . . . . . . . . . . . . .  12
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  13
+
+1.  Introduction
+
+   A digital proposal can become a physical effect when a model or agent
+   can call a cloud laboratory, instrument gateway, robot, manufacturing
+   system, or other executor.  Existing controls answer important but
+   separate questions: which model and harness produced the proposal,
+   whether an assessment ran, whether the principal had institutional
+   authority, whether a domain reviewer approved the workflow, whether
+   an external screening service returned an acceptable result, and
+   whether a responsible human approved execution.
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 2]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   None of those facts alone answers the executor's question: do all
+   authorities required by this executor agree about this exact model,
+   harness, protocol commitment, material commitment, purpose, facility,
+   destination, and one permitted clearance?  A presenter can otherwise
+   splice valid artifacts for different actions or choose a weaker
+   sufficiency rule.
+
+   Model-to-Matter defines the relying-party side of that boundary.  The
+   executor constructs the Action Object, pins its own profile and
+   issuer keys, challenges for the required evidence, and refuses every
+   result except a closed clear_to_execute verdict.  The challenge and
+   the action are consumed in durable shared state before the
+   corresponding execution can be credited.
+
+1.1.  Scope and Non-Goals
+
+   This document specifies evidence composition and execution custody.
+   It does not define a domain's safety criteria, inspect sensitive
+   scientific content, replace an institutional review process, certify
+   a model or facility, or decide whether an experiment should be
+   approved.  Each substantive judgment remains with the authority that
+   signs the corresponding evidence artifact.
+
+   This document also does not prove that a physical effect occurred or
+   that sensors reported it accurately.  An effect statement proves only
+   what a pinned executor signed.
+
+2.  Conventions and Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHOULD", "SHOULD NOT",
+   and "MAY" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals.
+
+   Executor  The system that controls the physical or external effect
+      and evaluates Model-to-Matter evidence before acting.
+
+   Action Object  The executor-computed, canonical representation of one
+      requested physical action.
+
+   Evidence issuer  An independent authority that signs one normalized
+      evidence artifact.  Signature validity does not itself make the
+      issuer accepted.
+
+   Relying-party profile  The executor-owned acceptance policy,
+      including evidence types, issuer keys, freshness, revocation,
+      action types, and human-assurance floor.
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 3]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   Clearance  A closed executor verdict.  Only clear_to_execute permits
+      the guarded execution path.
+
+3.  Architecture
+
+   The Model-to-Matter lifecycle has the following participants:
+
+   1.  The executor constructs an Action Object from the operation it is
+       actually prepared to perform.
+
+   2.  The executor selects a relying-party profile and registers a
+       short-lived challenge binding the action digest and profile
+       digest.
+
+   3.  Independent issuers produce typed evidence artifacts bound to
+       that action digest.
+
+   4.  The presenter submits an evidence graph in response to the
+       challenge.
+
+   5.  The executor atomically consumes the challenge, verifies every
+       evidence leg under its pinned profile, and emits one closed
+       verdict.
+
+   6.  Before returning clear_to_execute, the executor atomically
+       consumes the action digest so separately issued challenges cannot
+       authorize the same action twice.
+
+   7.  After attempting the effect, the executor may issue a signed
+       effect statement.
+
+   The presenter's graph and requirement are descriptive.  They MUST NOT
+   select issuer keys, accepted evidence types, revocation policy, or
+   the assurance floor used for clearance.
+
+   The evidence set MAY be represented as an Action Evidence Graph
+   [I-D.schrock-ep-action-evidence-graph].  Its same-action, relying-
+   party-policy composition follows the Authorization Evidence Chain
+   discipline [I-D.schrock-ep-authorization-evidence-chain]; this
+   profile adds the physical executor lifecycle and fixed initial
+   evidence roles.
+
+4.  Model-to-Matter Action Object
+
+   The initial Action Object version identifier is EP-MODEL-TO-MATTER-
+   ACTION-v1.  It is an I-JSON [RFC7493] object serialized with JCS
+   [RFC8785].  Its action digest is "sha256:" || lowercase-hex(SHA-
+   256(JCS(action))).
+
+
+
+Schrock                  Expires 15 January 2027                [Page 4]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   The initial action_type is science.bio.experiment.execute.1,
+   registered by the CAID package.  The executor MUST also compute the
+   jcs-sha256 Canonical Action Identifier (CAID)
+   [I-D.schrock-canonical-action-identifier] over the same closed Action
+   Object.  The CAID's base64url digest component and the hexadecimal
+   action_digest MUST decode to the same SHA-256 octets.  A mismatch is
+   a refusal.  CAID supplies portable content identity only; it does not
+   establish identity, authority, authorization, execution, safety, or
+   legal reliance.
+
+   The initial profile requires these members:
+
+    +====================+============================================+
+    | Member             | Required binding                           |
+    +====================+============================================+
+    | @version           | The version identifier above.              |
+    +--------------------+--------------------------------------------+
+    | action_type        | science.bio.experiment.execute.1.          |
+    +--------------------+--------------------------------------------+
+    | model              | Provider and model identifiers plus        |
+    |                    | manifest, harness, and safeguards digests. |
+    +--------------------+--------------------------------------------+
+    | experiment         | Protocol digest, material commitment, and  |
+    |                    | expected-effects digest.                   |
+    +--------------------+--------------------------------------------+
+    | principal          | Organization and principal identifiers.    |
+    +--------------------+--------------------------------------------+
+    | executor           | Executor and facility identifiers.         |
+    +--------------------+--------------------------------------------+
+    | purpose            | Purpose code and jurisdiction.             |
+    +--------------------+--------------------------------------------+
+    | destination_digest | A digest of the intended destination       |
+    |                    | representation.                            |
+    +--------------------+--------------------------------------------+
+    | requested_at       | An RFC 3339 [RFC3339] instant.             |
+    +--------------------+--------------------------------------------+
+    | max_executions     | The integer 1.                             |
+    +--------------------+--------------------------------------------+
+
+                                  Table 1
+
+   Unknown members MUST be rejected by this version.  Portable objects
+   MUST NOT contain raw sequences, raw protocols, prompts, completions,
+   hidden reasoning, or equivalent sensitive source content.  Such
+   content remains in the source systems; only agreed digests or hiding
+   commitments cross this boundary.  A plain digest of low-entropy
+   material is not a hiding commitment and MUST NOT be represented as
+   one.
+
+
+
+Schrock                  Expires 15 January 2027                [Page 5]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   The executor MUST compute the Action Object from the operation it
+   will perform.  It MUST NOT accept a presenter-supplied digest as a
+   substitute for independently constructing and hashing the action.
+
+5.  Relying-Party Profile
+
+   The initial profile version identifier is EP-MODEL-TO-MATTER-PROFILE-
+   v1.  A profile binds:
+
+   *  a stable profile_id and equal policy_id;
+
+   *  the reliance purpose frontier_science_execution;
+
+   *  the complete required evidence expression;
+
+   *  allowed action types;
+
+   *  a required human-assurance value;
+
+   *  per-type freshness limits;
+
+   *  the evidence types for which explicit revocation state is
+      required;
+
+   *  accepted pairs of issuer identity and public key for each evidence
+      type; and
+
+   *  a non-disableable same-action-agreement requirement.
+
+   The initial human-assurance wire values are software, class_a, and
+   quorum, corresponding to software evidence, a device user-verified
+   human, and a quorum of distinct device-verified humans.  An
+   implementation MUST reject unregistered values, including class_b.  A
+   physical-execution profile SHOULD require at least class_a; policy
+   determines when a quorum is required.
+
+   The profile MUST be provisioned through a relying-party-controlled
+   channel.  A profile or key registry received with presenter evidence
+   MUST NOT be used to authorize that presentation.
+
+6.  Normalized Evidence Artifacts
+
+   The initial evidence version identifier is EP-MODEL-TO-MATTER-
+   EVIDENCE-v1.  An evidence artifact contains evidence_type,
+   action_digest, issuer_id, issued_at, expires_at, a closed claims
+   object, an optional outcome, and a signature envelope.
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 6]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   The initial profile requires exactly one accepted artifact of every
+   following type:
+
+   +=========================+=========================================+
+   | Evidence type           | Minimum same-action claims              |
+   +=========================+=========================================+
+   | model_attestation       | Provider, model, manifest,              |
+   |                         | harness, and safeguards.                |
+   +-------------------------+-----------------------------------------+
+   | safety_case_attestation | Model commitments, safety-case          |
+   |                         | digest, and assessment.                 |
+   +-------------------------+-----------------------------------------+
+   | institutional_authority | Organization, principal, action         |
+   |                         | family, purpose, and decision.          |
+   +-------------------------+-----------------------------------------+
+   | biosafety_review        | Protocol, material commitment,          |
+   |                         | facility, and decision.                 |
+   +-------------------------+-----------------------------------------+
+   | domain_screening        | Material commitment,                    |
+   |                         | destination, screening-profile          |
+   |                         | digest, and decision.                   |
+   +-------------------------+-----------------------------------------+
+   | human_authorization     | Approver, decision, and                 |
+   |                         | assurance evidence.                     |
+   +-------------------------+-----------------------------------------+
+
+                                  Table 2
+
+   These names identify evidence roles, not authorities owned by this
+   specification.  For example, a domain_screening artifact reports what
+   an accepted screening issuer signed; the Model-to-Matter verifier
+   performs no screening itself.
+
+   The initial signature algorithm is Ed25519 [RFC8032].  The signed
+   bytes are the UTF-8 encoding of the version identifier, followed by
+   one zero byte, followed by JCS of the artifact without its signature
+   member.  Each artifact MUST bind the exact action digest.  The
+   relying party MUST first verify the signature and then separately
+   decide whether the exact (issuer_id, public_key) pair is accepted for
+   that evidence type.
+
+7.  Registered Challenge
+
+   The executor creates and durably registers a challenge binding the
+   server-computed action digest, the profile digest, a nonce, the
+   required evidence types, and an expiry.  The challenge construction
+   may use the Authorization Evidence Challenge mechanism
+   [I-D.schrock-authorization-evidence-challenge].
+
+
+
+Schrock                  Expires 15 January 2027                [Page 7]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   Challenge state MUST provide atomic first-presentation consumption
+   across all executor replicas.  Storage unavailability, rollback, or
+   an ambiguous consumption result MUST yield refusal.  An
+   implementation MUST NOT fall back to process-local state.  At the
+   clearance API boundary, storage exceptions and ambiguous consume
+   results MUST be mapped to do_not_execute_refused; they MUST NOT
+   escape as an untyped result that a caller could mistake for
+   authorization.
+
+   A missing-evidence refusal MAY include a new registered challenge
+   that names only the missing types.  A follow-up challenge is a new
+   transaction; it does not reopen the consumed challenge.
+
+8.  Clearance Evaluation
+
+   An executor evaluating a presentation MUST perform these steps in
+   order:
+
+   1.   Clone or otherwise snapshot the action, profile, challenge, and
+        evidence graph before the first asynchronous operation.
+
+   2.   Validate the closed object shapes and resource bounds.
+
+   3.   Recompute the action digest, CAID, and profile digest, and
+        require the CAID and action digest to encode the same SHA-256
+        result.
+
+   4.   Require the challenge bindings and current time to match.
+
+   5.   Require an explicit revocation view for every profile-required
+        evidence type.  Absence of revocation state is not proof of non-
+        revocation.
+
+   6.   Atomically consume the challenge.
+
+   7.   Verify each artifact's signature, issuer identity and role-
+        scoped key pin, time window, revocation state, same-action
+        binding, and type-specific claims.
+
+   8.   Require exactly the evidence types named by the relying-party
+        profile and reject duplicate or unknown nodes.
+
+   9.   If and only if all checks pass, atomically consume "model-to-
+        matter:" || action_caid in a durable shared store.
+
+   10.  Return clear_to_execute only when the action consumption is the
+        first successful consumption.  Every other outcome is a refusal.
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 8]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   The initial clearance version identifier is EP-MODEL-TO-MATTER-
+   CLEARANCE-v1.  Its closed verdict set includes clear_to_execute,
+   do_not_execute_missing_evidence, do_not_execute_stale_evidence,
+   do_not_execute_conflicted, do_not_execute_unverifiable,
+   do_not_execute_action_mismatch, do_not_execute_refused, and
+   do_not_execute_malformed.  Unknown verdicts MUST be treated as
+   refusal.
+
+   An action-bound clearance carries both action_digest and action_caid.
+   The executor computes both fields; a presenter MUST NOT supply either
+   value as a substitute for the Action Object.
+
+   Consumption of the action digest MUST be non-expiring for as long as
+   the action can be presented.  An unavailable response after
+   consumption is an indeterminate outcome that requires reconciliation.
+   The executor MUST return do_not_execute_refused, mark reconciliation
+   as required, and freeze execution; availability MUST NOT silently
+   become a second clearance.  After an indeterminate storage outcome,
+   the enforcing executor MUST remain fail-stop and MUST NOT issue
+   another challenge or evaluate another presentation until an operator
+   has reconciled the durable challenge and action-consumption state.
+
+9.  HTTP Integration
+
+   An HTTP executor MAY use status code 428 (Precondition Required)
+   [RFC6585] to return the registered evidence challenge when clearance
+   is absent.  A client that cannot satisfy the challenge remains unable
+   to invoke the physical effect.  HTTP transport does not replace the
+   atomic challenge and action stores.
+
+10.  Executor Effect Statement
+
+   After an execution attempt, the executor MAY sign an EP-MODEL-TO-
+   MATTER-EFFECT-v1 statement containing the action digest, action CAID,
+   clearance replay digest, executor identity, execution time, status,
+   and observed-effect digest.  The statement MUST bind a prior
+   clear_to_execute clearance for the same action and MUST verify under
+   a relying-party-pinned executor key.
+
+   Valid statuses are completed, failed, and aborted.  The statement
+   establishes only that the pinned executor signed those claims.  It
+   does not establish sensor integrity, causal attribution, or physical
+   truth.
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027                [Page 9]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+11.  Security Considerations
+
+   *Executor bypass.* Model-to-Matter is effective only when every path
+   to the protected effect traverses the enforcing executor.  Alternate
+   instruments, privileged maintenance paths, or direct backend access
+   remain part of the trusted computing base.
+
+   *Presenter-selected policy.* Verifier code, issuer keys, profiles,
+   revocation rules, and requirements MUST be pinned before a
+   transaction.  Accepting them beside evidence lets a presenter define
+   the proof that its own evidence must pass.
+
+   *Cross-action splicing.* Every evidence artifact, challenge,
+   clearance, consumption key, and effect statement MUST bind the
+   executor-computed action digest.  Clearances and effect statements
+   MUST also bind the recomputed CAID, and both identifiers MUST name
+   the same canonical bytes.  A valid artifact for a different action is
+   unsatisfied.
+
+   *Issuer laundering.* A signature proves control of a key, not
+   authority for an evidence role.  Acceptance MUST bind both issuer
+   identity and key independently for each evidence type.  A key
+   accepted for one role MUST NOT satisfy another.
+
+   *Replay and ambiguous effects.* Challenge consumption prevents replay
+   of one presentation; action-digest consumption prevents separately
+   minted challenges from clearing the same action.  Both stores require
+   atomic shared state.  After the effect begins, an unavailable
+   response MUST leave the action consumed or frozen.
+
+   *Revocation completeness.* An empty or absent revocation view is not
+   evidence that nothing is revoked.  This profile requires an explicit
+   view, but the authenticity, freshness, and completeness of that view
+   remain deployment responsibilities unless a separately verifiable
+   revocation mechanism is used.
+
+   *Human authorization.* A human evidence artifact is only as strong as
+   credential enrollment, authenticator custody, user verification, and
+   the presentation shown to the approver.  A signature does not prove
+   that the human understood the action.
+
+   *Substantive judgment.* Cryptography cannot prove that a model is
+   safe, a review is correct, screening is complete, an action is
+   lawful, or a physical result is benign.  This profile MUST NOT be
+   deployed as the sole control for a safety-critical physical effect.
+   Independent technical, organizational, and operational controls
+   remain necessary.
+
+
+
+
+Schrock                  Expires 15 January 2027               [Page 10]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   *Resource exhaustion.* Implementations MUST bound object depth, node
+   count, string bytes, evidence count, identifier length, and parser
+   work before signature or graph evaluation.
+
+12.  Privacy Considerations
+
+   Action, evidence, and effect objects can reveal model use,
+   institution, facility, principal, approver, purpose, destination, and
+   timing.  Profiles SHOULD minimize identifiers and use pairwise or
+   pseudonymous values when accountability requirements permit.  Logs
+   require retention and access controls appropriate to their
+   jurisdiction.
+
+   Digests do not automatically provide confidentiality.  Low-entropy or
+   enumerable inputs can be recovered by guessing.  Deployments handling
+   sensitive material SHOULD use domain-separated hiding commitments
+   with adequate randomness and keep openings outside portable evidence.
+
+13.  IANA Considerations
+
+   This document has no IANA actions.  A future revision may request
+   media types or registries after the object model and deployment
+   experience have stabilized.
+
+14.  Implementation Status
+
+   An Apache-2.0 JavaScript reference implementation, a synthetic self-
+   checking demonstration, and adversarial tests are publicly available.
+   The implementation covers the Action Object, profile, six signed
+   evidence adapters, registered challenge, evidence graph, single-use
+   clearance, and effect statement.  A deterministic public suite
+   exercises 15 CAID, acceptance, refusal, replay, storage-failure, and
+   effect cases; 41 focused tests and a mutation-score floor exercise
+   the reference implementation.  It has no Python or Go port, no wet-
+   lab deployment, no external scientific validation, and no claimed
+   partnership or endorsement.  The demonstration does not process raw
+   biological content or perform screening.
+
+15.  Normative References
+
+   [I-D.schrock-authorization-evidence-challenge]
+              Schrock, I., "Authorization Evidence Challenge", Work in
+              Progress, Internet-Draft, draft-schrock-authorization-
+              evidence-challenge-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-
+              authorization-evidence-challenge/>.
+
+
+
+
+
+Schrock                  Expires 15 January 2027               [Page 11]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   [I-D.schrock-canonical-action-identifier]
+              Schrock, I., "The Canonical Action Identifier (CAID)",
+              Work in Progress, Internet-Draft, draft-schrock-canonical-
+              action-identifier-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-canonical-
+              action-identifier/>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
+              DOI 10.17487/RFC7493, March 2015,
+              <https://www.rfc-editor.org/info/rfc7493>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032,
+              DOI 10.17487/RFC8032, January 2017,
+              <https://www.rfc-editor.org/info/rfc8032>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+16.  Informative References
+
+   [I-D.schrock-ep-action-evidence-graph]
+              Schrock, I., "Action Evidence Graphs and Evidence Policy
+              Replay for High-Risk Agent Actions", Work in Progress,
+              Internet-Draft, draft-schrock-ep-action-evidence-graph-00,
+              July 2026, <https://datatracker.ietf.org/doc/draft-
+              schrock-ep-action-evidence-graph/>.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027               [Page 12]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
+   [I-D.schrock-ep-authorization-evidence-chain]
+              Schrock, I., "Authorization Evidence Chains: Composing
+              Heterogeneous Agent-Authorization Receipts", Work in
+              Progress, Internet-Draft, draft-schrock-ep-authorization-
+              evidence-chain-03, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-evidence-chain/>.
+
+   [RFC6585]  Nottingham, M. and R. Fielding, "Additional HTTP Status
+              Codes", RFC 6585, DOI 10.17487/RFC6585, April 2012,
+              <https://www.rfc-editor.org/info/rfc6585>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 15 January 2027               [Page 13]

@@ -1,0 +1,379 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!--
+  EMILIA for Audit & Assurance — print-ready brief (EP-GATE-ASSURANCE-BRIEF-v1).
+  Self-contained: all CSS inline, no external assets, no JavaScript.
+  Letter size, two pages when printed to PDF.
+  Voice: docs/SOC2-CONTROL-MAPPING.md honesty block — support, never certify.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMILIA for Audit &amp; Assurance — a testable control for agentic AI</title>
+<style>
+  :root {
+    --ink: #141414;
+    --muted: #5f5b55;
+    --accent: #C8102E;
+    --hair: #d9d6d1;
+    --panel: #141414;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: var(--ink);
+    background: #fff;
+    font-size: 9.5pt;
+    line-height: 1.42;
+  }
+  .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+
+  @page { size: letter; margin: 0.55in 0.7in; }
+  .page { max-width: 7in; margin: 0 auto; }
+  @media print {
+    .page + .page { page-break-before: always; }
+  }
+  @media screen {
+    body { background: #eeece8; padding: 32px 16px; }
+    .page {
+      background: #fff;
+      max-width: 8.5in;
+      min-height: 11in;
+      padding: 0.65in 0.75in;
+      margin: 0 auto 28px;
+      box-shadow: 0 1px 4px rgba(20, 20, 20, 0.18);
+    }
+  }
+
+  /* ---- masthead ---- */
+  .topline { border-top: 5px solid var(--accent); padding-top: 10pt; }
+  .kicker {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 7.5pt; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .kicker .docid { color: var(--muted); font-weight: 400; letter-spacing: 0.08em; }
+  h1 {
+    font-size: 21pt; line-height: 1.06; font-weight: 400; letter-spacing: -0.01em;
+    margin: 10pt 0 5pt;
+  }
+  h1 .amp { color: var(--accent); }
+  .deck {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 10pt; color: var(--muted); max-width: 46em; margin-bottom: 2pt;
+  }
+
+  /* ---- section labels ---- */
+  .sec { margin-top: 11pt; border-top: 1px solid var(--hair); padding-top: 6pt; }
+  .label {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 8pt; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 5pt;
+  }
+  .label .num { color: var(--ink); margin-right: 0.9em; }
+  p + p { margin-top: 5pt; }
+  .measure { max-width: 48em; }
+  strong { font-weight: 700; }
+
+  /* ---- the one-sentence control ---- */
+  .control-sentence {
+    font-size: 13pt; line-height: 1.3; font-style: italic;
+    border-left: 3px solid var(--accent);
+    padding: 2pt 0 2pt 12pt; margin: 6pt 0 6pt;
+    max-width: 42em;
+  }
+  .mechanics {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 8pt; color: var(--muted); letter-spacing: 0.02em; line-height: 1.45;
+  }
+  .mechanics b { color: var(--ink); font-weight: 700; }
+
+  /* ---- tables ---- */
+  table { width: 100%; border-collapse: collapse; margin-top: 4pt; }
+  th {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 7.5pt; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    text-align: left; color: var(--muted);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 10pt 4pt 0;
+  }
+  td {
+    font-size: 8.5pt; line-height: 1.35; vertical-align: top;
+    border-bottom: 1px solid var(--hair);
+    padding: 4pt 10pt 4pt 0;
+  }
+  td.art { width: 32%; }
+  .artname {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 700; font-size: 8.5pt;
+  }
+  .ver {
+    display: block;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 7pt; color: var(--muted); letter-spacing: 0; margin-top: 1pt;
+  }
+
+  /* ---- re-performance panel ---- */
+  .panel {
+    background: var(--panel); color: #f4f2ee;
+    padding: 11pt 14pt 10pt; margin-top: 6pt;
+  }
+  .panel .label { color: #fff; margin-bottom: 5pt; }
+  .panel .label .num { color: var(--accent); }
+  .panel p { color: #d9d6d1; font-size: 9pt; max-width: 50em; }
+  .panel p b { color: #fff; }
+  .cmd {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 9pt; color: #fff;
+    background: #000; border-left: 3px solid var(--accent);
+    padding: 6pt 10pt; margin-top: 6pt;
+    white-space: nowrap; overflow-x: auto;
+  }
+  .cmd .prompt { color: var(--accent); }
+  .panel .fine { font-size: 7.5pt; color: #a39e97; margin-top: 5pt; }
+
+  /* ---- differentiators ---- */
+  .cols { display: flex; gap: 16pt; margin-top: 3pt; }
+  .col { flex: 1 1 0; }
+  .col h3 {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 9.5pt; font-weight: 800; letter-spacing: 0.01em;
+    margin-bottom: 3pt;
+  }
+  .col h3 .tick { color: var(--accent); }
+  .col p { font-size: 8.5pt; }
+  .col .rule-line {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 7pt; color: var(--muted); margin-top: 4pt;
+  }
+
+  /* ---- engagement ---- */
+  .steps { margin-top: 2pt; }
+  .step { display: flex; gap: 9pt; padding: 4pt 0; border-bottom: 1px solid var(--hair); }
+  .step:last-child { border-bottom: none; }
+  .stepnum {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 10pt; font-weight: 800; color: var(--accent); min-width: 14pt;
+  }
+  .step .body { font-size: 9pt; }
+  .step .body b {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+  }
+
+  /* ---- status footer ---- */
+  .status { margin-top: 10pt; border-top: 1.5px solid var(--ink); padding-top: 6pt; }
+  .status .label { color: var(--ink); }
+  .status ul { list-style: none; }
+  .status li {
+    font-size: 8pt; line-height: 1.4; color: var(--muted);
+    padding-left: 11pt; position: relative; margin-bottom: 3pt;
+  }
+  .status li::before { content: '—'; position: absolute; left: 0; color: var(--accent); }
+  .status li b { color: var(--ink); }
+  .contact {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 9pt; font-weight: 700; letter-spacing: 0.04em;
+    margin-top: 6pt; padding-top: 6pt; border-top: 1px solid var(--hair);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .contact a { color: var(--ink); text-decoration: none; border-bottom: 1.5px solid var(--accent); }
+  .contact .docid {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 7pt; font-weight: 400; color: var(--muted);
+  }
+
+  /* ---- page-2 running head ---- */
+  .runhead {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 7.5pt; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+    border-top: 5px solid var(--accent); padding-top: 10pt;
+    display: flex; justify-content: space-between;
+  }
+  .runhead .pg { color: var(--muted); font-weight: 400; letter-spacing: 0.08em; }
+</style>
+</head>
+<body>
+
+<!-- ==================== PAGE 1 ==================== -->
+<div class="page">
+  <header class="topline">
+    <div class="kicker">
+      <span>EMILIA Protocol · Gate</span>
+      <span class="docid">EP-GATE-ASSURANCE-BRIEF-v1 · July 2026</span>
+    </div>
+    <h1>EMILIA for Audit <span class="amp">&amp;</span> Assurance</h1>
+    <p class="deck">A testable control for agentic AI: pre-execution human authorization you can
+    re-perform from raw evidence, without trusting the operator or the AI vendor.</p>
+  </header>
+
+  <section class="sec">
+    <div class="label"><span class="num">01</span>The audit gap</div>
+    <p class="measure">AI agents now execute inside financially-relevant processes — releasing
+    payments, changing vendor master records, posting adjustments, deploying to production. When
+    an engagement asks <em>who authorized this action</em>, the record most organizations can
+    produce is the AI vendor's own activity log. That is a record produced by the party whose
+    product did the harm: it is <strong>testimony, not evidence</strong>. It cannot be recomputed
+    by anyone else's code, and its integrity rests entirely on the operator being both honest and
+    uncompromised.</p>
+    <p class="measure">Post-hoc logs also arrive after the money has moved. A control an auditor
+    can test needs to bind a named human to the exact action <em>before</em> execution, and the
+    resulting record needs to verify independently of the system that produced it.</p>
+  </section>
+
+  <section class="sec">
+    <div class="label"><span class="num">02</span>The control, in one sentence</div>
+    <p class="control-sentence">A named human's device-bound signature over the exact action,
+    captured before execution, verifiable offline by anyone's code.</p>
+    <p class="mechanics">Enforced by <b>EMILIA Gate</b>, a deny-by-default policy-enforcement
+    point: a guarded action runs only with a receipt that is <b>valid</b> (Ed25519 over canonical
+    JSON, pinned issuer), <b>in-scope</b> (bound to the exact action fields), <b>sufficiently
+    assured</b> (cryptographically verified tier — WebAuthn device signoff or M-of-N quorum, never
+    a self-asserted field), <b>fresh</b>, and <b>unused</b> (one-time consumption). Every
+    decision, allow or deny, is appended to a hash-chained, tamper-evident evidence log.</p>
+  </section>
+
+  <section class="sec">
+    <div class="label"><span class="num">03</span>The evidence stack</div>
+    <p class="measure" style="margin-bottom:2pt;">Six artifacts under the <strong>Admissibility
+    Invariant Registry</strong> — EMILIA's formal statement of <em>when</em> evidence is admissible
+    for reliance: signed is not trusted, verified is not accepted, accepted requires pinned policy.
+    Each artifact is computed from the evidence log or the code itself, each deterministic, each
+    carrying its own stated boundary.</p>
+    <table>
+      <tr><th style="width:34%">Artifact</th><th>What the auditor gets</th></tr>
+      <tr>
+        <td class="art"><span class="artname">Audit workpaper</span><span class="ver">EP-GATE-AUDIT-WORKPAPER-v1</span></td>
+        <td>A period workpaper computed purely from the evidence log — decisions, verified tiers,
+        refusals by reason, coverage — deterministic: same log and options in, identical output.</td>
+      </tr>
+      <tr>
+        <td class="art"><span class="artname">Re-performance kit</span><span class="ver">EP-GATE-REPERFORMANCE-v1</span></td>
+        <td>Everything needed to recompute the claims from raw evidence — signatures, hash chain,
+        credited tiers — in the auditor's own environment, trusting nothing asserted.</td>
+      </tr>
+      <tr>
+        <td class="art"><span class="artname">SOC 2 control mapping</span><span class="ver">EP-GATE-SOC2-MAPPING-v1</span></td>
+        <td>Gate mechanisms mapped to the 2017 Trust Services Criteria; every row carries an
+        honest-boundary column stating what the mechanism does <em>not</em> cover.</td>
+      </tr>
+      <tr>
+        <td class="art"><span class="artname">Control catalog</span><span class="ver">EP-GATE-CONTROL-CATALOG-v1</span></td>
+        <td>Each mechanism restated as an auditor-testable control — objective, mechanism, test
+        procedure — phrased for direct inclusion in an existing control matrix.</td>
+      </tr>
+      <tr>
+        <td class="art"><span class="artname">Art. 14 evidence pack</span><span class="ver">EP-GATE-ART14-PACK-v1</span></td>
+        <td>EU AI Act human-oversight evidence: who authorized what at which verified tier, which
+        refusals fired on which predicate, and the coverage ratio of guarded decisions. The
+        renderer refuses a pack whose honesty notice was altered or removed.</td>
+      </tr>
+      <tr>
+        <td class="art"><span class="artname">Underwriter attestation</span><span class="ver">EP-GATE-UNDERWRITER-ATTESTATION-v1</span></td>
+        <td>Evidence that a deny-by-default authorization control was in force and operating over
+        a policy period; entries that cannot be verified are excluded and surfaced as
+        integrity warnings, never counted.</td>
+      </tr>
+    </table>
+  </section>
+</div>
+
+<!-- ==================== PAGE 2 ==================== -->
+<div class="page">
+  <header class="runhead">
+    <span>EMILIA for Audit &amp; Assurance</span>
+    <span class="pg">Page 2 of 2</span>
+  </header>
+
+  <section class="sec" style="border-top:none; padding-top:10pt; margin-top:6pt;">
+    <div class="panel">
+      <div class="label"><span class="num">04</span>Re-performance — trust nothing, recompute everything</div>
+      <p>The stack is built for <b>re-performance, not inspection</b>. The auditor's own code
+      recomputes every claim from the raw artifacts: each Ed25519 signature against pinned issuer
+      keys, the hash chain over canonical JSON, the credited assurance tier from per-signer
+      proofs. Nothing the operator asserts is taken on faith. One command replays a full agentic
+      action trail and re-verifies it end to end:</p>
+      <div class="cmd"><span class="prompt">$</span> node examples/audit/agentic-audit-trail-demo.mjs</div>
+      <p class="fine">Runs offline against the repository's reference implementation. Any altered
+      or removed record breaks the chain and the verification reports exactly where.</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="label"><span class="num">05</span>What sets the control apart</div>
+    <div class="cols">
+      <div class="col">
+        <h3><span class="tick">/</span> The cryptographic two-person rule</h3>
+        <p>For hard actions, the required tier is <em>quorum</em>: M-of-N <strong>distinct
+        humans</strong> with <strong>distinct keys</strong>, threshold met, each signer's
+        assertion bound to the exact action and time window — and each verified independently.
+        "Two people approved this" stops being a screenshot of an approval UI and becomes an
+        artifact the audit can recompute.</p>
+      </div>
+      <div class="col">
+        <h3><span class="tick">/</span> Break-glass as evidence, never a bypass</h3>
+        <p>There is no "disable the gate" switch. An emergency override is itself a signed M-of-N
+        grant — scoped to listed action types, time-bounded, attributed (reason and incident
+        reference are required), single-use, and appended to the same evidence chain. The
+        exception path produces <em>stronger</em> evidence, not a gap.</p>
+        <p class="rule-line">Module contract: NO EVIDENCE ENTRY, NO OVERRIDE.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="label"><span class="num">06</span>Engagement model</div>
+    <div class="steps">
+      <div class="step">
+        <div class="stepnum">1</div>
+        <div class="body"><b>Working session.</b> We walk your audit or assurance team through
+        the evidence stack against one real action flow from your environment — including the
+        re-performance demo above, run on your side.</div>
+      </div>
+      <div class="step">
+        <div class="stepnum">2</div>
+        <div class="body"><b>Fixed-fee design-partner pilot.</b> One consequential action family
+        routed through the Gate, in observe or enforce mode. Deliverables are the artifacts in
+        section 03, computed over your own evidence log — not a slide deck.</div>
+      </div>
+      <div class="step">
+        <div class="stepnum">3</div>
+        <div class="body"><b>Published pricing.</b> Pilot and platform pricing is public at
+        emiliaprotocol.ai/pricing. The core protocol is Apache-2.0 and free; there is no
+        custom-quote gate in front of the numbers.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="status">
+    <div class="label">Status &amp; boundaries</div>
+    <ul>
+      <li><b>Open standard, individual drafts.</b> EMILIA Protocol is an open, Apache-2.0
+      specification. Its Internet-Drafts are active on the IETF's individual stream: drafts by
+      their authors, not IETF-endorsed and not adopted standards.</li>
+      <li><b>Reference verifiers.</b> JavaScript, Python, and Go same-team ports agree across
+      18 suites and 251 vectors. This is cross-language consistency evidence, not three
+      independent implementations.</li>
+      <li><b>External implementation, precise boundary.</b> CI rebuilds an externally authored
+      Rust verifier from a pinned public commit and tree. It passes the pinned 16-suite/164-vector clean-room bundle and
+      359 hostile cases. The construction statement is implementer-signed and predates the
+      current source pin, so strict independently attested clean-room acceptance remains zero.</li>
+      <li><b>What verification proves.</b> Signature validity, action binding, tier crediting,
+      and log integrity — not the business correctness of an authorized action. Principal
+      identities are as pinned by the deployer, not independently verified.</li>
+      <li><b>Not an attestation.</b> EMILIA Protocol is not an auditor. This brief and the
+      artifacts it describes exist to <b>support</b> an audit; nothing here is an attestation,
+      examination, or opinion, and none of these documents makes any system "compliant out of
+      the box."</li>
+    </ul>
+    <div class="contact">
+      <span><a href="mailto:team@emiliaprotocol.ai">team@emiliaprotocol.ai</a>&ensp;·&ensp;<a href="https://emiliaprotocol.ai">emiliaprotocol.ai</a></span>
+      <span class="docid">EP-GATE-ASSURANCE-BRIEF-v1</span>
+    </div>
+  </footer>
+</div>
+
+</body>
+</html>

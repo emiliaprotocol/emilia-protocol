@@ -1,0 +1,10 @@
+{
+  "@type": "EP-RELIANCE-PROFILE-v1",
+  "required_assurance": "class_a",
+  "required_authority": true,
+  "max_revocation_staleness_sec": 900,
+  "accepted_registry_keys": [],
+  "accepted_issuer_keys": [],
+  "accepted_policy_hashes": [],
+  "required_evidence": ["receipt", "class_a_or_quorum", "authority_proof", "revocation_freshness", "consumption_proof"]
+}

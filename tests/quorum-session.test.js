@@ -24,7 +24,7 @@ function rawToDer(raw) {
 async function mkMember(role, approver, i, { actionHash, wrongKey } = {}) {
   const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
   const ver = wrongKey ? (await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify'])).publicKey : pair.publicKey;
-  const ctx = { action_hash: actionHash ?? ACTION, policy: 'p', role, approver, nonce: b64u(crypto.getRandomValues(new Uint8Array(16))), issued_at: new Date(Date.UTC(2026, 5, 11, 0, i)).toISOString() };
+  const ctx = { action_hash: actionHash ?? ACTION, policy: 'p', role, approver, initiator: 'ent_agent_7', nonce: b64u(crypto.getRandomValues(new Uint8Array(16))), issued_at: new Date(Date.UTC(2026, 5, 11, 0, i)).toISOString() };
   const ch = b64u(await sha(utf8(canon(ctx))));
   const cd = utf8(JSON.stringify({ type: 'webauthn.get', challenge: ch, origin: `https://${HOST}`, crossOrigin: false }));
   const ad = new Uint8Array(37); ad.set(await sha(utf8(HOST)), 0); ad[32] = 0x05;
@@ -36,7 +36,7 @@ async function mkMember(role, approver, i, { actionHash, wrongKey } = {}) {
 const PO = ['program_officer', 'ep:po'], AO = ['authorizing_official', 'ep:ao'], IG = ['inspector_general', 'ep:ig'];
 const POLICY = { mode: 'ordered', required: 3, approvers: [PO, AO, IG].map(([role, approver]) => ({ role, approver })), distinct_humans: true, window_sec: 900 };
 let ACTION;
-const OPTS = { rpId: HOST };
+const OPTS = { rpId: HOST, allowedOrigins: [`https://${HOST}`] };
 
 describe('lib/signoff/quorum-session.js — trail-of-signatories enforcement', () => {
   it('accepts a valid ordered trail and gates satisfied', async () => {

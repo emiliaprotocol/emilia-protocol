@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { logger } from '../../../../../lib/logger.js';
+import { strictJsonGate } from '@/lib/strict-json.js';
 
 /**
  * GET /api/trust/profile/:entityId
@@ -43,6 +45,8 @@ export async function GET(request, { params }) {
         if (weightsParam.length > 512) {
           return epProblem(400, 'weights_too_large', 'Weights JSON must be < 512 bytes');
         }
+        const strict = strictJsonGate(weightsParam);
+        if (!strict.ok) return epProblem(400, 'invalid_weights_json', `weights must be strict JSON: ${strict.reason}`);
         scoringWeights = JSON.parse(weightsParam);
       } catch {
         return epProblem(400, 'invalid_weights_json', 'weights parameter must be valid JSON');
@@ -72,7 +76,6 @@ export async function GET(request, { params }) {
         (result.establishment?.total_receipts || 0) > 0;
       return NextResponse.json({
         entity_id: result.entity_id,
-        display_name: result.display_name,
         capability: 'authorization_receipts',
         capability_on: Boolean(capabilityOn),
         _note: 'Capability projection: boolean only — no score, no counts, no volume. Verify a real receipt at /verify.',

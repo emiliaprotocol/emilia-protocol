@@ -1,0 +1,1064 @@
+% SPDX-License-Identifier: CC-BY-4.0
+% arXiv preprint source (LaTeX). Target category: cs.CR (Cryptography and
+% Security); cross-list cs.CY (Computers and Society). Content mirrors
+% ep-multi-handshake-preprint.md in this directory.
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+  11pt,
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Handshakes, Not Signatures: Composing Fresh, Device-Bound Approval Ceremonies into Accountable M-of-N Authorization},
+  pdfauthor={Iman Schrock (EMILIA Protocol, Inc.; team@emiliaprotocol.ai)},
+  hidelinks,
+  pdfcreator={LaTeX}}
+
+\title{Handshakes, Not Signatures: Composing Fresh, Device-Bound Approval
+Ceremonies into Accountable M-of-N Authorization}
+\author{Iman Schrock (EMILIA Protocol, Inc.; team@emiliaprotocol.ai)}
+\date{5 July 2026}
+
+\begin{document}
+\maketitle
+
+\emph{Preprint, 5 July 2026.} Companion to the EP-QUORUM preprint
+(Zenodo, DOI
+\href{https://doi.org/10.5281/zenodo.20780638}{10.5281/zenodo.20780638})
+and to IETF Internet-Draft
+\href{https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/}{draft-schrock-ep-quorum}.
+That paper specifies the quorum predicate and its conformance vectors.
+This paper argues the design decision underneath it: what the unit of
+multi-party human authorization should be, and why.
+
+\subsection{Abstract}\label{abstract}
+
+When a system requires M of N humans to authorize an irreversible
+action, it must choose a unit of composition. The cryptographic
+literature offers the signature: threshold and aggregate schemes (FROST,
+MuSig2, threshold ECDSA) combine signing shares into one compact
+signature, and collect-then-verify constructions (CMS multi-signer,
+script-level multisig) gather independent signatures over the same
+bytes. We argue that for \emph{human} authorization of high-consequence
+machine actions, the signature is the wrong unit, and that schemes built
+on it commit a category error: they optimize for compactness and key
+custody where the problem demands evidence and accountability. We
+propose the \emph{handshake} as the unit of composition: a fresh,
+intent-bound, user-verified challenge-response ceremony with an explicit
+lifecycle and a recorded terminal outcome, including refusal. A
+multi-party authorization is then an ordered trail of handshakes, each
+admitted against the governing policy \emph{before} it is recorded,
+optionally chained so that each approver signs over a commitment to its
+predecessor, and consumed exactly once as a composed decision. We
+identify five properties that handshake composition preserves and
+signature aggregation destroys (per-member freshness, per-member intent
+binding, individual accountability including denials, order evidence,
+and machine-checkable separation of duties), and for each we name the
+attack that exists in its absence. The model's safety core is
+machine-checked: a TLC run over the single-handshake state machine,
+exhaustive at its bounded-exploration configuration (413,137 states, 26
+invariants, no counterexample), a bounded two-handshake exploration, and
+Alloy checks of the composition
+predicate, with cryptographic operations treated as axioms at that
+level; and, going beyond the axiom for the base receipt, a first symbolic
+Dolev-Yao model in Tamarin verifies core authenticity and shows that
+removing the one-time-consumption check makes the prover construct the
+replay attack itself. The process also emits ceremony telemetry that lets an evidence
+layer downgrade rubber-stamped approvals. We state plainly what no
+composition of ceremonies can solve: collusion of the required number of
+humans, coercion, person-level Sybil enrollment, and the semantic
+correctness of the approved action.
+
+\subsection{1. Introduction}\label{introduction}
+
+Multi-party authorization is old. Banks have required two signatures on
+large instruments for centuries; weapons handling and treasury movement
+formalized the two-person rule; modern change management requires a
+reviewer who is not the author. When these controls are ported to
+software, and especially to the authorization of actions proposed by AI
+agents, an engineering question appears that the paper forms never had
+to answer: \emph{what, exactly, is the thing we collect M of?}
+
+The available cryptographic answer is the signature. A rich literature
+composes signatures: threshold schemes derive one signature from M-of-N
+signing shares; multisignature schemes aggregate N contributions into
+one compact artifact; plainer constructions simply collect N independent
+signatures over the same message and verify each. All of these answer
+the question ``did enough keys participate?'' That is the right question
+for key custody, where the signers are machines or the goal is to make a
+group of signers look like one. It is the wrong question for human
+authorization of an irreversible action, where the artifact that
+survives the action must support a different interrogation: \emph{which
+accountable people said yes, to exactly what, when, in what order,
+having seen what, and who said no?}
+
+This paper makes that argument concretely, against a shipped system. The
+EMILIA Protocol (EP) binds a named human approver to one exact action
+through a challenge-response ceremony gated by user verification on the
+approver's own device; the quorum profile (EP-QUORUM) composes several
+such ceremonies into an M-of-N or ordered authorization {[}1, 2, 3{]}.
+The companion paper {[}3{]} specifies the composition predicate and its
+adversarial conformance vectors. Here we defend the design decision
+beneath the predicate:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{The unit of multi-party human authorization should be the
+  handshake}, defined as a fresh, intent-bound, user-verified
+  challenge-response ceremony with an explicit lifecycle whose terminal
+  outcomes include refusal (Section 3).
+\item
+  \textbf{Composition of handshakes preserves five properties that
+  aggregation of signatures destroys}, each of which corresponds to a
+  concrete attack when absent (Section 4).
+\item
+  \textbf{The safety core of the composed process is machine-checkable
+  at the state-machine level}, and we report exactly what has been
+  checked, at what scope, and what has not (Section 5).
+\item
+  \textbf{The ceremony yields telemetry that makes rubber-stamping
+  visible}, which signature-only constructions structurally cannot
+  (Section 6).
+\item
+  \textbf{Composition has limits no process design removes}, and we
+  state them (Section 7).
+\end{enumerate}
+
+A terminology note for readers with the EP repository open. EP's
+codebase uses ``handshake'' for the verified counterparty agreement
+object that every approval binds into, and ``signoff'' for the
+per-approver challenge-response ceremony (challenge, attestation,
+terminal outcome). In this paper ``handshake'' means the ceremony,
+because the word names precisely what we argue the unit should be: a
+live exchange with a specific person, not a static artifact from one.
+Where we cite code or invariants we use the repository's names.
+
+\subsection{2. The Category Error}\label{the-category-error}
+
+Consider the design space of ``M humans must approve'' as it is usually
+built.
+
+\subsubsection{2.1 Aggregating schemes produce one
+signature}\label{aggregating-schemes}
+
+Threshold signature schemes (threshold ECDSA {[}6{]}, FROST {[}4, 5{]})
+and multisignature schemes (MuSig2 {[}7{]}) share an objective: N
+parties hold key material, some quorum of them cooperates, and the
+output is \emph{one} signature, verifiable against \emph{one} public
+key, indistinguishable from a single-signer signature. This is a
+feature, and a hard-won one: compact verification, constant-size
+artifacts, no on-chain fee growth, no revelation of the signer set or
+the policy.
+
+Every one of those features is an anti-feature for human authorization.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Attribution is destroyed by construction.} The verifier learns
+  that some authorized quorum signed; it cannot learn which members.
+  Accountable-subgroup multisignatures {[}8{]} recover attribution, but
+  as an opt-in property grafted onto a primitive whose default erases
+  it.
+\item
+  \textbf{Freshness does not survive into the artifact.} These protocols
+  use per-session nonces internally (nonce reuse is catastrophic for
+  them), but that freshness is machinery between co-signers. The final
+  signature carries no per-member evidence of \emph{when} each human
+  participated or that each participation was contemporaneous with this
+  decision.
+\item
+  \textbf{There is no ceremony.} The protocol steps are executed by
+  software holding shares. Nothing in the output attests that a human
+  saw a rendering of the action and made a verification gesture. A share
+  held on a server signs exactly as convincingly as a share held behind
+  a fingerprint.
+\item
+  \textbf{Refusal does not exist.} A member who declines simply does not
+  participate. The artifact of a 2-of-3 signing where the third member
+  objected strenuously is byte-identical to one where the third member
+  was on vacation.
+\item
+  \textbf{Order does not exist.} One signature has no internal sequence.
+\end{itemize}
+
+\subsubsection{2.2 Collect-then-verify keeps attribution, and little
+else}\label{collect-then-verify}
+
+The plainer construction gathers N independent signatures over the same
+bytes: CMS with multiple SignerInfo structures {[}9{]}, script-level
+M-of-N multisig as deployed in Bitcoin, and the multi-signature approval
+flows of on-chain wallet contracts. Attribution survives: each signature
+verifies against a named key. This is materially better, and it is the
+branch of the design space EP-QUORUM descends from. But as usually built
+it still lacks:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Per-signer freshness.} Each member signs the same static
+  message. The scheme cannot distinguish a signature produced this
+  morning in review of this decision from one produced last year over
+  the same bytes, harvested and replayed, or pre-signed in bulk.
+  (Transaction digests give action binding, so cross-action replay
+  fails; within the action, nothing binds the time or occasion of any
+  member's consent.)
+\item
+  \textbf{An intent ceremony.} A key signed; whether a person reviewed
+  anything is outside the model. Signing-time attributes, where they
+  exist (CMS), are signer-asserted rather than challenge-anchored.
+\item
+  \textbf{Ordering evidence.} Signatures are an unordered bag, or
+  ordered by the assembler. Where an order is checked (script
+  evaluation), it is the assembly order of the presented artifact, not
+  evidence of the order in which humans decided.
+\item
+  \textbf{Separation-of-duties enforcement.} Distinctness of
+  \emph{keys} is checkable; distinctness of \emph{humans} is not
+  expressible, nor is ``the proposer of this action must not be among
+  its approvers.''
+\item
+  \textbf{A record of refusal.} As above: absence, not evidence.
+\end{itemize}
+
+\subsubsection{2.3 The trade human authorization actually
+needs}\label{the-trade}
+
+The common root is that both branches treat the signature as the atom
+and therefore inherit the signature's semantics: a signature proves that
+a key participated in a computation over bytes. Everything the auditor
+of a high-consequence action needs beyond that (who, when, in view of
+what, in what order, over whose objection) must either be bolted on or
+is unrecoverable.
+
+Human authorization needs the opposite trade from the one aggregation
+makes. Compactness is nearly worthless: an authorization for an
+irreversible wire executes once, and the artifact is read by auditors,
+not merged into blocks. Evidence is nearly everything. The composed
+artifact should therefore be \emph{the concatenation of everything each
+member did}, with the composition rules enforced over it. Its size is
+linear in M, and that is not a cost to be engineered away; the size
+\emph{is} the evidence.
+
+We now make ``everything each member did'' precise.
+
+\subsection{3. The Multi-Handshake
+Model}\label{the-multi-handshake-model}
+
+\subsubsection{3.1 The handshake}\label{the-handshake}
+
+Fix a canonical encoding and a hash function (EP uses JCS-style
+canonicalization {[}10{]} and SHA-256). Let $h_A$ be the digest of the
+exact action bytes to be authorized and $h_P$ the digest of the
+governing policy, including the quorum policy of Section 3.2.
+
+A \textbf{handshake} is a tuple
+\[
+H = (a,\; k_a,\; c,\; \sigma,\; s)
+\]
+where:
+
+\begin{itemize}
+\tightlist
+\item
+  $a$ is an enrolled approver identifier, and $k_a$ the device-bound
+  public key enrolled for $a$ out of band (server-side enrollment; never
+  taken from the artifact under verification);
+\item
+  $c$ is the \textbf{challenge context}:
+  $c = (n,\, h_A,\, h_P,\, a,\, t_{\mathrm{iss}},\, t_{\mathrm{exp}}\, [,\, h_{\mathrm{prev}}])$,
+  with $n$ a single-use nonce minted for this ceremony,
+  $t_{\mathrm{iss}}$/$t_{\mathrm{exp}}$ the issuance and expiry
+  instants, and $h_{\mathrm{prev}}$ an optional commitment to a
+  predecessor context (Section 3.3);
+\item
+  $\sigma$ is a signature by $k_a$ over $c$ produced through a
+  user-verified device ceremony: in EP, a WebAuthn assertion {[}11{]}
+  whose challenge equals the hash of the canonical context and whose
+  authenticator data asserts user verification, so the signature attests
+  key possession \emph{and} a contemporaneous human-verification event
+  on the approver's own device;
+\item
+  $s$ is the lifecycle state. The lifecycle is a forward-only order
+\end{itemize}
+
+\begin{verbatim}
+challenge_issued -> challenge_viewed -> approved -> consumed
+\end{verbatim}
+
+with alternate terminal outcomes \texttt{denied}, \texttt{expired}, and
+\texttt{revoked} reachable from the non-terminal states. The terminal
+set is \texttt{\{denied,\ consumed,\ expired,\ revoked\}};
+\texttt{approved} is deliberately \emph{not} terminal, because an
+approval that has not been consumed authorizes nothing yet and can still
+expire or be revoked. These states and their ordering are the code
+constants \texttt{SIGNOFF\_STATUS\_ORDER} and
+\texttt{SIGNOFF\_TERMINAL\_STATES} in
+\texttt{lib/signoff/invariants.js}, and backward transitions are
+excluded both in code and in the model (Section 5).
+
+Three aspects of this definition carry the paper's argument. First, the
+challenge is \emph{minted}, not derived: freshness is a property of the
+ceremony, anchored by $n$ and bounded by $t_{\mathrm{exp}}$, rather
+than an inference from signer-asserted times. Second, the signature is
+\emph{gated}, not merely computed: the user-verification requirement
+makes ``a human performed a deliberate gesture over a rendering of this
+exact action'' part of what verifies. Third, the outcome is
+\emph{total}: a handshake ends in exactly one of approval consumed,
+denial, expiry, or revocation, so ``nothing happened'' is not a
+representable result of asking a human for authorization.
+
+\subsubsection{3.2 Trails and incremental
+admission}\label{trails-and-incremental-admission}
+
+A \textbf{quorum policy} $P$ declares a mode (\texttt{threshold} or
+\texttt{ordered}), a required count, a roster of eligible
+\texttt{(role,\ approver)} slots, a distinct-humans rule (default true),
+an approval window, and optionally the strong ordering flag of Section
+3.3. A \textbf{trail} for action $h_A$ under $P$ is an ordered sequence
+of handshakes
+\[
+T = \langle H_1, H_2, \ldots, H_m \rangle
+\]
+
+The defining process rule is \textbf{incremental admission}: a candidate
+handshake is checked against $(P, h_A, T)$ \emph{before} it is
+recorded, and a candidate that fails any check never enters the trail.
+The admission predicate $\mathrm{Admit}(P, h_A, T, H)$ requires, in
+order: a well-formed policy with a non-empty roster; action binding
+($c.h_A$ equals the trail's $h_A$); roster admission of the
+\texttt{(role,\ a)} pair; human distinctness against the existing trail;
+in ordered mode, that $H$ fills exactly the next unfilled roster slot;
+window containment and, in ordered mode, strictly increasing signature
+times; and verification of $\sigma$ itself. Each failure is a distinct
+machine-readable refusal: \texttt{no\_policy},
+\texttt{no\_eligible\_approvers}, \texttt{action\_mismatch},
+\texttt{ineligible\_role}, \texttt{duplicate\_human},
+\texttt{out\_of\_order}, \texttt{window\_exceeded},
+\texttt{non\_increasing\_time}, \texttt{invalid\_signature}. This is the
+\texttt{canAccept} function of \texttt{lib/signoff/quorum-session.js},
+normatively specified in Section 6 of the quorum draft {[}2{]}.
+
+Admission-before-recording is a process property, not an optimization,
+and it is the first place the handshake model diverges operationally
+from collect-then-verify. In a collect-then-verify system the trail is
+whatever bag of signatures accumulated, and verification is a post-hoc
+filter; malformed, duplicate, or off-roster contributions exist in the
+record and must be argued about later. Under incremental admission
+\textbf{a malformed trail never exists}: every recorded prefix of $T$
+satisfies the policy's structural constraints by construction, the
+refusal of a non-conforming signer is itself a logged, attributable
+event, and at decision time there is no ambiguity about which members
+``count.''
+
+Admission is nonetheless \emph{not} trusted. The executing system
+re-evaluates the full composition predicate $\mathrm{Sat}(P, h_A, T)$
+over the assembled trail before acting, because it does not trust the
+orchestrator to have admitted honestly. $\mathrm{Sat}$ is the
+fail-closed quorum gate specified in {[}2{]} Section 5 and analyzed in
+{[}3{]}: all member signatures verify with challenge equal to context
+hash and user verification asserted; every member binds $h_A$;
+approvers pairwise distinct and distinct from the initiator; device keys
+pairwise distinct; every \texttt{(role,\ a)} on the roster; the
+threshold met; the order and, when required, the ordering chain intact;
+all signatures within the window. Any failure, malformation, or
+unrecognized condition yields ``not satisfied.''
+
+One discipline of the reference verifier deserves restating here because
+it is about process rather than predicate: \textbf{verified is not
+authorized-by-the-org}. $\mathrm{Sat}$ is a pure function of the policy
+and keys it is handed. A creator-chosen policy verified against
+creator-declared keys proves internal consistency only. The verifying
+party must source $P$ from material it pins (in EP, an org-pinned
+template keyed by organization and action type) and each $k_a$ from
+server-side enrollment, never from the artifact under verification. The
+composition inherits the accountability of its inputs, not the other way
+around.
+
+\subsubsection{3.3 The ordering commitment}\label{the-ordering-commitment}
+
+Ordered mode expresses escalation: a later authority signs after, and in
+knowledge of, an earlier one. Timestamps alone cannot prove that,
+because $t_{\mathrm{iss}}$ is stamped by whoever operates the clock.
+The strong ordered mode (\texttt{ordered\_chain} in {[}2{]} Section 4)
+therefore places the order \emph{inside the signed bytes}: each context
+after the first carries $h_{\mathrm{prev}}$, the SHA-256 of the
+canonical context of its predecessor, and the first carries none.
+Because each approver's device signs its own context, the i-th approver
+attests to having signed after the exact (i-1)-th approval. No party,
+including the operator, can reorder, insert, or backdate a member
+without invalidating a signature; the reference verifiers surface this
+as \texttt{chain\_linked:\ false} (the specification names the refusal
+\texttt{broken\_chain}), and a trail whose chain does not reconstruct is
+not satisfied.
+
+The chain also makes the trail \emph{linear} by construction: one root,
+no branching, no cycles. These are exactly the properties checked in the
+Alloy model (Section 5.2).
+
+\subsubsection{3.4 Denial as a first-class
+outcome}\label{denial-as-a-first-class-outcome}
+
+A handshake whose human says no terminates in \texttt{denied}, an
+attributed, event-logged, irreversible outcome: only the accountable
+approver can deny their own challenge, the denial is recorded
+event-first in the evidence log, and a denied ceremony can never later
+be counted as approved (the machine-checked invariant
+\texttt{DenyCannotBeApproved}, Section 5.1). The trail of a contested
+authorization therefore contains the contest: an auditor reconstructing
+a 2-of-3 approval sees the refusals alongside the approvals, with names
+and times.
+
+The Class-A production path now gives denial the same device-signed
+evidence standard as approval. The canonical WebAuthn context carries
+\texttt{decision: "approved"} or \texttt{decision: "denied"}; the
+server derives the stored terminal event from that signed value, and the
+evidence endpoint exports both outcomes in the same portable
+\texttt{EP-SIGNOFF-v1} shape. Relabeling a signed denial as approval
+invalidates challenge binding, and the bearer-key rejection path cannot
+satisfy a Class-A request. The older generic
+\texttt{lib/signoff/deny.js} flow remains a lower-assurance authenticated
+event path and is not represented as a Class-A device-signed denial.
+
+\subsubsection{3.5 One-time consumption of the composed
+decision}\label{one-time-consumption}
+
+A satisfied trail is not an authorization in perpetuity; it is
+authorization for one execution. Per-member, an approved handshake is
+consumed atomically at most once (attempting to consume a non-approved
+or already-consumed attestation refuses; the invariants
+\texttt{SignoffConsumeOnce} and \texttt{ConsumeOnceSafety} cover reuse).
+At the composed level, the executing system's consume path refuses with
+an explicit \texttt{quorum\_not\_satisfied} error until $\mathrm{Sat}$
+holds over the assembled trail, and consuming terminalizes the
+authorization. A partial trail confers no authority at any point in its
+life: before the threshold it fails $\mathrm{Sat}$; after consumption
+it is spent.
+
+\subsubsection{3.6 Offline verifiability, honestly
+scoped}\label{offline-verifiability}
+
+Everything $\mathrm{Sat}$ needs (the policy, the members' contexts and
+assertions, the pinned keys) is data. A third party can therefore
+recompute the satisfied/not-satisfied judgment offline, without querying
+the operator, and two correct verifiers cannot disagree on the same
+inputs. We scope this claim carefully: offline verification establishes
+that the composition was \emph{validly formed} relative to the pinned
+policy and keys. It does not establish \emph{current} validity: whether
+the authorization has since been consumed, or revoked, or the keys
+withdrawn is state, and answering it requires a fresh view of that state
+or an accompanying currency proof. A relying party that treats an
+offline ``satisfied'' as ``currently valid'' has reintroduced the replay
+problem one level up.
+
+\subsection{4. What Composition Preserves and Aggregation
+Destroys}\label{what-composition-preserves}
+
+We now argue the five properties from Section 1. For each: the property
+as the handshake model provides it, why signature-unit schemes lose it,
+and the attack that exists when it is absent. Each property is pinned by
+named adversarial conformance vectors from the EP-QUORUM-v1 suite
+(\texttt{conformance/vectors/quorum.v1.json}, thirteen vectors), which the
+JavaScript, Python, and Go reference verifiers are required to agree on;
+those are cross-language reference verifiers, one team's ports serving
+as a consistency check, not clean-room independent implementations
+(Section 9).
+
+\subsubsection{4.1 Per-member freshness}\label{per-member-freshness}
+
+\textbf{Provided.} Each member's signature exists only because a
+challenge was minted for this ceremony: single-use nonce, bounded
+validity, a challenge record that can be attested against only while
+live, and a composed window constraint (\texttt{window\_sec}) bounding
+the spread of the whole trail. A partial trail goes stale as a unit: the
+window bounds how long a dormant partial quorum remains completable by
+an attacker who compromises a remaining approver later.
+
+\textbf{Lost.} Aggregation: internal nonces do not survive into the
+artifact, so the verifier cannot check any member's freshness.
+Collect-then-verify: signatures over static bytes are occasion-free;
+nothing distinguishes fresh review from harvest or bulk pre-signing.
+
+\textbf{Attack when absent: signature harvesting and replay across
+ceremonies.} An operator (or an attacker holding the operator's
+position) accumulates signatures produced on other occasions over
+recurring action bytes, or extracts pre-signed approvals, and assembles
+a ``quorum'' no member decided this time. In the handshake model the
+replayed member fails at admission (a reused or expired challenge cannot
+be attested; a member outside the window is refused) and again at
+$\mathrm{Sat}$. Pinned by \texttt{reject\_expired\_window} and, for the
+demo's stale-challenge refusal, the composition demo of Section 9.
+
+\subsubsection{4.2 Per-member intent binding}\label{per-member-intent-binding}
+
+\textbf{Provided.} What each member signs \emph{is} the intent object:
+the challenge equals the hash of a canonical context that carries the
+exact action digest and policy digest, and the signature is gated by
+user verification on the member's own device. The artifact thus
+witnesses, per member, ``a human performed a deliberate verification
+gesture over a rendering bound to exactly these action bytes under
+exactly this policy version.'' A signature collected under one policy
+version cannot satisfy a requirement evaluated under another, because
+$h_P$ is inside the signed bytes.
+
+\textbf{Lost.} Aggregation: shares sign protocol messages; no human
+gesture is part of what verifies. Collect-then-verify: the message is
+bound but the reviewing human is a hope, not a property; a server-held
+key is indistinguishable from an attended one.
+
+\textbf{Attack when absent: consent laundering through blind signing.} A
+key signs, and the system's owner asserts a human approved. Compromise
+of the signing host silently converts ``two-person rule'' into
+``two-key rule,'' which a single intruder with access to both hosts
+satisfies alone. Pinned by \texttt{reject\_action\_mismatch} (a member
+bound to different action bytes does not count) and
+\texttt{reject\_one\_bad\_signature} (an assertion that does not verify
+against the enrolled key fails the whole quorum).
+
+\subsubsection{4.3 Individual accountability, including
+refusal}\label{individual-accountability}
+
+\textbf{Provided.} The trail names every member: identifier, role, key,
+times, outcome. Approvals are device-signed; denials are attributed,
+logged, and irreversibly terminal (Section 3.4). The composed artifact
+is evidence \emph{for and against} each participant: an approver cannot
+later deny approving, and an approver who refused cannot have their
+refusal erased by re-asking, because the denied ceremony is terminal and
+a fresh ceremony is a new, visible record.
+
+\textbf{Lost.} Aggregation destroys attribution by design; accountable
+variants {[}8{]} must re-add it. Collect-then-verify attributes
+approvals but has no representation of refusal at all.
+
+\textbf{Attack when absent: invisible refusals and approval shopping.}
+An orchestrator polls approvers until it finds M willing; the artifact
+shows M clean approvals and no trace of the N-M refusals, so governance
+sees consensus where there was contest. Post-hoc deniability is the
+mirror attack: with one aggregate signature, any individual member can
+claim non-participation. The handshake model makes the first visible
+(denials persist in the record) and the second impossible (each approval
+verifies against one enrolled key).
+
+\subsubsection{4.4 Order evidence}\label{order-evidence}
+
+\textbf{Provided.} Ordered mode enforces roster order and strictly
+increasing times at admission and at $\mathrm{Sat}$; strong ordered
+mode proves order by the signatures themselves through the
+$h_{\mathrm{prev}}$ chain (Section 3.3), with acyclicity and linearity
+machine-checked (Section 5.2). ``The inspector general signed last, in
+knowledge of both prior approvals'' is a verifiable statement, not an
+operator log line.
+
+\textbf{Lost.} One aggregate signature has no internal order. A
+signature bag has whatever order the assembler asserts.
+
+\textbf{Attack when absent: reordering and escalation forgery.} An
+operator presents a junior's approval as having followed the senior's
+(or the converse), fabricating an escalation chain that never occurred;
+or backdates a later-obtained signature into an earlier slot. With the
+chain, any such edit breaks a signature. Pinned by
+\texttt{reject\_out\_of\_order} (roster order violated), the
+non-increasing-time refusal at admission, and
+\texttt{reject\_broken\_chain} (a final signoff committing to the wrong
+predecessor hash fails even though every individual signature verifies).
+
+\subsubsection{4.5 Machine-checkable separation of
+duties}\label{machine-checkable-sod}
+
+\textbf{Provided.} The composition rule, not organizational custom,
+enforces: the initiator of the action is not a counted approver
+(specified in {[}2{]} Section 5 check 5; modeled as
+\texttt{SelfApprovalImpossible}; enforced at the write layer of the live
+flow); approvers pairwise distinct (\texttt{duplicate\_human}); device
+keys pairwise distinct, so one key enrolled under two identifiers cannot
+fill two slots (\texttt{duplicate\_key}); and every member admitted
+under an eligible \texttt{(role,\ approver)} slot, so a valid signature
+by a real, enrolled, but off-roster approver is refused
+(\texttt{wrong\_role}).
+
+\textbf{Lost.} Threshold schemes cannot see humans at all: nothing
+prevents one person from holding multiple shares, and the signature
+cannot reveal it. Multisig can check key distinctness but cannot express
+``distinct humans'' or ``not the proposer.''
+
+\textbf{Attack when absent: self-approval and slot doubling.} The agent
+(or its operator) that proposed the action supplies one or more of the
+approvals; or one person, holding two keys or one key under two names,
+satisfies a ``two-person'' rule alone. Pinned by
+\texttt{reject\_duplicate\_human}, \texttt{reject\_duplicate\_key}, and
+\texttt{reject\_wrong\_role}; threshold arithmetic itself by
+\texttt{reject\_under\_threshold}; the two accept vectors
+(\texttt{accept\_ordered\_3of3}, \texttt{accept\_threshold\_2of3}) guard
+the other direction, a verifier too strict to accept valid compositions.
+
+\subsubsection{4.6 The cost, stated plainly}\label{the-cost-stated-plainly}
+
+The composed artifact is O(M) signatures plus contexts; verification is
+M signature verifications plus set-level checks; the humans must
+actually perform M ceremonies within a window. For machine-speed,
+high-frequency, low-consequence signing, this is the wrong design, and
+the aggregation literature serves those cases well. The claim of this
+paper is scoped: for low-frequency, high-consequence, human-accountable
+authorization, every one of those costs purchases exactly the property
+the auditor needs, and the compact alternative discards evidence that
+cannot be reconstructed afterward.
+
+\subsection{5. Formal Grounding}\label{formal-grounding}
+
+Machine-checked claims below name the exact identifiers as they appear
+in the repository's \texttt{formal/} directory, with tool and scope. The
+uniform honest scope: these are \textbf{state-machine level} results.
+Cryptographic operations are axioms at this level; signature
+unforgeability, WebAuthn internals, device binding, the approver
+directory, log checkpoints, and wall-clock time are not modeled. A first
+symbolic model in Tamarin (Section 5.3) goes further for the base
+receipt: it verifies the core authentication lemma against a Dolev-Yao
+adversary without axiomatizing the signature. Symbolic verification of
+the full composed protocol (WebAuthn, directory, and log together)
+remains future work, and we do not substitute the state-machine results
+below for it.
+
+\subsubsection{5.1 TLA+ / TLC: the handshake state machine,
+exhaustively; two handshakes, bounded}\label{tla-tlc}
+
+The model \texttt{formal/ep\_handshake.tla} (checked by TLC 2.19 under
+\texttt{formal/ep\_handshake.cfg}) covers the full lifecycle of Section
+3.1: challenge issuance against a verified counterparty agreement,
+viewing, approval, denial, consumption, expiry, revocation, and the
+delegation and policy machinery around them. The CI configuration
+(\texttt{Handshakes\ =\ \{h1\}}, \texttt{Actors\ =\ \{a1,\ a2\}},
+\texttt{Policies\ =\ \{p1\}}, \texttt{MaxPolicyVer\ =\ 2},
+\texttt{Claims\ =\ \{c1\}}, exploration bounded to 10 events) is
+\textbf{exhaustive at that configuration}: 413,137 states generated,
+45,342 distinct states, depth 20, all 26 configured invariants hold with
+no counterexample, re-run in CI on every push touching the TLA+ model or
+its configuration.
+
+The invariants that carry this paper's process claims, by their
+identifiers in \texttt{ep\_handshake.cfg}:
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.45}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.55}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Invariant
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Process claim it grounds
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\texttt{SignoffRequiresVerifiedHandshake} & a ceremony exists only
+against a verified counterparty agreement \\
+\texttt{SignoffConsumeOnce} & a ceremony's approval is consumed at most
+once (Section 3.5) \\
+\texttt{SignoffBindingMatch} & a ceremony binds to the exact action
+context (Section 4.2) \\
+\texttt{SignoffTerminalIrreversible} & terminal outcomes are
+irreversible (Section 3.1) \\
+\texttt{DenyCannotBeApproved} & a denial can never become an approval
+(Section 3.4) \\
+\texttt{SignoffAuthorityMatch} & the signing actor is an authorized
+approver (Section 4.5) \\
+\texttt{ConsumeOnceSafety}, \texttt{ConsumeRequiresVerified} &
+composed-decision consumption discipline \\
+\texttt{WriteBypassSafety} & no approval-bearing write is reachable
+except through the gate \\
+\texttt{TerminalStateIrreversibility} & lifecycle is forward-only \\
+\end{longtable}
+
+Model checking earned its keep here in the ordinary way: TLC surfaced
+four real specification bugs during verification (among them a
+\texttt{Consume} action that could execute while a signoff was in
+flight, and revocation/expiry that failed to cascade signoff
+termination), which were fixed before the run above.
+
+The \textbf{two-handshake configuration}
+(\texttt{Handshakes\ =\ \{h1,\ h2\}}), which probes cross-ceremony
+concurrency, was run under the same representation. It explored several
+million distinct states with no counterexample before the search was
+stopped: the state space explodes (tens of millions of states generated,
+with the frontier still growing) and does not terminate at a CI-friendly
+scale. Cross-handshake concurrency is therefore \textbf{bounded-tested,
+not exhaustively proven}, and we claim exhaustive verification for no
+configuration beyond one handshake. Exhaustively proving the composed
+concurrent case is better suited to a symbolic prover than to
+explicit-state enumeration.
+
+\subsubsection{5.2 Alloy: the composition predicate and the relational
+chain}\label{alloy}
+
+\texttt{formal/ep\_quorum.als} models the composition predicate of
+Section 3.2 directly (roster, initiator, members as signoffs with
+holder-bound keys, an optional predecessor relation for the strong
+chain) and declares six assertions, each checked at the scope recorded
+in the file (\texttt{for\ 6}; \texttt{TwoPersonRuleHolds} at
+\texttt{for\ 6\ but\ 4\ int}):
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{SelfApprovalImpossible}: a satisfied quorum never counts the
+  initiator;
+\item
+  \texttt{NoHumanFillsTwoSlots}: pairwise-distinct approvers;
+\item
+  \texttt{NoKeyFillsTwoSlots}: one device key cannot fill two slots;
+\item
+  \texttt{TwoPersonRuleHolds}: a satisfied multi-member quorum contains
+  at least two distinct humans;
+\item
+  \texttt{OrderedChainAcyclic}: the strong-chain predecessor relation
+  has no cycles;
+\item
+  \texttt{OrderedChainLinear}: the chain is a single total order (one
+  root, no branching), so the sequence cannot be permuted while
+  remaining satisfied;
+\end{itemize}
+
+plus a non-vacuity \texttt{run} (\texttt{showStrongQuorum}) confirming a
+genuine satisfied, chained, multi-member quorum exists in the model. The
+CI workflow (\texttt{.github/workflows/alloy.yml}) checks every model in
+\texttt{formal/*.als} with the SAT4J solver and fails the build on any
+counterexample. Alloy results are bounded-exhaustive within the declared
+scopes, not unbounded proofs.
+
+\texttt{formal/ep\_relations.als} grounds the per-ceremony chain
+relationally; the assertions relevant here, recorded in
+\texttt{formal/PROOF\_STATUS.md} as verified at scope 6 with no
+counterexample, are \texttt{SignoffBindingIntegrity} (A12, binding hash
+consistent across handshake, challenge, attestation, consumption),
+\texttt{SignoffConsumeOnce} (A13), \texttt{SignoffRequiresHandshake}
+(A14), and \texttt{FullChainIntegrity} (A15).
+
+\subsubsection{5.3 Tamarin: the core receipt lemma against a Dolev-Yao
+adversary}\label{tamarin}
+
+The models above treat the device signature as an uninterpreted verified
+event. \texttt{formal/tamarin/ep\_receipt\_core.spthy} (checked by
+tamarin-prover 1.10.0) does not: it runs a Dolev-Yao attacker who
+controls the network and can ask the human to sign other actions, with an
+explicit key-compromise rule, and models the user-verification event as a
+linear fact a signature cannot exist without. The prover verifies
+\texttt{executable\_honest\_receipt}, \texttt{core\_authenticity\_uv\_gated},
+\texttt{no\_replay\_across\_actions}, and
+\texttt{injective\_acceptance\_with\_consumption}, and \emph{falsifies}
+\texttt{unchecked\_acceptance\_is\_injective}. Core authenticity holds: an
+accepted receipt implies a user-verification-gated signature by the named
+human over exactly that action, with no replay onto a different action.
+The falsified lemma is by design: it asserts injective acceptance
+\emph{without} the one-time-consumption check, and the prover constructs
+the same-receipt replay trace itself (no forgery, no key reveal). That is
+a mechanical demonstration that one-time consumption (Section 3.5) is
+load-bearing, not defense-in-depth.
+
+This model is scoped to the base single receipt. The approver directory,
+log, checkpoints, WebAuthn attestation internals, and crucially the m-of-n
+quorum and separation-of-duties composition of this paper are out of scope
+here (they are carried by the state-machine models of 5.1 and 5.2).
+Extending the symbolic model to the full composition is the next step,
+and we claim no symbolic result beyond the base receipt.
+
+\subsubsection{5.4 Enforced in code, not
+model-checked}\label{enforced-in-code}
+
+Two properties central to Sections 3.1 and 4.1 are deliberately
+\emph{outside} the models and we do not count them as model-checked: the
+user-verification / MFA gating of the attestation ceremony
+(\texttt{lib/signoff/attest.js}, exercised by the WebAuthn signoff
+conformance vectors) and challenge wall-clock expiry
+(\texttt{lib/signoff/challenge.js}). Both are enforced by code guards
+and covered by unit and conformance tests. The models treat time
+abstractly and treat the device signature as an uninterpreted verified
+event; that is the axiom boundary, stated rather than hidden.
+
+\subsection{6. Ceremony Evidence and the Rubber-Stamp
+Problem}\label{ceremony-evidence}
+
+A known failure mode of multi-party approval is that it degenerates into
+multi-party clicking. Adding signers can even reduce scrutiny, as each
+assumes another is the careful one. Signature-unit schemes have nothing
+to say here: a signature is a signature, produced in three seconds or
+thirty minutes.
+
+The handshake, because it is a lifecycle and not a point event, emits
+telemetry as a side effect of operating: the challenge's
+\texttt{issued\_at}, the \texttt{viewed\_at} transition, the
+\texttt{approved\_at} instant, and the approver identity. EP's evidence
+layer gives this a first-class node type, \texttt{ceremony\_evidence},
+in the Action Evidence Graph (\texttt{lib/evidence/evidence-graph.js}),
+and lets a relying-party policy declare a \textbf{review-latency floor}
+(\texttt{ceremony\_min\_review\_sec}). The rule, shipped in that module,
+is fail-closed in both directions:
+
+\begin{itemize}
+\tightlist
+\item
+  a verified ceremony node whose
+  \texttt{approved\_at\ -\ viewed\_at} falls below the floor yields the
+  machine-readable finding \texttt{rubber\_stamped\_ceremony} and
+  downgrades the evaluation verdict to \texttt{conflicted}: the recorded
+  human review contradicts a genuine one;
+\item
+  a floor that is set while the telemetry is absent or unusable yields
+  \texttt{ceremony\_telemetry\_missing} and likewise downgrades to
+  \texttt{conflicted}, never a silent pass;
+\item
+  no finding ever moves a verdict toward \texttt{admissible}, and an
+  already-worse \texttt{unverifiable} verdict is never softened.
+\end{itemize}
+
+The claim is deliberately modest. A latency floor converts ``this
+approver is at the floor every time'' from an anecdote into evidence
+attached to the authorization itself, offline-checkable by any relying
+party; it raises the cost of rubber-stamping and makes it attributable.
+It does not prevent it. A colluding or coerced approver waits out the
+floor. Detection, not prevention, is what process telemetry buys, and we
+say so.
+
+\subsection{7. What No Composition Solves}\label{what-no-composition-solves}
+
+Composing ceremonies raises the cost of unilateral and unaccountable
+action. Four problems survive any such composition, and a design that
+claims otherwise is defective in a way this protocol treats as a
+vulnerability class of its own: overclaiming discourages the
+compensating controls that actually constrain these risks, and the base
+specifications forbid it outright (implementations ``MUST NOT claim a
+quorum is collusion-proof'' {[}2{]}).
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Collusion of the required number of humans.} An M-person rule
+  stops M-1 bad actors, not M. A fully colluding quorum produces a fully
+  valid trail. What the trail changes is the aftermath: every colluder
+  is named, signed, time-stamped, and action-bound, so the conspiracy is
+  evidenced rather than deniable.
+\item
+  \textbf{Coercion.} A coerced approver's ceremony is cryptographically
+  perfect. Ordering and windows narrow the operational space for
+  coercing a full quorum simultaneously; they do not close it.
+\item
+  \textbf{Person-level Sybil enrollment.} If enrollment lets one human
+  hold two approver identities on two devices, human-distinctness is
+  satisfied formally but not in substance. The distinct-keys check
+  closes the cheapest variant (one device key under two names,
+  \texttt{reject\_duplicate\_key}); the general case is an
+  enrollment-time control (identity proofing, directory authority), and
+  no runtime predicate can supply it.
+\item
+  \textbf{Semantic correctness of the approved action.} M informed
+  humans agreeing is the best available proxy for ``this action is
+  right,'' and it is only a proxy. A quorum can competently, freshly,
+  accountably approve a mistake. Rendering fidelity narrows the gap
+  between what was approved and what was displayed; nothing in the
+  composition addresses the gap between what was displayed and what was
+  wise.
+\end{enumerate}
+
+\subsection{8. Related Work}\label{related-work}
+
+Threshold and multisignature cryptography develops the signature-unit
+branch: FROST {[}4{]}, standardized in RFC 9591 {[}5{]}; MuSig2 {[}7{]};
+threshold ECDSA {[}6{]}. Accountable-subgroup multisignatures {[}8{]}
+re-introduce signer attribution within aggregation and are the closest
+cryptographic acknowledgment that accountability and aggregation pull
+apart. CMS {[}9{]} defines the multi-signer collect-then-verify artifact
+in wide deployment; script-level M-of-N multisig in Bitcoin and
+multi-signature wallet contracts are its on-chain descendants. None of
+these carries per-signer freshness ceremonies, intent gating, refusal
+records, or order evidence, which is not a criticism of their design
+goals; it is the reason a different unit is needed for human
+authorization.
+
+Two regulatory and standards artifacts already treat the ceremony, not
+the key, as the unit of a human's authorization, and we read them as
+convergent evidence. The DEA's electronic prescribing rule for
+controlled substances (21 CFR Part 1311) requires the prescriber to
+complete a two-factor authentication ceremony at the moment of signing
+each prescription {[}12{]}: possession of the credential is explicitly
+insufficient. OAuth 2.0 step-up authentication (RFC 9470) lets a relying
+party demand a fresher, stronger authentication event for a specific
+request {[}13{]}, acknowledging per-action freshness, though its result
+is a session property rather than a portable, composable artifact.
+WebAuthn {[}11{]} supplies the user-verified, device-bound,
+challenge-response signature primitive the handshake is built from. The
+EP base receipt {[}1{]} defines the single-ceremony artifact; the quorum
+profile {[}2{]} and its companion paper {[}3{]} specify the composition
+predicate this paper argues the foundations of.
+
+\subsection{9. Artifact Availability}\label{artifact-availability}
+
+The reference implementation is open source (Apache-2.0) in the EMILIA
+Protocol repository (site: \url{https://www.emiliaprotocol.ai}).
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Composition predicate and admission rule:}
+  \texttt{packages/verify/quorum.js} (\texttt{verifyQuorum}) and
+  \texttt{lib/signoff/quorum-session.js} (\texttt{canAccept},
+  \texttt{quorumGate}).
+\item
+  \textbf{Conformance vectors:}
+  \texttt{conformance/vectors/quorum.v1.json}, the thirteen EP-QUORUM-v1
+  vectors named in Section 4, each carrying real ES256 WebAuthn
+  assertions. The JavaScript, Python, and Go reference verifiers
+  (\texttt{packages/verify}, \texttt{packages/python-verify},
+  \texttt{packages/go-verify}) are required to agree on every vector.
+  These are cross-language reference verifiers, one team's ports of the
+  same logic: a consistency check, not clean-room independent
+  implementations. Independent implementations remain future
+  interoperability evidence.
+\item
+  \textbf{Formal models:} \texttt{formal/\allowbreak ep\_handshake.tla}
+  with \texttt{formal/\allowbreak ep\_handshake.cfg},
+  \texttt{formal/\allowbreak ep\_quorum.als}, and
+  \texttt{formal/\allowbreak ep\_relations.als}, with status and scope
+  recorded in \texttt{formal/\allowbreak PROOF\_STATUS.md}.
+\item
+  \textbf{Runnable composition demo:} \texttt{node}
+  \texttt{examples/multi-\allowbreak handshake/compose-\allowbreak and-verify.mjs}
+  composes a 2-of-3 trail (threshold mode on the wire, with the declared
+  order enforced by the composer at admission) that the reference
+  verifier accepts, then demonstrates five refusals: an initiator
+  self-approval, an out-of-order signature, a replayed member handshake
+  (a stale or reused challenge), an off-roster key, and an off-roster
+  member forced past admission that the verifier itself refuses (the
+  executor does not trust the composer).
+\item
+  \textbf{Local end-to-end test:}
+  \texttt{e2e/multi-party-quorum.spec.js} drives the full multi-party
+  flow against a local development stack (it is opt-in and writes test
+  data; it is a local test, not a production deployment). Three browser
+  contexts with three CDP virtual authenticators enroll three approvers,
+  an ordered program-officer, authorizing-official, inspector-general
+  policy gates an initiator's action, consumption is refused with a 403
+  \texttt{quorum\_not\_satisfied} after the first and second approvals,
+  succeeds only after the third, and an out-of-order signer is refused
+  before any approval is recorded.
+\end{itemize}
+
+\subsection{10. Conclusion}\label{conclusion}
+
+The question ``M of N of what?'' is not an implementation detail; it
+decides what the surviving artifact can prove. Composing signatures
+answers ``enough keys participated,'' which is the right answer for
+custody and the wrong one for accountability. Composing handshakes
+(fresh, intent-bound, user-verified ceremonies with total outcomes)
+answers the questions an irreversible action leaves behind: which
+people, over exactly what, when, in what order, having demonstrably seen
+it, and who refused. The composition preserves per-member freshness,
+intent binding, attribution with refusal, order evidence, and separation
+of duties precisely because it never collapses the members into one
+artifact; its linear size is its evidentiary value. The safety core of
+this process is machine-checked at the state-machine level and honestly
+scoped, its predicate is pinned by adversarial conformance vectors, and
+its limits (collusion, coercion, Sybil enrollment, semantic error) are
+stated rather than waved away. For AI agents holding real operational
+authority, we believe the unit of multi-party human control should be
+the ceremony a human actually performed, and this paper is the argument
+for building on that unit.
+
+\subsection{References}\label{references}
+
+{[}1{]} I. Schrock, ``Authorization Receipts for High-Risk Agent Actions
+(EP),'' Internet-Draft draft-schrock-ep-authorization-receipts, 2026.
+
+{[}2{]} I. Schrock, ``Multi-Party Quorum Authorization for High-Risk
+Agent Actions (EP-QUORUM),'' Internet-Draft draft-schrock-ep-quorum,
+2026.
+
+{[}3{]} I. Schrock, ``The Two-Person Rule for AI Agents: Fail-Closed
+Multi-Party Authorization with Offline-Verifiable Receipts,'' preprint,
+Zenodo, DOI 10.5281/zenodo.20780638, 2026.
+
+{[}4{]} C. Komlo and I. Goldberg, ``FROST: Flexible Round-Optimized
+Schnorr Threshold Signatures,'' Selected Areas in Cryptography (SAC),
+2020.
+
+{[}5{]} ``The Flexible Round-Optimized Schnorr Threshold (FROST)
+Protocol for Two-Round Schnorr Signatures,'' RFC 9591, 2024.
+
+{[}6{]} R. Gennaro and S. Goldfeder, ``Fast Multiparty Threshold ECDSA
+with Fast Trustless Setup,'' ACM CCS, 2018.
+
+{[}7{]} J. Nick, T. Ruffing, and Y. Seurin, ``MuSig2: Simple Two-Round
+Schnorr Multi-Signatures,'' CRYPTO, 2021.
+
+{[}8{]} S. Micali, K. Ohta, and L. Reyzin, ``Accountable-Subgroup
+Multisignatures,'' ACM CCS, 2001.
+
+{[}9{]} R. Housley, ``Cryptographic Message Syntax (CMS),'' RFC 5652,
+2009.
+
+{[}10{]} A. Rundgren, B. Jordan, and S. Erdtman, ``JSON Canonicalization
+Scheme (JCS),'' RFC 8785, 2020.
+
+{[}11{]} W3C, ``Web Authentication: An API for accessing Public Key
+Credentials, Level 2,'' W3C Recommendation, April 2021.
+
+{[}12{]} U.S. Drug Enforcement Administration, ``Electronic
+Prescriptions for Controlled Substances,'' 21 CFR Part 1311.
+
+{[}13{]} V. Bertocci and B. Campbell, ``OAuth 2.0 Step Up Authentication
+Challenge Protocol,'' RFC 9470, 2023.
+
+\emph{Artifacts: the protocol drafts, the EP-QUORUM-v1 conformance
+vectors, the formal models, and the reference verifiers are available in
+the EMILIA Protocol open-source repository (Apache-2.0). Site:
+\url{https://www.emiliaprotocol.ai}}
+
+\end{document}

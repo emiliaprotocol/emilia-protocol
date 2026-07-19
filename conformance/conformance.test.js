@@ -6,6 +6,7 @@ import {
   evaluateTrustPolicy,
   TRUST_POLICIES,
   EP_WEIGHTS_V2,
+  MAX_SINGLE_SUBMITTER_CONTRIBUTION,
 } from '../lib/scoring-v2.js';
 
 // Load canonical fixtures
@@ -112,18 +113,59 @@ describe('CONFORMANCE: Policy evaluation', () => {
 });
 
 // --- 4. Confidence levels --------------------------------------------------
+// These vectors exercise the REAL confidence bucketing inside
+// computeTrustProfile() (lib/scoring-v2.js) — there is no standalone exported
+// evidence→confidence function, so the test constructs receipt sets whose
+// quality-gated effective evidence lands exactly on each fixture's
+// effective_evidence value and asserts the profile's confidence output.
+//
+// Construction: every submitter is established, provenance is oracle_verified
+// (1.0x), graph_weight is 1.0, and created_at sits slightly in the future so
+// time decay clamps to exactly 1.0 — each receipt therefore contributes
+// exactly submitter_score / 100 evidence. Contributions are chunked per
+// submitter at the real MAX_SINGLE_SUBMITTER_CONTRIBUTION cap, which also
+// spreads evidence >= 5.0 across >= 3 distinct submitters so the
+// establishment gate (uniqueSubmitters >= 3) never masks the evidence
+// thresholds under test.
+
+function receiptsWithEvidence(targetEvidence) {
+  // Slightly-future timestamp: ageDays clamps to 0, so timeWeight is exactly 1.0
+  // and the constructed evidence cannot drift below a threshold boundary.
+  const createdAt = new Date(Date.now() + 60_000).toISOString();
+  const receipts = [];
+  let remaining = targetEvidence;
+  let submitterIdx = 0;
+  while (remaining > 0) {
+    let submitterBudget = Math.min(remaining, MAX_SINGLE_SUBMITTER_CONTRIBUTION);
+    const submitter = `confidence-submitter-${submitterIdx++}`;
+    while (submitterBudget > 0) {
+      const receiptWeight = Math.min(1.0, submitterBudget);
+      receipts.push({
+        submitted_by: submitter,
+        submitter_established: true,
+        submitter_score: receiptWeight * 100,
+        graph_weight: 1.0,
+        provenance_tier: 'oracle_verified',
+        created_at: createdAt,
+      });
+      submitterBudget -= receiptWeight;
+      remaining -= receiptWeight;
+    }
+  }
+  return receipts;
+}
 
 describe('CONFORMANCE: Confidence levels from effective evidence', () => {
   for (const fixture of fixtures.confidence_level_fixtures) {
     it(`effective_evidence ${fixture.effective_evidence} → ${fixture.expected_confidence}`, () => {
-      let conf;
-      const ee = fixture.effective_evidence;
-      if (ee === 0) conf = 'pending';
-      else if (ee < 1.0) conf = 'insufficient';
-      else if (ee < 5.0) conf = 'provisional';
-      else if (ee < 20.0) conf = 'emerging';
-      else conf = 'confident';
-      expect(conf).toBe(fixture.expected_confidence);
+      const receipts = receiptsWithEvidence(fixture.effective_evidence);
+      const profile = computeTrustProfile(receipts, {});
+
+      // Sanity: the constructed receipts must actually produce the fixture's
+      // evidence value — otherwise the confidence assertion tests nothing.
+      expect(profile.effectiveEvidence).toBeCloseTo(fixture.effective_evidence, 10);
+
+      expect(profile.confidence).toBe(fixture.expected_confidence);
     });
   }
 });

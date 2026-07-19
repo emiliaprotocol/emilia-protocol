@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"time"
 )
 
@@ -34,9 +33,20 @@ func getStr(m map[string]any, k string) string {
 	return s
 }
 
-// VerifyWebAuthnSignoff verifies a Class-A device signoff. rpID "" skips the
-// audience check (matches JS opts.rpId absent). Never panics.
+// VerifyWebAuthnSignoff preserves the v2 fixed-arity API. rpID "" skips the
+// audience check (matches JS opts.rpId absent). Call
+// VerifyWebAuthnSignoffWithOrigins when the relying party pins origins.
 func VerifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rpID string) SignoffResult {
+	return verifyWebAuthnSignoff(signoff, approverPubKeyB64u, rpID)
+}
+
+// VerifyWebAuthnSignoffWithOrigins verifies the same Class-A ceremony and also
+// requires clientDataJSON.origin to equal one relying-party-pinned origin.
+func VerifyWebAuthnSignoffWithOrigins(signoff map[string]any, approverPubKeyB64u string, rpID string, allowedOrigins []string) SignoffResult {
+	return verifyWebAuthnSignoff(signoff, approverPubKeyB64u, rpID, allowedOrigins)
+}
+
+func verifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rpID string, allowedOrigins ...[]string) SignoffResult {
 	checks := map[string]bool{
 		"challenge_binding": false, "client_data_type": false, "user_present": false,
 		"user_verified": false, "signature": false,
@@ -59,14 +69,29 @@ func VerifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rp
 	if err != nil {
 		return SignoffResult{false, checks}
 	}
-	var client map[string]any
-	if json.Unmarshal(cdBytes, &client) != nil {
+	client, err := decodeStrictJSONObject(cdBytes)
+	if err != nil {
 		return SignoffResult{false, checks}
 	}
 	sum := sha256.Sum256([]byte(Canonicalize(ctx)))
 	expected := base64.RawURLEncoding.EncodeToString(sum[:])
 	checks["challenge_binding"] = getStr(client, "challenge") == expected
 	checks["client_data_type"] = getStr(client, "type") == "webauthn.get"
+	originOK := true
+	if len(allowedOrigins) > 0 {
+		originOK = false
+		origin := getStr(client, "origin")
+		for _, allowed := range allowedOrigins[0] {
+			if origin == allowed {
+				originOK = true
+				break
+			}
+		}
+		if crossOrigin, ok := client["crossOrigin"].(bool); ok && crossOrigin {
+			originOK = false
+		}
+		checks["origin"] = originOK
+	}
 
 	ad, err := b64urlDecode(adB64)
 	if err != nil || len(ad) < 37 {
@@ -95,7 +120,7 @@ func VerifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rp
 		}
 	}
 	valid := checks["challenge_binding"] && checks["client_data_type"] && checks["user_present"] &&
-		checks["user_verified"] && checks["signature"] && (!rpChecked || rpOK)
+		checks["user_verified"] && checks["signature"] && (!rpChecked || rpOK) && originOK
 	return SignoffResult{valid, checks}
 }
 
@@ -122,13 +147,24 @@ func parseMillis(ts string) (int64, bool) {
 	return t.UnixMilli(), true
 }
 
-// VerifyQuorum verifies an EP-QUORUM-v1 document. Fail-closed; composes
-// VerifyWebAuthnSignoff per member. Mirrors quorum.js.
+// VerifyQuorum preserves the v2 fixed-arity API and verifies an EP-QUORUM-v1
+// document. Call VerifyQuorumWithOrigins when the relying party pins origins.
 func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
+	return verifyQuorum(quorum, rpID)
+}
+
+// VerifyQuorumWithOrigins verifies every member ceremony against the same
+// relying-party-pinned origin set in addition to the quorum predicates.
+func VerifyQuorumWithOrigins(quorum map[string]any, rpID string, allowedOrigins []string) QuorumResult {
+	return verifyQuorum(quorum, rpID, allowedOrigins)
+}
+
+func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string) QuorumResult {
 	checks := map[string]bool{
 		"all_signatures_valid": false, "action_binding": false, "distinct_humans": false,
-		"distinct_keys": false, "roles_admitted": false, "threshold_met": false,
-		"order_satisfied": false, "chain_linked": false, "within_window": false,
+		"distinct_keys": false, "initiator_excluded": false, "roles_admitted": false,
+		"threshold_met": false, "order_satisfied": false, "chain_linked": false,
+		"within_window": false,
 	}
 	if quorum == nil {
 		return QuorumResult{false, checks}
@@ -143,16 +179,16 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	for i, m := range membersAny {
 		members[i] = getMap(m)
 	}
-	mode := "threshold"
-	if getStr(policy, "mode") == "ordered" {
-		mode = "ordered"
+	mode := getStr(policy, "mode")
+	if mode != "threshold" && mode != "ordered" {
+		return QuorumResult{false, checks}
 	}
 	distinctHumans := true
 	if v, ok := policy["distinct_humans"].(bool); ok {
 		distinctHumans = v
 	}
 	windowSec := 900.0
-	if v, ok := policy["window_sec"].(float64); ok {
+	if v, ok := toFloat(policy["window_sec"]); ok {
 		windowSec = v
 	}
 	eligAny, _ := policy["approvers"].([]any)
@@ -163,7 +199,10 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	var required int
 	if mode == "ordered" {
 		required = len(eligible)
-	} else if v, ok := policy["required"].(float64); ok && int(v) > 0 {
+	} else if v, ok := toFloat(policy["required"]); ok && v == float64(int(v)) && int(v) > 0 {
+		// Integrality guard (mirrors trust_receipt.go and coerceRequiredApprovals):
+		// a fractional threshold like 2.5 must NOT be truncated to 2, and a bool
+		// (toFloat has no bool case, so ok=false) must NOT be read as 1.
 		required = int(v)
 	}
 	if required <= 0 || len(eligible) == 0 {
@@ -176,7 +215,7 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	issuedOK := make([]bool, len(members))
 	memberValid := make([]bool, len(members))
 	for i, m := range members {
-		r := VerifyWebAuthnSignoff(getMap(m["signoff"]), getStr(m, "approver_public_key"), rpID)
+		r := verifyWebAuthnSignoff(getMap(m["signoff"]), getStr(m, "approver_public_key"), rpID, allowedOrigins...)
 		memberValid[i] = r.Valid
 		if !r.Valid {
 			allSigs = false
@@ -206,11 +245,38 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	dh := len(seen) == len(counted)
 	checks["distinct_humans"] = !distinctHumans || dh
 
+	// Distinct device keys: no single public key may fill two counted slots.
+	// Key-uniqueness is a cryptographic floor, NOT a separation-of-duties
+	// preference: it holds UNCONDITIONALLY, even when distinct_humans is disabled.
+	// One key in two counted seats is one signer, never a quorum. Mirrors quorum.js.
 	countedKeys := map[string]int{}
 	for _, c := range counted {
 		countedKeys[getStr(c.m, "approver_public_key")]++
 	}
-	checks["distinct_keys"] = !distinctHumans || len(countedKeys) == len(counted)
+	checks["distinct_keys"] = len(countedKeys) == len(counted)
+
+	// Initiator excluded (separation of duties): the human/agent that INITIATED
+	// the action must never also approve it. Require context.initiator to be
+	// present, the SAME across all counted members, and to differ from every
+	// counted member's own approver identity. Mirrors quorum.js and
+	// verifyTrustReceipt's initiator SoD check.
+	initiatorExcluded := len(counted) > 0
+	quorumInitiator := ""
+	if len(counted) > 0 {
+		quorumInitiator = getStr(ctxOf(counted[0].m), "initiator")
+	}
+	if quorumInitiator == "" {
+		initiatorExcluded = false
+	}
+	for _, c := range counted {
+		if getStr(ctxOf(c.m), "initiator") != quorumInitiator {
+			initiatorExcluded = false
+		}
+		if getStr(ctxOf(c.m), "approver") == quorumInitiator {
+			initiatorExcluded = false
+		}
+	}
+	checks["initiator_excluded"] = initiatorExcluded
 
 	eligibleSet := map[string]bool{}
 	for _, e := range eligible {
@@ -295,7 +361,8 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	}
 
 	valid := checks["all_signatures_valid"] && checks["action_binding"] && checks["distinct_humans"] &&
-		checks["distinct_keys"] && checks["roles_admitted"] && checks["threshold_met"] &&
-		checks["order_satisfied"] && checks["chain_linked"] && checks["within_window"]
+		checks["distinct_keys"] && checks["initiator_excluded"] && checks["roles_admitted"] &&
+		checks["threshold_met"] && checks["order_satisfied"] && checks["chain_linked"] &&
+		checks["within_window"]
 	return QuorumResult{valid, checks}
 }

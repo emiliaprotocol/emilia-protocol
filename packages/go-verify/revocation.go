@@ -8,7 +8,10 @@ package emiliaverify
 import (
 	"crypto/ed25519"
 	"crypto/x509"
+	"encoding/hex"
+	"math"
 	"strings"
+	"time"
 )
 
 const RevocationVersion = "EP-REVOCATION-v1"
@@ -23,8 +26,18 @@ type CheckResult struct {
 }
 
 func hexStrip(h any) string {
-	s, _ := h.(string)
-	return strings.ToLower(strings.Replace(s, "sha256:", "", 1))
+	s, ok := h.(string)
+	if !ok {
+		return ""
+	}
+	s = strings.ToLower(strings.TrimPrefix(s, "sha256:"))
+	if len(s) != 64 {
+		return ""
+	}
+	if _, err := hex.DecodeString(s); err != nil {
+		return ""
+	}
+	return s
 }
 
 func ed25519VerifyBytes(data []byte, pubB64u, sigB64u string) bool {
@@ -72,12 +85,13 @@ func revocationSignedPayload(stmt map[string]any) []byte {
 }
 
 // VerifyRevocation mirrors packages/verify/revocation.js. opts keys: revokerKeys
-// (map of revoker_id -> {public_key}), maxAgeSeconds (float64), now (RFC3339).
+// (map of revoker_id -> {public_key}) and now (RFC3339). maxAgeSeconds is
+// accepted for API compatibility but ignored: terminal revocations do not age out.
 func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 	checks := map[string]bool{
 		"version": true, "target_bound": true, "revoker_key_pinned": true,
 		"revoked_at_present": true, "revoker_signature_valid": true,
-		"signature_binds_statement": true, "freshness": true,
+		"effective_at_or_before_T": true, "signature_binds_statement": true,
 	}
 	fail := func(k string) { checks[k] = false }
 	revokerKeys := getMap(opts["revokerKeys"])
@@ -94,15 +108,21 @@ func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 		fail("target_bound")
 	} else {
 		tt := getStr(target, "target_type")
-		if tt != "" && !revocationTargetTypes[tt] {
+		targetID := getStr(target, "target_id")
+		heldHash := hexStrip(target["action_hash"])
+		statementType := getStr(statement, "target_type")
+		statementID := getStr(statement, "target_id")
+		statementHash := hexStrip(statement["action_hash"])
+		if !revocationTargetTypes[tt] || targetID == "" || heldHash == "" {
 			fail("target_bound")
 		}
-		if getStr(statement, "target_type") != tt {
+		if !revocationTargetTypes[statementType] || statementID == "" || statementHash == "" {
 			fail("target_bound")
-		}
-		if getStr(statement, "target_id") != getStr(target, "target_id") {
+		} else if statementType != tt {
 			fail("target_bound")
-		} else if hexStrip(statement["action_hash"]) != hexStrip(target["action_hash"]) {
+		} else if statementID != targetID {
+			fail("target_bound")
+		} else if statementHash != heldHash {
 			fail("target_bound")
 		}
 	}
@@ -116,10 +136,41 @@ func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 	} else if presented != "" && pinned != presented {
 		fail("revoker_key_pinned")
 	}
+	if getStr(proof, "algorithm") != "Ed25519" {
+		fail("revoker_signature_valid")
+	}
+	if reason, present := statement["reason"]; present && reason != nil {
+		if _, ok := reason.(string); !ok {
+			fail("signature_binds_statement")
+		}
+	}
 
 	revokedMs, revokedOK := parseMillis(getStr(statement, "revoked_at"))
 	if !revokedOK {
 		fail("revoked_at_present")
+	}
+	nowMs := time.Now().UnixMilli()
+	nowOK := true
+	if rawNow, present := opts["now"]; present {
+		switch value := rawNow.(type) {
+		case string:
+			nowMs, nowOK = parseMillis(value)
+		case float64:
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				nowOK = false
+			} else {
+				nowMs = int64(value)
+			}
+		case int:
+			nowMs = int64(value)
+		case int64:
+			nowMs = value
+		default:
+			nowOK = false
+		}
+	}
+	if !revokedOK || !nowOK || revokedMs > nowMs {
+		fail("effective_at_or_before_T")
 	}
 
 	recomputed := revocationSignedPayload(statement)
@@ -135,14 +186,6 @@ func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 		} else if !sigOverRecomputed {
 			fail("signature_binds_statement")
 			fail("revoker_signature_valid")
-		}
-	}
-
-	if maxAge, ok := opts["maxAgeSeconds"].(float64); ok && revokedOK {
-		if nowMs, nowOK := parseMillis(getStr(opts, "now")); nowOK {
-			if float64(nowMs-revokedMs)/1000 > maxAge {
-				fail("freshness")
-			}
 		}
 	}
 

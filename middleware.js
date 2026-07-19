@@ -19,9 +19,16 @@ import { siemEvent } from '@/lib/siem';
 // `useAuth` means the rate-limit key includes the API key prefix + IP.
 // =============================================================================
 
-const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
+const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DEFAULT_API_BODY_LIMIT_BYTES = 1024 * 1024;
 const MULTIPART_API_BODY_LIMIT_BYTES = 26 * 1024 * 1024; // 25 MB file + form overhead
+const RELEASE_LOCK_BROWSER_MUTATIONS = Object.freeze([
+  /^\/api\/v1\/release-locks\/invitations\/exchange$/,
+  /^\/api\/v1\/release-locks\/pairings\/exchange$/,
+  /^\/api\/v1\/release-locks\/[^/]+\/registration\/(?:options|verify)$/,
+  /^\/api\/v1\/release-locks\/[^/]+\/rounds\/[^/]+\/(?:approvals|pairings)$/,
+  /^\/api\/v1\/release-locks\/[^/]+\/rounds\/[^/]+\/action-check\/options$/,
+]);
 
 const ROUTE_POLICIES = {
   // Pilot-request intake (public lead form; honeypot + validation in route)
@@ -91,6 +98,8 @@ const ROUTE_POLICIES = {
   'POST /api/v1/trust-receipts/*/consume':         { rateCategory: 'submit', useAuth: true }, // one-time consume
   'POST /api/v1/trust-receipts/*/execution':       { rateCategory: 'submit', useAuth: true }, // post-mutation execution attestation
   'GET /api/v1/trust-receipts/*/evidence':         { rateCategory: 'read',   useAuth: true }, // evidence packet
+  'POST /api/v1/rx-reliance/evaluate':             { rateCategory: 'submit', useAuth: true }, // Rx reliance verdict over a submitted packet (stateless, no PHI)
+  'POST /api/v1/rx-reliance/profiles':             { rateCategory: 'submit', useAuth: true }, // content-hash pin of a relying-party reliance profile
   'POST /api/v1/signoffs/request':                 { rateCategory: 'submit', useAuth: true }, // request human signoff
   'POST /api/v1/signoffs/*/approve':               { rateCategory: 'submit', useAuth: true }, // approver acts
   'POST /api/v1/signoffs/*/reject':                { rateCategory: 'submit', useAuth: true }, // approver acts
@@ -102,6 +111,39 @@ const ROUTE_POLICIES = {
   'POST /api/v1/signoffs/*/approve-webauthn':      { rateCategory: 'submit', useAuth: false }, // device-key decision
   'POST /api/v1/approvers/webauthn/register-options': { rateCategory: 'submit', useAuth: true }, // begin passkey enrollment
   'POST /api/v1/approvers/webauthn/register-verify':  { rateCategory: 'submit', useAuth: true }, // complete enrollment
+
+  // Native approval reference apps. Pairing creation and demo injection use
+  // organization API keys. Pairing exchange is capability-code authenticated;
+  // runtime routes authenticate an ep_mobile_ bearer token in-route and apply a
+  // second, session-scoped limit after token verification. The edge limit is
+  // deliberately IP-only so attacker-supplied bearer text cannot create free
+  // rate-limit identities before authentication.
+  'POST /api/v1/mobile/pairings':               { rateCategory: 'mobile_pairing', useAuth: true },
+  'POST /api/v1/mobile/pairings/exchange':      { rateCategory: 'mobile_pairing', useAuth: false },
+  'GET /api/v1/mobile/inbox':                   { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/challenges':             { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/ceremonies':             { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/enrollments/challenges': { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/enrollments':            { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'DELETE /api/v1/mobile/session':              { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/mobile/demo/actions':           { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/grace/curtailment/actions':      { rateCategory: 'protocol_write', useAuth: true },
+
+  // Release Lock. Organization mutations authenticate an EP API key in-route.
+  // Invitation/pairing exchanges are single-use capability authenticated.
+  // Participant ceremonies use a host-only, SameSite=Strict session cookie,
+  // then enforce lock + role + contact + optional round scope transactionally.
+  'POST /api/v1/release-locks':                                   { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/release-locks/*/amendments':                      { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/release-locks/*/draw-release':                    { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/release-locks/invitations/exchange':              { rateCategory: 'mobile_pairing', useAuth: false },
+  'POST /api/v1/release-locks/pairings/exchange':                 { rateCategory: 'mobile_pairing', useAuth: false },
+  'POST /api/v1/release-locks/*/registration/options':            { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/registration/verify':             { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/rounds/*/action-check/options':   { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/rounds/*/approvals':              { rateCategory: 'mobile_runtime_ip', useAuth: false },
+  'POST /api/v1/release-locks/*/rounds/*/pairings':               { rateCategory: 'mobile_pairing', useAuth: false },
+  'POST /api/internal/release-lock/reconcile':                    { rateCategory: null, useAuth: false },
   // GovGuard + FinGuard demo adapters (MD §8) — thin façades over
   // /api/v1/trust-receipts pre-filled for specific workflows. Same auth +
   // rate posture as the underlying create endpoint. All implemented via
@@ -308,23 +350,92 @@ function declaredApiBodyLimit(request) {
     : DEFAULT_API_BODY_LIMIT_BYTES;
 }
 
-function rejectOversizedDeclaredApiBody(request) {
-  if (!BODY_METHODS.has(request.method.toUpperCase())) return null;
-  const raw = request.headers.get('content-length');
-  if (!raw) return null;
-  const length = Number(raw);
-  if (!Number.isFinite(length) || length < 0) {
-    return NextResponse.json(
-      { error: 'Invalid Content-Length', code: 'invalid_content_length' },
-      { status: 400 },
-    );
-  }
-  const limit = declaredApiBodyLimit(request);
-  if (length <= limit) return null;
+function payloadTooLarge(limit) {
   return NextResponse.json(
     { error: 'Request body too large', code: 'payload_too_large', max_bytes: limit },
     { status: 413 },
   );
+}
+
+function isReleaseLockBrowserMutation(method, pathname) {
+  return method.toUpperCase() === 'POST'
+    && RELEASE_LOCK_BROWSER_MUTATIONS.some((pattern) => pattern.test(pathname));
+}
+
+function releaseLockOriginAllowed(request) {
+  const origin = request.headers.get('origin');
+  const fetchSite = request.headers.get('sec-fetch-site');
+  if (!origin || origin === 'null' || (fetchSite && fetchSite !== 'same-origin')) {
+    return false;
+  }
+  try {
+    return new URL(origin).origin === request.nextUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Global request-body cap for mutating API routes, enforced at the edge.
+ *
+ * Two layers, both fail-closed:
+ *   1. Fast path — reject on a declared Content-Length over the cap without
+ *      touching the stream.
+ *   2. Stream path — a client can OMIT or understate Content-Length (chunked
+ *      transfer), which slips past layer 1 and, on a self-hosted deploy with no
+ *      reverse-proxy/platform cap, lets request.json() buffer an unbounded body
+ *      into memory. We read a CLONE of the body and abort the moment the byte
+ *      count exceeds the cap. The clone is independent of the original stream,
+ *      so the downstream route handler still receives the intact request.
+ *
+ * @returns {Promise<NextResponse|null>} a 413/400 response, or null to proceed.
+ */
+async function rejectOversizedApiBody(request) {
+  if (!BODY_METHODS.has(request.method.toUpperCase())) return null;
+  const limit = declaredApiBodyLimit(request);
+
+  // Layer 1: declared Content-Length.
+  const raw = request.headers.get('content-length');
+  if (raw) {
+    const length = Number(raw);
+    if (!Number.isFinite(length) || length < 0) {
+      return NextResponse.json(
+        { error: 'Invalid Content-Length', code: 'invalid_content_length' },
+        { status: 400 },
+      );
+    }
+    if (length > limit) return payloadTooLarge(limit);
+  }
+
+  // Layer 2: byte-count the actual stream (covers chunked / absent / understated
+  // Content-Length). Reading a clone leaves request.body intact for the handler.
+  if (!request.body) return null;
+  let reader;
+  try {
+    reader = request.clone().body.getReader();
+  } catch {
+    // If the body can't be cloned we cannot safely enforce the stream cap here;
+    // in-route readLimitedJson() remains the backstop. Do not fail the request.
+    return null;
+  }
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value?.byteLength || 0;
+      if (total > limit) {
+        reader.cancel().catch(() => {});
+        return payloadTooLarge(limit);
+      }
+    }
+  } catch {
+    // A read error on the clone must not open the cap: fail closed only if we
+    // already saw an over-limit count (handled above). A transient stream error
+    // before the limit is reached falls through to the handler's own guard.
+    return null;
+  }
+  return null;
 }
 
 // =============================================================================
@@ -390,10 +501,26 @@ export async function middleware(request) {
     requestHeaders.set('x-nonce', nonce);
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set('Content-Security-Policy', buildCSP(nonce));
+    if (pathname === '/cloud' || pathname.startsWith('/cloud/')) {
+      response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    }
     return response;
   }
 
-  const bodyLimitResponse = rejectOversizedDeclaredApiBody(request);
+  if (isReleaseLockBrowserMutation(request.method, pathname)
+      && !releaseLockOriginAllowed(request)) {
+    const response = NextResponse.json(
+      {
+        error: 'Release Lock browser mutations require a same-origin request.',
+        code: 'release_lock_origin_denied',
+      },
+      { status: 403 },
+    );
+    response.headers.set('cache-control', 'no-store');
+    return response;
+  }
+
+  const bodyLimitResponse = await rejectOversizedApiBody(request);
   if (bodyLimitResponse) return bodyLimitResponse;
 
   // Cloud routes: enforce origin allowlist to prevent cross-origin reads from
@@ -408,15 +535,42 @@ export async function middleware(request) {
       // EP_-prefixed keys; non-EP keys (CORS allowlist, NODE_ENV, etc.)
       // are unavoidable in edge code.
       const allowedOrigins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+        ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
         : [];
-      // Always allow same-origin (no Origin header) and configured origins.
-      // In development (no ALLOWED_ORIGINS set) allow all to avoid blocking local dev.
-      if (allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
-        return NextResponse.json(
-          { error: 'Origin not allowed', code: 'cors_denied' },
-          { status: 403 }
-        );
+
+      // Same-origin requests are always allowed: the browser sends an Origin
+      // header on cross-site AND many same-site requests, so compare the
+      // Origin's host to the request host rather than treating any Origin as
+      // cross-origin. The app's own /cloud dashboard hitting /api/cloud/* is
+      // same-origin and must never be blocked.
+      let sameOrigin = false;
+      try {
+        sameOrigin = new URL(origin).host === request.headers.get('host');
+      } catch {
+        sameOrigin = false;
+      }
+
+      if (!sameOrigin) {
+        if (allowedOrigins.length > 0) {
+          // Explicit allowlist configured: deny anything not on it.
+          if (!allowedOrigins.includes(origin)) {
+            return NextResponse.json(
+              { error: 'Origin not allowed', code: 'cors_denied' },
+              { status: 403 }
+            );
+          }
+        } else if (process.env.NODE_ENV === 'production') {
+          // FAIL CLOSED: in production with no ALLOWED_ORIGINS configured, a
+          // cross-origin request to the tenant cloud API is denied. Previously
+          // this fell open (allow-all), letting any website read cloud data
+          // whenever the operator forgot to set the allowlist. Dev keeps the
+          // permissive path below so local tooling isn't blocked.
+          return NextResponse.json(
+            { error: 'Cross-origin requests are not permitted', code: 'cors_denied' },
+            { status: 403 }
+          );
+        }
+        // Development with no allowlist: fall through (permissive for local dev).
       }
     }
   }
@@ -484,6 +638,9 @@ export async function middleware(request) {
 
 export const config = {
   matcher: [
+    // Always run API middleware, even if a future API path contains an extension
+    // excluded by the page/static matcher below.
+    '/api/:path*',
     // Apply to all routes: page routes get nonce-based CSP; API routes get rate limiting.
     // Exclude Next.js internals and static files.
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',

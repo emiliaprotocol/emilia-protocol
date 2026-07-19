@@ -1,0 +1,16 @@
+{
+  "_comment": "Merge this into .claude/settings.json. The PreToolUse hook gates Bash commands; safe commands pass untouched, dangerous ones require a named-human authorization receipt. Set EMILIA_TRUSTED_KEYS in your environment (printed by mint-poc-receipt.mjs).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./examples/claude-code/receipt-hook.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

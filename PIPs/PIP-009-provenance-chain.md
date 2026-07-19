@@ -108,9 +108,9 @@ An `EP-PROVENANCE-CHAIN-v1` document is a single JSON object:
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
 | `@version` | REQUIRED | string | MUST be the literal `"EP-PROVENANCE-CHAIN-v1"`. |
-| `root_signoff` | REQUIRED | object | `{ receipt, verification, human_key_classes? }`. `receipt` is a complete, unmodified `EP-RECEIPT-v1` (I-D §6.2); `verification` is the pinned offline material (`approver_keys`, `log_public_key`) to verify it; at least one `signoffs[]` entry MUST be a human signoff (default human class = `A`, WebAuthn UV). |
+| `root_signoff` | REQUIRED | object | `{ receipt, verification, human_key_classes? }`. `receipt` is a complete, unmodified `EP-RECEIPT-v1` (I-D §6.2); `verification` is a transport hint only. Acceptance uses relying-party-pinned `opts.rootVerification`, including approver/log keys plus WebAuthn RP ID and exact origin allowlist; at least one verified signoff MUST be human (default class `A`, WebAuthn UV). |
 | `delegation_chain` | REQUIRED | array | Ordered root → leaf DRP delegation references (Section 2). MAY be empty (`[]`) when no delegated authority is involved. |
-| `action_approval` | conditional | object | `{ receipt, verification }` — a complete, unmodified `EP-RECEIPT-v1` authorizing the exact executed action. REQUIRED at verify time when `execution.irreversible == true`. |
+| `action_approval` | conditional | object | `{ receipt, verification }` — a complete, unmodified `EP-RECEIPT-v1` authorizing the exact executed action. Carried verification bytes are hints; approver/log keys, WebAuthn RP ID, and exact origins are pinned separately in `opts.actionVerification`. |
 | `execution` | REQUIRED | object | Hash/id reference to what actually ran (Section 3). |
 | `agent_identity` | OPTIONAL | object | A scoped agent-identity **claim** (Section 4). Reported, never trusted as identity proof. |
 | `liability` | OPTIONAL | object | A named-owner accountability **attestation** (Section 4). Evidence, never a legal determination. |
@@ -182,14 +182,18 @@ failed obligation ⇒ `valid: false`.
 
 1. **Version.** Reject unless `@version == "EP-PROVENANCE-CHAIN-v1"`.
 2. **Root human signoff (the termination).** Run the frozen I-D §6.3
-   verifier on `root_signoff.receipt` under its own pinned
-   `approver_keys` / `log_public_key`; reject unless it verifies. Reject
+   verifier on `root_signoff.receipt` under relying-party-pinned
+   `opts.rootVerification`; document-carried values confer no trust. The
+   profile MUST pin `approver_keys`, `log_public_key`, `rp_id`, and a
+   non-empty exact `allowed_origins` list. Reject
    unless at least one signoff carries a human `key_class`
    (default `['A']`, WebAuthn UV). A bundle that does not bottom out in a
    real human signoff confers no authority.
 3. **Per-action approval.** When `execution.irreversible == true` (or
    `opts.requireActionApprovalAlways`), reject unless `action_approval`
-   is present, its receipt passes the frozen §6.3 verifier, and (for
+   is present, its receipt passes the frozen §6.3 verifier under
+   relying-party-pinned `opts.actionVerification` carrying the same four
+   classes of trust input, and (for
    irreversible actions) it binds a human signoff. Reject unless
    `execution.action_hash == action_approval.receipt.action_hash`.
 4. **Ordered chain + scope containment
@@ -283,7 +287,8 @@ Purely additive; no migration required, and nothing frozen is touched.
   a lone `EP-RECEIPT-v1` (no wrapper) verifies it exactly as today.
 - **No new trust roots.** A relying party that already trusts a given log
   key and approver directory to verify `EP-RECEIPT-v1` needs to trust
-  nothing additional to verify a bundle under those same keys. DRP
+  nothing additional to verify a bundle under those same keys, but it
+  MUST supply those roots out of band; the bundle cannot introduce them. DRP
   delegation verification uses DRP's own roots, which a party checking
   delegated authority already had to trust under I-D §8.
 
@@ -311,7 +316,8 @@ shared middleware and no frozen package.
   `packages/issue/index.js` as the single source of cryptographic truth,
   and adds exactly one local primitive — detached Ed25519 verification of
   a delegation / attestation `proof` — which grants no trust on its own.
-  Delegation links are verified **self-containedly and offline**: each
+  Delegation signatures are verified offline, but authority is never
+  self-anchoring: each
   hop's `proof` signature is checked against the `canonicalize()` bytes of
   that link's own fields (`delegation_id`, `delegator`, `delegatee`,
   `scope`, `max_value_usd`, `expires_at`, `constraints`), the proof key is

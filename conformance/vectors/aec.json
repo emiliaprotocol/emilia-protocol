@@ -1,50 +1,340 @@
 {
-  "_about": "EP-AEC-v1 composition conformance vectors. Portable across JS/Python/Go. Each runner: (1) computes D = action_digest(chain.action); (2) substitutes the sentinel string 'SAME' -> 'sha256:'+D and 'OTHER' -> 'sha256:'+repeat('f',64) wherever it appears as an action_digest; (3) registers a STUB verifier for each type in {ep-quorum, ep-receipt, policy-permit, delegation} that returns {valid: evidence.valid !== false, action_digest: evidence.action_digest}; (4) runs verifyAuthorizationChain and asserts allow === expect_allow. Types NOT in that allow-list (e.g. 'mystery') are intentionally unregistered to exercise the no-verifier path.",
-  "action": { "ep_version": "1.0", "action_type": "disbursement.release", "amount": "1850000.00", "payee": "Acme" },
-  "stub_types": ["ep-quorum", "ep-receipt", "policy-permit", "delegation"],
+  "_about": "EP-AEC-v1 composition conformance vectors. Portable across JS/Python/Go. Each runner: (1) computes D = action_digest(chain.action); (2) substitutes the sentinel string 'SAME' -> 'sha256:'+D and 'OTHER' -> 'sha256:'+repeat('f',64) wherever it appears as an action_digest; (3) registers a STUB verifier for each type in {test-quorum, test-receipt, policy-permit, delegation} that returns {valid: evidence.valid !== false, action_digest: evidence.action_digest}; (4) runs verifyAuthorizationChain and asserts allow === expect_allow. Types NOT in that allow-list (e.g. 'mystery') are intentionally unregistered to exercise the no-verifier path.",
+  "action": {
+    "ep_version": "1.0",
+    "action_type": "disbursement.release",
+    "amount": "1850000.00",
+    "payee": "Acme"
+  },
+  "stub_types": [
+    "test-quorum",
+    "test-receipt",
+    "policy-permit",
+    "delegation"
+  ],
   "vectors": [
-    { "name": "ALLOW: both legs valid + same action",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "ep-quorum AND policy-permit",
-        "components": [ { "type": "ep-quorum", "evidence": { "valid": true, "action_digest": "SAME" } }, { "type": "policy-permit", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": true },
-    { "name": "DENY: cross-binding (permit leg binds a different action)",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "ep-quorum AND policy-permit",
-        "components": [ { "type": "ep-quorum", "evidence": { "valid": true, "action_digest": "SAME" } }, { "type": "policy-permit", "evidence": { "valid": true, "action_digest": "OTHER" } } ] },
-      "expect_allow": false },
-    { "name": "DENY: required human leg missing",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "ep-quorum AND policy-permit",
-        "components": [ { "type": "policy-permit", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": false },
-    { "name": "DENY: a leg fails to verify",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "ep-quorum AND policy-permit",
-        "components": [ { "type": "ep-quorum", "evidence": { "valid": false, "action_digest": "SAME" } }, { "type": "policy-permit", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": false },
-    { "name": "DENY: unknown component type (no verifier registered)",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "mystery",
-        "components": [ { "type": "mystery", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": false },
-    { "name": "ALLOW: OR requirement satisfied by one leg",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "ep-quorum OR policy-permit",
-        "components": [ { "type": "policy-permit", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": true },
-    { "name": "ALLOW: parenthesized requirement",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "ep-quorum AND (policy-permit OR delegation)",
-        "components": [ { "type": "ep-quorum", "evidence": { "valid": true, "action_digest": "SAME" } }, { "type": "delegation", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": true },
-    { "name": "DENY: declared action_digest mismatches the action",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "OTHER", "requirement": "ep-quorum",
-        "components": [ { "type": "ep-quorum", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": false },
-    { "name": "DENY: malformed (wrong @version)",
-      "chain": { "@version": "nope", "action_digest": "SAME", "requirement": "ep-quorum",
-        "components": [ { "type": "ep-quorum", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": false },
-    { "name": "DENY: malformed (empty components)",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME", "requirement": "ep-quorum", "components": [] },
-      "expect_allow": false },
-    { "name": "DENY: malformed (missing requirement)",
-      "chain": { "@version": "EP-AEC-v1", "action_digest": "SAME",
-        "components": [ { "type": "ep-quorum", "evidence": { "valid": true, "action_digest": "SAME" } } ] },
-      "expect_allow": false }
+    {
+      "name": "ALLOW: both legs valid + same action",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum AND policy-permit",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": true
+    },
+    {
+      "name": "DENY: cross-binding (permit leg binds a different action)",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum AND policy-permit",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "OTHER"
+            }
+          }
+        ]
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "DENY: required human leg missing",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum AND policy-permit",
+        "components": [
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "DENY: a leg fails to verify",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum AND policy-permit",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": false,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "DENY: unknown component type (no verifier registered)",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "mystery",
+        "components": [
+          {
+            "type": "mystery",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "ALLOW: OR requirement satisfied by one leg",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum OR policy-permit",
+        "components": [
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": true
+    },
+    {
+      "name": "ALLOW: parenthesized requirement",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum AND (policy-permit OR delegation)",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "delegation",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": true
+    },
+    {
+      "name": "DENY: declared action_digest mismatches the action",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "OTHER",
+        "requirement": "test-quorum",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "DENY: malformed (wrong @version)",
+      "chain": {
+        "@version": "nope",
+        "action_digest": "SAME",
+        "requirement": "test-quorum",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "DENY: malformed (empty components)",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum",
+        "components": []
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "DENY: malformed (missing requirement)",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": false
+    },
+    {
+      "name": "DENY: presenter claims a weak bar; relying-party pinned requirement demands a missing leg",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "relying_party_requirement": "test-quorum AND delegation",
+      "expect_allow": false,
+      "expect_requirement_source": "relying_party"
+    },
+    {
+      "name": "ALLOW: relying-party pinned requirement satisfied (presenter requirement ignored)",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "delegation",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "relying_party_requirement": "test-quorum AND policy-permit",
+      "expect_allow": true,
+      "expect_requirement_source": "relying_party"
+    },
+    {
+      "name": "ALLOW: pinned requirement works even when the chain omits its own requirement",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "relying_party_requirement": "test-quorum",
+      "expect_allow": true,
+      "expect_requirement_source": "relying_party"
+    },
+    {
+      "name": "DENY: presenter requirement is descriptive and never produces relying-party allow",
+      "chain": {
+        "@version": "EP-AEC-v1",
+        "action_digest": "SAME",
+        "requirement": "test-quorum",
+        "components": [
+          {
+            "type": "test-quorum",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          },
+          {
+            "type": "policy-permit",
+            "evidence": {
+              "valid": true,
+              "action_digest": "SAME"
+            }
+          }
+        ]
+      },
+      "expect_allow": false,
+      "expect_requirement_source": "presenter"
+    }
   ]
 }

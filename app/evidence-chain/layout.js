@@ -5,7 +5,7 @@ export const metadata = {
     + 'policy/permit, decision, and human-authorization receipts — all on the same '
     + 'canonical substrate. EP-AEC defines the missing layer: how a relying party verifies '
     + 'that several heterogeneous receipts all bind the same action and each verify under '
-    + 'their own rules, yielding a single offline, fail-closed ALLOW or DENY. Open standard, '
+    + 'their own rules, yielding a single offline, fail-closed SATISFIED or UNSATISFIED evidence verdict. The executor authorizes separately. Open protocol, '
     + 'tri-language verifiers, filed Internet-Draft.',
   alternates: { canonical: '/evidence-chain' },
   openGraph: {
@@ -13,7 +13,7 @@ export const metadata = {
     description:
       'Not a 13th receipt format. The composition object and verifier that takes the '
       + 'delegation, policy, and human-authorization receipts for one action and returns a '
-      + 'single offline ALLOW/DENY — the verifier-side convergence point for the agent '
+      + 'single offline SATISFIED/UNSATISFIED evidence verdict — the verifier-side convergence point for the agent '
       + 'authorization field.',
     url: 'https://www.emiliaprotocol.ai/evidence-chain',
     type: 'article',
@@ -22,7 +22,7 @@ export const metadata = {
     'authorization evidence chain',
     'compose agent authorization receipts',
     'verify multiple agent receipts offline',
-    'offline ALLOW DENY agent action',
+    'offline evidence satisfaction agent action',
     'agent authorization composition',
     'canonical action binding',
     'cross-receipt verification',

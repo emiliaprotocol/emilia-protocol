@@ -146,7 +146,7 @@ Keys are auto-populated as entities register.
 ## Step 5: Run Conformance Test
 
 ```bash
-npx ep-conformance-test https://ep.your-org.com
+node conformance/ep-conformance-test.js https://ep.your-org.com
 
 # Expected output:
 # ✓ Discovery (/.well-known/ep-trust.json)

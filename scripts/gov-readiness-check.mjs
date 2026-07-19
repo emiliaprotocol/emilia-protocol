@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getActiveCryptoProfile, assertProfileSatisfied, CRYPTO_PROFILE_IDS } from '../lib/crypto/profile.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -61,6 +62,27 @@ check('tenant-bound v1 writes require authenticated org binding', () => {
   if (missing.length) throw new Error(`missing requireBound:true in ${missing.join(', ')}`);
   requireContains('supabase/migrations/101_entity_organization_binding.sql', 'organization_id');
   return `${files.length} authenticated surfaces checked`;
+});
+
+check('approver enrollment requires an explicit capability', () => {
+  requireContains('lib/approver-enrollment-auth.js', "APPROVER_ENROLL_PERMISSION = 'approver.enroll'");
+  for (const rel of [
+    'app/api/v1/approvers/webauthn/register-options/route.js',
+    'app/api/v1/approvers/webauthn/register-verify/route.js',
+  ]) requireContains(rel, 'hasApproverEnrollmentPermission');
+  return 'both WebAuthn enrollment phases require approver.enroll or admin';
+});
+
+check('async Gate providers cannot bypass a guarded action', () => {
+  const gate = read('packages/gate/index.js');
+  for (const needle of [
+    '? await opts.selector(...args)',
+    '? await opts.receipt(...args)',
+    '? await opts.observedAction(...args)',
+  ]) {
+    if (!gate.includes(needle)) throw new Error(`packages/gate/index.js missing ${needle}`);
+  }
+  return 'guard resolves async selector, receipt, and observed-action providers before check';
 });
 
 check('strict production verifier refuses inline issuer keys', () => {
@@ -118,6 +140,23 @@ check('key custody abstraction rejects local keys in gov/prod mode', () => {
   requireContains('lib/env.js', 'getKeyCustodyConfig');
   requireContains('.env.example', 'EP_SECRET_KEY');
   return 'KMS/HSM custody interface present';
+});
+
+check('crypto profile is declared and fail-closed', () => {
+  // The profile registry exists and refuses unknown/out-of-boundary algorithms.
+  requireContains('lib/crypto/profile.js', 'assertAlgAllowed');
+  requireContains('lib/crypto/profile.js', 'unknown_crypto_profile');
+  // If THIS environment declares a profile, it must be satisfiable. A fips
+  // profile that isn't backed by a validated-module custody signer (kms/hsm) is
+  // not truly at its boundary → not ready. getActiveCryptoProfile throws
+  // (fail closed) on an unrecognized EP_CRYPTO_PROFILE.
+  if (process.env.EP_CRYPTO_PROFILE) {
+    const profile = getActiveCryptoProfile();
+    const sat = assertProfileSatisfied({ custodyMode: process.env.EP_KEY_CUSTODY_MODE });
+    if (!sat.ok) throw new Error(sat.reasons.join('; '));
+    return `crypto profile "${profile.id}" declared and satisfied`;
+  }
+  return `crypto profile module present (default; profiles: ${CRYPTO_PROFILE_IDS.join('/')})`;
 });
 
 check('incident drill is runnable', () => {

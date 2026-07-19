@@ -1,0 +1,166 @@
+# This is a BYOC reference chart. It does not identify or imply an official
+# published image. Build Dockerfile.gate, push it to a registry you control,
+# and set either image.tag or image.digest before rendering.
+
+replicaCount: 2
+
+image:
+  repository: ""
+  tag: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+runtime:
+  port: 8080
+  logLevel: info
+  terminationGracePeriodSeconds: 30
+  extraEnv: []
+
+# apps/gate-service deliberately loads an operator-owned ESM module. The
+# existing Secret must contain both files when migrations are enabled:
+#   gate.config.mjs - default export builds the production service config
+#   migrate.mjs     - idempotent, forward-compatible Postgres migrations
+configuration:
+  existingSecret: ""
+  configKey: gate.config.mjs
+  migrationKey: migrate.mjs
+  mountPath: /app/config
+
+# Secret values are never accepted by this chart. Every entry names a Secret
+# provisioned out of band in the release namespace and the key to reference.
+secrets:
+  postgres:
+    existingSecret: ""
+    key: database-url
+    envName: DATABASE_URL
+  apiToken:
+    existingSecret: ""
+    key: api-token
+    envName: EMILIA_GATE_API_TOKEN
+  kms:
+    existingSecret: ""
+    key: kms-key-id
+    envName: EP_KMS_KEY_ID
+  issuerRoots:
+    existingSecret: ""
+    key: issuer-roots.json
+    envName: EP_GATE_ISSUER_ROOTS
+
+migrations:
+  enabled: true
+  postgres:
+    # Required, distinct migration-role Secret. Reuse of secrets.postgres is
+    # refused so the long-lived runtime credential never gains DDL authority.
+    existingSecret: ""
+    # Required key containing the migration-role connection URL.
+    key: ""
+  command:
+    - node
+    - /app/config/migrate.mjs
+  activeDeadlineSeconds: 600
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+probes:
+  startup:
+    path: /v1/live
+    periodSeconds: 2
+    timeoutSeconds: 2
+    failureThreshold: 30
+  liveness:
+    path: /v1/live
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /v1/ready
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+networkPolicy:
+  enabled: true
+  ingress:
+    # Allows callers in the release namespace to reach the ClusterIP service.
+    # Replace or supplement this for an ingress controller in another namespace.
+    allowSameNamespace: true
+    additionalPeers: []
+  egress:
+    dns:
+      enabled: true
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    postgres:
+      port: 5432
+      # By default, only a same-namespace pod with this label is reachable.
+      # For managed Postgres, set podSelector: null and provide stable cidrs.
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: postgresql
+      namespaceSelector: {}
+      cidrs: []
+    # Standard NetworkPolicy has no FQDN peers. Supply stable proxy/NAT CIDRs
+    # here, or enforce GitHub/KMS/SIEM hostnames with a CNI-specific policy.
+    kmsCidrs: []
+    githubCidrs: []
+    siemCidrs: []
+    additionalRules: []
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

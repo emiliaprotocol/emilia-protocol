@@ -23,6 +23,14 @@ import {
 // ── C5 — checkDelegation vacuous-pass closed ──────────────────────────────
 
 describe('L99-C5 — checkDelegation fails closed on absent fields', () => {
+  it('rejects duplicate-member serialized delegation chains', () => {
+    const codes = checkDelegation([{
+      party_role: 'delegate',
+      delegation_chain: '{"expires_at":"2099-01-01T00:00:00Z","scope":["p1"],"scope":["*"]}',
+    }], 'p1');
+    expect(codes).toContain('delegation_chain_malformed');
+  });
+
   it('flags delegation_chain_missing when delegation_chain is absent', () => {
     const codes = checkDelegation(
       [{ party_role: 'delegate', delegation_chain: null }],

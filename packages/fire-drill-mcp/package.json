@@ -1,0 +1,46 @@
+{
+  "name": "@emilia-protocol/fire-drill-mcp",
+  "version": "0.2.0",
+  "description": "MCP wrapper for static required-receipt declaration scanning. Runtime verification, consumption, and EG-1 enforcement remain explicitly unassessed.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "bin": {
+    "emilia-fire-drill-mcp": "./index.js"
+  },
+  "main": "./index.js",
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test index.test.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agent-security",
+    "ai-safety",
+    "ai-agents",
+    "audit",
+    "authorization",
+    "security-scanner"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@emilia-protocol/fire-drill": "^0.5.0",
+    "@emilia-protocol/verify": "^3.10.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/fire-drill-mcp"
+  },
+  "homepage": "https://www.emiliaprotocol.ai/fire-drill",
+  "publishConfig": {
+    "access": "public"
+  }
+}

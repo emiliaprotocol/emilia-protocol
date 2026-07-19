@@ -1,0 +1,1434 @@
+{
+  "@version": "EMILIA-STANDARDS-OBSERVATORY-v1",
+  "title": "EMILIA Standards Observatory",
+  "as_of": "2026-07-14T20:14:59Z",
+  "scope": "Revision-aware standards cartography. Curated claims are source-locked; broad recon entries are discovery leads only.",
+  "methodology": {
+    "declared_agent_reads": 294,
+    "review_model": "A broad, correlated agent-assisted sweep followed by source-by-source adversarial reverification. Agent count is not reviewer independence.",
+    "publication_rule": "Only records with a locked primary source, verified excerpt, operative-status basis, and curator rationale drive the public guarantee matrix.",
+    "absence_rule": "A missing feature is recorded as no only when the locked artifact explicitly excludes it or a bounded source review found no mechanism; otherwise it is unknown.",
+    "correction_policy": "Source authors may challenge any classification. Corrections preserve the prior snapshot and state the reason for the change."
+  },
+  "metrics": {
+    "primary_sources_verified": 20,
+    "guarantee_dimensions": 7,
+    "movement_events": 5,
+    "open_frontiers": 3,
+    "operative_conflicts": 1,
+    "declared_agent_reads": 294,
+    "recovered_structured_reports": 291,
+    "unrecovered_reports": 3,
+    "fetch_failures_in_recovered_reports": 0,
+    "workflow_files_scanned": 327
+  },
+  "integrity": {
+    "catalog_sha256": "5af1d7710e94f4ce58991babdf801e342b3bae4ec43e91cbab8a7f96601f6d27",
+    "source_lock_sha256": "dd2f76ba0839dc5fbaebfce6764bc7fc34a5b6c179dfc6f8db56d8f81b13b38e",
+    "recon_corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed"
+  },
+  "dimensions": [
+    {
+      "id": "named_human",
+      "label": "Named human",
+      "short_label": "Human",
+      "question": "Does the artifact bind an accountable human through a defined confirmation ceremony?"
+    },
+    {
+      "id": "rp_pinned_acceptance",
+      "label": "RP-pinned acceptance",
+      "short_label": "RP bar",
+      "question": "Does the relying party supply the trust roots and sufficiency rule rather than accepting presenter-selected policy?"
+    },
+    {
+      "id": "exact_action",
+      "label": "Exact-action binding",
+      "short_label": "Action",
+      "question": "Does the evidence cryptographically bind the exact consequential action?"
+    },
+    {
+      "id": "distinct_quorum",
+      "label": "Distinct-human quorum",
+      "short_label": "Quorum",
+      "question": "Does it define M-of-N approval by distinct accountable humans?"
+    },
+    {
+      "id": "initiator_exclusion",
+      "label": "Initiator exclusion",
+      "short_label": "No self",
+      "question": "Does it prevent the action initiator from approving its own action?"
+    },
+    {
+      "id": "one_time_consumption",
+      "label": "One-time consumption",
+      "short_label": "Consume",
+      "question": "Does it prevent a valid authorization from clearing execution more than once?"
+    },
+    {
+      "id": "offline_verification",
+      "label": "Offline verification",
+      "short_label": "Offline",
+      "question": "Can an unrelated relying party verify the artifact without contacting its issuer?"
+    }
+  ],
+  "sources": [
+    {
+      "id": "agentproto-charter-merge",
+      "family": "agentproto-charter",
+      "short_name": "agentproto merged charter",
+      "title": "Agent Protocols BoF Draft Charter (merged text)",
+      "venue": "agentproto",
+      "layer": "framework",
+      "source_kind": "github_charter",
+      "revision": "git:29837db3271195f43eee0e6da321252286f75ab4",
+      "revision_date": "2026-05-22",
+      "lifecycle": "operative_draft_charter",
+      "operative_status": "operative",
+      "operative_basis": "This file is linked as the draft charter from the current BoF materials; the older charter.md is historical precedent, not governing text.",
+      "source_url": "https://raw.githubusercontent.com/jdrosen/aiproto-wg/29837db3271195f43eee0e6da321252286f75ab4/Charter_Merge.md",
+      "canonical_url": "https://github.com/jdrosen/aiproto-wg/blob/main/Charter_Merge.md",
+      "status_url": "https://datatracker.ietf.org/wg/agentproto/about/",
+      "relation": "host_socket",
+      "defines": "Framework-level confirmation and evidence requirements, plus a way to request confirmation before an agent operation.",
+      "limits": "The operative merge does not retain a standalone confirmation-evidence deliverable or define a portable artifact.",
+      "quote": {
+        "locator": "lines 49-50",
+        "text": "including the confirmation and evidence requirements for AI agent operations"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "User confirmation is in scope, but no ceremony or accountable-human binding is defined."
+        },
+        "rp_pinned_acceptance": {
+          "value": "unknown",
+          "rationale": "The charter does not settle the relying-party trust model."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "Confirmation is requested for operations about to be performed, without a normative action-binding artifact."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human quorum work item appears in the operative charter."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No separation-of-duties rule is specified."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "No consumption mechanism is specified."
+        },
+        "offline_verification": {
+          "value": "no",
+          "rationale": "Independent or offline artifact verification is not required by the operative text."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "10d69f153bab868ed137e54f9cef84fa711deefc9e9dc9584ce36469efffcabc",
+        "content_bytes": 9408,
+        "quote_sha256": "5c3b4d3f67729976f5cfa6237c46cccc093f8f8859606e297cdcd3f4839f8a9b",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "agentproto-charter-original",
+      "family": "agentproto-charter",
+      "short_name": "agentproto original charter",
+      "title": "Agent Protocols Original Charter Proposal",
+      "venue": "agentproto",
+      "layer": "human-authorization",
+      "source_kind": "github_charter",
+      "revision": "git:8046314f089600e635232d5f020fda86a1af4038",
+      "revision_date": "2026-04-09",
+      "lifecycle": "historical_proposal",
+      "operative_status": "historical_nonoperative",
+      "operative_basis": "The text remains in the repository but was superseded by Charter_Merge.md for the BoF charter discussion.",
+      "source_url": "https://raw.githubusercontent.com/jdrosen/aiproto-wg/8046314f089600e635232d5f020fda86a1af4038/charter.md",
+      "canonical_url": "https://github.com/jdrosen/aiproto-wg/blob/main/charter.md",
+      "status_url": "https://datatracker.ietf.org/wg/agentproto/about/",
+      "relation": "historical_precedent",
+      "defines": "A proposed standalone protocol for human confirmation of agent operations with cryptographic attestation.",
+      "limits": "It is not the operative merged charter and does not specify the evidence object or verification algorithm.",
+      "quote": {
+        "locator": "deliverable 3",
+        "text": "It must provide cryptographic attestation of what the user has confirmed"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "It requires human confirmation but leaves identity and ceremony undefined."
+        },
+        "rp_pinned_acceptance": {
+          "value": "unknown",
+          "rationale": "No relying-party acceptance model is defined."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "It covers operations but does not define canonical action binding."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No quorum mechanism is proposed."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No initiator-exclusion rule appears."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "No consumption mechanism appears."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Cryptographic attestation is required, but independent offline verification is not specified."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "678819985df58e5194c9deafb0e446b07a547864fe5d32d9d17182d7d138041e",
+        "content_bytes": 5070,
+        "quote_sha256": "1e119cc22183222b9b3aa96570750c3a6251adfb8c1c90310ed66ab9bea03426",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "fido-verifiable-intent",
+      "family": "fido-ap2",
+      "short_name": "Mastercard Verifiable Intent contribution",
+      "title": "Building the Trust Layer for Agentic Payments with AP2 and Verifiable Intent",
+      "venue": "FIDO Alliance",
+      "layer": "human-authorization",
+      "source_kind": "industry_primary",
+      "revision": "web-snapshot:2026-07-12",
+      "revision_date": "2026-05-26",
+      "lifecycle": "active_program",
+      "operative_status": "current_primary",
+      "operative_basis": "FIDO Alliance's 26 May 2026 description of Google's AP2 and Mastercard's Verifiable Intent, co-developed with Google, as contributions whose standardization within the Alliance is prospective.",
+      "source_url": "https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/",
+      "canonical_url": "https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/",
+      "status_url": "https://fidoalliance.org/fido-alliance-to-develop-standards-for-trusted-ai-agent-interactions/",
+      "relation": "overlap_competitor",
+      "defines": "Portable evidence of user authorization for agentic payments, composed with AP2 mandates.",
+      "limits": "The published description is payment-specific and does not claim EP's distinct-human quorum or initiator-exclusion profile.",
+      "quote": {
+        "locator": "Verifiable Intent section",
+        "text": "transforms user authorization into portable, verifiable evidence"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "It binds user authorization, while the public description does not define a named-human enrollment profile."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Independent validation is explicit; the complete relying-party pin model is not described on this page."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "The framework is presented as evidence of user-authorized agent actions in payments."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human M-of-N mechanism is described."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No initiator-exclusion rule is described."
+        },
+        "one_time_consumption": {
+          "value": "unknown",
+          "rationale": "The public description does not establish execution consumption semantics."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The page explicitly claims portable evidence and independent validation without proprietary logs."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "4e1a8e4313c8272358d18c70338cf3dc16dfffb30f6374f758febe7c3ecfc8f4",
+        "content_bytes": 244929,
+        "quote_sha256": "5f44d2f40d0e1b58ddb0ab41c0d5be5d7de9d87e3429f7b547aef836d334343c",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "ap2-checkout-mandate",
+      "family": "fido-ap2",
+      "short_name": "AP2 Checkout Mandate",
+      "title": "AP2 Checkout Mandate",
+      "venue": "AP2",
+      "layer": "payment-intent",
+      "source_kind": "industry_spec",
+      "revision": "v0.2:web-snapshot:2026-07-12",
+      "revision_date": "2026-07-12",
+      "lifecycle": "active_specification",
+      "operative_status": "current_primary",
+      "operative_basis": "Current AP2 v0.2 documentation page.",
+      "source_url": "https://ap2-protocol.org/ap2/checkout_mandate/",
+      "canonical_url": "https://ap2-protocol.org/ap2/checkout_mandate/",
+      "status_url": "https://ap2-protocol.org/ap2/specification/",
+      "relation": "complement_overlap",
+      "defines": "A merchant-signed checkout payload and checkout_hash used to identify the exact checkout in AP2 flows.",
+      "limits": "The checkout hash identifies an AP2 object; it does not by itself establish semantic equivalence to a CAID action or a general-purpose human ceremony.",
+      "quote": {
+        "locator": "checkout_hash field",
+        "text": "checkout_hash is the base64url-encoded hash of the value of checkout_jwt"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "AP2 composes user mandates, but the checkout object itself is merchant-signed."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Validation is signature-based; general cross-framework acceptance is outside this object."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "checkout_hash binds the serialized checkout JWT value."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human quorum is defined for this mandate."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No initiator-exclusion rule is defined."
+        },
+        "one_time_consumption": {
+          "value": "unknown",
+          "rationale": "This page does not establish cross-executor one-time consumption."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The signed JWT and hash can be verified without an AP2 issuer status assertion."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "2abe1cc50583615e53a69f2238969c2aad50c0285cbb854d0c184f9ba841fbf0",
+        "content_bytes": 150101,
+        "quote_sha256": "dfdbaa112e0a11b088da90037fafecd5d487d1efbbe199814f6bf8b928e3b17e",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "wimse-workload-creds",
+      "family": "wimse",
+      "short_name": "WIMSE Workload Credentials",
+      "title": "WIMSE Workload Credentials",
+      "venue": "WIMSE",
+      "layer": "identity-possession",
+      "source_kind": "ietf_draft",
+      "revision": "draft-ietf-wimse-workload-creds-02",
+      "revision_date": "2026-07-02",
+      "lifecycle": "active_wg_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision of the active WIMSE working-group draft at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-workload-creds-02.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-ietf-wimse-workload-creds/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-ietf-wimse-workload-creds/",
+      "relation": "complement",
+      "defines": "Credentials representing workload identity, with proof of possession handled by companion mechanisms.",
+      "limits": "It authenticates software workloads; it does not define named-human authorization for a consequential action.",
+      "quote": {
+        "locator": "abstract",
+        "text": "This document focuses on the credentials alone, independent of the proof-of-possession mechanism"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "no",
+          "rationale": "The subject is a software workload, not an accountable approving human."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Workload trust domains supply verification roots, not a complete action-evidence sufficiency bar."
+        },
+        "exact_action": {
+          "value": "no",
+          "rationale": "The credential binds workload identity, not one exact action."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No human quorum is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No action initiator/approver separation is defined."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "PoP replay guidance is not authorization consumption."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Credentials can be cryptographically checked, subject to trust-domain key discovery and freshness."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "b111e4e85a7f3bc5c844560db87276c184a04db28ffeaccb057c13eb034dbed5",
+        "content_bytes": 58413,
+        "quote_sha256": "115be423eb5385929e65c42e3752a3ab5affd6f836c5356375ce1b494f549ba6",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "wimse-condition-bounded",
+      "family": "wimse",
+      "short_name": "WIMSE Condition-Bounded Credentials",
+      "title": "Condition-Bounded Credentials for Workload and Agent Identity",
+      "venue": "WIMSE",
+      "layer": "identity-possession",
+      "source_kind": "ietf_draft",
+      "revision": "draft-winmagic-wimse-condition-bounded-credentials-01",
+      "revision_date": "2026-07",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision at snapshot time; individual submission discussed in WIMSE.",
+      "source_url": "https://www.ietf.org/archive/id/draft-winmagic-wimse-condition-bounded-credentials-01.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/",
+      "relation": "complement_socket",
+      "defines": "Hardware-rooted possession under current attested conditions, with independent failure classes for possession, delegation, and authorization.",
+      "limits": "The draft explicitly says it is an authentication input and delegates human authorization to a separate offline-verifiable receipt joined on an action digest.",
+      "quote": {
+        "locator": "section 14",
+        "text": "This profile is an authentication input, not an authorization one"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "no",
+          "rationale": "The draft explicitly leaves named-human authorization to a separate mechanism."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "It defines a verifier contract for condition evidence, not the complete authorization sufficiency policy."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "The composition text joins layers on a shared action digest; this profile's own possession proof is not the authorization."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human quorum is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No human separation-of-duties rule is defined."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "Key-use conditions and grant replay controls do not define once-only action authorization consumption."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Condition evidence is verifier-facing; the separate human receipt is described as offline-verifiable."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "b58c82056bfb7fb86d96a5442d434e8a8909ae711633b6d6c863db67091c7bb3",
+        "content_bytes": 52019,
+        "quote_sha256": "b612f80a6fbfa97352218a93f2c23d7d915cab0054a0b51303a3b7d412be196c",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "scitt-scrapi",
+      "family": "scitt",
+      "short_name": "SCITT SCRAPI",
+      "title": "SCITT Reference APIs",
+      "venue": "SCITT",
+      "layer": "transparency",
+      "source_kind": "ietf_draft",
+      "revision": "draft-ietf-scitt-scrapi-11",
+      "revision_date": "2026-06-26",
+      "lifecycle": "rfc_editor_queue",
+      "operative_status": "current_draft",
+      "operative_basis": "Datatracker reports the working-group document in the RFC Editor queue at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-scitt-scrapi-11.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/",
+      "relation": "complement",
+      "defines": "HTTP resources for registering SCITT Signed Statements and obtaining and validating transparency receipts.",
+      "limits": "SCITT proves registration and transparency properties; payload-specific human authorization semantics belong to a Signed Statement profile.",
+      "quote": {
+        "locator": "section 1.1",
+        "text": "registration of Signed Statements, the issuance and validation of Receipts"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "no",
+          "rationale": "SCRAPI is payload-agnostic and does not define a human authorization claim."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Clients verify transparency-service keys; payload acceptance remains profile-specific."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "A Signed Statement may bind an action, but SCRAPI does not require that payload semantic."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No human authorization quorum is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No initiator/approver separation is defined."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "Transparency registration is not execution consumption."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "Receipts remain verifiable while the relevant public key is retained."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "9eb8b068e4d89223c9100502c4dbea61b6912771123d30776bdb468aeb78d0ca",
+        "content_bytes": 50640,
+        "quote_sha256": "b88fbcf165722f23a56a3905ef5acde127b2512d1112cac837f5c3aab306332b",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "audit-architecture",
+      "family": "audit-architecture",
+      "short_name": "AI Agent Audit Architecture",
+      "title": "An Architecture for Auditing AI Agent Delegation and Interactions",
+      "venue": "IETF individual",
+      "layer": "audit-composition",
+      "source_kind": "ietf_draft",
+      "revision": "draft-kuehlewind-audit-architecture-00",
+      "revision_date": "2026-05-18",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-kuehlewind-audit-architecture-00.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-kuehlewind-audit-architecture/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-kuehlewind-audit-architecture/",
+      "relation": "host_socket",
+      "defines": "An audit architecture containing Interaction, Action, Delegation, and Authorization Transition Records, including HITL transitions.",
+      "limits": "The concrete Authorization Transition Record encoding remains an open work item and the examples explicitly use placeholder fields.",
+      "quote": {
+        "locator": "section 7",
+        "text": "The exact field names, claim names, and encodings shown here are placeholders"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "Human approvals and signed grants are auditable record inputs; no ceremony artifact is defined."
+        },
+        "rp_pinned_acceptance": {
+          "value": "unknown",
+          "rationale": "The architecture names auditors and recorders without a complete acceptance profile."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "Action and transition records are linked, while concrete binding fields remain open."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human authorization quorum is specified."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No self-approval rule is specified."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "Audit records do not enforce once-only execution."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Independent recorders and receipts are contemplated; the complete record profile remains open."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "43a68f99f4b9457b2074711b630c9f8e3a57ce9766947e5d833f1899384731ef",
+        "content_bytes": 51844,
+        "quote_sha256": "b00d0fa928546b247bc0c37291ce02b4a5354bb7f97337cae104adca729f21b1",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "liu-agent-operation-authorization",
+      "family": "agent-operation-authorization",
+      "short_name": "Agent Operation Authorization",
+      "title": "Agent Operation Authorization",
+      "venue": "agentproto adjacent",
+      "layer": "delegation-authorization",
+      "source_kind": "ietf_draft",
+      "revision": "draft-liu-agent-operation-authorization-02",
+      "revision_date": "2026-03",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-liu-agent-operation-authorization-02.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-liu-agent-operation-authorization/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-liu-agent-operation-authorization/",
+      "relation": "overlap",
+      "defines": "JWT claims and phases for verifiable delegation of fine-grained agent operations from human principals.",
+      "limits": "It carries user-intent provenance but does not define EP's device-bound named-human ceremony, distinct quorum, or initiator-exclusion profile.",
+      "quote": {
+        "locator": "section 1",
+        "text": "ensure cryptographic verification of user intent"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "Human principal and intent are central; a device-bound accountable-human ceremony is not defined."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "JWT verification is defined, while acceptance depends on deployment policy."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "The framework carries fine-grained operation authorization and operation proposals."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human M-of-N authorization is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No general initiator-exclusion predicate is defined."
+        },
+        "one_time_consumption": {
+          "value": "partial",
+          "rationale": "JWT replay controls exist, but a cross-executor once-only action consumption contract is not the core artifact."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The signed JWT claims are independently verifiable against configured keys."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "db06d7b5ff69bf2b521f0d1df67794eba86bba3a646ea5451d13d3b12d8cd6ea",
+        "content_bytes": 54407,
+        "quote_sha256": "303b996f818f6771c88a3d81738efdae298c7178b98faee9f45e9dbdecb1d04d",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "cheq",
+      "family": "human-confirmation",
+      "short_name": "CHEQ",
+      "title": "CHEQ: Confirmation AI Agent Decisions with Human in the Loop",
+      "venue": "agentproto adjacent",
+      "layer": "human-authorization",
+      "source_kind": "ietf_draft",
+      "revision": "draft-rosenberg-aiproto-cheq-00",
+      "revision_date": "2025-10",
+      "lifecycle": "expired_individual_draft",
+      "operative_status": "expired_draft",
+      "operative_basis": "Datatracker marks revision 00 expired; retained because it directly competes for confirmation scope.",
+      "source_url": "https://www.ietf.org/archive/id/draft-rosenberg-aiproto-cheq-00.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-rosenberg-aiproto-cheq/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-rosenberg-aiproto-cheq/",
+      "relation": "overlap",
+      "defines": "A human-confirmation protocol and signed CHEQ object designed to compose with agent protocols.",
+      "limits": "The expired draft does not define distinct-human quorum, initiator exclusion, or a durable execution-consumption service.",
+      "quote": {
+        "locator": "section 2",
+        "text": "The protocol must provide cryptographic assurances that the human being approves the action"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "yes",
+          "rationale": "A human confirmation is authenticated and cryptographically signed."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Identity-provider verification is defined; broader relying-party evidence policy is not."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "The CHEQ memorializes the action the human confirms."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No M-of-N human approval is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No initiator-exclusion rule is defined."
+        },
+        "one_time_consumption": {
+          "value": "partial",
+          "rationale": "Replay protection is a requirement, but durable action-level consumption is not specified as EP does."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "A signed object is defined, but the draft centers a protocol exchange and identity-provider authentication."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "3ab415e44adbd90e25ffe3b766e1b67bd143632b6355ac5d95f2f2fbedd9a384",
+        "content_bytes": 31261,
+        "quote_sha256": "ea8036d565d473b6dfddf7acfdb92ae49de3c8c7b1e65c7d8743149c0fa90c97",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "orprg-permit-receipts",
+      "family": "machine-policy-receipts",
+      "short_name": "ORPRG Permit Receipts",
+      "title": "Permit Receipts for Permit-Before-Commit Authorization",
+      "venue": "IETF individual",
+      "layer": "machine-policy",
+      "source_kind": "ietf_draft",
+      "revision": "draft-lee-orprg-permit-receipts-00",
+      "revision_date": "2026-06",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-lee-orprg-permit-receipts-00.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-lee-orprg-permit-receipts/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-lee-orprg-permit-receipts/",
+      "relation": "complement",
+      "defines": "A verifier contract and semantic fields for machine policy permits before external effects.",
+      "limits": "It deliberately does not choose a mandatory wire format and does not define a named-human confirmation ceremony.",
+      "quote": {
+        "locator": "section 1",
+        "text": "does not select a mandatory wire format"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "no",
+          "rationale": "The receipt attests a policy permit, not human authorization."
+        },
+        "rp_pinned_acceptance": {
+          "value": "yes",
+          "rationale": "The verifier evaluates a selected verification profile and configured issuer evidence."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "The permit binds an effect request and action digest."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human quorum is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No human initiator/approver separation is defined."
+        },
+        "one_time_consumption": {
+          "value": "partial",
+          "rationale": "Anti-replay state is part of the verifier contract, but human authorization consumption is not."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "The semantics support independent verification, while the mandatory portable wire profile remains open."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "ea164cf92f89490f8b9ad6c7accf0726f6b33cd72925c3bcc148cb7c65286bac",
+        "content_bytes": 34033,
+        "quote_sha256": "1536ff98c0d36f2c47b6161ac4d6028651645e87ce47bf98cf73e15cd19efd2a",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "acta-signed-receipts",
+      "family": "machine-policy-receipts",
+      "short_name": "ACTA Signed Decision Receipts",
+      "title": "Signed Decision Receipts for Machine-to-Machine Access Control",
+      "venue": "IETF individual",
+      "layer": "machine-policy",
+      "source_kind": "ietf_draft",
+      "revision": "draft-farley-acta-signed-receipts-02",
+      "revision_date": "2026-06",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-farley-acta-signed-receipts-02.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/",
+      "relation": "complement_overlap",
+      "defines": "Portable signed records of machine-to-machine access-control decisions with offline verification.",
+      "limits": "The receipt records a policy-engine decision rather than named-human approval, and nonce-based replay protection is optional.",
+      "quote": {
+        "locator": "section 8.1",
+        "text": "Receipts include an issued_at timestamp but do not include a nonce or sequence number"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "no",
+          "rationale": "The signer is the access-control decision issuer, not an accountable approving human."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Issuer keys are verified; a broader acceptance profile remains deployment policy."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "Receipts carry action references and decision context."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No human quorum is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No initiator/approver separation is defined."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "The base receipt omits nonce or sequence state; optional extensions do not establish the base guarantee."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The draft explicitly defines independently verifiable portable receipts."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "14501a68a86e3cc403f56967b19b732316ad3cc2fc011ce3d14aec9c1de68bd2",
+        "content_bytes": 60589,
+        "quote_sha256": "f557d4108f807094cadedced7bf558a5c94d480f37af7e9046ccef004ab2ac40",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "delegation-receipts",
+      "family": "delegation-receipts",
+      "short_name": "Delegation Receipt Protocol",
+      "title": "Delegation Receipt Protocol for AI Agent Authorization",
+      "venue": "IETF individual",
+      "layer": "delegation",
+      "source_kind": "ietf_draft",
+      "revision": "draft-nelson-agent-delegation-receipts-10",
+      "revision_date": "2026-06",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-nelson-agent-delegation-receipts-10.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/",
+      "relation": "complement_overlap",
+      "defines": "Receipts recording delegated authority, chain narrowing, risk checks, replay detection, and optional offline verification.",
+      "limits": "It establishes delegation from a principal; that is not identical to a fresh device-bound human approval ceremony for each action.",
+      "quote": {
+        "locator": "verification check 10",
+        "text": "CHECK 10: Replay Detection"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "A human principal is identified, but per-action accountable-human ceremony semantics are not EP's profile."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Verification and trust inputs are defined, with offline restrictions for some receipts."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "Delegation receipts bind delegated operations and optional tool outputs, not necessarily a fresh exact-action approval."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human M-of-N authorization is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No general initiator-exclusion rule is defined."
+        },
+        "one_time_consumption": {
+          "value": "partial",
+          "rationale": "Replay detection records receipt and session use; semantics differ from action-digest-keyed execution consumption."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Offline mode exists but is conditional on receipt properties."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "08ba640802f461ed30e66f9b2cd7a50a3570b5838c39bf012c2b039ee2ed68bb",
+        "content_bytes": 179706,
+        "quote_sha256": "f899366acac090ede9772ccdec5431ae7310fe41eff0f10adc25fafda53fe46c",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "agentroa",
+      "family": "route-authorization",
+      "short_name": "AgentROA",
+      "title": "Agent Route Origin Authorization",
+      "venue": "IETF individual",
+      "layer": "machine-policy",
+      "source_kind": "ietf_draft",
+      "revision": "draft-nivalto-agentroa-route-authorization-01",
+      "revision_date": "2026-04",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-nivalto-agentroa-route-authorization-01.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-nivalto-agentroa-route-authorization/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-nivalto-agentroa-route-authorization/",
+      "relation": "host_socket",
+      "defines": "A cryptographic route and policy envelope for agent actions, including approval state and an optional reference to an approval artifact.",
+      "limits": "approval_artifact_ref is a literal socket: it references a signed approval artifact without defining that artifact's human ceremony semantics.",
+      "quote": {
+        "locator": "approval fields",
+        "text": "Reference to the signed approval artifact"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "Approval state and an artifact reference exist, but the human artifact is undefined."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Policy envelope verification is defined; approval-artifact acceptance remains external."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "The route authorization and evidence record bind the action path and enforcement outcome."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "No distinct-human quorum is defined."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "No human self-approval exclusion is defined."
+        },
+        "one_time_consumption": {
+          "value": "partial",
+          "rationale": "A replay-prevention cache exists, but the referenced human artifact has no consumption contract here."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The framework is designed for independent after-the-fact verification."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "4f91821e4e77dd9a65cca5ab9f71408caf702fcf41d0e705d5203cd7954abb11",
+        "content_bytes": 86300,
+        "quote_sha256": "6fde423381dc7a943d32a7da47e0cbe209fc89331157bf4b28b32e1a439a9eb7",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "ep-authorization-receipts",
+      "family": "emilia",
+      "short_name": "EP Authorization Receipts",
+      "title": "Authorization Receipts for High-Risk Agent Actions",
+      "venue": "IETF individual",
+      "layer": "human-authorization",
+      "source_kind": "ietf_draft",
+      "revision": "draft-schrock-ep-authorization-receipts-06",
+      "revision_date": "2026-07-06",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest posted Datatracker revision at snapshot time; staged local revisions are excluded.",
+      "source_url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-receipts-06.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+      "relation": "native",
+      "defines": "A named-human, exact-action authorization receipt with Class-A WebAuthn ceremony, separation of duties, offline verification, and one-time use.",
+      "limits": "The artifact does not prove the action was wise, lawful, safe, or successfully executed; deployment still needs complete mediation.",
+      "quote": {
+        "locator": "abstract",
+        "text": "binds a named, accountable human approver to one exact high-risk action"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "yes",
+          "rationale": "The core artifact binds a named accountable human through an enrolled ceremony."
+        },
+        "rp_pinned_acceptance": {
+          "value": "yes",
+          "rationale": "The relying party pins approver, policy, audience, issuer, and freshness inputs."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "Every signoff and receipt binds the canonical exact action."
+        },
+        "distinct_quorum": {
+          "value": "partial",
+          "rationale": "The base artifact supports one approver; distinct-human M-of-N is supplied by EP-QUORUM."
+        },
+        "initiator_exclusion": {
+          "value": "yes",
+          "rationale": "The trust-receipt verification model enforces separation of duties."
+        },
+        "one_time_consumption": {
+          "value": "yes",
+          "rationale": "A one-time nonce and consumption rule prevent authorization reuse."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The receipt is designed for full offline verification against pinned keys."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "c02556a380398edbce300a682f44ca589db2df2fa994439e595aace7bbc154e8",
+        "content_bytes": 71562,
+        "quote_sha256": "61d929717d649d11b769243ac09de5d075b8a98a8db8927a3d2f0b4a3d4897f7",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "ep-quorum",
+      "family": "emilia",
+      "short_name": "EP-QUORUM",
+      "title": "Multi-Party Quorum Authorization for High-Risk Agent Actions",
+      "venue": "IETF individual",
+      "layer": "human-authorization",
+      "source_kind": "ietf_draft",
+      "revision": "draft-schrock-ep-quorum-02",
+      "revision_date": "2026-07-06",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest posted Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-schrock-ep-quorum-02.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
+      "relation": "native",
+      "defines": "Distinct-human M-of-N and ordered approval trails composed from fresh, device-bound ceremonies over one exact action.",
+      "limits": "Quorum verifies authorization evidence; it does not establish the substantive correctness of the approved action or eliminate credential-enrollment risk.",
+      "quote": {
+        "locator": "abstract",
+        "text": "binds a set of distinct accountable humans"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "yes",
+          "rationale": "Every member is an accountable human under an enrolled signoff profile."
+        },
+        "rp_pinned_acceptance": {
+          "value": "yes",
+          "rationale": "The relying party pins the quorum policy, audience, roles, and approver directory."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "Every member signs the same exact action hash."
+        },
+        "distinct_quorum": {
+          "value": "yes",
+          "rationale": "The profile defines threshold and ordered quorums of distinct humans."
+        },
+        "initiator_exclusion": {
+          "value": "yes",
+          "rationale": "Each approving human must be distinct from the initiator."
+        },
+        "one_time_consumption": {
+          "value": "yes",
+          "rationale": "Member signoffs and the composed decision retain once-consumable semantics."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The complete quorum predicate is offline-verifiable."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "263ca172b65a156475dbe5c92cd088ce2b730927c165a1b0c4ac5e6f17bf87c8",
+        "content_bytes": 39790,
+        "quote_sha256": "29ba746cab0e8fc1ff6d1b0c6ff072ef99eb0a62f6c7627a5e67f98f842b21ef",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "ep-evidence-chain",
+      "family": "emilia",
+      "short_name": "EP-AEC",
+      "title": "Authorization Evidence Chains",
+      "venue": "IETF individual",
+      "layer": "evidence-composition",
+      "source_kind": "ietf_draft",
+      "revision": "draft-schrock-ep-authorization-evidence-chain-02",
+      "revision_date": "2026-07-06",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest posted Datatracker revision at snapshot time; staged -03 is not treated as public status.",
+      "source_url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-02.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
+      "relation": "native",
+      "defines": "Typed same-action composition of heterogeneous receipts under a relying-party requirement, producing an offline fail-closed decision.",
+      "limits": "The chain is only as trustworthy as its registered component verifiers and pinned acceptance inputs; it does not turn machine policy into human authorization.",
+      "quote": {
+        "locator": "abstract",
+        "text": "checks that every component binds one canonical action digest"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "yes",
+          "rationale": "Built-in EP human legs require a receipt or distinct-human quorum under pinned profiles."
+        },
+        "rp_pinned_acceptance": {
+          "value": "yes",
+          "rationale": "ALLOW requires the relying party's out-of-band requirement and expected action."
+        },
+        "exact_action": {
+          "value": "yes",
+          "rationale": "Every component must bind the same executor-expected canonical action digest."
+        },
+        "distinct_quorum": {
+          "value": "yes",
+          "rationale": "The ep-quorum built-in verifies the exact pinned distinct-human policy."
+        },
+        "initiator_exclusion": {
+          "value": "yes",
+          "rationale": "The built-in quorum verifier enforces initiator exclusion."
+        },
+        "one_time_consumption": {
+          "value": "partial",
+          "rationale": "The offline object composes evidence; stateful one-time execution is enforced by the companion gate."
+        },
+        "offline_verification": {
+          "value": "yes",
+          "rationale": "The composition algorithm and component checks run offline."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "4bfc3b3479c79629b4d7163e06ab969e83373ab56f106241682ba5163a56095d",
+        "content_bytes": 32909,
+        "quote_sha256": "c507e982338a7801af91426ec60cf87d4aa31a7cf36a6fed901ddd8bef49cbd1",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "dmsc-gateway-gap-analysis",
+      "family": "dmsc-agent-gateway",
+      "short_name": "DMSC Gateway Gap Analysis",
+      "title": "Deployment Scenarios and Gap Analysis for AI Agent Gateway",
+      "venue": "IETF individual / DMSC",
+      "layer": "gateway-enforcement",
+      "source_kind": "ietf_draft",
+      "revision": "draft-dunbar-dmsc-gw-scenarios-gap-analysis-02",
+      "revision_date": "2026-07-02",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest posted Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-dunbar-dmsc-gw-scenarios-gap-analysis-02.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
+      "relation": "host_socket",
+      "defines": "A managed Agent Gateway model with action-level authorization for physical-world effects, separately from session-level trust.",
+      "limits": "The gap-analysis draft identifies the conditions a gateway should evaluate but does not define a portable approval artifact, canonical action-mapping format, or one-time evidence-consumption mechanism.",
+      "quote": {
+        "locator": "Section 6.9",
+        "text": "communication-level trust determines whether an agent may participate in an exchange at all, while action-level authorization determines whether a specific instruction within that exchange may take effect in the physical world"
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "Human approval state is one action-level condition, but no human ceremony or portable human-binding artifact is defined."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "The gateway applies local policy and current context, but the draft does not define a portable relying-party evidence profile."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "The draft requires evaluating a specific instruction individually but does not define canonical material-action encoding or matching."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "The bounded draft review found no distinct-human M-of-N mechanism."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "The bounded draft review found no portable initiator-exclusion predicate."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "The action-level model does not define consumption of approval evidence."
+        },
+        "offline_verification": {
+          "value": "no",
+          "rationale": "The described gateway evaluates current context; no unrelated-party offline artifact verifier is defined."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "17ebf5da730d45266e51052ee806d7d824539348ca89d362a7784e3d50d7c499",
+        "content_bytes": 73507,
+        "quote_sha256": "003d4e02995719c0e83d5505cfd0b41b0de173af93d3f976b35f7a55596608b2",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "authzen-access-request-approval",
+      "family": "authzen",
+      "short_name": "AuthZEN AARP",
+      "title": "AuthZEN Access Request and Approval Profile - Draft 1",
+      "venue": "OpenID AuthZEN",
+      "layer": "approval-workflow",
+      "source_kind": "openid_draft",
+      "revision": "draft-1:2026-07-09",
+      "revision_date": "2026-07-09",
+      "lifecycle": "active_workgroup_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Published Draft 1 on the OpenID AuthZEN specification site at snapshot time.",
+      "source_url": "https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html",
+      "canonical_url": "https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html",
+      "status_url": "https://openid.net/wg/authzen/",
+      "relation": "adjacent_profile",
+      "defines": "A requestable-denial workflow, asynchronous approval task, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, exact-match baseline, and PDP re-evaluation at enforcement time.",
+      "limits": "The evaluator may be human or automated; approval state may be resolved from trusted server-side state or carried as integrity-protected proof, and the base profile leaves the PDP authoritative rather than defining an approver-held device ceremony or one-time execution token.",
+      "quote": {
+        "locator": "Section 4, Approval Result",
+        "text": "An Approval Result does not itself permit access; the PEP uses it to obtain an AuthZEN Authorization API allow decision through a new Access Evaluation, or enforces it according to a profile-defined completion mode where one applies."
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "A human may evaluate a request, but automated evaluators are also valid and the portable state need not contain a per-human device signature."
+        },
+        "rp_pinned_acceptance": {
+          "value": "yes",
+          "rationale": "The PDP remains authoritative and verifies the Access Request Service issuer, audience, scope, expiry, and current policy at enforcement time."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "The base exact-match scope binds Subject, Resource, Action, and relevant Context, while broader matching remains profile or deployment defined."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "The draft does not define a distinct-human M-of-N approval artifact or verification algorithm."
+        },
+        "initiator_exclusion": {
+          "value": "partial",
+          "rationale": "The service must evaluate self-approval and separation-of-duties policy, but the portable state does not expose a standard verifier-visible initiator-exclusion proof."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "Approvals expire and binding tokens can detect replay, but approval results may cover repeated or broad-scope evaluations and are not once-consumable."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Integrity-protected by-value approval state can be portable and verifiable by the PDP, but lookup state is also permitted, the base decision requires PDP re-evaluation, and the draft does not define unrelated-party offline acceptance."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "7efb2eaf953de179adb1f7a114e0e8656bc744707dc296608915ac55bd57a225",
+        "content_bytes": 383710,
+        "quote_sha256": "6b94dde2480c6021c3fd47b05b48dbc26a26832fe012a2ff4229f7439c6d1097",
+        "quote_verified": true
+      }
+    },
+    {
+      "id": "agtp-transport",
+      "family": "agtp",
+      "short_name": "AGTP",
+      "title": "Agent Transfer Protocol (AGTP)",
+      "venue": "IETF individual",
+      "layer": "agent-transport-authority",
+      "source_kind": "ietf_draft",
+      "revision": "draft-hood-independent-agtp-09",
+      "revision_date": "2026-06-28",
+      "lifecycle": "active_individual_draft",
+      "operative_status": "current_draft",
+      "operative_basis": "Latest posted Datatracker revision at snapshot time.",
+      "source_url": "https://www.ietf.org/archive/id/draft-hood-independent-agtp-09.txt",
+      "canonical_url": "https://datatracker.ietf.org/doc/draft-hood-independent-agtp/",
+      "status_url": "https://datatracker.ietf.org/doc/draft-hood-independent-agtp/",
+      "relation": "transport_neighbor",
+      "defines": "An application-layer agent transport carrying identity, authority scope, attribution, delegation context, and application payloads at the wire layer.",
+      "limits": "The transport defines agent and principal authority context but not a portable per-action human ceremony, distinct-human quorum, canonical cross-format material-action mapping, or one-time evidence-consumption record.",
+      "quote": {
+        "locator": "Appendix E.7",
+        "text": "AGTP supplies identity, authority, and attribution at the wire level; MCP supplies tool semantics in the payload."
+      },
+      "guarantees": {
+        "named_human": {
+          "value": "partial",
+          "rationale": "AGTP exposes the principal or owner behind an agent, but does not define a per-action approver-held human signature."
+        },
+        "rp_pinned_acceptance": {
+          "value": "partial",
+          "rationale": "Higher trust levels verify agent identity and Authority-Scope through configured registrar or certificate roots; Level 1 declarations remain self-asserted."
+        },
+        "exact_action": {
+          "value": "partial",
+          "rationale": "AGTP carries operation parameters and task identity, but its authority scope is broader than a canonical material-action commitment."
+        },
+        "distinct_quorum": {
+          "value": "no",
+          "rationale": "The bounded review of revision 09 found no distinct-human M-of-N approval artifact."
+        },
+        "initiator_exclusion": {
+          "value": "no",
+          "rationale": "The bounded review of revision 09 found no portable per-action initiator-exclusion predicate."
+        },
+        "one_time_consumption": {
+          "value": "no",
+          "rationale": "Idempotency and protocol state do not define one-time consumption of a portable approval artifact."
+        },
+        "offline_verification": {
+          "value": "partial",
+          "rationale": "Agent identity and authority documents can carry verifiable material, while the base transport and enforcement flow is live and does not define an unrelated-party offline action-evidence verdict."
+        }
+      },
+      "evidence_lock": {
+        "content_sha256": "1ed0ababb2bdfef29e4c96efc85146f6b9ff692c6c155963b37e14dbcba87029",
+        "content_bytes": 442999,
+        "quote_sha256": "63ffea9867d02af8704b95d9cefa80cdd652be707dfb2d080a85a17aa9d9a239",
+        "quote_verified": true
+      }
+    }
+  ],
+  "operative_conflicts": [
+    {
+      "id": "agentproto-charter-source-drift",
+      "title": "Historical charter mistaken for operative charter",
+      "source_ids": [
+        "agentproto-charter-original",
+        "agentproto-charter-merge"
+      ],
+      "finding": "The original file contains a standalone confirmation-evidence deliverable; the operative merged charter does not.",
+      "consequence": "The standards move changes from citing an existing deliverable to proposing restoration of a modular work item."
+    }
+  ],
+  "events": [
+    {
+      "id": "wimse-agenda-request-emilia-composition",
+      "date": "2026-07-12",
+      "venue": "WIMSE",
+      "title": "Agenda request submitted for the WIMSE and EMILIA two-row composition",
+      "status": "pending_public_archive",
+      "public": true,
+      "description": "An external WIMSE participant submitted a request for a short IETF 126 slot covering possession in the live channel plus action-bound authorization evidence joined by digest.",
+      "evidence": "User-supplied screenshot of a message addressed to the WIMSE chairs and public list. The archive URL was not yet discoverable when this snapshot was built.",
+      "truth_boundary": "This records a request, not agenda acceptance, working-group adoption, or IETF endorsement.",
+      "source_ids": [
+        "wimse-condition-bounded"
+      ]
+    },
+    {
+      "id": "wimse-condition-bounded-01",
+      "date": "2026-07-07",
+      "venue": "WIMSE",
+      "title": "Condition-Bounded Credentials advances to revision 01",
+      "status": "public_verified",
+      "public": true,
+      "description": "The revision explicitly separates authentication from delegation and human authorization, then describes conjunctive composition on a shared action digest.",
+      "evidence": "Locked IETF archive text for revision 01.",
+      "truth_boundary": "Individual Internet-Draft discussed in WIMSE; not a working-group-adopted document.",
+      "source_ids": [
+        "wimse-condition-bounded"
+      ]
+    },
+    {
+      "id": "wimse-arch-issue-85-closed",
+      "date": "2026-07-05",
+      "venue": "WIMSE",
+      "title": "WIMSE architecture key-management issue 85 closes",
+      "status": "public_verified",
+      "public": true,
+      "description": "The architecture issue titled Workload Identity Credentials key management is understated was closed as the credential lifecycle discussion advanced.",
+      "evidence": "https://github.com/ietf-wg-wimse/draft-ietf-wimse-arch/issues/85",
+      "truth_boundary": "Issue closure is a repository event, not proof of consensus on every proposed lifecycle model.",
+      "source_ids": [
+        "wimse-workload-creds",
+        "wimse-condition-bounded"
+      ]
+    },
+    {
+      "id": "wimse-ietf-126-session-scheduled",
+      "date": "2026-06-26",
+      "venue": "WIMSE",
+      "title": "WIMSE receives a two-hour IETF 126 session",
+      "status": "public_verified",
+      "public": true,
+      "description": "The IETF Secretariat scheduled the WIMSE session for 20 July 2026 in Vienna.",
+      "evidence": "https://mailarchive.ietf.org/arch/msg/wimse/k12g3-PwuxKogiV4jdlcIDlMRvM/",
+      "truth_boundary": "The session is scheduled; individual presentation requests remain subject to the chairs' agenda decisions.",
+      "source_ids": [
+        "wimse-workload-creds"
+      ]
+    },
+    {
+      "id": "scitt-scrapi-rfc-editor-queue",
+      "date": "2026-07-12",
+      "venue": "SCITT",
+      "title": "SCRAPI reaches the RFC Editor queue",
+      "status": "public_verified",
+      "public": true,
+      "description": "The current Datatracker state places draft-ietf-scitt-scrapi in the RFC Editor queue, materially later than the earlier IESG-evaluation snapshot.",
+      "evidence": "https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/",
+      "truth_boundary": "The document is not an RFC until publication; its state can continue to change.",
+      "source_ids": [
+        "scitt-scrapi"
+      ]
+    }
+  ],
+  "frontiers": [
+    {
+      "id": "caid-action-mapping-profile",
+      "title": "CAID Action-Mapping Profile",
+      "status": "open_buildable",
+      "priority": 1,
+      "problem": "A signed crosswalk proves who asserted that two native digests co-refer; it does not prove the source objects carry materially equivalent action semantics.",
+      "deliverable": "A profile-bounded mapping record that binds both source artifacts, the mapping profile and version, normalized material fields, information loss, translator identity, and the relying party's accepted mapper set.",
+      "verdicts": [
+        "EQUIVALENT_UNDER_PROFILE",
+        "NOT_EQUIVALENT",
+        "INDETERMINATE"
+      ],
+      "acceptance_tests": [
+        "Two independent translators derive the same material-field projection.",
+        "A missing required field yields INDETERMINATE, never equivalence.",
+        "A lossy currency, amount, destination, or purpose mapping is refused.",
+        "An AP2 checkout_hash is recomputed from a real checkout_jwt before comparison.",
+        "The mapping result binds the exact profile hash and both source-byte digests."
+      ]
+    },
+    {
+      "id": "agentproto-confirmation-evidence-work-item",
+      "title": "Modular Confirmation-Evidence Work Item",
+      "status": "political_window",
+      "priority": 2,
+      "problem": "The operative agentproto charter mentions confirmation and evidence but no longer has the original standalone artifact deliverable.",
+      "deliverable": "Mechanism-neutral charter language requiring a portable operation-bound artifact independently verifiable by a relying party.",
+      "verdicts": [
+        "RESTORED_AS_WORK_ITEM",
+        "REMAINS_FRAMEWORK_PROSE",
+        "OUT_OF_SCOPE"
+      ],
+      "acceptance_tests": [
+        "The work item is explicit rather than inferred from framework prose.",
+        "A boolean asserted by the confirming service cannot satisfy the requirement alone.",
+        "The charter avoids legal non-repudiation claims and does not select EMILIA as the mechanism."
+      ]
+    },
+    {
+      "id": "wimse-two-row-composition-profile",
+      "title": "WIMSE Two-Row Composition Profile",
+      "status": "external_interest",
+      "priority": 3,
+      "problem": "WIMSE proves the live workload possesses its protected key; a relying party still needs separate evidence that a named human authorized this exact operation.",
+      "deliverable": "A runnable profile composing condition-bounded possession and human-authorization evidence under one relying-party rule, joined on an executor-computed action identifier.",
+      "verdicts": [
+        "COMPOSED_ACCEPT",
+        "POSSESSION_REFUSED",
+        "AUTHORIZATION_REFUSED",
+        "ACTION_MISMATCH"
+      ],
+      "acceptance_tests": [
+        "Possession cannot substitute for authorization.",
+        "Authorization cannot substitute for live holder binding.",
+        "A valid pair over different actions is refused.",
+        "Each row preserves its own issuer, freshness, and failure reason."
+      ]
+    }
+  ],
+  "recon": {
+    "review_model": "correlated_agent_assisted_discovery",
+    "claim_boundary": "Aggregate counts only. The per-artifact recon index is held privately and never published; entries are discovery leads, not publication-grade claims, and do not drive the guarantee matrix. Individual efforts are named publicly only after promotion into the source-locked 20-source matrix.",
+    "metrics": {
+      "declared_agent_reads": 294,
+      "recovered_structured_reports": 291,
+      "unrecovered_reports": 3,
+      "fetch_failures_in_recovered_reports": 0,
+      "workflow_files_scanned": 327
+    },
+    "corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed"
+  },
+  "snapshot_sha256": "57e513998be693a30060be0dc9d8d2388caa86d04bfc954e004ba31a4f462c72"
+}

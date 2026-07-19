@@ -135,8 +135,8 @@ Regenerate from the Markdown with:
 > verifier is reused per member. We give the predicate, an incremental
 > server-side admission rule that keeps a non-conforming signer out of the
 > trail before it is recorded, and an adversarial conformance suite of nine
-> vectors that three independent implementations (JavaScript, Python, Go)
-> are required to agree on. We are deliberate about limitations: a quorum
+> vectors that the JavaScript, Python, and Go reference verifiers are
+> required to agree on. We are deliberate about limitations: a quorum
 > raises the cost of unilateral action and makes every approval
 > attributable, but it does not defeat collusion among the required number
 > of humans, an enrollment that lets one human hold multiple identities, or

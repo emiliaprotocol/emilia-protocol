@@ -4,7 +4,7 @@
   "envelope": "EP-ENVELOPE-v1",
   "note": "Content-addressed profile registry for the EP statement envelope. EMILIA hosts a mirror; profiles are self-published. Reserved private-use namespace: urn:ep:profile:x-<vendor>:*",
   "spec": "docs/EP-ENVELOPE-SPEC.md",
-  "registry_hash": "sha256:185bce17092193c2d47992ff6ad591843d1e167b437db94e356ca74bbe664476",
+  "registry_hash": "sha256:f5250cd2995b5804b4c8c13094aa0bda0ae55776488c5e52228b2d87364507a1",
   "profiles": [
     {
       "profile": "urn:ep:profile:revocation:v1",
@@ -45,6 +45,14 @@
       "vectors": "conformance/vectors/provenance-chains.v1.json",
       "summary": "Root human signoff → bound delegation chain → per-action approval → execution.",
       "content_hash": "sha256:f3f12c46da6a79a49d670f05c0ac4ba34b9df7ed28c70cd2d70c4790ea52175b"
+    },
+    {
+      "profile": "urn:ep:profile:resolution:v1",
+      "wire_tag": "EP-RESOLUTION-v1",
+      "spec": "docs/EP-RESOLUTION-SPEC.md",
+      "vectors": "conformance/vectors/resolution.v1.json",
+      "summary": "Device-signed approved, declined, amended, or rejected resolution of an exact binding-moment envelope and action.",
+      "content_hash": "sha256:e36d906804ef59da51b80d7f0cbb48ae710f047b6a1b46174a8775de102ce2a8"
     }
   ]
 }

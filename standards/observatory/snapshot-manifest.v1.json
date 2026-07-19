@@ -1,0 +1,44 @@
+{
+  "@version": "EMILIA-STANDARDS-OBSERVATORY-MANIFEST-v1",
+  "as_of": "2026-07-14T20:14:59Z",
+  "snapshot_sha256": "57e513998be693a30060be0dc9d8d2388caa86d04bfc954e004ba31a4f462c72",
+  "generated_from": [
+    {
+      "path": "standards/observatory/catalog.source.v1.json",
+      "bytes": 57291,
+      "sha256": "5af1d7710e94f4ce58991babdf801e342b3bae4ec43e91cbab8a7f96601f6d27"
+    },
+    {
+      "path": "standards/observatory/source-lock.v1.json",
+      "bytes": 17607,
+      "sha256": "977b162c333d91a178546d316e7d57a820cd705787cb67c746c6d2166123fc9b"
+    },
+    {
+      "path": "standards/observatory/recon-summary.v1.json",
+      "bytes": 830,
+      "sha256": "6099a7311e040332f2ce75c7305cc7b1eec28d62fcc7cb19591627f366141e4d"
+    },
+    {
+      "path": "scripts/build-standards-observatory.mjs",
+      "bytes": 13963,
+      "sha256": "c025d369b498c034c3534a23552d31a1d00e2bbdd144e7c042f19fdb1a792dac"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "lib/standards-observatory.snapshot.json",
+      "bytes": 69223,
+      "sha256": "e00b36d70a28984611e28e0ce2d41cf2f7018f8e286580d092c3aaaa07347184"
+    },
+    {
+      "path": "public/.well-known/standards-observatory.json",
+      "bytes": 69223,
+      "sha256": "e00b36d70a28984611e28e0ce2d41cf2f7018f8e286580d092c3aaaa07347184"
+    },
+    {
+      "path": "public/standards-observatory.llms.txt",
+      "bytes": 8046,
+      "sha256": "761d9be32c78a863de752a89a2bdea684af0b74a786b11dd7bd6968fb8d479db"
+    }
+  ]
+}

@@ -320,28 +320,50 @@ describe("EP-REVOCATION-v1 — must_reject vectors", () => {
     expect(r.checks.signature_binds_statement).toBe(true);
   });
 
-  it("i_stale_beyond_freshness_window -> freshness:false (only with opts.maxAgeSeconds)", () => {
-    const v = byId(VECTORS.must_reject, "i_stale_beyond_freshness_window");
-    expect(v.expected.failing_check).toBe("freshness");
+  it("i_future_effective_instant -> effective_at_or_before_T:false", () => {
+    const v = byId(VECTORS.must_reject, "i_future_effective_instant");
+    expect(v.expected.failing_check).toBe("effective_at_or_before_T");
 
-    // Genuine, validly-signed, exactly-bound statement whose revoked_at is older
-    // than the demanded window relative to opts.now.
+    // The signature is genuine, but the revocation has not taken effect at T.
     const stmt = freshStatement();
     const r = verifyRevocation(TARGET_A, stmt, {
       revokerKeys: pinnedKeys(),
-      maxAgeSeconds: 3600,
-      now: "2026-06-15T20:41:00.000Z", // 24h after revoked_at
+      now: "2026-06-13T20:41:00.000Z",
     });
     expect(r.valid).toBe(false);
-    expect(r.checks.freshness).toBe(false);
-    // Every OTHER gating check passed — the rejection is freshness alone.
+    expect(r.checks.effective_at_or_before_T).toBe(false);
+    // Every other gating check passed: this is an effective-time refusal.
     for (const [k, val] of Object.entries(r.checks)) {
-      if (k !== "freshness") expect(val, `check ${k}`).toBe(true);
+      if (k !== "effective_at_or_before_T") expect(val, `check ${k}`).toBe(true);
     }
+  });
 
-    // The SAME statement is accepted when no window is demanded (freshness vacuous).
-    const rNoWindow = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
-    expect(rNoWindow.valid).toBe(true);
+  it("j_malformed_target_shape -> target_bound:false", () => {
+    const v = byId(VECTORS.must_reject, "j_malformed_target_shape");
+    expect(v.expected.failing_check).toBe("target_bound");
+    const malformedTarget = { target_type: "receipt", target_id: "", action_hash: "not-a-digest" };
+    const stmt = reSign({
+      "@version": REVOCATION_VERSION,
+      ...malformedTarget,
+      revoker_id: REVOKER_ID,
+      revoked_at: REVOKED_AT,
+      reason: "malformed target",
+    }, revokerKp);
+    const r = verifyRevocation(malformedTarget, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.target_bound).toBe(false);
+    expect(r.checks.revoker_signature_valid).toBe(true);
+  });
+
+  it("k_algorithm_label_mismatch -> revoker_signature_valid:false", () => {
+    const v = byId(VECTORS.must_reject, "k_algorithm_label_mismatch");
+    expect(v.expected.failing_check).toBe("revoker_signature_valid");
+    const stmt = freshStatement();
+    stmt.proof = { ...stmt.proof, algorithm: "ES256" };
+    const r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.revoker_signature_valid).toBe(false);
+    expect(r.checks.signature_binds_statement).toBe(true);
   });
 });
 
@@ -361,10 +383,10 @@ describe("EP-REVOCATION-v1 — must_accept vectors", () => {
     }
     expect(isRevoked(TARGET_A, [stmt], { revokerKeys: pinnedKeys() })).toBe(true);
 
-    // Within a generous freshness window it is still accepted.
+    // A legacy freshness option cannot weaken a terminal revocation.
     const rFresh = verifyRevocation(TARGET_A, stmt, {
       revokerKeys: pinnedKeys(),
-      maxAgeSeconds: 86_400 * 7,
+      maxAgeSeconds: 1,
       now: "2026-06-15T20:41:00.000Z",
     });
     expect(rFresh.valid).toBe(true);
@@ -389,6 +411,24 @@ describe("EP-REVOCATION-v1 — must_accept vectors", () => {
     // But each DOES revoke its own target (sanity: they are genuinely valid).
     expect(isRevoked(TARGET_B, [unrelatedById], { revokerKeys: pinnedKeys() })).toBe(true);
     expect(isRevoked(TARGET_A_OTHER_ACTION, [unrelatedByAction], { revokerKeys: pinnedKeys() })).toBe(true);
+  });
+
+  it("z3_old_terminal_revocation_remains_valid -> valid:true regardless of age", () => {
+    const v = byId(VECTORS.must_accept, "z3_old_terminal_revocation_remains_valid");
+    expect(v.expected.valid).toBe(true);
+
+    const stmt = freshStatement();
+    const r = verifyRevocation(TARGET_A, stmt, {
+      revokerKeys: pinnedKeys(),
+      maxAgeSeconds: 1,
+      now: "2036-06-14T20:41:00.000Z",
+    });
+    expect(r.valid).toBe(true);
+    expect(isRevoked(TARGET_A, [stmt], {
+      revokerKeys: pinnedKeys(),
+      maxAgeSeconds: 1,
+      now: "2036-06-14T20:41:00.000Z",
+    })).toBe(true);
   });
 });
 
@@ -462,9 +502,15 @@ describe("EP-REVOCATION-v1 — fail-closed robustness", () => {
     expect(r.checks.revoked_at_present).toBe(false);
   });
 
-  it("freshness is vacuous when maxAgeSeconds is unset, and honors default now", () => {
-    // A statement freshly minted at NOW passes a tight window using the default
-    // wall-clock now (opts.now omitted).
+  it("rejects calendar-normalized timestamps such as February 30", () => {
+    const base = { ...freshStatement(), revoked_at: "2026-02-30T12:00:00.000Z" };
+    const stmt = reSign(base, revokerKp);
+    const r = verifyRevocation(TARGET_A, stmt, { revokerKeys: pinnedKeys() });
+    expect(r.valid).toBe(false);
+    expect(r.checks.revoked_at_present).toBe(false);
+  });
+
+  it("a legacy maxAgeSeconds option cannot age out a terminal revocation", () => {
     const stmt = buildRevocation({
       target: TARGET_A,
       revoker_id: REVOKER_ID,
@@ -472,7 +518,7 @@ describe("EP-REVOCATION-v1 — fail-closed robustness", () => {
     });
     const r = verifyRevocation(TARGET_A, stmt, {
       revokerKeys: pinnedKeys(),
-      maxAgeSeconds: 3600, // now defaults to Date.now()
+      maxAgeSeconds: 0,
     });
     expect(r.valid).toBe(true);
   });
@@ -481,7 +527,6 @@ describe("EP-REVOCATION-v1 — fail-closed robustness", () => {
     const stmt = freshStatement();
     const r = verifyRevocation(TARGET_A, stmt, {
       revokerKeys: pinnedKeys(),
-      maxAgeSeconds: 86_400 * 7,
       now: new Date("2026-06-15T20:41:00.000Z"),
     });
     expect(r.valid).toBe(true);
@@ -502,9 +547,12 @@ describe("EP-REVOCATION-v1 — catalogue parity", () => {
     "f_wrong_version",
     "g_tampered_fields_after_signing",
     "h_missing_revoked_at",
-    "i_stale_beyond_freshness_window",
+    "i_future_effective_instant",
+    "j_malformed_target_shape",
+    "k_algorithm_label_mismatch",
     "z_well_formed_binding_revocation",
     "z2_is_revoked_true_among_unrelated",
+    "z3_old_terminal_revocation_remains_valid",
   ]);
 
   it("every must_reject + must_accept vector id is asserted by name", () => {
@@ -532,11 +580,14 @@ describe("EP-REVOCATION-v1 — catalogue parity", () => {
       "f_wrong_version",
       "g_tampered_fields_after_signing",
       "h_missing_revoked_at",
-      "i_stale_beyond_freshness_window",
+      "i_future_effective_instant",
+      "j_malformed_target_shape",
+      "k_algorithm_label_mismatch",
     ]);
     expect(VECTORS.must_accept.map((v) => v.id)).toEqual([
       "z_well_formed_binding_revocation",
       "z2_is_revoked_true_among_unrelated",
+      "z3_old_terminal_revocation_remains_valid",
     ]);
   });
 });

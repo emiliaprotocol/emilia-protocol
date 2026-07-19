@@ -1,0 +1,6 @@
+# This example mints its demo key IN MEMORY and writes nothing to disk. This
+# guard only exists so that if anyone adapts it to write key material, it can
+# never be committed. NEVER track key material or signed statements.
+out/
+*.pem
+*.key

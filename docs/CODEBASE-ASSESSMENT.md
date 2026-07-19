@@ -1,5 +1,10 @@
-# EMILIA Protocol — Codebase Assessment
-*Generated 2026-03-18 · EP/1.1-v2 · 526 tests passing*
+# EMILIA Protocol — Historical Codebase Assessment
+*Archived point-in-time assessment generated 2026-03-18 · EP/1.1-v2 · 526 tests passing at that time*
+
+> Historical record only. Counts, gaps, and recommendations below describe the
+> March 18 snapshot and must not be used as current release evidence. Use
+> `AI_CONTEXT.md`, `security/security-case.json`, `lib/proof-stats.json`, and the
+> current CI run for live claims.
 
 ---
 
@@ -272,4 +277,3 @@ for the broadcast path.
 | Trust snapshot after need rating | ❌ `materializeTrustProfile` skipped |
 | Appeal event types | ❌ Wrong `WRITE_EVENTS` constant |
 | `.env.example` completeness | ❌ Missing Upstash vars |
-

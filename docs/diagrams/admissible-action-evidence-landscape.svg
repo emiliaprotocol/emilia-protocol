@@ -1,0 +1,126 @@
+<svg viewBox="0 0 1180 850" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#8a8a8a" stroke-width="1.6"/>
+    </marker>
+    <marker id="arrAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#E2B54B" stroke-width="1.6"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="850" fill="#141414"/>
+
+  <!-- tier 1: upstream artifact producers -->
+  <g>
+    <rect x="20" y="20" width="260" height="76" rx="4" fill="#212121" stroke="#3a3a3a"/>
+    <text x="150" y="44" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">WIMSE / SPIFFE</text>
+    <text x="150" y="63" text-anchor="middle" fill="#9a9a9a" font-size="12">workload &amp; agent identity</text>
+    <text x="150" y="82" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">IETF WIMSE WG · draft-klrc-aiagent-auth</text>
+
+    <rect x="310" y="20" width="270" height="76" rx="4" fill="#212121" stroke="#3a3a3a"/>
+    <text x="445" y="44" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">OAuth / GNAP</text>
+    <text x="445" y="63" text-anchor="middle" fill="#9a9a9a" font-size="12">user delegation &amp; grants</text>
+    <text x="445" y="82" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">RFC 9635 · delegation receipts (DRP)</text>
+
+    <rect x="610" y="20" width="270" height="76" rx="4" fill="#212121" stroke="#3a3a3a"/>
+    <text x="745" y="44" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">OAuth Transaction Tokens</text>
+    <text x="745" y="63" text-anchor="middle" fill="#9a9a9a" font-size="12">call-chain context (intra-domain)</text>
+    <text x="745" y="82" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">draft-ietf-oauth-transaction-tokens-08</text>
+
+    <rect x="910" y="20" width="250" height="76" rx="4" fill="#212121" stroke="#3a3a3a"/>
+    <text x="1035" y="44" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">RATS / EAT</text>
+    <text x="1035" y="63" text-anchor="middle" fill="#9a9a9a" font-size="12">runtime state &amp; attestation</text>
+    <text x="1035" y="82" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">RFC 9334 · RFC 9711</text>
+  </g>
+
+  <!-- tier 2: pre-execution -->
+  <g>
+    <rect x="20" y="170" width="200" height="84" rx="4" fill="#1b1b1b" stroke="#3a3a3a" stroke-dasharray="5 4"/>
+    <text x="120" y="196" text-anchor="middle" fill="#ececec" font-size="14" font-weight="600">CHEQ</text>
+    <text x="120" y="215" text-anchor="middle" fill="#9a9a9a" font-size="11.5">human confirmation</text>
+    <text x="120" y="230" text-anchor="middle" fill="#9a9a9a" font-size="11.5">interaction</text>
+    <text x="120" y="246" text-anchor="middle" fill="#6f6f6f" font-size="9.5" font-family="ui-monospace, Menlo, monospace">draft-rosenberg-aiproto-cheq</text>
+
+    <rect x="280" y="170" width="300" height="84" rx="4" fill="#212121" stroke="#4d4d4d"/>
+    <text x="430" y="196" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">EMILIA — the WHO</text>
+    <text x="430" y="216" text-anchor="middle" fill="#9a9a9a" font-size="12">named-human / quorum authorization</text>
+    <text x="430" y="238" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">ep-authorization-receipts · ep-quorum</text>
+
+    <rect x="640" y="170" width="290" height="84" rx="4" fill="#212121" stroke="#3a3a3a"/>
+    <text x="785" y="196" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">Policy / Permit — the CAN</text>
+    <text x="785" y="216" text-anchor="middle" fill="#9a9a9a" font-size="12">pre-execution decision</text>
+    <text x="785" y="238" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">munoz-permit · lee-permit · agentroa · acta</text>
+  </g>
+
+  <!-- tier 3: the action -->
+  <rect x="430" y="330" width="280" height="64" rx="4" fill="#212121" stroke="#3a3a3a"/>
+  <text x="570" y="356" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">External action</text>
+  <text x="570" y="376" text-anchor="middle" fill="#9a9a9a" font-size="12">payment · trade · data access · contract</text>
+
+  <!-- tier 4: post-execution records -->
+  <rect x="380" y="450" width="380" height="80" rx="4" fill="#212121" stroke="#3a3a3a"/>
+  <text x="570" y="474" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">SCITT AI profiles — the WHAT + audit</text>
+  <text x="570" y="493" text-anchor="middle" fill="#9a9a9a" font-size="12">post-execution action records</text>
+  <text x="570" y="514" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">mih-scitt-agent-action-capsule · sato-soos-gar</text>
+
+  <!-- tier 5: transparency -->
+  <rect x="380" y="590" width="380" height="70" rx="4" fill="#212121" stroke="#3a3a3a"/>
+  <text x="570" y="614" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">SCITT transparency service</text>
+  <text x="570" y="633" text-anchor="middle" fill="#9a9a9a" font-size="12">transparent statement + inclusion receipt</text>
+  <text x="570" y="650" text-anchor="middle" fill="#6f6f6f" font-size="10" font-family="ui-monospace, Menlo, monospace">RFC 9943</text>
+
+  <!-- left column: the two legs the first sketch missed -->
+  <rect x="40" y="470" width="260" height="64" rx="4" fill="#212121" stroke="#3a3a3a"/>
+  <text x="170" y="494" text-anchor="middle" fill="#ececec" font-size="14" font-weight="600">Revocation / freshness</text>
+  <text x="170" y="514" text-anchor="middle" fill="#9a9a9a" font-size="11.5">signed statements · bounded staleness</text>
+
+  <rect x="40" y="590" width="260" height="70" rx="4" fill="#1b1b1b" stroke="#3a3a3a" stroke-dasharray="5 4"/>
+  <text x="170" y="612" text-anchor="middle" fill="#ececec" font-size="14" font-weight="600">Recourse reference (optional)</text>
+  <text x="170" y="631" text-anchor="middle" fill="#9a9a9a" font-size="11.5">responsible party · coverage · dispute</text>
+  <text x="170" y="648" text-anchor="middle" fill="#6f6f6f" font-size="9.5" font-family="ui-monospace, Menlo, monospace">EP-RECOURSE-REFERENCE-v1</text>
+
+  <!-- THE HOLE -->
+  <rect x="800" y="470" width="350" height="190" rx="4" fill="#1e1a12" stroke="#E2B54B" stroke-width="1.5"/>
+  <text x="975" y="497" text-anchor="middle" fill="#E2B54B" font-size="15" font-weight="700">THE HOLE — admissible action evidence</text>
+  <text x="975" y="518" text-anchor="middle" fill="#d9c79a" font-size="12.5">composition + replay + sufficiency</text>
+  <line x1="824" y1="532" x2="1126" y2="532" stroke="#59502f"/>
+  <text x="975" y="551" text-anchor="middle" fill="#b8a878" font-size="11">candidate (running, tri-language): EP-AEC +</text>
+  <text x="975" y="567" text-anchor="middle" fill="#b8a878" font-size="11">relying-party evidence policy → verdict + replay digest</text>
+  <text x="975" y="588" text-anchor="middle" fill="#8f8259" font-size="10" font-family="ui-monospace, Menlo, monospace">admissible · missing · stale · conflicted · unverifiable</text>
+  <line x1="824" y1="602" x2="1126" y2="602" stroke="#59502f"/>
+  <text x="975" y="622" text-anchor="middle" fill="#d9c79a" font-size="11.5" font-style="italic">a decision the relying party runs —</text>
+  <text x="975" y="638" text-anchor="middle" fill="#d9c79a" font-size="11.5" font-style="italic">not a service in the path</text>
+
+  <!-- consumers -->
+  <rect x="820" y="740" width="310" height="70" rx="4" fill="#212121" stroke="#3a3a3a"/>
+  <text x="975" y="766" text-anchor="middle" fill="#ececec" font-size="15" font-weight="600">Relying parties</text>
+  <text x="975" y="787" text-anchor="middle" fill="#9a9a9a" font-size="11.5">auditor · insurer · regulator · merchant · bank · court</text>
+
+  <!-- evidence feeds into the hole (top row, laned to avoid crossing boxes) -->
+  <g fill="none" stroke="#5c5c5c" stroke-width="1.3">
+    <path d="M 150 96 L 150 110 L 935 110 L 935 466" marker-end="url(#arr)"/>
+    <path d="M 445 96 L 445 122 L 985 122 L 985 466" marker-end="url(#arr)"/>
+    <path d="M 745 96 L 745 134 L 1085 134 L 1085 466" marker-end="url(#arr)"/>
+    <path d="M 1035 96 L 1035 466" marker-end="url(#arr)"/>
+    <path d="M 430 254 L 430 300 L 830 300 L 830 466" marker-end="url(#arr)"/>
+    <path d="M 815 254 L 878 466" marker-end="url(#arr)"/>
+    <path d="M 760 625 L 796 625" marker-end="url(#arr)"/>
+    <path d="M 300 502 L 330 502 L 330 560 L 796 560" marker-end="url(#arr)"/>
+  </g>
+  <path d="M 170 660 L 170 690 L 830 690 L 830 664" fill="none" stroke="#5c5c5c" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+
+  <!-- the action path (operational flow) -->
+  <g fill="none" stroke="#8a8a8a" stroke-width="1.5">
+    <path d="M 220 212 L 276 212" marker-end="url(#arr)" stroke-dasharray="5 4"/>
+    <path d="M 580 212 L 636 212" marker-end="url(#arr)"/>
+    <path d="M 460 254 L 540 326" marker-end="url(#arr)"/>
+    <path d="M 760 254 L 640 326" marker-end="url(#arr)"/>
+    <path d="M 570 394 L 570 446" marker-end="url(#arr)"/>
+    <path d="M 570 530 L 570 586" marker-end="url(#arr)"/>
+  </g>
+
+  <!-- verdict flows to the people who rely on it -->
+  <path d="M 975 660 L 975 736" fill="none" stroke="#E2B54B" stroke-width="1.5" marker-end="url(#arrAmber)"/>
+
+  <text x="24" y="836" fill="#5c5c5c" font-size="10" font-family="ui-monospace, Menlo, monospace">drafts + RFC numbers verified against datatracker.ietf.org, 2026-07-02</text>
+</svg>

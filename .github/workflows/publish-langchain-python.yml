@@ -1,55 +1,172 @@
 name: Publish langchain-emilia to PyPI
 
-# Trusted Publishing (OIDC) — NO API token is stored anywhere. On each run PyPI
-# verifies the OIDC claim (owner / repo / workflow filename) and issues a
-# short-lived upload credential. Configure the matching trusted publisher once at:
-#   pypi.org -> Your projects -> langchain-emilia -> Manage -> Publishing
-#   Owner: emiliaprotocol | Repo: emilia-protocol
-#   Workflow: publish-langchain-python.yml | Environment: (leave blank)
-#
-# Release flow: bump version in integrations/langchain-emilia/pyproject.toml, then
-#   git tag langchain-emilia-v0.1.0 && git push origin langchain-emilia-v0.1.0
-# (PyPI rejects re-publishing an existing version, so always bump first.)
-
+# PyPI trusted publisher: langchain-emilia -> this workflow filename.
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'langchain-emilia-v*'
+    inputs:
+      release_tag:
+        description: Exact tag, for example langchain-emilia-v0.1.1
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH langchain-emilia@<version>
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   contents: read
 
 jobs:
-  publish:
-    name: Build and publish langchain-emilia
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write   # REQUIRED for PyPI trusted publishing (OIDC)
-      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - name: Install hash-locked adapter test dependencies
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/langchain-test.txt
+      - name: Test adapter
+        env:
+          PYTHONPATH: ${{ github.workspace }}/integrations/langchain-emilia
+        run: python -m pytest -q integrations/langchain-emilia/tests
 
-      - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0 (Node 24)
+  approval:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
+  publish:
+    needs: approval
+    runs-on: ubuntu-latest
+    concurrency:
+      group: registry-publish-pypi-langchain-emilia
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+    steps:
+      - name: Fresh checkout for artifact construction
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: '3.12'
 
-      - name: Run tests first — never publish red
-        run: |
-          pip install -e './integrations/langchain-emilia[dev]'
-          pytest -q integrations/langchain-emilia/tests
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '24'
+          cache: npm
 
-      - name: Build sdist + wheel
-        working-directory: integrations/langchain-emilia
-        run: |
-          python -m pip install --upgrade build
-          python -m build
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version: '1.22'
 
-      - name: Publish to PyPI
+      - name: Install hash-locked build and verification tooling
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/release.txt
+
+      - name: Install locked repository tooling
+        run: npm ci --ignore-scripts
+
+      - name: Require owner approval bound to tag, package, version, and main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('integrations/langchain-emilia/pyproject.toml','rb'))['project']['version'])")
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix langchain-emilia-v \
+            --package langchain-emilia \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION"
+
+      - name: Execute security and conformance evidence
+        run: |
+          npm run security-case:emit
+          npm run conformance:manifest
+
+      - name: Build twice and retain exact reproducible artifacts
+        id: build
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          node scripts/verify-reproducible-wheel.mjs integrations/langchain-emilia \
+            --emit release-artifacts/langchain-emilia-reproducible.json \
+            --outdir release-artifacts
+          WHEEL=$(find release-artifacts/langchain-emilia -maxdepth 1 -name '*.whl' -print -quit)
+          SDIST=$(find release-artifacts/langchain-emilia -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$WHEEL" && test -n "$SDIST"
+          echo "wheel=$WHEEL" >> "$GITHUB_OUTPUT"
+          echo "sdist=$SDIST" >> "$GITHUB_OUTPUT"
+
+      - name: Check exact distributions
+        run: python -m twine check release-artifacts/langchain-emilia/*.whl release-artifacts/langchain-emilia/*.tar.gz
+
+      - name: Attest exact wheel
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: ${{ steps.build.outputs.wheel }}
+
+      - name: Attest exact source distribution
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: ${{ steps.build.outputs.sdist }}
+
+      - name: Attest release evidence
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
+            release-artifacts/langchain-emilia-reproducible.json
+
+      - name: Upload exact release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: langchain-emilia-release-${{ inputs.release_tag }}
+          path: |
+            release-artifacts/langchain-emilia/
+            release-artifacts/langchain-emilia-reproducible.json
+            security/security-case.json
+            conformance/conformance-manifest.json
+          retention-days: 90
+
+      - name: Publish exact artifacts through PyPI OIDC
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
         with:
-          packages-dir: integrations/langchain-emilia/dist/
+          packages-dir: release-artifacts/langchain-emilia/
           print-hash: true
-          skip-existing: true   # re-runs / dispatch on an already-published version exit green
+          skip-existing: true
+
+      - name: Verify PyPI wheel and sdist bytes match the attested artifacts
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('integrations/langchain-emilia/pyproject.toml','rb'))['project']['version'])")
+          mkdir -p registry-copy
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if python -m pip download --no-deps --only-binary=:all: --dest registry-copy "langchain-emilia==$VERSION" \
+              && python -m pip download --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "langchain-emilia==$VERSION"; then
+              break
+            fi
+            sleep 5
+          done
+          REGISTRY_WHEEL=$(find registry-copy -maxdepth 1 -name '*.whl' -print -quit)
+          REGISTRY_SDIST=$(find registry-copy -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$REGISTRY_WHEEL" && test -n "$REGISTRY_SDIST"
+          cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"
+          cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"

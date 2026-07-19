@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" role="img" aria-labelledby="gate-topologies-title gate-topologies-desc">
+  <title id="gate-topologies-title">EMILIA Gate enforcement topologies and consequence lifecycle</title>
+  <desc id="gate-topologies-desc">Four panels show an MCP proxy, service mesh, egress gateway, and domain or system-of-record Gate. Dashed red paths identify residual bypass classes. A lower flow shows challenge, native verification, material-action match, evidence satisfaction, local authorization, durable reservation, invocation, then either executed or indeterminate. Indeterminate operations must reconcile and are never blindly retried.</desc>
+  <defs>
+    <style>
+      .bg { fill: #0b1020; }
+      .panel { fill: #141b2d; stroke: #33405b; stroke-width: 2; }
+      .panel-strong { fill: #12251f; stroke: #58d3a2; stroke-width: 3; }
+      .domain { fill: #1b2439; stroke: #62708e; stroke-width: 1.5; stroke-dasharray: 8 6; }
+      .node { fill: #202a42; stroke: #8190ad; stroke-width: 1.5; }
+      .gate { fill: #163b32; stroke: #58d3a2; stroke-width: 2.5; }
+      .state { fill: #162239; stroke: #8ab4f8; stroke-width: 1.5; }
+      .state-auth { fill: #163b32; stroke: #58d3a2; stroke-width: 2; }
+      .state-warn { fill: #3d3018; stroke: #f6c76d; stroke-width: 2; }
+      .text { fill: #f5f7fa; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .muted { fill: #c4cee0; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .small { fill: #aebbd1; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; }
+      .tiny { fill: #9cabc4; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; }
+      .mono { fill: #b7c6de; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+      .heading { font-size: 24px; font-weight: 700; }
+      .subheading { font-size: 18px; font-weight: 700; }
+      .label { font-size: 16px; font-weight: 650; }
+      .flow { fill: none; stroke: #8ab4f8; stroke-width: 2.5; marker-end: url(#arrow-blue); }
+      .flow-strong { fill: none; stroke: #58d3a2; stroke-width: 3; marker-end: url(#arrow-green); }
+      .branch { fill: none; stroke: #f6c76d; stroke-width: 2.5; marker-end: url(#arrow-amber); }
+      .bypass { fill: none; stroke: #ff7b86; stroke-width: 2; stroke-dasharray: 8 6; marker-end: url(#arrow-red); }
+    </style>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#8ab4f8" stroke-width="1.7"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#58d3a2" stroke-width="1.7"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#f6c76d" stroke-width="1.7"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#ff7b86" stroke-width="1.7"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1600" height="1120"/>
+
+  <text class="text heading" x="60" y="54">EMILIA Gate enforcement topologies</text>
+  <text class="muted" x="60" y="82" font-size="17">Same evidence and consequence lifecycle; different coverage boundaries.</text>
+  <rect x="1235" y="35" width="18" height="18" rx="3" fill="#163b32" stroke="#58d3a2" stroke-width="2"/>
+  <text class="small" x="1263" y="50">Gate enforcement domain</text>
+  <line x1="1235" y1="72" x2="1260" y2="72" class="bypass"/>
+  <text class="small" x="1270" y="77">residual bypass class</text>
+
+  <!-- Topology A -->
+  <g aria-label="Topology A: MCP or protocol-specific proxy">
+    <rect class="panel" x="50" y="115" width="720" height="255" rx="14"/>
+    <text class="text subheading" x="78" y="151">A · MCP / protocol proxy</text>
+    <text class="small" x="78" y="176">Lowest friction · covers named endpoints only</text>
+
+    <rect class="domain" x="78" y="198" width="174" height="106" rx="10"/>
+    <text class="text label" x="165" y="235" text-anchor="middle">Agent</text>
+    <text class="tiny" x="165" y="258" text-anchor="middle">untrusted execution</text>
+    <text class="tiny" x="165" y="279" text-anchor="middle">domain</text>
+
+    <rect class="gate" x="324" y="206" width="190" height="90" rx="10"/>
+    <text class="text label" x="419" y="242" text-anchor="middle">EMILIA Gate</text>
+    <text class="tiny" x="419" y="266" text-anchor="middle">MCP / API adapter</text>
+
+    <rect class="node" x="590" y="206" width="150" height="90" rx="10"/>
+    <text class="text label" x="665" y="242" text-anchor="middle">MCP server</text>
+    <text class="tiny" x="665" y="266" text-anchor="middle">protected tools</text>
+
+    <path class="flow-strong" d="M252 251 H320"/>
+    <path class="flow-strong" d="M514 251 H586"/>
+    <text class="mono" x="273" y="235">tool call</text>
+
+    <path class="bypass" d="M205 304 C310 351 560 350 646 300"/>
+    <rect x="337" y="329" width="260" height="24" rx="4" fill="#141b2d"/>
+    <text x="467" y="346" text-anchor="middle" fill="#ff9aa3" font-family="Inter, sans-serif" font-size="14">direct SDK / shell / alternate API</text>
+  </g>
+
+  <!-- Topology B -->
+  <g aria-label="Topology B: service mesh enforcement">
+    <rect class="panel" x="830" y="115" width="720" height="255" rx="14"/>
+    <text class="text subheading" x="858" y="151">B · Service mesh</text>
+    <text class="small" x="858" y="176">Broad inter-service coverage · action adapter still required</text>
+
+    <rect class="domain" x="858" y="198" width="210" height="112" rx="10"/>
+    <text class="text label" x="963" y="235" text-anchor="middle">Agent workload</text>
+    <text class="tiny" x="963" y="259" text-anchor="middle">MCP · REST · gRPC</text>
+    <text class="tiny" x="963" y="280" text-anchor="middle">SDK across boundary</text>
+
+    <rect class="gate" x="1123" y="207" width="185" height="92" rx="10"/>
+    <text class="text label" x="1215" y="242" text-anchor="middle">Mesh Gate</text>
+    <text class="tiny" x="1215" y="266" text-anchor="middle">sidecar / ingress</text>
+
+    <rect class="node" x="1365" y="207" width="155" height="92" rx="10"/>
+    <text class="text label" x="1442" y="242" text-anchor="middle">Service</text>
+    <text class="tiny" x="1442" y="266" text-anchor="middle">mutation API</text>
+
+    <path class="flow-strong" d="M1068 253 H1119"/>
+    <path class="flow-strong" d="M1308 253 H1361"/>
+
+    <path class="bypass" d="M938 310 C1010 354 1390 354 1440 303"/>
+    <rect x="1086" y="329" width="318" height="24" rx="4" fill="#141b2d"/>
+    <text x="1245" y="346" text-anchor="middle" fill="#ff9aa3" font-family="Inter, sans-serif" font-size="14">in-process / local socket / off-mesh route</text>
+  </g>
+
+  <!-- Topology C -->
+  <g aria-label="Topology C: network egress gateway">
+    <rect class="panel" x="50" y="400" width="720" height="255" rx="14"/>
+    <text class="text subheading" x="78" y="436">C · Egress gateway</text>
+    <text class="small" x="78" y="461">Broad outbound coverage · opaque or local effects remain outside</text>
+
+    <rect class="domain" x="78" y="483" width="210" height="112" rx="10"/>
+    <text class="text label" x="183" y="520" text-anchor="middle">Agent domain</text>
+    <text class="tiny" x="183" y="544" text-anchor="middle">all outbound traffic</text>
+    <text class="tiny" x="183" y="565" text-anchor="middle">forced to egress</text>
+
+    <rect class="gate" x="348" y="492" width="190" height="92" rx="10"/>
+    <text class="text label" x="443" y="527" text-anchor="middle">Egress Gate</text>
+    <text class="tiny" x="443" y="551" text-anchor="middle">network + action adapter</text>
+
+    <rect class="node" x="607" y="492" width="135" height="92" rx="10"/>
+    <text class="text label" x="674" y="527" text-anchor="middle">Provider</text>
+    <text class="tiny" x="674" y="551" text-anchor="middle">external effect</text>
+
+    <path class="flow-strong" d="M288 538 H344"/>
+    <path class="flow-strong" d="M538 538 H603"/>
+
+    <path class="bypass" d="M183 595 C280 640 555 635 636 588"/>
+    <rect x="260" y="614" width="338" height="24" rx="4" fill="#141b2d"/>
+    <text x="429" y="631" text-anchor="middle" fill="#ff9aa3" font-family="Inter, sans-serif" font-size="14">local mutation / tunnel / action-opaque traffic</text>
+  </g>
+
+  <!-- Topology D -->
+  <g aria-label="Topology D: domain or system-of-record enforcement">
+    <rect class="panel-strong" x="830" y="400" width="720" height="255" rx="14"/>
+    <text class="text subheading" x="858" y="436">D · Domain / system of record</text>
+    <text class="small" x="858" y="461">Preferred consequence owner · final reserve and mutation precondition</text>
+
+    <rect class="node" x="858" y="493" width="145" height="90" rx="10"/>
+    <text class="text label" x="930" y="528" text-anchor="middle">Any caller</text>
+    <text class="tiny" x="930" y="552" text-anchor="middle">agent or service</text>
+
+    <rect class="gate" x="1070" y="484" width="210" height="108" rx="10"/>
+    <text class="text label" x="1175" y="520" text-anchor="middle">Domain Gate</text>
+    <text class="tiny" x="1175" y="544" text-anchor="middle">observes exact write</text>
+    <text class="tiny" x="1175" y="565" text-anchor="middle">owns durable reserve</text>
+
+    <rect class="node" x="1350" y="484" width="172" height="108" rx="10"/>
+    <text class="text label" x="1436" y="520" text-anchor="middle">System of record</text>
+    <text class="tiny" x="1436" y="544" text-anchor="middle">payment · DB · code</text>
+    <text class="tiny" x="1436" y="565" text-anchor="middle">cloud · actuator</text>
+
+    <path class="flow-strong" d="M1003 538 H1066"/>
+    <path class="flow-strong" d="M1280 538 H1346"/>
+    <rect x="1067" y="598" width="236" height="24" rx="4" fill="#12251f"/>
+    <text x="1185" y="615" text-anchor="middle" fill="#83e7c1" font-family="Inter, sans-serif" font-size="14">missing Gate evidence = no write</text>
+
+    <path class="bypass" d="M938 584 C1050 648 1375 648 1433 596"/>
+    <rect x="1087" y="625" width="326" height="24" rx="4" fill="#12251f"/>
+    <text x="1250" y="642" text-anchor="middle" fill="#ff9aa3" font-family="Inter, sans-serif" font-size="14">direct credential / admin / break-glass path</text>
+  </g>
+
+  <!-- Shared lifecycle -->
+  <text class="text heading" x="60" y="716">Shared consequence lifecycle</text>
+  <text class="muted" x="60" y="744" font-size="17">Evidence conclusions stay separate from authorization and execution.</text>
+
+  <g aria-label="Evidence and authorization stages">
+    <rect class="state" x="55" y="782" width="132" height="74" rx="10"/>
+    <text class="text label" x="121" y="811" text-anchor="middle">CHALLENGE</text>
+    <text class="tiny" x="121" y="835" text-anchor="middle">declare evidence</text>
+
+    <rect class="state" x="225" y="782" width="132" height="74" rx="10"/>
+    <text class="text label" x="291" y="811" text-anchor="middle">VERIFIED</text>
+    <text class="tiny" x="291" y="835" text-anchor="middle">native rules</text>
+
+    <rect class="state" x="395" y="782" width="132" height="74" rx="10"/>
+    <text class="text label" x="461" y="811" text-anchor="middle">MATCH</text>
+    <text class="tiny" x="461" y="835" text-anchor="middle">same action</text>
+
+    <rect class="state" x="565" y="782" width="132" height="74" rx="10"/>
+    <text class="text label" x="631" y="811" text-anchor="middle">SATISFIED</text>
+    <text class="tiny" x="631" y="835" text-anchor="middle">slots filled</text>
+
+    <rect class="state-auth" x="735" y="782" width="132" height="74" rx="10"/>
+    <text class="text label" x="801" y="811" text-anchor="middle">AUTHORIZED</text>
+    <text class="tiny" x="801" y="835" text-anchor="middle">local decision</text>
+
+    <rect class="state-auth" x="905" y="782" width="132" height="74" rx="10"/>
+    <text class="text label" x="971" y="811" text-anchor="middle">RESERVE</text>
+    <text class="tiny" x="971" y="835" text-anchor="middle">durable + atomic</text>
+
+    <rect class="state-auth" x="1075" y="782" width="132" height="74" rx="10"/>
+    <text class="text label" x="1141" y="811" text-anchor="middle">INVOKE</text>
+    <text class="tiny" x="1141" y="835" text-anchor="middle">stable operation ID</text>
+
+    <path class="flow" d="M187 819 H221"/>
+    <path class="flow" d="M357 819 H391"/>
+    <path class="flow" d="M527 819 H561"/>
+    <path class="flow" d="M697 819 H731"/>
+    <path class="flow-strong" d="M867 819 H901"/>
+    <path class="flow-strong" d="M1037 819 H1071"/>
+  </g>
+
+  <g aria-label="Execution result branches">
+    <rect class="state-auth" x="1285" y="752" width="245" height="74" rx="10"/>
+    <text class="text label" x="1407" y="781" text-anchor="middle">COMMIT · EXECUTED</text>
+    <text class="tiny" x="1407" y="805" text-anchor="middle">authoritative matched success</text>
+
+    <rect class="state-warn" x="1285" y="858" width="245" height="78" rx="10"/>
+    <text class="text label" x="1407" y="888" text-anchor="middle">FREEZE · INDETERMINATE</text>
+    <text class="tiny" x="1407" y="913" text-anchor="middle">never blindly retry</text>
+
+    <path class="flow-strong" d="M1207 807 C1238 807 1244 789 1281 789"/>
+    <path class="branch" d="M1207 831 C1240 831 1248 897 1281 897"/>
+
+    <rect class="state-warn" x="1035" y="958" width="245" height="82" rx="10"/>
+    <text class="text label" x="1157" y="989" text-anchor="middle">RECONCILE</text>
+    <text class="tiny" x="1157" y="1014" text-anchor="middle">authenticated provider / SOR</text>
+
+    <path class="branch" d="M1407 936 V970 H1284"/>
+    <path class="flow-strong" d="M1280 988 C1370 988 1407 939 1407 830"/>
+    <text class="tiny" x="1405" y="1010" text-anchor="middle">exact authenticated evidence resolves</text>
+    <text class="tiny" x="1405" y="1028" text-anchor="middle">the original operation</text>
+  </g>
+
+  <rect x="55" y="965" width="880" height="74" rx="10" fill="#101729" stroke="#33405b" stroke-width="1.5"/>
+  <text class="text label" x="78" y="993">Composition inputs, not EMILIA-owned semantics</text>
+  <text class="small" x="78" y="1018">AgentROA: agent scope, delegation, pre-execution AER · ORPRG: policy permit and downstream decision evidence</text>
+
+  <text class="tiny" x="60" y="1086">Complete mediation is substantiated only for the declared protected paths that cannot reach the consequence outside Gate.</text>
+  <text class="tiny" x="1540" y="1086" text-anchor="end">Accessible text equivalent: docs/architecture/GATE-ENFORCEMENT-PROFILE.md</text>
+</svg>

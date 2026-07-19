@@ -1,5 +1,7 @@
 name: DCO
 
+permissions: read-all
+
 # Opt every JavaScript-based action into the Node.js 24 runner.
 # GitHub forces this default in June 2026; doing it now eliminates the
 # deprecation-warning noise on every run and surfaces any Node-24 incompat
@@ -23,14 +25,20 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Check DCO sign-off
-        # v0.5.0 changed token plumbing: it now reads GITHUB_TOKEN from the
-        # environment instead of the `with: token` input. v0.4.0 still works
-        # but is built on Ubuntu 20.04 and routinely flakes on apt-fetch
-        # against archive.ubuntu.com (e.g. run 25337261765 — failed to
-        # fetch libc6, libssl1.1). Move forward to v0.5.0 with correct
-        # token wiring.
-        uses: christophebedard/dco-check@ec8bfc43106afe98b323ace9133650df10497e12  # v0.5.1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          failure=0
+          while IFS= read -r commit_sha; do
+            author="$(git show -s --format='%an <%ae>' "$commit_sha")"
+            if ! git show -s --format='%B' "$commit_sha" \
+              | grep --fixed-strings --ignore-case --quiet "Signed-off-by: $author"; then
+              echo "::error::Commit $commit_sha is missing Signed-off-by: $author"
+              failure=1
+            fi
+          done < <(git rev-list --reverse "$BASE_SHA..$HEAD_SHA")
+          exit "$failure"

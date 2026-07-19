@@ -4,9 +4,9 @@
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
 import {
-  toScimUser, fromScimUser, listResponse, parseFilter, etag,
+  toScimUser, fromScimUser, listResponse, parseFilter, etag, validateScimUser,
 } from '@/lib/scim/core';
-import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl } from '@/lib/scim/http';
+import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
 import { recordApproverEligible } from '@/lib/scim/approver-link';
 import { isScimAutoApproverEnabled } from '@/lib/env';
 
@@ -71,17 +71,16 @@ export async function POST(request) {
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return scimErrorResponse(400, 'Request body must be valid JSON', 'invalidSyntax');
-  }
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
-  const fields = fromScimUser(body);
-  if (!fields.user_name) {
-    return scimErrorResponse(400, 'userName is required', 'invalidValue');
+  const validation = validateScimUser(body);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
   }
+  const fields = fromScimUser(body);
 
   const base = scimBaseUrl(request);
   const supabase = getGuardedClient();

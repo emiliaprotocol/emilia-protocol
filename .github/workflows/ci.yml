@@ -39,13 +39,17 @@ jobs:
         run: npx vitest run --coverage
       - name: Verify package suites (node:test)
         # packages/verify and packages/issue ship zero-dependency standalone
-        # suites on Node's built-in runner (excluded from vitest). This runs the
-        # Node verifier tests AND the Web Crypto equivalence suite (browser
-        # verifier proven byte-identical to the audited Node build), then the
-        # issuer round-trip suite (a locally-issued receipt proven to pass all
-        # seven §6.3 checks under @emilia-protocol/verify, plus negative and CLI
-        # smoke tests). "issue locally, verify anywhere", enforced every push.
-        run: node --test packages/verify/test.js packages/verify/web.test.js packages/issue/test.js packages/attest/test.js
+        # suites on Node's built-in runner (excluded from vitest). The glob runs
+        # EVERY packages/verify suite — quorum, revocation, time-attestation,
+        # evidence-chain (AEC incl. relying-party requirement pinning),
+        # federation, consistency, agent-binding, no-symmetric, CLI — plus the
+        # Web Crypto equivalence suite (browser verifier proven byte-identical
+        # to the audited Node build) and the issuer round-trip suite (a
+        # locally-issued receipt proven to pass all seven §6.3 checks under
+        # @emilia-protocol/verify). "issue locally, verify anywhere", enforced
+        # every push. Do NOT go back to an explicit file list — that silently
+        # dropped 8 of 11 suites from CI until 2026-07-02.
+        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/attest/test.js
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -61,6 +65,61 @@ jobs:
           path: test-results/
           retention-days: 14
 
+  # ── Job 1b: Consequence Firewall product + deployment ───────────
+  gate-product:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd  # v3
+        with:
+          terraform_version: 1.10.5
+          terraform_wrapper: false
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4  # v4
+        with:
+          version: v3.16.4
+      - run: npm ci --ignore-scripts
+      - name: Install the PostgreSQL client used by the live isolation test
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends postgresql-client
+      - name: Run the complete Gate package suite
+        working-directory: packages/gate
+        run: npm test
+      - name: Run the hardened Gate service suite
+        working-directory: apps/gate-service
+        run: npm test
+      - name: Verify the SQL contract and live cross-tenant isolation
+        env:
+          POSTGRES_IMAGE: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        run: |
+          bash packages/gate/deploy/sql/tests/contract-check.sh
+          bash packages/gate/deploy/sql/tests/runtime-isolation.sh
+      - name: Verify Helm charts
+        run: |
+          bash packages/gate/deploy/helm/emilia-gate/tests/render-check.sh
+          bash packages/gate/deploy/helm/emilia-gate-service/tests/render-check.sh
+      - name: Verify Terraform modules
+        run: |
+          bash packages/gate/deploy/terraform/tests/validate.sh
+          bash packages/gate/deploy/terraform/service/tests/validate.sh
+      - name: Verify the publishable package contents
+        working-directory: packages/gate
+        run: npm pack --dry-run --json
+      - name: Build the production service image
+        run: docker build --file Dockerfile.gate --tag emilia-gate-service:ci .
+      - name: Refuse high or critical runtime vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.72.0
+          image-ref: emilia-gate-service:ci
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          hide-progress: true
+
   # ── Job 2: Build — Next.js production build must succeed ─────────
   build:
     runs-on: ubuntu-latest
@@ -73,6 +132,42 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Next.js production build
         run: npx next build
+
+  # ── Job 2c: Security-core type gate (tsc --checkJs, zero errors) ─
+  # The security core (packages/verify, lib/handshake, packages/gate) is kept
+  # clean under `tsc -p tsconfig.core.json` (allowJs + checkJs, JSDoc types
+  # only). This job fails on ANY type error so the core stays typed as it
+  # evolves. It is types-only: `noEmit` is set, so it never produces output
+  # and never affects runtime behavior. typescript is pinned in devDependencies.
+  typecheck-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Type-check the security core (checkJs)
+        run: npx tsc -p tsconfig.core.json
+
+  # ── Job 2b: Continuous adversarial fuzzing (audit GAP 7) ─────────
+  # A seeded, deterministic property fuzzer for the concurrency-sensitive
+  # surfaces. The async-guard bypass was a parallel-consumption race; this
+  # bounded fixed-seed batch drives many interleaved reserve/commit and
+  # consume-once attempts against the REAL capability and consumption stores
+  # every push and asserts the safety invariants. A regression fails at a named
+  # seed the author can replay locally. The deeper nightly sweep is documented
+  # in fuzz/README.md. No product deps, no network — Node built-ins only.
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+      - name: Run the bounded fixed-seed fuzz batch (<60s)
+        run: node fuzz/ci-batch.mjs
 
   # ── Job 3: Write discipline ──────────────────────────────────────
   write-discipline:
@@ -87,18 +182,63 @@ jobs:
       - name: Check write discipline
         run: node scripts/check-write-discipline.js
 
-  # ── Job 4: Invariant coverage ────────────────────────────────────
-  invariant-coverage:
+  # ── Job 4: Exact, content-addressed security case ────────────────
+  security-case:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: 20
           cache: npm
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version: '1.22'
+      - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - run: npm ci --ignore-scripts
-      - name: Check invariant coverage
-        run: node scripts/check-invariant-coverage.js
+      - name: Execute exact claims and bind reproducible release artifacts
+        run: npm run security-case:emit
+      - name: Run deterministic cross-language hostile corpus
+        run: npm run conformance:hostility
+      - name: Run Model-to-Matter executor profile vectors
+        run: npm run m2m:conformance
+      - name: Exercise external implementation intake protocol
+        run: npm run conformance:clean-room:contract
+      - name: Resolve exact cross-language conformance manifest
+        run: npm run conformance:manifest
+      - name: Verify exact frozen clean-room evidence baseline
+        run: npm run conformance:manifest:clean-room
+      - name: Attest exact security case on protected-branch runs
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: security/security-case.json
+      - name: Attest exact conformance manifest on protected-branch runs
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: conformance/conformance-manifest.json
+      - name: Attest exact frozen clean-room manifest on protected-branch runs
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: conformance/clean-room/conformance-manifest.v1.json
+      - name: Upload resolved security and conformance cases
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: security-and-conformance-case
+          path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
+            conformance/clean-room/conformance-manifest.v1.json
+          retention-days: 90
 
   # ── Job 5: Language governance ───────────────────────────────────
   language-governance:
@@ -112,6 +252,14 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Check language governance
         run: node scripts/check-language-governance.js
+      - name: Check public conformance claims against the current manifest
+        run: npm run check:public-conformance-claims
+      - name: Check published proof statistics against an executed test run
+        run: npm run check:proof-stats
+      - name: Check generated LLM context against current evidence manifests
+        run: npm run check:llm-context
+      - name: Check standards observatory snapshot freshness
+        run: npm run observatory:check
 
   # ── Job 6a: License headers ──────────────────────────────────────
   license-headers:
@@ -225,6 +373,12 @@ jobs:
       - name: Run protocol discipline checks
         run: node scripts/check-protocol-discipline.js
 
+      - name: Admissibility invariant registry (every claim maps to code, negative vector, parity, pinned acceptance)
+        run: node scripts/check-admissibility-registry.mjs
+
+      - name: Authority-claim guard (no public "authority enforced"/"scoped authority" claim without registry entry + passing vectors)
+        run: node scripts/check-authority-claims.mjs
+
       - name: No direct receipt inserts outside canonical path
         run: |
           hits=$(grep -rn "\.from('receipts')\.insert\|\.from(\"receipts\")\.insert" app/ lib/ mcp-server/ --include='*.js' --include='*.mjs' | grep -v "lib/create-receipt.js" | grep -v "lib/canonical-writer.js" || true)
@@ -262,9 +416,17 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Install dependencies
-        working-directory: mcp-server
-        run: npm ci --ignore-scripts
+      - name: Install dependencies against the local unreleased verifier
+        run: |
+          npm pack ./packages/verify --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/verify-pack.json"
+          VERIFY_TARBALL=$(node -e "const r=require(process.argv[1]); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)" "$RUNNER_TEMP/verify-pack.json")
+          cd mcp-server
+          npm ci --ignore-scripts
+          rm -rf node_modules/@emilia-protocol/verify
+          mkdir -p node_modules/@emilia-protocol/verify
+          tar -xzf "$RUNNER_TEMP/$VERIFY_TARBALL" \
+            --strip-components=1 \
+            -C node_modules/@emilia-protocol/verify
       - name: Verify npm pack succeeds
         working-directory: mcp-server
         run: npm pack
@@ -297,9 +459,8 @@ jobs:
           node-version: 20
       - name: Install dependencies
         working-directory: sdks/typescript
-        # sdks/typescript has no committed package-lock.json, so npm ci can't run
-        # here; keep the --ignore-scripts supply-chain hardening on npm install.
-        run: npm install --ignore-scripts
+        # Committed package-lock.json → deterministic install (scripts disabled).
+        run: npm ci --ignore-scripts
       - name: Build SDK
         working-directory: sdks/typescript
         run: npm run build
@@ -313,14 +474,16 @@ jobs:
   # ── Job 11: Python SDK ──────────────────────────────────────────
   sdk-python:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/sdks/python/src
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.11"
-      - name: Install SDK and dev dependencies
+      - name: Install hash-locked SDK test dependencies
         working-directory: sdks/python
-        run: pip install -e ".[dev]"
+        run: python -m pip install --require-hashes -r "$GITHUB_WORKSPACE/.github/workflow-requirements/python-sdk-test.txt"
       - name: Verify import
         run: python -c "from emilia_protocol import EPClient; print('Python SDK import OK')"
       - name: Run tests
@@ -329,9 +492,10 @@ jobs:
 
   # ── Job 11b: Cross-language conformance ──────────────────────────
   # Proves the JavaScript, Python, and Go reference verifiers all agree with
-  # each other and the expected outcome on the canonical EP-RECEIPT-v1 vectors.
-  # This is the IETF bar for a standard — multiple independent interoperable
-  # implementations — enforced on every push.
+  # each other and the expected outcome on the canonical EP vectors. These are
+  # one team's ports in one repository: a consistency check, not independent
+  # clean-room implementations. The separately pinned Rust implementation runs
+  # in the external-rust-evidence job below.
   conformance:
     runs-on: ubuntu-latest
     steps:
@@ -345,11 +509,150 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
           go-version: "1.22"
-      - run: pip install cryptography
+      - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
         run: node conformance/run.mjs
+      - name: Conformance docs count guard
+        run: npm run check:conformance-docs
       - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
         run: node conformance/run-signoffs.mjs
+      - name: TLA+-invariant conformance (JS lane drives the real store + guards)
+        run: node conformance/runners/run-invariants.mjs
+      - name: TLA+-invariant conformance (Python lane — faithful state-machine port)
+        run: python3 conformance/runners/run_invariants.py
+      - name: TLA+-invariant conformance (Go lane — faithful state-machine port)
+        run: go run conformance/runners/run_invariants.go
+
+  # ── Job 11c: Pinned external Rust implementation evidence ────────
+  # Rebuilds an externally authored verifier from an immutable source tree and
+  # evaluates it with its immutable, time-pinned vector and hostility snapshots.
+  # Both lanes must pass; a green standard suite cannot conceal parser or
+  # type-confusion failures in the adversarial corpus.
+  external-rust-evidence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out EMILIA evaluator
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Check out pinned external implementation
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          repository: jdieselny/ecr-wg
+          ref: 7faba36010e7590727bebbc5b9dcceee60539b9b
+          path: .external/ecr-wg
+          persist-credentials: false
+      - name: Check out immutable hostility evaluator
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          repository: emiliaprotocol/emilia-protocol
+          ref: 18739076c822bdc757147326e8d36716432d1b41
+          path: .external/emilia-hostility-evaluator
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.94.1 --profile minimal --no-self-update
+      - name: Rebuild external verifier from Cargo.lock
+        run: >-
+          cargo +1.94.1 build --release --locked
+          --manifest-path .external/ecr-wg/rust/ep-cleanroom-verifier/Cargo.toml
+          --bin conformance
+      - name: Evaluate immutable byte-pinned conformance bundle
+        run: |
+          mkdir -p test-results
+          node scripts/evaluate-external-implementation.mjs \
+            --pin conformance/external/rust-cleanroom-jdieselny.v1.json \
+            --source .external/ecr-wg \
+            --runner .external/ecr-wg/rust/ep-cleanroom-verifier/target/release/conformance \
+            --bundle conformance/clean-room/frozen-v1/conformance/clean-room/bundle.v1.json \
+            --suite-root conformance/clean-room/frozen-v1 \
+            --emit test-results/external-rust-conformance.json
+      - name: Prepare suite-dispatch hostility runner
+        run: |
+          node --input-type=module -e \
+            'import fs from "node:fs"; fs.writeFileSync(process.argv[1], `${JSON.stringify({ runners: [{ name: "rust-cleanroom-jdieselny", command: process.argv[2], args: [], cwd: ".", dispatch: "suite" }] }, null, 2)}\n`);' \
+            test-results/external-rust-runner.json \
+            "$GITHUB_WORKSPACE/.external/ecr-wg/rust/ep-cleanroom-verifier/target/release/conformance"
+      - name: Run external differential hostility campaign
+        run: |
+          node "$GITHUB_WORKSPACE/.external/emilia-hostility-evaluator/scripts/differential-hostility.mjs" \
+            --external-runners "$GITHUB_WORKSPACE/test-results/external-rust-runner.json" \
+            --emit "$GITHUB_WORKSPACE/test-results/external-rust-hostility.json"
+      - name: Enforce pinned accepting hostility result
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const pin = JSON.parse(fs.readFileSync("conformance/external/rust-cleanroom-jdieselny.v1.json", "utf8"));
+            const report = JSON.parse(fs.readFileSync("test-results/external-rust-hostility.json", "utf8"));
+            const expected = pin.hostility;
+            if (expected.evaluator_commit !== "18739076c822bdc757147326e8d36716432d1b41") throw new Error("external hostility evaluator pin drifted");
+            if (report.status !== expected.required_status || report.divergences.length !== 0) throw new Error("external hostility campaign is not clean");
+            if (report.corpus?.suite !== expected.suite || report.corpus?.sha256 !== expected.corpus_sha256) throw new Error("external hostility corpus drifted from the reviewed pin");
+            if (report.corpus?.structured_cases !== expected.structured_cases || report.corpus?.raw_parser_cases !== expected.raw_parser_cases) throw new Error("external hostility case counts drifted from the reviewed pin");
+            if (!report.implementations?.some((implementation) => implementation.name === expected.runner_name && implementation.relationship === "external-submission")) throw new Error("external implementation is absent from hostility report");
+          '
+      - name: Upload external evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: external-rust-evidence
+          path: |
+            test-results/external-rust-conformance.json
+            test-results/external-rust-hostility.json
+          retention-days: 90
+
+  # ── Job 11d: Aggregate, attested conformance acceptance case ─────
+  # Joins the same-team manifest over the frozen external bundle and separately produced external evidence
+  # only after both jobs pass. The assembler revalidates every source pin,
+  # suite hash, hostility result, evaluator commit, and attestation boundary;
+  # it cannot promote implementer-signed legacy evidence to strict independent
+  # clean-room acceptance.
+  aggregate-conformance-case:
+    needs: [security-case, external-rust-evidence]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+      - name: Download exact base conformance manifest
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: security-and-conformance-case
+          path: .ci/base
+      - name: Download exact external evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: external-rust-evidence
+          path: .ci/external
+      - name: Assemble strict aggregate conformance case
+        run: >-
+          node scripts/assemble-conformance-case.mjs
+          --manifest .ci/base/conformance/clean-room/conformance-manifest.v1.json
+          --pin conformance/external/rust-cleanroom-jdieselny.v1.json
+          --external-conformance .ci/external/external-rust-conformance.json
+          --external-hostility .ci/external/external-rust-hostility.json
+          --evaluator-commit "$GITHUB_SHA"
+          --emit conformance/conformance-case.json
+      - name: Attest aggregate conformance case on protected-branch runs
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: conformance/conformance-case.json
+      - name: Upload aggregate conformance case
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: aggregate-conformance-case
+          path: conformance/conformance-case.json
+          retention-days: 90
 
   # ── langchain-emilia (Python) — executor-side guard for LangChain tools ──
   langchain-emilia:
@@ -359,9 +662,11 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.12"
-      - name: Install with dev extras
-        run: pip install -e './integrations/langchain-emilia[dev]'
+      - name: Install hash-locked test dependencies
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/langchain-test.txt
       - name: Tests (digest parity, gate semantics, fail-closed tool wrapping)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/integrations/langchain-emilia
         run: pytest -q integrations/langchain-emilia/tests
 
   # ── examples/grok_guard red-team regression ─────────────────────
@@ -377,7 +682,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install verifier deps (cryptography)
-        run: pip install cryptography
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - name: Compile grok_guard.py
         run: python -m py_compile examples/grok_guard.py
       - name: Red-team regression suite (six vectors + control)
@@ -502,8 +807,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install gitleaks CLI
+        # Pin the version AND verify the SHA-256 (from the release's published
+        # checksums.txt) so a re-cut/compromised asset can't inject a binary.
+        # To bump: change GITLEAKS_VERSION and update GITLEAKS_SHA256.
         run: |
           GITLEAKS_VERSION=8.21.2
+          GITLEAKS_SHA256=5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba
           url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           # --fail: error out on HTTP 4xx/5xx instead of saving an error page that
           # tar then chokes on (a rate-limited download saved as HTML — not a real
@@ -511,6 +820,7 @@ jobs:
           curl --fail --location --show-error --silent \
             --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 20 \
             "$url" -o gitleaks.tar.gz
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
           tar xzf gitleaks.tar.gz
           sudo mv gitleaks /usr/local/bin/
           gitleaks version

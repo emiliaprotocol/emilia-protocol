@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { initiateHandshake, listHandshakes } from '@/lib/handshake';
 import { epProblem } from '@/lib/errors'; // retained for edge-case compat
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validateInitiateBody } from '@/lib/handshake/schema';
 import { validateHandshakeCreate } from '@/lib/validation/schemas';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/handshake
@@ -23,7 +27,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     // ── Schema validation (early gate) ────────────────────────────────
     const { valid, data, errors } = validateHandshakeCreate(body);
@@ -42,31 +48,26 @@ export async function POST(request) {
     if (initiators.length !== 1) {
       return epError(EP_ERROR_CODES.INVALID_INPUT, 'Exactly one initiator party is required');
     }
-    if (initiators[0].entity_ref !== auth.entity.entity_id) {
+    const actorId = authEntityId(auth);
+    if (initiators[0].entity_ref !== actorId) {
       return epError(EP_ERROR_CODES.UNAUTHORIZED_HANDSHAKE,
         'Initiator entity_ref must match the authenticated entity');
     }
 
     const result = await initiateHandshake({
-      actor: auth.entity,
+      actor: actorId,
       ...data,
     });
 
     if (result.error) {
-      return epError(EP_ERROR_CODES.HANDSHAKE_INITIATION_FAILED, result.error);
+      logger.error('[handshake] Initiation failed:', result.error);
+      return epError(EP_ERROR_CODES.HANDSHAKE_INITIATION_FAILED);
     }
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     logger.error('Handshake initiation error:', err);
-    // Surface known-class error messages (HandshakeError, ProtocolWriteError)
-    // as `detail` so the API caller sees the specific failure cause instead
-    // of a generic 500. Bare Error instances stay opaque to avoid leaking
-    // stack traces from internal exceptions.
-    const detail = (err?.code && err?.message)
-      ? `${err.code}: ${err.message}`
-      : null;
-    return epError(EP_ERROR_CODES.INTERNAL, detail);
+    return epError(EP_ERROR_CODES.INTERNAL);
   }
 }
 
@@ -75,7 +76,7 @@ export async function POST(request) {
  *
  * List handshakes, optionally filtered by status or mode.
  * Reads are scoped to the authenticated entity — the entity_ref filter is
- * always forced to match auth.entity regardless of query parameters.
+ * always forced to match the authenticated actor regardless of query parameters.
  */
 export async function GET(request) {
   try {
@@ -83,16 +84,20 @@ export async function GET(request) {
     if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
 
     const { searchParams } = new URL(request.url);
+    const actorId = authEntityId(auth);
     const filters = {
-      entity_ref: auth.entity.entity_id, // forced — callers may only list their own handshakes
+      entity_ref: actorId, // forced — callers may only list their own handshakes
       status: searchParams.get('status') || null,
       mode: searchParams.get('mode') || null,
     };
 
-    const result = await listHandshakes(filters, auth.entity);
+    const result = await listHandshakes(filters, actorId);
 
     if (result.error) {
-      return epError(EP_ERROR_CODES.INTERNAL, result.error);
+      // The query/DB error can carry internal detail. Log server-side; return a
+      // generic INTERNAL with no client-facing detail. (LOW audit finding.)
+      logger.error('[handshake:list] List query failed:', result.error);
+      return epError(EP_ERROR_CODES.INTERNAL);
     }
 
     return NextResponse.json(result);

@@ -88,7 +88,9 @@ breaking change.
     // Material to verify THIS receipt offline (pinned, not fetched).
     "verification": {
       "approver_keys": { "ep:key:...#1": { "public_key": "b64u...", "key_class": "A", "valid_from": "...", "valid_to": "..." } },
-      "log_public_key": "b64u-SPKI-DER"
+      "log_public_key": "b64u-SPKI-DER",
+      "rp_id": "approvals.example",
+      "allowed_origins": ["https://approvals.example"]
     },
     // At least one signoff in receipt.signoffs MUST be a human signoff.
     // A Class-A (WebAuthn UV) signoff is the strongest human evidence;
@@ -134,7 +136,12 @@ breaking change.
   // omitted only for reversible actions.
   "action_approval": {
     "receipt": { /* full EP-RECEIPT-v1 §6.2 receipt */ },
-    "verification": { "approver_keys": { /* ... */ }, "log_public_key": "b64u" }
+    "verification": {
+      "approver_keys": { /* ... */ },
+      "log_public_key": "b64u",
+      "rp_id": "approvals.example",
+      "allowed_origins": ["https://approvals.example"]
+    }
   },
 
   // What was actually executed, bound by hash to the approved action.
@@ -195,8 +202,8 @@ breaking change.
 | Composite field | Reuses v1 / source field | Source of truth |
 |---|---|---|
 | `root_signoff.receipt` | full EP-RECEIPT-v1 (`action`, `action_hash`, `contexts`, `signoffs`, `consumption`, `log_proof`) | I-D §6.2; `packages/issue/index.js` `assembleAuthorizationReceipt()` |
-| `root_signoff.verification.approver_keys` | `opts.approverKeys` keyed by `approver_key_id` | `packages/verify/index.js` `verifyTrustReceipt()` |
-| `root_signoff.verification.log_public_key` | `opts.logPublicKey` | same |
+| `root_signoff.verification.*` | Optional transport hints only; never a trust root | ignored for acceptance |
+| `opts.rootVerification` / `opts.actionVerification` | relying-party-pinned `approver_keys`, `log_public_key`, WebAuthn `rp_id`, and exact `allowed_origins` | `packages/verify/index.js` `verifyTrustReceipt()` |
 | `*.receipt.signoffs[i].key_class` | `key_class` (`A`\|`B`\|`C`); `A` = WebAuthn human | I-D §5.3 |
 | `delegation_chain[i].delegation_id` etc. | DRP delegation (`delegation_id`, `principal_id`→`delegator`, `agent_entity_id`→`delegatee`, `scope`, `max_value_usd`, `expires_at`, `constraints`) | `lib/delegation.js` |
 | `execution.action_hash` | `action_hash` (`"sha256:<hex>"`) | I-D §3; `actionHash()` in `packages/issue` |
@@ -280,8 +287,10 @@ verifyProvenanceOffline(doc, opts):
   REJECT unless doc["@version"] == "EP-PROVENANCE-CHAIN-v1"          # version
 
   # ── 1. Root human signoff (the termination) ─────────────────────────────
+  REJECT unless opts.rootVerification carries relying-party-pinned
+                approver_keys, log_public_key, rp_id, and allowed_origins
   r0 = verifyTrustReceipt(doc.root_signoff.receipt,
-                          { approverKeys, logPublicKey })            # FROZEN v1
+                          opts.rootVerification)                     # FROZEN v1
   REJECT unless r0.valid                                            # root_receipt_valid
   # Human classes are VERIFIER-side policy (opts.humanKeyClasses, default ['A']).
   # The per-document root_signoff.human_key_classes field is NOT trusted to
@@ -298,7 +307,9 @@ verifyProvenanceOffline(doc, opts):
   if needApproval:
      REJECT unless doc.action_approval present                      # per_action_required
   if doc.action_approval present:
-     ra = verifyTrustReceipt(doc.action_approval.receipt, {...})    # FROZEN v1
+     REJECT unless opts.actionVerification carries relying-party pins
+     ra = verifyTrustReceipt(doc.action_approval.receipt,
+                             opts.actionVerification)               # FROZEN v1
      REJECT unless ra.valid                                         # action_receipt_valid
      REJECT unless ra binds a human signoff when execution.irreversible
                                                                     # action_human_signoff
@@ -392,6 +403,8 @@ trust anchor.)
 
 | Option | Default | Effect |
 |---|---|---|
+| `rootVerification` | none | REQUIRED relying-party-pinned `{ approver_keys, log_public_key, rp_id, allowed_origins }` for the root receipt. Document-carried values are ignored as trust roots. |
+| `actionVerification` | none | REQUIRED relying-party-pinned `{ approver_keys, log_public_key, rp_id, allowed_origins }` whenever an action-approval receipt is present. |
 | `humanKeyClasses` | `['A']` | The ONLY source of human-class truth. The per-document `root_signoff.human_key_classes` field is NOT trusted to widen it. Default requires WebAuthn UV (Class A). Set `['A','B','C']` only in test. |
 | `delegationKeys` | `{}` | Pinned proof keys per `delegator` id (`{ "<delegator>": { public_key } }`), mirroring root `approver_keys`. A delegation whose `delegator` has no pinned key, or whose `proof.public_key` differs, rejects the bundle. |
 | `reversibilityAsserted` | `undefined` | Verifier-supplied `(exec) => boolean` that INDEPENDENTLY asserts reversibility. Only this (never the producer's `execution.irreversible` flag) can drop the per-action approval requirement. Absent it, approval is required (fail-closed). |

@@ -132,7 +132,7 @@ export interface IssuerKeyBundle {
 
 export interface VerificationMaterial {
   '@version': 'EP-AUTHORIZATION-RECEIPT-VERIFICATION-v1';
-  approver_keys: Record<string, { public_key: string; key_class: 'A' | 'B' | 'C'; valid_from?: string; valid_to?: string }>;
+  approver_keys: Record<string, { approver_id: string; public_key: string; key_class: 'A' | 'B' | 'C'; valid_from?: string; valid_to?: string }>;
   log_public_key: string;
 }
 
@@ -152,6 +152,7 @@ export interface LogConfig {
 }
 
 export function canonicalize(value: unknown): string;
+export function isCanonicalizable(value: unknown): boolean;
 export function actionHash(action: ActionObject): string;
 export function policyHash(policy: Record<string, unknown>): string;
 

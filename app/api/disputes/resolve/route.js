@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
+import { validateTransition, DISPUTE_STATES, recordOperatorAction, hasPermission } from '@/lib/procedural-justice';
 import { getGuardedClient } from '@/lib/write-guard';
 import { authenticateOperator } from '@/lib/operator-auth';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/disputes/resolve
@@ -25,8 +28,13 @@ export async function POST(request) {
     const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
     const operatorId = opAuth.operator_id;
+    if (!hasPermission(opAuth.role, 'dispute.resolve')) {
+      return epProblem(403, 'forbidden', 'Operator role lacks dispute.resolve permission');
+    }
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     if (!body.dispute_id || !body.resolution) {
       return EP_ERRORS.BAD_REQUEST('dispute_id and resolution are required');
     }
@@ -70,7 +78,7 @@ export async function POST(request) {
     // Record in audit trail
     await recordOperatorAction(supabase, {
       operatorId,
-      operatorRole: 'operator',
+      operatorRole: opAuth.role,
       targetType: 'dispute',
       targetId: body.dispute_id,
       action: 'resolve',

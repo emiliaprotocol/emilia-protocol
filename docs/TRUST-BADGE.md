@@ -92,9 +92,8 @@ curl https://www.emiliaprotocol.ai/api/badge/YOUR_ENTITY_ID?format=json
   "capability_on": true,
   "claim": "A verifiable EP-RECEIPT-v1 authorization receipt exists for this entity.",
   "verify": {
-    "capability_source": "https://www.emiliaprotocol.ai/api/trust/profile/YOUR_ENTITY_ID?view=capability",
-    "verify_a_receipt": "https://www.emiliaprotocol.ai/verify",
-    "verify_receipt_api": "https://www.emiliaprotocol.ai/api/verify/{receiptId}"
+    "verifier": "https://www.emiliaprotocol.ai/verify",
+    "receipt_id_required": true
   }
 }
 ```

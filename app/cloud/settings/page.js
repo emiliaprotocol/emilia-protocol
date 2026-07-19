@@ -66,9 +66,9 @@ export default function SettingsPage() {
         await new Promise(r => setTimeout(r, 500));
         setConfig(prev => ({
           ...prev,
-          orgName: 'Acme Corp',
-          contactEmail: 'admin@acme-corp.com',
-          webhookUrl: 'https://hooks.acme-corp.com/ep-alerts',
+          orgName: 'Demo Tenant',
+          contactEmail: 'admin@example.invalid',
+          webhookUrl: 'https://hooks.example.invalid/ep-alerts',
         }));
       } catch (err) {
         setError('Failed to load settings.');
@@ -96,7 +96,7 @@ export default function SettingsPage() {
       <div style={s.container}>
         <div style={s.eyebrow}>Cloud / Settings</div>
         <h1 style={s.h1}>Configuration</h1>
-        <p style={s.subtitle}>Manage your EP Cloud deployment settings and preferences.</p>
+        <p style={s.subtitle}>Manage your EMILIA Gate Cloud deployment settings and preferences.</p>
 
         {error && <div style={s.error}>{error}</div>}
         {saved && <div style={s.success}>Settings saved successfully.</div>}

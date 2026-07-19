@@ -11,7 +11,7 @@
 
 This runbook covers full and partial disaster recovery for the Emilia Protocol infrastructure:
 - Vercel deployment (Next.js app)
-- Supabase database (Postgres 15, project `xmiiwehtivksdjbultym`)
+- Supabase database (Postgres 15, production project ref stored outside public docs)
 - Base L2 anchoring wallet
 
 It does **not** cover user data breach response (see `INCIDENT_RESPONSE.md`).
@@ -33,7 +33,7 @@ It does **not** cover user data breach response (see `INCIDENT_RESPONSE.md`).
 
 Before any DR action, confirm you have access to:
 - [ ] Vercel dashboard (vercel.com/team)
-- [ ] Supabase dashboard (`xmiiwehtivksdjbultym`)
+- [ ] Supabase dashboard (`<project-ref>`)
 - [ ] GitHub repo (emilia-protocol)
 - [ ] Environment variable store (Vercel env settings)
 - [ ] Basescan (basescan.org) to verify anchor transactions
@@ -222,7 +222,7 @@ vercel logs [deployment-url] --since 1h
 ### Manual backup command (schema + data)
 ```bash
 pg_dump \
-  "postgresql://postgres:[SERVICE_ROLE_KEY]@db.xmiiwehtivksdjbultym.supabase.co:5432/postgres" \
+  "postgresql://postgres:[SERVICE_ROLE_KEY]@db.<project-ref>.supabase.co:5432/postgres" \
   --no-owner \
   --no-acl \
   -F c \

@@ -9,7 +9,7 @@ export const metadata = {
     title: 'EU AI Act: deadline deferred to Dec 2, 2027 — obligations unchanged',
     description:
       'Formally verified pre-execution receipts mapping directly to ' +
-      'Articles 9–15 of the EU AI Act. Apache 2.0 open standard.',
+      'Articles 9–15 of the EU AI Act. Apache 2.0 open protocol.',
     url: 'https://www.emiliaprotocol.ai/eu-ai-act',
     type: 'website',
   },

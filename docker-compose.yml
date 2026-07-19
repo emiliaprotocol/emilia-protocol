@@ -12,7 +12,7 @@ services:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
+      - CRON_SECRET=${CRON_SECRET:?set CRON_SECRET to a strong random value; there is no safe default for the cron/anchor auth token}
       - EP_WALLET_PRIVATE_KEY=${EP_WALLET_PRIVATE_KEY:-}
       - BASE_RPC_URL=${BASE_RPC_URL:-https://mainnet.base.org}
     restart: unless-stopped

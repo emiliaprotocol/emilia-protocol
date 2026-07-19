@@ -39,9 +39,10 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 
 The offline verifier grows from receipts/signoffs/quorum to the full EP artifact
 surface — and, critically, every artifact type now verifies identically across
-**three independent implementations (JavaScript, Python, Go)** over a shared
-cross-language conformance suite (8 suites, 58 vectors, all green in CI). This is
-the interoperability bar for a real standard.
+**three cross-language reference verifiers (JavaScript, Python, Go)** over a
+shared conformance suite (8 suites, 58 vectors, all green in CI). This is the
+interoperability bar for a real standard, and a consistency check rather than a
+clean-room independent-implementation claim.
 
 ### Added (all offline, asymmetric, fail-closed)
 - **Multi-party quorum hardening** — `distinct_keys` (no single device key fills

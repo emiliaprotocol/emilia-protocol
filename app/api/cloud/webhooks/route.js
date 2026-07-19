@@ -3,8 +3,11 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { registerEndpoint } from '@/lib/cloud/webhooks';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * GET /api/cloud/webhooks
@@ -28,7 +31,7 @@ export async function GET(request) {
 
     if (error) {
       logger.error('[cloud/webhooks] List error:', error);
-      return epProblem(500, 'webhooks_query_failed', error.message);
+      return epDbError(500, 'webhooks_query_failed', error, 'cloud/webhooks');
     }
 
     return NextResponse.json({
@@ -60,7 +63,9 @@ export async function POST(request) {
     if (!auth) return EP_ERRORS.UNAUTHORIZED();
     requirePermission(auth, 'write');
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const { url, events } = body;
 
     if (!url || typeof url !== 'string') {

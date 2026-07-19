@@ -17,10 +17,14 @@
 
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { getAutoReceiptConfig, setAutoReceiptConfig } from '@/lib/auto-receipt-config';
 import { EP_ERRORS } from '@/lib/errors';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 // ---------------------------------------------------------------------------
 // GET — retrieve current config
@@ -55,7 +59,7 @@ export async function GET(request, { params }) {
     }
 
     // Entity-scoped access: callers may only access their own config
-    if (auth.entity.entity_id !== entityId) {
+    if (authEntityId(auth) !== entityId) {
       return EP_ERRORS.FORBIDDEN('You may only read your own auto-receipt configuration.');
     }
 
@@ -102,7 +106,7 @@ export async function POST(request, { params }) {
 
     // Rate limit — writes
     const ip = getClientIP(request);
-    const rl = await checkRateLimit(ip, 'write');
+    const rl = await checkRateLimit(ip, 'protocol_write');
     if (!rl.allowed) {
       return EP_ERRORS.RATE_LIMITED();
     }
@@ -114,12 +118,14 @@ export async function POST(request, { params }) {
     }
 
     // Entity-scoped access: callers may only update their own config
-    if (auth.entity.entity_id !== entityId) {
+    if (authEntityId(auth) !== entityId) {
       return EP_ERRORS.FORBIDDEN('You may only update your own auto-receipt configuration.');
     }
 
     // Parse body
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const { enabled, redact_fields, privacy_mode } = body;
 
     // Validate required field

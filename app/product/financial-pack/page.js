@@ -75,7 +75,12 @@ export default function FinancialPackPage() {
         <div className="ep-card-accent" style={{ ...styles.card, border: `1px solid ${color.border}` }}>
           <div style={{ ...styles.cardTitle, color: color.green, fontSize: 18, marginBottom: 10 }}>Beneficiary change</div>
           <div style={styles.cardBody}>
-            A payment beneficiary, wire destination, or remittance target is modified within an authorized workflow. EP generates a cryptographic handshake binding the exact new destination, currency, amount, the requesting identity, and the authorizing officer. If the handshake is not satisfied, the change does not execute. For amounts above the dual-authorization threshold, two named principals must independently sign off. The signoff records are immutable and satisfy SOX evidence requirements.
+            A payment beneficiary, wire destination, or remittance target is modified within an
+            authorized workflow. Gate binds the exact new destination, currency, amount, requesting
+            identity, and required approval evidence before the integrated executor commits the
+            change. A policy can require two distinct approvers above a defined threshold. The
+            resulting records support control testing; they do not establish SOX compliance by
+            themselves.
           </div>
           <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
             {[
@@ -83,7 +88,7 @@ export default function FinancialPackPage() {
               'Named officer signoff required before change commits',
               'Dual authorization for amounts above policy threshold',
               'Signoff is one-time consumable and replay-resistant',
-              'SOX-grade evidence chain for every beneficiary change',
+              'Action-level control evidence for every protected beneficiary change',
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 <span style={{ color: color.green, fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>

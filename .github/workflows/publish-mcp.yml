@@ -1,27 +1,43 @@
 name: Publish MCP Server to npm
 
-# Opt every JavaScript-based action into the Node.js 24 runner.
-# GitHub forces this default in June 2026; doing it now eliminates the
-# deprecation-warning noise on every run and surfaces any Node-24 incompat
-# early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
+# npm trusted publisher: @emilia-protocol/mcp-server -> this workflow filename.
 on:
-  push:
-    tags:
-      - 'mcp-v*'  # Trigger on tags like mcp-v1.0.0
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example mcp-v1.0.1
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/mcp-server@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
 
 jobs:
-  publish:
+  approval:
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-      - run: cd mcp-server && npm ci --ignore-scripts
-      - run: cd mcp-server && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: echo "Owner approved registry publication."
+
+  publish:
+    needs: approval
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/_publish-npm-package.yml
+    with:
+      package_dir: mcp-server
+      package_name: '@emilia-protocol/mcp-server'
+      artifact_id: mcp-server
+      local_install: true
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: mcp-v

@@ -1,0 +1,1296 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-authorization-receipts-05"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="EP Authorization Receipts">Authorization Receipts for High-Risk Agent Actions</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="2"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>authorization</keyword>
+    <keyword>receipts</keyword>
+    <keyword>WebAuthn</keyword>
+    <keyword>separation of duties</keyword>
+    <abstract>
+      <t>This document defines the EMILIA Protocol (EP) authorization
+      receipt, a cryptographic primitive that binds a named, accountable
+      human approver to one exact high-risk action before that action
+      executes. An approver holding their own signing key produces a
+      signature over a canonical Authorization Context containing the
+      action hash, policy reference, one-time nonce, and validity window.
+      The resulting Trust Receipt is Merkle-anchored and verifiable fully
+      offline: a relying party can confirm that a specific action was
+      approved by an authorized human, exactly once, without network
+      access to any EP operator, log, or API. The protocol additionally
+      enforces separation of duties (an initiator must not approve its
+      own action) and one-time consumption (an authorization, once
+      consumed or refused, is terminally unusable). These invariants are
+      machine-checked in published TLA+ and Alloy models.</t>
+      <t>EP addresses organizational authorization of agent actions
+      (approver-to-action trust). It is complementary to, not a
+      replacement for, user-to-operator delegation work
+      (draft-nelson-agent-delegation-receipts), service-to-service
+      identity (WIMSE), and authentication-layer approval (CIBA). EP is
+      the human-authorization apex of the agent stack: it composes with,
+      and does not replace, the agent identity, delegation, machine-policy,
+      and transparency-log layers, supplying the named-human authorization
+      evidence those layers reference but do not themselves produce.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section>
+      <name>Introduction</name>
+      <t>Agentic AI systems increasingly hold credentials sufficient to
+      perform irreversible operations: releasing payments, modifying
+      beneficiary records, rotating production credentials, deleting
+      data. Existing controls answer the question "is this actor
+      authenticated and authorized in general?" They do not answer the
+      question that matters at the moment of execution: "should this
+      exact action happen, and which accountable human said yes?"</t>
+      <t>Three structural gaps follow:</t>
+      <ol>
+        <li><strong>The action gap.</strong> Identity and access
+        management authorizes <em>sessions and scopes</em>, not
+        individual actions. Fraud that occurs inside a valid session
+        through approved channels (e.g., business email compromise
+        leading to a beneficiary change) is invisible to session-level
+        controls.</li>
+        <li><strong>The accountability gap.</strong> Where human approval
+        exists, it is typically a click in a workflow tool, recorded in a
+        mutable application database controlled by the operator of the
+        approval system. There is no independent cryptographic evidence
+        binding a specific human to a specific action.</li>
+        <li><strong>The verification gap.</strong> Auditors,
+        counterparties, and regulators must trust the operator's logs --
+        produced by the party whose conduct is under examination. No
+        artifact exists that a third party can verify with mathematics
+        alone.</li>
+      </ol>
+      <t>EP closes these gaps with a small protocol: before an
+      irreversible action executes, a named approver signs the exact
+      action with a key only the approver holds; the signed authorization
+      is consumed exactly once; and the resulting receipt is
+      independently verifiable offline, forever.</t>
+      <t>Why existing mechanisms do not close this gap: each adjacent
+      layer answers a different question, and none produces the artifact
+      above.</t>
+      <ul>
+        <li>OAuth 2.0 with Rich Authorization Requests (RFC 9396) and
+        GNAP (RFC 9635) authorize a client's <em>requested scope</em>;
+        they do not produce a named human's offline-verifiable signature
+        over the exact action that executed.</li>
+        <li>The OAuth Step-Up Authentication Challenge (RFC 9470) can
+        <em>demand</em> fresh human authentication for a sensitive
+        operation, but yields no durable, portable artifact of that
+        approval.</li>
+        <li>Transaction Tokens (draft-ietf-oauth-transaction-tokens)
+        propagate call context across workloads within a trust domain;
+        they are short-lived, online-validated, and assert
+        <em>workload</em> identity, not a human's authorization of an
+        action.</li>
+        <li>The Security Event Token (RFC 8417) and CAEP convey, as
+        issuer assertions, that an event <em>occurred</em>; they are not
+        a human's pre-execution approval bound to one exact action.</li>
+        <li>RATS (RFC 9334) and the Entity Attestation Token (RFC 9711)
+        attest the trustworthiness of a <em>platform or workload</em>,
+        not that a named human authorized an action -- a different trust
+        root.</li>
+        <li>SCITT (RFC 9943) provides an append-only transparency log
+        and inclusion receipts, but is deliberately agnostic about
+        <em>who authorized</em> a statement -- which is precisely the
+        question EP answers.</li>
+        <li>The agent-action evidence work now emerging around that
+        architecture -- per-action receipt envelopes, action capsules,
+        post-execution profiles, pre-execution permits, and refusal
+        events -- makes agent actions transparent, logged, and
+        policy-checked; each of these profiles assumes, and none
+        produces, the named-human authorization evidence itself.</li>
+      </ul>
+      <t>The emerging gap is therefore not lack of agent logs or action
+      evidence. It is lack of a portable human authorization artifact
+      that can be verified independently of the operator, the agent
+      runtime, and the transparency service. EP is that narrow artifact,
+      not a replacement for any of the above: it composes with them
+      (<xref target="related-work"/>) and can be carried in their
+      formats -- for example, an EP receipt expressed as a COSE Signed
+      Statement and logged by a SCITT Transparency Service, or
+      referenced by digest from an action receipt, capsule, or
+      permit.</t>
+      <t>The human-approval mechanism this document specifies -- a
+      user-verification-gated signature over the exact Authorization
+      Context (<xref target="key-classes"/>, Class A) -- is native to EP
+      and self-contained. It does not depend on, and is not a profile of,
+      any other draft's acquiescence, consent, or confirmation mechanism;
+      a conforming EP signoff is produced entirely by the controls defined
+      here. Where EP composes with adjacent work
+      (<xref target="related-work"/>), that composition is by reference,
+      not dependency.</t>
+      <section>
+        <name>Design Goals</name>
+        <ul>
+          <li><strong>G1 -- Action binding.</strong> An approval is
+          cryptographically bound to one exact action. It cannot
+          authorize anything else.</li>
+          <li><strong>G2 -- Approver-held keys.</strong> The approver's
+          signature is produced by a key the EP operator does not
+          possess. The operator orchestrates; it cannot forge.</li>
+          <li><strong>G3 -- One-time consumption.</strong> An
+          authorization is consumed at most once, globally. Replay across
+          sessions, operators, or time is detectable and <bcp14>MUST</bcp14>
+          be rejected.</li>
+          <li><strong>G4 -- Separation of duties.</strong> The initiator
+          of an action <bcp14>MUST NOT</bcp14> be an approver of that
+          action. Policies <bcp14>MAY</bcp14> require m-of-n distinct
+          approvers.</li>
+          <li><strong>G5 -- Offline verifiability.</strong> A receipt is
+          verifiable with no network access, using only the receipt, the
+          approver's public key material, and a published log checkpoint.
+          Offline verification establishes authenticity and log inclusion
+          as of commit time, not current revocation status
+          (<xref target="offline-verification"/>).</li>
+          <li><strong>G6 -- Execution-side enforcement.</strong> The
+          strongest deployment places verification at the system of
+          record: the executing service verifies the receipt before
+          performing the action. Middleware-only deployments are
+          explicitly defined as a weaker conformance class
+          (<xref target="conformance"/>).</li>
+          <li><strong>G7 -- Machine-checked safety.</strong> The protocol
+          state machine's safety properties are maintained as formal
+          models (TLA+, Alloy) and checked in continuous integration.
+          Implementations can be tested against a published conformance
+          suite.</li>
+        </ul>
+      </section>
+      <section anchor="scope-of-identity">
+        <name>Scope of Identity</name>
+        <t>This document binds an approval to an <em>approver
+        identifier</em> whose key is enrolled in the Approver Directory
+        (<xref target="approver-directory"/>); it does not, by itself,
+        prove that the holder of that identifier is a particular natural
+        person. Proof of a specific real-world identity -- that
+        <tt>ep:approver:jchen-controller</tt> is the human Jordan Chen --
+        is out of scope. The Approver Directory trust root
+        (<xref target="approver-directory"/>) is the explicit slot where
+        an identity-proofing or key-discovery layer binds keys to named
+        persons; the strength of any such binding is a property of that
+        layer, not of the receipt format. A receipt proves that a key
+        enrolled under a given approver identifier signed the exact
+        action; the mapping from identifier to person is established and
+        asserted by the directory authority.</t>
+      </section>
+    </section>
+    <section anchor="terminology">
+      <name>Terminology</name>
+      <t>The key words "<bcp14>MUST</bcp14>", "<bcp14>MUST NOT</bcp14>",
+      "<bcp14>REQUIRED</bcp14>", "<bcp14>SHALL</bcp14>",
+      "<bcp14>SHALL NOT</bcp14>", "<bcp14>SHOULD</bcp14>",
+      "<bcp14>SHOULD NOT</bcp14>", "<bcp14>RECOMMENDED</bcp14>",
+      "<bcp14>NOT RECOMMENDED</bcp14>", "<bcp14>MAY</bcp14>", and
+      "<bcp14>OPTIONAL</bcp14>" in this document are to be interpreted as
+      described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/>
+      when, and only when, they appear in all capitals, as shown here.</t>
+      <t><strong>Initiator.</strong> The entity (typically an AI agent or
+      automated process) that proposes a high-risk action. The initiator
+      is identified but never trusted with approval authority over its
+      own actions.</t>
+      <t><strong>Approver.</strong> A named human (or, for lower
+      assurance classes, an organizational role occupied by a named human
+      at decision time) who holds approval authority under policy. The
+      approver controls a private signing key; see
+      <xref target="approver-keys"/>.</t>
+      <t><strong>Action.</strong> A single proposed operation with
+      concrete parameters (e.g., one wire transfer to one beneficiary for
+      one amount). Actions are represented by an Action Object and
+      identified by their action hash (<xref target="action-object"/>).</t>
+      <t><strong>Policy.</strong> A named, versioned rule set
+      determining, for a class of actions, which approvers are required
+      (including m-of-n thresholds), validity windows, and amount or
+      scope limits.</t>
+      <t><strong>Authorization Context.</strong> The canonical structure
+      an approver signs: action hash, policy reference, initiator
+      identity, nonce, expiry, and chain binding
+      (<xref target="authorization-context"/>).</t>
+      <t><strong>Initiator Attestation.</strong> An
+      <bcp14>OPTIONAL</bcp14> claim by the initiator, carried inside the
+      Authorization Context, stating why the initiator escalated the
+      action to a human (<xref target="initiator-attestation"/>). It is a
+      claim, not proof of the initiator's internal state.</t>
+      <t><strong>Trust Receipt.</strong> The terminal artifact: the
+      Action Object digest, all approver signatures, the consumption
+      record, and a Merkle inclusion proof against a signed log
+      checkpoint (<xref target="consumption"/>).</t>
+      <t><strong>Verifying Executor.</strong> A system of record that
+      verifies a Trust Receipt (or a pre-execution Authorization Bundle)
+      before performing the action. See <xref target="conformance"/>.</t>
+      <t><strong>EP Operator.</strong> The party running the
+      orchestration service (policy registry, signoff routing, log).
+      Under this protocol the operator is <em>not</em> in the signing
+      trust path for approvals (G2).</t>
+    </section>
+    <section anchor="action-object">
+      <name>The Action Object and Action Hash</name>
+      <t>An Action Object is a JSON document with at minimum:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "ep_version": "1.0",
+  "action_type": "wire.release",
+  "target": { "system": "treasury.example",
+              "resource": "wire/8841" },
+  "parameters": { "amount": "2400000.00", "currency": "USD",
+                  "beneficiary_account_hash": "sha256:..." },
+  "initiator": "ep:entity:agent-recon-7",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "requested_at": "2026-06-09T17:21:04Z"
+}
+]]></sourcecode>
+      <t>The Action Object <bcp14>MUST</bcp14> be serialized using JSON
+      Canonicalization Scheme (JCS) <xref target="RFC8785"/>. The
+      <strong>action hash</strong> is the SHA-256 digest of the canonical
+      serialization. Implementations <bcp14>MUST</bcp14> reject approval
+      requests whose action hash does not match a locally recomputed hash
+      of the presented Action Object. Sensitive parameter values
+      <bcp14>MAY</bcp14> be carried as salted hashes (as
+      <tt>beneficiary_account_hash</tt> above) provided the executing
+      system can recompute them; the binding property is preserved
+      because the hash commits to the committed values.</t>
+    </section>
+    <section anchor="authorization-context">
+      <name>The Authorization Context</name>
+      <t>For each required approver, the orchestrator constructs an
+      Authorization Context:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z",
+  "prev_receipt_hash": "sha256:51d0..."
+}
+]]></sourcecode>
+      <t>Rules:</t>
+      <ul>
+        <li><tt>nonce</tt> <bcp14>MUST</bcp14> be at least 128 bits of
+        CSPRNG output and <bcp14>MUST</bcp14> be globally unique per
+        authorization attempt. It is the consumption key for G3, and is
+        the receipt's freshness mechanism in the sense of the Entity
+        Attestation Token (RFC 9711): a verifier-relevant nonce, here held
+        to a 128-bit floor (twice the EAT minimum). EP does not treat a
+        timestamp alone as freshness; absolute time, where a relying party
+        requires it, is asserted by an independent authority rather than by
+        the operator.</li>
+        <li><tt>policy_hash</tt> commits to the exact policy version
+        evaluated. A signature over a context with policy_hash X
+        <bcp14>MUST NOT</bcp14> satisfy a requirement evaluated under
+        policy_hash Y, even for the same policy_id.</li>
+        <li><tt>prev_receipt_hash</tt> chains this authorization to the
+        issuing log's most recent receipt, contributing to tamper
+        evidence.</li>
+        <li>The context is JCS-canonicalized; the <strong>context
+        hash</strong> is its SHA-256 digest. The approver signs the
+        context hash.</li>
+        <li>The approver <bcp14>MUST</bcp14> be shown, at signing time, a
+        faithful human-readable rendering of the Action Object -- not only
+        the hash. Signing interfaces that display a different action than
+        the one hashed are a presentation attack; see
+        <xref target="presentation-attacks"/>.</li>
+      </ul>
+      <section anchor="initiator-attestation">
+        <name>Initiator Attestation (OPTIONAL)</name>
+        <t>A producer <bcp14>MAY</bcp14> include an
+        <tt>initiator_attestation</tt> member in any
+        <tt>ep.signoff.v1</tt> Authorization Context. The member carries
+        the initiator's own stated reason for escalating the action to a
+        human. When present it <bcp14>MUST</bcp14> be a JSON object with
+        the following members and no others:</t>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><tt>escalation_trigger</tt></td>
+              <td><bcp14>REQUIRED</bcp14></td>
+              <td>string (enum)</td>
+              <td>Why the initiator escalated. Exactly one of:
+              <tt>irreversibility</tt>, <tt>magnitude</tt>,
+              <tt>uncertainty</tt>, <tt>novelty</tt>,
+              <tt>authority_gap</tt>, <tt>policy_rule</tt>.</td>
+            </tr>
+            <tr>
+              <td><tt>policy_basis</tt></td>
+              <td><bcp14>OPTIONAL</bcp14> (<bcp14>REQUIRED</bcp14>
+              whenever a deterministic policy rule fired, including always
+              when <tt>escalation_trigger</tt> is
+              <tt>policy_rule</tt>)</td>
+              <td>string</td>
+              <td>Identifier of the policy or rule that fired, e.g.
+              <tt>ep:policy:wires-over-100k@v12/rule:dual-auth</tt>.</td>
+            </tr>
+            <tr>
+              <td><tt>statement</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>string</td>
+              <td>Short free-text reason the initiator gives the approver.
+              <bcp14>MUST NOT</bcp14> exceed 280 characters.</td>
+            </tr>
+          </tbody>
+        </table>
+        <t>Enum semantics:</t>
+        <ul>
+          <li><tt>irreversibility</tt> -- the action cannot be undone once
+          executed.</li>
+          <li><tt>magnitude</tt> -- the amount or scope exceeds what the
+          initiator should act on alone.</li>
+          <li><tt>uncertainty</tt> -- the initiator's confidence in its own
+          assessment is too low to proceed unaided.</li>
+          <li><tt>novelty</tt> -- the action or counterparty has no
+          precedent in the initiator's history.</li>
+          <li><tt>authority_gap</tt> -- the action requires authority the
+          initiator was never granted.</li>
+          <li><tt>policy_rule</tt> -- a deterministic policy rule required
+          signoff and none of the five substantive categories above
+          captures why; <tt>policy_basis</tt> names the rule.</li>
+        </ul>
+        <t>Example context (fields as above, with the new member):</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "initiator_attestation": {
+    "escalation_trigger": "magnitude",
+    "policy_basis": "ep:policy:wires-over-100k@v12/rule:dual-auth",
+    "statement": "Exceeds my single-action limit; new beneficiary."
+  },
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z"
+}
+]]></sourcecode>
+        <t>Rules:</t>
+        <ul>
+          <li><strong>Status.</strong> The member is
+          <bcp14>OPTIONAL</bcp14>. Existing issuers remain conformant; the
+          field can be adopted policy-by-policy.</li>
+          <li><strong>Binding.</strong> No new signature, digest, or
+          verification step is introduced. The context is
+          JCS-canonicalized as already required above; JCS serializes
+          every member present, so <tt>initiator_attestation</tt> and
+          everything inside it are part of the signed bytes. The
+          approver's signature therefore covers the stated reason: the
+          receipt proves the stated reason was part of what the approver
+          signed. Receipts carrying this member verify under the existing
+          <xref target="offline-verification"/> verifiers unmodified; a
+          context without the member produces byte-identical canonical
+          material to one produced today.</li>
+          <li><strong>Trigger/basis precedence.</strong>
+          <tt>escalation_trigger</tt> always carries the substantive
+          reason: when one of the first five enum values applies, the
+          producer <bcp14>MUST</bcp14> use it, whether or not a
+          deterministic rule also fired; <tt>policy_rule</tt>
+          <bcp14>MUST</bcp14> be used only when no substantive category
+          fits. Independently of which trigger is chosen, whenever a
+          deterministic policy rule fired, <tt>policy_basis</tt>
+          <bcp14>MUST</bcp14> be populated with that rule's
+          identifier.</li>
+          <li><strong>Cross-context consistency.</strong> When a receipt
+          contains multiple contexts (m-of-n approvals), the
+          <tt>initiator_attestation</tt> object, if present in any
+          context, <bcp14>MUST</bcp14> be present in every context of that
+          receipt, and its canonical form --
+          <tt>canonicalize(initiator_attestation)</tt> -- <bcp14>MUST</bcp14>
+          be identical across all of them. Every approver signs the same
+          stated reason.</li>
+          <li>Producers <bcp14>MUST NOT</bcp14> add members beyond the
+          three defined above in v1.</li>
+          <li>A signing client implementing this member
+          <bcp14>MUST</bcp14> render the attestation to the approver
+          alongside the faithful human-readable rendering of the Action
+          Object that this section already requires, subject to the
+          untrusted-content display rules in
+          <xref target="initiator-attestation-security"/>.</li>
+          <li>A signing client presented with a context whose
+          <tt>statement</tt> exceeds 280 characters <bcp14>MUST</bcp14>
+          refuse to render it for signing.</li>
+        </ul>
+        <t>The attestation is a claim by the initiator, which this
+        document identifies but never trusts
+        (<xref target="terminology"/>): it is the initiator's stated
+        reason, not a verified fact, and it is not evidence of the
+        initiator's internal state. Verifiers implementing this member
+        <bcp14>MUST</bcp14> check the cross-context consistency rule above
+        and <bcp14>SHOULD</bcp14> surface the attestation and flag other
+        violations of this section in verification reports; none of these
+        checks affects signature validity, by design, so receipts verify
+        on verifiers that predate this member.</t>
+      </section>
+      <section anchor="agent-binding">
+        <name>Agent Binding (OPTIONAL)</name>
+        <t>A producer <bcp14>MAY</bcp14> include an <tt>agent_binding</tt>
+        member in any <tt>ep.signoff.v1</tt> Authorization Context. The
+        member attributes the authorized action to an external <strong>agent
+        identity</strong> and, optionally, the external
+        <strong>delegation</strong> under which that agent was authorized to
+        act. When present it <bcp14>MUST</bcp14> be a JSON object with the
+        following members and no others:</t>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><tt>agent_id</tt></td>
+              <td><bcp14>REQUIRED</bcp14></td>
+              <td>string</td>
+              <td>Non-empty external agent-identity reference (URI, DID, or
+              opaque id). This document does not constrain its scheme.</td>
+            </tr>
+            <tr>
+              <td><tt>delegation</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>object</td>
+              <td>The external delegation that authorized the agent; members
+              below, no others.</td>
+            </tr>
+            <tr>
+              <td><tt>statement</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>string</td>
+              <td>Short free-text note for the approver. <bcp14>MUST NOT</bcp14>
+              exceed 280 characters.</td>
+            </tr>
+          </tbody>
+        </table>
+        <t>When <tt>delegation</tt> is present it <bcp14>MUST</bcp14> be a
+        JSON object with the following members and no others:</t>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><tt>scheme</tt></td>
+              <td><bcp14>REQUIRED</bcp14></td>
+              <td>string</td>
+              <td>Non-empty name of the external delegation standard, e.g.
+              <tt>"WIMSE"</tt>, <tt>"DRP"</tt>.</td>
+            </tr>
+            <tr>
+              <td><tt>ref</tt></td>
+              <td><bcp14>REQUIRED</bcp14></td>
+              <td>string</td>
+              <td>Non-empty external receipt/credential identifier.</td>
+            </tr>
+            <tr>
+              <td><tt>hash</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>string</td>
+              <td>Content hash of the referenced artifact, formatted
+              <tt>"sha256:&lt;64-lowercase-hex&gt;"</tt>.</td>
+            </tr>
+            <tr>
+              <td><tt>observed_at</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>string</td>
+              <td>RFC 3339 timestamp recording when the external delegation
+              evidence was observed or known valid. See L4 evidence freshness
+              below.</td>
+            </tr>
+          </tbody>
+        </table>
+        <t>Example context (fields as above, with the new member):</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "agent_binding": {
+    "agent_id": "did:web:agents.example.com:recon-7",
+    "delegation": {
+      "scheme": "WIMSE",
+      "ref": "urn:wimse:cred:9c41ab",
+      "hash": "sha256:2f9a...",
+      "observed_at": "2026-06-09T17:20:48Z"
+    },
+    "statement": "Acting for treasury-ops under wire delegation."
+  },
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z"
+}
+]]></sourcecode>
+        <t>Rules:</t>
+        <ul>
+          <li><strong>Status.</strong> The member is <bcp14>OPTIONAL</bcp14>.
+          Existing issuers remain conformant; the field can be adopted
+          policy-by-policy.</li>
+          <li><strong>Claim, not proof.</strong> <tt>agent_binding</tt>
+          records that the action was <em>presented</em> as being taken by
+          <tt>agent_id</tt> under delegation <tt>ref</tt>. This document
+          identifies but never trusts the binding
+          (<xref target="terminology"/>): it is neither proof of the agent's
+          identity nor proof of the delegation's validity, both of which
+          remain the responsibility of the referenced external system. A
+          verifier <bcp14>MUST NOT</bcp14> treat <tt>agent_binding</tt> as
+          proof of either; it <bcp14>MAY</bcp14> surface <tt>agent_id</tt> and
+          <tt>delegation</tt> to the relying party as part of the verified
+          context, clearly labeled as a reference to an external system.</li>
+          <li><strong>Binding.</strong> No new signature, digest, or
+          verification step is introduced. The context is JCS-canonicalized as
+          already required above; JCS serializes every member present, so
+          <tt>agent_binding</tt> and everything inside it are part of the
+          signed bytes. The approver's signature therefore covers the binding.
+          Receipts carrying this member verify under the existing
+          <xref target="offline-verification"/> verifiers unmodified; a context
+          without it produces byte-identical canonical material to one produced
+          today.</li>
+          <li><strong>Cross-context consistency.</strong> When a receipt
+          contains multiple contexts (m-of-n approvals), the
+          <tt>agent_binding</tt> object, if present in any context,
+          <bcp14>MUST</bcp14> be present in every context of that receipt, and
+          its canonical form -- <tt>canonicalize(agent_binding)</tt> --
+          <bcp14>MUST</bcp14> be identical across all of them. Every approver
+          signs the same attribution.</li>
+          <li>Producers <bcp14>MUST NOT</bcp14> add members beyond those
+          defined above in v1, in either <tt>agent_binding</tt> or its
+          <tt>delegation</tt>.</li>
+          <li>A signing client implementing this member <bcp14>SHOULD</bcp14>
+          render <tt>agent_id</tt> (and <tt>delegation</tt> if present) to the
+          approver alongside the faithful human-readable rendering of the
+          Action Object that this section already requires, subject to the
+          untrusted-content display rules in
+          <xref target="initiator-attestation-security"/>. A signing client
+          presented with a context whose <tt>statement</tt> exceeds 280
+          characters <bcp14>MUST</bcp14> refuse to render it for signing.</li>
+        </ul>
+        <t><strong>L4 evidence freshness (OPTIONAL).</strong> A human
+        authorization decision is only as trustworthy as the upstream
+        agent-identity and delegation evidence it relied on. If a decision is
+        enforced correctly against a delegation claim that was never
+        constrained or has since expired, the failure surfaces at the
+        authorization layer but originates in the identity/delegation layer
+        beneath it. This document makes that dependency explicit and recordable
+        without absorbing the identity layer:</t>
+        <ul>
+          <li>A producer <bcp14>MAY</bcp14> populate
+          <tt>delegation.observed_at</tt> with the RFC 3339 time at which the
+          external delegation evidence was observed or known valid. Like the
+          rest of the binding, it is covered by the approver's signature.</li>
+          <li>A relying party <bcp14>MAY</bcp14> enforce freshness against
+          <tt>observed_at</tt>. When it does, the evaluation
+          <bcp14>MUST</bcp14> fail closed: a missing <tt>observed_at</tt>, a
+          timestamp later than the evaluation time, or an age exceeding the
+          relying party's configured maximum <bcp14>MUST</bcp14> be treated as
+          not-fresh. When no maximum age is configured, freshness is not
+          evaluated and the evidence is still surfaced for the audit
+          record.</li>
+        </ul>
+        <t>This keeps the receipt agnostic to which external
+        identity/delegation scheme prevails: the relying party binds to and
+        records whatever evidence was presented rather than requiring that
+        layer to converge, and a stale or unconstrained upstream claim becomes
+        detectable after the fact rather than silently absorbed. As with the
+        Initiator Attestation, none of these checks affects signature validity,
+        by design, so receipts verify on verifiers that predate this
+        member.</t>
+      </section>
+    </section>
+    <section anchor="approver-keys">
+      <name>Approver Keys and the Signoff Signature</name>
+      <t>This section is the core upgrade over server-side approval
+      systems.</t>
+      <section anchor="key-classes">
+        <name>Key Classes</name>
+        <t>Key classes classify KEY CUSTODY -- who holds and exercises
+        the approver's signing key -- and nothing else. They are
+        distinct from, and unrelated to, any assurance-level or
+        conformance-class vocabulary used elsewhere; a companion
+        document on assurance classification uses different
+        identifiers precisely to avoid collision with these.</t>
+        <t><strong>Class A -- Device-bound keys
+        (<bcp14>RECOMMENDED</bcp14>).</strong> The approver's key is
+        generated and held in a platform authenticator or security key
+        and exercised via WebAuthn <xref target="WEBAUTHN"/>. The
+        signature algorithm is ES256 (P-256) or Ed25519 where supported.
+        The WebAuthn challenge <bcp14>MUST</bcp14> be the context hash.
+        The authenticator's user-verification flag (biometric or PIN)
+        <bcp14>MUST</bcp14> be required for signoff credentials. This
+        user-verification-gated signature is the native EP human-approval
+        act; it is fully defined by this section and does not rely on any
+        external acquiescence or confirmation mechanism. Attestation
+        <bcp14>SHOULD</bcp14> be captured at enrollment so relying parties
+        can establish that the key is hardware-bound.</t>
+        <t><strong>Class B -- Software keys.</strong> An Ed25519 keypair
+        held in the approver's client environment (CLI keychain, mobile
+        secure enclave via app). Acceptable where WebAuthn is impractical
+        (headless approval terminals), with the reduced assurance noted
+        in receipts.</t>
+        <t><strong>Class C -- Operator-custodied keys (LEGACY).</strong>
+        The EP operator signs on the approver's behalf after
+        authenticating them. This class exists only to describe
+        pre-existing deployments. Receipts produced under Class C
+        <bcp14>MUST</bcp14> be labeled <tt>key_class: "C"</tt> and
+        relying parties <bcp14>SHOULD</bcp14> treat them as evidence of
+        operator assertion, not approver signature. New deployments
+        <bcp14>SHOULD NOT</bcp14> use Class C.</t>
+      </section>
+      <section anchor="approver-directory">
+        <name>Enrollment and the Approver Directory</name>
+        <t>Approver public keys are enrolled into a signed Approver
+        Directory maintained per organization: a Merkle tree over
+        <tt>(approver_id, public_key, key_class, valid_from, valid_to,
+        roles)</tt> entries, with signed tree heads published alongside
+        receipt log checkpoints. A receipt's offline verifiability (G5)
+        includes an inclusion proof of the approver's key entry, so a
+        verifier needs no live directory access. Key rotation appends a
+        new entry and terminates the old one; signatures verify against
+        the key entry valid at <tt>issued_at</tt>.</t>
+        <t>Directory authority is a trust root and <bcp14>MUST
+        NOT</bcp14> default to the EP operator. The directory tree head
+        <bcp14>MUST</bcp14> be signed by an organization-controlled
+        directory key (custody options parallel
+        <xref target="key-classes"/>; an organization-held hardware key
+        is <bcp14>RECOMMENDED</bcp14>). Where directory
+        <em>operation</em> is delegated to the EP operator, every
+        enrollment entry <bcp14>MUST</bcp14> carry a second-party
+        attestation -- a signature over the new entry by an organization
+        administrator key or by a quorum of already-enrolled approvers --
+        and that attestation <bcp14>MUST</bcp14> be included in the
+        receipt's <tt>approver_key_proofs</tt>. Verifiers
+        <bcp14>MUST</bcp14> treat a directory head signed only by an
+        operator-held key as operator assertion (Class C-equivalent
+        assurance), regardless of the key class of the individual
+        signoffs. Rationale: an operator that unilaterally controls
+        directory membership cannot forge an enrolled approver's
+        signature, but it can enroll a key it controls under a legitimate
+        approver's name -- relocating the forgery rather than preventing
+        it. See <xref target="directory-authority"/>.</t>
+        <t>This directory is also the binding point between approver
+        identifiers and real-world persons
+        (<xref target="scope-of-identity"/>). The strength of that binding
+        -- how an organization proves that an enrolled identifier is the
+        person it names, and how key-discovery layers attach to it -- is a
+        property of the directory authority and any identity layer bound
+        to it, not of the receipt format defined here.</t>
+      </section>
+      <section>
+        <name>The Signoff</name>
+        <t>A signoff is:</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "context_hash": "sha256:c41e...",
+  "signature": "b64u:MEUCIQ...",
+  "key_class": "A",
+  "approver_key_id": "ep:key:jchen-controller#2026-01",
+  "signed_at": "2026-06-09T17:24:40Z",
+  "webauthn": { "authenticator_data": "b64u:...",
+                "client_data_json": "b64u:..." }
+}
+]]></sourcecode>
+        <t>For Class A, verifiers <bcp14>MUST</bcp14> validate the
+        WebAuthn assertion per <xref target="WEBAUTHN"/> including that
+        <tt>clientDataJSON.challenge</tt> equals the context hash and
+        that the user-verification bit is set. A denial is also signed
+        (over the context hash with a <tt>decision: "denied"</tt>
+        envelope) so that refusals are equally non-repudiable and equally
+        terminal.</t>
+      </section>
+    </section>
+    <section anchor="consumption">
+      <name>Consumption, Commitment, and the Trust Receipt</name>
+      <section>
+        <name>State Machine</name>
+        <t>An authorization attempt proceeds:</t>
+        <artwork><![CDATA[
+REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
+          \-> DENIED                          \-> EXPIRED
+          \-> EXPIRED
+]]></artwork>
+        <t>COMMITTED, DENIED, and EXPIRED are terminal. The protocol
+        invariants -- maintained as machine-checked models and
+        <bcp14>REQUIRED</bcp14> of conforming implementations -- are:</t>
+        <ul>
+          <li><strong>ConsumeOnce.</strong> A nonce transitions to a
+          terminal state at most once, globally. Any second presentation
+          <bcp14>MUST</bcp14> be rejected with a replay error.</li>
+          <li><strong>BindingMatch.</strong> A signoff satisfies only the
+          context (and therefore only the action hash) it signs.</li>
+          <li><strong>TerminalIrreversibility.</strong> No transition
+          exits a terminal state.</li>
+          <li><strong>SelfApprovalImpossible.</strong> For every signoff,
+          <tt>approver != initiator</tt>; for m-of-n policies, approvers
+          are pairwise distinct and each distinct from the
+          initiator.</li>
+          <li><strong>NoBypassWrite.</strong> A COMMITTED state is
+          reachable only through the full sequence; conforming verifying
+          executors <bcp14>MUST NOT</bcp14> execute without verifying it
+          (<xref target="conformance"/>).</li>
+        </ul>
+      </section>
+      <section>
+        <name>The Trust Receipt</name>
+        <t>Upon commitment the orchestrator assembles and logs the Trust
+        Receipt:</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "receipt_id": "ep:receipt:01J...",
+  "action": { "...": "full Action Object" },
+  "action_hash": "sha256:9f2c...",
+  "contexts": [ { "...": "Authorization Context 1" } ],
+  "signoffs": [ { "...": "Signoff 1" },
+                { "...": "Signoff 2" } ],
+  "consumption": { "nonce": "b64u:R9w1...",
+                   "state": "COMMITTED",
+                   "committed_at": "2026-06-09T17:25:02Z" },
+  "log_proof": { "leaf_index": 88412,
+                 "inclusion_path": ["sha256:...", "..."],
+                 "checkpoint": { "tree_size": 90210,
+                                 "root_hash": "sha256:...",
+                                 "log_signature": "b64u:...",
+                                 "log_key_id": "ep:log:acme#1" } },
+  "approver_key_proofs": [ { "directory_inclusion": "..." } ]
+}
+]]></sourcecode>
+      </section>
+      <section anchor="offline-verification">
+        <name>Offline Verification Algorithm</name>
+        <t>A verifier with (receipt, trusted log public key, trusted
+        directory root or pinned approver keys) and <strong>no network
+        access</strong> <bcp14>MUST</bcp14> be able to establish all of
+        the following; the published verifier package performs exactly
+        these steps:</t>
+        <ol>
+          <li>Recompute the action hash from the canonical Action Object;
+          compare.</li>
+          <li>For each context: recompute the context hash; confirm it
+          commits to the action hash, the policy hash, and a distinct
+          approver.</li>
+          <li>For each signoff: verify the signature (and WebAuthn
+          assertion where present) over the context hash against the
+          approver key entry, checking the key's validity window contains
+          <tt>issued_at</tt>.</li>
+          <li>Confirm SoD: initiator appears in no approver slot;
+          approvers are pairwise distinct; the approval count satisfies
+          <tt>required_approvals</tt>.</li>
+          <li>Verify the Merkle inclusion proof of the receipt leaf
+          against the checkpoint root, and the checkpoint signature
+          against the log key.</li>
+          <li>Confirm <tt>signed_at</tt> and <tt>committed_at</tt> fall
+          within <tt>[issued_at, expires_at]</tt>.</li>
+        </ol>
+        <t>Step 5 is what distinguishes EP receipts from log-access
+        designs: the checkpoint travels <em>inside</em> the receipt, so
+        verification requires no query to the log. Detecting log
+        equivocation (split-view attacks) additionally benefits from
+        gossip or witness cosigning (<xref target="log-equivocation"/>),
+        which is an online activity; the offline guarantee is that
+        <em>this receipt is internally consistent, correctly signed by
+        enrolled approver keys, and was included in a log tree whose head
+        the log operator signed</em>.</t>
+        <t>Offline verification establishes authenticity, not currency.
+        Two properties are explicitly NOT established offline: (a)
+        post-issuance revocation -- a receipt whose approver key was
+        revoked an hour after commitment still verifies; the artifact is
+        evidence of validity <em>at commit time</em>; and (b) log honesty
+        against split views (<xref target="log-equivocation"/>). A
+        relying party with freshness or revocation requirements
+        <bcp14>MUST</bcp14> additionally consult a current directory head
+        and log checkpoint online. Implementations <bcp14>MUST
+        NOT</bcp14> describe offline verification as establishing that a
+        receipt is "currently valid."</t>
+        <t>The Initiator Attestation
+        (<xref target="initiator-attestation"/>), where present, is
+        covered by the context hash recomputed in step 2 above; no
+        additional verification step is required for it.</t>
+      </section>
+    </section>
+    <section>
+      <name>Multi-Approver Policies (m-of-n)</name>
+      <t>A policy <bcp14>MAY</bcp14> require k distinct approvers from a
+      role set. Each approver receives and signs an individual
+      Authorization Context sharing the same <tt>action_hash</tt> and
+      <tt>nonce</tt> family but a distinct <tt>approver_index</tt>.
+      Commitment occurs only when k valid, distinct signoffs exist before
+      <tt>expires_at</tt>. Partial approval confers no authority: a
+      verifying executor presented with fewer than k signoffs
+      <bcp14>MUST</bcp14> refuse.</t>
+    </section>
+    <section>
+      <name>Delegation Constraints</name>
+      <t>Where an approver's authority is itself delegated, the
+      delegation record <bcp14>MUST</bcp14> be presented in the receipt's
+      <tt>approver_key_proofs</tt>, and the constraint
+      <strong>DelegateCannotExceedPrincipal</strong> applies: the
+      effective scope of a delegate is the intersection of the delegation
+      grant and the principal's authority at signing time. Delegation
+      chains are bounded (<bcp14>RECOMMENDED</bcp14> depth of at most 2)
+      and every link is independently signed.</t>
+    </section>
+    <section anchor="conformance">
+      <name>Conformance Classes and Execution-Side Enforcement</name>
+      <t>Honesty about deployment topology is a protocol feature. Three
+      classes:</t>
+      <t><strong>EP-Verified Execution (STRONG).</strong> The system of
+      record (payment switch, registry, deployment controller) verifies
+      the Authorization Bundle (receipt-less pre-execution form: action
+      object, contexts, signoffs, consumption attestation) before
+      executing, and refuses otherwise. The gate cannot be bypassed by
+      any party that does not control the system of record itself.</t>
+      <t><strong>EP-Gated Middleware (STANDARD).</strong> An interception
+      layer between the agent and the executing credential enforces the
+      gate. Provides strong protection against agent error and prompt
+      injection; an operator with code control can bypass. Receipts
+      remain valid evidence of what <em>was</em> approved.</t>
+      <t><strong>EP-Evidence Only (BASIC).</strong> Actions execute
+      independently; receipts are produced for audit. No enforcement
+      claim is made.</t>
+      <t>Implementations <bcp14>MUST</bcp14> declare their class in
+      receipts (<tt>enforcement_class</tt>), and marketing or compliance
+      claims <bcp14>MUST NOT</bcp14> state a stronger class than
+      deployed. This section exists because the difference between "we
+      proved the protocol" and "your deployment is unbypassable" is the
+      most common overclaim in this category.</t>
+    </section>
+    <section anchor="related-work">
+      <name>Relationship to Other Work</name>
+      <t><strong>DRP</strong>
+      (<xref target="I-D.nelson-agent-delegation-receipts"/>) binds a
+      <em>user's</em> delegation to an <em>operator's</em> instructions --
+      upstream consumer delegation. EP binds an <em>organizational
+      approver</em> to an <em>exact action</em> -- downstream
+      authorization with SoD and m-of-n, which DRP does not formalize,
+      and with offline verification, which DRP's log-access model does
+      not provide. The two compose: a DRP delegation can be referenced in
+      an EP Action Object's provenance field.</t>
+      <t><strong>CIBA</strong> (<xref target="CIBA"/>) transports an
+      authentication-time approval to a backchannel device; it does not
+      produce an action-bound, offline-verifiable, one-time-consumable
+      artifact. CIBA <bcp14>MAY</bcp14> serve as the transport by which
+      an approver is reached; the EP signoff is what they produce when
+      they get there.</t>
+      <t><strong>WIMSE / workload identity</strong> authenticates the
+      agent to services; EP authorizes the action. Complementary
+      layers.</t>
+      <t><strong>Receiver-attested logging (e.g., Sello)</strong> has the
+      receiving service sign what it observed, post-hoc. EP is
+      pre-execution authorization. A complete deployment benefits from
+      both: EP proves the action was authorized; receiver attestation
+      proves what then actually occurred.</t>
+      <t><strong>AgentROA (draft-nivalto-agentroa-route-authorization),
+      AIIP, and CIRP</strong> define machine-side, per-hop execution and
+      route receipts for agent actions under delegated authority; none
+      binds a named, accountable <em>human</em> to the action. EP supplies
+      that human-authority root, and its delegation chain shares AgentROA's
+      monotonic ("tighten-only") scope-narrowing discipline.</t>
+      <t><strong>The Entity Attestation Token (RFC 9711, RATS)</strong>
+      attests the <em>agent or platform</em> -- model, keys, posture; EP
+      attests the <em>human authorization</em>. The two are orthogonal and
+      composable: an EAT says the machine is what it claims; an EP receipt
+      says a named person approved the exact action.</t>
+      <t><strong>Transaction Tokens
+      (draft-ietf-oauth-transaction-tokens)</strong> propagate workload and
+      agent authorization context across a machine call chain; EP is the
+      human-authority root from which such a chain descends.</t>
+      <t><strong>Evidence Record Syntax (RFC 4998)</strong> preserves
+      signed evidence across algorithm aging by periodic re-timestamping.
+      EP applies the same approach to long-lived receipts via an
+      evidence-record renewal chain, so a receipt verifiable today remains
+      verifiable after its original algorithms weaken -- a property the
+      10-25+ year retention schedules of government records require.</t>
+    </section>
+    <section>
+      <name>Security Considerations</name>
+      <section>
+        <name>Operator Compromise</name>
+        <t>Under key classes A/B, a compromised EP operator can deny
+        service and can fail to route signoff requests, and it cannot
+        <em>forge a signature</em>: it lacks approver keys, and it cannot
+        replay one (nonces are single-consumption and receipts chain).
+        Two operator-compromise paths remain and are stated plainly
+        rather than claimed away. First, an operator that controls the
+        signing client's rendering can harvest a <em>genuine</em>
+        signature over an action the approver misunderstood -- a
+        presentation attack (<xref target="presentation-attacks"/>); for
+        this reason an independently-authored rendering surface is
+        <bcp14>REQUIRED</bcp14> for high-value policies. Second, an operator
+        that unilaterally controls the Approver Directory can enroll keys
+        it controls (<xref target="approver-directory"/>,
+        <xref target="directory-authority"/>). Accordingly, the accurate
+        claim for classes A/B is: "the operator cannot forge an
+        approver's signature." The stronger claim -- "the operator cannot
+        obtain an unauthorized approval" -- additionally requires the
+        directory-authority and independent-rendering controls. Under
+        class C the operator can fabricate outright; hence the labeling
+        requirement.</t>
+      </section>
+      <section>
+        <name>Approver Device Compromise</name>
+        <t>A stolen authenticator with user verification still requires
+        the biometric/PIN. Organizations <bcp14>SHOULD</bcp14> require
+        key class A for high-value policies and <bcp14>SHOULD</bcp14>
+        pair approval with out-of-band action rendering (the approver
+        sees the wire details on a second surface).</t>
+      </section>
+      <section anchor="presentation-attacks">
+        <name>Presentation Attacks</name>
+        <t>The gravest risk in this protocol, stated without
+        minimization: the approver signs context hash H believing it
+        represents action X when it represents action Y. A signature
+        proves user presence and an act of approval toward <em>whatever
+        was rendered</em>; cryptography cannot prove the rendering was
+        faithful. Required mitigations, in increasing strength: (1) the
+        signing client <bcp14>MUST</bcp14> render the Action Object from
+        the exact bytes that were hashed -- never from a separately
+        supplied description; (2) for high-value policies, render
+        templates <bcp14>MUST</bcp14> be registered with the policy and
+        committed by <tt>policy_hash</tt>, so the display logic is part
+        of what the approver's signature covers; (3) for policies above
+        an organization-designated threshold, the material action
+        parameters (amount, beneficiary identifiers) <bcp14>MUST</bcp14>
+        additionally be rendered on a second surface not authored by the
+        orchestrating operator -- for example, delivered by the verifying
+        executor or an independent operator to the approver's enrolled
+        device over a separate channel. The residual risk is stated
+        honestly: absent a trusted display path (hardware the operator
+        does not author), rendering fidelity is enforced by controls
+        (2)-(3), by audit, and by consented mismatch drills
+        (<xref target="approver-fatigue"/>) -- not by mathematics. What
+        the cryptography does guarantee is exactness of evidence: the
+        receipt contains the full Action Object actually signed, so any
+        divergence between what was displayed and what was executed is
+        detectable after the fact with proof rather than testimony.</t>
+      </section>
+      <section anchor="log-equivocation">
+        <name>Log Equivocation</name>
+        <t>A malicious log could show different trees to different
+        parties. Checkpoints <bcp14>SHOULD</bcp14> be witness-cosigned
+        and/or gossiped between independent EP operators; the federation
+        profile makes cross-operator checkpoint exchange mandatory.</t>
+      </section>
+      <section>
+        <name>What the Formal Models Do and Do Not Prove</name>
+        <t>The TLA+/Alloy models prove safety of the authorization state
+        machine: no replay, no self-approval, no bypass <em>within the
+        modeled system</em>, no partial commitment. They prove nothing
+        about any AI model's behavior, about host compromise, or about
+        deployments in a weaker conformance class. Implementations
+        <bcp14>MUST NOT</bcp14> represent the proofs as covering
+        deployment topologies they do not model. For the same honesty:
+        three normative mechanisms in this document are specified ahead
+        of the reference implementation and are not yet exercised by it
+        or by conformance vectors -- the operator-signed-directory
+        assurance downgrade (Section 5.2), delegation records in
+        approver_key_proofs and the DelegateCannotExceedPrincipal check
+        (Section 8), and enforcement_class emission (Section 9).
+        Implementers MUST treat the text as normative and the reference
+        implementation as incomplete on these three points, not the
+        reverse. The m-of-n quorum flow IS
+        now modeled: a checked Alloy model (formal/ep_quorum.als in the
+        repository) proves SelfApprovalImpossible, NoHumanFillsTwoSlots,
+        NoKeyFillsTwoSlots, TwoPersonRuleHolds, and ordered-chain
+        acyclicity/linearity against the quorum verifier and its
+        conformance vectors. The models additionally
+        do not yet cover the WebAuthn challenge binding, the Approver
+        Directory, log checkpoints, or the Initiator
+        Attestation (<xref target="initiator-attestation"/>); those sections
+        are specified, not proven, and extending the models to them is
+        tracked work.</t>
+        <t>Independent implementation status, stated precisely: the
+        three reference verifiers (JavaScript, Python, Go) agree on the
+        published conformance vectors but live in one repository -- a
+        cross-language consistency check, not independent
+        implementations. A second, independent implementation is now in
+        progress: COSA announced (2 July 2026) a clean-room
+        reimplementation of the receipt and quorum verification path
+        directly from this specification, to be validated against the
+        published conformance vectors in COSA's own repository. At this
+        document's date that work is announced and underway, not
+        complete; this section will state the result, either way, when
+        it lands. Separately, a third party has independently executed
+        and verified the published artifacts against a pinned
+        commit.</t>
+      </section>
+      <section anchor="directory-authority">
+        <name>Directory Authority</name>
+        <t><xref target="approver-keys"/> removes the operator from the
+        signature path; <xref target="approver-directory"/> must not
+        readmit it as the authority that decides which keys count. If the
+        EP operator alone signs the Approver Directory, a malicious
+        operator can satisfy policy by enrolling a key it controls under
+        a nominally legitimate approver's name. The controls in
+        <xref target="approver-directory"/> (organization-held directory
+        key; second-party attestation on enrollment; Class C-equivalent
+        treatment otherwise) exist for this reason. Auditors
+        <bcp14>SHOULD</bcp14> verify directory key custody as part of any
+        assessment that relies on receipts.</t>
+      </section>
+      <section>
+        <name>What Separation of Duties Does and Does Not Provide</name>
+        <t>SelfApprovalImpossible (<xref target="consumption"/>) defeats
+        <em>unilateral</em> self-approval: no initiator can approve its
+        own action, and m-of-n approvers are pairwise distinct
+        identities. It does not defeat collusion among distinct enrolled
+        humans, one human who controls multiple enrolled identities (an
+        enrollment control -- <xref target="approver-directory"/>), or a
+        coerced approver. Receipts make such events <em>attributable</em>
+        -- named, signed, and evidenced -- which raises the cost of insider
+        fraud; they do not make it impossible, and implementations
+        <bcp14>MUST NOT</bcp14> claim otherwise.</t>
+      </section>
+      <section anchor="approver-fatigue">
+        <name>Approver Fatigue</name>
+        <t>A gate that humans route around protects nothing;
+        rubber-stamping is the empirical failure mode of every
+        human-in-the-loop control under volume. This protocol is
+        therefore not a general approval workflow: deployments
+        <bcp14>MUST</bcp14> scope signoff policies to genuinely
+        high-risk, low-frequency actions and <bcp14>SHOULD</bcp14> handle
+        volume with policy (thresholds, allow-lists, velocity rules)
+        rather than human throughput. Operational countermeasures
+        <bcp14>SHOULD</bcp14> include monitoring time-to-sign
+        distributions (signing latencies near the floor indicate approval
+        without review), tracking deny rates (a gate that never denies is
+        either perfectly upstream-filtered or ceremonial), and consented
+        render-mismatch drills that measure whether approvers read what
+        they sign. Such telemetry is deployment guidance, not protocol;
+        but the protocol's guarantees are only as strong as the attention
+        of the human at its center, and implementations
+        <bcp14>SHOULD</bcp14> say so to their customers.</t>
+      </section>
+      <section anchor="initiator-attestation-security">
+        <name>Initiator Attestation as an Attack Surface</name>
+        <t>The <tt>statement</tt> member of an Initiator Attestation
+        (<xref target="initiator-attestation"/>) is
+        attacker-influenceable free text rendered to a human at the moment
+        of decision -- a social-engineering surface aimed at the approver,
+        adjacent to the presentation attacks of
+        <xref target="presentation-attacks"/>. A compromised or
+        prompt-injected initiator can state any trigger and any reason;
+        injection can change what the initiator <em>proposes</em>,
+        including this field, but it cannot change what a human
+        <em>approves</em> on their own hardware, because the device-bound
+        signature (<xref target="key-classes"/>) is outside the model
+        context. Conforming signing clients <bcp14>MUST</bcp14> therefore
+        render the <tt>statement</tt> as untrusted content: plain text
+        only, with no markup, links, or control characters rendered; the
+        280-character cap enforced; and visually distinct styling that
+        labels it as the initiator's unverified claim, clearly separated
+        from the operator-rendered Action Object. This is consistent with
+        the rendering-faithfulness discipline of
+        <xref target="presentation-attacks"/>: the approver's decision
+        input is the rendered Action Object; the statement is commentary
+        from a party the protocol never trusts. A related residual vector
+        is divide-and-misinform: because each approver signs their own
+        context, a malicious orchestrator can show different approvers of
+        an m-of-n receipt different attestations, and every individual
+        signature remains valid. The cross-context consistency rule
+        (<xref target="initiator-attestation"/>) exists for this;
+        verifiers implementing the member <bcp14>MUST</bcp14> flag
+        violations, but on verifiers that predate the member such a
+        receipt still verifies -- the rule is a conformance check, not a
+        signature property.</t>
+        <t>Privacy: statements written by an agent mid-task can leak
+        sensitive operational context -- counterparty details, internal
+        findings, fragments of prompts -- into receipts that are long-lived
+        and portable by design. Deployments <bcp14>SHOULD</bcp14> prefer
+        <tt>escalation_trigger</tt> plus <tt>policy_basis</tt> identifiers
+        over free text wherever a rule id captures the reason,
+        <bcp14>SHOULD</bcp14> constrain or template <tt>statement</tt>
+        generation for regulated data, and <bcp14>MUST</bcp14> apply the
+        same retention and disclosure controls to attestation content as
+        to the rest of the receipt.</t>
+        <t>Absence is not evidence: a receipt without an attestation means
+        only that the issuer did not populate it -- not that the initiator
+        judged the action routine, and not that no escalation reasoning
+        occurred. Verifiers and auditors <bcp14>MUST NOT</bcp14> infer
+        anything from the absence of an attestation alone. (Separately,
+        and unchanged: for an action a policy gates on signoff, the
+        absence of any valid receipt at all remains evidence that the
+        control was bypassed -- that property comes from the gate, not from
+        this member.)</t>
+        <t>No trust feedback: policy engines <bcp14>MUST NOT</bcp14> use
+        <tt>initiator_attestation</tt> content to relax thresholds, skip
+        approvers, or raise any trust score. The initiator must gain
+        nothing by saying the right words; the attestation is a claim by a
+        party the protocol identifies but never trusts, not proof of its
+        internal state.</t>
+      </section>
+      <section>
+        <name>No symmetric key on the verification trust path</name>
+        <t>Every artifact a relying party verifies offline -- the approver
+        signoff (Class A: ES256/P-256), the operator commit and receipt
+        (Ed25519), the log inclusion proof, and the portable revocation
+        statement (Ed25519) -- is bound by an ASYMMETRIC signature whose
+        verifying key the relying party holds independently of the issuer. No
+        step in offline verification relies on a Message Authentication Code, a
+        shared secret, or any symmetric primitive. This is deliberate and
+        load-bearing: a symmetric construction (for example an HMAC-chained
+        audit log) is verifiable only by a party holding the same secret as the
+        producer, which is precisely the party whose conduct the evidence is
+        meant to constrain -- its keeper can rewrite its own history
+        undetectably. An EP receipt's issuer cannot. Conforming verifier
+        implementations <bcp14>MUST NOT</bcp14> introduce a symmetric primitive
+        on the verification path; an implementation that does so does not
+        provide EP's non-repudiation property. (HMAC <bcp14>MAY</bcp14> appear
+        elsewhere in a deployment -- e.g. authenticating an operator's own cron
+        or webhook calls -- provided it is never a link in the chain a third
+        party verifies.)</t>
+      </section>
+    </section>
+    <section>
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. A future version may register
+      the <tt>application/ep-receipt+json</tt> media type.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>Normative References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <reference anchor="WEBAUTHN" target="https://www.w3.org/TR/webauthn-2/">
+        <front>
+          <title>Web Authentication: An API for accessing Public Key Credentials, Level 2</title>
+          <author><organization>W3C</organization></author>
+          <date year="2021" month="April"/>
+        </front>
+      </reference>
+      <reference anchor="CIBA" target="https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html">
+        <front>
+          <title>OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0</title>
+          <author><organization>OpenID Foundation</organization></author>
+          <date year="2021" month="September"/>
+        </front>
+      </reference>
+    </references>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="I-D.nelson-agent-delegation-receipts" target="https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/">
+        <front>
+          <title>Delegation Receipt Protocol for AI Agent Authorization</title>
+          <author fullname="Ryan Nelson"><organization>Authproof</organization></author>
+          <date year="2026" month="June" day="13"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-nelson-agent-delegation-receipts-10"/>
+      </reference>
+    </references>
+    <section anchor="changes-since-04" numbered="true">
+      <name>Changes since -04</name>
+      <t>-05 adds the human-authorization-receipt composition frame for
+      the SCITT agent-action statement cluster (how a WHO receipt is
+      referenced, by digest, from capsule/record-style statements);
+      updates the SCITT citation to RFC 9943; adds the key-custody
+      disambiguation note in Section 5.1 (key classes classify custody,
+      not assurance levels); corrects the formal-models status (the
+      m-of-n quorum flow is now Alloy-checked) and states plainly which
+      three normative mechanisms the reference implementation does not
+      yet cover.</t>
+    </section>
+    <section anchor="changes-since-00" numbered="true">
+      <name>Changes since -00 (through -04)</name>
+      <t>This summary covers -00 through -04. Section
+      numbering is stable; all changes are new subsections or in-place
+      additions.</t>
+      <ol>
+        <li>New <bcp14>OPTIONAL</bcp14> Authorization Context member
+        <tt>initiator_attestation</tt> (new
+        <xref target="initiator-attestation"/>): a
+        <bcp14>REQUIRED</bcp14> <tt>escalation_trigger</tt> enum
+        (<tt>irreversibility</tt>, <tt>magnitude</tt>,
+        <tt>uncertainty</tt>, <tt>novelty</tt>, <tt>authority_gap</tt>,
+        <tt>policy_rule</tt>), an <bcp14>OPTIONAL</bcp14>
+        <tt>policy_basis</tt> rule identifier, and an
+        <bcp14>OPTIONAL</bcp14> length-capped (&lt;= 280 character)
+        <tt>statement</tt>. The member is <bcp14>OPTIONAL</bcp14>;
+        it is covered by the context hash via the JCS canonicalization
+        already normative in <xref target="authorization-context"/>, so
+        the approver's signature covers the stated reason; receipts
+        carrying it verify under the existing
+        <xref target="offline-verification"/> verifiers unmodified; and it
+        is a claim by the initiator -- identified but never trusted -- not
+        proof of the initiator's internal state. A terminology entry and a
+        step-2 note in <xref target="offline-verification"/> were added
+        accordingly.</li>
+        <li>Security Considerations additions (new
+        <xref target="initiator-attestation-security"/>): the
+        <tt>statement</tt> is attacker-influenceable text presented to a
+        human (prompt-injection -> social-engineering surface); conforming
+        signing clients <bcp14>MUST</bcp14> render it as untrusted content
+        (no markup, length cap, distinct styling), consistent with the
+        <xref target="presentation-attacks"/> rendering-faithfulness
+        caveat. Adds privacy guidance for free-text statements in
+        long-lived receipts (prefer <tt>policy_basis</tt> identifiers),
+        the rule that absence of an attestation is not evidence of
+        non-escalation, the cross-context consistency requirement, and the
+        prohibition on using attestation content as a trust input. The
+        formal-models section now lists the Initiator Attestation among
+        the not-yet-modeled areas.</li>
+        <li>Introduction/terminology clarifications (new text in the
+        Introduction, new <xref target="scope-of-identity"/>, and a
+        sentence in <xref target="key-classes"/> and
+        <xref target="approver-directory"/>): makes unmistakable that
+        (a) EP's user-verification-gated Class-A signoff is native to this
+        draft and does not depend on any other draft's
+        acquiescence/confirmation mechanism, and (b) proof of a specific
+        natural-person identity is out of scope -- the Approver Directory
+        trust root is the explicit slot where identity/key-discovery
+        layers bind keys to named persons.</li>
+        <li>New <bcp14>OPTIONAL</bcp14> Authorization Context member
+        <tt>agent_binding</tt> (new <xref target="agent-binding"/>): an
+        external agent-identity reference (<tt>agent_id</tt>) and an
+        <bcp14>OPTIONAL</bcp14> <tt>delegation</tt> (<tt>scheme</tt>,
+        <tt>ref</tt>, <bcp14>OPTIONAL</bcp14> <tt>hash</tt>,
+        <bcp14>OPTIONAL</bcp14> <tt>observed_at</tt>), plus an
+        <bcp14>OPTIONAL</bcp14> length-capped (&lt;= 280 character)
+        <tt>statement</tt>. Like <tt>initiator_attestation</tt>, it is
+        <bcp14>OPTIONAL</bcp14>, covered by the context hash via the JCS
+        canonicalization already normative in
+        <xref target="authorization-context"/>, verifies under the existing
+        <xref target="offline-verification"/> verifiers unmodified, and is a
+        claim -- identified but never trusted -- not proof of the agent's
+        identity or the delegation's validity. The <bcp14>OPTIONAL</bcp14>
+        <tt>delegation.observed_at</tt> records when the upstream
+        identity/delegation (L4) evidence was observed; a relying party
+        <bcp14>MAY</bcp14> enforce freshness against it fail-closed, keeping
+        the receipt agnostic to which external identity scheme prevails while
+        making a stale or unconstrained upstream claim detectable after the
+        fact.</li>
+        <li>Housekeeping: version and date bumped in the header; this
+        appendix added; the idnits non-ASCII em-dash / curly-quote cleanup
+        from -00 carried forward as a build step.</li>
+      </ol>
+    </section>
+  </back>
+</rfc>

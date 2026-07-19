@@ -7,7 +7,7 @@
 ## Step 1: Create your trust system (30 seconds)
 
 ```bash
-npx create-ep-app my-trust-system
+npx @emilia-protocol/create-ep-app my-trust-system
 cd my-trust-system
 npm install
 npm run dev
@@ -125,11 +125,11 @@ The handshake is consumed exactly once. Replay attacks are structurally impossib
 | I want to... | Do this |
 |-------------|---------|
 | Use the full production protocol | Deploy [emilia-protocol](https://github.com/emilia-protocol) with Supabase + Vercel |
-| Add trust to my AI agent | Use the [MCP server](https://github.com/emilia-protocol/mcp-server) (34 tools) |
+| Add trust to my AI agent | Use the [MCP server](https://github.com/emilia-protocol/mcp-server) (36 tools) |
 | Integrate via SDK | `npm install @emilia-protocol/sdk` (TypeScript) or `pip install emilia-protocol` (Python) |
 | Read the specification | [PROTOCOL-STANDARD.md](https://github.com/emilia-protocol/docs/PROTOCOL-STANDARD.md) |
 | Check compliance mappings | [NIST AI RMF](../compliance/NIST-AI-RMF-MAPPING.md) · [EU AI Act](../compliance/EU-AI-ACT-MAPPING.md) |
-| Run conformance tests | `npx ep-conformance-test https://your-ep-server.com` |
+| Run conformance tests | `node conformance/ep-conformance-test.js https://your-ep-server.com` |
 | Request a pilot | [emiliaprotocol.ai/partners](https://emiliaprotocol.ai/partners) |
 
 ---

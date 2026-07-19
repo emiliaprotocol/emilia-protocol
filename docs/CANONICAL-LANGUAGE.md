@@ -4,23 +4,33 @@ This document defines the authoritative vocabulary for EMILIA Protocol across do
 
 ## Canonical company line
 
-> **EP enforces trust before high-risk action.**
+> **Protocol proves. Gate prevents.**
 
 ## Canonical technical line
 
-> **EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement. It binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow with immutable event traceability.**
+> **EMILIA Protocol is the open verification and evidence substrate for consequential machine actions. EMILIA Gate is the deny-by-default consequence firewall at the executor boundary: it verifies the relying party’s selected evidence, binds it to the exact material action, consumes accepted authority once, and preserves the outcome.**
 
 ## Canonical market line
 
-> **Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed, under this exact policy, by this exact actor, right now.**
+> **Identity says who or what is present. Delegation says what an agent may call. Policy says what a machine rule permitted. EMILIA proves who authorized the exact material action and controls whether the protected executor may create the consequence now.**
 
 ## Canonical investor line
 
-> **EP creates the trust-control layer between authentication and execution. It is infrastructure for preventing fraud and unauthorized action inside flows that already look approved on the surface.**
+> **EMILIA is the interoperable evidence and durable-consequence layer between machine authorization and irreversible execution. Other authorization systems become verifiable inputs; EMILIA’s value increases as more of them are adopted because Gate joins them to exact-action human authority, one-time enforcement, and outcome evidence at the system that can actually mutate state.**
+
+## Canonical interoperability line
+
+> **AgentROA governs what an agent may call. ORPRG verifies that policy permitted the effect. EMILIA proves who authorized the exact material action — and safely controls the consequence when money, infrastructure, regulated records, or irreversible state is involved.**
+
+This is precise composition language, not an exclusivity claim. AgentROA and
+ORPRG remain independently verified native inputs. CAID correlates their
+material action only under relying-party-pinned mapping profiles. AEC evaluates
+whether the required evidence is satisfied. The executor separately authorizes
+and Gate enforces.
 
 ## Canonical AI / agent supporting line
 
-> **MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.**
+> **MCP tells agents how to use tools. EMILIA Gate makes a protected tool or system refuse consequential mutation until its exact-action evidence requirement is met.**
 
 Use this as a supporting line in AI-native contexts. It is not the main company definition.
 
@@ -35,9 +45,12 @@ Use this as a supporting line in AI-native contexts. It is not the main company 
 ## What EP is
 
 - A protocol-grade trust substrate
-- A control layer for high-risk action enforcement
+- A deny-by-default consequence-control layer at protected executor boundaries
 - A policy-bound, authority-aware, replay-resistant decision system
 - An interoperable object model for trust receipts, trust profiles, trust decisions, and pre-action enforcement
+- An interoperable consumer of native delegation and policy evidence, including
+  AgentROA and concrete ORPRG profiles, without collapsing those artifacts into
+  human authorization
 
 ## What EP is not
 
@@ -46,6 +59,8 @@ Use this as a supporting line in AI-native contexts. It is not the main company 
 - Not a social reputation network
 - Not a generic workflow engine
 - Not a broad marketplace for “trust”
+- Not a replacement for agent delegation, identity, or policy-decision protocols
+- Not proof that a provider effect succeeded merely because authorization was valid
 
 ## Deprecated framing to avoid
 
@@ -56,3 +71,4 @@ Do not use these as primary descriptions:
 - trust marketplace
 - credit score for the agent economy
 - software trust as the whole category
+- another general-purpose agent authorization gateway

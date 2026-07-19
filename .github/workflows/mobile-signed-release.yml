@@ -1,0 +1,228 @@
+name: Mobile Signed Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Human release version, for example 1.0.0
+        required: true
+        type: string
+      build_number:
+        description: Positive store build number
+        required: true
+        type: string
+      confirmation:
+        description: Type BUILD SIGNED MOBILE ARTIFACTS
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  approval:
+    if: >-
+      github.repository == 'emiliaprotocol/emilia-protocol' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.confirmation == 'BUILD SIGNED MOBILE ARTIFACTS'
+    runs-on: ubuntu-latest
+    environment: mobile-store-release-approval
+    permissions:
+      contents: read
+    steps:
+      - name: Validate release request
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$RELEASE_BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          test "$RELEASE_BUILD_NUMBER" -le 2100000000
+          echo 'Owner approved signed artifact construction. This workflow does not upload to either store.'
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - name: Verify the live backend and platform trust bundle
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          MOBILE_ANDROID_SIGNING_CERT_SHA256: ${{ secrets.EMILIA_ANDROID_CERTIFICATE_SHA256_HEX }}
+        run: npm ci --ignore-scripts && npm run mobile:production-readiness
+
+  android:
+    needs: approval
+    runs-on: ubuntu-latest
+    environment: mobile-store-release-approval
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - run: npm ci --ignore-scripts && npm run mobile:release-check
+      - name: Restore Android signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.EMILIA_ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_B64"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/emilia-release.jks"
+      - name: Build signed APK and AAB
+        working-directory: sdks/kotlin-mobile
+        env:
+          EMILIA_ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/emilia-release.jks
+          EMILIA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.EMILIA_ANDROID_KEYSTORE_PASSWORD }}
+          EMILIA_ANDROID_KEY_ALIAS: ${{ secrets.EMILIA_ANDROID_KEY_ALIAS }}
+          EMILIA_ANDROID_KEY_PASSWORD: ${{ secrets.EMILIA_ANDROID_KEY_PASSWORD }}
+          EMILIA_PLAY_CLOUD_PROJECT_NUMBER: ${{ secrets.EMILIA_PLAY_CLOUD_PROJECT_NUMBER }}
+          EMILIA_RELEASE_VERSION: ${{ inputs.version }}
+          EMILIA_RELEASE_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: ./gradlew :sample:assembleRelease :sample:bundleRelease --no-daemon
+      - name: Red-team signed Android artifacts
+        env:
+          MOBILE_ANDROID_SIGNING_CERT_SHA256: ${{ secrets.EMILIA_ANDROID_CERTIFICATE_SHA256_HEX }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          APK=$(find sdks/kotlin-mobile/sample/build/outputs/apk/release -name '*.apk' -print -quit)
+          AAB=$(find sdks/kotlin-mobile/sample/build/outputs/bundle/release -name '*.aab' -print -quit)
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          test -n "$APK" -a -n "$AAB" -a -n "$MOBILE_ANDROID_SIGNING_CERT_SHA256"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee android-signature.txt
+          ACTUAL_CERT_SHA256_HEX=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' android-signature.txt | tr '[:upper:]' '[:lower:]')
+          node scripts/check-mobile-signing-identity.mjs "$MOBILE_ANDROID_SIGNING_CERT_SHA256" "$ACTUAL_CERT_SHA256_HEX" APK
+          jarsigner -verify -strict -verbose "$AAB"
+          AAB_CERT_SHA256=$(keytool -printcert -jarfile "$AAB" | sed -n 's/^[[:space:]]*SHA256: //p' | head -1)
+          node scripts/check-mobile-signing-identity.mjs "$MOBILE_ANDROID_SIGNING_CERT_SHA256" "$AAB_CERT_SHA256" AAB
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | tee android-package.txt
+          grep -F "package: name='ai.emiliaprotocol.approver' versionCode='$RELEASE_BUILD_NUMBER' versionName='$RELEASE_VERSION'" android-package.txt
+          grep -F "sdkVersion:'33'" android-package.txt
+          grep -F "targetSdkVersion:'36'" android-package.txt
+          ! grep -F 'application-debuggable' android-package.txt
+          unzip -p "$APK" 'classes*.dex' | strings | grep -Fx 'https://www.emiliaprotocol.ai/api/'
+          ! unzip -l "$APK" | grep -E '(^|/)(\.env|id_rsa|.*\.jks|.*\.keystore)$'
+          sha256sum "$APK" "$AAB" | tee android-release.sha256
+      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            sdks/kotlin-mobile/sample/build/outputs/apk/release/*.apk
+            sdks/kotlin-mobile/sample/build/outputs/bundle/release/*.aab
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: emilia-android-signed-${{ inputs.version }}-${{ inputs.build_number }}
+          path: |
+            sdks/kotlin-mobile/sample/build/outputs/apk/release/*.apk
+            sdks/kotlin-mobile/sample/build/outputs/bundle/release/*.aab
+            android-release.sha256
+            android-package.txt
+            android-signature.txt
+          retention-days: 14
+      - name: Remove Android signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/emilia-release.jks"
+
+  ios:
+    needs: approval
+    runs-on: macos-15
+    environment: mobile-store-release-approval
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts && npm run mobile:release-check
+      - name: Install distribution identity and profile
+        env:
+          P12_B64: ${{ secrets.EMILIA_IOS_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.EMILIA_IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_B64: ${{ secrets.EMILIA_IOS_PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.EMILIA_IOS_CI_KEYCHAIN_PASSWORD }}
+        run: |
+          test -n "$P12_B64" -a -n "$PROFILE_B64" -a -n "$KEYCHAIN_PASSWORD"
+          printf '%s' "$P12_B64" | base64 --decode > "$RUNNER_TEMP/signing.p12"
+          printf '%s' "$PROFILE_B64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/signing.keychain-db"
+          security set-keychain-settings -lut 21600 "$RUNNER_TEMP/signing.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/signing.keychain-db"
+          security import "$RUNNER_TEMP/signing.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/signing.keychain-db"
+          security list-keychain -d user -s "$RUNNER_TEMP/signing.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/signing.keychain-db"
+          UUID=$(security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" | plutil -extract UUID raw -)
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          echo "PROFILE_UUID=$UUID" >> "$GITHUB_ENV"
+      - name: Archive signed iOS release
+        env:
+          IOS_SIGNING_IDENTITY: ${{ secrets.EMILIA_IOS_SIGNING_IDENTITY }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          xcodebuild \
+            -project examples/mobile-government/ios/EmiliaGovernmentApproval.xcodeproj \
+            -scheme GovernmentApproval \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/EMILIA-Approver.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$IOS_SIGNING_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            MARKETING_VERSION="$RELEASE_VERSION" \
+            CURRENT_PROJECT_VERSION="$RELEASE_BUILD_NUMBER" \
+            archive
+      - name: Red-team signed iOS archive
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          APP="$RUNNER_TEMP/EMILIA-Approver.xcarchive/Products/Applications/EMILIA Approver.app"
+          test -d "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -d --entitlements :- "$APP" > ios-entitlements.plist
+          plutil -extract application-identifier raw ios-entitlements.plist | grep -Fx '5M2Z48UQQY.ai.emiliaprotocol.approver'
+          plutil -extract com.apple.developer.devicecheck.appattest-environment raw ios-entitlements.plist | grep -Fx production
+          plutil -extract com.apple.developer.associated-domains xml1 -o - ios-entitlements.plist | grep -F 'applinks:www.emiliaprotocol.ai'
+          ! plutil -extract get-task-allow raw ios-entitlements.plist 2>/dev/null | grep -Fx true
+          plutil -extract CFBundleIdentifier raw "$APP/Info.plist" | grep -Fx 'ai.emiliaprotocol.approver'
+          plutil -extract EmiliaAPIBaseURL raw "$APP/Info.plist" | grep -Fx 'https://www.emiliaprotocol.ai/api/'
+          plutil -extract CFBundleShortVersionString raw "$APP/Info.plist" | grep -Fx "$RELEASE_VERSION"
+          plutil -extract CFBundleVersion raw "$APP/Info.plist" | grep -Fx "$RELEASE_BUILD_NUMBER"
+          ! find "$APP" -type f | grep -E '(^|/)(\.env|id_rsa|.*\.p12|.*\.mobileprovision)$'
+          ditto -c -k --keepParent "$RUNNER_TEMP/EMILIA-Approver.xcarchive" EMILIA-Approver.xcarchive.zip
+          shasum -a 256 EMILIA-Approver.xcarchive.zip | tee ios-release.sha256
+      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: EMILIA-Approver.xcarchive.zip
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: emilia-ios-signed-${{ inputs.version }}-${{ inputs.build_number }}
+          path: |
+            EMILIA-Approver.xcarchive.zip
+            ios-entitlements.plist
+            ios-release.sha256
+          retention-days: 14
+      - name: Remove iOS signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/signing.p12" "$RUNNER_TEMP/profile.mobileprovision"
+          if [[ -n "${PROFILE_UUID:-}" ]]; then
+            rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          fi

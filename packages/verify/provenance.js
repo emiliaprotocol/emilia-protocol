@@ -93,12 +93,21 @@ function scopeContainmentViolations(parent, child) {
       violations.push(`child scope "${token}" exceeds parent scope [${(parent.scope || []).join(', ')}]`);
     }
   }
+  // Cap containment, fail-closed on a non-numeric child cap. When the parent has a
+  // finite cap, the child must be absent/null (inherits) OR a finite number <= parent.
+  // A present-but-non-numeric child cap (e.g. "abc", {}, true) previously coerced to
+  // NaN and the `NaN > parent` comparison was false, so it PASSED containment — a
+  // fail-open (the JS sibling of the Go value-cap bug). Now it is a violation,
+  // matching the Python and Go ports.
   const parentCap = parent.max_value_usd;
-  let childCap = child.max_value_usd;
-  if (childCap === null || childCap === undefined) childCap = parentCap;
-  if (parentCap !== null && parentCap !== undefined) {
-    if (childCap === null || childCap === undefined || Number(childCap) > Number(parentCap)) {
-      violations.push(`child max_value_usd ${childCap} exceeds parent cap ${parentCap}`);
+  const parentCapNum = Number(parentCap);
+  if (parentCap !== null && parentCap !== undefined && Number.isFinite(parentCapNum)) {
+    const childCap = child.max_value_usd;
+    if (childCap !== null && childCap !== undefined) {
+      const childCapNum = Number(childCap);
+      if (!Number.isFinite(childCapNum) || childCapNum > parentCapNum) {
+        violations.push(`child max_value_usd ${childCap} is not a valid cap within parent cap ${parentCap}`);
+      }
     }
   }
   const pExp = Date.parse(parent.expires_at);
@@ -166,6 +175,7 @@ function constraintsMonotonic(parentC, childC) {
  * now, requireActionApprovalAlways).
  */
 export function verifyProvenanceOffline(doc, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const humanKeyClasses = opts.humanKeyClasses || DEFAULT_HUMAN_KEY_CLASSES;
   const allowUnsignedDelegations = opts.allowUnsignedDelegations === true;
   const now = typeof opts.now === 'number' ? opts.now : Date.now();
@@ -181,6 +191,19 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   const errors = [];
   const links = [];
   const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
+  const validVerificationProfile = (profile) => (
+    profile
+    && typeof profile === 'object'
+    && profile.approver_keys
+    && typeof profile.approver_keys === 'object'
+    && typeof profile.log_public_key === 'string'
+    && profile.log_public_key.length > 0
+    && typeof profile.rp_id === 'string'
+    && profile.rp_id.length > 0
+    && Array.isArray(profile.allowed_origins)
+    && profile.allowed_origins.length > 0
+    && profile.allowed_origins.every((origin) => typeof origin === 'string' && origin.length > 0)
+  );
 
   if (doc?.['@version'] !== PROVENANCE_VERSION) {
     errors.push(`unsupported version: ${doc?.['@version']}`);
@@ -189,12 +212,17 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   checks.version = true;
 
   const root = doc.root_signoff;
-  if (!root?.receipt || !root?.verification) {
-    fail('root_receipt_valid', 'missing root_signoff.receipt or root_signoff.verification');
+  const rootVerification = opts.rootVerification || opts.root_verification;
+  if (!root?.receipt) {
+    fail('root_receipt_valid', 'missing root_signoff.receipt');
+  } else if (!validVerificationProfile(rootVerification)) {
+    fail('root_receipt_valid', 'relying-party root verification profile is required');
   } else {
     const r0 = verifyTrustReceipt(root.receipt, {
-      approverKeys: root.verification.approver_keys,
-      logPublicKey: root.verification.log_public_key,
+      approverKeys: rootVerification.approver_keys,
+      logPublicKey: rootVerification.log_public_key,
+      rpId: rootVerification.rp_id,
+      allowedOrigins: rootVerification.allowed_origins,
     });
     checks.root_receipt_valid = r0.valid;
     if (!r0.valid) errors.push(`root receipt failed v1 verification: ${(r0.errors || []).join('; ')}`);
@@ -206,16 +234,23 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   const reversibilityAsserted = typeof opts.reversibilityAsserted === 'function' ? opts.reversibilityAsserted(exec) === true : false;
   const needApproval = requireActionApprovalAlways || !reversibilityAsserted;
   const approval = doc.action_approval;
+  const actionVerification = opts.actionVerification || opts.action_verification;
   if (needApproval && !approval?.receipt) {
     fail('per_action_required', 'execution is irreversible (or approval is always required) but no action_approval is present');
   }
   if (approval?.receipt) {
-    const ra = verifyTrustReceipt(approval.receipt, {
-      approverKeys: approval.verification?.approver_keys,
-      logPublicKey: approval.verification?.log_public_key,
-    });
-    checks.action_receipt_valid = ra.valid;
-    if (!ra.valid) errors.push(`action_approval receipt failed v1 verification: ${(ra.errors || []).join('; ')}`);
+    if (!validVerificationProfile(actionVerification)) {
+      fail('action_receipt_valid', 'relying-party action verification profile is required');
+    } else {
+      const ra = verifyTrustReceipt(approval.receipt, {
+        approverKeys: actionVerification.approver_keys,
+        logPublicKey: actionVerification.log_public_key,
+        rpId: actionVerification.rp_id,
+        allowedOrigins: actionVerification.allowed_origins,
+      });
+      checks.action_receipt_valid = ra.valid;
+      if (!ra.valid) errors.push(`action_approval receipt failed v1 verification: ${(ra.errors || []).join('; ')}`);
+    }
     if (exec.irreversible === true) {
       checks.action_human_signoff = hasHumanSignoff(approval.receipt, humanKeyClasses);
       if (!checks.action_human_signoff) errors.push('action_approval for an irreversible action carries no human signoff');
@@ -238,8 +273,12 @@ export function verifyProvenanceOffline(doc, opts = {}) {
 
   if (chain.length > 0) {
     const head = chain[0];
-    checks.chain_anchored = rootApprovers.has(head.parent_ref) || rootApprovers.has(head.delegator);
-    if (!checks.chain_anchored) errors.push(`delegation chain head parent_ref "${head.parent_ref}" does not name a root-receipt approver`);
+    // Anchor ONLY on the SIGNED delegator. parent_ref is not in
+    // DELEGATION_PROOF_FIELDS, so it is unsigned and attacker-controlled;
+    // trusting it here let a stranger's link claim a root approver as its
+    // parent and falsely attribute the chain to a human who never delegated.
+    checks.chain_anchored = rootApprovers.has(head.delegator);
+    if (!checks.chain_anchored) errors.push(`delegation chain head delegator "${head.delegator}" does not name a root-receipt approver`);
   }
 
   let prevDelegatee = null;

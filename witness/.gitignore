@@ -1,0 +1,5 @@
+# Witness keys are secrets and per-deployment identity. Never commit them.
+keys/
+*.pem
+witness-private.pem
+witness-public.json

@@ -22,10 +22,11 @@ invariant:
 | **accept** | minimal receipt · deeply-nested payload (recursive canonicalization) · key-order-independence · valid Merkle anchor |
 | **reject** | unsupported version · missing signature · tampered payload · wrong key · malformed signature · tampered Merkle anchor |
 
-### Three independent implementations, proven to agree
+### Three cross-language reference verifiers, proven to agree
 
-The repository ships three independent reference verifiers — written separately,
-sharing no code:
+The repository ships JavaScript/TypeScript, Python, and Go reference verifiers
+in one repository. They are a cross-language consistency check, not clean-room
+independent implementations:
 
 | Language | Package |
 |---|---|
@@ -41,31 +42,116 @@ node conformance/run.mjs
 ```
 
 ```
-EP-RECEIPT-v1            — 11 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-SIGNOFF-v1            —  9 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-QUORUM-v1             — 11 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-REVOCATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-TIME-ATTESTATION-v1   —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-TRUST-RECEIPT (§6.2)  —  4 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-PROVENANCE-CHAIN-v1   —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-EVIDENCE-RECORD-v1    —  5 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-RECEIPT-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-SIGNOFF-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-RESOLUTION-v1                — 33 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-QUORUM-v1                    — 15 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-REVOCATION-v1               — 12 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TIME-ATTESTATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT-v1 (§6.2)     — 14 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT-v1 ts-profile —  7 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-PROVENANCE-CHAIN-v1         — 14 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-CANONICALIZATION-v1         — 35 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-BOUNDARY-v1                 —  5 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-AEC-ROLE-v1                 — 30 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-CURRENCY-v1                 — 13 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-INITIATOR-ATTESTATION-v1    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ all suites — three independent implementations agree.
+✅ 251 vectors · 18 suites — JavaScript, Python, and Go verifiers agree.
+   (One team's three-language ports in one repository: a consistency check,
+    not independent reimplementations.)
 ```
 
-The three independent verifiers now agree across the **entire artifact surface** —
+The externally portable clean-room bundle remains a separately pinned
+16-suite/164-vector baseline; the newer 30-vector AEC acceptance and 33-vector
+four-outcome resolution suites have not been attributed to that external
+implementation. An externally authored Rust
+verifier is evaluated in a separate CI lane from
+the immutable source commit pinned in
+[`conformance/external/rust-cleanroom-jdieselny.v1.json`](conformance/external/rust-cleanroom-jdieselny.v1.json).
+It passes the pinned 16-suite/164-vector clean-room bundle. That is external interoperability
+evidence, but not yet strict clean-room acceptance: the construction claim is
+signed by the implementation organization rather than a separate attestor.
+The evaluator-controlled rebuild also passes the pinned differential-hostility
+campaign: 353 structured attacks plus 6 raw-parser refusals across Unicode,
+timestamps, SPKI encodings, action permutations, hostile types, and evidence
+graphs, with zero divergences. CI requires both results to pass. A separate
+third-party-attested GUV'NOR result is not counted until its corrected manifest
+and independently pinned attestor key are checked in and re-evaluated.
+
+The CI job `aggregate-conformance-case` waits for both the same-team manifest
+and the external Rust campaign, revalidates their source pins, suite hashes,
+hostility corpus, evaluator commit, and construction-attestation boundary, then
+emits and GitHub-attests `EP-CONFORMANCE-CASE-v1`. The current case reports three
+same-team ports, one externally authored implementation passing its pinned 164 vectors and
+359 hostile cases, and zero strict independently attested clean-room
+acceptances. That counter can change only when checked-in evidence passes the
+strict intake; prose cannot promote it.
+
+The three cross-language verifiers agree across the core artifact surface:
 not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 **signoffs**, **EP-QUORUM-v1 multi-party approval** (M-of-N / ordered — the
 "two-person rule," with a strong cryptographic ordering chain and distinct-key
 checks, fail-closed), portable **revocation** statements, **trusted-time
 attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
-inclusion + Ed25519-signed checkpoint), and **provenance chains** (human-authority
-root → delegation chain → action, with scope containment). That is the IETF bar
-for a real standard — **multiple independent interoperable implementations across
-every protocol artifact** — and it runs on every push (CI job `conformance`). The
+inclusion + Ed25519-signed checkpoint), **provenance chains** (human-authority
+root → delegation chain → action, with scope containment), **EP-AEC acceptance**
+(executor-action binding, Class-A or quorum profiles, registry freshness), and five **opt-in
+profiles**: **EP-CURRENCY-v1** (the two-valued authentic-as-of-commit vs
+currency-at-T result, where `unknown` is the honest offline default),
+**EP-INITIATOR-ATTESTATION-v1** (fail-closed field validation + hostile-text
+neutralization), **EP-SMT-CONSUME-v1** (sparse-Merkle one-time-consumption
+transition), **EP-WITNESS-v1** (k-of-n witness cosignatures over one
+checkpoint head), and **EP-TIMESTAMP-PROOF-v1** (an INDEPENDENT RFC 3161
+proof of WHEN: a pinned external TSA's TimeStampToken over the caller's expected
+digest, fail-closed on any refusal). Publishing a public, cross-language
+conformance suite of this breadth, re-proven on every push (CI job
+`conformance`), is itself uncommon.
+
+**timestamp-proof (RFC 3161) is now cross-language.** It began as a JavaScript-only
+reference verifier (a purpose-built minimal DER/CMS reader in pure `node:crypto`)
+because neither the Python dependency (`cryptography`) nor the Go standard
+library exposes an RFC 3161 TimeStampToken / TSTInfo / CMS SignedData API that
+returns the signed bytes. Rather than pull in a heavy CMS dependency, the same
+minimal DER/CMS reader was ported faithfully to **pure Python** (the structural
+parse is hand-rolled; `cryptography` is used only for the RSA/ECDSA signature
+verification, so no new dependency) and to **pure-stdlib Go** (`crypto/rsa` +
+`crypto/ecdsa` + `crypto/x509` for the verify). All three lanes now agree over
+real `openssl`-minted TimeStampTokens in
+[`conformance/vectors/timestamp-proof.v1.json`](conformance/vectors/timestamp-proof.v1.json),
+including the exact per-vector refusal path (unpinned TSA, digest mismatch, wrong
+pinned key, tampered signature, non-SignedData, unparseable token). Other
+artifacts still remain outside the three-language run today (WYSIWYS rendering,
+execution-integrity, the JWS profile) and are exercised in
+JavaScript only; bringing them into the cross-language run, and independent
+implementations, are the next bar. The
 companion Internet-Drafts are
 [`draft-schrock-ep-authorization-receipts`](standards/) and
 [`draft-schrock-ep-quorum`](standards/).
+
+### Canonicalization-malleability battery (EP-CANONICALIZATION-v1)
+
+Every signed EP artifact is verified over recursive canonical JSON, so
+canonicalization divergence between implementations is a signature-forgery
+surface. [`conformance/vectors/canonicalization.v1.json`](conformance/vectors/canonicalization.v1.json)
+is a differential battery of raw JSON texts that pins the RFC 8785 / I-JSON
+behavior byte-for-byte across all three languages: Unicode normalization is NOT
+applied (NFC and NFD spellings pin distinct digests on purpose), escaped and
+literal spellings of the same code points pin the same digest, member names
+sort by UTF-16 code units, integer-valued number tokens (`1`, `1.0`, `1e0`,
+`-0`) pin one canonical serialization, and duplicate member names, unpaired
+surrogate escapes, out-of-profile numbers, and nesting deeper than the
+suite-pinned bound of 64 must all reject. Accept vectors carry a pinned SHA-256
+of the canonical bytes, so agreement is proven on the exact bytes, not just the
+verdict. Scope, stated honestly: the duplicate-name, surrogate, and depth gates
+live in each conformance runner at the parse boundary (the verify packages
+receive already-parsed values); the profile predicate, canonical serialization,
+and digests exercise the verify packages themselves. Regenerate with
+`node conformance/vectors/generate-canonicalization.mjs`.
 
 > **Scope, stated honestly.** Multi-party quorum is a *verifiable protocol
 > capability* with cross-language reference verifiers and a live in-browser demo
@@ -133,8 +219,9 @@ a verifier decision table:
 Scope note: these exercise the **offline** assertion verifier. Replay /
 one-time consumption (the nonce is the global consumption key) and
 enrollment-active are **server-state** checks, out of scope for offline
-assertion vectors. Cross-language signoff verifiers (Python, Go) are the next
-milestone; the receipt format remains the three-language interop surface today.
+assertion vectors. The signoff verifiers agree across JavaScript, Python, and Go
+today (see EP-SIGNOFF-v1 above); signoffs are part of the three-language interop
+surface, not a pending milestone.
 
 ---
 

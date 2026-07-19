@@ -7,6 +7,7 @@ import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 import { logger } from '../../../../lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import { isPublicEntityRegistrationEnabled } from '@/lib/env';
 
 const MAX_REGISTER_BYTES = 64 * 1024;
 const ENTITY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$/;
@@ -43,6 +44,15 @@ const MAX_CAPABILITY_CHARS = 100;
  */
 export async function POST(request) {
   try {
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().startsWith('application/json')) {
+      return epProblem(415, 'unsupported_media_type', 'Content-Type must be application/json');
+    }
+
+    if (!isPublicEntityRegistrationEnabled()) {
+      return epProblem(403, 'self_serve_registration_disabled', 'Self-serve entity registration is disabled. Use a verified onboarding flow.');
+    }
+
     const parsed = await readLimitedJson(request, MAX_REGISTER_BYTES);
     if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
     const body = parsed.value;
@@ -58,6 +68,7 @@ export async function POST(request) {
 
     const entityId = String(body.entity_id).normalize('NFKC').trim();
     const displayName = String(body.display_name).trim();
+    const displayNameKey = normalizeDisplayNameKey(displayName);
     const description = String(body.description).trim();
 
     const VALID_ENTITY_TYPES = [
@@ -113,6 +124,18 @@ export async function POST(request) {
       return epProblem(400, 'registration_failed', 'Unable to complete registration');
     }
 
+    if (displayNameKey) {
+      const { data: existingName } = await supabase
+        .from('entities')
+        .select('id')
+        .eq('display_name_key', displayNameKey)
+        .maybeSingle();
+
+      if (existingName) {
+        return epProblem(409, 'registration_failed', 'Unable to complete registration');
+      }
+    }
+
     // Rate limiting handled by middleware on all /api/* routes
 
     // Generate embedding from description + capabilities (optional — skipped if no provider configured)
@@ -147,6 +170,7 @@ export async function POST(request) {
         organization_id: entityId,
         owner_id: ownerId,
         display_name: displayName,
+        display_name_key: displayNameKey || null,
         entity_type: body.entity_type,
         description,
         website_url: body.website_url || null,
@@ -167,6 +191,9 @@ export async function POST(request) {
 
     if (insertError) {
       logger.error('Entity insert error:', insertError);
+      if (insertError.code === '23505') {
+        return epProblem(409, 'registration_failed', 'Unable to complete registration');
+      }
       return epProblem(500, 'registration_failed', 'Failed to register entity');
     }
 
@@ -212,4 +239,13 @@ function sanitizeStringArray(value, maxItems, maxChars) {
     values.push(s);
   }
   return { values };
+}
+
+export function normalizeDisplayNameKey(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .replace(/[\s​‌‍﻿]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 200);
 }

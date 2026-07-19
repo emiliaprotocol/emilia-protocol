@@ -83,33 +83,45 @@ describe('checkRateLimit — Redis path (mocked fetch)', async () => {
   }
 
   it('allows request when count < max', async () => {
-    // ZREMRANGEBYSCORE, ZCARD=0, ZADD, EXPIRE
-    mockFetch
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 0 }) })  // ZREMRANGEBYSCORE
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 0 }) })  // ZCARD → 0 < max
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 1 }) })  // ZADD
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 1 }) }); // EXPIRE
+    mockFetch.mockResolvedValueOnce({ json: () => Promise.resolve({ result: [1, RATE_LIMITS.read.max - 1, RATE_LIMITS.read.window] }) });
     const result = await checkRateLimit('test-ip-redis-1', 'read');
     expect(result.allowed).toBe(true);
     expect(typeof result.remaining).toBe('number');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body[0]).toBe('EVAL');
+    expect(body[1]).toContain('ZCARD');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed on a malformed Redis script response shape', async () => {
+    mockFetch.mockResolvedValueOnce({ json: () => Promise.resolve({ result: 'not-an-array' }) });
+
+    const result = await checkRateLimit('test-ip-malformed-script', 'read');
+
+    expect(result.allowed).toBe(false);
+    expect(result.remaining).toBe(0);
+    expect(result.reset).toBe(60);
+  });
+
+  it('normalizes non-finite Redis script fields without leaking NaN headers', async () => {
+    mockFetch.mockResolvedValueOnce({ json: () => Promise.resolve({ result: [1, 'nan', 'nan'] }) });
+
+    const result = await checkRateLimit('test-ip-nan-script', 'read');
+
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(0);
+    expect(result.reset).toBe(RATE_LIMITS.read.window);
   });
 
   it('blocks request when count >= max', async () => {
-    const max = RATE_LIMITS.anchor.max; // 1
-    mockFetch
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 0 }) })      // ZREMRANGEBYSCORE
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: max }) })    // ZCARD → max
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: ['ts', String(Math.floor(Date.now() / 1000))] }) }); // ZRANGE WITHSCORES
+    mockFetch.mockResolvedValueOnce({ json: () => Promise.resolve({ result: [0, 0, RATE_LIMITS.anchor.window] }) });
     const result = await checkRateLimit('test-ip-redis-2', 'anchor');
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
   });
 
   it('returns positive reset when blocked', async () => {
-    mockFetch
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 0 }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 1 }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: ['member', String(Math.floor(Date.now() / 1000) - 100)] }) });
+    mockFetch.mockResolvedValueOnce({ json: () => Promise.resolve({ result: [0, 0, 42] }) });
     const result = await checkRateLimit('test-ip-redis-3', 'anchor');
     expect(result.reset).toBeGreaterThan(0);
   });
@@ -166,22 +178,16 @@ describe('checkRateLimit — Redis path (mocked fetch)', async () => {
 
   it('remaining calculated correctly: max - count - 1', async () => {
     const currentCount = 5;
-    mockFetch
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 0 }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: currentCount }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 1 }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 1 }) });
+    mockFetch.mockResolvedValueOnce({
+      json: () => Promise.resolve({ result: [1, RATE_LIMITS.read.max - currentCount - 1, RATE_LIMITS.read.window] }),
+    });
     const result = await checkRateLimit('test-remaining', 'read');
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(RATE_LIMITS.read.max - currentCount - 1);
   });
 
   it('uses read config for unknown category', async () => {
-    mockFetch
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 0 }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 0 }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 1 }) })
-      .mockResolvedValueOnce({ json: () => Promise.resolve({ result: 1 }) });
+    mockFetch.mockResolvedValueOnce({ json: () => Promise.resolve({ result: [1, RATE_LIMITS.read.max - 1, RATE_LIMITS.read.window] }) });
     const result = await checkRateLimit('test-unknown-cat', 'completely_unknown');
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBeLessThanOrEqual(RATE_LIMITS.read.max);

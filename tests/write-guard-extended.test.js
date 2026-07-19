@@ -85,6 +85,22 @@ describe('TRUST_TABLES list', () => {
     expect(_internals.TRUST_TABLES).toContain('eye_observations');
   });
 
+  it('contains every native approval trust table', () => {
+    for (const table of [
+      'mobile_kv_state',
+      'mobile_pairings',
+      'mobile_sessions',
+      'mobile_enrollments',
+      'mobile_counters',
+      'mobile_audit_records',
+      'mobile_evidence_records',
+      'mobile_actions',
+      'mobile_action_challenges',
+    ]) {
+      expect(_internals.TRUST_TABLES).toContain(table);
+    }
+  });
+
   it('has at least 18 entries', () => {
     expect(_internals.TRUST_TABLES.length).toBeGreaterThanOrEqual(18);
   });
@@ -197,6 +213,14 @@ describe('write guard — blocks mutations on trust tables', () => {
     } catch (e) {
       expect(e.message).toContain('update');
     }
+  });
+
+  it('blocks direct mutation of mobile approval state', () => {
+    const guarded = getGuardedClient();
+    expect(() => guarded.from('mobile_sessions').update({ revoked_at: null }))
+      .toThrow('WRITE_DISCIPLINE_VIOLATION');
+    expect(() => guarded.from('mobile_actions').insert({ status: 'approved' }))
+      .toThrow('WRITE_DISCIPLINE_VIOLATION');
   });
 });
 

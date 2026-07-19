@@ -12,13 +12,19 @@
     "test": "node --test lib/ep-signoff.test.mjs"
   },
   "dependencies": {
-    "@noble/curves": "^1.6.0",
-    "@noble/hashes": "^1.5.0",
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0",
     "expo": "~52.0.0",
     "expo-local-authentication": "~15.0.0",
     "expo-secure-store": "~14.0.0",
     "expo-status-bar": "~2.0.0",
     "react": "18.3.1",
-    "react-native": "0.76.5"
+    "react-native": "0.76.9"
+  },
+  "overrides": {
+    "@xmldom/xmldom": "0.9.10",
+    "postcss": "8.5.19",
+    "tar": "7.5.20",
+    "uuid": "11.1.1"
   }
 }

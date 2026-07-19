@@ -1,0 +1,3159 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Authorization Receipts for High-Risk Agent Actions</title>
+<meta content="Iman Schrock" name="author">
+<meta content="
+       This document defines the EMILIA Protocol (EP) authorization
+      receipt, an evidence artifact binding an enrolled approver key to
+      one canonical action before execution. An approver-held key signs an
+      Authorization Context containing the action hash, policy reference,
+      nonce, audience, and validity window. A Trust Receipt carries the
+      signed contexts, terminal consumption record, and Merkle inclusion
+      material so a relying party can verify the recorded event offline
+      under independently selected log, directory, policy, and approver
+      trust inputs.
+       The receipt establishes only the guarantees of the selected
+      verification profile. The mapping from an enrolled approver
+      identifier to a natural person is asserted by the directory
+      authority. Offline verification does not establish current
+      revocation status, global non-replay, comprehension, legality,
+      safety, or execution. Replay prevention requires an online atomic
+      consumption store at the executor. The state-machine invariants are
+      machine-checked under the assumptions stated in this document.
+    " name="description">
+<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="AI agents" name="keyword">
+<meta content="authorization" name="keyword">
+<meta content="receipts" name="keyword">
+<meta content="WebAuthn" name="keyword">
+<meta content="separation of duties" name="keyword">
+<meta content="draft-schrock-ep-authorization-receipts-07" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.34.0
+    Python 3.14.5
+    ConfigArgParse 1.7.5
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.1.1
+    natsort 8.4.0
+    platformdirs 4.10.0
+    pycountry 26.2.16
+    PyYAML 6.0.3
+    requests 2.34.2
+    wcwidth 0.8.1
+-->
+<link href="draft-schrock-ep-authorization-receipts-07.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">/*
+
+  NOTE: Changes at the bottom of this file overrides some earlier settings.
+
+  Once the style has stabilized and has been adopted as an official RFC style,
+  this can be consolidated so that style settings occur only in one place, but
+  for now the contents of this file consists first of the initial CSS work as
+  provided to the RFC Formatter (xml2rfc) work, followed by itemized and
+  commented changes found necessary during the development of the v3
+  formatters.
+
+*/
+
+/* fonts */
+@import url('https://static.ietf.org/fonts/noto-sans/import.css'); /* Sans-serif */
+@import url('https://static.ietf.org/fonts/noto-serif/import.css'); /* Serif (print) */
+@import url('https://static.ietf.org/fonts/roboto-mono/import.css'); /* Monospace */
+
+:root {
+  --font-sans: 'Noto Sans', Arial, Helvetica, sans-serif;
+  --font-serif: 'Noto Serif', 'Times', 'Times New Roman', serif;
+  --font-mono: 'Roboto Mono', Courier, 'Courier New', monospace;
+}
+
+@viewport {
+  zoom: 1.0;
+}
+@-ms-viewport {
+  width: extend-to-zoom;
+  zoom: 1.0;
+}
+/* general and mobile first */
+html {
+}
+body {
+  max-width: 90%;
+  margin: 1.5em auto;
+  color: #222;
+  background-color: #fff;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  scroll-behavior: smooth;
+  overflow-wrap: break-word;
+}
+.ears {
+  display: none;
+}
+
+/* headings */
+#title, h1, h2, h3, h4, h5, h6 {
+  margin: 1em 0 0.5em;
+  font-weight: bold;
+  line-height: 1.3;
+}
+#title {
+  clear: both;
+  border-bottom: 1px solid #ddd;
+  margin: 0 0 0.5em 0;
+  padding: 1em 0 0.5em;
+}
+.author {
+  padding-bottom: 4px;
+}
+h1 {
+  font-size: 26px;
+  margin: 1em 0;
+}
+h2 {
+  font-size: 22px;
+  margin-top: -20px;  /* provide offset for in-page anchors */
+  padding-top: 33px;
+}
+h3 {
+  font-size: 18px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h4 {
+  font-size: 16px;
+  margin-top: -36px;  /* provide offset for in-page anchors */
+  padding-top: 42px;
+}
+h5, h6 {
+  font-size: 14px;
+}
+#n-copyright-notice {
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 1em;
+  margin-bottom: 1em;
+}
+/* general structure */
+p {
+  padding: 0;
+  margin: 0 0 1em 0;
+  text-align: left;
+}
+div, span {
+  position: relative;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+@media print {
+  svg {
+    max-height: 850px;
+    max-width: 660px;
+  }
+}
+svg[font-family~="serif" i], svg [font-family~="serif" i] {
+  font-family: var(--font-serif);
+}
+svg[font-family~="sans-serif" i], svg [font-family~="sans-serif" i] {
+  font-family: var(--font-sans);
+}
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 1em 1em 0;
+  margin-bottom: 1.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  display: table;
+  border: none;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 1em 2em;
+}
+ol ol, ul ul, ol ul, ul ol {
+  margin-left: 1em;
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+.ulCompact li {
+  margin: 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+}
+ul.empty li, .ulEmpty li {
+  margin-top: 0.5em;
+}
+ul.ulBare, li.ulBare {
+  margin-left: 0em !important;
+}
+ul.compact, .ulCompact,
+ol.compact, .olCompact {
+  line-height: 100%;
+  margin: 0 0 0 2em;
+}
+
+/* definition lists */
+dl {
+}
+dl > dt {
+  float: left;
+  margin-right: 1em;
+}
+/*
+dl.nohang > dt {
+  float: none;
+}
+*/
+dl > dd {
+  margin-bottom: .8em;
+  min-height: 1.3em;
+}
+dl.compact > dd, .dlCompact > dd {
+  margin-bottom: 0em;
+}
+dl > dd > dl {
+  margin-top: 0.5em;
+  margin-bottom: 0em;
+}
+
+/* links */
+a {
+  text-decoration: none;
+}
+a[href] {
+  color: #22e; /* Arlen: WCAG 2019 */
+}
+a[href]:hover {
+  background-color: #f2f2f2;
+}
+figcaption a[href],
+a[href].selfRef {
+  color: #222;
+}
+/* XXX probably not this:
+a.selfRef:hover {
+  background-color: transparent;
+  cursor: default;
+} */
+
+/* Figures */
+tt, code, pre {
+  background-color: #f9f9f9;
+  font-family: var(--font-mono);
+}
+pre {
+  border: 1px solid #eee;
+  margin: 0;
+  padding: 1em;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption {
+  font-style: italic;
+  margin: 0 0 1em 0;
+}
+@media screen {
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    max-width: calc(100% - 22px);
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 1.2em 2em;
+}
+blockquote {
+  background-color: #f9f9f9;
+  color: #111; /* Arlen: WCAG 2019 */
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin: 1em 0;
+}
+blockquote > *:last-child {
+  margin-bottom: 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+.xref {
+  overflow-wrap: normal;
+}
+
+/* tables */
+table {
+  width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  border: 1px solid #eee;
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5em 0.75em;
+}
+th {
+  text-align: left;
+  background-color: #e9e9e9;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f5f5f5;
+}
+table caption {
+  font-style: italic;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+table p {
+  /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
+     be allowed within tables more generally, it would be far better to select on a class. */
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  color: #666; /* Arlen: AHDJ 2019 */
+  text-decoration: none;
+  visibility: hidden;
+  user-select: none;
+  -ms-user-select: none;
+  -o-user-select:none;
+  -moz-user-select: none;
+  -khtml-user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media screen {
+  aside:hover > a.pilcrow,
+  p:hover > a.pilcrow,
+  blockquote:hover > a.pilcrow,
+  div:hover > a.pilcrow,
+  li:hover > a.pilcrow,
+  pre:hover > a.pilcrow {
+    visibility: visible;
+  }
+  a.pilcrow:hover {
+    background-color: transparent;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid #eee;
+}
+.bcp14 {
+  font-variant: small-caps;
+}
+
+.role {
+  font-variant: all-small-caps;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: 0.9em;
+}
+#identifiers dt {
+  width: 3em;
+  clear: left;
+}
+#identifiers dd {
+  float: left;
+  margin-bottom: 0;
+}
+/* Fix PDF info block run off issue */
+@media print {
+  #identifiers dd {
+    max-width: 100%;
+  }
+}
+#identifiers .authors .author {
+  display: inline-block;
+  margin-right: 1.5em;
+}
+#identifiers .authors .org {
+  font-style: italic;
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #666; /* Arlen: WCAG 2019 */
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: left;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc  {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+}
+nav.toc ul {
+  margin: 0 0.5em 0 0;
+  padding: 0;
+  list-style: none;
+}
+nav.toc li {
+  line-height: 1.3em;
+  margin: 0.75em 0;
+  padding-left: 1.2em;
+  text-indent: -1.2em;
+}
+/* references */
+.references dt {
+  text-align: right;
+  font-weight: bold;
+  min-width: 7em;
+}
+.references dd {
+  margin-left: 8em;
+  overflow: auto;
+}
+
+.refInstance {
+  margin-bottom: 1.25em;
+}
+
+.refSubseries {
+  margin-bottom: 1.25em;
+}
+
+.references .ascii {
+  margin-bottom: 0.25em;
+}
+
+/* index */
+.index ul {
+  margin: 0 0 0 1em;
+  padding: 0;
+  list-style: none;
+}
+.index ul ul {
+  margin: 0;
+}
+.index li {
+  margin: 0;
+  text-indent: -2em;
+  padding-left: 2em;
+  padding-bottom: 5px;
+}
+.indexIndex {
+  margin: 0.5em 0 1em;
+}
+.index a {
+  font-weight: 700;
+}
+/* make the index two-column on all but the smallest screens */
+@media (min-width: 600px) {
+  .index ul {
+    -moz-column-count: 2;
+    -moz-column-gap: 20px;
+  }
+  .index ul ul {
+    -moz-column-count: 1;
+    -moz-column-gap: 0;
+  }
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  margin: 1em 0;
+}
+
+address.vcard .nameRole {
+  font-weight: 700;
+  margin-left: 0;
+}
+address.vcard .label {
+  font-family: var(--font-sans);
+  margin: 0.5em 0;
+}
+address.vcard .type {
+  display: none;
+}
+.alternative-contact {
+  margin: 1.5em 0 1em;
+}
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+
+/* temporary notes */
+.rfcEditorRemove::before {
+  position: absolute;
+  top: 0.2em;
+  right: 0.2em;
+  padding: 0.2em;
+  content: "The RFC Editor will remove this note";
+  color: #9e2a00; /* Arlen: WCAG 2019 */
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+}
+.rfcEditorRemove {
+  position: relative;
+  padding-top: 1.8em;
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  border-radius: 3px;
+}
+.cref {
+  background-color: #ffd; /* Arlen: WCAG 2019 */
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+/* alternative layout for smaller screens */
+@media screen and (max-width: 1023px) {
+  body {
+    padding-top: 2em;
+  }
+  #title {
+    padding: 1em 0;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+    margin-top: -18px;  /* provide offset for in-page anchors */
+    padding-top: 38px;
+  }
+  #identifiers dd {
+    max-width: 60%;
+  }
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 0;
+    margin: 0;
+    background-color: inherit;
+    border-bottom: 1px solid #ccc;
+  }
+  #toc h2 {
+    margin: -1px 0 0 0;
+    padding: 4px 0 4px 6px;
+    padding-right: 1em;
+    min-width: 190px;
+    font-size: 1.1em;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+  }
+  #toc h2::before { /* css hamburger */
+    float: right;
+    position: relative;
+    width: 1em;
+    height: 1px;
+    left: -164px;
+    margin: 6px 0 0 0;
+    background: white none repeat scroll 0 0;
+    box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+    content: "";
+  }
+  #toc nav {
+    display: none;
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+}
+
+/* alternative layout for wide screens */
+@media screen and (min-width: 1024px) {
+  body {
+    max-width: 724px;
+    margin: 42px auto;
+    padding-left: 1.5em;
+    padding-right: 29em;
+  }
+  #toc {
+    position: fixed;
+    top: 42px;
+    right: 42px;
+    width: 25%;
+    margin: 0;
+    padding: 0 1em;
+    z-index: 1;
+  }
+  #toc h2 {
+    border-top: none;
+    border-bottom: 1px solid #ddd;
+    font-size: 1em;
+    font-weight: normal;
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 0;
+    overflow: auto;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre {
+    page-break-inside: avoid;
+  }
+  figure {
+    overflow: scroll;
+  }
+  .breakable pre {
+    break-inside: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  h2+*, h3+*, h4+*, h5+*, h6+* {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+/* This is commented out here, as the string-set: doesn't
+   pass W3C validation currently */
+/*
+.ears thead .left {
+  string-set: ears-top-left content();
+}
+
+.ears thead .center {
+  string-set: ears-top-center content();
+}
+
+.ears thead .right {
+  string-set: ears-top-right content();
+}
+
+.ears tfoot .left {
+  string-set: ears-bottom-left content();
+}
+
+.ears tfoot .center {
+  string-set: ears-bottom-center content();
+}
+
+.ears tfoot .right {
+  string-set: ears-bottom-right content();
+}
+*/
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+  /* The following is commented out here, but set appropriately by in code, as
+     the content depends on the document */
+  /*
+  @top-left {
+    content: 'Internet-Draft';
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-left {
+    content: string(ears-top-left);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-center {
+    content: string(ears-top-center);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @top-right {
+    content: string(ears-top-right);
+    vertical-align: bottom;
+    border-bottom: solid 1px #ccc;
+  }
+  @bottom-left {
+    content: string(ears-bottom-left);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-center {
+    content: string(ears-bottom-center);
+    vertical-align: top;
+    border-top: solid 1px #ccc;
+  }
+  @bottom-right {
+      content: '[Page ' counter(page) ']';
+      vertical-align: top;
+      border-top: solid 1px #ccc;
+  }
+  */
+
+}
+
+/* Changes introduced to fix issues found during implementation */
+/* Make sure links are clickable even if overlapped by following H* */
+a {
+  z-index: 2;
+}
+/* Separate body from document info even without intervening H1 */
+section {
+  clear: both;
+}
+
+
+/* Top align author divs, to avoid names without organization dropping level with org names */
+.author {
+  vertical-align: top;
+}
+
+/* Leave room in document info to show Internet-Draft on one line */
+#identifiers dt {
+  width: 8em;
+}
+
+/* Don't waste quite as much whitespace between label and value in doc info */
+#identifiers dd {
+  margin-left: 1em;
+}
+
+/* Give floating toc a background color (needed when it's a div inside section */
+#toc {
+  background-color: white;
+}
+
+/* Make the collapsed ToC header render white on gray also when it's a link */
+@media screen and (max-width: 1023px) {
+  #toc h2 a,
+  #toc h2 a:link,
+  #toc h2 a:focus,
+  #toc h2 a:hover,
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+}
+
+/* Give the bottom of the ToC some whitespace */
+@media screen and (min-width: 1024px) {
+  #toc {
+    padding: 0 0 1em 1em;
+  }
+}
+
+/* Style section numbers with more space between number and title */
+.section-number {
+  padding-right: 0.5em;
+}
+
+/* prevent monospace from becoming overly large */
+tt, code, pre {
+  font-size: 95%;
+}
+
+/* Fix the height/width aspect for ascii art*/
+.sourcecode pre,
+.art-text pre {
+  line-height: 1.12;
+}
+
+
+/* Add styling for a link in the ToC that points to the top of the document */
+a.toplink {
+  float: right;
+  margin-right: 0.5em;
+}
+
+/* Fix the dl styling to match the RFC 7992 attributes */
+dl > dt,
+dl.dlParallel > dt {
+  float: left;
+  margin-right: 1em;
+}
+dl.dlNewline > dt {
+  float: none;
+}
+
+/* Provide styling for table cell text alignment */
+table td.text-left,
+table th.text-left {
+  text-align: left;
+}
+table td.text-center,
+table th.text-center {
+  text-align: center;
+}
+table td.text-right,
+table th.text-right {
+  text-align: right;
+}
+
+/* Make the alternative author contact information look less like just another
+   author, and group it closer with the primary author contact information */
+.alternative-contact {
+  margin: 0.5em 0 0.25em 0;
+}
+address .non-ascii {
+  margin: 0 0 0 2em;
+}
+
+/* With it being possible to set tables with alignment
+  left, center, and right, { width: 100%; } does not make sense */
+table {
+  width: auto;
+}
+
+/* Avoid reference text that sits in a block with very wide left margin,
+   because of a long floating dt label.*/
+.references dd {
+  overflow: visible;
+}
+
+/* Control caption placement */
+caption {
+  caption-side: bottom;
+}
+
+/* Limit the width of the author address vcard, so names in right-to-left
+   script don't end up on the other side of the page. */
+
+address.vcard {
+  max-width: 30em;
+  margin-right: auto;
+}
+
+/* For address alignment dependent on LTR or RTL scripts */
+address div.left {
+  text-align: left;
+}
+address div.right {
+  text-align: right;
+}
+
+/* Provide table alignment support.  We can't use the alignX classes above
+   since they do unwanted things with caption and other styling. */
+table.right {
+ margin-left: auto;
+ margin-right: 0;
+}
+table.center {
+ margin-left: auto;
+ margin-right: auto;
+}
+table.left {
+ margin-left: 0;
+ margin-right: auto;
+}
+
+/* Give the table caption label the same styling as the figcaption */
+caption a[href] {
+  color: #222;
+}
+
+@media print {
+  .toplink {
+    display: none;
+  }
+
+  /* avoid overwriting the top border line with the ToC header */
+  #toc {
+    padding-top: 1px;
+  }
+
+  /* Avoid page breaks inside dl and author address entries */
+  .vcard {
+    page-break-inside: avoid;
+  }
+
+}
+/* Tweak the bcp14 keyword presentation */
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+/* Tweak the invisible space above H* in order not to overlay links in text above */
+ h2 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 31px;
+ }
+ h3 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+ h4 {
+  margin-top: -18px;  /* provide offset for in-page anchors */
+  padding-top: 24px;
+ }
+/* Float artwork pilcrow to the right */
+@media screen {
+  .artwork a.pilcrow {
+    display: block;
+    line-height: 0.7;
+    margin-top: 0.15em;
+  }
+}
+/* Make pilcrows on dd visible */
+@media screen {
+  dd:hover > a.pilcrow {
+    visibility: visible;
+  }
+}
+/* Make the placement of figcaption match that of a table's caption
+   by removing the figure's added bottom margin */
+.alignLeft.art-text,
+.alignCenter.art-text,
+.alignRight.art-text {
+   margin-bottom: 0;
+}
+.alignLeft,
+.alignCenter,
+.alignRight {
+  margin: 1em 0 0 0;
+}
+/* In print, the pilcrow won't show on hover, so prevent it from taking up space,
+   possibly even requiring a new line */
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+/* Styling for the external metadata */
+div#external-metadata {
+  background-color: #eee;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  display: none;
+}
+div#internal-metadata {
+  padding: 0.5em;                       /* to match the external-metadata padding */
+}
+/* Styling for title RFC Number */
+h1#rfcnum {
+  clear: both;
+  margin: 0 0 -1em;
+  padding: 1em 0 0 0;
+}
+/* Make .olPercent look the same as <ol><li> */
+dl.olPercent > dd {
+  margin-bottom: 0.25em;
+  min-height: initial;
+}
+/* Give aside some styling to set it apart */
+aside {
+  border-left: 1px solid #ddd;
+  margin: 1em 0 1em 2em;
+  padding: 0.2em 2em;
+}
+aside > dl,
+aside > ol,
+aside > ul,
+aside > table,
+aside > p {
+  margin-bottom: 0.5em;
+}
+/* Additional page break settings */
+@media print {
+  figcaption, table caption {
+    page-break-before: avoid;
+  }
+}
+/* Font size adjustments for print */
+@media print {
+  body  { font-size: 10pt;      line-height: normal; max-width: 96%; }
+  h1    { font-size: 1.72em;    padding-top: 1.5em; } /* 1*1.2*1.2*1.2 */
+  h2    { font-size: 1.44em;    padding-top: 1.5em; } /* 1*1.2*1.2 */
+  h3    { font-size: 1.2em;     padding-top: 1.5em; } /* 1*1.2 */
+  h4    { font-size: 1em;       padding-top: 1.5em; }
+  h5, h6 { font-size: 1em;      margin: initial; padding: 0.5em 0 0.3em; }
+}
+/* Sourcecode margin in print, when there's no pilcrow */
+@media print {
+  .artwork,
+  .artwork > pre,
+  .sourcecode {
+    margin-bottom: 1em;
+  }
+}
+/* Avoid narrow tables forcing too narrow table captions, which may render badly */
+table {
+  min-width: 20em;
+}
+/* ol type a */
+ol.type-a { list-style-type: lower-alpha; }
+ol.type-A { list-style-type: upper-alpha; }
+ol.type-i { list-style-type: lower-roman; }
+ol.type-I { list-style-type: upper-roman; }
+/* Apply the print table and row borders in general, on request from the RPC,
+and increase the contrast between border and odd row background slightly */
+table {
+  border: 1px solid #ddd;
+}
+td {
+  border-top: 1px solid #ddd;
+}
+tr {
+  break-inside: avoid;
+}
+tr:nth-child(2n+1) > td {
+  background-color: #f8f8f8;
+}
+/* Use style rules to govern display of the TOC. */
+@media screen and (max-width: 1023px) {
+  #toc nav { display: none; }
+  #toc.active nav { display: block; }
+}
+/* Add support for keepWithNext */
+.keepWithNext {
+  break-after: avoid-page;
+  break-after: avoid-page;
+}
+/* Add support for keepWithPrevious */
+.keepWithPrevious {
+  break-before: avoid-page;
+}
+/* Change the approach to avoiding breaks inside artwork etc. */
+figure, pre, table, .artwork, .sourcecode  {
+  break-before: auto;
+  break-after: auto;
+}
+/* Avoid breaks between <dt> and <dd> */
+dl {
+  break-before: auto;
+  break-inside: auto;
+}
+dt {
+  break-before: auto;
+  break-after: avoid-page;
+}
+dd {
+  break-before: avoid-page;
+  break-after: auto;
+  orphans: 3;
+  widows: 3
+}
+span.break, dd.break {
+  margin-bottom: 0;
+  min-height: 0;
+  break-before: auto;
+  break-inside: auto;
+  break-after: auto;
+}
+/* Undo break-before ToC */
+@media print {
+  #toc {
+    break-before: auto;
+  }
+}
+/* Text in compact lists should not get extra bottom margin space,
+   since that would makes the list not compact */
+ul.compact p, .ulCompact p,
+ol.compact p, .olCompact p {
+ margin: 0;
+}
+/* But the list as a whole needs the extra space at the end */
+section ul.compact,
+section .ulCompact,
+section ol.compact,
+section .olCompact {
+  margin-bottom: 1em;                    /* same as p not within ul.compact etc. */
+}
+/* The tt and code background above interferes with for instance table cell
+   backgrounds.  Changed to something a bit more selective. */
+tt, code {
+  background-color: transparent;
+}
+p tt, p code, li tt, li code, dt tt, dt code {
+  background-color: #f8f8f8;
+}
+/* Tweak the pre margin -- 0px doesn't come out well */
+pre {
+   margin-top: 0.5px;
+}
+/* Tweak the compact list text */
+ul.compact, .ulCompact,
+ol.compact, .olCompact,
+dl.compact, .dlCompact {
+  line-height: normal;
+}
+/* Don't add top margin for nested lists */
+li > ul, li > ol, li > dl,
+dd > ul, dd > ol, dd > dl,
+dl > dd > dl {
+  margin-top: initial;
+}
+/* Elements that should not be rendered on the same line as a <dt> */
+/* This should match the element list in writer.text.TextWriter.render_dl() */
+dd > div.artwork:first-child,
+dd > aside:first-child,
+dd > blockquote:first-child,
+dd > figure:first-child,
+dd > ol:first-child,
+dd > div.sourcecode:first-child,
+dd > table:first-child,
+dd > ul:first-child {
+  clear: left;
+}
+/* fix for weird browser behaviour when <dd/> is empty */
+dt+dd:empty::before{
+  content: "\00a0";
+}
+/* Make paragraph spacing inside <li> smaller than in body text, to fit better within the list */
+li > p {
+  margin-bottom: 0.5em
+}
+/* Don't let p margin spill out from inside list items */
+li > p:last-of-type:only-child {
+  margin-bottom: 0;
+}
+</style>
+<link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">EP Authorization Receipts</td>
+<td class="right">July 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Schrock</td>
+<td class="center">Expires 15 January 2027</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Network Working Group</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-schrock-ep-authorization-receipts-07</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-07-14" class="published">14 July 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Informational</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2027-01-15">15 January 2027</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">I. Schrock</div>
+<div class="org">EMILIA Protocol, Inc.</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Authorization Receipts for High-Risk Agent Actions</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document defines the EMILIA Protocol (EP) authorization
+      receipt, an evidence artifact binding an enrolled approver key to
+      one canonical action before execution. An approver-held key signs an
+      Authorization Context containing the action hash, policy reference,
+      nonce, audience, and validity window. A Trust Receipt carries the
+      signed contexts, terminal consumption record, and Merkle inclusion
+      material so a relying party can verify the recorded event offline
+      under independently selected log, directory, policy, and approver
+      trust inputs.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2">The receipt establishes only the guarantees of the selected
+      verification profile. The mapping from an enrolled approver
+      identifier to a natural person is asserted by the directory
+      authority. Offline verification does not establish current
+      revocation status, global non-replay, comprehension, legality,
+      safety, or execution. Replay prevention requires an online atomic
+      consumption store at the executor. The state-machine invariants are
+      machine-checked under the assumptions stated in this document.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 15 January 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1" class="keepWithNext"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-design-goals" class="internal xref">Design Goals</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-scope-of-identity" class="internal xref">Scope of Identity</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-the-action-object-and-actio" class="internal xref">The Action Object and Action Hash</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-the-authorization-context" class="internal xref">The Authorization Context</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1">
+                <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="auto internal xref">4.1</a>.  <a href="#name-initiator-attestation-optio" class="internal xref">Initiator Attestation (OPTIONAL)</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2">
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-agent-binding-optional" class="internal xref">Agent Binding (OPTIONAL)</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-approver-keys-and-the-signo" class="internal xref">Approver Keys and the Signoff Signature</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-key-classes" class="internal xref">Key Classes</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-enrollment-and-the-approver" class="internal xref">Enrollment and the Approver Directory</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3">
+                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="auto internal xref">5.3</a>.  <a href="#name-the-signoff" class="internal xref">The Signoff</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-consumption-commitment-and-" class="internal xref">Consumption, Commitment, and the Trust Receipt</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.1">
+                <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="auto internal xref">6.1</a>.  <a href="#name-state-machine" class="internal xref">State Machine</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2">
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-the-trust-receipt" class="internal xref">The Trust Receipt</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.3">
+                <p id="section-toc.1-1.6.2.3.1"><a href="#section-6.3" class="auto internal xref">6.3</a>.  <a href="#name-offline-verification-algori" class="internal xref">Offline Verification Algorithm</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-multi-approver-policies-m-o" class="internal xref">Multi-Approver Policies (m-of-n)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-delegation-constraints" class="internal xref">Delegation Constraints</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-conformance-classes-and-exe" class="internal xref">Conformance Classes and Execution-Side Enforcement</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-relationship-to-other-work" class="internal xref">Relationship to Other Work</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-operator-compromise" class="internal xref">Operator Compromise</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-approver-device-compromise" class="internal xref">Approver Device Compromise</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
+                <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-presentation-attacks" class="internal xref">Presentation Attacks</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
+                <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-log-equivocation" class="internal xref">Log Equivocation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.5">
+                <p id="section-toc.1-1.11.2.5.1"><a href="#section-11.5" class="auto internal xref">11.5</a>.  <a href="#name-what-the-formal-models-do-a" class="internal xref">What the Formal Models Do and Do Not Prove</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.6">
+                <p id="section-toc.1-1.11.2.6.1"><a href="#section-11.6" class="auto internal xref">11.6</a>.  <a href="#name-directory-authority" class="internal xref">Directory Authority</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.7">
+                <p id="section-toc.1-1.11.2.7.1"><a href="#section-11.7" class="auto internal xref">11.7</a>.  <a href="#name-what-separation-of-duties-d" class="internal xref">What Separation of Duties Does and Does Not Provide</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.8">
+                <p id="section-toc.1-1.11.2.8.1"><a href="#section-11.8" class="auto internal xref">11.8</a>.  <a href="#name-approver-fatigue" class="internal xref">Approver Fatigue</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.9">
+                <p id="section-toc.1-1.11.2.9.1"><a href="#section-11.9" class="auto internal xref">11.9</a>.  <a href="#name-initiator-attestation-as-an" class="internal xref">Initiator Attestation as an Attack Surface</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.10">
+                <p id="section-toc.1-1.11.2.10.1"><a href="#section-11.10" class="auto internal xref">11.10</a>. <a href="#name-no-symmetric-key-on-the-ver" class="internal xref">No symmetric key on the verification trust path</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.11">
+                <p id="section-toc.1-1.11.2.11.1"><a href="#section-11.11" class="auto internal xref">11.11</a>. <a href="#name-canonicalization-robustness" class="internal xref">Canonicalization Robustness</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-changes-since-06" class="internal xref">Changes since -06</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-changes-since-04" class="internal xref">Changes since -04</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#appendix-C" class="auto internal xref">Appendix C</a>.  <a href="#name-changes-since-00-through-04" class="internal xref">Changes since -00 (through -04)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
+            <p id="section-toc.1-1.18.1"><a href="#appendix-D" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">Agentic AI systems increasingly hold credentials sufficient to
+      perform irreversible operations: releasing payments, modifying
+      beneficiary records, rotating production credentials, deleting
+      data. Session-level authentication and authorization alone answer
+      whether an actor may operate within a scope. A deployment can
+      separately require evidence that an enrolled approver key signed one
+      exact proposed action before execution.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">Three structural gaps follow:<a href="#section-1-2" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-1-3">
+        <li id="section-1-3.1">
+          <strong>The action gap.</strong> Identity and access
+        management authorizes <em>sessions and scopes</em>, not
+        individual actions. Fraud that occurs inside a valid session
+        through approved channels (e.g., business email compromise
+        leading to a beneficiary change) is invisible to session-level
+        controls.<a href="#section-1-3.1" class="pilcrow">¶</a>
+</li>
+        <li id="section-1-3.2">
+          <strong>The accountability gap.</strong> Where human approval
+        exists, it is typically a click in a workflow tool, recorded in a
+        mutable application database controlled by the operator of the
+        approval system. A deployment can instead require portable
+        evidence binding an enrolled approver key to the specific
+        action.<a href="#section-1-3.2" class="pilcrow">¶</a>
+</li>
+        <li id="section-1-3.3">
+          <strong>The verification gap.</strong> Auditors,
+        counterparties, and regulators may need to evaluate evidence
+        outside the operator that produced it, including after the live
+        service is unavailable or the operators disagree.<a href="#section-1-3.3" class="pilcrow">¶</a>
+</li>
+      </ol>
+<p id="section-1-4">This document addresses those deployment requirements with a
+      receipt profile: before an
+      irreversible action executes, an enrolled approver signs the exact
+      action with an approver-held key; an executor records terminal
+      consumption through an atomic state transition; and the resulting
+      receipt remains independently verifiable offline for as long as its
+      algorithms and trust material remain acceptable or are renewed.<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-5">Adjacent mechanisms answer related but non-identical questions.
+      The distinctions below are profile boundaries, not claims that
+      portable approval or intent evidence exists nowhere else.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1-6.1">OAuth 2.0 with Rich Authorization Requests (RFC 9396) and
+        GNAP (RFC 9635) authorize a client's <em>requested scope</em>;
+        they do not produce a named human's offline-verifiable signature
+        over the exact action that executed.<a href="#section-1-6.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-1-6.2">The OAuth Step-Up Authentication Challenge (RFC 9470) can
+        <em>demand</em> fresh human authentication for a sensitive
+        operation, but yields no durable, portable artifact of that
+        approval.<a href="#section-1-6.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-1-6.3">Transaction Tokens (draft-ietf-oauth-transaction-tokens)
+        propagate call context across workloads within a trust domain;
+        they are short-lived, online-validated, and assert
+        <em>workload</em> identity, not a human's authorization of an
+        action.<a href="#section-1-6.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-1-6.4">The Security Event Token (RFC 8417) and CAEP convey, as
+        issuer assertions, that an event <em>occurred</em>; they are not
+        a human's pre-execution approval bound to one exact action.<a href="#section-1-6.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-1-6.5">RATS (RFC 9334) and the Entity Attestation Token (RFC 9711)
+        attest the trustworthiness of a <em>platform or workload</em>,
+        not that a named human authorized an action -- a different trust
+        root.<a href="#section-1-6.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-1-6.6">SCITT (RFC 9943) provides an append-only transparency log
+        and inclusion receipts, but is deliberately agnostic about the
+        application semantics and authority behind a statement. An EP
+        receipt can be carried as one such application statement.<a href="#section-1-6.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-1-6.7">The agent-action evidence work now emerging around that
+        architecture -- per-action receipt envelopes, action capsules,
+        post-execution profiles, pre-execution permits, and refusal
+        events -- makes agent actions transparent, logged, and
+        policy-checked. Some define approval or intent evidence with
+        different ceremony, identity, freshness, or consumption
+        guarantees.<a href="#section-1-6.7" class="pilcrow">¶</a>
+</li>
+      </ul>
+<p id="section-1-7">The use case for this receipt is narrower than agent logging in
+      general: a relying party needs an action-bound approval event under
+      a named verification profile, portable outside the operator, agent
+      runtime, and transparency service. EP is one such artifact and is
+      not a replacement for any of the above: it composes with them
+      (<a href="#related-work" class="auto internal xref">Section 10</a>) and can be carried in their
+      formats -- for example, an EP receipt expressed as a COSE Signed
+      Statement and logged by a SCITT Transparency Service, or
+      referenced by digest from an action receipt, capsule, or
+      permit.<a href="#section-1-7" class="pilcrow">¶</a></p>
+<p id="section-1-8">The human-approval mechanism this document specifies -- a
+      user-verification-gated signature over the exact Authorization
+      Context (<a href="#key-classes" class="auto internal xref">Section 5.1</a>, Class A) -- is native to EP
+      and self-contained. It does not depend on, and is not a profile of,
+      any other draft's acquiescence, consent, or confirmation mechanism;
+      a conforming EP signoff is produced entirely by the controls defined
+      here. Where EP composes with adjacent work
+      (<a href="#related-work" class="auto internal xref">Section 10</a>), that composition is by reference,
+      not dependency.<a href="#section-1-8" class="pilcrow">¶</a></p>
+<section id="section-1.1">
+        <h3 id="name-design-goals">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-design-goals" class="section-name selfRef">Design Goals</a>
+        </h3>
+<ul class="normal">
+<li class="normal" id="section-1.1-1.1">
+            <strong>G1 -- Action binding.</strong> An approval is
+          cryptographically bound to one exact action. It cannot
+          authorize anything else.<a href="#section-1.1-1.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-1.2">
+            <strong>G2 -- Approver-held keys.</strong> The approver's
+          signature is produced by a key the EP operator does not
+          possess. The operator orchestrates; it cannot forge.<a href="#section-1.1-1.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-1.3">
+            <strong>G3 -- One-time consumption.</strong> An
+          authorization reaches a terminal state at most once within the
+          executor's shared atomic consumption domain. Replay presented to
+          that domain <span class="bcp14">MUST</span> be rejected. An offline receipt
+          alone cannot prove that no independent executor consumed the same
+          authorization.<a href="#section-1.1-1.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-1.4">
+            <strong>G4 -- Separation of duties.</strong> The initiator
+          of an action <span class="bcp14">MUST NOT</span> be an approver of that
+          action. Policies <span class="bcp14">MAY</span> require m-of-n distinct
+          approvers.<a href="#section-1.1-1.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-1.5">
+            <strong>G5 -- Offline verifiability.</strong> A receipt is
+          verifiable with no network access, using only the receipt, the
+          approver's public key material, and a published log checkpoint.
+          Offline verification establishes authenticity and log inclusion
+          as of commit time, not current revocation status
+          (<a href="#offline-verification" class="auto internal xref">Section 6.3</a>).<a href="#section-1.1-1.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-1.6">
+            <strong>G6 -- Execution-side enforcement.</strong> The
+          strongest deployment places verification at the system of
+          record: the executing service verifies the receipt before
+          performing the action. Middleware-only deployments are
+          explicitly defined as a weaker conformance class
+          (<a href="#conformance" class="auto internal xref">Section 9</a>).<a href="#section-1.1-1.6" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-1.1-1.7">
+            <strong>G7 -- Machine-checked safety.</strong> The protocol
+          state machine's safety properties are maintained as formal
+          models (TLA+, Alloy, and Tamarin) and checked in continuous integration.
+          Implementations can be tested against a published conformance
+          suite.<a href="#section-1.1-1.7" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+<div id="scope-of-identity">
+<section id="section-1.2">
+        <h3 id="name-scope-of-identity">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-scope-of-identity" class="section-name selfRef">Scope of Identity</a>
+        </h3>
+<p id="section-1.2-1">This document binds an approval to an <em>approver
+        identifier</em> whose key is enrolled in the Approver Directory
+        (<a href="#approver-directory" class="auto internal xref">Section 5.2</a>); it does not, by itself,
+        prove that the holder of that identifier is a particular natural
+        person. Proof of a specific real-world identity -- that
+        <code>ep:approver:jchen-controller</code> is the human Jordan Chen --
+        is out of scope. The Approver Directory trust root
+        (<a href="#approver-directory" class="auto internal xref">Section 5.2</a>) is the explicit slot where
+        an identity-proofing or key-discovery layer binds keys to named
+        persons; the strength of any such binding is a property of that
+        layer, not of the receipt format. A receipt proves that a key
+        enrolled under a given approver identifier signed the exact
+        action; the mapping from identifier to person is established and
+        asserted by the directory authority.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+<div id="terminology">
+<section id="section-2">
+      <h2 id="name-terminology">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+      </h2>
+<p id="section-2-1">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>",
+      "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>",
+      "<span class="bcp14">SHALL NOT</span>", "<span class="bcp14">SHOULD</span>",
+      "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>",
+      "<span class="bcp14">NOT RECOMMENDED</span>", "<span class="bcp14">MAY</span>", and
+      "<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as
+      described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span>
+      when, and only when, they appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
+<p id="section-2-2"><strong>Initiator.</strong> The entity (typically an AI agent or
+      automated process) that proposes a high-risk action. The initiator
+      is identified but never trusted with approval authority over its
+      own actions.<a href="#section-2-2" class="pilcrow">¶</a></p>
+<p id="section-2-3"><strong>Approver.</strong> A named human (or, for lower
+      assurance classes, an organizational role occupied by a named human
+      at decision time) who holds approval authority under policy. The
+      approver controls a private signing key; see
+      <a href="#approver-keys" class="auto internal xref">Section 5</a>.<a href="#section-2-3" class="pilcrow">¶</a></p>
+<p id="section-2-4"><strong>Action.</strong> A single proposed operation with
+      concrete parameters (e.g., one wire transfer to one beneficiary for
+      one amount). Actions are represented by an Action Object and
+      identified by their action hash (<a href="#action-object" class="auto internal xref">Section 3</a>).<a href="#section-2-4" class="pilcrow">¶</a></p>
+<p id="section-2-5"><strong>Policy.</strong> A named, versioned rule set
+      determining, for a class of actions, which approvers are required
+      (including m-of-n thresholds), validity windows, and amount or
+      scope limits.<a href="#section-2-5" class="pilcrow">¶</a></p>
+<p id="section-2-6"><strong>Authorization Context.</strong> The canonical structure
+      an approver signs: action hash, policy reference, initiator
+      identity, nonce, expiry, and chain binding
+      (<a href="#authorization-context" class="auto internal xref">Section 4</a>).<a href="#section-2-6" class="pilcrow">¶</a></p>
+<p id="section-2-7"><strong>Initiator Attestation.</strong> An
+      <span class="bcp14">OPTIONAL</span> claim by the initiator, carried inside the
+      Authorization Context, stating why the initiator escalated the
+      action to a human (<a href="#initiator-attestation" class="auto internal xref">Section 4.1</a>). It is a
+      claim, not proof of the initiator's internal state.<a href="#section-2-7" class="pilcrow">¶</a></p>
+<p id="section-2-8"><strong>Trust Receipt.</strong> The terminal artifact: the
+      Action Object digest, all approver signatures, the consumption
+      record, and a Merkle inclusion proof against a signed log
+      checkpoint (<a href="#consumption" class="auto internal xref">Section 6</a>).<a href="#section-2-8" class="pilcrow">¶</a></p>
+<p id="section-2-9"><strong>Verifying Executor.</strong> A system of record that
+      verifies a Trust Receipt (or a pre-execution Authorization Bundle)
+      before performing the action. See <a href="#conformance" class="auto internal xref">Section 9</a>.<a href="#section-2-9" class="pilcrow">¶</a></p>
+<p id="section-2-10"><strong>EP Operator.</strong> The party running the
+      orchestration service (policy registry, signoff routing, log).
+      Under this protocol the operator is <em>not</em> in the signing
+      trust path for approvals (G2).<a href="#section-2-10" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="action-object">
+<section id="section-3">
+      <h2 id="name-the-action-object-and-actio">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-the-action-object-and-actio" class="section-name selfRef">The Action Object and Action Hash</a>
+      </h2>
+<p id="section-3-1">An Action Object is a JSON document with at minimum:<a href="#section-3-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-3-2">
+<pre>
+{
+  "ep_version": "1.0",
+  "action_type": "wire.release",
+  "target": { "system": "treasury.example",
+              "resource": "wire/8841" },
+  "parameters": { "amount": "2400000.00", "currency": "USD",
+                  "beneficiary_account_hash": "sha256:..." },
+  "initiator": "ep:entity:agent-recon-7",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "requested_at": "2026-06-09T17:21:04Z"
+}
+</pre><a href="#section-3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-3-3">The Action Object <span class="bcp14">MUST</span> be serialized using JSON
+      Canonicalization Scheme (JCS) <span>[<a href="#RFC8785" class="cite xref">RFC8785</a>]</span>. The
+      <strong>action hash</strong> is the SHA-256 digest of the canonical
+      serialization. Implementations <span class="bcp14">MUST</span> reject approval
+      requests whose action hash does not match a locally recomputed hash
+      of the presented Action Object. Sensitive parameter values
+      <span class="bcp14">MAY</span> be carried as salted hashes (as
+      <code>beneficiary_account_hash</code> above) provided the executing
+      system can recompute them; the binding property is preserved
+      because the hash commits to the committed values.<a href="#section-3-3" class="pilcrow">¶</a></p>
+<p id="section-3-4">The action hash is this receipt format's native integrity
+      identifier. It is not assumed to equal an action digest from a
+      different protocol. A composition layer MAY project the verified
+      Action Object into a Canonical Action IDentifier action type using
+      an exact mapping profile pinned by the relying party. Such mapping
+      occurs only after receipt verification and does not change this
+      document's signature input. A failed, lossy, or unpinned mapping is
+      indeterminate and MUST NOT be treated as an action match.<a href="#section-3-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authorization-context">
+<section id="section-4">
+      <h2 id="name-the-authorization-context">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-the-authorization-context" class="section-name selfRef">The Authorization Context</a>
+      </h2>
+<p id="section-4-1">For each required approver, the orchestrator constructs an
+      Authorization Context:<a href="#section-4-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4-2">
+<pre>
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z",
+  "prev_receipt_hash": "sha256:51d0..."
+}
+</pre><a href="#section-4-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4-3">Rules:<a href="#section-4-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4-4.1">
+          <code>nonce</code> <span class="bcp14">MUST</span> be at least 128 bits of
+        CSPRNG output and <span class="bcp14">MUST</span> be unique within the issuer and
+        consumption domain for each authorization attempt. It is the
+        consumption key for G3, and is
+        the receipt's freshness mechanism in the sense of the Entity
+        Attestation Token (RFC 9711): a verifier-relevant nonce, here held
+        to a 128-bit floor (twice the EAT minimum). EP does not treat a
+        timestamp alone as freshness; absolute time, where a relying party
+        requires it, is asserted by an independent authority rather than by
+        the operator.<a href="#section-4-4.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-4.2">
+          <code>policy_hash</code> commits to the exact policy version
+        evaluated. A signature over a context with policy_hash X
+        <span class="bcp14">MUST NOT</span> satisfy a requirement evaluated under
+        policy_hash Y, even for the same policy_id.<a href="#section-4-4.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-4.3">
+          <code>prev_receipt_hash</code> chains this authorization to the
+        issuing log's most recent receipt, contributing to tamper
+        evidence.<a href="#section-4-4.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-4.4">The context is JCS-canonicalized; the <strong>context
+        hash</strong> is its SHA-256 digest. The approver signs the
+        context hash.<a href="#section-4-4.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-4-4.5">The approver <span class="bcp14">MUST</span> be shown, at signing time, a
+        faithful human-readable rendering of the Action Object -- not only
+        the hash. Signing interfaces that display a different action than
+        the one hashed are a presentation attack; see
+        <a href="#presentation-attacks" class="auto internal xref">Section 11.3</a>.<a href="#section-4-4.5" class="pilcrow">¶</a>
+</li>
+      </ul>
+<div id="initiator-attestation">
+<section id="section-4.1">
+        <h3 id="name-initiator-attestation-optio">
+<a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-initiator-attestation-optio" class="section-name selfRef">Initiator Attestation (OPTIONAL)</a>
+        </h3>
+<p id="section-4.1-1">A producer <span class="bcp14">MAY</span> include an
+        <code>initiator_attestation</code> member in any
+        <code>ep.signoff.v1</code> Authorization Context. The member carries
+        the initiator's own stated reason for escalating the action to a
+        human. When present it <span class="bcp14">MUST</span> be a JSON object with
+        the following members and no others:<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-1">
+          <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Field</th>
+              <th class="text-left" rowspan="1" colspan="1">Required</th>
+              <th class="text-left" rowspan="1" colspan="1">Type</th>
+              <th class="text-left" rowspan="1" colspan="1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>escalation_trigger</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">REQUIRED</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string (enum)</td>
+              <td class="text-left" rowspan="1" colspan="1">Why the initiator escalated. Exactly one of:
+              <code>irreversibility</code>, <code>magnitude</code>,
+              <code>uncertainty</code>, <code>novelty</code>,
+              <code>authority_gap</code>, <code>policy_rule</code>.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>policy_basis</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">OPTIONAL</span> (<span class="bcp14">REQUIRED</span>
+              whenever a deterministic policy rule fired, including always
+              when <code>escalation_trigger</code> is
+              <code>policy_rule</code>)</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">Identifier of the policy or rule that fired, e.g.
+              <code>ep:policy:wires-over-100k@v12/rule:dual-auth</code>.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>statement</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">OPTIONAL</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">Short free-text reason the initiator gives the approver.
+              <span class="bcp14">MUST NOT</span> exceed 280 characters.</td>
+            </tr>
+          </tbody>
+        </table>
+<p id="section-4.1-3">Enum semantics:<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4.1-4.1">
+            <code>irreversibility</code> -- the action cannot be undone once
+          executed.<a href="#section-4.1-4.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-4.2">
+            <code>magnitude</code> -- the amount or scope exceeds what the
+          initiator should act on alone.<a href="#section-4.1-4.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-4.3">
+            <code>uncertainty</code> -- the initiator's confidence in its own
+          assessment is too low to proceed unaided.<a href="#section-4.1-4.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-4.4">
+            <code>novelty</code> -- the action or counterparty has no
+          precedent in the initiator's history.<a href="#section-4.1-4.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-4.5">
+            <code>authority_gap</code> -- the action requires authority the
+          initiator was never granted.<a href="#section-4.1-4.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-4.6">
+            <code>policy_rule</code> -- a deterministic policy rule required
+          signoff and none of the five substantive categories above
+          captures why; <code>policy_basis</code> names the rule.<a href="#section-4.1-4.6" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-4.1-5">Example context (fields as above, with the new member):<a href="#section-4.1-5" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.1-6">
+<pre>
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "initiator_attestation": {
+    "escalation_trigger": "magnitude",
+    "policy_basis": "ep:policy:wires-over-100k@v12/rule:dual-auth",
+    "statement": "Exceeds my single-action limit; new beneficiary."
+  },
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z"
+}
+</pre><a href="#section-4.1-6" class="pilcrow">¶</a>
+</div>
+<p id="section-4.1-7">Rules:<a href="#section-4.1-7" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4.1-8.1">
+            <strong>Status.</strong> The member is
+          <span class="bcp14">OPTIONAL</span>. Existing issuers remain conformant; the
+          field can be adopted policy-by-policy.<a href="#section-4.1-8.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-8.2">
+            <strong>Binding.</strong> No new signature, digest, or
+          verification step is introduced. The context is
+          JCS-canonicalized as already required above; JCS serializes
+          every member present, so <code>initiator_attestation</code> and
+          everything inside it are part of the signed bytes. The
+          approver's signature therefore covers the stated reason: the
+          receipt proves the stated reason was part of what the approver
+          signed. Receipts carrying this member verify under the existing
+          <a href="#offline-verification" class="auto internal xref">Section 6.3</a> verifiers unmodified; a
+          context without the member produces byte-identical canonical
+          material to one produced today.<a href="#section-4.1-8.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-8.3">
+            <strong>Trigger/basis precedence.</strong>
+            <code>escalation_trigger</code> always carries the substantive
+          reason: when one of the first five enum values applies, the
+          producer <span class="bcp14">MUST</span> use it, whether or not a
+          deterministic rule also fired; <code>policy_rule</code>
+            <span class="bcp14">MUST</span> be used only when no substantive category
+          fits. Independently of which trigger is chosen, whenever a
+          deterministic policy rule fired, <code>policy_basis</code>
+            <span class="bcp14">MUST</span> be populated with that rule's
+          identifier.<a href="#section-4.1-8.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-8.4">
+            <strong>Cross-context consistency.</strong> When a receipt
+          contains multiple contexts (m-of-n approvals), the
+          <code>initiator_attestation</code> object, if present in any
+          context, <span class="bcp14">MUST</span> be present in every context of that
+          receipt, and its canonical form --
+          <code>canonicalize(initiator_attestation)</code> -- <span class="bcp14">MUST</span>
+          be identical across all of them. Every approver signs the same
+          stated reason.<a href="#section-4.1-8.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-8.5">Producers <span class="bcp14">MUST NOT</span> add members beyond the
+          three defined above in v1.<a href="#section-4.1-8.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-8.6">A signing client implementing this member
+          <span class="bcp14">MUST</span> render the attestation to the approver
+          alongside the faithful human-readable rendering of the Action
+          Object that this section already requires, subject to the
+          untrusted-content display rules in
+          <a href="#initiator-attestation-security" class="auto internal xref">Section 11.9</a>.<a href="#section-4.1-8.6" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.1-8.7">A signing client presented with a context whose
+          <code>statement</code> exceeds 280 characters <span class="bcp14">MUST</span>
+          refuse to render it for signing.<a href="#section-4.1-8.7" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-4.1-9">The attestation is a claim by the initiator, which this
+        document identifies but never trusts
+        (<a href="#terminology" class="auto internal xref">Section 2</a>): it is the initiator's stated
+        reason, not a verified fact, and it is not evidence of the
+        initiator's internal state. Verifiers implementing this member
+        <span class="bcp14">MUST</span> check the cross-context consistency rule above
+        and <span class="bcp14">SHOULD</span> surface the attestation and flag other
+        violations of this section in verification reports; none of these
+        checks affects signature validity, by design, so receipts verify
+        on verifiers that predate this member.<a href="#section-4.1-9" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="agent-binding">
+<section id="section-4.2">
+        <h3 id="name-agent-binding-optional">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-agent-binding-optional" class="section-name selfRef">Agent Binding (OPTIONAL)</a>
+        </h3>
+<p id="section-4.2-1">A producer <span class="bcp14">MAY</span> include an <code>agent_binding</code>
+        member in any <code>ep.signoff.v1</code> Authorization Context. The
+        member attributes the authorized action to an external <strong>agent
+        identity</strong> and, optionally, the external
+        <strong>delegation</strong> under which that agent was authorized to
+        act. When present it <span class="bcp14">MUST</span> be a JSON object with the
+        following members and no others:<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-2">
+          <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Field</th>
+              <th class="text-left" rowspan="1" colspan="1">Required</th>
+              <th class="text-left" rowspan="1" colspan="1">Type</th>
+              <th class="text-left" rowspan="1" colspan="1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>agent_id</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">REQUIRED</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">Non-empty external agent-identity reference (URI, DID, or
+              opaque id). This document does not constrain its scheme.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>delegation</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">OPTIONAL</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">object</td>
+              <td class="text-left" rowspan="1" colspan="1">The external delegation that authorized the agent; members
+              below, no others.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>statement</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">OPTIONAL</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">Short free-text note for the approver. <span class="bcp14">MUST NOT</span>
+              exceed 280 characters.</td>
+            </tr>
+          </tbody>
+        </table>
+<p id="section-4.2-3">When <code>delegation</code> is present it <span class="bcp14">MUST</span> be a
+        JSON object with the following members and no others:<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+<table class="center" id="table-3">
+          <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Field</th>
+              <th class="text-left" rowspan="1" colspan="1">Required</th>
+              <th class="text-left" rowspan="1" colspan="1">Type</th>
+              <th class="text-left" rowspan="1" colspan="1">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>scheme</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">REQUIRED</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">Non-empty name of the external delegation standard, e.g.
+              <code>"WIMSE"</code>, <code>"DRP"</code>.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>ref</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">REQUIRED</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">Non-empty external receipt/credential identifier.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>hash</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">OPTIONAL</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">Content hash of the referenced artifact, formatted
+              <code>"sha256:&lt;64-lowercase-hex&gt;"</code>.</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>observed_at</code>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span class="bcp14">OPTIONAL</span>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">string</td>
+              <td class="text-left" rowspan="1" colspan="1">RFC 3339 timestamp recording when the external delegation
+              evidence was observed or known valid. See L4 evidence freshness
+              below.</td>
+            </tr>
+          </tbody>
+        </table>
+<p id="section-4.2-5">Example context (fields as above, with the new member):<a href="#section-4.2-5" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.2-6">
+<pre>
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "agent_binding": {
+    "agent_id": "did:web:agents.example.com:recon-7",
+    "delegation": {
+      "scheme": "WIMSE",
+      "ref": "urn:wimse:cred:9c41ab",
+      "hash": "sha256:2f9a...",
+      "observed_at": "2026-06-09T17:20:48Z"
+    },
+    "statement": "Acting for treasury-ops under wire delegation."
+  },
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z"
+}
+</pre><a href="#section-4.2-6" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2-7">Rules:<a href="#section-4.2-7" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4.2-8.1">
+            <strong>Status.</strong> The member is <span class="bcp14">OPTIONAL</span>.
+          Existing issuers remain conformant; the field can be adopted
+          policy-by-policy.<a href="#section-4.2-8.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.2-8.2">
+            <strong>Claim, not proof.</strong> <code>agent_binding</code>
+          records that the action was <em>presented</em> as being taken by
+          <code>agent_id</code> under delegation <code>ref</code>. This document
+          identifies but never trusts the binding
+          (<a href="#terminology" class="auto internal xref">Section 2</a>): it is neither proof of the agent's
+          identity nor proof of the delegation's validity, both of which
+          remain the responsibility of the referenced external system. A
+          verifier <span class="bcp14">MUST NOT</span> treat <code>agent_binding</code> as
+          proof of either; it <span class="bcp14">MAY</span> surface <code>agent_id</code> and
+          <code>delegation</code> to the relying party as part of the verified
+          context, clearly labeled as a reference to an external system.<a href="#section-4.2-8.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.2-8.3">
+            <strong>Binding.</strong> No new signature, digest, or
+          verification step is introduced. The context is JCS-canonicalized as
+          already required above; JCS serializes every member present, so
+          <code>agent_binding</code> and everything inside it are part of the
+          signed bytes. The approver's signature therefore covers the binding.
+          Receipts carrying this member verify under the existing
+          <a href="#offline-verification" class="auto internal xref">Section 6.3</a> verifiers unmodified; a context
+          without it produces byte-identical canonical material to one produced
+          today.<a href="#section-4.2-8.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.2-8.4">
+            <strong>Cross-context consistency.</strong> When a receipt
+          contains multiple contexts (m-of-n approvals), the
+          <code>agent_binding</code> object, if present in any context,
+          <span class="bcp14">MUST</span> be present in every context of that receipt, and
+          its canonical form -- <code>canonicalize(agent_binding)</code> --
+          <span class="bcp14">MUST</span> be identical across all of them. Every approver
+          signs the same attribution.<a href="#section-4.2-8.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.2-8.5">Producers <span class="bcp14">MUST NOT</span> add members beyond those
+          defined above in v1, in either <code>agent_binding</code> or its
+          <code>delegation</code>.<a href="#section-4.2-8.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.2-8.6">A signing client implementing this member <span class="bcp14">SHOULD</span>
+          render <code>agent_id</code> (and <code>delegation</code> if present) to the
+          approver alongside the faithful human-readable rendering of the
+          Action Object that this section already requires, subject to the
+          untrusted-content display rules in
+          <a href="#initiator-attestation-security" class="auto internal xref">Section 11.9</a>. A signing client
+          presented with a context whose <code>statement</code> exceeds 280
+          characters <span class="bcp14">MUST</span> refuse to render it for signing.<a href="#section-4.2-8.6" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-4.2-9"><strong>L4 evidence freshness (OPTIONAL).</strong> A human
+        authorization decision is only as trustworthy as the upstream
+        agent-identity and delegation evidence it relied on. If a decision is
+        enforced correctly against a delegation claim that was never
+        constrained or has since expired, the failure surfaces at the
+        authorization layer but originates in the identity/delegation layer
+        beneath it. This document makes that dependency explicit and recordable
+        without absorbing the identity layer:<a href="#section-4.2-9" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4.2-10.1">A producer <span class="bcp14">MAY</span> populate
+          <code>delegation.observed_at</code> with the RFC 3339 time at which the
+          external delegation evidence was observed or known valid. Like the
+          rest of the binding, it is covered by the approver's signature.<a href="#section-4.2-10.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-4.2-10.2">A relying party <span class="bcp14">MAY</span> enforce freshness against
+          <code>observed_at</code>. When it does, the evaluation
+          <span class="bcp14">MUST</span> fail closed: a missing <code>observed_at</code>, a
+          timestamp later than the evaluation time, or an age exceeding the
+          relying party's configured maximum <span class="bcp14">MUST</span> be treated as
+          not-fresh. When no maximum age is configured, freshness is not
+          evaluated and the evidence is still surfaced for the audit
+          record.<a href="#section-4.2-10.2" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-4.2-11">This keeps the receipt agnostic to which external
+        identity/delegation scheme prevails: the relying party binds to and
+        records whatever evidence was presented rather than requiring that
+        layer to converge, and a stale or unconstrained upstream claim becomes
+        detectable after the fact rather than silently absorbed. As with the
+        Initiator Attestation, none of these checks affects signature validity,
+        by design, so receipts verify on verifiers that predate this
+        member.<a href="#section-4.2-11" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="approver-keys">
+<section id="section-5">
+      <h2 id="name-approver-keys-and-the-signo">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-approver-keys-and-the-signo" class="section-name selfRef">Approver Keys and the Signoff Signature</a>
+      </h2>
+<p id="section-5-1">This section is the core upgrade over server-side approval
+      systems.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<div id="key-classes">
+<section id="section-5.1">
+        <h3 id="name-key-classes">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-key-classes" class="section-name selfRef">Key Classes</a>
+        </h3>
+<p id="section-5.1-1">Key classes classify KEY CUSTODY -- who holds and exercises
+        the approver's signing key -- and nothing else. They are
+        distinct from, and unrelated to, any assurance-level or
+        conformance-class vocabulary used elsewhere. Cross-protocol
+        requirements ought to name verifier-visible properties such as
+        user verification, device binding, initiator exclusion, distinct
+        humans, freshness, and status rather than treating these
+        receipt-local custody labels as universal assurance grades.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<p id="section-5.1-2"><strong>Class A -- Device-bound keys
+        (<span class="bcp14">RECOMMENDED</span>).</strong> The approver's key is
+        generated and held in a platform authenticator or security key
+        and exercised via WebAuthn <span>[<a href="#WEBAUTHN" class="cite xref">WEBAUTHN</a>]</span>. The
+        signature algorithm is ES256 (P-256) or Ed25519 where supported.
+        The WebAuthn challenge <span class="bcp14">MUST</span> be the context hash.
+        The authenticator's user-verification flag (biometric or PIN)
+        <span class="bcp14">MUST</span> be required for signoff credentials. This
+        user-verification-gated signature is the native EP human-approval
+        act; it is fully defined by this section and does not rely on any
+        external acquiescence or confirmation mechanism. Attestation
+        <span class="bcp14">SHOULD</span> be captured at enrollment so relying parties
+        can establish that the key is hardware-bound.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
+<p id="section-5.1-3"><strong>Class B -- Software keys.</strong> An Ed25519 keypair
+        held in the approver's client environment (CLI keychain, mobile
+        secure enclave via app). Acceptable where WebAuthn is impractical
+        (headless approval terminals), with the reduced assurance noted
+        in receipts.<a href="#section-5.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.1-4"><strong>Class C -- Operator-custodied keys (LEGACY).</strong>
+        The EP operator signs on the approver's behalf after
+        authenticating them. This class exists only to describe
+        pre-existing deployments. Receipts produced under Class C
+        <span class="bcp14">MUST</span> be labeled <code>key_class: "C"</code> and
+        relying parties <span class="bcp14">SHOULD</span> treat them as evidence of
+        operator assertion, not approver signature. New deployments
+        <span class="bcp14">SHOULD NOT</span> use Class C.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="approver-directory">
+<section id="section-5.2">
+        <h3 id="name-enrollment-and-the-approver">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-enrollment-and-the-approver" class="section-name selfRef">Enrollment and the Approver Directory</a>
+        </h3>
+<p id="section-5.2-1">Approver public keys are enrolled into a signed Approver
+        Directory maintained per organization: a Merkle tree over
+        <code>(approver_id, public_key, key_class, valid_from, valid_to,
+        roles)</code> entries, with signed tree heads published alongside
+        receipt log checkpoints. A receipt's offline verifiability (G5)
+        includes an inclusion proof of the approver's key entry, so a
+        verifier needs no live directory access. Key rotation appends a
+        new entry and terminates the old one; signatures verify against
+        the key entry valid at <code>issued_at</code>.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2">Directory authority is a trust root and <span class="bcp14">MUST NOT</span> default to the EP operator. The directory tree head
+        <span class="bcp14">MUST</span> be signed by an organization-controlled
+        directory key (custody options parallel
+        <a href="#key-classes" class="auto internal xref">Section 5.1</a>; an organization-held hardware key
+        is <span class="bcp14">RECOMMENDED</span>). Where directory
+        <em>operation</em> is delegated to the EP operator, every
+        enrollment entry <span class="bcp14">MUST</span> carry a second-party
+        attestation -- a signature over the new entry by an organization
+        administrator key or by a quorum of already-enrolled approvers --
+        and that attestation <span class="bcp14">MUST</span> be included in the
+        receipt's <code>approver_key_proofs</code>. Verifiers
+        <span class="bcp14">MUST</span> treat a directory head signed only by an
+        operator-held key as operator assertion (Class C-equivalent
+        assurance), regardless of the key class of the individual
+        signoffs. Rationale: an operator that unilaterally controls
+        directory membership cannot forge an enrolled approver's
+        signature, but it can enroll a key it controls under a legitimate
+        approver's name -- relocating the forgery rather than preventing
+        it. See <a href="#directory-authority" class="auto internal xref">Section 11.6</a>.<a href="#section-5.2-2" class="pilcrow">¶</a></p>
+<p id="section-5.2-3">This directory is also the binding point between approver
+        identifiers and real-world persons
+        (<a href="#scope-of-identity" class="auto internal xref">Section 1.2</a>). The strength of that binding
+        -- how an organization proves that an enrolled identifier is the
+        person it names, and how key-discovery layers attach to it -- is a
+        property of the directory authority and any identity layer bound
+        to it, not of the receipt format defined here.<a href="#section-5.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-5.3">
+        <h3 id="name-the-signoff">
+<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-the-signoff" class="section-name selfRef">The Signoff</a>
+        </h3>
+<p id="section-5.3-1">A signoff is:<a href="#section-5.3-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-5.3-2">
+<pre>
+{
+  "context_hash": "sha256:c41e...",
+  "signature": "b64u:MEUCIQ...",
+  "key_class": "A",
+  "approver_key_id": "ep:key:jchen-controller#2026-01",
+  "signed_at": "2026-06-09T17:24:40Z",
+  "webauthn": { "authenticator_data": "b64u:...",
+                "client_data_json": "b64u:..." }
+}
+</pre><a href="#section-5.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-5.3-3">For Class A, verifiers <span class="bcp14">MUST</span> validate the
+        WebAuthn assertion per <span>[<a href="#WEBAUTHN" class="cite xref">WEBAUTHN</a>]</span> including that
+        <code>clientDataJSON.challenge</code> equals the context hash and
+        that the user-verification bit is set. A denial is also signed
+        (over the context hash with a <code>decision: "denied"</code>
+        envelope) so that refusals are equally attributable,
+        tamper-evident, and terminal. This is a cryptographic statement;
+        legal non-repudiation is out of scope.<a href="#section-5.3-3" class="pilcrow">¶</a></p>
+</section>
+</section>
+</div>
+<div id="consumption">
+<section id="section-6">
+      <h2 id="name-consumption-commitment-and-">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-consumption-commitment-and-" class="section-name selfRef">Consumption, Commitment, and the Trust Receipt</a>
+      </h2>
+<section id="section-6.1">
+        <h3 id="name-state-machine">
+<a href="#section-6.1" class="section-number selfRef">6.1. </a><a href="#name-state-machine" class="section-name selfRef">State Machine</a>
+        </h3>
+<p id="section-6.1-1">An authorization attempt proceeds:<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6.1-2">
+<pre>
+REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
+          \-&gt; DENIED                          \-&gt; EXPIRED
+          \-&gt; EXPIRED
+</pre><a href="#section-6.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-6.1-3">COMMITTED, DENIED, and EXPIRED are terminal. The protocol
+        invariants -- maintained as machine-checked models and
+        <span class="bcp14">REQUIRED</span> of conforming implementations -- are:<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-6.1-4.1">
+            <strong>ConsumeOnce.</strong> Within one conforming shared,
+          atomic consumption domain, a nonce transitions to a terminal
+          state at most once. Any second presentation to that domain
+          <span class="bcp14">MUST</span> be rejected with a replay error. The model
+          does not assert coordination with an independent store that
+          does not share this state.<a href="#section-6.1-4.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-6.1-4.2">
+            <strong>BindingMatch.</strong> A signoff satisfies only the
+          context (and therefore only the action hash) it signs.<a href="#section-6.1-4.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-6.1-4.3">
+            <strong>TerminalIrreversibility.</strong> No transition
+          exits a terminal state.<a href="#section-6.1-4.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-6.1-4.4">
+            <strong>SelfApprovalImpossible.</strong> For every signoff,
+          <code>approver != initiator</code>; for m-of-n policies, approvers
+          are pairwise distinct and each distinct from the
+          initiator.<a href="#section-6.1-4.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-6.1-4.5">
+            <strong>NoBypassWrite.</strong> A COMMITTED state is
+          reachable only through the full sequence; conforming verifying
+          executors <span class="bcp14">MUST NOT</span> execute without verifying it
+          (<a href="#conformance" class="auto internal xref">Section 9</a>).<a href="#section-6.1-4.5" class="pilcrow">¶</a>
+</li>
+        </ul>
+</section>
+<section id="section-6.2">
+        <h3 id="name-the-trust-receipt">
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-the-trust-receipt" class="section-name selfRef">The Trust Receipt</a>
+        </h3>
+<p id="section-6.2-1">Upon commitment the orchestrator assembles and logs the Trust
+        Receipt:<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-6.2-2">
+<pre>
+{
+  "receipt_id": "ep:receipt:01J...",
+  "action": { "...": "full Action Object" },
+  "action_hash": "sha256:9f2c...",
+  "contexts": [ { "...": "Authorization Context 1" } ],
+  "signoffs": [ { "...": "Signoff 1" },
+                { "...": "Signoff 2" } ],
+  "consumption": { "nonce": "b64u:R9w1...",
+                   "state": "COMMITTED",
+                   "committed_at": "2026-06-09T17:25:02Z" },
+  "log_proof": { "leaf_index": 88412,
+                 "inclusion_path": ["sha256:...", "..."],
+                 "checkpoint": { "tree_size": 90210,
+                                 "root_hash": "sha256:...",
+                                 "log_signature": "b64u:...",
+                                 "log_key_id": "ep:log:acme#1" } },
+  "approver_key_proofs": [ { "directory_inclusion": "..." } ]
+}
+</pre><a href="#section-6.2-2" class="pilcrow">¶</a>
+</div>
+</section>
+<div id="offline-verification">
+<section id="section-6.3">
+        <h3 id="name-offline-verification-algori">
+<a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-offline-verification-algori" class="section-name selfRef">Offline Verification Algorithm</a>
+        </h3>
+<p id="section-6.3-1">A verifier with (receipt, trusted log public key, trusted
+        directory root or pinned approver keys) and <strong>no network
+        access</strong> <span class="bcp14">MUST</span> be able to establish all of
+        the following; the published verifier package performs exactly
+        these steps:<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-6.3-2">
+          <li id="section-6.3-2.1">Recompute the action hash from the canonical Action Object;
+          compare.<a href="#section-6.3-2.1" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.2">For each context: recompute the context hash; confirm it
+          commits to the action hash, the policy hash, and a distinct
+          approver.<a href="#section-6.3-2.2" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.3">For each signoff: verify the signature (and WebAuthn
+          assertion where present) over the context hash against the
+          approver key entry, checking the key's validity window contains
+          <code>issued_at</code>.<a href="#section-6.3-2.3" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.4">Confirm SoD: initiator appears in no approver slot;
+          approvers are pairwise distinct; the approval count satisfies
+          <code>required_approvals</code>.<a href="#section-6.3-2.4" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.5">Verify the Merkle inclusion proof of the receipt leaf
+          against the checkpoint root, and the checkpoint signature
+          against the log key.<a href="#section-6.3-2.5" class="pilcrow">¶</a>
+</li>
+          <li id="section-6.3-2.6">Confirm <code>signed_at</code> and <code>committed_at</code> fall
+          within <code>[issued_at, expires_at]</code>.<a href="#section-6.3-2.6" class="pilcrow">¶</a>
+</li>
+        </ol>
+<p id="section-6.3-3">Degenerate empty-path rule (step 5). An empty
+        <code>inclusion_path</code> <span class="bcp14">MUST</span> be accepted only when
+        the checkpoint's <code>tree_size</code> is exactly 1 and the
+        <code>leaf_index</code>, when present, is 0; an empty path presented
+        with any other tree size (including a missing or non-integer
+        <code>tree_size</code>) <span class="bcp14">MUST</span> be refused, before any
+        Merkle computation. Without this rule an empty path degenerates
+        to "leaf hash equals root hash", which a forged checkpoint can
+        satisfy at any claimed tree size by simply repeating the leaf
+        hash as its root. Two public reject vectors in the EP conformance
+        suite (<code>reject_empty_path_tree_size_not_1</code> and
+        <code>reject_empty_path_nonzero_leaf_index</code>) pin this rule
+        across the cross-language reference verifiers.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
+<p id="section-6.3-4">Step 5 is what distinguishes EP receipts from log-access
+        designs: the checkpoint travels <em>inside</em> the receipt, so
+        verification requires no query to the log. Detecting log
+        equivocation (split-view attacks) additionally benefits from
+        gossip or witness cosigning (<a href="#log-equivocation" class="auto internal xref">Section 11.4</a>),
+        which is an online activity; the offline guarantee is that
+        <em>this receipt is internally consistent, correctly signed by
+        enrolled approver keys, and was included in a log tree whose head
+        the log operator signed</em>.<a href="#section-6.3-4" class="pilcrow">¶</a></p>
+<p id="section-6.3-5">Offline verification establishes authenticity, not currency.
+        Two properties are explicitly NOT established offline: (a)
+        post-issuance revocation -- a receipt whose approver key was
+        revoked an hour after commitment still verifies; the artifact is
+        evidence of validity <em>at commit time</em>; and (b) log honesty
+        against split views (<a href="#log-equivocation" class="auto internal xref">Section 11.4</a>). A
+        relying party with freshness or revocation requirements
+        <span class="bcp14">MUST</span> additionally consult a current directory head
+        and log checkpoint online. Implementations <span class="bcp14">MUST NOT</span> describe offline verification as establishing that a
+        receipt is "currently valid."<a href="#section-6.3-5" class="pilcrow">¶</a></p>
+<p id="section-6.3-6">The Initiator Attestation
+        (<a href="#initiator-attestation" class="auto internal xref">Section 4.1</a>), where present, is
+        covered by the context hash recomputed in step 2 above; no
+        additional verification step is required for it.<a href="#section-6.3-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<section id="section-7">
+      <h2 id="name-multi-approver-policies-m-o">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-multi-approver-policies-m-o" class="section-name selfRef">Multi-Approver Policies (m-of-n)</a>
+      </h2>
+<p id="section-7-1">A policy <span class="bcp14">MAY</span> require k distinct approvers from a
+      role set. Each approver receives and signs an individual
+      Authorization Context sharing the same <code>action_hash</code> and
+      <code>nonce</code> family but a distinct <code>approver_index</code>.
+      Commitment occurs only when k valid, distinct signoffs exist before
+      <code>expires_at</code>. Partial approval confers no authority: a
+      verifying executor presented with fewer than k signoffs
+      <span class="bcp14">MUST</span> refuse.<a href="#section-7-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-8">
+      <h2 id="name-delegation-constraints">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-delegation-constraints" class="section-name selfRef">Delegation Constraints</a>
+      </h2>
+<p id="section-8-1">Where an approver's authority is itself delegated, the
+      delegation record <span class="bcp14">MUST</span> be presented in the receipt's
+      <code>approver_key_proofs</code>, and the constraint
+      <strong>DelegateCannotExceedPrincipal</strong> applies: the
+      effective scope of a delegate is the intersection of the delegation
+      grant and the principal's authority at signing time. Delegation
+      chains are bounded (<span class="bcp14">RECOMMENDED</span> depth of at most 2)
+      and every link is independently signed.<a href="#section-8-1" class="pilcrow">¶</a></p>
+</section>
+<div id="conformance">
+<section id="section-9">
+      <h2 id="name-conformance-classes-and-exe">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-conformance-classes-and-exe" class="section-name selfRef">Conformance Classes and Execution-Side Enforcement</a>
+      </h2>
+<p id="section-9-1">Honesty about deployment topology is a protocol feature. Three
+      classes:<a href="#section-9-1" class="pilcrow">¶</a></p>
+<p id="section-9-2"><strong>EP-Verified Execution (STRONG).</strong> The system of
+      record (payment switch, registry, deployment controller) verifies
+      the Authorization Bundle (receipt-less pre-execution form: action
+      object, contexts, signoffs, consumption attestation) before
+      executing, and refuses otherwise. The gate cannot be bypassed by
+      any party that does not control the system of record itself.<a href="#section-9-2" class="pilcrow">¶</a></p>
+<p id="section-9-3"><strong>EP-Gated Middleware (STANDARD).</strong> An interception
+      layer between the agent and the executing credential enforces the
+      gate. Provides strong protection against agent error and prompt
+      injection; an operator with code control can bypass. Receipts
+      remain valid evidence of what <em>was</em> approved.<a href="#section-9-3" class="pilcrow">¶</a></p>
+<p id="section-9-4"><strong>EP-Evidence Only (BASIC).</strong> Actions execute
+      independently; receipts are produced for audit. No enforcement
+      claim is made.<a href="#section-9-4" class="pilcrow">¶</a></p>
+<p id="section-9-5">Implementations <span class="bcp14">MUST</span> declare their class in
+      receipts (<code>enforcement_class</code>), and marketing or compliance
+      claims <span class="bcp14">MUST NOT</span> state a stronger class than
+      deployed. This section exists because the difference between "we
+      proved the protocol" and "your deployment is unbypassable" is the
+      most common overclaim in this category.<a href="#section-9-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="related-work">
+<section id="section-10">
+      <h2 id="name-relationship-to-other-work">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-relationship-to-other-work" class="section-name selfRef">Relationship to Other Work</a>
+      </h2>
+<p id="section-10-1"><strong>DRP</strong>
+      (<span>[<a href="#I-D.nelson-agent-delegation-receipts" class="cite xref">I-D.nelson-agent-delegation-receipts</a>]</span>) binds a
+      <em>user's</em> delegation to an <em>operator's</em> instructions --
+      upstream consumer delegation. EP binds an <em>organizational
+      approver</em> to an <em>exact action</em> -- downstream
+      authorization under its own SoD and m-of-n profiles. The two
+      compose: a DRP delegation can be referenced in
+      an EP Action Object's provenance field.<a href="#section-10-1" class="pilcrow">¶</a></p>
+<p id="section-10-2"><strong>CIBA</strong> (<span>[<a href="#CIBA" class="cite xref">CIBA</a>]</span>) transports an
+      authentication-time approval to a backchannel device; it does not
+      produce an action-bound, offline-verifiable, one-time-consumable
+      artifact. CIBA <span class="bcp14">MAY</span> serve as the transport by which
+      an approver is reached; the EP signoff is what they produce when
+      they get there.<a href="#section-10-2" class="pilcrow">¶</a></p>
+<p id="section-10-3"><strong>Mastercard Verifiable Intent</strong>, co-developed with
+      Google and contributed to the FIDO Alliance
+      (<span>[<a href="#FIDO-VI" class="cite xref">FIDO-VI</a>]</span>), describes portable, verifiable evidence of
+      user intent. The cited page describes a contribution and prospective
+      standardization, not a final FIDO specification. EP does not claim
+      portable human evidence is absent.
+      Its receipt profile separately specifies an enrolled organizational
+      approver directory, exact Authorization Context, initiator exclusion,
+      terminal consumption record, and optional distinct-human quorum.<a href="#section-10-3" class="pilcrow">¶</a></p>
+<p id="section-10-4"><strong>AuthZEN Access Request and Approval Profile</strong>
+      (<span>[<a href="#AUTHZEN-AARP" class="cite xref">AUTHZEN-AARP</a>]</span>) defines requestable denial,
+      asynchronous approval tasks, an approval object whose optional state
+      carries opaque proof or verifier state, JWS interoperability when that
+      state is carried by value, an exact-match baseline, and PDP re-evaluation
+      at enforcement time. EP
+      does not replace that profile. A deployment can select an EP receipt
+      as an additional evidence profile when it requires a verifier-visible
+      approver-held device ceremony, enrolled-human directory binding,
+      portable initiator exclusion, or one-time executor consumption. The
+      relying party remains responsible for deciding which profile satisfies
+      its requirement.<a href="#section-10-4" class="pilcrow">¶</a></p>
+<p id="section-10-5"><strong>WIMSE / workload identity</strong> authenticates the
+      workload to services; EP supplies action-bound approval evidence that
+      a relying party may require in its local authorization decision.
+      These are complementary layers.<a href="#section-10-5" class="pilcrow">¶</a></p>
+<p id="section-10-6"><strong>Receiver-attested logging (e.g., Sello)</strong> has the
+      receiving service sign what it observed, post-hoc. EP is
+      pre-execution authorization. A complete deployment benefits from
+      both: EP records the pre-execution signing and consumption event under
+      a selected profile; receiver attestation records what the receiver
+      observed afterward. Local policy determines whether the former is
+      sufficient for authorization.<a href="#section-10-6" class="pilcrow">¶</a></p>
+<p id="section-10-7"><strong>AgentROA (draft-nivalto-agentroa-route-authorization),
+      AIIP, and CIRP</strong> define machine-side, per-hop execution and
+      route receipts for agent actions under delegated authority. Their
+      approval-state or approval-reference fields do not by themselves
+      define the EP ceremony and directory profile. EP evidence can fill
+      such a reference where that profile is selected, and its delegation
+      constraints share AgentROA's monotonic ("tighten-only")
+      scope-narrowing discipline.<a href="#section-10-7" class="pilcrow">¶</a></p>
+<p id="section-10-8"><strong>The Entity Attestation Token (RFC 9711, RATS)</strong>
+      attests the <em>agent or platform</em> -- model, keys, posture; EP
+      carries evidence of an enrolled approver key's action-bound decision.
+      The two are orthogonal and
+      composable: an EAT says the machine is what it claims; an EP receipt
+      says a named person approved the exact action.<a href="#section-10-8" class="pilcrow">¶</a></p>
+<p id="section-10-9"><strong>Transaction Tokens
+      (draft-ietf-oauth-transaction-tokens)</strong> propagate workload and
+      agent authorization context across a machine call chain; an EP
+      receipt can be one referenced approval artifact when a relying
+      party requires that profile.<a href="#section-10-9" class="pilcrow">¶</a></p>
+<p id="section-10-10"><strong>Evidence Record Syntax (RFC 4998)</strong> preserves
+      signed evidence across algorithm aging by periodic re-timestamping.
+      EP applies the same approach to long-lived receipts via an
+      evidence-record renewal chain, so a receipt verifiable today remains
+      verifiable after its original algorithms weaken -- a property the
+      10-25+ year retention schedules of government records require.<a href="#section-10-10" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-11">
+      <h2 id="name-security-considerations">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<section id="section-11.1">
+        <h3 id="name-operator-compromise">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-operator-compromise" class="section-name selfRef">Operator Compromise</a>
+        </h3>
+<p id="section-11.1-1">Under key classes A/B, a compromised EP operator can deny
+        service and can fail to route signoff requests, and it cannot
+        <em>forge a signature</em>: it lacks approver keys, and it cannot
+        replay one (nonces are single-consumption and receipts chain).
+        Two operator-compromise paths remain and are stated plainly
+        rather than claimed away. First, an operator that controls the
+        signing client's rendering can harvest a <em>genuine</em>
+        signature over an action the approver misunderstood -- a
+        presentation attack (<a href="#presentation-attacks" class="auto internal xref">Section 11.3</a>); for
+        this reason an independently-authored rendering surface is
+        <span class="bcp14">REQUIRED</span> for high-value policies. Second, an operator
+        that unilaterally controls the Approver Directory can enroll keys
+        it controls (<a href="#approver-directory" class="auto internal xref">Section 5.2</a>,
+        <a href="#directory-authority" class="auto internal xref">Section 11.6</a>). Accordingly, the accurate
+        claim for classes A/B is: "the operator cannot forge an
+        approver's signature." The stronger claim -- "the operator cannot
+        obtain an unauthorized approval" -- additionally requires the
+        directory-authority and independent-rendering controls. Under
+        class C the operator can fabricate outright; hence the labeling
+        requirement.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-11.2">
+        <h3 id="name-approver-device-compromise">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-approver-device-compromise" class="section-name selfRef">Approver Device Compromise</a>
+        </h3>
+<p id="section-11.2-1">A stolen authenticator with user verification still requires
+        the biometric/PIN. Organizations <span class="bcp14">SHOULD</span> require
+        key class A for high-value policies and <span class="bcp14">SHOULD</span>
+        pair approval with out-of-band action rendering (the approver
+        sees the wire details on a second surface).<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+</section>
+<div id="presentation-attacks">
+<section id="section-11.3">
+        <h3 id="name-presentation-attacks">
+<a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-presentation-attacks" class="section-name selfRef">Presentation Attacks</a>
+        </h3>
+<p id="section-11.3-1">The gravest risk in this protocol, stated without
+        minimization: the approver signs context hash H believing it
+        represents action X when it represents action Y. A signature
+        proves user presence and an act of approval toward <em>whatever
+        was rendered</em>; cryptography cannot prove the rendering was
+        faithful. Required mitigations, in increasing strength: (1) the
+        signing client <span class="bcp14">MUST</span> render the Action Object from
+        the exact bytes that were hashed -- never from a separately
+        supplied description; (2) for high-value policies, render
+        templates <span class="bcp14">MUST</span> be registered with the policy and
+        committed by <code>policy_hash</code>, so the display logic is part
+        of what the approver's signature covers; (3) for policies above
+        an organization-designated threshold, the material action
+        parameters (amount, beneficiary identifiers) <span class="bcp14">MUST</span>
+        additionally be rendered on a second surface not authored by the
+        orchestrating operator -- for example, delivered by the verifying
+        executor or an independent operator to the approver's enrolled
+        device over a separate channel. The residual risk is stated
+        honestly: absent a trusted display path (hardware the operator
+        does not author), rendering fidelity is enforced by controls
+        (2)-(3), by audit, and by consented mismatch drills
+        (<a href="#approver-fatigue" class="auto internal xref">Section 11.8</a>) -- not by mathematics. What
+        the cryptography does guarantee is exactness of evidence: the
+        receipt contains the full Action Object actually signed, so any
+        divergence between what was displayed and what was executed is
+        detectable after the fact with proof rather than testimony.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="log-equivocation">
+<section id="section-11.4">
+        <h3 id="name-log-equivocation">
+<a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-log-equivocation" class="section-name selfRef">Log Equivocation</a>
+        </h3>
+<p id="section-11.4-1">A malicious log could show different trees to different
+        parties. Checkpoints <span class="bcp14">SHOULD</span> be witness-cosigned
+        and/or gossiped between independent EP operators; the federation
+        profile makes cross-operator checkpoint exchange mandatory.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-11.5">
+        <h3 id="name-what-the-formal-models-do-a">
+<a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-what-the-formal-models-do-a" class="section-name selfRef">What the Formal Models Do and Do Not Prove</a>
+        </h3>
+<p id="section-11.5-1">The TLA+/Alloy models prove safety of the authorization state
+        machine: no replay, no self-approval, no bypass <em>within the
+        modeled system</em>, no partial commitment. They prove nothing
+        about any AI model's behavior, about host compromise, or about
+        deployments in a weaker conformance class. Implementations
+        <span class="bcp14">MUST NOT</span> represent the proofs as covering
+        deployment topologies they do not model. For the same honesty:
+        three normative mechanisms in this document are specified ahead
+        of the reference implementation and are not yet exercised by it
+        or by conformance vectors -- the operator-signed-directory
+        assurance downgrade (Section 5.2), delegation records in
+        approver_key_proofs and the DelegateCannotExceedPrincipal check
+        (Section 8), and enforcement_class emission (Section 9).
+        Implementers MUST treat the text as normative and the reference
+        implementation as incomplete on these three points, not the
+        reverse. The m-of-n quorum flow IS
+        now modeled: a checked Alloy model (formal/ep_quorum.als in the
+        repository) proves SelfApprovalImpossible, NoHumanFillsTwoSlots,
+        NoKeyFillsTwoSlots, TwoPersonRuleHolds, and ordered-chain
+        acyclicity/linearity against the quorum verifier and its
+        conformance vectors. The models additionally
+        do not yet cover the WebAuthn challenge binding, the Approver
+        Directory, log checkpoints, or the Initiator
+        Attestation (<a href="#initiator-attestation" class="auto internal xref">Section 4.1</a>); those sections
+        are specified, not proven, and extending the models to them is
+        tracked work.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
+<p id="section-11.5-2">A separate composed Tamarin model joins signed challenge, CAID,
+        two distinct user-verification-gated approvals, scoped authority
+        under an exact pinned registry view, revocation, receipt-issuer
+        pinning, one-time consumption, and execution in one symbolic trace
+        (<span>[<a href="#FORMAL-STATUS" class="cite xref">FORMAL-STATUS</a>]</span>). Ten named obligations verify,
+        including execution_requires_full_composition,
+        initiator_cannot_self_approve, no_issuer_laundering,
+        strict_registry_view_is_exact, and
+        injective_execution_with_consumption. Two deliberately unsafe
+        comparison lemmas are falsified with concrete traces: one omits
+        consumption and admits same-receipt replay; the other omits exact
+        registry-view binding and admits a stale or equivocating view. The
+        model treats signatures as perfect symbolic primitives and does not
+        prove WebAuthn internals, parser correctness, amount arithmetic,
+        policy authorship, clock freshness, transparency-log completeness,
+        collusion resistance, or downstream exactly-once physical effects.<a href="#section-11.5-2" class="pilcrow">¶</a></p>
+<p id="section-11.5-3">Independent implementation status, stated precisely: the
+        three reference verifiers (JavaScript, Python, Go) agree on the
+        published conformance vectors but live in one repository -- a
+        cross-language consistency check, not independent
+        implementations. A separately authored Rust verifier was evaluated
+        on 11 July 2026 and passed 16 suites and 164 vectors from a
+        hash-pinned bundle (<span>[<a href="#EXTERNAL-RUST-PIN" class="cite xref">EXTERNAL-RUST-PIN</a>]</span>). That result
+        is time-pinned: it does not cover the current larger vector bundle,
+        and the available construction statement predates the evaluated
+        hardening commit. It is therefore evidence of external implementation
+        and execution for that bundle, not yet strict clean-room construction
+        acceptance for the current specification.<a href="#section-11.5-3" class="pilcrow">¶</a></p>
+</section>
+<div id="directory-authority">
+<section id="section-11.6">
+        <h3 id="name-directory-authority">
+<a href="#section-11.6" class="section-number selfRef">11.6. </a><a href="#name-directory-authority" class="section-name selfRef">Directory Authority</a>
+        </h3>
+<p id="section-11.6-1"><a href="#approver-keys" class="auto internal xref">Section 5</a> removes the operator from the
+        signature path; <a href="#approver-directory" class="auto internal xref">Section 5.2</a> must not
+        readmit it as the authority that decides which keys count. If the
+        EP operator alone signs the Approver Directory, a malicious
+        operator can satisfy policy by enrolling a key it controls under
+        a nominally legitimate approver's name. The controls in
+        <a href="#approver-directory" class="auto internal xref">Section 5.2</a> (organization-held directory
+        key; second-party attestation on enrollment; Class C-equivalent
+        treatment otherwise) exist for this reason. Auditors
+        <span class="bcp14">SHOULD</span> verify directory key custody as part of any
+        assessment that relies on receipts.<a href="#section-11.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-11.7">
+        <h3 id="name-what-separation-of-duties-d">
+<a href="#section-11.7" class="section-number selfRef">11.7. </a><a href="#name-what-separation-of-duties-d" class="section-name selfRef">What Separation of Duties Does and Does Not Provide</a>
+        </h3>
+<p id="section-11.7-1">SelfApprovalImpossible (<a href="#consumption" class="auto internal xref">Section 6</a>) defeats
+        <em>unilateral</em> self-approval: no initiator can approve its
+        own action, and m-of-n approvers are pairwise distinct
+        identities. It does not defeat collusion among distinct enrolled
+        humans, one human who controls multiple enrolled identities (an
+        enrollment control -- <a href="#approver-directory" class="auto internal xref">Section 5.2</a>), or a
+        coerced approver. Receipts make such events <em>attributable</em>
+        -- named, signed, and evidenced -- which raises the cost of insider
+        fraud; they do not make it impossible, and implementations
+        <span class="bcp14">MUST NOT</span> claim otherwise.<a href="#section-11.7-1" class="pilcrow">¶</a></p>
+</section>
+<div id="approver-fatigue">
+<section id="section-11.8">
+        <h3 id="name-approver-fatigue">
+<a href="#section-11.8" class="section-number selfRef">11.8. </a><a href="#name-approver-fatigue" class="section-name selfRef">Approver Fatigue</a>
+        </h3>
+<p id="section-11.8-1">A gate that humans route around protects nothing;
+        rubber-stamping is the empirical failure mode of every
+        human-in-the-loop control under volume. This protocol is
+        therefore not a general approval workflow: deployments
+        <span class="bcp14">MUST</span> scope signoff policies to genuinely
+        high-risk, low-frequency actions and <span class="bcp14">SHOULD</span> handle
+        volume with policy (thresholds, allow-lists, velocity rules)
+        rather than human throughput. Operational countermeasures
+        <span class="bcp14">SHOULD</span> include monitoring time-to-sign
+        distributions (signing latencies near the floor indicate approval
+        without review), tracking deny rates (a gate that never denies is
+        either perfectly upstream-filtered or ceremonial), and consented
+        render-mismatch drills that measure whether approvers read what
+        they sign. Such telemetry is deployment guidance, not protocol;
+        but the protocol's guarantees are only as strong as the attention
+        of the human at its center, and implementations
+        <span class="bcp14">SHOULD</span> say so to their customers.<a href="#section-11.8-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="initiator-attestation-security">
+<section id="section-11.9">
+        <h3 id="name-initiator-attestation-as-an">
+<a href="#section-11.9" class="section-number selfRef">11.9. </a><a href="#name-initiator-attestation-as-an" class="section-name selfRef">Initiator Attestation as an Attack Surface</a>
+        </h3>
+<p id="section-11.9-1">The <code>statement</code> member of an Initiator Attestation
+        (<a href="#initiator-attestation" class="auto internal xref">Section 4.1</a>) is
+        attacker-influenceable free text rendered to a human at the moment
+        of decision -- a social-engineering surface aimed at the approver,
+        adjacent to the presentation attacks of
+        <a href="#presentation-attacks" class="auto internal xref">Section 11.3</a>. A compromised or
+        prompt-injected initiator can state any trigger and any reason;
+        injection can change what the initiator <em>proposes</em>,
+        including this field, but it cannot change what a human
+        <em>approves</em> on their own hardware, because the device-bound
+        signature (<a href="#key-classes" class="auto internal xref">Section 5.1</a>) is outside the model
+        context. Conforming signing clients <span class="bcp14">MUST</span> therefore
+        render the <code>statement</code> as untrusted content: plain text
+        only, with no markup, links, or control characters rendered; the
+        280-character cap enforced; and visually distinct styling that
+        labels it as the initiator's unverified claim, clearly separated
+        from the operator-rendered Action Object. This is consistent with
+        the rendering-faithfulness discipline of
+        <a href="#presentation-attacks" class="auto internal xref">Section 11.3</a>: the approver's decision
+        input is the rendered Action Object; the statement is commentary
+        from a party the protocol never trusts. A related residual vector
+        is divide-and-misinform: because each approver signs their own
+        context, a malicious orchestrator can show different approvers of
+        an m-of-n receipt different attestations, and every individual
+        signature remains valid. The cross-context consistency rule
+        (<a href="#initiator-attestation" class="auto internal xref">Section 4.1</a>) exists for this;
+        verifiers implementing the member <span class="bcp14">MUST</span> flag
+        violations, but on verifiers that predate the member such a
+        receipt still verifies -- the rule is a conformance check, not a
+        signature property.<a href="#section-11.9-1" class="pilcrow">¶</a></p>
+<p id="section-11.9-2">Privacy: statements written by an agent mid-task can leak
+        sensitive operational context -- counterparty details, internal
+        findings, fragments of prompts -- into receipts that are long-lived
+        and portable by design. Deployments <span class="bcp14">SHOULD</span> prefer
+        <code>escalation_trigger</code> plus <code>policy_basis</code> identifiers
+        over free text wherever a rule id captures the reason,
+        <span class="bcp14">SHOULD</span> constrain or template <code>statement</code>
+        generation for regulated data, and <span class="bcp14">MUST</span> apply the
+        same retention and disclosure controls to attestation content as
+        to the rest of the receipt.<a href="#section-11.9-2" class="pilcrow">¶</a></p>
+<p id="section-11.9-3">Absence is not evidence: a receipt without an attestation means
+        only that the issuer did not populate it -- not that the initiator
+        judged the action routine, and not that no escalation reasoning
+        occurred. Verifiers and auditors <span class="bcp14">MUST NOT</span> infer
+        anything from the absence of an attestation alone. (Separately,
+        and unchanged: for an action a policy gates on signoff, the
+        absence of any valid receipt at all remains evidence that the
+        control was bypassed -- that property comes from the gate, not from
+        this member.)<a href="#section-11.9-3" class="pilcrow">¶</a></p>
+<p id="section-11.9-4">No trust feedback: policy engines <span class="bcp14">MUST NOT</span> use
+        <code>initiator_attestation</code> content to relax thresholds, skip
+        approvers, or raise any trust score. The initiator must gain
+        nothing by saying the right words; the attestation is a claim by a
+        party the protocol identifies but never trusts, not proof of its
+        internal state.<a href="#section-11.9-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<section id="section-11.10">
+        <h3 id="name-no-symmetric-key-on-the-ver">
+<a href="#section-11.10" class="section-number selfRef">11.10. </a><a href="#name-no-symmetric-key-on-the-ver" class="section-name selfRef">No symmetric key on the verification trust path</a>
+        </h3>
+<p id="section-11.10-1">Every artifact a relying party verifies offline -- the approver
+        signoff (Class A: ES256/P-256), the operator commit and receipt
+        (Ed25519), the log inclusion proof, and the portable revocation
+        statement (Ed25519) -- is bound by an ASYMMETRIC signature whose
+        verifying key the relying party holds independently of the issuer. No
+        step in offline verification relies on a Message Authentication Code, a
+        shared secret, or any symmetric primitive. This is deliberate and
+        load-bearing: a symmetric construction (for example an HMAC-chained
+        audit log) is verifiable only by a party holding the same secret as the
+        producer, so it does not provide public verification outside that trust
+        domain. An asymmetric issuer can still sign conflicting histories;
+        witness cosigning or gossip is required to detect that equivocation.
+        Conforming verifier
+        implementations <span class="bcp14">MUST NOT</span> introduce a symmetric primitive
+        on the verification path; an implementation that does so does not
+        provide EP's public-verifiability property. (HMAC <span class="bcp14">MAY</span> appear
+        elsewhere in a deployment -- e.g. authenticating an operator's own cron
+        or webhook calls -- provided it is never a link in the chain a third
+        party verifies.)<a href="#section-11.10-1" class="pilcrow">¶</a></p>
+</section>
+<div id="canonicalization-robustness">
+<section id="section-11.11">
+        <h3 id="name-canonicalization-robustness">
+<a href="#section-11.11" class="section-number selfRef">11.11. </a><a href="#name-canonicalization-robustness" class="section-name selfRef">Canonicalization Robustness</a>
+        </h3>
+<p id="section-11.11-1">Every signed EP artifact is verified over its canonical JSON
+        form (<a href="#action-object" class="auto internal xref">Section 3</a>,
+        <a href="#authorization-context" class="auto internal xref">Section 4</a>), so any divergence
+        between two implementations' canonicalization behavior is a
+        signature-verification divergence and therefore a malleability
+        hazard. Implementations <span class="bcp14">MUST</span> reject the known
+        malleability hazard classes, and <span class="bcp14">MUST</span> reject them
+        identically: duplicate object member names (compared after
+        escape decoding), unpaired UTF-16 surrogate escapes, and inputs
+        outside the profile's number and depth bounds (non-integer
+        numbers or integers with magnitude greater than 2^53-1, and
+        container nesting deeper than the profile-pinned bound of 64).
+        The public EP-CANONICALIZATION-v1 vector suite exercises these
+        classes as raw JSON texts, with pinned SHA-256 digests over the
+        canonical bytes of every accepted input, across the
+        cross-language reference verifiers; divergence from the pinned
+        results is a conformance defect, not an implementation choice.
+        (In the reference stack the duplicate-name, surrogate, and depth
+        gates are applied at the parse boundary by the conformance
+        runners, since the verifier packages receive already-parsed
+        values; the profile predicate, canonical serialization, and
+        digests exercise the verifier packages themselves.)<a href="#section-11.11-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+<section id="section-12">
+      <h2 id="name-iana-considerations">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-12-1">This document has no IANA actions. A future version may register
+      the <code>application/ep-receipt+json</code> media type.<a href="#section-12-1" class="pilcrow">¶</a></p>
+</section>
+<section id="section-13">
+      <h2 id="name-normative-references">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+      </h2>
+<dl class="references">
+<dt id="CIBA">[CIBA]</dt>
+      <dd>
+<span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0"</span>, <time datetime="2021-09" class="refDate">September 2021</time>, <span>&lt;<a href="https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html">https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+      <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+      <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8785">[RFC8785]</dt>
+      <dd>
+<span class="refAuthor">Rundgren, A.</span>, <span class="refAuthor">Jordan, B.</span>, and <span class="refAuthor">S. Erdtman</span>, <span class="refTitle">"JSON Canonicalization Scheme (JCS)"</span>, <span class="seriesInfo">RFC 8785</span>, <span class="seriesInfo">DOI 10.17487/RFC8785</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8785">https://www.rfc-editor.org/info/rfc8785</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="WEBAUTHN">[WEBAUTHN]</dt>
+    <dd>
+<span class="refAuthor">W3C</span>, <span class="refTitle">"Web Authentication: An API for accessing Public Key Credentials, Level 2"</span>, <time datetime="2021-04" class="refDate">April 2021</time>, <span>&lt;<a href="https://www.w3.org/TR/webauthn-2/">https://www.w3.org/TR/webauthn-2/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<section id="section-14">
+      <h2 id="name-informative-references">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+      </h2>
+<dl class="references">
+<dt id="AUTHZEN-AARP">[AUTHZEN-AARP]</dt>
+      <dd>
+<span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"AuthZEN Access Request and Approval Profile - Draft 1"</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html">https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="EXTERNAL-RUST-PIN">[EXTERNAL-RUST-PIN]</dt>
+      <dd>
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"Time-Pinned External Rust Verifier Evaluation Record"</span>, <time datetime="2026-07-11" class="refDate">11 July 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json">https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="FIDO-VI">[FIDO-VI]</dt>
+      <dd>
+<span class="refAuthor">FIDO Alliance</span>, <span class="refTitle">"Building the Trust Layer for Agentic Payments with AP2 and Verifiable Intent"</span>, <time datetime="2026-05-26" class="refDate">26 May 2026</time>, <span>&lt;<a href="https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/">https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="FORMAL-STATUS">[FORMAL-STATUS]</dt>
+      <dd>
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"EMILIA Formal Proof Status and Scope"</span>, <time datetime="2026-07-10" class="refDate">10 July 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/formal/PROOF_STATUS.md">https://github.com/emiliaprotocol/emilia-protocol/blob/main/formal/PROOF_STATUS.md</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.nelson-agent-delegation-receipts">[I-D.nelson-agent-delegation-receipts]</dt>
+    <dd>
+<span class="refAuthor">Nelson, R.</span>, <span class="refTitle">"Delegation Receipt Protocol for AI Agent Authorization"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-nelson-agent-delegation-receipts-10</span>, <time datetime="2026-06-13" class="refDate">13 June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/">https://datatracker.ietf.org/doc/draft-nelson-agent-delegation-receipts/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+<div id="changes-since-06">
+<section id="appendix-A">
+      <h2 id="name-changes-since-06">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-changes-since-06" class="section-name selfRef">Changes since -06</a>
+      </h2>
+<ul class="normal">
+<li class="normal" id="appendix-A-1.1">Narrowed the abstract and introduction from category-wide
+        novelty claims to the guarantees of the selected EP verification
+        profile.<a href="#appendix-A-1.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-1.2">Scoped ConsumeOnce to one conforming shared atomic consumption
+        domain and stated that offline evidence cannot prove global
+        non-replay across independent executors.<a href="#appendix-A-1.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-1.3">Replaced legal non-repudiation language with cryptographic
+        attribution, tamper evidence, and public verifiability; stated the
+        issuer-equivocation boundary.<a href="#appendix-A-1.3" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-1.4">Added the CAID Action-Mapping composition boundary without
+        changing the EP v1 signature input.<a href="#appendix-A-1.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-A-1.5">Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
+        composable work.<a href="#appendix-A-1.5" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="changes-since-04">
+<section id="appendix-B">
+      <h2 id="name-changes-since-04">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-changes-since-04" class="section-name selfRef">Changes since -04</a>
+      </h2>
+<p id="appendix-B-1">-05 adds the human-authorization-receipt composition frame for
+      the SCITT agent-action statement cluster (how a WHO receipt is
+      referenced, by digest, from capsule/record-style statements);
+      updates the SCITT citation to RFC 9943; adds the key-custody
+      disambiguation note in Section 5.1 (key classes classify custody,
+      not assurance levels); corrects the formal-models status (the
+      m-of-n quorum flow is now Alloy-checked) and states plainly which
+      three normative mechanisms the reference implementation does not
+      yet cover.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="changes-since-00">
+<section id="appendix-C">
+      <h2 id="name-changes-since-00-through-04">
+<a href="#appendix-C" class="section-number selfRef">Appendix C. </a><a href="#name-changes-since-00-through-04" class="section-name selfRef">Changes since -00 (through -04)</a>
+      </h2>
+<p id="appendix-C-1">This summary covers -00 through -04. Section
+      numbering is stable; all changes are new subsections or in-place
+      additions.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="appendix-C-2">
+        <li id="appendix-C-2.1">New <span class="bcp14">OPTIONAL</span> Authorization Context member
+        <code>initiator_attestation</code> (new
+        <a href="#initiator-attestation" class="auto internal xref">Section 4.1</a>): a
+        <span class="bcp14">REQUIRED</span> <code>escalation_trigger</code> enum
+        (<code>irreversibility</code>, <code>magnitude</code>,
+        <code>uncertainty</code>, <code>novelty</code>, <code>authority_gap</code>,
+        <code>policy_rule</code>), an <span class="bcp14">OPTIONAL</span>
+          <code>policy_basis</code> rule identifier, and an
+        <span class="bcp14">OPTIONAL</span> length-capped (&lt;= 280 character)
+        <code>statement</code>. The member is <span class="bcp14">OPTIONAL</span>;
+        it is covered by the context hash via the JCS canonicalization
+        already normative in <a href="#authorization-context" class="auto internal xref">Section 4</a>, so
+        the approver's signature covers the stated reason; receipts
+        carrying it verify under the existing
+        <a href="#offline-verification" class="auto internal xref">Section 6.3</a> verifiers unmodified; and it
+        is a claim by the initiator -- identified but never trusted -- not
+        proof of the initiator's internal state. A terminology entry and a
+        step-2 note in <a href="#offline-verification" class="auto internal xref">Section 6.3</a> were added
+        accordingly.<a href="#appendix-C-2.1" class="pilcrow">¶</a>
+</li>
+        <li id="appendix-C-2.2">Security Considerations additions (new
+        <a href="#initiator-attestation-security" class="auto internal xref">Section 11.9</a>): the
+        <code>statement</code> is attacker-influenceable text presented to a
+        human (prompt-injection -&gt; social-engineering surface); conforming
+        signing clients <span class="bcp14">MUST</span> render it as untrusted content
+        (no markup, length cap, distinct styling), consistent with the
+        <a href="#presentation-attacks" class="auto internal xref">Section 11.3</a> rendering-faithfulness
+        caveat. Adds privacy guidance for free-text statements in
+        long-lived receipts (prefer <code>policy_basis</code> identifiers),
+        the rule that absence of an attestation is not evidence of
+        non-escalation, the cross-context consistency requirement, and the
+        prohibition on using attestation content as a trust input. The
+        formal-models section now lists the Initiator Attestation among
+        the not-yet-modeled areas.<a href="#appendix-C-2.2" class="pilcrow">¶</a>
+</li>
+        <li id="appendix-C-2.3">Introduction/terminology clarifications (new text in the
+        Introduction, new <a href="#scope-of-identity" class="auto internal xref">Section 1.2</a>, and a
+        sentence in <a href="#key-classes" class="auto internal xref">Section 5.1</a> and
+        <a href="#approver-directory" class="auto internal xref">Section 5.2</a>): makes unmistakable that
+        (a) EP's user-verification-gated Class-A signoff is native to this
+        draft and does not depend on any other draft's
+        acquiescence/confirmation mechanism, and (b) proof of a specific
+        natural-person identity is out of scope -- the Approver Directory
+        trust root is the explicit slot where identity/key-discovery
+        layers bind keys to named persons.<a href="#appendix-C-2.3" class="pilcrow">¶</a>
+</li>
+        <li id="appendix-C-2.4">New <span class="bcp14">OPTIONAL</span> Authorization Context member
+        <code>agent_binding</code> (new <a href="#agent-binding" class="auto internal xref">Section 4.2</a>): an
+        external agent-identity reference (<code>agent_id</code>) and an
+        <span class="bcp14">OPTIONAL</span> <code>delegation</code> (<code>scheme</code>,
+        <code>ref</code>, <span class="bcp14">OPTIONAL</span> <code>hash</code>,
+        <span class="bcp14">OPTIONAL</span> <code>observed_at</code>), plus an
+        <span class="bcp14">OPTIONAL</span> length-capped (&lt;= 280 character)
+        <code>statement</code>. Like <code>initiator_attestation</code>, it is
+        <span class="bcp14">OPTIONAL</span>, covered by the context hash via the JCS
+        canonicalization already normative in
+        <a href="#authorization-context" class="auto internal xref">Section 4</a>, verifies under the existing
+        <a href="#offline-verification" class="auto internal xref">Section 6.3</a> verifiers unmodified, and is a
+        claim -- identified but never trusted -- not proof of the agent's
+        identity or the delegation's validity. The <span class="bcp14">OPTIONAL</span>
+          <code>delegation.observed_at</code> records when the upstream
+        identity/delegation (L4) evidence was observed; a relying party
+        <span class="bcp14">MAY</span> enforce freshness against it fail-closed, keeping
+        the receipt agnostic to which external identity scheme prevails while
+        making a stale or unconstrained upstream claim detectable after the
+        fact.<a href="#appendix-C-2.4" class="pilcrow">¶</a>
+</li>
+        <li id="appendix-C-2.5">Housekeeping: version and date bumped in the header; this
+        appendix added; the idnits non-ASCII em-dash / curly-quote cleanup
+        from -00 carried forward as a build step.<a href="#appendix-C-2.5" class="pilcrow">¶</a>
+</li>
+      </ol>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-D">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Iman Schrock</span></div>
+<div dir="auto" class="left"><span class="org">EMILIA Protocol, Inc.</span></div>
+<div dir="auto" class="left"><span class="country-name">United States of America</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:team@emiliaprotocol.ai" class="email">team@emiliaprotocol.ai</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>

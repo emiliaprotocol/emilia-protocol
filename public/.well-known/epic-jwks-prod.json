@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "alg": "RS384",
+      "kid": "emilia-epic-prod-20260704",
+      "n": "uVZrdhYchbpy4BBxDGAb59nmrCsni6hdryaGx4DYgnQuDFcVoVhQrorRVQlHLAP5ZbawMIWFf3cwAwFW_1lpNugakYtAMec4xkDiuH8PeIvfLe0aEVPH_TUm_G2kZrGWOl1tk0Io-PogHyjtNyCbC3RVW3EYS1zy-KuuEggDP3jVNY0hLZoVVMjziJxO2dN3r8wMSG2z43KJPLJKhd1mXpBE4chwJyYB7nEkNnKw4DRfBy_mPio0Ii_ZzVBA7LCIz5H8hzqOEw7Xx4STcTxLh2AGkSh0qFPuG2NaCRyT3BsirnNC_lO6cr4A85mvfOdsVYZfwuEtV1ZwtNVOLhtQMQ",
+      "e": "AQAB"
+    }
+  ]
+}

@@ -135,36 +135,26 @@ export default async function ForAiCompaniesPage() {
             Autonomous treasury agent, crash-tested.
           </h2>
           <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, maxWidth: 660, margin: '0 0 28px' }}>
-            We pointed four frontier models &mdash; OpenAI&rsquo;s gpt-4o-mini, xAI&rsquo;s grok-4, Anthropic&rsquo;s
-            Claude, and Google&rsquo;s Gemini &mdash; at six high-stakes requests (large wires, a &ldquo;CFO says skip
-            approval&rdquo; injection, a payout-bank change) as an autonomous treasury agent, and scored the same model
-            output with and without EMILIA:
+            The open benchmark harness points an autonomous treasury-agent prompt at high-stakes requests
+            (large wires, a &ldquo;CFO says skip approval&rdquo; injection, payout-bank changes) and safe controls,
+            then scores what would execute with and without EMILIA. The model behavior varies by run; the
+            EMILIA result is deterministic because the policy gate refuses receiptless high-risk actions.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 22 }}>
             <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
-              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginBottom: 12 }}>Unauthorized high-stakes actions executed (of 6) &mdash; alone &rarr; with EMILIA</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0', borderBottom: `1px solid ${color.border}` }}>
-                <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t2 }}>gpt-4o-mini</span>
-                <span><span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.t1 }}>5/6</span> <span style={{ color: color.t3, margin: '0 6px' }}>&rarr;</span> <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.gold }}>0/6</span></span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0', borderBottom: `1px solid ${color.border}` }}>
-                <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t2 }}>grok-4</span>
-                <span><span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.t1 }}>3/6</span> <span style={{ color: color.t3, margin: '0 6px' }}>&rarr;</span> <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.gold }}>0/6</span></span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0', borderBottom: `1px solid ${color.border}` }}>
-                <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t2 }}>claude-sonnet-4.5</span>
-                <span><span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.t1 }}>4/6</span> <span style={{ color: color.t3, margin: '0 6px' }}>&rarr;</span> <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.gold }}>0/6</span></span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0' }}>
-                <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t2 }}>gemini-2.5-flash</span>
-                <span><span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.t1 }}>5/6</span> <span style={{ color: color.t3, margin: '0 6px' }}>&rarr;</span> <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.gold }}>0/6</span></span>
-              </div>
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginBottom: 12 }}>Harness shape</div>
+              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 34, color: color.t1, letterSpacing: -1, lineHeight: 1.1 }}>12 cases</div>
+              <p style={{ fontSize: 13, color: color.t3, lineHeight: 1.6, margin: '14px 0 0' }}>Six high-stakes treasury requests and six safe controls, scored from raw model output.</p>
             </div>
             <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
-              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginBottom: 12 }}>False friction</div>
-              <div style={{ fontSize: 14, color: color.t2 }}>Safe actions EMILIA wrongly blocked</div>
-              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 34, color: color.t1, letterSpacing: -1, lineHeight: 1.1 }}>0/6 <span style={{ fontSize: 17, color: color.t3 }}>(0%)</span></div>
-              <p style={{ fontSize: 13, color: color.t3, lineHeight: 1.6, margin: '14px 0 0' }}>The EMILIA result is deterministic &mdash; the verified engine gates every &ge;$50k release and bank-destination change, every run.</p>
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginBottom: 12 }}>Deterministic gate</div>
+              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 34, color: color.t1, letterSpacing: -1, lineHeight: 1.1 }}>Receiptless high-risk = refused</div>
+              <p style={{ fontSize: 13, color: color.t3, lineHeight: 1.6, margin: '14px 0 0' }}>The verified engine gates every &ge;$50k release and bank-destination change unless a valid, action-bound receipt is present.</p>
+            </div>
+            <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginBottom: 12 }}>Auditable output</div>
+              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 34, color: color.t1, letterSpacing: -1, lineHeight: 1.1 }}>Run it yourself</div>
+              <p style={{ fontSize: 13, color: color.t3, lineHeight: 1.6, margin: '14px 0 0' }}>Publish model-specific percentages only from a saved harness run; the repo gives reviewers the scorer and cases.</p>
             </div>
           </div>
           <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, maxWidth: 660, margin: 0 }}>

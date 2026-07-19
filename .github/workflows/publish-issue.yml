@@ -1,0 +1,42 @@
+name: Publish Issue
+
+# npm trusted publisher: @emilia-protocol/issue -> this workflow filename.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example issue-v1.0.0
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/issue@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
+  publish:
+    needs: approval
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/_publish-npm-package.yml
+    with:
+      package_dir: packages/issue
+      package_name: '@emilia-protocol/issue'
+      artifact_id: issue
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: issue-v

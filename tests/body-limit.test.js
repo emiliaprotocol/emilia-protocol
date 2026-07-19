@@ -3,7 +3,7 @@
 // public write surface, so the limit/error branches must be exercised, not just
 // the happy path.
 import { describe, it, expect } from 'vitest';
-import { readLimitedText, readLimitedJson } from '../lib/http/body-limit.js';
+import { enforceBodyByteLimit, readLimitedText, readLimitedJson } from '../lib/http/body-limit.js';
 
 function streamFrom(text, { contentLength } = {}) {
   const headers = new Headers();
@@ -15,6 +15,16 @@ function streamFrom(text, { contentLength } = {}) {
     },
   });
   return { headers, body };
+}
+
+function requestFrom(text, { contentLength } = {}) {
+  const headers = new Headers();
+  if (contentLength !== undefined) headers.set('content-length', String(contentLength));
+  return new Request('https://www.emiliaprotocol.ai/test', {
+    method: 'POST',
+    headers,
+    body: text,
+  });
 }
 
 describe('readLimitedText', () => {
@@ -65,6 +75,17 @@ describe('readLimitedText', () => {
     const r = await readLimitedText({ headers: new Headers(), body }, 64);
     expect(r).toEqual({ ok: true, text: 'ok' });
   });
+
+  it('rejects malformed UTF-8 instead of replacement-decoding it', async () => {
+    const body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(Uint8Array.from([0xc3, 0x28]));
+        controller.close();
+      },
+    });
+    const r = await readLimitedText({ headers: new Headers(), body }, 64);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_utf8' });
+  });
 });
 
 describe('readLimitedJson — json()-only test-double path', () => {
@@ -93,6 +114,32 @@ describe('readLimitedJson — json()-only test-double path', () => {
     const r = await readLimitedJson(jsonDouble(async () => { throw new Error('bad'); }), 64);
     expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
   });
+
+  it('returns invalid_json when json() throws and an explicit undefined options arg is passed (3-arg, no invalidValue)', async () => {
+    // Exercises the `arguments[2] || {}` fallback: arguments.length is 3 but the
+    // options value is falsy (undefined), so the right-hand `|| {}` is taken.
+    const r = await readLimitedJson(jsonDouble(async () => { throw new Error('bad'); }), 64, undefined);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+  });
+});
+
+describe('enforceBodyByteLimit', () => {
+  it('rejects when declared Content-Length exceeds the cap', async () => {
+    const r = await enforceBodyByteLimit(requestFrom('ok', { contentLength: 999 }), 8);
+    expect(r).toMatchObject({ ok: false, status: 413, code: 'payload_too_large' });
+  });
+
+  it('counts the actual cloned stream when Content-Length is absent', async () => {
+    const r = await enforceBodyByteLimit(requestFrom('0123456789'), 4);
+    expect(r).toMatchObject({ ok: false, status: 413, code: 'payload_too_large' });
+  });
+
+  it('leaves the original request body readable after enforcing the cap', async () => {
+    const request = requestFrom('hello');
+    const r = await enforceBodyByteLimit(request, 64);
+    expect(r).toEqual({ ok: true });
+    await expect(request.text()).resolves.toBe('hello');
+  });
 });
 
 describe('readLimitedJson — real stream path', () => {
@@ -111,6 +158,21 @@ describe('readLimitedJson — real stream path', () => {
     expect(r).toEqual({ ok: true, value: { k: 'v' } });
   });
 
+  it('rejects duplicate JSON member names before parsing', async () => {
+    const r = await readLimitedJson(streamFrom('{"action":"safe","action":"dangerous"}'), 128);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+    expect(r.detail).toMatch(/duplicate object member/);
+  });
+
+  it('maps duplicate JSON to invalidValue only when the caller explicitly requests that behavior', async () => {
+    const r = await readLimitedJson(
+      streamFrom('{"action":"safe","action":"dangerous"}'),
+      128,
+      { invalidValue: {} },
+    );
+    expect(r).toEqual({ ok: true, value: {} });
+  });
+
   it('propagates a 413 from the stream cap', async () => {
     const r = await readLimitedJson(streamFrom('{"big":"0123456789"}'), 4);
     expect(r).toMatchObject({ ok: false, status: 413, code: 'payload_too_large' });
@@ -123,6 +185,12 @@ describe('readLimitedJson — real stream path', () => {
 
   it('returns invalid_json on malformed JSON when no invalidValue is supplied', async () => {
     const r = await readLimitedJson(streamFrom('not-json'), 64);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+  });
+
+  it('returns invalid_json on malformed JSON when a falsy (undefined) options arg is passed', async () => {
+    // Stream-path counterpart of the `arguments[2] || {}` fallback branch.
+    const r = await readLimitedJson(streamFrom('not-json'), 64, undefined);
     expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
   });
 });

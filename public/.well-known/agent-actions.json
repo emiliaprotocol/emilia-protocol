@@ -1,5 +1,8 @@
 {
   "@version": "EP-ACTION-RISK-MANIFEST-v0.1",
+  "deprecated": true,
+  "superseded_by": "EP-ACTION-CONTROL-MANIFEST-v0.2",
+  "successor_url": "https://www.emiliaprotocol.ai/.well-known/agent-action-control.json",
   "service": {
     "name": "EMILIA Protocol public examples",
     "issuer": "https://www.emiliaprotocol.ai",

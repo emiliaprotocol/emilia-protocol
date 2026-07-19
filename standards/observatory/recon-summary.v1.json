@@ -1,0 +1,15 @@
+{
+  "@version": "EMILIA-STANDARDS-RECON-SUMMARY-v1",
+  "as_of": "2026-07-14T20:14:59Z",
+  "review_model": "correlated_agent_assisted_discovery",
+  "claim_boundary": "Aggregate counts only. The per-artifact recon index is held privately and never published; entries are discovery leads, not publication-grade claims, and do not drive the guarantee matrix. Individual efforts are named publicly only after promotion into the source-locked 20-source matrix.",
+  "metrics": {
+    "declared_agent_reads": 294,
+    "recovered_structured_reports": 291,
+    "unrecovered_reports": 3,
+    "fetch_failures_in_recovered_reports": 0,
+    "workflow_files_scanned": 327
+  },
+  "corpus_sha256": "9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed",
+  "private_index_path": "docs/strategy-private/observatory/recon-index.v1.json"
+}

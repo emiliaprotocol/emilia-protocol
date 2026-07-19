@@ -1,0 +1,298 @@
+{
+  "suite": "EP-WITNESS-v1",
+  "profile": "Witness cosignature k-of-n quorum (seeded Ed25519; JS and Python verify the SAME committed bytes). valid iff requireWitnessQuorum(witness_quorum.checkpoint, witness_quorum.cosignatures, witness_quorum.pinned, witness_quorum.k).ok === expect.valid.",
+  "vectors_version": "1.0.0",
+  "count": 6,
+  "vectors": [
+    {
+      "id": "accept_3_of_3_over_one_head",
+      "expect": {
+        "valid": true
+      },
+      "witness_quorum": {
+        "checkpoint": {
+          "tree_size": 42,
+          "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "log_key_id": "ep:log:test#1",
+          "merkle_alg": "EP-MERKLE-v2"
+        },
+        "cosignatures": [
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "a",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "2PsVlxcySH8zfpzB7GvB63-GsL_2YJBQZrqNHcj4rpRzur_MfPPJ2u4IUuk_kH4eIGHKviTtcHtTkWBBi2vvAQ"
+          },
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "b",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "_gpsv2NXzS7I98yNqLMShtH3tMSCGCB6zTB70SX8g1HGM529iU4BHHXpLHWAGnMlv-Ga8ob3KJ5rPqUEK7aTBQ"
+          },
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "c",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "Jb9UTGH90XWL_JuztQAD_4nAPplWbdUIOWaOwL1X3EdE0nFKA-BP1hKme5n3P2Ez2oOnRDprLo82Vw5v3I5UAQ"
+          }
+        ],
+        "pinned": [
+          {
+            "witness_id": "a",
+            "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+          },
+          {
+            "witness_id": "b",
+            "public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+          },
+          {
+            "witness_id": "c",
+            "public_key": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        ],
+        "k": 2
+      }
+    },
+    {
+      "id": "accept_exactly_k",
+      "expect": {
+        "valid": true
+      },
+      "witness_quorum": {
+        "checkpoint": {
+          "tree_size": 42,
+          "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "log_key_id": "ep:log:test#1",
+          "merkle_alg": "EP-MERKLE-v2"
+        },
+        "cosignatures": [
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "a",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "2PsVlxcySH8zfpzB7GvB63-GsL_2YJBQZrqNHcj4rpRzur_MfPPJ2u4IUuk_kH4eIGHKviTtcHtTkWBBi2vvAQ"
+          },
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "b",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "_gpsv2NXzS7I98yNqLMShtH3tMSCGCB6zTB70SX8g1HGM529iU4BHHXpLHWAGnMlv-Ga8ob3KJ5rPqUEK7aTBQ"
+          }
+        ],
+        "pinned": [
+          {
+            "witness_id": "a",
+            "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+          },
+          {
+            "witness_id": "b",
+            "public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+          },
+          {
+            "witness_id": "c",
+            "public_key": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        ],
+        "k": 2
+      }
+    },
+    {
+      "id": "reject_k_minus_1",
+      "expect": {
+        "valid": false
+      },
+      "witness_quorum": {
+        "checkpoint": {
+          "tree_size": 42,
+          "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "log_key_id": "ep:log:test#1",
+          "merkle_alg": "EP-MERKLE-v2"
+        },
+        "cosignatures": [
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "a",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "2PsVlxcySH8zfpzB7GvB63-GsL_2YJBQZrqNHcj4rpRzur_MfPPJ2u4IUuk_kH4eIGHKviTtcHtTkWBBi2vvAQ"
+          },
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "b",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "_gpsv2NXzS7I98yNqLMShtH3tMSCGCB6zTB70SX8g1HGM529iU4BHHXpLHWAGnMlv-Ga8ob3KJ5rPqUEK7aTBQ"
+          }
+        ],
+        "pinned": [
+          {
+            "witness_id": "a",
+            "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+          },
+          {
+            "witness_id": "b",
+            "public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+          },
+          {
+            "witness_id": "c",
+            "public_key": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        ],
+        "k": 3
+      }
+    },
+    {
+      "id": "reject_duplicate_counts_once",
+      "expect": {
+        "valid": false
+      },
+      "witness_quorum": {
+        "checkpoint": {
+          "tree_size": 42,
+          "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "log_key_id": "ep:log:test#1",
+          "merkle_alg": "EP-MERKLE-v2"
+        },
+        "cosignatures": [
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "a",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "2PsVlxcySH8zfpzB7GvB63-GsL_2YJBQZrqNHcj4rpRzur_MfPPJ2u4IUuk_kH4eIGHKviTtcHtTkWBBi2vvAQ"
+          },
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "a",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "2PsVlxcySH8zfpzB7GvB63-GsL_2YJBQZrqNHcj4rpRzur_MfPPJ2u4IUuk_kH4eIGHKviTtcHtTkWBBi2vvAQ"
+          }
+        ],
+        "pinned": [
+          {
+            "witness_id": "a",
+            "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+          },
+          {
+            "witness_id": "b",
+            "public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+          },
+          {
+            "witness_id": "c",
+            "public_key": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        ],
+        "k": 2
+      }
+    },
+    {
+      "id": "reject_unpinned_ignored",
+      "expect": {
+        "valid": false
+      },
+      "witness_quorum": {
+        "checkpoint": {
+          "tree_size": 42,
+          "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "log_key_id": "ep:log:test#1",
+          "merkle_alg": "EP-MERKLE-v2"
+        },
+        "cosignatures": [
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "a",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "2PsVlxcySH8zfpzB7GvB63-GsL_2YJBQZrqNHcj4rpRzur_MfPPJ2u4IUuk_kH4eIGHKviTtcHtTkWBBi2vvAQ"
+          },
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "stranger",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "vlvz5R5pkbG-cNdnFSaAVY7rRSBQ8zj7LnfewisuGLIAy3tCCy0svbp0fAE0cAUcyLOKF3GDwNSQD-L_2IBuBw"
+          }
+        ],
+        "pinned": [
+          {
+            "witness_id": "a",
+            "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+          },
+          {
+            "witness_id": "b",
+            "public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+          },
+          {
+            "witness_id": "c",
+            "public_key": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        ],
+        "k": 2
+      }
+    },
+    {
+      "id": "reject_different_head_ignored",
+      "expect": {
+        "valid": false
+      },
+      "witness_quorum": {
+        "checkpoint": {
+          "tree_size": 42,
+          "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "log_key_id": "ep:log:test#1",
+          "merkle_alg": "EP-MERKLE-v2"
+        },
+        "cosignatures": [
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "a",
+            "tree_size": 42,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "2PsVlxcySH8zfpzB7GvB63-GsL_2YJBQZrqNHcj4rpRzur_MfPPJ2u4IUuk_kH4eIGHKviTtcHtTkWBBi2vvAQ"
+          },
+          {
+            "alg": "EP-WITNESS-v1",
+            "witness_id": "b",
+            "tree_size": 99,
+            "root_hash": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "log_key_id": "ep:log:test#1",
+            "signature": "6Mr0XKt6qfcDL4JnundxfWC7N8oBrz87B07lj4Apk3zGcTAkRan0SCUGAt-C8QB2ZhkNgIdg4xQjtfXEMeCXCA"
+          }
+        ],
+        "pinned": [
+          {
+            "witness_id": "a",
+            "public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+          },
+          {
+            "witness_id": "b",
+            "public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+          },
+          {
+            "witness_id": "c",
+            "public_key": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4"
+          }
+        ],
+        "k": 2
+      }
+    }
+  ]
+}

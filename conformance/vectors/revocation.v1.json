@@ -3,9 +3,9 @@
   "wire_tag": "EP-REVOCATION-v1",
   "spdx": "Apache-2.0",
   "spec": "docs/EP-REVOCATION-SPEC.md",
-  "implementation": "lib/revocation/statement.js (buildRevocation, verifyRevocation, isRevoked)",
-  "description": "Attack-catalogue-first negative + positive conformance vectors for the EP-REVOCATION-v1 portable revocation profile. An EP-REVOCATION-v1 statement is an ADDITIVE, signed, OFFLINE-verifiable claim that a previously-valid authorization is now revoked. It binds a target { target_type: receipt|commit|delegation, target_id, action_hash (or commit hash) } and carries revoker_id + revoked_at + reason, signed by the revoker's Ed25519 key. verifyRevocation(target, statement, opts) FAILS CLOSED: it accepts only a statement whose proof verifies under a key PINNED for revoker_id (identified-but-not-trusted — an unpinned/self-asserted key confers NOTHING; mirrors lib/execution/integrity.js executor_key_pinned and lib/wysiwys/render.js signer_key_unpinned), that BINDS the exact target the verifier is handed (BOTH target_id and action_hash must match — a statement for action A cannot revoke action B), whose @version matches, and whose revoked_at is present (and, when opts requires, within an allowed freshness window). isRevoked(target, statements, opts) returns true IFF a VALID binding revocation statement exists for the target. The cryptographic material is minted LIVE in tests/revocation.test.js because the revocation proofs must be genuine Ed25519 signatures over canonical bytes; every negative here is a real forgery, never hand-edited JSON that fails for an unrelated reason. This file is the AUTHORITATIVE catalogue of the attacks every conformant verifier MUST reject (valid:false) and the well-formed cases it MUST accept (valid:true). Each id here is asserted by name in the test.",
-  "residual_risk": "Offline verification proves the revocation statement is AUTHENTIC and BINDS the exact target. It does NOT prove you hold the LATEST revocation state. 'Has this authorization been revoked by a statement I do not hold?' is a freshness / transparency problem — exactly the gap OCSP/CRL exist to fill — and is OUT OF SCOPE of the offline check. A relying party that needs liveness MUST consult a revocation feed / transparency log, or rely on a short receipt TTL; the offline artifact answers 'is THIS revocation real and for THIS target', NOT 'is the absence of a revocation trustworthy'. Treating absence-of-statement as proof-of-not-revoked is a relying-party error this profile cannot prevent. The opts freshness window bounds how stale a PRESENTED statement may be; it does nothing about a revocation that was never handed to the verifier. EXPERIMENTAL; governed by an Extension PIP; no production or customer claim; reports no metrics; this profile makes no completeness or liveness claim.",
+  "implementation": "lib/revocation/revocation.js (buildRevocation, verifyRevocation, isRevoked)",
+  "description": "Attack-catalogue-first negative + positive conformance vectors for the EP-REVOCATION-v1 portable revocation profile. An EP-REVOCATION-v1 statement is an ADDITIVE, signed, OFFLINE-verifiable terminal claim that a previously-valid authorization is revoked. It binds a target { target_type: receipt|commit|delegation, target_id, action_hash (or commit hash) } and carries revoker_id + revoked_at + reason, signed by the revoker's Ed25519 key. verifyRevocation(target, statement, opts) FAILS CLOSED: it accepts only a statement whose proof verifies under a key PINNED for revoker_id, that BINDS the exact target the verifier is handed, whose @version matches, and whose strict RFC 3339 revoked_at has taken effect by the verifier's decision time. Once effective, the revocation NEVER ages out; opts.maxAgeSeconds is retained only as an ignored compatibility option. Freshness applies to separately authenticated non-revocation/status evidence. The cryptographic material is minted LIVE in tests/revocation.test.js because the proofs must be genuine Ed25519 signatures over canonical bytes.",
+  "residual_risk": "Offline verification proves the revocation statement is AUTHENTIC and BINDS the exact target. It does NOT prove you hold the LATEST status view. 'Has this authorization been revoked by a statement I do not hold?' is a currency and transparency problem. A relying party that needs to rely on non-revocation MUST obtain a separately authenticated, policy-fresh status checkpoint, such as a profile of the IETF Token Status List mechanism, and must fail closed when that view is absent, stale, rolled back, or incomplete. A terminal revocation itself never expires. EXPERIMENTAL; no production or customer claim; this profile makes no completeness or liveness claim.",
   "must_reject": [
     {
       "id": "a_forged_signature",
@@ -56,23 +56,41 @@
       "expected": { "valid": false, "failing_check": "revoked_at_present" }
     },
     {
-      "id": "i_stale_beyond_freshness_window",
-      "title": "Stale beyond an opts freshness window (optional)",
-      "attack": "A genuine, validly-signed, exactly-bound statement whose revoked_at is older than opts.maxAgeSeconds relative to opts.now. When the relying party demands a freshness window, a statement older than that window is rejected. NOTE: this bounds how stale a PRESENTED statement may be; it does NOT close the absence-of-statement gap (see residual_risk). Only applies when opts.maxAgeSeconds is set.",
-      "expected": { "valid": false, "failing_check": "freshness" }
+      "id": "i_future_effective_instant",
+      "title": "Revocation has not taken effect at decision time",
+      "attack": "A genuine, validly-signed, exactly-bound statement carries a revoked_at later than opts.now. The artifact may be authentic, but it does not establish that the target is revoked at the verifier's decision time. The verifier refuses it until the effective instant is reached.",
+      "expected": { "valid": false, "failing_check": "effective_at_or_before_T" }
+    },
+    {
+      "id": "j_malformed_target_shape",
+      "title": "Malformed target and statement do not match by shared emptiness",
+      "attack": "The handed target and the signed statement both omit or malform target_id and action_hash. A verifier that normalizes both invalid digests to the same empty value can report a match. The verifier requires a recognized target_type, a non-empty target_id, and a 64-hex SHA-256 digest on both sides before comparing them.",
+      "expected": { "valid": false, "failing_check": "target_bound" }
+    },
+    {
+      "id": "k_algorithm_label_mismatch",
+      "title": "Signature algorithm label does not match the verifier algorithm",
+      "attack": "The Ed25519 signature bytes are genuine, but the unsigned proof envelope labels them as another algorithm. Accepting the object would make the artifact's declared algorithm disagree with the algorithm actually enforced. The verifier requires the label Ed25519.",
+      "expected": { "valid": false, "failing_check": "revoker_signature_valid" }
     }
   ],
   "must_accept": [
     {
       "id": "z_well_formed_binding_revocation",
       "title": "Well-formed revocation, pinned revoker, exact target binding",
-      "shape": "An EP-REVOCATION-v1 statement over target { target_type, target_id, action_hash } that EXACTLY matches the target the verifier is handed; revoked_at present and (when a window is required) within opts.maxAgeSeconds of opts.now; @version correct; proof is a real Ed25519 signature over the independently-recomputed canonical bytes, verifying under the key PINNED for revoker_id. verifyRevocation -> valid:true and isRevoked(target, [statement], opts) -> true. This proves the revocation is AUTHENTIC and binds THIS target; it does NOT prove this is the LATEST revocation state (residual: revocation feed / transparency log, out of scope).",
+      "shape": "An EP-REVOCATION-v1 statement over target { target_type, target_id, action_hash } that EXACTLY matches the target the verifier is handed; revoked_at is a strict RFC 3339 instant at or before the decision time; @version is correct; proof is a real Ed25519 signature over the independently-recomputed canonical bytes, verifying under the key PINNED for revoker_id. verifyRevocation -> valid:true and isRevoked(target, [statement], opts) -> true. This proves the revocation is AUTHENTIC and binds THIS target; it does NOT prove this is the latest status view.",
       "expected": { "valid": true }
     },
     {
       "id": "z2_is_revoked_true_among_unrelated",
       "title": "isRevoked true when one valid binding statement sits among unrelated ones",
       "shape": "A set of statements is handed to isRevoked(target, statements, opts): one is the valid binding revocation for the handed target (as in z); the others are valid revocations for DIFFERENT targets (different target_id and/or action_hash). isRevoked returns true because at least one VALID binding statement exists for the target, and ignores the unrelated ones. Confirms the aggregate helper does not require the matching statement to be first or alone.",
+      "expected": { "valid": true }
+    },
+    {
+      "id": "z3_old_terminal_revocation_remains_valid",
+      "title": "An old terminal revocation never ages out",
+      "shape": "A genuine, pinned, exactly-bound revocation whose revoked_at is years before opts.now remains valid even when a legacy caller supplies maxAgeSeconds. Passage of time must never transform REVOKED into acceptable.",
       "expected": { "valid": true }
     }
   ]

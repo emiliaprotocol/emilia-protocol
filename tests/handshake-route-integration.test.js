@@ -51,6 +51,9 @@ const mockGetServiceClient = vi.fn().mockReturnValue(mockSupabase);
 
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticateRequest(...args),
+  authEntityId: (auth) => typeof auth?.entity === 'string'
+    ? auth.entity
+    : auth?.entity?.entity_id || auth?.entity?.id || '',
   getServiceClient: (...args) => mockGetServiceClient(...args),
 }));
 
@@ -106,9 +109,11 @@ vi.mock('@/lib/handshake', () => ({
 // ============================================================================
 
 const mockAuthorizeHandshakeVerify = vi.fn().mockResolvedValue(undefined);
+const mockAuthorizeHandshakePresent = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/lib/handshake-auth', () => ({
   authorizeHandshakeVerify: (...args) => mockAuthorizeHandshakeVerify(...args),
+  authorizeHandshakePresent: (...args) => mockAuthorizeHandshakePresent(...args),
   resolveAuthEntityId: (actor) => {
     if (!actor) return null;
     if (typeof actor === 'string') return actor;
@@ -143,6 +148,8 @@ beforeEach(() => {
   // Reset getServiceClient to return a mock with party found (access control passes)
   const freshMock = createMockSupabase();
   mockGetServiceClient.mockReturnValue(freshMock);
+  mockAuthorizeHandshakePresent.mockResolvedValue(undefined);
+  mockAuthorizeHandshakeVerify.mockResolvedValue(undefined);
   mockInitiateHandshake.mockResolvedValue({
     handshake_id: 'eph_test_123',
     mode: 'mutual',
@@ -197,7 +204,7 @@ describe('POST /api/handshake (create)', () => {
     const callArgs = mockInitiateHandshake.mock.calls[0];
     expect(callArgs).toHaveLength(1);
     expect(callArgs[0]).toHaveProperty('actor');
-    expect(callArgs[0].actor).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[0].actor).toBe('test-entity-123');
     expect(callArgs[0]).toHaveProperty('mode', 'mutual');
     expect(callArgs[0]).toHaveProperty('policy_id', 'pol_abc');
     expect(callArgs[0]).toHaveProperty('parties', validBody.parties);
@@ -324,7 +331,7 @@ describe('POST /api/handshake/:id/present', () => {
     await presentPost(req, mockParams);
 
     const callArgs = mockAddPresentation.mock.calls[0];
-    expect(callArgs[3]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[3]).toBe('test-entity-123');
   });
 
   it('11. returns 400 when party_role is missing', async () => {
@@ -352,6 +359,37 @@ describe('POST /api/handshake/:id/present', () => {
     expect(detail).toContain('presentation_type');
     expect(mockAddPresentation).not.toHaveBeenCalled();
   });
+
+  // ── IDOR regression (CRITICAL audit finding) ──────────────────────────────
+  // The route authenticated but never authorized party ownership, so any
+  // authenticated entity could post a presentation to any handshake as any
+  // role. These lock the guard in place.
+  it('13. IDOR: rejects with 403 and does NOT write when caller is not the party owner', async () => {
+    const denial = Object.assign(
+      new Error("Caller does not own the 'initiator' party role on this handshake"),
+      { name: 'HandshakeError', status: 403 },
+    );
+    mockAuthorizeHandshakePresent.mockRejectedValueOnce(denial);
+
+    const req = createMockRequest('POST', `http://localhost/api/handshake/${handshakeId}/present`, validBody);
+    const res = await presentPost(req, mockParams);
+
+    expect(res.status).toBe(403);
+    expect(mockAddPresentation).not.toHaveBeenCalled();
+  });
+
+  it('14. wires authorizeHandshakePresent with (supabase, authEntityId, handshakeId, party_role) before writing', async () => {
+    const req = createMockRequest('POST', `http://localhost/api/handshake/${handshakeId}/present`, validBody);
+    await presentPost(req, mockParams);
+
+    expect(mockAuthorizeHandshakePresent).toHaveBeenCalledTimes(1);
+    const args = mockAuthorizeHandshakePresent.mock.calls[0];
+    // (supabase, authEntityId, handshakeId, partyRole)
+    expect(args[1]).toBe('test-entity-123'); // resolveAuthEntityId(auth.entity)
+    expect(args[2]).toBe(handshakeId);
+    expect(args[3]).toBe('initiator');
+    expect(mockAddPresentation).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('POST /api/handshake/:id/verify', () => {
@@ -368,7 +406,7 @@ describe('POST /api/handshake/:id/verify', () => {
     const callArgs = mockVerifyHandshake.mock.calls[0];
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
-      actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
+      actor: 'test-entity-123',
       payload: rawPayload,
       nonce: null,
       action_hash: null,
@@ -388,7 +426,7 @@ describe('POST /api/handshake/:id/verify', () => {
     const callArgs = mockVerifyHandshake.mock.calls[0];
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
-      actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
+      actor: 'test-entity-123',
       payload: null,
       nonce: null,
       action_hash: null,
@@ -418,7 +456,7 @@ describe('GET /api/handshake (list)', () => {
 
     const callArgs = mockListHandshakes.mock.calls[0];
     // listHandshakes(filters, actor)
-    expect(callArgs[1]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[1]).toBe('test-entity-123');
   });
 
   it('17. passes filter params from query string correctly (entity_ref forced to auth entity)', async () => {
@@ -464,6 +502,6 @@ describe('POST /api/handshake/:id/revoke', () => {
     const callArgs = mockRevokeHandshake.mock.calls[0];
     expect(callArgs[0]).toBe('eph_revoke_321');
     expect(callArgs[1]).toBe('policy_violation');
-    expect(callArgs[2]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
+    expect(callArgs[2]).toBe('test-entity-123');
   });
 });

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
 import { seal } from '@/lib/crypto/secret-box';
+import { isPublicEntityRegistrationEnabled } from '@/lib/env';
 // API key generated inline — no dependency on lib/supabase internals
 import { epProblem } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
@@ -25,6 +26,15 @@ const MAX_ENTITY_BYTES = 8 * 1024;
  */
 export async function POST(request) {
   try {
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().startsWith('application/json')) {
+      return epProblem(415, 'unsupported_media_type', 'Content-Type must be application/json');
+    }
+
+    if (!isPublicEntityRegistrationEnabled()) {
+      return epProblem(403, 'self_serve_registration_disabled', 'Self-serve entity registration is disabled. Use a verified onboarding flow.');
+    }
+
     const parsed = await readLimitedJson(request, MAX_ENTITY_BYTES);
     if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
     const body = parsed.value;
@@ -76,7 +86,7 @@ export async function POST(request) {
 
     if (entityError || !insertedEntity) {
       logger.error('[entity/route] Registration failed:', entityError);
-      return epProblem(500, 'registration_failed', entityError?.message || JSON.stringify(entityError));
+      return epProblem(500, 'registration_failed', 'Failed to register entity');
     }
 
     // Register the key in api_keys so it authenticates protocol-standard routes
@@ -102,6 +112,6 @@ export async function POST(request) {
     }, { status: 201 });
   } catch (err) {
     logger.error('[entity/route] Unhandled error:', err);
-    return epProblem(500, 'internal_error', err.message || 'Entity registration failed');
+    return epProblem(500, 'internal_error', 'Entity registration failed');
   }
 }

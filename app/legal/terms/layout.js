@@ -1,7 +1,7 @@
 export const metadata = {
   title: 'Terms of Service — EMILIA Protocol',
   description:
-    'Terms governing use of the emiliaprotocol.ai website, the EP Cloud ' +
+    'Terms governing use of the emiliaprotocol.ai website, the EMILIA Gate Cloud ' +
     'service, the open-source reference runtime, and the published SDKs.',
   alternates: { canonical: '/legal/terms' },
   openGraph: {

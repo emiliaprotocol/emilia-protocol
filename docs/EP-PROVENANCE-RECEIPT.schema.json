@@ -59,9 +59,9 @@
         },
         "verification": {
           "type": "object",
-          "description": "Pinned offline verification material; mirrors verifyTrustReceipt()'s opts.",
+          "description": "Portable verification hints only. A relying party MUST pin equivalent roots out of band; these bytes never establish their own authority.",
           "additionalProperties": false,
-          "required": ["approver_keys", "log_public_key"],
+          "required": ["approver_keys", "log_public_key", "rp_id", "allowed_origins"],
           "properties": {
             "approver_keys": {
               "type": "object",
@@ -69,8 +69,9 @@
               "minProperties": 1,
               "additionalProperties": {
                 "type": "object",
-                "required": ["public_key"],
+                "required": ["approver_id", "public_key"],
                 "properties": {
+                  "approver_id": { "type": "string", "minLength": 1 },
                   "public_key": { "type": "string" },
                   "key_class": { "type": "string", "enum": ["A", "B", "C"] },
                   "valid_from": { "type": "string", "format": "date-time" },
@@ -81,6 +82,18 @@
             "log_public_key": {
               "type": "string",
               "description": "Trusted log Ed25519 public key (base64url SPKI DER)."
+            },
+            "rp_id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "WebAuthn relying-party identifier pinned by the verifier."
+            },
+            "allowed_origins": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "Exact WebAuthn origin allowlist pinned by the verifier."
             }
           }
         },

@@ -16,14 +16,15 @@
  *        node scripts/emilia-gate.mjs --hook    (reads the tool call on stdin)
  *      → the agent literally cannot run an irreversible command without EMILIA.
  *
- * Exit 0 = allow.   Exit 2 = blocked (human signoff required, or denied).
- * Kill switch:  EMILIA_GATE=off  → always allow.
+ * Exit 0 = allow.   Exit 2 = blocked (human signoff required, denied, or
+ * the gate cannot parse/classify the action safely).
  */
 import crypto from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readFileSync as _r } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { evaluateGuardPolicy, GUARD_ACTION_TYPES, GUARD_DECISIONS } from '../lib/guard-policies.js';
+import { strictJsonGate } from '../lib/strict-json.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,6 +42,12 @@ const INFRA_PATTERNS = [
   { re: /\bgit\s+push\b[\s\S]*--force(?!-with-lease)/i, what: 'a force-push (rewrites remote history)' },
   { re: /\b(drop\s+table|truncate\s+table|delete\s+from)\b/i, what: 'destructive SQL' },
   { re: /\bsupabase\b[\s\S]*\b(reset|delete|--force)\b/i, what: 'a destructive Supabase operation' },
+];
+const SAFE_READ_ONLY_PATTERNS = [
+  /^\s*(pwd|date|whoami|id)(\s|$)/i,
+  /^\s*(ls|find|rg|grep|sed|cat|head|tail|wc)\b/i,
+  /^\s*git\s+(status|diff|log|show|branch|rev-parse|remote)(\s|$)/i,
+  /^\s*(node|npm|npx|python3?|go|cargo|gh)\s+(-v|--version|version)(\s|$)/i,
 ];
 
 function classifyCommand(cmd) {
@@ -62,7 +69,19 @@ function classifyCommand(cmd) {
       };
     }
   }
-  return { actionType: 'low_risk', engine: 'agent-gate', what: 'a low-risk command', decision: GUARD_DECISIONS.ALLOW, reasons: ['No high-risk pattern matched.'], signoffRequired: false };
+  for (const p of SAFE_READ_ONLY_PATTERNS) {
+    if (p.test(cmd)) {
+      return { actionType: 'low_risk', engine: 'agent-gate', what: 'an explicitly read-only command', decision: GUARD_DECISIONS.ALLOW, reasons: ['Matched the read-only allowlist.'], signoffRequired: false };
+    }
+  }
+  return {
+    actionType: 'unclassified_agent_command',
+    engine: 'agent-gate',
+    what: 'an unclassified shell command',
+    decision: GUARD_DECISIONS.ALLOW_WITH_SIGNOFF,
+    reasons: ['Command did not match the read-only allowlist. Fail closed until a human signs off or the classifier is extended.'],
+    signoffRequired: true,
+  };
 }
 
 // ── Tiny canonical JSON (matches lib/guard-policies + @emilia-protocol/verify) ─
@@ -118,14 +137,34 @@ function arg(name) {
 function readStdin() {
   try { return _r(0, 'utf8'); } catch { return ''; }
 }
+function parseBoundaryJson(raw, maxBytes = 1024 * 1024) {
+  if (typeof raw !== 'string' || Buffer.byteLength(raw, 'utf8') > maxBytes) throw new Error('JSON input is too large');
+  const strict = strictJsonGate(raw);
+  if (!strict.ok) throw new Error(`strict JSON required: ${strict.reason}`);
+  const value = JSON.parse(raw);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('JSON input must be an object');
+  return value;
+}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 function blockedDecision(d) {
   return d === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF || d === GUARD_DECISIONS.DENY;
 }
 
+function failClosed(message, detail = '') {
+  process.stderr.write(
+    `\n⛔ EMILIA gate: action HELD.\n` +
+    `   ${message}\n` +
+    (detail ? `   ${detail}\n` : '') +
+    `   Exit 2 blocks the tool call until a named human authorizes it.\n`,
+  );
+  process.exit(2);
+}
+
 async function main() {
-  if (process.env.EMILIA_GATE === 'off') process.exit(0);
+  if (process.env.EMILIA_GATE === 'off') {
+    failClosed('EMILIA_GATE=off was requested, but this hook is fail-closed by design.');
+  }
 
   const hookMode = process.argv.includes('--hook');
   let command = arg('--command');
@@ -134,11 +173,11 @@ async function main() {
 
   if (hookMode) {
     let evt = {};
-    try { evt = JSON.parse(readStdin() || '{}'); } catch { process.exit(0); } // fail-open on bad input
+    try { evt = parseBoundaryJson(readStdin() || '{}'); } catch { failClosed('Could not parse the Claude Code hook event.'); }
     if (evt.tool_name && evt.tool_name !== 'Bash') process.exit(0);
     command = evt.tool_input?.command || '';
     subject = 'agent:claude-code';
-    if (!command) process.exit(0);
+    if (!command) failClosed('Bash hook event did not include a command.');
     verdict = classifyCommand(command);
     if (blockedDecision(verdict.decision)) {
       // stderr is fed back to the model; exit 2 blocks the tool call.
@@ -147,7 +186,7 @@ async function main() {
         `   Action:  ${verdict.what}\n` +
         `   Decision: ${verdict.decision} (${verdict.engine})\n` +
         `   ${verdict.reasons.join('\n   ')}\n` +
-        `   A named human must approve before this runs. (Override for this session: EMILIA_GATE=off)\n`,
+        `   A named human must approve before this runs.\n`,
       );
       process.exit(2);
     }
@@ -156,7 +195,8 @@ async function main() {
 
   const actionJson = arg('--action');
   if (actionJson) {
-    const input = JSON.parse(actionJson);
+    let input;
+    try { input = parseBoundaryJson(actionJson); } catch { failClosed('Could not parse the action as strict JSON.'); }
     const base = evaluateGuardPolicy(input);
     verdict = { actionType: input.actionType || 'custom', engine: 'guard-policies', what: 'a policy-engine action', ...base };
     subject = input.actorId ? `actor:${input.actorId}` : subject;
@@ -185,4 +225,4 @@ async function main() {
   process.exit(blockedDecision(verdict.decision) ? 2 : 0);
 }
 
-main().catch(() => process.exit(0)); // fail-open: never deadlock a harness
+main().catch((err) => failClosed('Unhandled gate error.', String(err?.message ?? err)));

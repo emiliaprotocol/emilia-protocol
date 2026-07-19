@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createGate, createEg1Harness } from '../index.js';
 import {
   createSupabaseManifest, guardSupabaseMutation, SUPABASE_OPS, isDestructiveSql, statementHash,
+  rlsDefinitionDigest, RLS_DEFINITION_BINDING_VERSION,
 } from './supabase.js';
 
 function fakeDb() {
@@ -17,7 +18,7 @@ function fakeDb() {
 }
 function setup(action) {
   const harness = createEg1Harness({ action });
-  return { harness, gate: createGate({ manifest: createSupabaseManifest(), trustedKeys: [harness.publicKey] }), db: fakeDb() };
+  return { harness, gate: createGate({ manifest: createSupabaseManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy, rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true }), db: fakeDb() };
 }
 
 const SQL = 'DELETE FROM payments WHERE id = 1';
@@ -66,7 +67,13 @@ test('a receipt for one statement cannot authorize a different statement (drift)
 });
 
 test('RLS policy change requires quorum', async () => {
-  const action = { action_type: 'supabase.rls.change', table: 'payments', policy: 'allow_all' };
+  const action = {
+    action_type: 'supabase.rls.change',
+    table: 'payments',
+    policy: 'allow_all',
+    rls_definition_digest: rlsDefinitionDigest('USING (true)'),
+    rls_definition_version: RLS_DEFINITION_BINDING_VERSION,
+  };
   const { gate, harness, db } = setup(action);
   const params = { table: 'payments', policy: 'allow_all', definition: 'USING (true)' };
   await assert.rejects(

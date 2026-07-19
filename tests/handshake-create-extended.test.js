@@ -70,6 +70,7 @@ vi.mock('../lib/handshake/binding.js', () => ({
   computeContextHash: vi.fn(() => 'mock-context-hash'),
   computePayloadHash: vi.fn(() => 'mock-payload-hash'),
   computePolicyHash: vi.fn(() => 'mock-policy-hash'),
+  deepSortKeys: vi.fn((v) => v),
 }));
 
 vi.mock('@/lib/actor.js', () => ({

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityDbId, authEntityScore } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
@@ -19,6 +20,8 @@ export async function POST(request, { params }) {
     if (auth.error) {
       return epProblem(401, 'unauthorized', auth.error);
     }
+    const callerDbId = authEntityDbId(auth);
+    const callerScore = authEntityScore(auth);
 
     const { id } = await params;
     const supabase = getGuardedClient();
@@ -37,7 +40,7 @@ export async function POST(request, { params }) {
       return epProblem(409, 'need_not_open', `Need is ${need.status}, not open`);
     }
 
-    if (need.from_entity_id === auth.entity.id) {
+    if (need.from_entity_id === callerDbId) {
       return epProblem(403, 'self_claim', 'Cannot claim your own need');
     }
 
@@ -47,7 +50,7 @@ export async function POST(request, { params }) {
     // Otherwise fall back to legacy min_emilia_score threshold.
     if (need.trust_policy) {
       const needContext = need.context && typeof need.context === 'object' ? need.context : null;
-      const evaluation = await canonicalEvaluate(auth.entity.id, {
+      const evaluation = await canonicalEvaluate(callerDbId, {
         context: needContext,
         policy: need.trust_policy,
         includeDisputes: false,
@@ -68,11 +71,11 @@ export async function POST(request, { params }) {
           _hint: 'Build trust through verified receipts from established counterparties.',
         });
       }
-    } else if (auth.entity.emilia_score < (need.min_emilia_score || 0)) {
+    } else if (callerScore < (need.min_emilia_score || 0)) {
       // LEGACY: raw score threshold fallback. This path exists only for backward
       // compatibility with needs that predate trust_policy adoption. New needs SHOULD
       // always specify a trust_policy. See PROTOCOL-STANDARD.md §20.
-      return epProblem(403, 'score_too_low', `Compatibility score (${auth.entity.emilia_score}) below minimum (${need.min_emilia_score}). Build trust through verified receipts.`, {
+      return epProblem(403, 'score_too_low', `Compatibility score (${callerScore}) below minimum (${need.min_emilia_score}). Build trust through verified receipts.`, {
         _hint: 'For richer trust evaluation, use POST /api/trust/evaluate with a policy.',
         _legacy: true,
       });
@@ -92,7 +95,7 @@ export async function POST(request, { params }) {
       .from('needs')
       .update({
         status: 'claimed',
-        claimed_by: auth.entity.id,
+        claimed_by: callerDbId,
         claimed_at: new Date().toISOString(),
       })
       .eq('id', need.id)

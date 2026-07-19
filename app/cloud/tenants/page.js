@@ -26,11 +26,11 @@ const s = {
 };
 
 const MOCK_TENANTS = [
-  { id: 'ten_acme', name: 'Acme Corp', slug: 'acme-corp', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 6234, policies: 12, members: 24, created: '2025-08-15T00:00:00Z' },
-  { id: 'ten_globex', name: 'Globex Financial', slug: 'globex-fin', plan: 'enterprise', status: 'active', region: 'eu-west-1', handshakes: 4102, policies: 8, members: 18, created: '2025-10-01T00:00:00Z' },
-  { id: 'ten_initech', name: 'Initech EU', slug: 'initech-eu', plan: 'business', status: 'active', region: 'eu-central-1', handshakes: 2891, policies: 6, members: 11, created: '2025-11-20T00:00:00Z' },
-  { id: 'ten_umbrella', name: 'Umbrella Health', slug: 'umbrella-health', plan: 'business', status: 'suspended', region: 'us-west-2', handshakes: 890, policies: 4, members: 7, created: '2026-01-10T00:00:00Z' },
-  { id: 'ten_wayne', name: 'Wayne Industries', slug: 'wayne-ind', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 1456, policies: 9, members: 32, created: '2026-02-05T00:00:00Z' },
+  { id: 'ten_demo_alpha', name: 'Demo Agency Alpha', slug: 'demo-agency-alpha', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 6234, policies: 12, members: 24, created: '2025-08-15T00:00:00Z' },
+  { id: 'ten_demo_beta', name: 'Demo Finance Beta', slug: 'demo-finance-beta', plan: 'enterprise', status: 'active', region: 'eu-west-1', handshakes: 4102, policies: 8, members: 18, created: '2025-10-01T00:00:00Z' },
+  { id: 'ten_demo_gamma', name: 'Demo Health Gamma', slug: 'demo-health-gamma', plan: 'business', status: 'active', region: 'eu-central-1', handshakes: 2891, policies: 6, members: 11, created: '2025-11-20T00:00:00Z' },
+  { id: 'ten_demo_delta', name: 'Demo Benefits Delta', slug: 'demo-benefits-delta', plan: 'business', status: 'suspended', region: 'us-west-2', handshakes: 890, policies: 4, members: 7, created: '2026-01-10T00:00:00Z' },
+  { id: 'ten_demo_echo', name: 'Demo Infrastructure Echo', slug: 'demo-infra-echo', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 1456, policies: 9, members: 32, created: '2026-02-05T00:00:00Z' },
 ];
 
 const statusColor = { active: '#22C55E', suspended: '#f87171', pending: '#22C55E' };
@@ -73,7 +73,7 @@ export default function TenantsPage() {
       <div style={s.container}>
         <div style={s.eyebrow}>Cloud / Tenants</div>
         <h1 style={s.h1}>Tenant Management</h1>
-        <p style={s.subtitle}>View and manage organizations using your EP Cloud deployment.</p>
+        <p style={s.subtitle}>View and manage organizations using your EMILIA Gate Cloud deployment.</p>
 
         {error && <div style={s.error}>{error}</div>}
 

@@ -1,19 +1,29 @@
 {
   "name": "@emilia-protocol/require-receipt",
-  "version": "0.4.1",
+  "version": "0.6.1",
   "description": "Demand a verifiable EMILIA authorization receipt for any irreversible agent action. Emits Receipt Required challenges (428, with legacy 402 compatibility) and tells the agent exactly what to bring.",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": {
       "import": "./index.js"
-    }
+    },
+    "./strict-json": "./strict-json.js"
   },
   "files": [
     "index.js",
     "gate.js",
+    "strict-json.js",
+    "jws.js",
     "README.md"
   ],
+  "scripts": {
+    "test": "node --test",
+    "build:drop-in": "node build-drop-in.mjs"
+  },
+  "devDependencies": {
+    "jose": "^6.2.3"
+  },
   "license": "Apache-2.0",
   "keywords": [
     "emilia-protocol",
@@ -33,7 +43,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/emiliaprotocol/emilia-protocol.git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "packages/require-receipt"
   },
   "homepage": "https://www.emiliaprotocol.ai/agent-guard",

@@ -20,9 +20,11 @@ func TestAECVectors(t *testing.T) {
 		Action    map[string]any `json:"action"`
 		StubTypes []string       `json:"stub_types"`
 		Vectors   []struct {
-			Name        string         `json:"name"`
-			Chain       map[string]any `json:"chain"`
-			ExpectAllow bool           `json:"expect_allow"`
+			Name          string         `json:"name"`
+			Chain         map[string]any `json:"chain"`
+			ExpectAllow   bool           `json:"expect_allow"`
+			RPRequirement string         `json:"relying_party_requirement"`
+			ExpectSource  string         `json:"expect_requirement_source"`
 		} `json:"vectors"`
 	}
 	if err := json.Unmarshal(raw, &suite); err != nil {
@@ -78,9 +80,26 @@ func TestAECVectors(t *testing.T) {
 				}
 			}
 		}
-		res := VerifyAuthorizationChain(chain, verifiers)
+		var res AECResult
+		if v.ExpectSource == "presenter" {
+			res = VerifyAuthorizationChain(chain, verifiers, nil)
+		} else if v.RPRequirement != "" {
+			res = VerifyAuthorizationChain(chain, verifiers, nil, v.RPRequirement, "sha256:"+digest)
+		} else {
+			req, _ := chain["requirement"].(string)
+			res = VerifyAuthorizationChain(chain, verifiers, nil, req, "sha256:"+digest)
+		}
+		if res.Satisfied != v.ExpectAllow {
+			t.Errorf("%s: satisfied=%v want %v; reasons=%v", v.Name, res.Satisfied, v.ExpectAllow, res.Reasons)
+		}
+		if res.Allow != res.Satisfied {
+			t.Errorf("%s: legacy allow alias diverged from satisfied", v.Name)
+		}
 		if res.Allow != v.ExpectAllow {
 			t.Errorf("%s: allow=%v want %v; reasons=%v", v.Name, res.Allow, v.ExpectAllow, res.Reasons)
+		}
+		if v.ExpectSource != "" && res.RequirementSource != v.ExpectSource {
+			t.Errorf("%s: requirement_source=%q want %q", v.Name, res.RequirementSource, v.ExpectSource)
 		}
 	}
 }

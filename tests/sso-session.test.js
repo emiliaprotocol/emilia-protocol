@@ -80,4 +80,60 @@ describe('EP session', () => {
     const bare = new Request('https://x/api/sso/session');
     expect(await readSessionFromRequest(bare)).toBeNull();
   });
+
+  it('requires an explicit secret in production', async () => {
+    const saved = {
+      nodeEnv: process.env.NODE_ENV,
+      sessionSecret: process.env.SSO_SESSION_SECRET,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      serviceKey: process.env.SUPABASE_SERVICE_KEY,
+    };
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.SSO_SESSION_SECRET;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      delete process.env.SUPABASE_SERVICE_KEY;
+
+      await expect(mintSession(identity)).rejects.toThrow(/SSO_SESSION_SECRET is required/);
+    } finally {
+      if (saved.nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = saved.nodeEnv;
+      if (saved.sessionSecret === undefined) delete process.env.SSO_SESSION_SECRET;
+      else process.env.SSO_SESSION_SECRET = saved.sessionSecret;
+      if (saved.serviceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = saved.serviceRoleKey;
+      if (saved.serviceKey === undefined) delete process.env.SUPABASE_SERVICE_KEY;
+      else process.env.SUPABASE_SERVICE_KEY = saved.serviceKey;
+    }
+  });
+
+  it('does not use the source-predictable development fallback', async () => {
+    const saved = {
+      nodeEnv: process.env.NODE_ENV,
+      sessionSecret: process.env.SSO_SESSION_SECRET,
+      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      serviceKey: process.env.SUPABASE_SERVICE_KEY,
+    };
+    try {
+      process.env.NODE_ENV = 'development';
+      delete process.env.SSO_SESSION_SECRET;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      delete process.env.SUPABASE_SERVICE_KEY;
+
+      const token = await mintSession(identity);
+      process.env.SSO_SESSION_SECRET = 'ep-sso-dev';
+      expect(await verifySession(token)).toBeNull();
+      delete process.env.SSO_SESSION_SECRET;
+      expect(await verifySession(token)).toMatchObject({ sub: identity.subject });
+    } finally {
+      if (saved.nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = saved.nodeEnv;
+      if (saved.sessionSecret === undefined) delete process.env.SSO_SESSION_SECRET;
+      else process.env.SSO_SESSION_SECRET = saved.sessionSecret;
+      if (saved.serviceRoleKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      else process.env.SUPABASE_SERVICE_ROLE_KEY = saved.serviceRoleKey;
+      if (saved.serviceKey === undefined) delete process.env.SUPABASE_SERVICE_KEY;
+      else process.env.SUPABASE_SERVICE_KEY = saved.serviceKey;
+    }
+  });
 });

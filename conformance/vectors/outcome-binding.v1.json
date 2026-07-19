@@ -1,0 +1,172 @@
+{
+  "suite": "EP-OUTCOME-BINDING-v1",
+  "profile": "predicted-effects+divergence",
+  "vectors_version": "2026-07-08",
+  "note": "Outcome binding: approval over PREDICTED effects with tolerance bounds, executor attestation of OBSERVED effects, machine-detectable divergence. Two kinds. kind=predicate runs evaluatePredictedEffects(predicted_effects, observed_effects) and checks the closed outcome set {in_bounds, divergent, incomparable}; 'incomparable' is a refusal with a reason, NEVER a pass. kind=graph builds a one-node EP-AEG-v1 graph whose effect_attestation verifier surfaces the attestation fields, evaluates it against the given policy (requirement: effect_attestation), and checks the verdict: divergent/incomparable MUST drive 'conflicted' exactly as the pre-existing exact-digest path does. All comparison values are STRINGS (canonicalization malleability); numbers are rejected as incomparable.",
+  "vectors": [
+    { "id": "in_bounds_mixed_ops_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [
+        { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } },
+        { "effect_type": "record_update", "target": "crm:contact-113", "predicate": { "op": "eq", "value": "status=closed" } },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "predicate": { "op": "count_lte", "value": "3" } },
+        { "effect_type": "role_grant", "target": "iam:svc-deploy", "predicate": { "op": "set_eq", "values": ["deploy:staging", "read:logs"] } },
+        { "effect_type": "account_close", "target": "acct:*", "predicate": { "op": "absent" } }
+      ],
+      "observed_effects": [
+        { "effect_type": "payment", "target": "acct:vendor-9", "value": "24999.99" },
+        { "effect_type": "record_update", "target": "crm:contact-113", "value": "status=closed" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "reports/2025/q1.pdf" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "reports/2025/q2.pdf" },
+        { "effect_type": "role_grant", "target": "iam:svc-deploy", "values": ["read:logs", "deploy:staging"] }
+      ] },
+
+    { "id": "eq_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [ { "effect_type": "record_update", "target": "crm:contact-113", "predicate": { "op": "eq", "value": "status=closed" } } ],
+      "observed_effects": [ { "effect_type": "record_update", "target": "crm:contact-113", "value": "status=closed" } ] },
+
+    { "id": "eq_fail_divergent", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted eq" },
+      "predicted_effects": [ { "effect_type": "record_update", "target": "crm:contact-113", "predicate": { "op": "eq", "value": "status=closed" } } ],
+      "observed_effects": [ { "effect_type": "record_update", "target": "crm:contact-113", "value": "status=deleted" } ] },
+
+    { "id": "lte_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "25000.00" } ] },
+
+    { "id": "lte_fail_divergent", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted <= 25000.00" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "25000.01" } ] },
+
+    { "id": "gte_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [ { "effect_type": "inventory_reserve", "target": "sku:X100", "predicate": { "op": "gte", "value": "10" } } ],
+      "observed_effects": [ { "effect_type": "inventory_reserve", "target": "sku:X100", "value": "12" } ] },
+
+    { "id": "gte_fail_divergent", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted >= 10" },
+      "predicted_effects": [ { "effect_type": "inventory_reserve", "target": "sku:X100", "predicate": { "op": "gte", "value": "10" } } ],
+      "observed_effects": [ { "effect_type": "inventory_reserve", "target": "sku:X100", "value": "9.99" } ] },
+
+    { "id": "range_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:payroll", "predicate": { "op": "range", "min": "9000", "max": "11000" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:payroll", "value": "10500.50" } ] },
+
+    { "id": "range_fail_below_min", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "below min" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:payroll", "predicate": { "op": "range", "min": "9000", "max": "11000" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:payroll", "value": "8999.99" } ] },
+
+    { "id": "range_fail_above_max", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "above max" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:payroll", "predicate": { "op": "range", "min": "9000", "max": "11000" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:payroll", "value": "11000.01" } ] },
+
+    { "id": "set_eq_pass_order_independent", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [ { "effect_type": "role_grant", "target": "iam:svc-deploy", "predicate": { "op": "set_eq", "values": ["deploy:staging", "read:logs"] } } ],
+      "observed_effects": [ { "effect_type": "role_grant", "target": "iam:svc-deploy", "values": ["read:logs", "deploy:staging"] } ] },
+
+    { "id": "set_eq_fail_widened_grant", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted set_eq" },
+      "predicted_effects": [ { "effect_type": "role_grant", "target": "iam:svc-deploy", "predicate": { "op": "set_eq", "values": ["deploy:staging", "read:logs"] } } ],
+      "observed_effects": [ { "effect_type": "role_grant", "target": "iam:svc-deploy", "values": ["deploy:staging", "read:logs", "admin:*"] } ] },
+
+    { "id": "count_lte_pass_zero_matches_is_valid_count", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [ { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "predicate": { "op": "count_lte", "value": "3" } } ],
+      "observed_effects": [] },
+
+    { "id": "count_lte_fail_divergent", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted count <= 3" },
+      "predicted_effects": [ { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "predicate": { "op": "count_lte", "value": "3" } } ],
+      "observed_effects": [
+        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "a" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "b" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "c" },
+        { "effect_type": "file_delete", "target": "bucket:reports/2025/*", "value": "d" }
+      ] },
+
+    { "id": "absent_pass", "kind": "predicate", "expect": { "outcome": "in_bounds" },
+      "predicted_effects": [ { "effect_type": "account_close", "target": "acct:*", "predicate": { "op": "absent" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "1.00" } ] },
+
+    { "id": "absent_fail_unpredicted_destructive_effect", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted absent" },
+      "predicted_effects": [
+        { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } },
+        { "effect_type": "account_close", "target": "acct:*", "predicate": { "op": "absent" } }
+      ],
+      "observed_effects": [
+        { "effect_type": "payment", "target": "acct:vendor-9", "value": "100.00" },
+        { "effect_type": "account_close", "target": "acct:*", "value": "acct:vendor-9" }
+      ] },
+
+    { "id": "amount_as_number_in_predicate_rejected", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "MUST be strings" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": 25000 } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "100.00" } ] },
+
+    { "id": "amount_as_number_in_observation_rejected", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "MUST be strings" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": 100 } ] },
+
+    { "id": "missing_observed_effect_incomparable", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "no observed effect" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+      "observed_effects": [] },
+
+    { "id": "ambiguous_multiple_observations_incomparable", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "ambiguous" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "eq", "value": "100.00" } } ],
+      "observed_effects": [
+        { "effect_type": "payment", "target": "acct:vendor-9", "value": "100.00" },
+        { "effect_type": "payment", "target": "acct:vendor-9", "value": "200.00" }
+      ] },
+
+    { "id": "unknown_op_malformed_incomparable", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "not a known op" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "approx", "value": "100" } } ],
+      "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "100" } ] },
+
+    { "id": "observed_effects_missing_entirely_incomparable", "kind": "predicate", "expect": { "outcome": "incomparable", "reason_contains": "not an array" },
+      "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+      "observed_effects": null },
+
+    { "id": "divergent_takes_precedence_over_incomparable", "kind": "predicate", "expect": { "outcome": "divergent", "reason_contains": "predicted eq" },
+      "predicted_effects": [
+        { "effect_type": "record_update", "target": "crm:contact-113", "predicate": { "op": "eq", "value": "status=closed" } },
+        { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } }
+      ],
+      "observed_effects": [ { "effect_type": "record_update", "target": "crm:contact-113", "value": "status=deleted" } ] },
+
+    { "id": "graph_degenerate_exact_digest_match_backcompat", "kind": "graph", "expect": { "verdict": "admissible" },
+      "attestation": {
+        "observed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "committed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "policy": {} },
+
+    { "id": "graph_degenerate_exact_digest_divergent_backcompat", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_divergence" },
+      "attestation": {
+        "observed_effect_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "committed_effect_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "policy": {} },
+
+    { "id": "graph_predicates_in_bounds_admissible", "kind": "graph", "expect": { "verdict": "admissible" },
+      "attestation": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "24000.00" } ]
+      },
+      "policy": {} },
+
+    { "id": "graph_predicate_divergence_drives_conflicted", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_divergence" },
+      "attestation": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "26000.00" } ]
+      },
+      "policy": {} },
+
+    { "id": "graph_predicate_incomparable_drives_conflicted", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_incomparable" },
+      "attestation": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ],
+        "observed_effects": []
+      },
+      "policy": {} },
+
+    { "id": "graph_pinned_predicted_effects_override_verifier", "kind": "graph", "expect": { "verdict": "conflicted", "reason_contains": "effect_divergence" },
+      "attestation": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "99999.00" } } ],
+        "observed_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "value": "26000.00" } ]
+      },
+      "policy": {
+        "predicted_effects": [ { "effect_type": "payment", "target": "acct:vendor-9", "predicate": { "op": "lte", "value": "25000.00" } } ]
+      } }
+  ]
+}

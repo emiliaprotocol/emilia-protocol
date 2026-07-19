@@ -21,7 +21,10 @@
  */
 
 import crypto from 'crypto';
-import { canonicalize } from '../lib/canonical-json.js';
+// Event payloads predate the strict EP I-JSON profile and legitimately contain
+// numeric score fields such as 82.5. Replay must preserve that established
+// portable hash encoding; new security-sensitive signers use lib/canonical-json.
+import { canonicalize } from '../packages/verify/index.js';
 
 // Arg parsing is deferred to main() so imports work without side effects.
 

@@ -1,0 +1,113 @@
+{
+  "suite": "EP-RECEIPT-JWS-PROFILE-v1",
+  "vectors_version": "1.0.0",
+  "description": "Canonical cross-language conformance vectors for EP-RECEIPT-JWS-PROFILE-v1 — a JWS (RFC 7515) serialization of EMILIA authorization receipts. Each vector is a compact JWS over the JCS-canonical bytes of an EP-RECEIPT-v1 payload, signed EdDSA/Ed25519 (RFC 8037). A conformant verifier (EP or any standard JOSE library) MUST return expect.valid for every vector.",
+  "algorithm": {
+    "serialization": "JWS Compact Serialization (RFC 7515)",
+    "alg": "EdDSA (Ed25519, RFC 8037 / RFC 8032)",
+    "typ": "application/ep-receipt+jws",
+    "payload": "RFC 8785 (JCS) canonical bytes of the EP-RECEIPT-v1 payload",
+    "kid": "first 16 bytes of SHA-256(base64url SPKI public key), hex (advisory)"
+  },
+  "note": "The JWS signature is a PARALLEL envelope over the SAME canonical payload as the native EP-RECEIPT-v1 Ed25519 signature; it is NOT byte-equal to that native signature value (JWS signs base64url(header).base64url(payload) per RFC 7515 §5.1).",
+  "count": 10,
+  "vectors": [
+    {
+      "id": "accept_minimal",
+      "description": "Minimal valid receipt JWS",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIiwia2lkIjoiNjk4YTA0MjNjOGI4MGFlNmQ4ZDIyMjI0NDIxMjY0OTAifQ.eyJjcmVhdGVkX2F0IjoiMjAyNi0wNi0xMVQwMDowMDowMFoiLCJpc3N1ZXIiOiJlcDpkZW1vIiwicmVjZWlwdF9pZCI6InRyX21pbiJ9.yyGRdwCvRDsERM-tLLnhWR727gNxORbh-n1DYcdsZySZ5j8pojHoOcNqh5VO6y7MNRZCYmweFmRQ4T-oC4giCQ"
+    },
+    {
+      "id": "accept_nested_context",
+      "description": "Deeply nested payload — JCS canonicalization must match across implementations",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIiwia2lkIjoiNjk4YTA0MjNjOGI4MGFlNmQ4ZDIyMjI0NDIxMjY0OTAifQ.eyJhY3Rpb25fdHlwZSI6ImxhcmdlX3BheW1lbnRfcmVsZWFzZSIsImNvbnRleHQiOnsiYW1vdW50Ijo4MjAwMCwiY2hhbmdlIjp7ImFmdGVyX2JhbmtfaGFzaCI6ImJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmIiLCJmaWVsZHMiOlsicm91dGluZyIsImFjY291bnQiXX0sImN1cnJlbmN5IjoiVVNEIiwicmlza19zaWduYWxzIjpbIm5ld19kZXN0aW5hdGlvbiIsImFmdGVyX2hvdXJzIl19LCJpc3N1ZWRfYXQiOiIyMDI2LTA2LTA5VDE3OjIxOjA1LjAwMFoiLCJyZWNlaXB0X2lkIjoidHJfbmVzdGVkIn0.1MDgUMwqTRmgfpjvPT1ZZohRxwv0RvTvZ1jqOIGDa6YvrW3nnNHEZlAP89BjXTvewMFY0I3dODwkaFtSUT0cCg"
+    },
+    {
+      "id": "accept_no_kid",
+      "description": "Valid JWS with no kid in the protected header",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIn0.eyJpc3N1ZXIiOiJlcDpkZW1vIiwicmVjZWlwdF9pZCI6InRyX25va2lkIn0.T5ch7LEaOjcmJOyBQVu7BEDi-QqnfYN7gESd-eiyLuEon-ZHLuOez1crnnpNk9C_X0-kNcmLot2Fsao_pOtHCA"
+    },
+    {
+      "id": "reject_tampered_payload",
+      "description": "A payload byte was flipped after signing — signature no longer matches",
+      "expect": {
+        "valid": false
+      },
+      "reason": "tampered_payload",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIiwia2lkIjoiNjk4YTA0MjNjOGI4MGFlNmQ4ZDIyMjI0NDIxMjY0OTAifQ.eyJjb250ZXh0Ijp7ImFtb3VudCI6ODIwMDB8LCJyZWNlaXB0X2lkIjoidHJfdGFtcGVyIn0.ZSYHTj0cA870j0g8piKpZIizX1bTHy9QtoCcKNCDycfTKVCja2ziRrau7spd4ClmAg3gnc5NHo2ldbaaWCiNBg"
+    },
+    {
+      "id": "reject_wrong_key",
+      "description": "Valid signature, but verified against an unrelated public key",
+      "expect": {
+        "valid": false
+      },
+      "reason": "wrong_key",
+      "public_key": "MCowBQYDK2VwAyEAVRVPQgZepaG-oFRjgmviaE65LfksEAAnqrquV8pVQgc",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIiwia2lkIjoiNjk4YTA0MjNjOGI4MGFlNmQ4ZDIyMjI0NDIxMjY0OTAifQ.eyJpc3N1ZXIiOiJlcDpkZW1vIiwicmVjZWlwdF9pZCI6InRyX3dyb25na2V5In0.n4ArlklbHSZ6tlzXBKGryPsqOCXZmEAqV8pGz9F4MLZfqk_00I6c-HQzbHfgQ4wqrtKhw1R1tHe7oGQaiJm3DA"
+    },
+    {
+      "id": "reject_tampered_signature",
+      "description": "The signature segment was altered",
+      "expect": {
+        "valid": false
+      },
+      "reason": "tampered_signature",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIiwia2lkIjoiNjk4YTA0MjNjOGI4MGFlNmQ4ZDIyMjI0NDIxMjY0OTAifQ.eyJpc3N1ZXIiOiJlcDpkZW1vIiwicmVjZWlwdF9pZCI6InRyX2JhZHNpZyJ9.vkgOy051BR-xHw_N-YeXuwa3Sb0Fi5MSkwCad0178uX_vbZaG5flNaxt-INPXB9IqT3C_vIABb7INfVtsfijDA"
+    },
+    {
+      "id": "reject_unsupported_alg",
+      "description": "Protected header alg is not EdDSA",
+      "expect": {
+        "valid": false
+      },
+      "reason": "unsupported_alg",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJIUzI1NiIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIn0.eyJpc3N1ZXIiOiJlcDpkZW1vIiwicmVjZWlwdF9pZCI6InRyX2FsZyJ9.j02kXQjPvWyhiZ7_hynczSArPmLE9kFthxjVG6ldemQzZ9aH5tXTrjgM2vCICUPjKzQr595mltBUJfbfd0N8AA"
+    },
+    {
+      "id": "reject_wrong_typ",
+      "description": "Protected header typ is not application/ep-receipt+jws",
+      "expect": {
+        "valid": false
+      },
+      "reason": "wrong_typ",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2p3dCJ9.eyJpc3N1ZXIiOiJlcDpkZW1vIiwicmVjZWlwdF9pZCI6InRyX3R5cCJ9.ypGNFn1iZIhoxLxbKo2nWxi2VMAA0g71U2yP8UXMyNc7YtYByS0a9kCaotGOcmLtCIpBoFJvLTdG29V9YFhIBw"
+    },
+    {
+      "id": "reject_non_canonical_payload",
+      "description": "Signature valid but payload bytes are not EP canonical (JCS) form",
+      "expect": {
+        "valid": false
+      },
+      "reason": "non_canonical_payload",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIn0.eyJ6IjoxLCJhIjoyfQ.MzX_BzjjCqTPP7W6bEdUPE2lCU2sf3UZw_0oSBlOwy9htrRWv_Vs7O73FaeQPIcTJ2nxzBucgZVXHtnoujYWBA"
+    },
+    {
+      "id": "reject_malformed_compact",
+      "description": "Not a well-formed three-segment compact JWS",
+      "expect": {
+        "valid": false
+      },
+      "reason": "malformed_compact",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "compact_jws": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFwcGxpY2F0aW9uL2VwLXJlY2VpcHQrandzIn0.b25seS10d28tc2VnbWVudHM"
+    }
+  ]
+}

@@ -3,6 +3,12 @@
 // precheck endpoint wired to the shared policy engine.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
+// The Action Object is hashed with hashCanonicalAction = sha256(canonicalize(...)).
+// canonicalize() in packages/verify/index.js is byte-identical to the one in
+// lib/guard-policies.js (same recursive sorted-key JCS), so we reuse the exported
+// one to independently recompute action_hash in these tests.
+import { canonicalize } from '../packages/verify/index.js';
 
 const mockGetGuardedClient = vi.fn();
 const mockAuthenticateRequest = vi.fn();
@@ -233,5 +239,47 @@ describe('GovGuard adapters', () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(`${body.code ?? ''} ${body.type ?? ''}`).toContain('invalid_amount');
+  });
+
+  // ── native consent-grant binding: grant_hash inside the signed Action Object ──
+  const VALID_GRANT_HASH = 'sha256:' + 'a'.repeat(64);
+
+  function actionHashHex(action) {
+    return createHash('sha256').update(canonicalize(action), 'utf8').digest('hex');
+  }
+
+  it('folds a supplied grant_hash INTO the signed canonical Action Object (covered by action_hash)', async () => {
+    const res = await caseworkerOverride(req({
+      ...BASE,
+      case_id: 'case_grant',
+      grant_hash: VALID_GRANT_HASH,
+    }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    // grant_hash is a first-class member of the canonical Action Object...
+    expect(body.canonical_action.grant_hash).toBe(VALID_GRANT_HASH);
+    // ...and it is COVERED by action_hash: recomputing the hash over the canonical
+    // action reproduces action_hash, and dropping grant_hash changes that hash.
+    expect(actionHashHex(body.canonical_action)).toBe(String(body.action_hash).replace(/^sha256:/, ''));
+    const { grant_hash: _dropped, ...withoutGrant } = body.canonical_action;
+    expect(actionHashHex(withoutGrant)).not.toBe(actionHashHex(body.canonical_action));
+  });
+
+  it('is backwards-compatible: omitting grant_hash leaves the Action Object unchanged', async () => {
+    const res = await caseworkerOverride(req({ ...BASE, case_id: 'case_nograt' }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect('grant_hash' in body.canonical_action).toBe(false);
+  });
+
+  it('refuses a malformed grant_hash rather than fold garbage into signed bytes (fail closed)', async () => {
+    const res = await caseworkerOverride(req({
+      ...BASE,
+      case_id: 'case_bad',
+      grant_hash: 'not-a-sha256',
+    }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(`${body.code ?? ''} ${body.type ?? ''}`).toContain('invalid_grant_hash');
   });
 });

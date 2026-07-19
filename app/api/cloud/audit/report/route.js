@@ -26,8 +26,8 @@ export async function GET(request) {
     if (dateTo) filters.date_to = dateTo;
 
     const [eventResult, integrityResult] = await Promise.all([
-      queryEvents({ ...filters, limit: 0 }),
-      verifyIntegrity({ from: dateFrom, to: dateTo }),
+      queryEvents({ ...filters, tenant_id: auth.tenantId, limit: 0 }),
+      verifyIntegrity({ tenant_id: auth.tenantId, from: dateFrom, to: dateTo }),
     ]);
 
     return NextResponse.json({

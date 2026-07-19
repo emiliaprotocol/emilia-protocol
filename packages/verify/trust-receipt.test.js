@@ -20,6 +20,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { verifyTrustReceipt } from './index.js';
+import { buildConsistencyProof, merkleRoot } from './consistency.js';
 
 // ── canonicalize + sha256: must match index.js ───────────────────────────────
 function canonicalize(value) {
@@ -31,7 +32,13 @@ function canonicalize(value) {
   return JSON.stringify(value);
 }
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+// Legacy EP-MERKLE-v1 (sorted-pair) helper — used only by opt-in legacy tests.
 const hashPair = (a, b) => { const s = [a, b].sort(); return sha256hex(s[0] + s[1]); };
+// EP-MERKLE-v2 helpers (domain-separated, positional) — must match index.js.
+const leafHashV2 = (canonicalPayload) =>
+  crypto.createHash('sha256').update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalPayload, 'utf8')])).digest('hex');
+const hashPairV2 = (left, right) =>
+  crypto.createHash('sha256').update(Buffer.concat([Buffer.from([0x01]), Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')])).digest('hex');
 
 // ── fixture actors ───────────────────────────────────────────────────────────
 function ed25519() {
@@ -48,8 +55,8 @@ const approverB = ed25519();       // Class B software key (controller)
 const approverA = p256();          // Class A device key (CFO, WebAuthn)
 
 const KEYS = {
-  'ep:key:controller#1': { public_key: approverB.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
-  'ep:key:cfo#1': { public_key: approverA.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:controller#1': { approver_id: 'ep:approver:jchen-controller', public_key: approverB.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: approverA.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
 
 // Class B signs the raw context digest with Ed25519.
@@ -120,13 +127,19 @@ function buildReceipt(mutate = {}) {
     consumption: { nonce: 'n-consume', state: 'COMMITTED', committed_at: mutate.committed_at || '2026-06-09T17:25:02Z' },
   };
 
-  // Build the log: leaf = hash of canonical receipt without log_proof.
-  const leaf = sha256hex(canonicalize(receipt));
+  // Build the log: default leaf = EP-MERKLE-v2(canonical receipt without log_proof).
+  const legacyMerkle = mutate.legacyMerkle === true;
+  const leaf = legacyMerkle ? sha256hex(canonicalize(receipt)) : leafHashV2(canonicalize(receipt));
   const sibling1 = sha256hex('other-leaf-1');
   const sibling2 = sha256hex('other-subtree');
-  const level1 = hashPair(leaf, sibling1);
-  const root = hashPair(level1, sibling2);
-  const checkpoint = { tree_size: 4, root_hash: `sha256:${root}`, log_key_id: 'ep:log:test#1' };
+  const level1 = legacyMerkle ? hashPair(leaf, sibling1) : hashPairV2(leaf, sibling1);
+  const root = legacyMerkle ? hashPair(level1, sibling2) : hashPairV2(level1, sibling2);
+  const checkpoint = {
+    tree_size: 4,
+    root_hash: `sha256:${root}`,
+    log_key_id: 'ep:log:test#1',
+    ...(legacyMerkle ? {} : { merkle_alg: 'EP-MERKLE-v2' }),
+  };
   const log_signature = crypto.sign(
     null,
     crypto.createHash('sha256').update(canonicalize(checkpoint), 'utf8').digest(),
@@ -134,6 +147,7 @@ function buildReceipt(mutate = {}) {
   ).toString('base64url');
 
   receipt.log_proof = {
+    ...(legacyMerkle ? {} : { alg: 'EP-MERKLE-v2', leaf_hash: `sha256:${leaf}` }),
     leaf_index: 0,
     inclusion_path: [
       { hash: sibling1, position: 'right' },
@@ -149,6 +163,7 @@ const STRICT_OPTS = {
   ...OPTS,
   strict: true,
   rpId: 'www.emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
   expectedPolicyHash: 'sha256:77ab1234',
 };
 
@@ -176,6 +191,13 @@ test('step 1 — a tampered action parameter fails the action hash', () => {
   const r = verifyTrustReceipt(receipt, OPTS);
   assert.equal(r.checks.action_hash, false);
   assert.equal(r.valid, false);
+});
+
+test('step 1 — non-I-JSON signed material is rejected before Trust Receipt hashing', () => {
+  const receipt = buildReceipt({ action: { parameters: { amount: 2400000.25, currency: 'USD' } } });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /canonicalization profile/);
 });
 
 // ── step 2: context commitments ──────────────────────────────────────────────
@@ -234,24 +256,42 @@ test('step 3 — an unknown approver_key_id fails (no pinned key)', () => {
   assert.equal(r.checks.signoff_signatures, false);
 });
 
+test('a signed denied receipt remains valid decision evidence but cannot authorize reliance', () => {
+  const receipt = buildReceipt({
+    ctx1: { decision: 'denied' },
+    ctx2: { decision: 'denied' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+
+  assert.equal(r.checks.context_commitments, true);
+  assert.equal(r.checks.signoff_signatures, true);
+  assert.equal(r.checks.windows, true);
+  assert.equal(r.checks.sod, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /signed denial.*does not authorize/);
+});
+
 // ── step 4: separation of duties ─────────────────────────────────────────────
 
 test('step 4 — the initiator appearing as an approver fails SoD', () => {
-  const receipt = buildReceipt({ ctx1: { approver: 'ep:entity:agent-recon-7' } }); // initiator
-  // Re-sign ctx1 under its new content so the signature itself is valid —
-  // SoD must fail on its own, not via a broken signature.
-  const ctx1 = receipt.contexts[0];
-  const d1 = sha256hex(canonicalize(ctx1));
-  receipt.signoffs[0] = { context_hash: `sha256:${d1}`, signature: signB(d1), key_class: 'B', approver_key_id: 'ep:key:controller#1', signed_at: '2026-06-09T17:24:40Z' };
+  // The initiator IS one of the bound approvers (jchen), so every signoff passes
+  // the key↔approver binding and SoD must fail on its own: the initiator cannot
+  // also be an approver. buildReceipt re-signs the contexts under the new
+  // initiator, so the signatures and the log leaf are valid.
+  const receipt = buildReceipt({ action: { initiator: 'ep:approver:jchen-controller' } });
   const r = verifyTrustReceipt(receipt, OPTS);
   assert.equal(r.checks.sod, false);
   assert.match(r.errors.join(' '), /initiator appears in an approver slot/);
 });
 
 test('step 4 — duplicate approvers fail SoD', () => {
-  const receipt = buildReceipt({ ctx2: { approver: 'ep:approver:jchen-controller' } }); // same as ctx1
-  const ctx2 = receipt.contexts[1];
-  const d2 = sha256hex(canonicalize(ctx2));
+  // Both contexts name the CFO and are BOTH signed by the CFO's own bound key,
+  // so the key↔approver binding passes and SoD must fail purely on name
+  // distinctness (the same approver cannot fill two slots).
+  const receipt = buildReceipt({ ctx1: { approver: 'ep:approver:mrios-cfo' }, ctx2: { approver: 'ep:approver:mrios-cfo' } });
+  const ctx1 = receipt.contexts[0]; const d1 = sha256hex(canonicalize(ctx1));
+  const ctx2 = receipt.contexts[1]; const d2 = sha256hex(canonicalize(ctx2));
+  receipt.signoffs[0] = { context_hash: `sha256:${d1}`, signature: 'x', key_class: 'A', approver_key_id: 'ep:key:cfo#1', signed_at: '2026-06-09T17:24:40Z', webauthn: signA(d1) };
   receipt.signoffs[1] = { context_hash: `sha256:${d2}`, signature: 'x', key_class: 'A', approver_key_id: 'ep:key:cfo#1', signed_at: '2026-06-09T17:25:01Z', webauthn: signA(d2) };
   const r = verifyTrustReceipt(receipt, OPTS);
   assert.equal(r.checks.sod, false);
@@ -266,6 +306,78 @@ test('step 4 — fewer valid approvals than required_approvals fails', () => {
   assert.match(r.errors.join(' '), /approval count 1 < required_approvals 2/);
 });
 
+// ── step 4: required_approvals type — cross-language parity (fail-closed) ─────
+// required_approvals is signed INSIDE the context; buildReceipt re-signs, so the
+// value below is legitimately what the approver signed. A string that would
+// coerce to a satisfiable threshold must NOT be silently coerced — otherwise one
+// signoff satisfies a threshold of 2 (SoD bypass). Matches Python + Go.
+
+test('step 4 — required_approvals as a string is malformed and fails closed', () => {
+  // single 1-of context, but the threshold is the string "2" — an under-approval
+  // that Number("2") would have satisfied. Must reject.
+  const receipt = buildReceipt({
+    ctx1: { required_approvals: '2' },
+    ctx2: { required_approvals: '2' },
+  });
+  receipt.signoffs = [receipt.signoffs[0]]; // one valid signoff only
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.sod, false);
+  assert.match(r.errors.join(' '), /required_approvals must be an integer/);
+  assert.equal(r.valid, false);
+});
+
+test('step 4 — non-integer required_approvals never throws and is rejected', () => {
+  for (const bad of ['abc', 2.5, true, [], {}, '1']) {
+    const receipt = buildReceipt({ ctx1: { required_approvals: bad }, ctx2: { required_approvals: bad } });
+    let r;
+    assert.doesNotThrow(() => { r = verifyTrustReceipt(receipt, OPTS); });
+    assert.equal(r.checks.sod, false, `sod should fail for required_approvals=${JSON.stringify(bad)}`);
+    assert.equal(r.valid, false);
+  }
+});
+
+// ── timestamp profile — canonical RFC3339 with offset (Z or ±hh:mm) ──────────
+// issued_at/expires_at are signed inside the context; buildReceipt re-signs. The
+// window checks (step 6) parse them, so a non-conforming form fails the window on
+// all three ports identically (JS/Python/Go).
+
+test('timestamp profile — a no-timezone issued_at is rejected (fail-closed)', () => {
+  // issued_at is signed inside the context (buildReceipt re-signs), so the
+  // signature is valid — but a no-timezone "2026-07-01T12:00:00" is not the
+  // canonical profile, so every window/key-window parse of it fails closed. The
+  // receipt must be rejected. Matches Python + Go.
+  const receipt = buildReceipt({
+    ctx1: { issued_at: '2026-07-01T12:00:00', expires_at: '2026-07-01T20:00:00' },
+    ctx2: { issued_at: '2026-07-01T12:00:00', expires_at: '2026-07-01T20:00:00' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.windows, false);
+  assert.equal(r.valid, false);
+});
+
+test('timestamp profile — a date-only issued_at is rejected (fail-closed)', () => {
+  const receipt = buildReceipt({
+    ctx1: { issued_at: '2026-07-01', expires_at: '2026-07-02' },
+    ctx2: { issued_at: '2026-07-01', expires_at: '2026-07-02' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.windows, false);
+  assert.equal(r.valid, false);
+});
+
+test('timestamp profile — a numeric +hh:mm offset is accepted', () => {
+  // issued/expires as +02:00 == [17:21:05, 17:36:05]Z, which contains the default
+  // signed_at (17:24:40Z / 17:25:01Z) and committed_at (17:25:02Z). Those defaults
+  // stay untouched so the Merkle leaf (hashed over the whole receipt) is stable.
+  const receipt = buildReceipt({
+    ctx1: { issued_at: '2026-06-09T19:21:05+02:00', expires_at: '2026-06-09T19:36:05+02:00' },
+    ctx2: { issued_at: '2026-06-09T19:21:05+02:00', expires_at: '2026-06-09T19:36:05+02:00' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.windows, true, JSON.stringify({ checks: r.checks, errors: r.errors }));
+  assert.equal(r.valid, true);
+});
+
 // ── step 5: log inclusion + checkpoint ───────────────────────────────────────
 
 test('step 5 — a broken inclusion path fails', () => {
@@ -276,9 +388,84 @@ test('step 5 — a broken inclusion path fails', () => {
   assert.equal(r.valid, false);
 });
 
+test('step 5 — a legacy Trust Receipt Merkle proof is opt-in only', () => {
+  const receipt = buildReceipt({ legacyMerkle: true });
+  const strictDefault = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(strictDefault.checks.inclusion, false);
+  assert.match(strictDefault.errors.join(' '), /EP-MERKLE-v2/);
+  assert.equal(strictDefault.valid, false);
+
+  const legacyAllowed = verifyTrustReceipt(receipt, { ...OPTS, allowLegacyTrustReceiptMerkle: true });
+  assert.equal(legacyAllowed.checks.inclusion, true, JSON.stringify(legacyAllowed.errors));
+});
+
+test('step 5 — a v2 Trust Receipt leaf_hash must bind this receipt', () => {
+  const receipt = buildReceipt();
+  receipt.log_proof.leaf_hash = `sha256:${sha256hex('not-this-receipt')}`;
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.match(r.errors.join(' '), /leaf_hash/);
+  assert.equal(r.valid, false);
+});
+
 test('step 5 — a checkpoint signed by a different log key fails', () => {
   const r = verifyTrustReceipt(buildReceipt(), { approverKeys: KEYS, logPublicKey: ed25519().pub });
   assert.equal(r.checks.checkpoint_signature, false);
+  assert.equal(r.valid, false);
+});
+
+// Rebuild a receipt's log_proof as LEGACY EP-MERKLE-v1 (sorted-pair, no domain
+// separation, no alg marker) so the migration guard can be exercised.
+const hashPairV1 = (a, b) => { const s = [a, b].sort(); return sha256hex(s[0] + s[1]); };
+function buildLegacyV1Receipt() {
+  const receipt = buildReceipt();
+  const leafSource = { ...receipt };
+  delete leafSource.log_proof;
+  const leaf = sha256hex(canonicalize(leafSource));
+  const sibling1 = sha256hex('other-leaf-1');
+  const sibling2 = sha256hex('other-subtree');
+  const root = hashPairV1(hashPairV1(leaf, sibling1), sibling2);
+  const checkpoint = { tree_size: 4, root_hash: `sha256:${root}`, log_key_id: 'ep:log:test#1' };
+  const log_signature = crypto.sign(null, crypto.createHash('sha256').update(canonicalize(checkpoint), 'utf8').digest(), logKey.privateKey).toString('base64url');
+  receipt.log_proof = {
+    leaf_index: 0,
+    inclusion_path: [{ hash: sibling1, position: 'right' }, { hash: sibling2, position: 'right' }],
+    checkpoint: { ...checkpoint, log_signature },
+  };
+  return receipt;
+}
+
+test('step 5 — a legacy EP-MERKLE-v1 inclusion is REFUSED by default (no allowLegacyMerkle)', () => {
+  const r = verifyTrustReceipt(buildLegacyV1Receipt(), OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.equal(r.valid, false);
+});
+
+test('step 5 — the same legacy v1 inclusion VERIFIES when allowLegacyMerkle is opted in', () => {
+  const r = verifyTrustReceipt(buildLegacyV1Receipt(), { ...OPTS, allowLegacyMerkle: true });
+  assert.equal(r.checks.inclusion, true);
+  assert.equal(r.valid, true);
+});
+
+test('step 5 — a v2 inclusion still verifies (default path) but a v1 fold does not reconstruct it', () => {
+  const r = verifyTrustReceipt(buildReceipt(), OPTS);
+  assert.equal(r.checks.inclusion, true);
+});
+
+// ── I-JSON canonicalization gate (fail-closed, mirrors verifyReceipt) ─────────
+
+test('rejects a non-representable number in signed material (fail-closed I-JSON gate)', () => {
+  const receipt = buildReceipt();
+  receipt.action.parameters.rate = 1e-7; // outside the EP canonicalization profile
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.valid, false);
+  assert.ok(r.errors.some((e) => /canonicalization profile/.test(e)));
+});
+
+test('rejects a value larger than a safe integer in signed material', () => {
+  const receipt = buildReceipt();
+  receipt.contexts[0].big = 1e20;
+  const r = verifyTrustReceipt(receipt, OPTS);
   assert.equal(r.valid, false);
 });
 
@@ -359,7 +546,9 @@ test('PIP-007 — an over-cap statement is SHOULD-flagged; the receipt still ver
 });
 
 test('PIP-007 — unknown members and policy_rule-without-basis are SHOULD-flagged; signature unaffected', () => {
-  const att = { escalation_trigger: 'policy_rule', confidence: 0.9 }; // missing policy_basis + extra member
+  // NB: value is a STRING — a fractional float like 0.9 is (correctly) refused by
+  // the I-JSON canonicalization gate; the "unknown member" flag is orthogonal to type.
+  const att = { escalation_trigger: 'policy_rule', confidence: '0.9' }; // missing policy_basis + extra member
   const r = verifyTrustReceipt(buildReceipt({ attestation: att }), OPTS);
   assert.equal(r.valid, true);
   assert.equal(r.checks.signoff_signatures, true);
@@ -384,6 +573,7 @@ test('strict verifier — complete receipt passes strict deployment gate', () =>
   assert.deepEqual(r.strict.checks, {
     pinned_keys: true,
     rp_id: true,
+    origin: true,
     user_presence: true,
     user_verification: true,
     key_windows: true,
@@ -399,16 +589,16 @@ test('strict verifier — default mode still does not evaluate the strict gate',
 });
 
 test('strict verifier — requires caller-pinned expected policy hash', () => {
-  const r = verifyTrustReceipt(buildReceipt(), { ...OPTS, strict: true, rpId: 'www.emiliaprotocol.ai' });
+  const r = verifyTrustReceipt(buildReceipt(), { ...OPTS, strict: true, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'] });
   assert.equal(r.checks.context_commitments, true, JSON.stringify(r.errors));
   assert.equal(r.strict.checks.policy_hash, false);
   assert.equal(r.valid, false);
   assert.match(r.errors.join(' '), /strict policy_hash requires opts\.expectedPolicyHash/);
 });
 
-test('strict verifier — rejects Class-A WebAuthn assertions for the wrong RP ID', () => {
+test('verifier rejects Class-A WebAuthn assertions for the wrong pinned RP ID', () => {
   const r = verifyTrustReceipt(buildReceipt(), { ...STRICT_OPTS, rpId: 'login.evil.example' });
-  assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
+  assert.equal(r.checks.signoff_signatures, false, JSON.stringify(r.errors));
   assert.equal(r.strict.checks.rp_id, false);
   assert.equal(r.valid, false);
   assert.match(r.strict.errors.join(' '), /rpIdHash/);
@@ -427,8 +617,8 @@ test('strict verifier — requires Class-A WebAuthn user presence as well as UV'
 
 test('strict verifier — requires explicit approver key validity windows', () => {
   const keys = {
-    'ep:key:controller#1': { public_key: approverB.pub, key_class: 'B' },
-    'ep:key:cfo#1': { public_key: approverA.pub, key_class: 'A' },
+    'ep:key:controller#1': { approver_id: 'ep:approver:jchen-controller', public_key: approverB.pub, key_class: 'B' },
+    'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: approverA.pub, key_class: 'A' },
   };
   const r = verifyTrustReceipt(buildReceipt(), { ...STRICT_OPTS, approverKeys: keys });
   assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
@@ -445,4 +635,266 @@ test('strict verifier — rejects unsigned critical signoff fields', () => {
   assert.equal(r.strict.checks.no_unsigned, false);
   assert.equal(r.valid, false);
   assert.match(r.strict.errors.join(' '), /Ed25519 signoff signature/);
+});
+
+// ── class-downgrade attack: pinned Class-A key can't be met by a bare sig ────
+// The signoff's declared key_class is ATTACKER-CONTROLLED. If the verifier let
+// that value choose the verify routine, an attacker could pin a Class-A
+// (WebAuthn, user-presence/user-verification) approver, declare key_class:'B',
+// and hand over a bare raw signature over the digest — verifying with NO
+// human-presence proof. The PINNED key entry's class MUST win: a pinned Class-A
+// key is always verified as a real WebAuthn assertion and rejected if it only
+// carries a raw signature. This must hold in BOTH the default and strict paths.
+
+// A pinned Class-A key whose SPKI is Ed25519. This is the sharp witness: a bare
+// Ed25519 signature over the raw digest WOULD verify on the raw-signature path
+// (verifyEd25519OverDigest), so if the attacker-declared key_class:'B' were
+// allowed to choose that path, the downgrade would succeed with NO WebAuthn
+// proof. Only the pinned-class-wins rule (which forces the WebAuthn path for a
+// pinned-A key) stops it. This makes the test a true red/green witness of the
+// defense rather than passing incidentally on a P-256/Ed25519 key mismatch.
+const approverAEd = ed25519();
+const KEYS_A_ED = {
+  ...KEYS,
+  'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: approverAEd.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+};
+const OPTS_A_ED = { approverKeys: KEYS_A_ED, logPublicKey: logKey.pub };
+const STRICT_OPTS_A_ED = { ...OPTS_A_ED, strict: true, rpId: 'www.emiliaprotocol.ai', allowedOrigins: ['https://www.emiliaprotocol.ai'], expectedPolicyHash: 'sha256:77ab1234' };
+
+// Build a receipt where the CFO (pinned Class-A key ep:key:cfo#1) signs off with
+// a DOWNGRADED signoff: declared key_class:'B' and a bare Ed25519 signature over
+// the context digest produced by the pinned key's OWN private half, and NO
+// webauthn assertion. Under the vulnerable code this raw signature verifies and
+// the receipt is accepted with zero user-presence/user-verification proof.
+function buildDowngradedReceipt() {
+  const receipt = buildReceipt();
+  const ctx2 = receipt.contexts[1];               // the CFO context
+  const d2 = sha256hex(canonicalize(ctx2));
+  const bareSig = crypto.sign(null, Buffer.from(d2, 'hex'), approverAEd.privateKey).toString('base64url');
+  receipt.signoffs[1] = {
+    context_hash: `sha256:${d2}`,
+    signature: bareSig,                           // bare Ed25519 over the digest
+    key_class: 'B',                               // attacker-declared downgrade
+    approver_key_id: 'ep:key:cfo#1',              // pinned as Class-A (Ed25519 SPKI)
+    signed_at: '2026-06-09T17:25:01Z',
+    // NB: no `webauthn` — a real Class-A assertion is absent.
+  };
+  return receipt;
+}
+
+test('class-downgrade — pinned Class-A + declared key_class B + bare signature is REJECTED (default path)', () => {
+  const r = verifyTrustReceipt(buildDowngradedReceipt(), OPTS_A_ED);
+  assert.equal(r.checks.signoff_signatures, false, JSON.stringify(r.errors));
+  assert.equal(r.valid, false);
+});
+
+test('class-downgrade — pinned Class-A downgrade is REJECTED under the strict gate too', () => {
+  const r = verifyTrustReceipt(buildDowngradedReceipt(), STRICT_OPTS_A_ED);
+  // Base signature verification fails closed (pinned class wins → WebAuthn path,
+  // no assertion present).
+  assert.equal(r.checks.signoff_signatures, false, JSON.stringify(r.errors));
+  // And the strict no_unsigned gate keys on the pinned class, so it demands the
+  // Class-A WebAuthn fields that the downgraded signoff does not carry.
+  assert.equal(r.strict.checks.no_unsigned, false);
+  assert.match(r.strict.errors.join(' '), /Class-A/);
+  assert.equal(r.valid, false);
+});
+
+test('class-escalation — an unclassified pinned key cannot self-declare Class-A', () => {
+  const unclassified = {
+    ...KEYS,
+    'ep:key:cfo#1': { ...KEYS['ep:key:cfo#1'] },
+  };
+  delete unclassified['ep:key:cfo#1'].key_class;
+  const receipt = buildReceipt();
+
+  const regular = verifyTrustReceipt(receipt, { approverKeys: unclassified, logPublicKey: logKey.pub });
+  assert.equal(regular.checks.signoff_signatures, false, JSON.stringify(regular.errors));
+  assert.equal(regular.valid, false);
+
+  const strict = verifyTrustReceipt(receipt, {
+    approverKeys: unclassified,
+    logPublicKey: logKey.pub,
+    strict: true,
+    rpId: 'www.emiliaprotocol.ai',
+    allowedOrigins: ['https://www.emiliaprotocol.ai'],
+    expectedPolicyHash: 'sha256:77ab1234',
+  });
+  assert.equal(strict.checks.signoff_signatures, false, JSON.stringify(strict.errors));
+  assert.equal(strict.valid, false);
+});
+
+// ── step 5c: opt-in priorCheckpoint consistency knob ─────────────────────────
+// The caller pins a previously-observed checkpoint head; the receipt's
+// checkpoint must be proven an append-only extension of it (RFC 6962 §2.1.2
+// over EP-MERKLE-v2 branches). Knob off = behavior unchanged. Fail-closed on
+// a malformed pin, missing proof, or invalid proof — each a distinct reason.
+
+// Sign a checkpoint exactly as buildReceipt does.
+const signCheckpoint = (cp) => crypto.sign(
+  null,
+  crypto.createHash('sha256').update(canonicalize(cp), 'utf8').digest(),
+  logKey.privateKey,
+).toString('base64url');
+
+// Rebuild a receipt's log_proof over a REAL 4-leaf RFC 6962 tree (receipt leaf
+// at index 1), and return the pinned prior head (the first 2 leaves) plus the
+// genuine consistency proof from that head to the receipt's checkpoint.
+function buildConsistencyReceipt() {
+  const receipt = buildReceipt();
+  const leafSource = { ...receipt };
+  delete leafSource.log_proof;
+  const receiptLeaf = leafHashV2(canonicalize(leafSource));
+  const l0 = leafHashV2('log-entry-0');
+  const l2 = leafHashV2('log-entry-2');
+  const l3 = leafHashV2('log-entry-3');
+  const allLeaves = [l0, receiptLeaf, l2, l3];
+  const newRoot = merkleRoot(allLeaves);            // head at tree_size 4
+  const oldRoot = merkleRoot(allLeaves.slice(0, 2)); // pinned prior head at tree_size 2
+  const checkpoint = { tree_size: 4, root_hash: `sha256:${newRoot}`, log_key_id: 'ep:log:test#1', merkle_alg: 'EP-MERKLE-v2' };
+  receipt.log_proof = {
+    alg: 'EP-MERKLE-v2',
+    leaf_hash: `sha256:${receiptLeaf}`,
+    leaf_index: 1,
+    inclusion_path: [
+      { hash: l0, position: 'left' },
+      { hash: hashPairV2(l2, l3), position: 'right' },
+    ],
+    checkpoint: { ...checkpoint, log_signature: signCheckpoint(checkpoint) },
+  };
+  const prior = {
+    tree_size: 2,
+    root_hash: `sha256:${oldRoot}`,
+    consistency_proof: buildConsistencyProof(2, 4, allLeaves),
+  };
+  return { receipt, prior };
+}
+
+test('step 5c — knob OFF: result shape and behavior are unchanged (no consistency key)', () => {
+  const { receipt } = buildConsistencyReceipt();
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.valid, true, JSON.stringify(r.errors));
+  assert.deepEqual(Object.keys(r.checks), [
+    'action_hash', 'context_commitments', 'signoff_signatures', 'sod', 'inclusion', 'checkpoint_signature', 'windows',
+  ]);
+  assert.equal('consistency' in r.checks, false);
+});
+
+test('step 5c — knob ON + genuine append-only proof from the pinned head passes', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, true, JSON.stringify(r.errors));
+  assert.equal(r.valid, true);
+});
+
+test('step 5c — knob ON + equal heads: an EMPTY proof array is legitimate', () => {
+  const { receipt } = buildConsistencyReceipt();
+  const head = receipt.log_proof.checkpoint;
+  const r = verifyTrustReceipt(receipt, {
+    ...OPTS,
+    priorCheckpoint: { tree_size: head.tree_size, root_hash: head.root_hash, consistency_proof: [] },
+  });
+  assert.equal(r.checks.consistency, true, JSON.stringify(r.errors));
+  assert.equal(r.valid, true);
+});
+
+test('step 5c — knob ON + MISSING proof refuses with a distinct reason', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  delete prior.consistency_proof;
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /priorCheckpoint is pinned but consistency_proof is missing/);
+});
+
+test('step 5c — knob ON + TAMPERED proof refuses with a distinct reason', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  prior.consistency_proof = [...prior.consistency_proof];
+  prior.consistency_proof[0] = sha256hex('not-the-node');
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /consistency_proof does not prove an append-only extension from the pinned prior checkpoint/);
+});
+
+test('step 5c — knob ON + a rewritten prior head (split view) refuses', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  prior.root_hash = `sha256:${sha256hex('a-forked-history-head')}`; // not a prefix of this log
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /does not prove an append-only extension/);
+});
+
+test('step 5c — knob ON + malformed pin fails closed with a distinct reason', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  for (const badSize of ['2', 2.5, 0, -1, undefined]) {
+    const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: { ...prior, tree_size: badSize } });
+    assert.equal(r.checks.consistency, false, `tree_size=${JSON.stringify(badSize)}`);
+    assert.equal(r.valid, false);
+    assert.match(r.errors.join(' '), /priorCheckpoint requires integer tree_size >= 1 and root_hash/);
+  }
+});
+
+test('step 5c — knob ON + receipt without a usable checkpoint fails closed', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  delete receipt.log_proof; // no checkpoint head to extend to
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /priorCheckpoint is pinned but the receipt checkpoint is missing tree_size or root_hash/);
+});
+
+// ── step 5: empty inclusion_path degenerate rule (fail-closed) ───────────────
+// An empty path collapses the Merkle fold to leafHash === root_hash, which is
+// only a true inclusion statement for a single-leaf tree. tree_size must be
+// exactly the integer 1 (and leaf_index, when present, 0) — otherwise refuse.
+
+// Rebuild a receipt's log_proof as a SINGLE-LEAF log: root == leaf, empty path.
+// (Sentinel: a destructuring default would swallow a literal `undefined`.)
+const ABSENT = Symbol('absent tree_size');
+function buildSingleLeafReceipt({ treeSize = 1, leafIndex = 0 } = {}) {
+  const receipt = buildReceipt();
+  const leafSource = { ...receipt };
+  delete leafSource.log_proof;
+  const leaf = leafHashV2(canonicalize(leafSource));
+  const checkpoint = { tree_size: treeSize, root_hash: `sha256:${leaf}`, log_key_id: 'ep:log:test#1', merkle_alg: 'EP-MERKLE-v2' };
+  if (treeSize === ABSENT) delete checkpoint.tree_size; // "missing tree_size" case
+  receipt.log_proof = {
+    alg: 'EP-MERKLE-v2',
+    leaf_hash: `sha256:${leaf}`,
+    leaf_index: leafIndex,
+    inclusion_path: [],
+    checkpoint: { ...checkpoint, log_signature: signCheckpoint(checkpoint) },
+  };
+  return receipt;
+}
+
+test('step 5 — an empty inclusion_path with tree_size 1 (single-leaf log) verifies', () => {
+  const r = verifyTrustReceipt(buildSingleLeafReceipt(), OPTS);
+  assert.equal(r.checks.inclusion, true, JSON.stringify(r.errors));
+  assert.equal(r.valid, true);
+});
+
+test('step 5 — an empty inclusion_path with tree_size > 1 is REFUSED (degenerate leaf==root forgery)', () => {
+  const r = verifyTrustReceipt(buildSingleLeafReceipt({ treeSize: 4 }), OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /empty inclusion_path requires checkpoint tree_size 1 \(single-leaf tree\)/);
+});
+
+test('step 5 — an empty inclusion_path with a non-integer, zero, or missing tree_size fails closed', () => {
+  for (const badSize of ['1', 0, null, ABSENT]) {
+    const r = verifyTrustReceipt(buildSingleLeafReceipt({ treeSize: badSize }), OPTS);
+    assert.equal(r.checks.inclusion, false, `tree_size=${String(badSize)}`);
+    assert.equal(r.valid, false);
+    assert.match(r.errors.join(' '), /empty inclusion_path requires checkpoint tree_size 1/);
+  }
+});
+
+test('step 5 — an empty inclusion_path with a nonzero leaf_index is REFUSED even at tree_size 1', () => {
+  const r = verifyTrustReceipt(buildSingleLeafReceipt({ leafIndex: 1 }), OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /empty inclusion_path requires leaf_index 0 in a single-leaf tree/);
 });

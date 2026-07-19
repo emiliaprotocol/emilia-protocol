@@ -19,13 +19,16 @@ baseline turns the shared claim into a shared, checkable artifact.
 
 ## What EP already has (and offers as the seed)
 
-EP maintains a public, executable conformance suite that **three independent
-implementations (JavaScript, Python, Go) are required to agree on**, currently
-spanning eight artifact families (receipts, signoffs, quorum, revocation,
-time-attestation, trust-receipt, provenance, evidence-record). It is run
-offline, in CI, and was independently re-run by an outside implementer. This is,
-to our knowledge, the only public multi-implementation agreement suite in the
-cluster — which makes it a natural seed for a shared baseline.
+EP maintains a public, executable conformance suite spanning **18 suites and
+251 vectors**. JavaScript, Python, and Go reference verifiers maintained by the
+same project must agree on every result; this is cross-language consistency
+evidence, not three independent implementations. Separately, CI rebuilds an
+externally authored Rust verifier from an immutable public commit and tree. It
+passes the pinned 16-suite/164-vector clean-room bundle and a pinned 359-case hostility campaign. The checked-in
+construction statement is implementer-signed and predates the current source
+pin, so the aggregate case records strict independently attested clean-room
+acceptance as zero. That precise, executable baseline is a natural seed for a
+shared cluster-wide suite.
 
 ## The proposed baseline
 

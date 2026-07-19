@@ -1,11 +1,11 @@
 /**
  * EMILIA Gate — end-to-end demo. Run: node demo.mjs
- * Shows the Trusted Action Firewall refusing and allowing a consequential
+ * Shows the Consequence Firewall refusing and allowing a consequential
  * action, defeating replay and tampering, and emitting a verifiable audit log.
  * @license Apache-2.0
  */
 import crypto from 'node:crypto';
-import { createTrustedActionFirewall } from './index.js';
+import { createTrustedActionFirewall, mintDeviceSignoff } from './index.js';
 
 const canon = (v) => v == null ? JSON.stringify(v)
   : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
@@ -21,18 +21,33 @@ const action = {
   payment_instruction_id: 'pi_demo_40000',
   beneficiary_account_hash: 'sha256:demo-beneficiary',
 };
+// action_hash the CFO's device assertion is bound to.
+const actionHash = crypto.createHash('sha256').update(canon(action), 'utf8').digest('hex');
 const receipt = (outcome, extra = {}) => {
   const payload = { receipt_id: `rcpt_${++n}`, subject: 'agent:finance-bot', issuer: 'ep:org:demo', created_at: new Date().toISOString(), claim: { ...action, outcome, approver: 'ep:approver:cfo', ...extra } };
+  // class_a is EARNED by a genuine WebAuthn device signoff, not by the outcome
+  // string. A software receipt (outcome 'allow') carries no signoff.
+  if (outcome === 'allow_with_signoff') {
+    const s = mintDeviceSignoff({ actionHash, approver: 'ep:approver:cfo' });
+    payload.signoff = s.signoff;
+    payload.approver_public_key = s.approver_public_key;
+  }
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value: crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url') } };
 };
 
-const gate = createTrustedActionFirewall({ trustedKeys: [pub] });
+const gate = createTrustedActionFirewall({
+  trustedKeys: [pub],
+  rpId: 'emiliaprotocol.ai',
+  allowedOrigins: ['https://www.emiliaprotocol.ai'],
+  allowEmbeddedApproverKeys: true,
+  allowEphemeralStore: true,
+});
 const PAY = { protocol: 'mcp', tool: 'release_payment' };
 const line = (s) => console.log(s);
 const r = (o) => o.allow ? `\x1b[32mALLOW\x1b[0m` : `\x1b[31mREFUSE ${o.status}\x1b[0m (${o.reason})`;
 
 line('='.repeat(64));
-line('  EMILIA Gate — Trusted Action Firewall  (release_payment, critical)');
+line('  EMILIA Gate — Consequence Firewall  (release_payment, critical)');
 line('='.repeat(64));
 line(`\n  1. read_status (not guarded)             -> ${r(await gate.check({ selector: { protocol: 'mcp', tool: 'read_status' } }))}`);
 line(`  2. release_payment, no receipt          -> ${r(await gate.check({ selector: PAY }))}`);

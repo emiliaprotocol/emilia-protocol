@@ -1,0 +1,28 @@
+{
+  "name": "@emilia-protocol/create-ep-app",
+  "version": "0.2.0",
+  "description": "Create a fail-closed EMILIA issuer-to-verifier development demo with separately pinned relying-party trust roots.",
+  "type": "module",
+  "bin": {
+    "create-ep-app": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test.js"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "create-ep-app"
+  }
+}

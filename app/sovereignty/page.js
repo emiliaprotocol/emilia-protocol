@@ -10,7 +10,7 @@ import { styles, cta, color, font } from '@/lib/tokens';
 const PILLARS = [
   {
     who: 'EU AI Act Article 14, made verifiable',
-    val: 'The Act requires meaningful human oversight of high-risk AI but specifies no artifact to prove it happened. EMILIA is that artifact — a portable, tamper-evident receipt a regulator or court can check independently. It maps to Article 12 (logging) and composes with eIDAS 2.0 / the EU Digital Identity Wallet for the human signature.',
+    val: 'The Act requires human-oversight measures for high-risk AI but does not prescribe one universal proof artifact. EMILIA offers an open, portable receipt profile that an independent party can verify under pinned inputs. It can support Article 12 logging and Article 14 oversight evidence without claiming legal compliance by itself.',
   },
   {
     who: 'Sovereignty by construction',
@@ -18,17 +18,17 @@ const PILLARS = [
   },
   {
     who: 'A guarantee for citizens',
-    val: 'When automation touches a citizen’s benefits, records, money, or rights, EMILIA guarantees a named, accountable human stands behind that decision — accountability against opaque, unaccountable machine action. A public-interest guarantee, not a vendor feature.',
+    val: 'For a fully mediated action class, public institutions can require a named or quorum decision before the integrated executor acts, then preserve evidence another party can inspect. The institution defines the policy and keeps the trust roots.',
   },
   {
     who: 'Lead the standard, don’t import it',
-    val: 'EMILIA is being contributed as an open standard at the IETF, with running code and conformance tests. Europe can be an early author of the accountability standard the world will need — rather than adopting one written elsewhere.',
+    val: 'EMILIA is being contributed through open IETF Internet-Drafts, with running code and conformance tests. Europe can be an early author of the accountability standard the world will need — rather than adopting one written elsewhere.',
   },
 ];
 
 const STEPS = [
   { n: '1', title: 'Authorize', body: 'Before an AI agent takes an irreversible action — moving funds, changing an official record, cutting a service — a named, accountable human (or a quorum) signs that exact action on their own device.' },
-  { n: '2', title: 'Gate', body: 'The action is refused unless a valid, in-scope authorization is present. No receipt, no execution — fail-closed by design, with self-approval rejected (separation of duties).' },
+  { n: '2', title: 'Gate', body: 'The integrated action path is refused unless valid, in-scope evidence is present. Profiles can require initiator exclusion, distinct-human quorum, and one-time consumption.' },
   { n: '3', title: 'Verify', body: 'Anyone — a regulator, an auditor, a court — can verify offline who approved what, without trusting the AI, the operator, or EMILIA itself. The proof travels with the record.' },
 ];
 
@@ -46,12 +46,12 @@ export default function SovereigntyPage() {
             </h1>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
               AI agents are starting to take irreversible actions — moving money, changing official
-              records, cutting off services. EMILIA is the open layer that proves a named, accountable
-              human authorized each one, checkable by any European institution, offline, without
-              trusting the operator that produced it.
+              records, cutting off services. EMILIA Gate can require a named or quorum decision on
+              the protected path, while the open Protocol lets a European institution verify the
+              resulting evidence under its own pinned inputs.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 14, fontSize: 17, color: color.t1 }}>
-              It turns EU AI Act Article 14 from a principle into a verifiable artifact.{' '}
+              It provides one concrete evidence mechanism that can support Article 14 oversight.{' '}
               <span style={{ color: color.gold }}>Europe holds the proof, not Big Tech.</span>
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
@@ -86,7 +86,7 @@ export default function SovereigntyPage() {
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Authorize → gate → verify.</h2>
             <div style={{ marginTop: 32 }}>
               {STEPS.map((s) => (
-                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.brd}` }}>
+                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ fontFamily: font.mono, fontSize: 14, color: color.gold, fontWeight: 600, minWidth: 24 }}>{s.n}</div>
                   <div>
                     <div style={{ ...styles.h3, fontSize: 18 }}>{s.title}</div>

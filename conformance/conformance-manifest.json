@@ -1,0 +1,163 @@
+{
+  "@version": "EP-CONFORMANCE-MANIFEST-v1",
+  "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
+  "vector_bundle": {
+    "version": "EP-LIVE-CONFORMANCE-CATALOG-v1",
+    "path": "conformance/suites.mjs",
+    "sha256": "61084f7b4014d45233322e3c8da1e2883045916b33cf0c9006ac7a05c07c2740"
+  },
+  "suites": [
+    {
+      "path": "conformance/vectors/receipts.v1.json",
+      "sha256": "888fc3a1e3e0fb5ec73e2d5cb6244869c2bb7673f42587635c64f5736b3a1fad",
+      "vectors": 13
+    },
+    {
+      "path": "conformance/vectors/signoffs.v1.json",
+      "sha256": "1bb0f771be5e66e4a9de9733ea6507e650dd685db7a5a1c6cc46046dcaa8114d",
+      "vectors": 13
+    },
+    {
+      "path": "conformance/vectors/resolution.v1.json",
+      "sha256": "3d89e9f624e8c7058876ae404c7ec1e76293b4ef178bb8901ec31e72e44b5c5c",
+      "vectors": 33
+    },
+    {
+      "path": "conformance/vectors/quorum.v1.json",
+      "sha256": "ad9a79488fd9b2fe338a18212ee61e4de9f2a89b72889a70d16694ddfbe3db76",
+      "vectors": 15
+    },
+    {
+      "path": "conformance/vectors/revocation.exec.v2.json",
+      "sha256": "c0e6c0a36f5eea378da770c2fbd6f8257b2938aa856c7f93991e582a12bc6c8a",
+      "vectors": 12
+    },
+    {
+      "path": "conformance/vectors/time-attestation.v2.json",
+      "sha256": "9c5c8e4b912522f565295b9948586b8416cbf4c691f99f168913a0f18ea4bde5",
+      "vectors": 6
+    },
+    {
+      "path": "conformance/vectors/trust-receipt.exec.v1.json",
+      "sha256": "095d50eb2199451344628fffe6e391cdad2718ad647a9dc952712eabefdecf51",
+      "vectors": 14
+    },
+    {
+      "path": "conformance/vectors/trust-receipt.timestamp-forms.v2.json",
+      "sha256": "3b3540180ab0ee47beeb488ea026ce5ed4ba9b9efa95b8eb1d60ca0255ce779c",
+      "vectors": 7
+    },
+    {
+      "path": "conformance/vectors/provenance.exec.v1.json",
+      "sha256": "5bbd268183f12950e7466f999bf3aa16412d10d50286a25146ae708e67933c53",
+      "vectors": 14
+    },
+    {
+      "path": "conformance/vectors/evidence-record.v1.json",
+      "sha256": "946550657c4dbc0375aa6f55f95301cfd43878113e1c7bcc4436db301f6de46a",
+      "vectors": 5
+    },
+    {
+      "path": "conformance/vectors/canonicalization.v1.json",
+      "sha256": "d72a1de506def5b5dcc20f60301987654ef5b5bb6ea476af926054f300c2eee2",
+      "vectors": 35
+    },
+    {
+      "path": "conformance/vectors/boundary.v1.json",
+      "sha256": "5a7bec6ed7446fadf898c5e943336c64d3a7568dc2806fe47180a18d126d5507",
+      "vectors": 5
+    },
+    {
+      "path": "conformance/vectors/aec-role.v1.json",
+      "sha256": "b0f286cab68c22b608ece3af46174fbd66e27b893b4762d12fa320ea596353f2",
+      "vectors": 30
+    },
+    {
+      "path": "conformance/vectors/currency.v2.json",
+      "sha256": "739ef1a2a5665e21e5c9db7b57eef05396c1c5dc0b2e649e9f35307ec52ca668",
+      "vectors": 13
+    },
+    {
+      "path": "conformance/vectors/initiator-attestation.v1.json",
+      "sha256": "2274dded455f289e36ad4c9bb2225708ff8bfd66edd034b99ed98298484073e6",
+      "vectors": 11
+    },
+    {
+      "path": "conformance/vectors/consumption-proof.v1.json",
+      "sha256": "9b0ff706a2c77262131f2658e81d448a7755ba0e466405259590e8faff3f4115",
+      "vectors": 6
+    },
+    {
+      "path": "conformance/vectors/witness.v1.json",
+      "sha256": "4a226aa0605701eb7f148d6303bc6a0796bce9e8ef5343cb5f53ebd395554673",
+      "vectors": 6
+    },
+    {
+      "path": "conformance/vectors/timestamp-proof.v1.json",
+      "sha256": "b07944ca95931e20ff92f15a7830972a013812ea739cc29ff9b36adfd4ffa791",
+      "vectors": 13
+    }
+  ],
+  "totals": {
+    "suites": 18,
+    "vectors": 251,
+    "implementations": 3
+  },
+  "implementations": [
+    {
+      "implementation_id": "emilia-javascript-reference",
+      "language": "javascript",
+      "relationship": "one_team_port",
+      "runner": {
+        "path": "conformance/runners/run-js.mjs",
+        "sha256": "5b7e9ec0735ddde680459b23b992f02495f5da4148907296c8706bdaaccbdf91"
+      },
+      "source": {
+        "files": 56,
+        "bytes": 883244,
+        "tree_sha256": "4eab7c45814fa537ab6afca6b81fd2ad714c2b21d1a706c60b0e6e8b7c50c69c"
+      },
+      "suites": 18,
+      "vectors": 251,
+      "normalized_results_sha256": "fba7b75f84b1b055e83ab7c0a44640490f221d43bc5e7c726e672293605d2555",
+      "status": "pass"
+    },
+    {
+      "implementation_id": "emilia-python-reference",
+      "language": "python",
+      "relationship": "one_team_port",
+      "runner": {
+        "path": "conformance/runners/run_py.py",
+        "sha256": "7e4a6e2819b40ee939e38bbf1ac5868f168e1823809c58a60864a7797c11074b"
+      },
+      "source": {
+        "files": 1,
+        "bytes": 162803,
+        "tree_sha256": "0cb42793b7a397a40bf66b5d3330b80416ace6a10b5ddd7b02f21e22175bf927"
+      },
+      "suites": 18,
+      "vectors": 251,
+      "normalized_results_sha256": "fba7b75f84b1b055e83ab7c0a44640490f221d43bc5e7c726e672293605d2555",
+      "status": "pass"
+    },
+    {
+      "implementation_id": "emilia-go-reference",
+      "language": "go",
+      "relationship": "one_team_port",
+      "runner": {
+        "path": "packages/go-verify/cmd/conformance/main.go",
+        "sha256": "728d883c94b1c2d9250d4042f87f174afad4024782b49c895eb7c37eeb3b0a1c"
+      },
+      "source": {
+        "files": 37,
+        "bytes": 292778,
+        "tree_sha256": "5e495b772c77abb5618b4ac555209b4c617ee03d26431f49a390f4b69ff7e742"
+      },
+      "suites": 18,
+      "vectors": 251,
+      "normalized_results_sha256": "fba7b75f84b1b055e83ab7c0a44640490f221d43bc5e7c726e672293605d2555",
+      "status": "pass"
+    }
+  ],
+  "manifest_sha256": "1285c269b3d58e325c2432d59a95e598761abf3cf3c8f2933b82f21b59214888"
+}

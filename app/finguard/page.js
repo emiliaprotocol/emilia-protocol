@@ -11,7 +11,7 @@ const PROTECTED_ACTIONS = [
   { type: 'vendor_bank_account_change', label: 'Vendor bank-account change', sample: 'AP user updates routing before $250K release' },
   { type: 'beneficiary_creation', label: 'Beneficiary creation', sample: 'New SWIFT-eligible counterparty added' },
   { type: 'large_payment_release', label: 'Large payment release', sample: 'Treasury releases wire above $50K threshold' },
-  { type: 'ai_agent_payment_action', label: 'AI-agent initiated payment action', sample: 'Autonomous agent triggers a transfer' },
+  { type: 'ai_agent_payment_action', label: 'AI-agent initiated payment action', sample: 'Policy classification used by payment-release and agent-guard paths' },
 ];
 
 const STAGES = [
@@ -30,7 +30,7 @@ const SCENARIOS = [
   },
   {
     title: 'AI agent triggers a transfer',
-    body: 'An autonomous agent attempts to initiate a wire. Policy flags ai_agent_payment_action — human signoff required regardless of amount. The agent\'s receipt is issued in pending_signoff state.',
+    body: 'An autonomous agent attempts to initiate a wire. The payment-release or agent-guard path classifies the action as ai_agent_payment_action — human signoff required regardless of amount. The receipt is issued in pending_signoff state.',
   },
   {
     title: 'Large payment escalation',
@@ -41,12 +41,12 @@ const SCENARIOS = [
 export default function FinGuardPage() {
   return (
     <>
-      <SiteNav activePage="FinGuard" />
+      <SiteNav activePage="Solutions" />
       <main style={styles.page}>
         {/* Hero */}
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA FINGUARD · FIN-00X</div>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA Gate solution profile &middot; Financial operations</div>
             <h1 style={{ ...styles.h1, marginTop: 16 }}>Pre-execution trust for treasury & payment ops.</h1>
             <p style={{ ...styles.lead, maxWidth: 720, marginTop: 16 }}>
               FinGuard binds beneficiary changes, vendor remittance updates, and payout
@@ -61,9 +61,9 @@ export default function FinGuardPage() {
               <a href="/quorum" style={{ color: color.t1, textDecoration: 'underline' }}>EMILIA Quorum</a>.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="#how-it-works" style={cta.primary}>How it works</a>
-              <a href="#api" style={cta.secondary}>API reference</a>
-              <a href="/pilot?v=fin" style={cta.secondary}>Request pilot</a>
+              <a href="/pricing" style={cta.primary}>Get protected — see pricing</a>
+              <a href="#how-it-works" style={cta.secondary}>How it works</a>
+              <a href="/pilot?v=fin" style={cta.secondary}>Or scope a pilot</a>
             </div>
           </div>
         </section>
@@ -108,7 +108,7 @@ export default function FinGuardPage() {
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Six stages from precheck to evidence.</h2>
             <div style={{ marginTop: 32 }}>
               {STAGES.map((s) => (
-                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.brd}` }}>
+                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ fontFamily: font.mono, fontSize: 14, color: color.gold, fontWeight: 600, minWidth: 24 }}>{s.n}</div>
                   <div>
                     <div style={{ ...styles.h3, fontSize: 18 }}>{s.title}</div>
@@ -141,7 +141,7 @@ export default function FinGuardPage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>API</div>
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Same v1 surface as GovGuard.</h2>
-            <div style={{ marginTop: 24, padding: 24, background: color.bgCard, border: `1px solid ${color.brd}`, borderRadius: radius.md, fontFamily: font.mono, fontSize: 13, lineHeight: 1.9 }}>
+            <div style={{ marginTop: 24, padding: 24, background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, fontFamily: font.mono, fontSize: 13, lineHeight: 1.9 }}>
               <div><span style={{ color: color.gold }}>POST</span>   /api/v1/trust-receipts</div>
               <div><span style={{ color: color.gold }}>GET</span>    /api/v1/trust-receipts/&#123;receiptId&#125;</div>
               <div><span style={{ color: color.gold }}>POST</span>   /api/v1/trust-receipts/&#123;receiptId&#125;/consume</div>
@@ -167,9 +167,8 @@ export default function FinGuardPage() {
                 remittance update, or treasury release approval. We wire it to observe mode.
                 You get the audit of what would have been blocked. Flip to enforce on your timeline.
               </p>
-              <a href="/pilot?v=fin" style={cta.primary}>
-                Request pilot
-              </a>
+              <a href="/pricing" style={cta.primary}>Get protected — see pricing</a>
+              {' '}<a href="/pilot?v=fin" style={cta.secondary}>Or scope a pilot</a>
               <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>
                 For your compliance file: <a href="/compliance/emilia-eu-ai-act-financial-services.pdf" style={{ color: color.blue, textDecoration: 'none' }}>EU AI Act mapping — financial services (PDF)</a>
                 {' '}· <a href="/rfp" style={{ color: color.blue, textDecoration: 'none' }}>RFP language</a>

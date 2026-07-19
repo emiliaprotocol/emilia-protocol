@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-admissibility-profile.schema.json",
+  "title": "EP-ADMISSIBILITY-PROFILE-v1",
+  "description": "A NAMED, content-addressed admissibility bar a relying party can cite by id ('for agentic payments above X, require ep:admissibility:money-movement:v1') instead of hand-assembling freshness/assurance/requirement knobs. A profile is authored and PINNED by the relying party; the verdict is computed OFFLINE and deterministically against the pinned profile_hash. EMILIA neither hosts an authoritative registry nor adjudicates and is not in the trust path: it publishes this interoperable SCHEMA and clearly-labeled REFERENCE profiles a relying party may fork, on identical terms to everyone. Field names and types mirror lib/evidence/admissibility-profiles.js (defineAdmissibilityProfile); the closed verdict precedence and requirement grammar live in lib/evidence/admissibility.js. See docs/EP-ADMISSIBILITY-PROFILE-SPEC.md and docs/EP-ADMISSIBILITY-SPEC.md.",
+  "type": "object",
+  "required": ["id", "version", "requires", "profile_hash"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Stable id a relying party cites, e.g. 'ep:admissibility:money-movement:v1'. Reference examples use the ep:admissibility: namespace; a relying party authoring its own SHOULD use its own namespace (e.g. 'acme:admissibility:wire:v3'). The id is a name, not an authority claim.",
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "description": "Profile content version, an integer. Bump when the bar changes so a pinned profile_hash and a cited version move together (defineAdmissibilityProfile defaults it to 1).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "authored_by": {
+      "description": "WHO authored this bar. For reference examples this is EMILIA-as-example-author; for a real deployment it is the relying party that owns and pins the profile. Advisory provenance only, never a trust root: acceptance is by pinned profile_hash, not by this field. EMILIA is never the author of a relying party's bar.",
+      "type": "string",
+      "minLength": 1
+    },
+    "requires": {
+      "description": "The list of evidence requirements. Non-optional entries gate (their absence yields missing_evidence); optional:true entries strengthen but do not gate. The evaluator derives the conjunction of all mandatory requires[].evidence types as the requirement and hands it to lib/evidence/admissibility.js under the closed precedence.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/requirement" }
+    },
+    "verdicts": {
+      "description": "The CLOSED verdict set this profile is evaluated under, echoing lib/evidence/admissibility.js (ADMISSIBILITY_VERDICTS). Stamped by defineAdmissibilityProfile and part of the hashed object. The precedence (unverifiable > conflicted > stale > missing_evidence > admissible) is fixed by the evaluator, not the profile. A default is always the weakest outcome, never admissible.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["admissible", "missing_evidence", "stale", "conflicted", "unverifiable"]
+      },
+      "uniqueItems": true
+    },
+    "profile_hash": {
+      "description": "sha256: over the RFC-8785/JCS canonical bytes of this profile object with the profile_hash field itself excluded, exactly as EP hashes elsewhere (lib/canonical-json.js canonicalize + SHA-256; computeProfileHash in lib/evidence/admissibility-profiles.js). Only id, version, authored_by, requires, and verdicts are part of the hashed object; human-facing annotations (reliance_purpose, description, action_family) are carried OUTSIDE the profile so they never perturb the hash. The relying party PINS this value; a resolved profile whose recomputed hash does not equal the pinned value yields a non-admissible verdict or a refusal (fail closed). The name is convenience; the pinned hash is the commitment.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "requirement": {
+      "type": "object",
+      "required": ["evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "description": "The component TYPE this requirement is about, a non-empty token matched against a bundle item's `evidence`/`type` field. Not a closed enum: relying parties may introduce their own component types. Common values: authorization_receipt, quorum_receipt, witness_quorum, delegation, policy_permit, workload_identity, execution_attestation, consumption_proof, transparency, recourse_reference.",
+          "type": "string",
+          "minLength": 1
+        },
+        "min_assurance": {
+          "description": "Minimum assurance class, ordered self_asserted < basic < verified < high < very_high (ASSURANCE_ORDER in lib/evidence/admissibility-profiles.js). A leg below the floor, or naming an unknown class, does not count toward satisfaction (fail closed). Absent => no assurance floor on this leg.",
+          "type": "string",
+          "enum": ["self_asserted", "basic", "verified", "high", "very_high"]
+        },
+        "max_staleness_sec": {
+          "description": "Maximum accepted age of this leg in seconds, relative to the evaluation time. An older-but-valid leg is 'stale', never accepted (the evidence exists but is not live). Absent => no freshness bound on this leg.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "checks": {
+          "description": "Additional live/state checks this leg MUST pass. 'revocation_checked' is special: the leg's live revoked state MUST be false AND known (an unknown revocation state fails closed). Any other named check is looked up in the leg's own `checks` map and MUST be true; an unrecognized/absent check fails closed. Items are free strings so relying parties may define their own checks.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "optional": {
+          "description": "When true, this requirement STRENGTHENS the bar (credited and evaluated when present) but its absence alone is not missing_evidence. A present-but-invalid optional leg still enters the fact set and is caught by the unverifiable/conflicted precedence. Optional legs never relax fail-closed behavior for the required legs.",
+          "type": "boolean"
+        },
+        "params": {
+          "description": "Requirement-specific parameters hashed into the profile but not interpreted by the profile layer, e.g. { \"k\": 2 } for a witness_quorum threshold. Interpreted by the leg's own type verifier. Kept minimal and canonicalizable (no floats).",
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

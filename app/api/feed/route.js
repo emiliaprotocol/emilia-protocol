@@ -1,6 +1,7 @@
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { authenticateRequest } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 /** Escape LIKE metacharacters to prevent pattern injection. */
 function escapeLike(str) {
@@ -86,7 +87,10 @@ export async function GET(request) {
           const { data: needs, error } = await query;
 
           if (error) {
-            controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`));
+            // Log the raw DB error server-side; emit only a stable code to the
+            // client stream (no raw Postgres message leak). Matches epDbError discipline.
+            logger.error('[feed] query failed:', error?.message);
+            controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'feed_query_failed' })}\n\n`));
             return;
           }
 

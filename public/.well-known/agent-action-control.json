@@ -1,0 +1,726 @@
+{
+  "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
+  "$schema": "https://www.emiliaprotocol.ai/docs/schemas/agent-action-control-manifest-v0.2.schema.json",
+  "profile": "agent-action-control",
+  "service": {
+    "name": "EMILIA Protocol public action controls",
+    "issuer": "https://www.emiliaprotocol.ai",
+    "manifest_url": "https://www.emiliaprotocol.ai/.well-known/agent-action-control.json"
+  },
+  "defaults": {
+    "decision_point": "pre_effect_commit",
+    "missing_receipt": "refuse",
+    "invalid_receipt": "refuse",
+    "stale_receipt": "refuse",
+    "replay": "one_time_consumption",
+    "evidence_log": "strict"
+  },
+  "evidence_profiles": {
+    "authorization_receipt": "EP-RECEIPT-v1",
+    "execution_attestation": "EP-EXECUTION-ATTESTATION-v1",
+    "reliance_packet": "EP-RELIANCE-PACKET-v1",
+    "transparency": "SCITT-compatible Signed Statement"
+  },
+  "actions": [
+    {
+      "id": "money_movement.release",
+      "label": "Money movement",
+      "action_type": "payment.release",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "release_payment"
+      },
+      "why": "Moves funds or releases value. Requires a named human signoff, not an agent-only key.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "amount_usd",
+            "currency",
+            "payment_instruction_id",
+            "beneficiary_account_hash"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "money_movement.bank_details_change",
+      "label": "Bank-detail change",
+      "action_type": "payment.bank_details.change",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "change_bank_details"
+      },
+      "why": "Changes where future money flows. Treats payee, beneficiary, vendor, and payroll account changes as high-risk by category.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "account_holder_id",
+            "payment_instruction_id",
+            "bank_account_hash"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "http.release_payment",
+      "label": "HTTP money movement",
+      "action_type": "payment.release",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "http",
+        "method": "POST",
+        "path": "/release-payment"
+      },
+      "why": "Moves funds through a service API. The executor must bind the observed payment instruction and beneficiary before committing.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "amount_usd",
+            "currency",
+            "payment_instruction_id",
+            "beneficiary_account_hash"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "production.deploy",
+      "label": "Production deploy",
+      "action_type": "deploy.production",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "quorum",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "deploy_production"
+      },
+      "why": "Changes live production behavior. Quorum is the cryptographic two-person rule for hard operational cuts.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "repo",
+            "commit_sha",
+            "environment",
+            "artifact_digest"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "quorum": {
+        "required": true,
+        "mode": "m_of_n",
+        "m": 2,
+        "distinct_humans": true
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "mcp.delete_repo",
+      "label": "Repository deletion",
+      "action_type": "github.repo.delete",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "delete_repo"
+      },
+      "why": "Deletes a durable project namespace. The repository identity and observed pre-state must be bound before deletion.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "repository_full_name",
+            "repository_id",
+            "default_branch_sha"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "permissions.admin_change",
+      "label": "Permission or admin change",
+      "action_type": "permission.admin.change",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "quorum",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "change_permissions"
+      },
+      "why": "Changes who can act next. Privilege changes deserve stronger proof than the session that requested them.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "principal_id",
+            "role",
+            "scope"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "quorum": {
+        "required": true,
+        "mode": "m_of_n",
+        "m": 2,
+        "distinct_humans": true
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "data.bulk_export",
+      "label": "Bulk data export",
+      "action_type": "saas.data_export",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "export_customer_data"
+      },
+      "why": "Moves sensitive data out of its system of record. The recipient and purpose must be bound to the approval.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "dataset",
+            "recipient",
+            "purpose",
+            "row_count_max"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "mcp.run_destructive_sql",
+      "label": "Destructive SQL",
+      "action_type": "database.destructive_sql",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "run_destructive_sql"
+      },
+      "why": "Runs DROP, DELETE, TRUNCATE, or equivalent destructive database operations. The statement and target database must be bound before execution.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "database_id",
+            "environment",
+            "statement_hash",
+            "affected_relation"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "records.delete",
+      "label": "Record deletion",
+      "action_type": "record.delete",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "delete_record"
+      },
+      "why": "Destroys or hides state. The record identity and pre-state must be bound before deletion.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "record_type",
+            "record_id",
+            "before_state_hash"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "regulated.decision_override",
+      "label": "Regulated decision override",
+      "action_type": "regulated.decision.override",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "quorum",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "override_regulated_decision"
+      },
+      "why": "Changes a decision with legal, benefit, credit, clinical, or safety impact. Requires named accountability.",
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "signature": "Ed25519 over RFC 8785 canonical JSON",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type",
+            "case_id",
+            "decision_id",
+            "subject_id",
+            "override_reason"
+          ]
+        },
+        "transparency": {
+          "mode": "registerable",
+          "profile": "SCITT Signed Statement",
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "quorum": {
+        "required": true,
+        "mode": "m_of_n",
+        "m": 2,
+        "distinct_humans": true
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    },
+    {
+      "id": "observe.read_status",
+      "label": "Read-only status",
+      "action_type": "read.status",
+      "risk": "low",
+      "receipt_required": false,
+      "assurance_class": "software",
+      "max_age_sec": 900,
+      "match": {
+        "protocol": "mcp",
+        "tool": "read_status"
+      },
+      "control": {
+        "enforcement_point": "none",
+        "authorization_receipt": {
+          "required": false
+        },
+        "evidence_output": {
+          "audit_event": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_drift_refused",
+          "valid_classA_runs",
+          "replay_refused",
+          "tampered_refused",
+          "execution_proof_binds",
+          "reliance_packet_rely"
+        ]
+      }
+    }
+  ]
+}

@@ -22,7 +22,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 | 9(2)(b): Estimate and evaluate risks | EP Trust Decisions produce `allow` / `allow_with_signoff` / `deny` with evidence sufficiency metrics, domain scores, and confidence levels. |
 | 9(2)(c): Evaluate risks from reasonably foreseeable misuse | EP adversarial test suite: 85 red team cases including Sybil attacks, trust farming, collusion detection, and replay attempts. |
 | 9(2)(d): Adopt risk management measures | EP four-layer enforcement: Eye → Handshake → Signoff → Commit. Each layer has independent controls, audit trails, and enforcement capabilities. |
-| 9(4): Testing to identify appropriate measures | EP: 4,220 automated tests across 173 files, TLA+ model checking (413,137 states), Alloy relational verification, property-based testing with fast-check. |
+| 9(4): Testing to identify appropriate measures | EP: 6,729 automated test cases across 353 files, with all platform-applicable cases required to pass, plus TLA+ model checking, Alloy relational verification, property-based testing, and fault-schedule linearizability checks. |
 | 9(5): Testing against previously defined metrics | EP conformance test suite with deterministic fixtures, mutation testing (80%+ kill), and cross-language hash verification. |
 | 9(7): Risk management throughout AI system lifecycle | EP Trust Profiles are continuously updated. Score history tracks changes. Dispute lifecycle enables ongoing risk correction. |
 
@@ -62,7 +62,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 | Requirement | EP Implementation |
 |-------------|-------------------|
 | 13(1): Sufficient transparency for interpretation | EP Trust Decisions include `reasons` array (human-readable), `policy_used`, `evidence_sufficient` flag, and `appeal_available` indicator. |
-| 13(2): Accompanying instructions for use | EP: QUICK_START_INTEGRATION.md, SDK documentation, MCP server with 34 self-describing tools. |
+| 13(2): Accompanying instructions for use | EP: QUICK_START_INTEGRATION.md, SDK documentation, MCP server with 36 self-describing tools. |
 | 13(3)(b)(ii): Level of accuracy and limitations | EP Trust Profiles include `confidence` level (5 tiers) and `evidence_depth`. Commitment proofs enable privacy-preserving accuracy attestation. |
 
 ---
@@ -73,7 +73,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 |-------------|-------------------|
 | 14(1): Human oversight measures | **EP Accountable Signoff**: named human must explicitly assume responsibility before high-risk action proceeds. Not optional — policy-enforced. |
 | 14(2): Understanding AI system capabilities | EP Eye SHADOW mode: logs what enforcement would have done, enabling human review without blocking. |
-| 14(3)(a): Monitor operations | EP Cloud dashboard: real-time handshake monitoring, signoff queue, event explorer. |
+| 14(3)(a): Monitor operations | EMILIA Gate Cloud dashboard: real-time handshake monitoring, signoff queue, event explorer. |
 | 14(3)(b): Remain aware of automation bias | EP delegation judgment scoring measures how well humans oversee their AI agents. Poor delegation scores surface accountability gaps. |
 | 14(4)(a): Correctly interpret output | EP Trust Decisions are structured, not opaque. Decision + reasons + evidence + policy + appeal path in every response. |
 | 14(4)(b): Decide not to use the system | EP supports manual override: Signoff denial, Handshake revocation, Commit revocation — all with audit trail. |
@@ -96,7 +96,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 | Requirement | EP Implementation |
 |-------------|-------------------|
 | 26(1): Use in accordance with instructions | EP policy engine enforces usage boundaries. Actions outside policy scope are rejected by Handshake verification. |
-| 26(5): Impact assessments for high-risk systems | EP Cloud compliance dashboard provides audit-ready exports, trust score histories, and dispute resolution records. |
+| 26(5): Impact assessments for high-risk systems | EMILIA Gate Cloud compliance dashboard provides audit-ready exports, trust score histories, and dispute resolution records. |
 
 ---
 

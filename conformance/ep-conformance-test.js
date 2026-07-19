@@ -8,8 +8,7 @@
  * any other conformant operator via self-verifying receipts.
  *
  * Usage:
- *   npx ep-conformance-test https://ep.example.com
- *   node ep-conformance-test.js https://ep.example.com
+ *   node conformance/ep-conformance-test.js https://ep.example.com
  *
  * Checks:
  *   [REQUIRED] /.well-known/ep-trust.json discovery
@@ -33,8 +32,8 @@ import crypto from 'crypto';
 
 const baseUrl = process.argv[2];
 if (!baseUrl) {
-  console.error('Usage: ep-conformance-test <base-url>');
-  console.error('Example: ep-conformance-test https://ep.example.com');
+  console.error('Usage: node conformance/ep-conformance-test.js <base-url>');
+  console.error('Example: node conformance/ep-conformance-test.js https://ep.example.com');
   process.exit(2);
 }
 

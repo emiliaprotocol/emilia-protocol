@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { logger } from '../../../../../lib/logger.js';
 
 /**
@@ -34,7 +34,7 @@ export async function GET(request) {
 
     if (error) {
       logger.error('[cloud/signoff/pending] Query error:', error);
-      return epProblem(500, 'signoff_pending_query_failed', error.message);
+      return epDbError(500, 'signoff_pending_query_failed', error, 'cloud/signoff/pending');
     }
 
     return NextResponse.json({

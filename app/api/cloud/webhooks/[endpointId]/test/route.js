@@ -3,7 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { deliverWebhook } from '@/lib/cloud/webhooks';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { logger } from '../../../../../../lib/logger.js';
 
 /**
@@ -31,7 +31,7 @@ export async function POST(request, { params }) {
 
     if (lookupErr) {
       logger.error('[cloud/webhooks/test] Lookup error:', lookupErr);
-      return epProblem(500, 'webhook_query_failed', lookupErr.message);
+      return epDbError(500, 'webhook_query_failed', lookupErr, 'cloud/webhooks/test');
     }
 
     if (!endpoint) {

@@ -134,7 +134,7 @@ def test_outcome_not_accepted_refused():
         assert e.reason == "outcome_not_accepted"
 
 
-def test_transient_failure_does_not_consume():
+def test_indeterminate_failure_consumes_and_refuses_retry():
     g = gate()
     r = mint("payment.release")
     attempts = {"n": 0}
@@ -150,8 +150,84 @@ def test_transient_failure_does_not_consume():
         assert False, "expected the transient error to propagate"
     except RuntimeError:
         pass
-    # approval was NOT burned -> same receipt now succeeds
-    assert g.run(r, flaky) == "ran"
+    # The downstream may have applied the effect before losing its response.
+    # Reusing the same approval could duplicate the action, so it is burned.
+    try:
+        g.run(r, flaky)
+        assert False, "expected replay refusal after an indeterminate effect"
+    except ReceiptRequired as e:
+        assert e.reason == "replay_refused"
+    assert attempts["n"] == 1
+
+
+def test_missing_invalid_and_future_timestamps_fail_closed():
+    g = gate(max_age_sec=60)
+    for value, expected in (
+        (None, "receipt_timestamp_invalid"),
+        ("not-a-time", "receipt_timestamp_invalid"),
+        ("2026-07-15T12:00:00", "receipt_timestamp_invalid"),
+    ):
+        r = mint("payment.release")
+        if value is None:
+            del r["payload"]["created_at"]
+        else:
+            r["payload"]["created_at"] = value
+        # Re-sign after changing the timestamp so this attacks freshness, not signature integrity.
+        r["signature"]["value"] = _b64u(_SK.sign(canonicalize(r["payload"]).encode("utf-8")))
+        try:
+            g.run(r, lambda: "ran")
+            assert False, "expected timestamp refusal"
+        except ReceiptRequired as e:
+            assert e.reason == expected
+
+    future = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+    try:
+        g.run(mint("payment.release", created_at=future), lambda: "ran")
+        assert False, "expected future receipt refusal"
+    except ReceiptRequired as e:
+        assert e.reason == "receipt_from_future"
+
+
+def test_missing_receipt_id_fails_closed():
+    r = mint("payment.release")
+    del r["payload"]["receipt_id"]
+    r["signature"]["value"] = _b64u(_SK.sign(canonicalize(r["payload"]).encode("utf-8")))
+    try:
+        gate().run(r, lambda: "ran")
+        assert False, "expected receipt_id refusal"
+    except ReceiptRequired as e:
+        assert e.reason == "receipt_id_required"
+
+
+def test_legacy_non_atomic_store_is_rejected():
+    class LegacyStore:
+        def has(self, _receipt_id):
+            return False
+
+        def add(self, _receipt_id):
+            return None
+
+    try:
+        gate(store=LegacyStore())
+        assert False, "expected unsafe store rejection"
+    except ValueError as e:
+        assert "reserve" in str(e)
+
+
+def test_high_assurance_requires_an_independent_verifier():
+    r = mint("payment.release")
+    g = gate(assurance_class="class_a")
+    try:
+        g.run(r, lambda: "ran")
+        assert False, "a payload label cannot establish Class-A"
+    except ReceiptRequired as e:
+        assert e.reason == "assurance_verifier_required"
+
+    verified = gate(
+        assurance_class="class_a",
+        verify_assurance=lambda _receipt, required: {"ok": True, "tier": required},
+    )
+    assert verified.run(mint("payment.release"), lambda: "ran") == "ran"
 
 
 def test_per_call_target_binding():

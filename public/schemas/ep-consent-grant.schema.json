@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-consent-grant.schema.json",
+  "title": "EP-CONSENT-GRANT-v1",
+  "description": "A scoped, revocable STANDING-CONSENT grant naming {asset, control_verb, expiry}: 'principal P authorizes control_verb V on asset A until expires_at, subject to constraints C.' This fills binding 3 (Consent Grant) of the Command Authority Envelope (draft-morrison-ot-command-authority) as its own first-class object, DISTINCT from the per-action receipt at the binding moment (CAE binding 4, which is what an EP receipt IS). A grant is standing authority issued once over a window; a receipt is the per-action authorization at the moment of consequence. A receipt 'acts under' a grant by carrying its grant_hash. grant_hash and signature cover the grant with BOTH fields excluded (JCS/RFC-8785 canonical bytes + SHA-256, and Ed25519 over those same bytes) exactly as EP hashes/signs elsewhere (packages/verify/consent-grant.js). Verification is fail-closed and offline: it establishes authenticity as of the commit the grant was signed at, never current validity; revocation currency needs a fresh revocation snapshot the same as any EP status. See docs/EP-CONSENT-GRANT-SPEC.md.",
+  "type": "object",
+  "required": [
+    "profile",
+    "grant_id",
+    "principal",
+    "asset",
+    "control_verb",
+    "issued_at",
+    "expires_at",
+    "grant_hash",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "description": "The profile identifier. MUST be the exact string 'EP-CONSENT-GRANT-v1'. A grant whose profile does not match is refused (fail closed).",
+      "type": "string",
+      "const": "EP-CONSENT-GRANT-v1"
+    },
+    "grant_id": {
+      "description": "A stable identifier for this grant, e.g. 'grant_ot_pump_7'. Also the revocation target_id (a revocation statement against this grant uses target_type 'commit' and target_id = grant_id).",
+      "type": "string",
+      "minLength": 1
+    },
+    "principal": {
+      "description": "The GRANTING party reference: WHO conferred this standing authority. MAY be a single accountable approver (e.g. 'ep:approver:diane_staheli') or a reference to a quorum policy that authorized the grant. The key that SIGNS the grant is pinned by the relying party (pinnedPrincipalKey); this field NAMES the principal, it does not establish trust in the key. The binding of key to natural person is only as strong as the enrollment ceremony's proofing, exactly as for the receipt approver.",
+      "type": "string",
+      "minLength": 1
+    },
+    "asset": {
+      "description": "The RESOURCE the grant covers: the exact asset/scope the authorization applies to, e.g. 'ot:site-3/pump-array/valve-7'. A per-action receipt's action asset MUST be covered by this asset for the receipt to act under the grant (strict equality by default; a relying party MAY supply a fail-closed scope predicate for hierarchical assets). A free token so deployments name their own asset namespaces.",
+      "type": "string",
+      "minLength": 1
+    },
+    "control_verb": {
+      "description": "The EXACT operation authorized, e.g. 'setpoint.write'. A per-action receipt's action control_verb MUST be covered by this verb (strict equality by default). A grant authorizes ONE control verb on its asset; a different operation needs a different grant.",
+      "type": "string",
+      "minLength": 1
+    },
+    "constraints": {
+      "description": "Optional additional bounds on the grant, e.g. an amount ceiling. Values MUST be within the EP canonicalization profile (strings, safe integers, booleans, null, arrays, nested objects). Non-integer quantities (money) MUST be STRING-encoded (e.g. { \"amount_ceiling\": \"500000\" }) so the canonical bytes are byte-identical across JS/Python/Go, exactly as EP encodes amounts elsewhere. Interpreted by the deployment; hashed into grant_hash and signed.",
+      "type": "object"
+    },
+    "issued_at": {
+      "description": "When the grant was issued. RFC 3339 with an EXPLICIT UTC offset ('Z' or +/-hh:mm); no-timezone and date-only forms are REJECTED as ambiguous (fail closed). The lower bound of the validity window.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "expires_at": {
+      "description": "The grant EXPIRY: the upper bound of the validity window (the CAE binding-3 'expiry'). RFC 3339 with an explicit UTC offset. A verification whose 'now' is after expires_at refuses ('grant is expired'); before issued_at refuses ('not yet valid'). Keep windows short: a short window plus a pushed signed revocation snapshot is how EP bounds staleness for air-gapped executors.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "grant_hash": {
+      "description": "'sha256:' + hex over the JCS/RFC-8785 canonical bytes of this grant object with BOTH grant_hash and signature excluded (canonicalize + SHA-256, exactly as EP hashes elsewhere). The relying party binds a receipt to a grant by this value; a receipt SHOULD carry grant_hash INSIDE its signed Action Object (the reference implementation mints it there, so it is covered by the action hash and the human signature over the action) so the binding-moment authorization is cryptographically tied to the standing grant it exercised. A receipt without a native grant_hash can still be bound by a caller-supplied hash, but that binding is then only as trustworthy as the caller (advisory, not covered by the receipt's signature). A grant whose recomputed hash does not equal this value is refused (fail closed).",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "signature": {
+      "description": "The PRINCIPAL's device-bound Ed25519 signature over the canonical grant bytes (the SAME body grant_hash covers: this grant with grant_hash and signature excluded), base64url, verified with crypto.verify(null, bodyBytes, key) against the pinned principal key (base64url SPKI DER), exactly as EP verifies Ed25519 elsewhere. An unpinned or self-asserted key confers nothing (fail closed).",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -14,6 +14,22 @@ const ProvenanceVersion = "EP-PROVENANCE-CHAIN-v1"
 
 var provenanceProofFields = []string{"delegation_id", "delegator", "delegatee", "scope", "max_value_usd", "expires_at", "constraints"}
 
+func validProvenanceVerificationProfile(profile map[string]any) ([]string, bool) {
+	if profile == nil || getMap(profile["approver_keys"]) == nil || getStr(profile, "log_public_key") == "" || getStr(profile, "rp_id") == "" {
+		return nil, false
+	}
+	origins, ok := stringSliceOption(profile, "allowed_origins")
+	if !ok || len(origins) == 0 {
+		return nil, false
+	}
+	for _, origin := range origins {
+		if origin == "" {
+			return nil, false
+		}
+	}
+	return origins, true
+}
+
 // ProvenanceResult mirrors the JS { valid, checks } shape (advisory blocks omitted).
 type ProvenanceResult struct {
 	Valid  bool            `json:"valid"`
@@ -99,14 +115,19 @@ func provScopeContained(parent, child map[string]any) bool {
 			return false
 		}
 	}
+	// Cap containment, fail-closed on a present-but-non-numeric child cap (parity
+	// with JS/Go). toFloat conflates "key absent" with "present but non-numeric"
+	// (both ok=false), so a non-numeric child cap was treated as absent and inherited
+	// the parent, passing containment — a fail-open. Distinguish key presence: a
+	// null/absent child inherits (OK); a present non-numeric child cap is a violation.
 	parentCap, parentHas := toFloat(parent["max_value_usd"])
-	childCap, childHas := toFloat(child["max_value_usd"])
-	if !childHas {
-		childCap, childHas = parentCap, parentHas
-	}
 	if parentHas {
-		if !childHas || childCap > parentCap {
-			return false
+		childRaw, keyThere := child["max_value_usd"]
+		if keyThere && childRaw != nil {
+			childCap, childNum := toFloat(childRaw)
+			if !childNum || childCap > parentCap {
+				return false
+			}
 		}
 	}
 	if pExp, ok := parseMillis(getStr(parent, "expires_at")); ok {
@@ -157,6 +178,9 @@ func toFloat(v any) (float64, bool) {
 		return n, true
 	case int:
 		return float64(n), true
+	case interface{ Float64() (float64, error) }: // json.Number from the package's UseNumber decode path
+		f, err := n.Float64()
+		return f, err == nil
 	default:
 		return 0, false
 	}
@@ -191,8 +215,10 @@ func provDelegationProofBytes(link map[string]any) string {
 }
 
 // VerifyProvenanceOffline verifies an EP-PROVENANCE-CHAIN-v1 document. opts keys:
-// humanKeyClasses ([]any), delegationKeys (map), now (RFC3339), allowUnsignedDelegations
-// (bool), requireActionApprovalAlways (bool).
+// humanKeyClasses ([]any), delegationKeys (map), rootVerification (map),
+// actionVerification (map), now (milliseconds), allowUnsignedDelegations
+// (bool), requireActionApprovalAlways (bool). Verification profiles are
+// relying-party inputs; keys carried inside the document are never trust roots.
 func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) ProvenanceResult {
 	checks := map[string]bool{
 		"version": false, "root_receipt_valid": false, "root_human_signoff": false,
@@ -219,18 +245,33 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 	}
 	allowUnsigned, _ := opts["allowUnsignedDelegations"].(bool)
 	requireAlways, _ := opts["requireActionApprovalAlways"].(bool)
-	now := float64(0)
-	hasNow := false
-	if nowMs, ok := opts["now"].(float64); ok {
-		now, hasNow = nowMs, true
+	// Parity with JS (opts.now ?? Date.now()) and Python (opts["now"] or
+	// time.time()*1000): when the caller omits `now`, expiry is enforced against
+	// wall-clock, never skipped. toFloat also accepts json.Number from the
+	// UseNumber decode path, so the expiry gate is never silently disabled just
+	// because `now` arrived as json.Number (the fail-open class of 0623bf8).
+	now := float64(time.Now().UnixMilli())
+	if nowMs, ok := toFloat(opts["now"]); ok {
+		now = nowMs
 	}
 
 	root := getMap(doc["root_signoff"])
-	if root == nil || getMap(root["receipt"]) == nil || getMap(root["verification"]) == nil {
+	rootVerification := getMap(opts["rootVerification"])
+	if rootVerification == nil {
+		rootVerification = getMap(opts["root_verification"])
+	}
+	if root == nil || getMap(root["receipt"]) == nil {
+		fail("root_receipt_valid")
+	} else if _, ok := validProvenanceVerificationProfile(rootVerification); !ok {
 		fail("root_receipt_valid")
 	} else {
-		ver := getMap(root["verification"])
-		r0 := VerifyTrustReceipt(getMap(root["receipt"]), map[string]any{"approverKeys": ver["approver_keys"], "logPublicKey": ver["log_public_key"]})
+		rootOrigins, _ := validProvenanceVerificationProfile(rootVerification)
+		r0 := VerifyTrustReceipt(getMap(root["receipt"]), map[string]any{
+			"approverKeys": rootVerification["approver_keys"],
+			"logPublicKey": rootVerification["log_public_key"],
+			"rpId": rootVerification["rp_id"],
+			"allowedOrigins": rootOrigins,
+		})
 		checks["root_receipt_valid"] = r0.Valid
 		checks["root_human_signoff"] = provHasHumanSignoff(getMap(root["receipt"]), humanClasses)
 	}
@@ -241,13 +282,26 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 	reversibilityAsserted := false
 	needApproval := requireAlways || !reversibilityAsserted
 	approval := getMap(doc["action_approval"])
+	actionVerification := getMap(opts["actionVerification"])
+	if actionVerification == nil {
+		actionVerification = getMap(opts["action_verification"])
+	}
 	if needApproval && getMap(approval["receipt"]) == nil {
 		fail("per_action_required")
 	}
 	if ar := getMap(approval["receipt"]); ar != nil {
-		ver := getMap(approval["verification"])
-		ra := VerifyTrustReceipt(ar, map[string]any{"approverKeys": ver["approver_keys"], "logPublicKey": ver["log_public_key"]})
-		checks["action_receipt_valid"] = ra.Valid
+		if _, ok := validProvenanceVerificationProfile(actionVerification); !ok {
+			fail("action_receipt_valid")
+		} else {
+			actionOrigins, _ := validProvenanceVerificationProfile(actionVerification)
+			ra := VerifyTrustReceipt(ar, map[string]any{
+				"approverKeys": actionVerification["approver_keys"],
+				"logPublicKey": actionVerification["log_public_key"],
+				"rpId": actionVerification["rp_id"],
+				"allowedOrigins": actionOrigins,
+			})
+			checks["action_receipt_valid"] = ra.Valid
+		}
 		if irr, _ := exec["irreversible"].(bool); irr {
 			checks["action_human_signoff"] = provHasHumanSignoff(ar, humanClasses)
 		}
@@ -277,7 +331,9 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 
 	if len(chain) > 0 {
 		head := chain[0]
-		checks["chain_anchored"] = rootApprovers[getStr(head, "parent_ref")] || rootApprovers[getStr(head, "delegator")]
+		// Anchor ONLY on the SIGNED delegator. parent_ref is not in
+		// provenanceProofFields (unsigned, attacker-controlled).
+		checks["chain_anchored"] = rootApprovers[getStr(head, "delegator")]
 	}
 
 	prevDelegatee := ""
@@ -288,7 +344,7 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 				fail("chain_links_bound")
 			}
 		}
-		if exp, ok := parseMillis(getStr(link, "expires_at")); !ok || (hasNow && float64(exp) < now) {
+		if exp, ok := parseMillis(getStr(link, "expires_at")); !ok || float64(exp) < now {
 			fail("delegations_not_expired")
 		}
 		if proof := getMap(link["proof"]); proof != nil {

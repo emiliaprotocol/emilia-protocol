@@ -39,7 +39,7 @@ Adaptive scoring must therefore be:
 
 ### 2.3 Recommendations, not automation.
 
-The system produces weight *recommendations*. The operator decides whether to adopt them via EP Cloud's policy rollout pipeline (diff, simulate, signoff, deploy). There is no path where weights change without human authorization.
+The system produces weight *recommendations*. The operator decides whether to adopt them via EMILIA Gate Cloud's policy rollout pipeline (diff, simulate, signoff, deploy). There is no path where weights change without human authorization.
 
 This is Level 2 adaptive scoring (outcome-informed adjustment), not Level 3 (fully adaptive). Level 3 is explicitly out of scope because it creates opacity, gaming vectors, and a black-box trust score.
 
@@ -65,7 +65,7 @@ Layer 2: Policy (operator-configurable, versioned)
   - Dispute dampening factor
   - Time decay half-life
 
-Layer 3: Recommendations (EP Cloud analytics)
+Layer 3: Recommendations (EMILIA Gate Cloud analytics)
   - Outcome-informed weight suggestions
   - Vertical-specific calibration data
   - Dispute correlation analysis
@@ -79,7 +79,7 @@ Layer 3: Recommendations (EP Cloud analytics)
                         |
                         v
   +-----------------------------------------+
-  |  EP Cloud Analytics Engine              |
+  |  EMILIA Gate Cloud Analytics Engine              |
   |                                         |
   |  1. Collect dispute resolution data     |
   |  2. Correlate with pre-dispute scores   |
@@ -93,7 +93,7 @@ Layer 3: Recommendations (EP Cloud analytics)
                         |
                         v
   +-----------------------------------------+
-  |  EP Cloud Policy Pipeline               |
+  |  EMILIA Gate Cloud Policy Pipeline               |
   |                                         |
   |  1. POST /api/cloud/policies/*/simulate |
   |  2. Operator reviews simulation results |
@@ -192,7 +192,7 @@ Below these thresholds, the protocol defaults apply. The system reports "insuffi
 
 ## 5. Vertical Packs
 
-EP Cloud's vertical packs (Government, Financial, Agent Governance) ship with pre-calibrated weight sets based on sector-specific risk profiles. These are starting points, not mandates.
+EMILIA Gate Cloud's vertical packs (Government, Financial, Agent Governance) ship with pre-calibrated weight sets based on sector-specific risk profiles. These are starting points, not mandates.
 
 ### 5.1 Government Pack (Proposed)
 
@@ -302,7 +302,7 @@ This dual-score design removes the fork incentive. Operators who want different 
 
 **Code changes**: `lib/scoring-v2.js`, `lib/trust-profile.js`, `app/api/trust/profile/[entityId]/route.js`, policy schema validation.
 
-### Phase 2: EP Cloud Calibration Engine (Medium-term)
+### Phase 2: EMILIA Gate Cloud Calibration Engine (Medium-term)
 
 **Goal**: Build the dispute-to-recommendation pipeline.
 
@@ -325,7 +325,7 @@ This dual-score design removes the fork incentive. Operators who want different 
 **Goal**: Ship pre-calibrated weight sets for government, financial, and agent governance verticals.
 
 1. Create vertical pack definitions in `lib/cloud/verticals/`
-2. Expose via EP Cloud onboarding (operator selects vertical during setup)
+2. Expose via EMILIA Gate Cloud onboarding (operator selects vertical during setup)
 3. Vertical pack weights serve as starting defaults; operator can customize further
 4. Calibration engine uses vertical pack as the baseline for recommendations
 
@@ -334,7 +334,7 @@ This dual-score design removes the fork incentive. Operators who want different 
 **Goal**: Aggregate anonymized calibration data across operators to improve vertical pack defaults.
 
 1. Operators opt-in to anonymous benchmark sharing
-2. EP Cloud aggregates dispute-resolution patterns across operators in the same vertical
+2. EMILIA Gate Cloud aggregates dispute-resolution patterns across operators in the same vertical
 3. Vertical pack defaults are updated based on cross-operator evidence
 4. No individual operator's data is identifiable in the aggregate
 

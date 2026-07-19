@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { loadPolicyById } from '@/lib/handshake/policy';
 import { diffPolicy } from '@/lib/policy-sdk/diff.js';
 import { logger } from '../../../../../../lib/logger.js';
@@ -34,7 +34,7 @@ export async function GET(request, { params }) {
     const supabase = getGuardedClient();
 
     // Resolve the route policyId to its policy_key; versions are keyed by it.
-    const policy = await loadPolicyById(supabase, policyId);
+    const policy = await loadPolicyById(supabase, policyId, { tenantId: auth.tenantId });
     if (!policy) {
       return EP_ERRORS.NOT_FOUND('Policy');
     }
@@ -55,7 +55,7 @@ export async function GET(request, { params }) {
 
     if (error) {
       logger.error('[cloud/policies/diff] Query error:', error);
-      return epProblem(500, 'policy_diff_query_failed', error.message);
+      return epDbError(500, 'policy_diff_query_failed', error, 'cloud/policies/diff');
     }
 
     if (!versions || versions.length < 2) {

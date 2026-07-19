@@ -1,0 +1,28 @@
+{
+  "_note": "GOLDEN TEST VECTOR for the EP-EXTERNAL-VERIFICATION-STATEMENT-v1 statement_digest construction. If your INDEPENDENT signer does not reproduce expected_statement_digest for the `statement` below, your digest construction diverges from the spec and your statements will NOT verify, regardless of your verifier logic. This lets you unit-test the digest in isolation, in ANY language, with no EP tooling. It is the single most common integration wall.",
+  "construction": "expected_statement_digest = \"sha256:\" || hex( SHA-256( domain_label_bytes || 0x00 || JCS(statement) ) )",
+  "domain_label": "EP-EXTERNAL-VERIFICATION-STATEMENT-v1",
+  "domain_separator_byte": "0x00 (ONE NUL byte, not the two characters backslash-zero)",
+  "canonicalization": "RFC 8785 JSON Canonicalization Scheme (JCS)",
+  "hash": "SHA-256",
+  "critical_notes": [
+    "The `statement` is canonicalized with its ENTIRE top-level `signature` member removed (not just signature_b64u or statement_digest). The vector below already has no signature member, so canonicalize it as-is.",
+    "Line endings and whitespace do NOT matter here (JCS re-serializes the parsed value), but they DO matter for the separate suite_digest, which is SHA-256 over the RAW BYTES of each conformance vector file. On Windows, set core.autocrlf=false or rely on the repo .gitattributes so those files stay LF."
+  ],
+  "statement": {
+    "@version": "EP-EXTERNAL-VERIFICATION-STATEMENT-v1",
+    "generated_at": "2026-01-01T00:00:00.000Z",
+    "verifier": { "id": "ext:verifier:example", "name": "Example", "organization": "Example Org" },
+    "subject": { "kind": "conformance_vector_pack", "suites": 1, "vectors": 3, "commit": "0000000000000000000000000000000000000000" },
+    "procedure": { "id": "ep-conformance-own-implementation", "version": "EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v1" },
+    "inputs": {
+      "commit": "0000000000000000000000000000000000000000",
+      "implementation": "example-runner-1.0",
+      "suite_digests": { "boundary.v1.json": "sha256:0000000000000000000000000000000000000000000000000000000000000000" },
+      "results_digests": { "boundary.v1.json": "sha256:1111111111111111111111111111111111111111111111111111111111111111" }
+    },
+    "result": { "status": "verified", "checks": [ { "id": "boundary.v1.json", "ok": true, "detail": "3/3" } ] },
+    "limitations": [ "Example statement for digest reproduction only; authorizes nothing." ]
+  },
+  "expected_statement_digest": "sha256:d771c82af5df2a0d70bd1b9d5998d1d11c668a3b1f6cab840751144393383234"
+}

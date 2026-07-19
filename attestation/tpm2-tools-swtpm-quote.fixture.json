@@ -1,0 +1,37 @@
+{
+  "fixture_version": "EP-TPM-QUOTE-FIXTURE-v1",
+  "source": {
+    "generator": "tpm2-tools 5.4 with swtpm on Debian 12",
+    "flow": "https://tpm2-tools.readthedocs.io/en/latest/man/tpm2_checkquote.1/",
+    "hardware_backed": false,
+    "note": "Software-TPM interoperability fixture. It validates parser and cryptographic behavior but is not evidence from physical TPM hardware."
+  },
+  "quote": {
+    "@format": "EP-TPM-QUOTE-v1",
+    "quoted": "/1RDR4AYACIAC3ymcXhYownKLGRY+1l6VONzOiqcWsswLan5yUkxiXw8ABAAESIzRFVmd4iZqrvM3e7/AAAAAAAAAdcAAAACAAAAAAEgGRAjABY2NgAAAAEACwMHAAAAINRNiLS4cFTGUqOub5dU6dSIa48tOgykeEbcJNeBGoqM",
+    "signature": "ABQACwEAPRuqDd3gjGK/pjyau/xkm+EEPXSCYmOi0h3C5VO6D0svhzjRuklawUEsHEGXhcwxUtX+/uKwc+KCeFapK2257NE7Mqkwg0c2sEfe/PTVwE5pLTurYklMOep8JzR6v1EUdLxs0pRmBtUjDOTQZ012Yp/Gu1t/czGJ2DjKJOY1Tmlc948l54ZwpMFRGAXdiH72Oul5PNspmc0J/jrQBsOfFhuxnQb2THe3JNftgSdj8OXQ4oaONe1TRmf31nR2RhGvJTbBhcrqEQKWZnZneAGfl2/+fLx57oz5I8Ub10YbvWSRRfeGiE/M9aZ91voJiYVmj9LQwGC05v3KmDVyWfhBKg==",
+    "ak_public": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx7cLI4WdqvXWJzN1LY03\nblPVv5g4lgoWf9UyXCVVSICfuZ/uJSy+aZXhWPQMONFJuvGC3J75DrXG06o5N7is\nYTcpsv5zAT/2c6NdDR7Oj3tdDia+HvM004DQaUQEPgmrZtz9Ih7Ip7AubmgPUcwt\nrQEm5ttnpjhJpfrWepKPqgTqo02fPtLxFCxeO4Kr9PVkw+UxR1R3OUfnlebUDIHx\nB2zkE73+MDQdnAYTozn9DVvaJ2G6UivvqkGTvfuEGHlNv76tmYA8MBYLV7lxgac1\n4z0exS7VMEMD8ECCqbBL50KbWSj1rQ+L8sbvQrGXauEvIDrK05m0jGk1z7+yRCTe\ndwIDAQAB\n-----END PUBLIC KEY-----\n",
+    "nonce": "00112233445566778899aabbccddeeff",
+    "pcr_values": {
+      "sha256": {
+        "0": "c820f40ea437134183163924b2e03a0e041e160496da3452bb56ae606bc817ea",
+        "1": "fc6ea83bd239bc297b41c82c7937fa5099128a826644b4f3d4a456da194d4333",
+        "2": "5d508f60c550a798f2d03b484b2f4cf812c6e3d30e5822742055c69f5b83bc45"
+      }
+    }
+  },
+  "trusted_ak_fingerprints": [
+    "sha256:302fe31304b59ef5e12683dad9ca7ac44c8853e9454a7f3937a7922208a3f18d"
+  ],
+  "expected_nonce": "00112233445566778899aabbccddeeff",
+  "expected_pcr_selection": {
+    "sha256": [0, 1, 2]
+  },
+  "expected_pcr_values": {
+    "sha256": {
+      "0": "c820f40ea437134183163924b2e03a0e041e160496da3452bb56ae606bc817ea",
+      "1": "fc6ea83bd239bc297b41c82c7937fa5099128a826644b4f3d4a456da194d4333",
+      "2": "5d508f60c550a798f2d03b484b2f4cf812c6e3d30e5822742055c69f5b83bc45"
+    }
+  }
+}

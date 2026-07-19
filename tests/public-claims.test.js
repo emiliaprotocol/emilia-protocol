@@ -451,8 +451,8 @@ describe('MCP server README claims', () => {
     expect(readmeToolCount).toBe(actualToolCount);
   });
 
-  it('MCP README claims 34 tools and that matches actual count', () => {
-    // README says "34 tools"
+  it('MCP README claims the actual MCP tool count', () => {
+    // README says "<n> tools"; keep it tied to the source list.
     const claimMatch = mcpReadme.match(/(\d+)\s*tools/);
     expect(claimMatch).not.toBeNull();
     const claimedCount = Number(claimMatch[1]);
@@ -526,5 +526,89 @@ describe('Crypto / ZK claims', () => {
 
     // Verify the README mentions the Handshake extension
     expect(readme).toContain('Handshake');
+  });
+});
+
+// ── 8. Test-count freshness (README ↔ proof-stats) ──────────────────────────
+// Regression guard for finding #1: the README "Automated test cases | N across M
+// files" line drifted from ground truth. The count grows on every added test, so
+// the README states it as a FLOOR ("N+ across M+ files") that stays true as the
+// suite grows; a floor passes when the true count in lib/proof-stats.json is >= N.
+// A bare exact number must still equal proof-stats exactly (backstop). The exact
+// number lives once in lib/proof-stats.json, rendered by app/page.js.
+
+describe('README test-count freshness', () => {
+  const readme = readFile('README.md');
+  const proofStats = JSON.parse(readFile('lib/proof-stats.json'));
+
+  it('"Automated test cases | N(+) across M(+) files" is consistent with lib/proof-stats.json', () => {
+    // Proof-points row: | Automated test cases | 5,000+ across 250+ files |
+    const match = readme.match(
+      /Automated test cases\s*\|\s*([\d,]+)(\+?)\s+across\s+([\d,]+)(\+?)\s+files/i
+    );
+    expect(
+      match,
+      'README must contain an "Automated test cases | N across M files" claim'
+    ).not.toBeNull();
+
+    const claimedTests = Number(match[1].replace(/,/g, ''));
+    const testsIsFloor = match[2] === '+';
+    const claimedFiles = Number(match[3].replace(/,/g, ''));
+    const filesIsFloor = match[4] === '+';
+
+    if (testsIsFloor) {
+      expect(
+        proofStats.tests.total,
+        `README states a floor of ${claimedTests}+ tests; true count ${proofStats.tests.total} must be >= it`
+      ).toBeGreaterThanOrEqual(claimedTests);
+    } else {
+      expect(claimedTests).toBe(proofStats.tests.total);
+    }
+
+    if (filesIsFloor) {
+      expect(proofStats.tests.files).toBeGreaterThanOrEqual(claimedFiles);
+    } else {
+      expect(claimedFiles).toBe(proofStats.tests.files);
+    }
+  });
+});
+
+// ── 9. WYSIWYS honesty (README ↔ EP-WYSIWYS-SPEC.md) ────────────────────────
+// Regression guard for finding #2: the README overclaimed WYSIWYS as an
+// absolute ("What the human saw is what they signed. No script can forge
+// it..."), while docs/EP-WYSIWYS-SPEC.md marks it EXPERIMENTAL and states it
+// "reduces, does not eliminate" the presentation-attack surface.
+
+describe('WYSIWYS claim honesty', () => {
+  const readme = readFile('README.md');
+
+  it('README does not state WYSIWYS as an unqualified absolute', () => {
+    // The bare declarative "what the human saw is what they signed" (no hedge)
+    // is an overclaim. A quoted/hedged form ("what you saw is what you signed"
+    // gap) is fine.
+    expect(readme.toLowerCase()).not.toMatch(
+      /what the human saw is what they signed/
+    );
+  });
+
+  it('README WYSIWYS mentions co-occur with a reduces/narrows/experimental hedge', () => {
+    // Wherever the README talks about "what you saw is what you signed", the
+    // surrounding sentence must qualify it.
+    const idx = readme.toLowerCase().indexOf('what you saw is what you signed');
+    if (idx !== -1) {
+      // Inspect a window around the mention for a hedging word.
+      const window = readme
+        .slice(Math.max(0, idx - 200), idx + 400)
+        .toLowerCase();
+      expect(window).toMatch(/reduce|narrow|experimental|does not eliminate|gap/);
+    }
+    // The README must not contain the old absolute "No script can forge it".
+    expect(readme).not.toContain('No script can forge it');
+  });
+
+  it('EP-WYSIWYS-SPEC.md keeps its experimental / reduces-not-eliminates framing', () => {
+    const spec = readFile('docs/EP-WYSIWYS-SPEC.md');
+    expect(spec.toLowerCase()).toMatch(/experimental/);
+    expect(spec.toLowerCase()).toMatch(/does not\b[\s\S]{0,40}\beliminate/);
   });
 });

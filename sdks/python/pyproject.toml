@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "emilia-protocol"
-version = "0.9.0"
+version = "0.10.0"
 description = "Minimal Python SDK for the EMILIA Protocol — 5 core endpoints + signoff."
 readme = "README.md"
 license = {text = "Apache-2.0"}

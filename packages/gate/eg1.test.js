@@ -30,7 +30,7 @@ test('EG-1: a gate that does not trust the issuer cannot earn it', async () => {
   // valid receipt is rejected, so the "valid runs" / proof / packet checks fail.
   const harness = createEg1Harness();
   const otherKey = createEg1Harness().publicKey;
-  const gate = createTrustedActionFirewall({ trustedKeys: [otherKey] });
+  const gate = createTrustedActionFirewall({ trustedKeys: [otherKey], allowEphemeralStore: true });
   const report = await gateConformance({ gate, harness });
   assert.equal(report.passed, false);
   const byId = Object.fromEntries(report.checks.map((c) => [c.id, c.pass]));

@@ -17,74 +17,12 @@ import { headers } from 'next/headers';
 import { authenticateRequest } from '@/lib/supabase';
 import { getServiceClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger.js';
-import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { loadTenantGuardReceipts, RECENT_EVENT_LIMIT } from '@/lib/cloud/guard-receipts.js';
 
 export const metadata = {
   title: 'Guard Receipts — EMILIA Cloud',
   description: 'Recent GovGuard + FinGuard trust receipts and their lifecycle state.',
 };
-
-// Pull the last N guard.* events. With 500 events we cover a wide enough
-// window to display ~50 receipts including their full timeline (each
-// receipt has 1-5 events: created, signoff_requested?, signoff_decided?,
-// consumed?). Increase if the page starts truncating active receipts.
-const RECENT_EVENT_LIMIT = 500;
-
-async function loadRecentReceipts() {
-  try {
-    const supabase = getServiceClient();
-    const { data: events, error } = await supabase
-      .from('audit_events')
-      .select('event_type, target_id, actor_id, after_state, created_at')
-      .like('event_type', 'guard.%')
-      .order('created_at', { ascending: false })
-      .limit(RECENT_EVENT_LIMIT);
-    if (error) {
-      logger.warn('[guard-receipts dashboard] audit_events fetch failed:', error.message);
-      return { receipts: [], error: error.message };
-    }
-
-    // Group events by target_id (receipt_id) and replay to current state.
-    const byReceipt = new Map();
-    for (const e of events || []) {
-      if (!byReceipt.has(e.target_id)) byReceipt.set(e.target_id, []);
-      byReceipt.get(e.target_id).push(e);
-    }
-
-    const receipts = [];
-    for (const [receiptId, evs] of byReceipt) {
-      const eventsAsc = [...evs].reverse(); // chronological
-      const created = eventsAsc.find((e) => e.event_type === 'guard.trust_receipt.created');
-      if (!created) continue;
-      const base = created.after_state || {};
-
-      let status = base.receipt_status || 'issued';
-      if (eventsAsc.some((e) => e.event_type === 'guard.trust_receipt.consumed')) status = 'consumed';
-      else if (findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.rejected')) status = 'rejected';
-      else if (findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.approved')) status = 'approved_pending_consume';
-
-      receipts.push({
-        receipt_id: receiptId,
-        action_type: base.action_type || 'unknown',
-        organization_id: base.organization_id || 'unknown',
-        decision: base.decision || 'unknown',
-        enforcement_mode: base.enforcement_mode || 'enforce',
-        status,
-        adapter: base.adapter || null,
-        amount: base.amount ?? null,
-        currency: base.currency ?? null,
-        created_at: created.created_at,
-        signoff_required: !!base.signoff_required,
-      });
-    }
-
-    receipts.sort((a, b) => b.created_at.localeCompare(a.created_at));
-    return { receipts, error: null };
-  } catch (err) {
-    logger.warn('[guard-receipts dashboard] threw:', err?.message);
-    return { receipts: [], error: 'Dashboard query failed.' };
-  }
-}
 
 function statusBadge(status) {
   const colors = {
@@ -155,8 +93,15 @@ export default async function GuardReceiptsPage() {
   if (auth.error) {
     return <SignInRequired />;
   }
+  if (typeof auth.tenantId !== 'string' || auth.tenantId.length === 0) {
+    return <SignInRequired />;
+  }
 
-  const { receipts, error } = await loadRecentReceipts();
+  const { receipts, error } = await loadTenantGuardReceipts({
+    supabase: getServiceClient(),
+    tenantId: auth.tenantId,
+    log: logger,
+  });
 
   // Aggregate stats
   const total = receipts.length;

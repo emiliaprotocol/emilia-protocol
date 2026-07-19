@@ -11,6 +11,29 @@
  */
 
 import crypto from 'crypto';
+import { strictJsonGate } from './strict-json.js';
+
+export { AGENTROA_DRAFT, verifyAgentROA } from './agentroa.js';
+export {
+  ORPRG_JSON_JCS_PROFILE,
+  ORPRG_ACTION_PROFILE,
+  computeOrprgActionDigest,
+  verifyOrprgJsonJcsPermit,
+  verifyOrprgJsonJcsPermitAsync,
+  createOrprgAecVerifier,
+} from './orprg.js';
+
+const FATAL_UTF8 = new TextDecoder('utf-8', { fatal: true });
+
+function decodeBase64url(value) {
+  if (typeof value !== 'string' || value.length === 0
+      || !/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) {
+    throw new Error('value is not canonical base64url');
+  }
+  const decoded = Buffer.from(value, 'base64url');
+  if (decoded.toString('base64url') !== value) throw new Error('value is not canonical base64url');
+  return decoded;
+}
 
 // =============================================================================
 // CONSTANTS
@@ -123,6 +146,94 @@ export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestat
 // renewal chain) so a receipt's non-repudiation survives algorithm aging.
 export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 
+// RFC 6962 §2.1.2 checkpoint consistency over EP-MERKLE-v2 branch hashing.
+// Used by verifyTrustReceipt when the caller pins a prior checkpoint head
+// (opts.priorCheckpoint), and re-exported for log tooling and witnesses.
+import { verifyCheckpointConsistency } from './consistency.js';
+export { verifyCheckpointConsistency, CONSISTENCY_ALG } from './consistency.js';
+
+// ── OPT-IN transparency/currency knobs wired into verifyTrustReceipt ──────────
+// Each of the five modules below is an independent, additive check. It runs
+// ONLY when its dedicated option is supplied, adds ONE key to result.checks,
+// and folds into `valid` by conjunction. With none of the options set,
+// verifyTrustReceipt's `checks` keeps its frozen seven members and behaves
+// byte-for-byte as before. Every knob fails closed exactly as its module
+// specifies. See each module for the full honesty boundary.
+
+// EP-WITNESS-v1: k-of-n independent witness cosignatures over ONE checkpoint
+// head. Proves k distinct trusted witnesses attested to that head (the local,
+// single-view half of equivocation detection); does NOT by itself prove no
+// split view was shown elsewhere (needs gossip).
+import { requireWitnessQuorum } from './witness.js';
+export {
+  verifyWitnessCosignature,
+  requireWitnessQuorum,
+  witnessSigningDigest,
+  WITNESS_VERSION,
+  WITNESS_DOMAIN_TAG,
+} from './witness.js';
+
+// RFC 3161 timestamp token verification against a PINNED TSA key. Proves a TSA
+// asserted a digest existed at gen_time (the bytes predate gen_time); does NOT
+// prove the action was correct/authorized, and is authentic-as-of-token only.
+import { verifyTimestampProof } from './timestamp-proof.js';
+export { verifyTimestampProof, TIMESTAMP_PROOF_ALG } from './timestamp-proof.js';
+
+// EP-CURRENCY-v1: the two-axis authenticity-vs-currency evaluation. `unknown`
+// is the honest offline default: offline verification can NEVER prove currency.
+// Only a supplied, recent, non-revoking signed head reaches `fresh`.
+import { evaluateCurrency } from './currency.js';
+export {
+  evaluateCurrency,
+  CURRENCY_VERSION,
+  CURRENCY_STATUS,
+  CURRENCY_REASON,
+} from './currency.js';
+
+// EP-SMT-CONSUME-v1: third-party proof that a one-time nonce transitioned
+// absent -> present exactly once across two append-only-linked heads. Proves
+// the tree-shaped consumption facts only; checkpoint SIGNATURES are the
+// caller's responsibility, and it does NOT establish currency of h2.
+import { verifyConsumptionProof } from './consumption-proof.js';
+export {
+  verifyConsumptionProof,
+  ReferenceConsumptionTree,
+  CONSUMPTION_PROFILE,
+  CONSUMPTION_LEAF_DOMAIN,
+  SMT_DEPTH,
+} from './consumption-proof.js';
+
+// EP-INITIATOR-ATTESTATION-v1: fail-closed structural validation of the
+// self-asserted initiating-software attestation (model_id / model_version /
+// tool_chain_digest / neutralized statement). It says WHICH software asked; it
+// does NOT prove the software behaved (labels are self-asserted).
+import { validateInitiatorAttestation } from './initiator-attestation.js';
+export {
+  validateInitiatorAttestation,
+  neutralizeStatement,
+  normalizeDigest,
+  bindInto as bindInitiatorAttestation,
+  INITIATOR_ATTESTATION_VERSION,
+  INITIATOR_ATTESTATION_FIELD,
+  INITIATOR_STATEMENT_MAX,
+} from './initiator-attestation.js';
+
+// EP-SURFACE-BINDING-v1: the possession-row join. The signed action object
+// references the approval-surface evidence (condition-bounded credential
+// presentation, platform attestation) as an opaque digest, so the possession
+// row and the authorization row join by digest equality, each verified in its
+// own trust boundary. EP never verifies the possession-row evidence itself,
+// and possession evidence never substitutes for the authorization signature.
+export {
+  validateSurfaceBinding,
+  bindSurfaceInto,
+  receiptSurfaceBinding,
+  verifySurfaceBinding,
+  normalizeSurfaceDigest,
+  SURFACE_BINDING_VERSION,
+  SURFACE_BINDING_FIELD,
+} from './surface-binding.js';
+
 // EP-MERKLE-v1 (legacy): sorted-pair, no domain separation. Kept verifying
 // forever for already-anchored receipts. Do NOT use for new anchors.
 function hashPair(a, b) {
@@ -186,9 +297,17 @@ export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
 
   try {
     const payloadBytes = Buffer.from(canonicalize(doc.payload), 'utf8');
-    const publicKeyDer = Buffer.from(publicKeyBase64url, 'base64url');
+    const publicKeyDer = decodeBase64url(publicKeyBase64url);
     const keyObject = crypto.createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
-    const sigBytes = Buffer.from(doc.signature.value, 'base64url');
+    // EP-RECEIPT-v1 is Ed25519 over JCS. crypto.verify(null, ...) dispatches on the
+    // key type, so without this guard a non-Ed25519 pinned key (EC/RSA) would be
+    // verified under a different algorithm than the receipt declares. Pin the curve
+    // here to match the hardcoded Ed25519 of the web verifier (verify-web.js) and
+    // reject any other key type fail-closed.
+    if (keyObject.asymmetricKeyType !== 'ed25519') {
+      return { valid: false, checks, error: `Unsupported issuer key type '${keyObject.asymmetricKeyType}'; EP-RECEIPT-v1 requires Ed25519` };
+    }
+    const sigBytes = decodeBase64url(doc.signature.value);
     checks.signature = crypto.verify(null, payloadBytes, keyObject, sigBytes);
   } catch (e) {
     return { valid: false, checks, error: `Signature verification failed: ${e.message}` };
@@ -265,7 +384,7 @@ const FLAG_UV = 0x04;
  * What this proves with pure math, no network, no EP server:
  *   - the WebAuthn challenge the device signed equals
  *     SHA-256(JCS(context)) for the EXACT context in the signoff — which
- *     binds the action hash, nonce, approver, and validity window;
+ *     binds the action hash, decision, nonce, approver, and validity window;
  *   - the signature verifies against the approver's enrolled P-256 key;
  *   - the authenticator asserted user presence AND user verification
  *     (a human with the biometric/PIN was there);
@@ -284,7 +403,7 @@ const FLAG_UV = 0x04;
  *   }
  * }
  * @param {string} approverPublicKeySpkiB64u - enrolled P-256 key, SPKI DER b64u
- * @param {{ rpId?: string }} [opts]
+ * @param {{ rpId?: string, allowedOrigins?: string[] }} [opts]
  * @returns {{ valid: boolean, checks: object, error?: string }}
  */
 export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts = {}) {
@@ -309,8 +428,13 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
     // 1. Challenge binding: clientDataJSON.challenge must equal
     //    b64u(SHA-256(canonical(context))). The context is re-canonicalized
     //    here — tamper any field (amount, approver, nonce) and this fails.
-    const clientDataBytes = Buffer.from(client_data_json, 'base64url');
-    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
+    const clientDataBytes = decodeBase64url(client_data_json);
+    const clientDataText = FATAL_UTF8.decode(clientDataBytes);
+    const clientDataGate = strictJsonGate(clientDataText);
+    if (!clientDataGate.ok) {
+      return { valid: false, checks, error: `Invalid clientDataJSON: ${clientDataGate.reason}` };
+    }
+    const clientData = JSON.parse(clientDataText);
     const expectedChallenge = crypto
       .createHash('sha256')
       .update(canonicalize(signoff.context), 'utf8')
@@ -321,8 +445,16 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
     // 2. Ceremony type must be an assertion, not a registration.
     checks.client_data_type = clientData.type === 'webauthn.get';
 
+    if (Array.isArray(opts.allowedOrigins)) {
+      if (opts.allowedOrigins.length === 0
+          || !opts.allowedOrigins.includes(clientData.origin)
+          || clientData.crossOrigin === true) {
+        return { valid: false, checks, error: 'WebAuthn origin is not allowed' };
+      }
+    }
+
     // 3. Authenticator flags: user present + user verified.
-    const authData = Buffer.from(authenticator_data, 'base64url');
+    const authData = decodeBase64url(authenticator_data);
     if (authData.length < 37) {
       return { valid: false, checks, error: 'authenticator_data too short' };
     }
@@ -342,7 +474,7 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
       crypto.createHash('sha256').update(clientDataBytes).digest(),
     ]);
     const keyObject = crypto.createPublicKey({
-      key: Buffer.from(approverPublicKeySpkiB64u, 'base64url'),
+      key: decodeBase64url(approverPublicKeySpkiB64u),
       format: 'der',
       type: 'spki',
     });
@@ -350,7 +482,7 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
       'sha256',
       signedData,
       keyObject,
-      Buffer.from(signature, 'base64url'),
+      decodeBase64url(signature),
     );
   } catch (e) {
     return { valid: false, checks, error: `WebAuthn verification failed: ${e.message}` };
@@ -403,9 +535,9 @@ export function verifyCommitmentProof(proof, publicKeyBase64url, options = {}) {
 
   try {
     const commitmentBytes = Buffer.from(canonicalize(proof.commitment), 'utf8');
-    const publicKeyDer = Buffer.from(publicKeyBase64url, 'base64url');
+    const publicKeyDer = decodeBase64url(publicKeyBase64url);
     const keyObject = crypto.createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
-    const sigBytes = Buffer.from(proof.signature.value, 'base64url');
+    const sigBytes = decodeBase64url(proof.signature.value);
     if (!crypto.verify(null, commitmentBytes, keyObject, sigBytes)) {
       return { valid: false, claim: proof.claim, error: 'Invalid signature' };
     }
@@ -474,19 +606,41 @@ function sha256Bytes(input) {
   return crypto.createHash('sha256').update(input, 'utf8').digest();
 }
 
+// Canonical EP timestamp profile: RFC 3339 with an explicit UTC offset ("Z" or
+// ±hh:mm). No-timezone ("2026-07-01T12:00:00") and date-only ("2026-07-01")
+// forms are REJECTED — they are ambiguous (UTC vs local) and must never satisfy
+// a validity window. This is the single profile JS, Python, and Go all parse
+// identically and reject identically (fail-closed). Returns epoch ms or NaN.
+const RFC3339_OFFSET = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+function parseInstant(value) {
+  if (typeof value !== 'string') return NaN;
+  const match = value.match(RFC3339_OFFSET);
+  if (!match) return NaN;
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = match;
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(Number(year), Number(month) - 1, Number(day));
+  calendar.setUTCHours(Number(hour), Number(minute), Number(second), 0);
+  if (calendar.toISOString().slice(0, 19) !== `${year}-${month}-${day}T${hour}:${minute}:${second}`) return NaN;
+  if (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59)) return NaN;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
 function withinWindow(t, from, to) {
-  const ts = Date.parse(t);
+  const ts = parseInstant(t);
   if (Number.isNaN(ts)) return false;
-  if (from && ts < Date.parse(from)) return false;
-  if (to && ts > Date.parse(to)) return false;
+  if (from) { const f = parseInstant(from); if (Number.isNaN(f) || ts < f) return false; }
+  if (to) { const g = parseInstant(to); if (Number.isNaN(g) || ts > g) return false; }
   return true;
 }
 
 function parseClassAAssertion(webauthn) {
   try {
-    const clientDataBytes = Buffer.from(webauthn.client_data_json, 'base64url');
-    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
-    const authData = Buffer.from(webauthn.authenticator_data, 'base64url');
+    const clientDataBytes = decodeBase64url(webauthn.client_data_json);
+    const clientDataText = FATAL_UTF8.decode(clientDataBytes);
+    if (!strictJsonGate(clientDataText).ok) return null;
+    const clientData = JSON.parse(clientDataText);
+    const authData = decodeBase64url(webauthn.authenticator_data);
     if (authData.length < 37) return null;
     return { authData, clientData, clientDataBytes };
   } catch {
@@ -495,22 +649,31 @@ function parseClassAAssertion(webauthn) {
 }
 
 // WebAuthn Class-A assertion bound to a context digest (challenge = b64u(digest)).
-function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
+function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u, opts = {}) {
   try {
     const parsed = parseClassAAssertion(webauthn);
     if (!parsed) return false;
     const { authData, clientData, clientDataBytes } = parsed;
     if (clientData.type !== 'webauthn.get') return false;
     if (clientData.challenge !== Buffer.from(digestBytes).toString('base64url')) return false;
+    if (opts.rpId) {
+      const expectedRpIdHash = crypto.createHash('sha256').update(opts.rpId, 'utf8').digest();
+      if (!expectedRpIdHash.equals(authData.subarray(0, 32))) return false;
+    }
+    if (Array.isArray(opts.allowedOrigins)) {
+      if (opts.allowedOrigins.length === 0
+        || !opts.allowedOrigins.includes(clientData.origin)
+        || clientData.crossOrigin === true) return false;
+    }
 
     if ((authData[32] & FLAG_UP) !== FLAG_UP) return false; // human presence required
     if ((authData[32] & FLAG_UV) !== FLAG_UV) return false; // biometric/PIN verification required
 
     const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataBytes).digest()]);
     const keyObject = crypto.createPublicKey({
-      key: Buffer.from(publicKeySpkiB64u, 'base64url'), format: 'der', type: 'spki',
+      key: decodeBase64url(publicKeySpkiB64u), format: 'der', type: 'spki',
     });
-    return crypto.verify('sha256', signedData, keyObject, Buffer.from(webauthn.signature, 'base64url'));
+    return crypto.verify('sha256', signedData, keyObject, decodeBase64url(webauthn.signature));
   } catch {
     return false;
   }
@@ -519,9 +682,9 @@ function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
 function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) {
   try {
     const keyObject = crypto.createPublicKey({
-      key: Buffer.from(publicKeySpkiB64u, 'base64url'), format: 'der', type: 'spki',
+      key: decodeBase64url(publicKeySpkiB64u), format: 'der', type: 'spki',
     });
-    return crypto.verify(null, digestBytes, keyObject, Buffer.from(signatureB64u, 'base64url'));
+    return crypto.verify(null, digestBytes, keyObject, decodeBase64url(signatureB64u));
   } catch {
     return false;
   }
@@ -530,6 +693,7 @@ function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) 
 const STRICT_CHECK_NAMES = [
   'pinned_keys',
   'rp_id',
+  'origin',
   'user_presence',
   'user_verification',
   'key_windows',
@@ -547,7 +711,19 @@ function createStrictReport(enabled) {
 }
 
 function parseableTimestamp(value) {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
+  return typeof value === 'string' && !Number.isNaN(parseInstant(value));
+}
+
+// Canonical required_approvals coercion (fail-closed, shared semantics with the
+// Python and Go verifiers): the threshold MUST be an integer-typed JSON number.
+// A string ("2"), a float (2.5), or any non-integer is treated as malformed and
+// forces the whole receipt to fail — a lower/under-approval must never satisfy a
+// higher threshold because the type was coerced away. Returns an integer >= 1,
+// or null if malformed.
+function coerceRequiredApprovals(value) {
+  if (value === undefined || value === null) return 1;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) return null;
+  return value;
 }
 
 function markStrict(report, name, ok, message) {
@@ -573,7 +749,12 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
       pinnedKeysOk = false;
       report.errors.push(`strict pinned_keys has no pinned public key for ${s.approver_key_id}`);
     }
-    const keyClass = s.key_class || keyEntry?.key_class || 'B';
+    // Pinned key class is authoritative (see default path): a pinned Class-A key
+    // is always evaluated as Class-A even if the signoff declares key_class:'B',
+    // so its WebAuthn UP/UV checks below cannot be downgraded away.
+    // Classification is a relying-party directory fact. An omitted class is
+    // Class B; the presented signoff can never promote its own key to Class A.
+    const keyClass = keyEntry?.key_class === 'A' ? 'A' : 'B';
     if (keyClass === 'A') classASignoffs.push({ signoff: s, keyEntry });
   }
   markStrict(report, 'pinned_keys', pinnedKeysOk);
@@ -599,6 +780,23 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
     }
   }
   markStrict(report, 'rp_id', rpOk);
+
+  let originOk = true;
+  if (classASignoffs.length > 0
+      && (!Array.isArray(opts.allowedOrigins) || opts.allowedOrigins.length === 0)) {
+    originOk = false;
+    report.errors.push('strict origin requires a non-empty opts.allowedOrigins for Class-A WebAuthn signoffs');
+  }
+  for (const { signoff } of classASignoffs) {
+    const parsed = parseClassAAssertion(signoff.webauthn);
+    if (!parsed
+        || !opts.allowedOrigins?.includes(parsed.clientData.origin)
+        || parsed.clientData.crossOrigin === true) {
+      originOk = false;
+      report.errors.push('strict origin rejects the Class-A WebAuthn origin');
+    }
+  }
+  markStrict(report, 'origin', originOk);
 
   let upOk = true;
   let uvOk = true;
@@ -684,7 +882,10 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
     requireField(s?.approver_key_id, 'strict no_unsigned requires every signoff to carry approver_key_id');
     requireField(s?.key_class, 'strict no_unsigned requires every signoff to carry key_class');
     requireField(s?.signed_at, 'strict no_unsigned requires every signoff to carry signed_at');
-    const keyClass = s?.key_class || approverKeys[s?.approver_key_id]?.key_class || 'B';
+    // Pinned key class is authoritative: a pinned Class-A key must carry a full
+    // WebAuthn assertion; the attacker cannot declare key_class:'B' to reduce the
+    // no_unsigned requirement to a bare Ed25519 signature.
+    const keyClass = approverKeys[s?.approver_key_id]?.key_class === 'A' ? 'A' : 'B';
     if (keyClass === 'A') {
       requireField(s?.webauthn?.authenticator_data, 'strict no_unsigned requires Class-A authenticator_data');
       requireField(s?.webauthn?.client_data_json, 'strict no_unsigned requires Class-A client_data_json');
@@ -776,24 +977,102 @@ function buildAttestationReport(contexts) {
   return { present: true, consistent, issues };
 }
 
+function trustReceiptCanonicalProfileError(receipt) {
+  const leafContent = { ...receipt };
+  delete leafContent.log_proof;
+  delete leafContent.approver_key_proofs;
+  if (!isCanonicalizable(leafContent)) return 'Trust Receipt body';
+
+  const checkpoint = receipt?.log_proof?.checkpoint;
+  if (checkpoint && typeof checkpoint === 'object') {
+    const signedCheckpoint = { ...checkpoint };
+    delete signedCheckpoint.log_signature;
+    if (!isCanonicalizable(signedCheckpoint)) return 'Trust Receipt checkpoint';
+  }
+  return null;
+}
+
 /**
  * Verify a Trust Receipt (I-D Section 6.2) fully offline — the Section 6.3
  * algorithm. All six steps; fails closed on any missing input.
  *
  * @param {object} receipt - Section 6.2 Trust Receipt
  * @param {object} opts
- * @param {Record<string, {public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
- *   - pinned approver key entries by approver_key_id (or a directory extract)
- * @param {string} opts.logPublicKey - trusted log Ed25519 key (base64url SPKI DER)
+ * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} [opts.approverKeys]
+ *   - pinned approver key entries by approver_key_id (or a directory extract).
+ *   Required for a meaningful result; the body defaults a missing/empty opts to
+ *   {} and fails closed rather than throwing.
+ * @param {string} [opts.logPublicKey] - trusted log Ed25519 key (base64url SPKI DER)
  * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
  * @param {string} [opts.rpId] - expected WebAuthn RP ID when strict mode sees Class-A signoffs
  * @param {string} [opts.expectedPolicyHash] - expected policy hash when strict mode is enabled
- * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] } }}
+ * @param {boolean} [opts.allowLegacyMerkle] - DORMANT opt-in: verify pre-v2
+ *   (sorted-pair, undomain-separated) Merkle inclusion. Never the default; never
+ *   used by production gates.
+ * @param {boolean} [opts.allowLegacyTrustReceiptMerkle] - alias of allowLegacyMerkle
+ * @param {{tree_size:number, root_hash:string, consistency_proof:string[]}} [opts.priorCheckpoint]
+ *   OPT-IN append-only check: a checkpoint head this verifier previously
+ *   OBSERVED and pinned, plus the RFC 6962 consistency proof from that head to
+ *   the receipt's checkpoint (obtained from the log; EP-MERKLE-v2 branch
+ *   hashing). When set, verification adds a fail-closed `checks.consistency`
+ *   gate. NOTE (honesty): this proves append-only consistency between two
+ *   observed heads only; it does NOT establish currency or split-view honesty
+ *   by itself (that needs independent witnesses).
+ *
+ * The five options below are ADDITIVE, OPT-IN knobs. Each runs ONLY when its
+ * option is supplied, adds exactly one member to `checks`, and folds into
+ * `valid` by conjunction. With none supplied, `checks` keeps its frozen seven
+ * members and the result is byte-for-byte unchanged. Each fails closed.
+ *
+ * @param {{cosignatures:object[], pinnedWitnessKeys:Array<{witness_id:string,public_key:string}>, k:number}} [opts.witnessQuorum]
+ *   OPT-IN (EP-WITNESS-v1): require >= k DISTINCT pinned witnesses to have
+ *   validly cosigned the receipt's checkpoint head. Adds fail-closed
+ *   `checks.witness_quorum` and surfaces the full quorum report as
+ *   result.witness_quorum. HONESTY: proves k trusted witnesses attested to ONE
+ *   head (local single-view); it does NOT prove no different head was shown
+ *   elsewhere (that cross-view gossip is the deployment's responsibility).
+ *   Fail-closed: missing receipt checkpoint, bad k, or < k distinct valid
+ *   cosignatures each refuse.
+ * @param {{token:(string|Buffer), expectedDigest:(string|Buffer), pinnedTsaKeys:(string|string[]|object)}} [opts.timestampProof]
+ *   OPT-IN (RFC 3161): verify a TSA timestamp token over a caller-chosen
+ *   `expectedDigest` (e.g. the checkpoint root or action digest) against a
+ *   PINNED TSA key. Adds fail-closed `checks.timestamp_proof` and surfaces
+ *   result.timestamp_proof (tsa_key_id, gen_time, reason). HONESTY: proves a
+ *   TSA asserted the digest existed at gen_time; it does NOT prove the action
+ *   was correct/authorized and is authentic-as-of-token only (says nothing
+ *   about current TSA-cert validity).
+ * @param {{now?:(number|string|Date), maxStalenessSeconds?:number, freshHead?:object, freshHeadRequired?:boolean, authentic_as_of_commit?:boolean}} [opts.currency]
+ *   OPT-IN (EP-CURRENCY-v1): evaluate currency-at-T. Adds `checks.currency`,
+ *   which passes ONLY when a supplied recent non-revoking signed head proves
+ *   status `fresh`; BOTH `stale` and the honest offline default `unknown` fail
+ *   this opted-in gate (fail-closed: absence of proof of freshness does not
+ *   pass). The full two-axis result is surfaced as result.currency. HONESTY:
+ *   offline verification can NEVER prove currency; `authentic_as_of_commit` is a
+ *   separate axis from `currency_at_T`.
+ * @param {object} [opts.consumptionProof]
+ *   OPT-IN (EP-SMT-CONSUME-v1): a third-party bundle proving a one-time nonce
+ *   went absent -> present exactly once across two append-only-linked heads.
+ *   Adds fail-closed `checks.consumption` and surfaces result.consumption.
+ *   HONESTY: proves the tree-shaped consumption facts only; checkpoint
+ *   SIGNATURES are the caller's responsibility and it does NOT establish
+ *   currency of the later head.
+ * @param {boolean} [opts.requireInitiatorAttestation]
+ *   OPT-IN (EP-INITIATOR-ATTESTATION-v1): when true, structurally validate the
+ *   self-asserted initiating-software attestation at
+ *   receipt.action.initiator_software. Adds fail-closed
+ *   `checks.initiator_attestation` (absent or malformed => false) and surfaces
+ *   result.initiator_attestation. HONESTY: says WHICH software asked; it does
+ *   NOT prove the software behaved (labels are self-asserted).
+ * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] }, witness_quorum?:object, timestamp_proof?:object, currency?:object, consumption?:object, initiator_attestation?:object }}
  *   `attestation` is the PIP-007 §2 ADVISORY report. It never affects `valid` or
  *   any member of `checks`: a receipt with a malformed or inconsistent
  *   attestation still verifies (or fails) on its cryptographic checks alone.
+ *   The opt-in `witness_quorum` / `timestamp_proof` / `currency` / `consumption`
+ *   / `initiator_attestation` result members are present ONLY when their
+ *   respective option was supplied.
  */
 export function verifyTrustReceipt(receipt, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const checks = {
     action_hash: false,        // step 1
     context_commitments: false, // step 2
@@ -817,6 +1096,20 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
   if (!receipt.action || !receipt.action_hash) return fail('Missing action or action_hash');
   if (contexts.length === 0 || signoffs.length === 0) return fail('Missing contexts or signoffs');
+  const profileError = trustReceiptCanonicalProfileError(receipt);
+  if (profileError) {
+    return fail(`${profileError} is outside the EP canonicalization profile; encode non-integer quantities as strings`);
+  }
+
+  // I-JSON canonicalization gate (fail-closed) — identical guard to verifyReceipt.
+  // Every field folded into a signed digest below (action, contexts, leaf content)
+  // is re-canonicalized; a value outside the profile (e.g. 1e-7, 1e20, unsafe int)
+  // canonicalizes differently across JS/Py/Go, so it is rejected here rather than
+  // silently disagreeing. The signature/proof fields are excluded from the check.
+  const { signoffs: _s, log_proof: _lp, approver_key_proofs: _akp, ...canonicalScope } = receipt;
+  if (!isCanonicalizable(canonicalScope)) {
+    return fail('Receipt contains a value outside the EP canonicalization profile; use strings or safe integers in signed material');
+  }
 
   // ── Step 1: recompute the action hash from the canonical Action Object ────
   const actionHashHex = sha256(canonicalize(receipt.action));
@@ -853,7 +1146,8 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   checks.context_commitments = commitmentsOk;
 
   // ── Step 3: per signoff — signature over the context hash vs approver key ─
-  const validApprovals = []; // { approver, signedAt, ctx }
+  const validSignoffs = []; // cryptographically valid signed decisions, including denials
+  const validApprovals = []; // validSignoffs whose signed decision authorizes the action
   let signaturesOk = signoffs.length > 0;
   for (const s of signoffs) {
     const digestHex = hexOf(s.context_hash);
@@ -869,6 +1163,22 @@ export function verifyTrustReceipt(receipt, opts = {}) {
       errors.push(`no pinned key entry for ${s.approver_key_id}`);
       continue;
     }
+    // A pinned key proves a principal only when the directory entry names that
+    // principal. Without this join, any pinned low-privilege key can sign a
+    // context that self-asserts a CFO/clinician/admin approver and the receipt
+    // falsely reports that the named human approved. The Approver Directory
+    // contract requires approver_id; missing or mismatched identity is a hard
+    // signature failure, not advisory metadata.
+    if (typeof keyEntry.approver_id !== 'string' || keyEntry.approver_id.length === 0) {
+      signaturesOk = false;
+      errors.push(`pinned key ${s.approver_key_id} is missing approver_id`);
+      continue;
+    }
+    if (keyEntry.approver_id !== ctx.approver) {
+      signaturesOk = false;
+      errors.push(`pinned key ${s.approver_key_id} belongs to ${keyEntry.approver_id}, not context approver ${ctx.approver}`);
+      continue;
+    }
     // Key validity window must contain the context's issued_at (Section 5.2).
     if (!withinWindow(ctx.issued_at, keyEntry.valid_from, keyEntry.valid_to)) {
       signaturesOk = false;
@@ -876,24 +1186,48 @@ export function verifyTrustReceipt(receipt, opts = {}) {
       continue;
     }
     const digestBytes = Buffer.from(digestHex, 'hex');
-    const keyClass = s.key_class || keyEntry.key_class || 'B';
+    // The PINNED key entry's class is authoritative and takes precedence over the
+    // attacker-controlled signoff's declared key_class. Otherwise an attacker
+    // pins a Class-A (WebAuthn, user-presence/user-verification) approver but
+    // declares key_class:'B' and supplies a bare ECDSA/Ed25519 signature over the
+    // digest, downgrading to raw-signature verification with NO WebAuthn proof.
+    // A pinned Class-A key MUST be satisfied by a real WebAuthn assertion and is
+    // rejected if it only carries a raw signature.
+    const keyClass = keyEntry.key_class === 'A' ? 'A' : 'B';
     const sigOk = keyClass === 'A'
-      ? Boolean(s.webauthn) && verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key)
+      ? Boolean(s.webauthn) && verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key, opts)
       : verifyEd25519OverDigest(s.signature, digestBytes, keyEntry.public_key);
     if (!sigOk) {
       signaturesOk = false;
       errors.push(`signoff by ${ctx.approver} does not verify`);
       continue;
     }
-    validApprovals.push({ approver: ctx.approver, signedAt: s.signed_at, ctx });
+    const verifiedSignoff = { approver: ctx.approver, signedAt: s.signed_at, ctx };
+    validSignoffs.push(verifiedSignoff);
+    // Pre-decision Authorization Contexts remain compatible as implicit
+    // approvals. Once a decision is present, only the typed `approved` outcome
+    // can satisfy authorization; a valid signature over `denied` remains useful
+    // decision evidence but cannot be counted as an approval.
+    if (ctx.decision === undefined || ctx.decision === 'approved') {
+      validApprovals.push(verifiedSignoff);
+    } else if (ctx.decision === 'denied') {
+      errors.push(`signed denial by ${ctx.approver} does not authorize the action`);
+    } else {
+      errors.push(`signed decision by ${ctx.approver} is not a recognized approval outcome`);
+    }
   }
   checks.signoff_signatures = signaturesOk;
 
   // ── Step 4: separation of duties ──────────────────────────────────────────
   const initiator = receipt.action.initiator;
   const approvers = validApprovals.map((a) => a.approver);
-  const requiredApprovals = Math.max(1, ...contexts.map((c) => Number(c.required_approvals) || 1));
+  const coerced = contexts.map((c) => coerceRequiredApprovals(c.required_approvals));
   let sodOk = true;
+  if (coerced.some((n) => n === null)) {
+    sodOk = false;
+    errors.push('required_approvals must be an integer >= 1 (fail-closed on non-integer)');
+  }
+  const requiredApprovals = Math.max(1, ...coerced.map((n) => n ?? 1));
   if (initiator && approvers.includes(initiator)) {
     sodOk = false;
     errors.push('initiator appears in an approver slot (SoD violation)');
@@ -914,9 +1248,54 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     const leafContent = { ...receipt };
     delete leafContent.log_proof;
     delete leafContent.approver_key_proofs;
-    const leafHash = sha256(canonicalize(leafContent));
-    checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash));
-    if (!checks.inclusion) errors.push('Merkle inclusion proof does not reconstruct the checkpoint root');
+    const canonicalLeaf = canonicalize(leafContent);
+    const merkleAlg = lp.alg || lp.checkpoint?.merkle_alg || null;
+    // Degenerate empty-path rule (fail-closed): with an empty inclusion_path the
+    // Merkle fold collapses to leafHash === root_hash, which is only a true
+    // inclusion statement for a SINGLE-LEAF tree. Without this gate, a forged
+    // checkpoint whose root_hash simply repeats the leaf hash would "include"
+    // the receipt at ANY claimed tree_size. An empty path is therefore accepted
+    // ONLY when the checkpoint's tree_size is exactly the integer 1 (and, since
+    // this shape carries an index, leaf_index — when present — is 0). Any other
+    // tree size (including a missing or non-integer tree_size) refuses with a
+    // distinct reason. Applies to v2 AND opt-in legacy folds; mirrored by the
+    // Python and Go ports.
+    let emptyPathRefusal = null;
+    if (lp.inclusion_path.length === 0) {
+      if (lp.checkpoint.tree_size !== 1) {
+        emptyPathRefusal = 'empty inclusion_path requires checkpoint tree_size 1 (single-leaf tree)';
+      } else if (lp.leaf_index !== undefined && lp.leaf_index !== 0) {
+        emptyPathRefusal = 'empty inclusion_path requires leaf_index 0 in a single-leaf tree';
+      }
+    }
+    if (emptyPathRefusal) {
+      checks.inclusion = false;
+      errors.push(emptyPathRefusal);
+    } else if (merkleAlg === MERKLE_V2_ALG) {
+      // EP-MERKLE-v2 (default): leaf is domain-separated (0x00) and bound to the
+      // canonical receipt payload; the proof folds with positional, domain-
+      // separated (0x01) branch hashing. Closes leaf/branch second-preimage
+      // confusion and root equivocation. When log_proof carries an explicit
+      // leaf_hash, it must bind THIS receipt's canonical payload.
+      const leafHash = leafHashV2(canonicalLeaf);
+      const presentedLeaf = lp.leaf_hash ? hexOf(lp.leaf_hash) : leafHash;
+      checks.inclusion = presentedLeaf === leafHash
+        && verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash), { v2: true });
+      if (presentedLeaf !== leafHash) errors.push('Trust Receipt log_proof leaf_hash does not bind this receipt');
+      else if (!checks.inclusion) errors.push('EP-MERKLE-v2 inclusion proof does not reconstruct the checkpoint root');
+    } else if (opts.allowLegacyMerkle === true || opts.allowLegacyTrustReceiptMerkle === true) {
+      // Dormant legacy path: pre-v2 (sorted-pair, undomain-separated) inclusion
+      // verifies ONLY when the caller explicitly opts in. Never the default,
+      // never used by production gates.
+      const leafHash = sha256(canonicalLeaf);
+      checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash));
+      if (!checks.inclusion) errors.push('legacy EP-MERKLE-v1 inclusion proof does not reconstruct the checkpoint root');
+    } else {
+      // Default (and every production gate): require EP-MERKLE-v2. A legacy v1
+      // proof is refused unless the caller passes { allowLegacyMerkle: true }.
+      checks.inclusion = false;
+      errors.push('log_proof is not EP-MERKLE-v2 (legacy v1 refused unless allowLegacyMerkle is set)');
+    }
 
     if (logPublicKey && lp.checkpoint.log_signature) {
       const signedCheckpoint = { ...lp.checkpoint };
@@ -934,9 +1313,199 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     errors.push('missing log_proof (inclusion path + checkpoint)');
   }
 
+  // ── Step 5c (OPT-IN): append-only consistency from a pinned prior head ────
+  // When the caller pins a previously-OBSERVED checkpoint head
+  // (opts.priorCheckpoint = { tree_size, root_hash, consistency_proof }), the
+  // receipt's checkpoint MUST additionally be proven an append-only extension
+  // of that head via an RFC 6962 §2.1.2 consistency proof over EP-MERKLE-v2
+  // branch hashing (consistency.js). The proof travels IN THE OPTION, not
+  // inside the receipt's log_proof: a consistency proof is relative to
+  // whichever head THIS verifier pinned, so the issuer cannot embed one at
+  // issuance (no such field exists in the Section 6.2 artifact shape); the
+  // verifier obtains it from the log alongside the receipt and supplies it
+  // here. An EMPTY array is a legitimate proof only for equal heads (same
+  // tree_size, same root_hash); a missing/non-array proof always refuses.
+  //
+  // HONESTY: this proves append-only consistency between two OBSERVED heads.
+  // It does NOT establish currency (that the receipt's head is the log's
+  // latest) and does NOT by itself detect split-view equivocation (a log
+  // showing different histories to different verifiers) — that requires
+  // independent witnesses/gossip. See docs/security/TRANSPARENCY-LAYER-DESIGN.md.
+  //
+  // Fail-closed: option set + malformed pin, unusable receipt checkpoint,
+  // missing proof, or invalid proof each refuse with a distinct reason and
+  // fail the receipt via checks.consistency. Option NOT set: this block never
+  // runs, checks keeps its frozen seven members, and the result is unchanged.
+  if (opts.priorCheckpoint !== undefined) {
+    checks.consistency = false;
+    const prior = opts.priorCheckpoint;
+    const priorSize = prior?.tree_size;
+    const priorRoot = hexOf(prior?.root_hash);
+    const headSize = lp?.checkpoint?.tree_size;
+    const headRoot = hexOf(lp?.checkpoint?.root_hash);
+    if (!prior || typeof prior !== 'object' || !Number.isInteger(priorSize) || priorSize < 1 || !priorRoot) {
+      errors.push('priorCheckpoint requires integer tree_size >= 1 and root_hash');
+    } else if (!Number.isInteger(headSize) || !headRoot) {
+      errors.push('priorCheckpoint is pinned but the receipt checkpoint is missing tree_size or root_hash');
+    } else if (!Array.isArray(prior.consistency_proof)) {
+      errors.push('priorCheckpoint is pinned but consistency_proof is missing');
+    } else if (verifyCheckpointConsistency(priorRoot, priorSize, headRoot, headSize, prior.consistency_proof)) {
+      checks.consistency = true;
+    } else {
+      errors.push('consistency_proof does not prove an append-only extension from the pinned prior checkpoint');
+    }
+  }
+
+  // ── Step 5d..5h (OPT-IN transparency/currency knobs) ──────────────────────
+  // Each block below is additive and mirrors the priorCheckpoint pattern: it
+  // runs ONLY when its option is present, sets ONE new `checks` member to false
+  // first (fail-closed default) then flips it true only on a clean pass, and
+  // surfaces its full module result under a dedicated, option-gated member of
+  // `optionalResults`. When NO knob option is supplied, `checks` keeps exactly
+  // its frozen seven members and `optionalResults` stays empty, so the returned
+  // object is byte-for-byte identical to the pre-knob behavior.
+  const optionalResults = {};
+
+  // ── Step 5d (OPT-IN): k-of-n witness cosignatures (EP-WITNESS-v1) ─────────
+  // Require >= k DISTINCT pinned witnesses to have validly cosigned the
+  // receipt's checkpoint head. HONESTY: this proves k trusted witnesses saw ONE
+  // head (the local, single-view half of equivocation detection); it does NOT
+  // prove no different head was shown to someone else (needs gossip). Fail
+  // closed: a receipt with no usable checkpoint, or fewer than k distinct valid
+  // cosignatures, refuses via checks.witness_quorum. The module already returns
+  // ok:false for a bad k or non-array inputs.
+  if (opts.witnessQuorum !== undefined) {
+    checks.witness_quorum = false;
+    const wq = opts.witnessQuorum;
+    const checkpoint = lp?.checkpoint;
+    if (!checkpoint || typeof checkpoint !== 'object') {
+      optionalResults.witness_quorum = {
+        ok: false, met: 0, required: 0, witness_ids: [],
+        reasons: ['receipt has no checkpoint for witnesses to cosign'],
+      };
+      errors.push('witnessQuorum is set but the receipt checkpoint is missing');
+    } else if (!wq || typeof wq !== 'object') {
+      optionalResults.witness_quorum = {
+        ok: false, met: 0, required: 0, witness_ids: [],
+        reasons: ['witnessQuorum must be an object { cosignatures, pinnedWitnessKeys, k }'],
+      };
+      errors.push('witnessQuorum must be an object with cosignatures, pinnedWitnessKeys, and k');
+    } else {
+      const res = requireWitnessQuorum(checkpoint, wq.cosignatures, wq.pinnedWitnessKeys, wq.k);
+      optionalResults.witness_quorum = res;
+      checks.witness_quorum = res.ok === true;
+      if (!checks.witness_quorum) {
+        errors.push(`witness quorum not met: ${res.met}/${res.required} distinct pinned witnesses cosigned this head`);
+      }
+    }
+  }
+
+  // ── Step 5e (OPT-IN): RFC 3161 trusted-time proof (TIMESTAMP_PROOF_ALG) ────
+  // Verify a TSA timestamp token over a caller-chosen digest against a PINNED
+  // TSA key. HONESTY: proves a TSA asserted the digest existed at gen_time; it
+  // does NOT prove the action was correct/authorized and is authentic-as-of-
+  // token only. Fail closed: the module refuses (verified:false + reason) on
+  // missing token, missing/malformed digest, an unpinned TSA, or a bad
+  // signature; a refusal fails checks.timestamp_proof.
+  if (opts.timestampProof !== undefined) {
+    checks.timestamp_proof = false;
+    const tp = opts.timestampProof;
+    if (!tp || typeof tp !== 'object') {
+      optionalResults.timestamp_proof = {
+        verified: false, tsa_key_id: null, gen_time: null,
+        reason: 'timestampProof must be an object { token, expectedDigest, pinnedTsaKeys }',
+      };
+      errors.push('timestampProof must be an object with token, expectedDigest, and pinnedTsaKeys');
+    } else {
+      const res = verifyTimestampProof(tp.token, tp.expectedDigest, tp.pinnedTsaKeys);
+      optionalResults.timestamp_proof = res;
+      checks.timestamp_proof = res.verified === true;
+      if (!checks.timestamp_proof) {
+        errors.push(`timestamp proof did not verify: ${res.reason}`);
+      }
+    }
+  }
+
+  // ── Step 5f (OPT-IN): currency-at-T (EP-CURRENCY-v1) ──────────────────────
+  // Two-axis evaluation. `checks.currency` GATES validity and passes ONLY on a
+  // proven `fresh` status. Both `stale` and the honest offline default
+  // `unknown` FAIL this opted-in gate: opting in means the caller REQUIRES
+  // demonstrated freshness, and offline verification can NEVER prove currency,
+  // so absence of proof does not pass (fail-closed). The full two-axis result
+  // (authentic_as_of_commit + currency_at_T{status,evaluated_at,reason}) is
+  // surfaced so the caller can distinguish `unknown` from `stale`.
+  if (opts.currency !== undefined) {
+    checks.currency = false;
+    const c = (opts.currency && typeof opts.currency === 'object') ? opts.currency : {};
+    // authentic_as_of_commit is a SEPARATE axis (offline authenticity), passed
+    // through verbatim and fail-safe to false. It does NOT influence the
+    // currency status gate below, which is driven solely by freshHead recency
+    // and revocation. The caller supplies it (typically this same call's overall
+    // `valid`); if omitted it records false rather than guessing an in-progress
+    // partial verdict.
+    const res = evaluateCurrency({
+      receipt,
+      authentic_as_of_commit: c.authentic_as_of_commit === true,
+      now: c.now,
+      maxStalenessSeconds: c.maxStalenessSeconds,
+      freshHead: c.freshHead,
+      freshHeadRequired: c.freshHeadRequired,
+    });
+    optionalResults.currency = res;
+    checks.currency = res.currency_at_T.status === 'fresh';
+    if (!checks.currency) {
+      errors.push(`currency gate not satisfied: status "${res.currency_at_T.status}" (${res.currency_at_T.reason}); only "fresh" passes`);
+    }
+  }
+
+  // ── Step 5g (OPT-IN): third-party consumption proof (EP-SMT-CONSUME-v1) ────
+  // Prove a one-time nonce transitioned absent -> present exactly once between
+  // two append-only-linked heads. HONESTY: proves the tree-shaped consumption
+  // facts only; checkpoint SIGNATURES are the caller's responsibility and it
+  // does NOT establish currency of the later head. Fail closed: the module
+  // refuses with a distinct reason on any missing/malformed/invalid sub-proof;
+  // a refusal fails checks.consumption.
+  if (opts.consumptionProof !== undefined) {
+    checks.consumption = false;
+    const res = verifyConsumptionProof(opts.consumptionProof);
+    optionalResults.consumption = res;
+    checks.consumption = res.valid === true;
+    if (!checks.consumption) {
+      errors.push(`consumption proof did not verify: ${res.reason}`);
+    }
+  }
+
+  // ── Step 5h (OPT-IN): initiating-software attestation (EP-INITIATOR-...) ───
+  // Structurally validate the self-asserted initiating-software attestation at
+  // receipt.action.initiator_software. HONESTY: says WHICH software asked; it
+  // does NOT prove the software behaved (labels are self-asserted). Fail
+  // closed: when required, an absent or malformed attestation fails
+  // checks.initiator_attestation (the module never repairs a malformed one).
+  if (opts.requireInitiatorAttestation === true) {
+    checks.initiator_attestation = false;
+    const att = (receipt.action && typeof receipt.action === 'object')
+      ? receipt.action.initiator_software
+      : undefined;
+    if (att === undefined) {
+      optionalResults.initiator_attestation = {
+        ok: false, normalized: null,
+        errors: ['requireInitiatorAttestation is set but action.initiator_software is absent'],
+        statement_report: null,
+      };
+      errors.push('requireInitiatorAttestation is set but action.initiator_software is absent');
+    } else {
+      const res = validateInitiatorAttestation(att);
+      optionalResults.initiator_attestation = res;
+      checks.initiator_attestation = res.ok === true;
+      if (!checks.initiator_attestation) {
+        errors.push(`initiator_software attestation is invalid: ${res.errors.join('; ')}`);
+      }
+    }
+  }
+
   // ── Step 6: temporal windows ──────────────────────────────────────────────
-  let windowsOk = validApprovals.length > 0;
-  for (const a of validApprovals) {
+  let windowsOk = validSignoffs.length > 0;
+  for (const a of validSignoffs) {
     if (!withinWindow(a.signedAt, a.ctx.issued_at, a.ctx.expires_at)) {
       windowsOk = false;
       errors.push(`signed_at for ${a.approver} falls outside [issued_at, expires_at]`);
@@ -968,7 +1537,10 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     }
   }
   const valid = Object.values(checks).every(Boolean) && strict.valid;
-  return { valid, checks, errors, attestation, strict };
+  // Spread the opt-in knob results LAST. `optionalResults` is empty unless a
+  // knob option was supplied, so with no new options the returned object is
+  // byte-for-byte { valid, checks, errors, attestation, strict } as before.
+  return { valid, checks, errors, attestation, strict, ...optionalResults };
 }
 
 // =============================================================================
@@ -1064,7 +1636,6 @@ export {
 // EP-QUORUM-v1 — multi-party (M-of-N / ordered) approval, additive over EP-SIGNOFF-v1.
 export { verifyQuorum } from './quorum.js';
 
-// EP-AEC-v1 (Authorization Evidence Chain) is an EXPERIMENTAL reference verifier in
-// ./evidence-chain.js. It is intentionally NOT re-exported here and NOT in package
-// "files" — it must not ship in the published SDK until its draft is posted. Import
-// it directly from './evidence-chain.js' for local/reference use.
+// EP-AEC-v1 is available through the explicit `./evidence-chain` package subpath.
+// It is not re-exported here because evidence-chain.js composes this module and a
+// main-entry re-export would create a circular initialization path.

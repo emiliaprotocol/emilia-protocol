@@ -37,7 +37,7 @@ async function mintReceipt(approver, approverKeyId) {
   const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: [approver], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
   const signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId, signedAt: ISSUED_AT, privateKey: kp.privateKey })]);
   const receipt = assembleAuthorizationReceipt({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: '2026-06-13T11:30:00.000Z', log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
-  return { receipt, verification: { approver_keys: { [approverKeyId]: { public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u } };
+  return { receipt, verification: { approver_keys: { [approverKeyId]: { approver_id: approver, public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u, rp_id: 'rp', allowed_origins: ['https://test.emilia'] } };
 }
 const PROOF_FIELDS = ['delegation_id', 'delegator', 'delegatee', 'scope', 'max_value_usd', 'expires_at', 'constraints'];
 function signedLink(link, kp) {
@@ -52,35 +52,64 @@ async function buildBundle() {
   const dk = generateEd25519KeyPair();
   const link = signedLink({ delegation_id: 'dlg:1', parent_ref: 'ep:approver:dir', delegator: 'ep:approver:dir', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: 1000, expires_at: EXPIRES_AT, constraints: {} }, dk);
   const doc = assembleProvenance({ rootSignoff: root, delegationChain: [link], actionApproval: approval, execution: { action_hash: approval.receipt.action_hash, irreversible: true, executed_at: ISSUED_AT } });
-  return { doc, delegation_keys: { 'ep:approver:dir': { public_key: dk.publicKeyB64u } } };
+  return {
+    doc,
+    root_verification: structuredClone(root.verification),
+    action_verification: structuredClone(approval.verification),
+    delegation_keys: { 'ep:approver:dir': { public_key: dk.publicKeyB64u } },
+  };
 }
 
 // Two-hop chain: root -> agentA (constraints {max_calls:5}) -> agentB. The leaf
 // either NARROWS (max_calls<=5, accept) or RELAXES (max_calls>5, reject).
-async function buildTwoHop(leafMaxCalls) {
+async function buildTwoHop(leafMaxCalls, leafCap = 500) {
   const root = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
   const approval = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
   const dirKp = generateEd25519KeyPair();
   const agentAKp = generateEd25519KeyPair();
   const link1 = signedLink({ delegation_id: 'dlg:1', parent_ref: 'ep:approver:dir', delegator: 'ep:approver:dir', delegatee: 'ep:agent:A', scope: ['payment.release'], max_value_usd: 1000, expires_at: EXPIRES_AT, constraints: { max_calls: 5 } }, dirKp);
-  const link2 = signedLink({ delegation_id: 'dlg:2', parent_ref: 'ep:agent:A', delegator: 'ep:agent:A', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: 500, expires_at: EXPIRES_AT, constraints: { max_calls: leafMaxCalls } }, agentAKp);
+  const link2 = signedLink({ delegation_id: 'dlg:2', parent_ref: 'ep:agent:A', delegator: 'ep:agent:A', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: leafCap, expires_at: EXPIRES_AT, constraints: { max_calls: leafMaxCalls } }, agentAKp);
   const doc = assembleProvenance({ rootSignoff: root, delegationChain: [link1, link2], actionApproval: approval, execution: { action_hash: approval.receipt.action_hash, irreversible: true, executed_at: ISSUED_AT } });
-  return { doc, delegation_keys: { 'ep:approver:dir': { public_key: dirKp.publicKeyB64u }, 'ep:agent:A': { public_key: agentAKp.publicKeyB64u } } };
+  return {
+    doc,
+    root_verification: structuredClone(root.verification),
+    action_verification: structuredClone(approval.verification),
+    delegation_keys: { 'ep:approver:dir': { public_key: dirKp.publicKeyB64u }, 'ep:agent:A': { public_key: agentAKp.publicKeyB64u } },
+  };
 }
 
 const V = [];
-const add = (id, expectValid, b) => V.push({ id, expect: { valid: expectValid }, provenance_chain: b.doc, delegation_keys: b.delegation_keys, now_ms: NOW });
+const add = (id, expectValid, b) => V.push({
+  id,
+  expect: { valid: expectValid },
+  provenance_chain: b.doc,
+  root_verification: b.root_verification,
+  action_verification: b.action_verification,
+  delegation_keys: b.delegation_keys,
+  now_ms: NOW,
+});
 
 add('accept_valid_chain', true, await buildBundle());
 { const b = await buildBundle(); b.doc.delegation_chain[0].scope = ['treasury.wire']; add('reject_scope_violation', false, b); }
 { const b = await buildBundle(); b.doc.delegation_chain[0].max_value_usd = 999999; add('reject_tampered_proof', false, b); }
 { const b = await buildBundle(); b.delegation_keys = {}; add('reject_unpinned_delegator', false, b); }
+{ const b = await buildBundle(); b.root_verification = null; b.action_verification = null; add('reject_presenter_supplied_trust_roots', false, b); }
+{ const b = await buildBundle(); delete b.root_verification.rp_id; add('reject_root_profile_without_rp_id', false, b); }
+{ const b = await buildBundle(); delete b.root_verification.allowed_origins; add('reject_root_profile_without_allowed_origins', false, b); }
+{ const b = await buildBundle(); b.root_verification.rp_id = 'attacker.example'; add('reject_root_profile_wrong_rp_id', false, b); }
+{ const b = await buildBundle(); b.root_verification.allowed_origins = ['https://attacker.example']; add('reject_root_profile_wrong_origin', false, b); }
+{ const b = await buildBundle(); delete b.action_verification.rp_id; add('reject_action_profile_without_rp_id', false, b); }
+{ const b = await buildBundle(); b.action_verification.allowed_origins = ['https://attacker.example']; add('reject_action_profile_wrong_origin', false, b); }
 add('accept_two_hop_constraints_narrowed', true, await buildTwoHop(3));
 add('reject_constraints_relaxed', false, await buildTwoHop(50));
+// Leaf validly SIGNED over a non-numeric cap under a numeric parent: the signature
+// checks out but cap containment must fail closed in all three ports (the JS-sibling
+// value-cap fail-open the sweep found). Constraints are narrowed so ONLY the cap fails.
+add('reject_nonnumeric_child_cap', false, await buildTwoHop(3, 'abc'));
 
 const suite = {
   suite: 'EP-PROVENANCE-CHAIN-v1',
-  profile: 'Executable provenance-chain vectors (real receipts + delegation proofs). verifyProvenanceOffline(doc, {delegationKeys, now}) must return expect.valid.',
+  profile: 'Executable provenance-chain vectors (real receipts + delegation proofs). verifyProvenanceOffline requires relying-party root/action verification profiles, including RP ID and exact allowed origins, plus delegationKeys and now.',
   vectors_version: '1.0.0',
   count: V.length,
   vectors: V,

@@ -18,6 +18,7 @@ const Operators = await import('../app/api/operators/apply/route.js');
 const PilotRequest = await import('../app/api/pilot/request/route.js');
 const Checkout = await import('../app/api/checkout/route.js');
 const Guarded = await import('../app/api/v1/guarded/route.js');
+const TrustGate = await import('../app/api/trust/gate/route.js');
 const DemoReceipt = await import('../app/api/demo/require-receipt/route.js');
 const DemoX402 = await import('../app/api/demo/x402/route.js');
 const Mcp = await import('../app/api/mcp/[transport]/route.js');
@@ -54,6 +55,7 @@ describe('public POST body limits', () => {
     ['pilot/request', PilotRequest.POST, '/api/pilot/request', 17 * 1024],
     ['checkout', Checkout.POST, '/api/checkout', 3 * 1024],
     ['v1/guarded', Guarded.POST, '/api/v1/guarded?action=payment.release', 257 * 1024],
+    ['trust/gate', TrustGate.POST, '/api/trust/gate', 257 * 1024],
     ['demo/require-receipt', DemoReceipt.POST, '/api/demo/require-receipt', 257 * 1024],
     ['demo/x402', DemoX402.POST, '/api/demo/x402', 257 * 1024],
     ['mcp', Mcp.POST, '/api/mcp/mcp', 257 * 1024],
@@ -75,5 +77,34 @@ describe('public POST body limits', () => {
 
     expect(res.status).toBe(413);
     expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('strips HTML from inquiry fields before durable storage', async () => {
+    let inserted;
+    mockGetGuardedClient.mockReturnValue({
+      from: () => ({
+        insert: vi.fn(async (row) => {
+          inserted = row;
+          return { error: null };
+        }),
+      }),
+    });
+
+    const res = await Inquiries.POST(new Request('https://www.emiliaprotocol.ai/api/inquiries', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        type: 'partner',
+        name: '<img src=x onerror=alert(1)>Alice',
+        email: 'alice@example.com',
+        org: '<script>alert(1)</script>Demo Agency',
+        problem: 'Need review <svg onload=alert(1)>before launch</svg>',
+        notes: '<iframe srcdoc="<script>alert(1)</script>"></iframe>internal note',
+      }),
+    }));
+
+    expect(res.status).toBe(200);
+    expect(inserted.name).toBe('Alice');
+    expect(JSON.stringify(inserted)).not.toMatch(/<script|<img|<svg|<iframe|onerror|onload/i);
   });
 });

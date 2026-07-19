@@ -3,8 +3,10 @@
 
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
-import { toScimGroup, fromScimGroup, applyPatch, etag } from '@/lib/scim/core';
-import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl } from '@/lib/scim/http';
+import {
+  toScimGroup, fromScimGroup, applyPatch, etag, validateScimGroup,
+} from '@/lib/scim/core';
+import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
 
 async function loadGroup(supabase, tenantId, id) {
   return supabase.from('scim_groups').select('*').eq('tenant_id', tenantId).eq('id', id).maybeSingle();
@@ -24,8 +26,15 @@ export async function PUT(request, { params }) {
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
   const { id } = await params;
-  let body;
-  try { body = await request.json(); } catch { return scimErrorResponse(400, 'Body must be valid JSON', 'invalidSyntax'); }
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
+
+  const validation = validateScimGroup(body);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
 
   const supabase = getGuardedClient();
   const { data: current, error: loadErr } = await loadGroup(supabase, auth.tenantId, id);
@@ -33,7 +42,6 @@ export async function PUT(request, { params }) {
   if (!current) return scimErrorResponse(404, `Group ${id} not found`);
 
   const fields = fromScimGroup(body);
-  if (!fields.display_name) return scimErrorResponse(400, 'displayName is required', 'invalidValue');
   return writeGroup(supabase, auth.tenantId, id, current, fields, request);
 }
 
@@ -41,8 +49,9 @@ export async function PATCH(request, { params }) {
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
   const { id } = await params;
-  let body;
-  try { body = await request.json(); } catch { return scimErrorResponse(400, 'Body must be valid JSON', 'invalidSyntax'); }
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
   const supabase = getGuardedClient();
   const { data: current, error: loadErr } = await loadGroup(supabase, auth.tenantId, id);
@@ -53,6 +62,11 @@ export async function PATCH(request, { params }) {
   const patched = applyPatch(toScimGroup(current, base), body);
   if (patched.error) return scimErrorResponse(patched.error.status, patched.error.detail, patched.error.scimType);
 
+  const validation = validateScimGroup(patched.resource);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
   const fields = fromScimGroup(patched.resource);
   return writeGroup(supabase, auth.tenantId, id, current, fields, request);
 }

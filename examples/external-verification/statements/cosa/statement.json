@@ -1,0 +1,157 @@
+{
+  "@version": "EP-EXTERNAL-VERIFICATION-STATEMENT-v1",
+  "generated_at": "2026-07-06T18:39:38.981Z",
+  "verifier": {
+    "id": "ext:verifier:cosa",
+    "name": "COSA",
+    "organization": "J Diesel NY"
+  },
+  "subject": {
+    "kind": "conformance_vector_pack",
+    "suites": 16,
+    "vectors": 158,
+    "commit": "4c155868eac61290480510605715326bb998a52b"
+  },
+  "procedure": {
+    "id": "ep-conformance-own-implementation",
+    "version": "EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v1"
+  },
+  "inputs": {
+    "commit": "4c155868eac61290480510605715326bb998a52b",
+    "implementation": "COSA Node (Python/emilia-verify)",
+    "suite_digests": {
+      "boundary.v1.json": "sha256:539ca5b13e67bfdb902f17ccd1a5ea4b83d0ffcc280128935cb40e13f2645300",
+      "canonicalization.v1.json": "sha256:af5be71f36b9cc3d584dacef8c584cb6a2f169b1d0a2f3295d28ddd6b2bea045",
+      "consumption-proof.v1.json": "sha256:cb9afb81c632a9c225184431b3de1ef2b2b7199e1abd667401da1577b086a253",
+      "currency.v1.json": "sha256:0b945aa6b5317aa11e3d9d6cf0cce6e507bc0bec89ab38feadf023cc67bd9b20",
+      "evidence-record.v1.json": "sha256:c92e053ea4bcb639f9bbb7c358c088fc6e22c7d68f6c8c4ede28396dc6ceff01",
+      "initiator-attestation.v1.json": "sha256:2ecf3b05c521480bd03993220773354c0aa93ede551cf5d6dccf7f7f65a0a859",
+      "provenance.exec.v1.json": "sha256:adc6557a70c128c98cdf1e39c06efe0046b15be1f792f27723d892ca2197e26e",
+      "quorum.v1.json": "sha256:ce3c190b5b94b26cb48aed1aac8be3c1961bc8b7034110871afb47f59b840bf3",
+      "receipts.v1.json": "sha256:397b3ecedd7ba65b8208dd5fc80c1930b5d3a44f611cfd9fbb47cc51c59cd697",
+      "revocation.exec.v1.json": "sha256:661cfdb1882f4a240eb1c9461beee8643d63473552561c41a224f7daae471540",
+      "signoffs.v1.json": "sha256:8f4ebe015bc4826d29af2edd5e4a6600fd37778f0afdbc084df9f5e64d52c135",
+      "time-attestation.v1.json": "sha256:2a7722932c1c5ca86f368e367eac9dc084c58dd7ed4681036c58418d8ed21418",
+      "timestamp-proof.v1.json": "sha256:8f9ae7b21da62077422894152972332c4178bb22e5a27008dfddf32a58200ec9",
+      "trust-receipt.exec.v1.json": "sha256:f9152ff750db86b590cde37875775acdebbda778d9c1ef8817bf4c4fff1f504c",
+      "trust-receipt.timestamp-forms.v1.json": "sha256:93e7edb6cd6695f875080776f4f3a48869e4eb1f910cdfb64f444dc77b9d04d4",
+      "witness.v1.json": "sha256:5fe538cb760123ee9752dc1c42e766407b7b45d17be19240b2a995d3b68d2a76"
+    },
+    "results_digests": {
+      "boundary.v1.json": "sha256:653eb82356f96f5b5a447491a80f841514951ee2d8ccee1b501c65f46f371f61",
+      "canonicalization.v1.json": "sha256:2d737d493020b99c078887769557945c4527b42e329ff2ad7e97b47643687fde",
+      "consumption-proof.v1.json": "sha256:f7bcbe3cc975dc602c81e6528b4b85f7460675d03c0663846301a9047e393ef7",
+      "currency.v1.json": "sha256:ee668e78b7b68c77da0bb5286731389d1c8b1172509cb016550f57f461ce1246",
+      "evidence-record.v1.json": "sha256:2a2f851fdf661e97fe3e31f12ae4e42ad85aebfb205147695b38a2f7b9430061",
+      "initiator-attestation.v1.json": "sha256:32d6d7616111bf102fd25b485f52a4686d87dfdccf333f41ca616b7482662fdb",
+      "provenance.exec.v1.json": "sha256:a6456b281209c131b212d19cedbe4ceb3ce07e11a1031e348e32ac1448b945ee",
+      "quorum.v1.json": "sha256:873bf9a09bfad66c9902b097dd6f2b31cabbb367dcf9a669ef181f48edfaad57",
+      "receipts.v1.json": "sha256:9d2f8401ece7eb84c93d2d141c1c2535e5a2dad8d1c52cecfd45b839aeacd2a8",
+      "revocation.exec.v1.json": "sha256:383e6dc067a9faecf4686f32e7f14b6f5cabd1f293d4cfd33fdf70a721bcb31f",
+      "signoffs.v1.json": "sha256:5db91e1e6fe7257fa54b65819aff6121595f76e3f6f04f2ef3115c01329257ef",
+      "time-attestation.v1.json": "sha256:d019e788d511ba6f86cd8cb10fcb8a06b6b1dac865af16864fd4b2ccc30bd4e0",
+      "timestamp-proof.v1.json": "sha256:a50163fd96a15c0dac9ab70e10bd9b875bc5f640a6fd28186c4f7cfc211ee899",
+      "trust-receipt.exec.v1.json": "sha256:97f92fdfb1fcfdb38d28ba0ed08815143de9145bad20fcbb0600a387f5c453e1",
+      "trust-receipt.timestamp-forms.v1.json": "sha256:ac3759ccb3ca55e46af7e5f935706485f21204bdcc49a0ddcd58c541396e9639",
+      "witness.v1.json": "sha256:e835139feba79f62f7fe7f8ae0958dbd39668752f6a27bdf785425f843eddfd2"
+    }
+  },
+  "result": {
+    "status": "verified",
+    "checks": [
+      {
+        "id": "boundary.v1.json",
+        "ok": true,
+        "detail": "3/3"
+      },
+      {
+        "id": "canonicalization.v1.json",
+        "ok": true,
+        "detail": "35/35"
+      },
+      {
+        "id": "consumption-proof.v1.json",
+        "ok": true,
+        "detail": "6/6"
+      },
+      {
+        "id": "currency.v1.json",
+        "ok": true,
+        "detail": "12/12"
+      },
+      {
+        "id": "evidence-record.v1.json",
+        "ok": true,
+        "detail": "5/5"
+      },
+      {
+        "id": "initiator-attestation.v1.json",
+        "ok": true,
+        "detail": "11/11"
+      },
+      {
+        "id": "provenance.exec.v1.json",
+        "ok": true,
+        "detail": "6/6"
+      },
+      {
+        "id": "quorum.v1.json",
+        "ok": true,
+        "detail": "11/11"
+      },
+      {
+        "id": "receipts.v1.json",
+        "ok": true,
+        "detail": "13/13"
+      },
+      {
+        "id": "revocation.exec.v1.json",
+        "ok": true,
+        "detail": "6/6"
+      },
+      {
+        "id": "signoffs.v1.json",
+        "ok": true,
+        "detail": "9/9"
+      },
+      {
+        "id": "time-attestation.v1.json",
+        "ok": true,
+        "detail": "6/6"
+      },
+      {
+        "id": "timestamp-proof.v1.json",
+        "ok": true,
+        "detail": "13/13"
+      },
+      {
+        "id": "trust-receipt.exec.v1.json",
+        "ok": true,
+        "detail": "10/10"
+      },
+      {
+        "id": "trust-receipt.timestamp-forms.v1.json",
+        "ok": true,
+        "detail": "6/6"
+      },
+      {
+        "id": "witness.v1.json",
+        "ok": true,
+        "detail": "6/6"
+      }
+    ]
+  },
+  "limitations": [
+    "Per-vector results were produced by the named implementation outside this harness and are self-reported; this harness only compared them against each suite vector's expect.valid.",
+    "This statement records the external verifier procedure and result; it does not authorize any action.",
+    "It does not certify business correctness, legal compliance, or human wisdom.",
+    "Acceptance depends on the relying party pinning the verifier key out of band."
+  ],
+  "signature": {
+    "algorithm": "Ed25519",
+    "key_id": "ep:external-verifier-key:sha256:d20b9e48115ee89a",
+    "public_key": "MCowBQYDK2VwAyEAH57xLqDpdY7hWdVdDn7-y3wJEESVGVFlwnCCDdkGWc4",
+    "statement_digest": "sha256:72a7e9e15ba371a855920811e0ef5e67e5745e5f0d973d09b3b3d1aefdba7bbd",
+    "signature_b64u": "VZavdUCnwKjWBtmtgVoek8tWCcGrffOPeeigvgS6kpiZzidbWIBNXQlejaPH2TOTUoLRZpQZ8tE36La17R6HAw"
+  }
+}

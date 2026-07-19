@@ -1,0 +1,310 @@
+/*
+ * ep_quorum_core.spthy
+ *
+ * Second symbolic-crypto EP model. It layers m-of-n quorum (here the
+ * smallest non-trivial instance, 2-of-2) on top of the same UV-gated
+ * signature machinery proven in ep_receipt_core.spthy. Signatures are
+ * again terms in Tamarin's standard signing equational theory, and the
+ * adversary is the standard Dolev-Yao network attacker (full network
+ * control, learns everything sent, may apply all function symbols, and
+ * may request either honest human to sign arbitrary actions of the
+ * attacker's choice).
+ *
+ * This model does NOT re-prove the single-signature core lemma; it
+ * assumes the per-signature guarantees already machine-checked in
+ * ep_receipt_core.spthy and asks the NEXT question: given two distinct
+ * enrolled approver keys and a 2-of-2 policy, does a satisfied quorum
+ * necessarily consist of two distinct UV-gated human signatures over
+ * the same action, and can the initiator of that action count toward
+ * its own quorum?
+ *
+ * What is modeled (maps to draft-schrock-ep-authorization-receipts-06):
+ *   - TWO distinct human approver identities, each with its own
+ *     device-bound signing key (Sec 5.1 Class A). Distinctness of the
+ *     two identities is enforced structurally by the Enroll rule
+ *     (restriction TwoDistinctApprovers), so a single Fr key cannot be
+ *     enrolled under two names to fake a quorum from one device.
+ *   - An INITIATOR identity that proposes the action (Sec 2, Sec 3:
+ *     the initiator is identified but never trusted). The initiator is
+ *     bound into the quorum request so the separation-of-duties lemma
+ *     can refer to it.
+ *   - A user-verification (UV) event MUST precede every human
+ *     signature: as in the core model, the signing rule can only
+ *     consume the linear UVDone fact that only the UV rule produces.
+ *     A quorum signature cannot exist without a prior UV over exactly
+ *     that action, approver, and nonce (Sec 5.1 UV MUST).
+ *   - Each of the k approvers signs an individual Authorization Context
+ *     that binds the ACTION HASH, the INITIATOR identity, and that
+ *     approver's own fresh nonce: <tag, h(action), initiator, nonce>
+ *     (Sec 3: the Authorization Context carries the initiator identity;
+ *     Sec 7: "same action_hash and nonce family but a distinct
+ *     approver_index" -- the per-approver fresh nonce here abstracts the
+ *     distinct index / per-approver context binding). Binding the
+ *     initiator into the signed context is what makes separation of
+ *     duties (Sec 6 SelfApprovalImpossible / G4) a property of the
+ *     SIGNATURE and not merely of an executor-local label: an approver
+ *     signature is over one specific initiator, so it cannot be
+ *     transplanted to a commit under a different initiator.
+ *   - The attacker chooses which action is put up for quorum
+ *     (QuorumRequest takes the action from In()), so a satisfied quorum
+ *     over action a proves the two humans signed exactly a, not that
+ *     the policy engine picked a convenient action.
+ *   - Commitment (the executor's accept) fires only when TWO signatures
+ *     that verify under TWO DISTINCT pinned approver keys over the SAME
+ *     action are presented, and (SoD) neither of those two approvers is
+ *     the initiator (Sec 6 SelfApprovalImpossible, G4, Sec 7 "k valid,
+ *     distinct signoffs"). Partial approval commits nothing: there is
+ *     no accept rule that fires on a single signature.
+ *   - Key compromise (Reveal_Human_Ltk) is modeled so the lemmas state
+ *     exactly which guarantee is lost when an approver device key leaks.
+ *
+ * OUT OF SCOPE (deliberately; the honest boundary, per Sec 11.7 and the
+ * core model's boundary, none of this is silently assumed proven):
+ *   - COLLUSION, one-human-many-identities, and COERCION. Section 11.7
+ *     is explicit: separation of duties defeats UNILATERAL self-
+ *     approval and guarantees pairwise-distinct signing IDENTITIES; it
+ *     does NOT defeat two distinct enrolled humans who choose to
+ *     collude, one operator who controls two enrolled credentials (an
+ *     enrollment control, not a receipt control), or a coerced
+ *     approver. This model proves the distinct-identity / no-self-
+ *     approval property and NOTHING about whether the two identities
+ *     are two independent wills. The enrollment binding (one human ->
+ *     one identity) is the Approver Directory's job (Sec 5.2), which is
+ *     out of scope here exactly as in ep_receipt_core.spthy.
+ *   - The Approver Directory, Merkle receipt log, checkpoints and
+ *     inclusion proofs: approver-key pinning is a single out-of-band
+ *     step (rule Pin_Approver consumes the enrollment fact directly),
+ *     not the directory protocol.
+ *   - WebAuthn attestation internals and authenticator hardware: UV is
+ *     an atomic gating event; the model ASSUMES the authenticator
+ *     enforces UV before releasing a signature (the spec's MUST), it
+ *     does not prove WebAuthn.
+ *   - General m-of-n for arbitrary m,n. This model fixes the 2-of-2
+ *     instance (two enrolled approver rules, an accept rule that
+ *     consumes exactly two distinct-key signatures). It does not prove
+ *     the parametric k-of-n statement; 2-of-2 is the smallest case that
+ *     exhibits distinctness and self-approval and is what terminates.
+ *   - Expiry / wall-clock (expires_at), policy-hash evaluation, one-
+ *     time consumption of the committed quorum. Consumption/replay is
+ *     already the subject of ep_receipt_core.spthy (G3); this model is
+ *     about quorum composition (G4 / Sec 7), so it deliberately does
+ *     not restate the consumption lemma.
+ *   - JCS canonicalization (assumed injective encoding, as in the core
+ *     model) and any algorithm-specific / computational claim (sign is
+ *     the abstract Dolev-Yao signature).
+ *
+ * Run (see README.md; third-party image carries stock tamarin-prover
+ * 1.10.0 + Maude 3.4, no official image on Docker Hub as of 2026-07):
+ *   docker run --rm -v "$PWD":/work -w /work \
+ *     lmandrelli/tamarin-prover-and-batch:latest \
+ *     tamarin-prover --prove ep_quorum_core.spthy
+ */
+
+theory ep_quorum_core
+begin
+
+builtins: signing, hashing
+
+/* ------------------------------------------------------------------
+ * 1. Enrollment of an approver. Each approver identity $H gets a
+ *    fresh device-bound key. Distinctness of enrolled IDENTITIES is
+ *    enforced by the TwoDistinctApprovers restriction below: the same
+ *    identity name cannot be enrolled twice, so the two approver slots
+ *    in a quorum are two distinct names. (Whether two distinct names
+ *    are two distinct WILLS is an enrollment/collusion question,
+ *    explicitly out of scope; see header and Sec 11.7.)
+ * ------------------------------------------------------------------ */
+rule Enroll_Approver:
+    [ Fr(~ltk) ]
+  --[ Enroll($H) ]->
+    [ !HumanLtk($H, ~ltk)
+    , !HumanPk($H, pk(~ltk))
+    , Out(pk(~ltk))
+    ]
+
+/* ------------------------------------------------------------------
+ * 2. Out-of-band pinning of an approver key by the executor/relying
+ *    party, straight from the enrollment fact (not from the network).
+ *    Abstracts the signed Approver Directory (Sec 5.2); the directory
+ *    protocol itself is out of scope, as in ep_receipt_core.spthy.
+ * ------------------------------------------------------------------ */
+rule Pin_Approver:
+    [ !HumanPk($H, pkH) ]
+  --[ Pin($H, pkH) ]->
+    [ !PinnedKey($H, pkH) ]
+
+/* ------------------------------------------------------------------
+ * 3. Quorum request: the ACTION and the INITIATOR identity both come
+ *    from the network, i.e. the attacker chooses the action put up for
+ *    quorum and who the initiator is. A per-approver fresh nonce is
+ *    drawn (Sec 7: same action_hash, per-approver context). One request
+ *    fact is emitted per approver so each approver signs its own
+ *    context sharing the action.
+ * ------------------------------------------------------------------ */
+rule Quorum_Request:
+    [ In(<a, $Init>)
+    , Fr(~n)
+    ]
+  --[ QuorumRequested($Init, $H, a, ~n) ]->
+    [ ApproverRequest($Init, $H, a, ~n) ]
+
+/* ------------------------------------------------------------------
+ * 4. User verification by approver $H for exactly this request. UVDone
+ *    is linear: consumed by exactly one signature, produced by no other
+ *    rule, so a quorum signature cannot exist without a preceding UV
+ *    over the same (initiator, approver, action, nonce).
+ * ------------------------------------------------------------------ */
+rule Approver_UserVerify:
+    [ ApproverRequest(Init, H, a, n) ]
+  --[ UV(Init, H, a, n) ]->
+    [ UVDone(Init, H, a, n) ]
+
+/* ------------------------------------------------------------------
+ * 5. Approver signature: UV-gated. Signs the abstracted per-approver
+ *    Authorization Context <tag, h(action), initiator, nonce>, binding
+ *    the initiator identity into the signature (Sec 3); the individual
+ *    signoff (approver, action, nonce, sig) goes to the network, so the
+ *    attacker holds every honest signoff. Binding the initiator is
+ *    load-bearing: without it, an approver signature does not commit to
+ *    a specific initiator and the executor's initiator label floats, so
+ *    separation of duties would be only an executor-local check. (An
+ *    earlier revision of this model omitted the initiator from the
+ *    signed context; the SoD-dependent lemmas below were then FALSIFIED
+ *    by Tamarin -- an honest signature over action a under one initiator
+ *    label committed under a different one -- which is exactly why the
+ *    initiator is bound here.)
+ * ------------------------------------------------------------------ */
+rule Approver_Sign:
+    [ UVDone(Init, H, a, n)
+    , !HumanLtk(H, ltk)
+    ]
+  --[ Signed(Init, H, a, n) ]->
+    [ Out(<H, a, n, sign(<'ep_signoff_v1', h(a), Init, n>, ltk)>) ]
+
+/* ------------------------------------------------------------------
+ * 6. Key compromise: an approver device key can leak. Lemmas are
+ *    stated relative to RevealLtk so the model says exactly what is
+ *    lost if an approver's authenticator key is extracted.
+ * ------------------------------------------------------------------ */
+rule Reveal_Human_Ltk:
+    [ !HumanLtk(H, ltk) ]
+  --[ RevealLtk(H) ]->
+    [ Out(ltk) ]
+
+/* ------------------------------------------------------------------
+ * 7. Quorum commitment (2-of-2): the executor commits an action only
+ *    when it holds TWO signoffs that
+ *      - each verify under a DISTINCT pinned approver key,
+ *      - are over the SAME action a AND the SAME initiator ($Init), and
+ *      - are from two approvers NEITHER of which is the initiator.
+ *    Distinctness of the two approver keys is enforced by the pinned
+ *    keys being distinct (Neq(pk1,pk2)); since distinct enrolled
+ *    identities get distinct Fr keys, distinct keys entail distinct
+ *    identities. Separation of duties (Sec 6 / G4) is the two
+ *    Neq(H1,Init), Neq(H2,Init) checks. There is no accept rule that
+ *    fires on a single signoff: partial approval commits nothing.
+ * ------------------------------------------------------------------ */
+rule Executor_Commit_2of2:
+    [ In($Init)
+    , In(<H1, a, n1, sig1>)
+    , In(<H2, a, n2, sig2>)
+    , !PinnedKey(H1, pk1)
+    , !PinnedKey(H2, pk2)
+    ]
+  --[ Commit($Init, a, H1, H2)
+    , Neq(pk1, pk2)
+    , Neq(H1, $Init)
+    , Neq(H2, $Init)
+    , Eq(verify(sig1, <'ep_signoff_v1', h(a), $Init, n1>, pk1), true)
+    , Eq(verify(sig2, <'ep_signoff_v1', h(a), $Init, n2>, pk2), true)
+    ]->
+    [ ]
+
+restriction Equality:
+  "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+restriction Inequality:
+  "All x #i. Neq(x, x) @ #i ==> F"
+
+/* Enrolled approver identities are pairwise distinct: no single name
+ * is enrolled twice (so the two quorum slots are two distinct names,
+ * and each name has exactly one Fr key). This is a modeling of the
+ * directory's one-identity-per-name property, NOT a claim that two
+ * names are two independent humans (see header / Sec 11.7). */
+restriction TwoDistinctApprovers:
+  "All H #i #j. Enroll(H) @ #i & Enroll(H) @ #j ==> #i = #j"
+
+/* ==================================================================
+ * LEMMAS
+ * ================================================================== */
+
+/* (a) EXECUTABILITY: a 2-of-2 quorum can actually commit, with two
+ *     distinct honest approvers, both UV-gated, neither the initiator,
+ *     and no key compromise. Guards against a vacuous model where the
+ *     Neq/Eq restrictions make Commit unreachable. */
+lemma executable_quorum:
+  exists-trace
+  "Ex Init H1 H2 a n1 n2 #s1 #s2 #c.
+      Signed(Init, H1, a, n1) @ #s1
+    & Signed(Init, H2, a, n2) @ #s2
+    & Commit(Init, a, H1, H2) @ #c
+    & not (H1 = H2)
+    & not (H1 = Init)
+    & not (H2 = Init)
+    & not (Ex #r. RevealLtk(H1) @ #r)
+    & not (Ex #r. RevealLtk(H2) @ #r)"
+
+/* (b) QUORUM NEEDS TWO DISTINCT UV-GATED SIGNATURES OVER THE SAME
+ *     ACTION: whenever the executor commits action a citing approvers
+ *     H1 and H2, and neither approver's key was compromised before the
+ *     commit, then H1 and H2 are distinct AND each of them performed a
+ *     UV event and then a signature over exactly action a, all before
+ *     the commit. A single signature (or two signatures from the same
+ *     identity, or two over different actions) can never commit. */
+lemma quorum_requires_two_distinct_uv_gated_signatures:
+  "All Init a H1 H2 #c.
+      Commit(Init, a, H1, H2) @ #c
+    & not (Ex #r. RevealLtk(H1) @ #r & #r < #c)
+    & not (Ex #r. RevealLtk(H2) @ #r & #r < #c)
+    ==> not (H1 = H2)
+        & (Ex n1 #u1 #g1.
+              UV(Init, H1, a, n1) @ #u1
+            & Signed(Init, H1, a, n1) @ #g1
+            & #u1 < #g1 & #g1 < #c)
+        & (Ex n2 #u2 #g2.
+              UV(Init, H2, a, n2) @ #u2
+            & Signed(Init, H2, a, n2) @ #g2
+            & #u2 < #g2 & #g2 < #c)"
+
+/* (c) NO SELF-APPROVAL (Sec 6 SelfApprovalImpossible, G4): there is no
+ *     trace in which the executor commits action a with the initiator
+ *     itself appearing as either of the two quorum approvers. The
+ *     initiator is chosen by the attacker (from the network), so this
+ *     rules out an attacker naming a compliant approver as initiator to
+ *     have it count against itself. */
+lemma initiator_cannot_self_approve:
+  "not (Ex Init a H1 H2 #c.
+           Commit(Init, a, H1, H2) @ #c
+         & (H1 = Init | H2 = Init))"
+
+/* (d) NO SINGLE SIGNER FILLS BOTH SLOTS: the two committing approvers
+ *     are never the same identity. This is the "no key fills two slots"
+ *     property at the identity level (distinct pinned keys => distinct
+ *     Fr keys => distinct enrolled identities). It does NOT claim the
+ *     two identities are two distinct humans; see Sec 11.7 / header. */
+lemma no_single_signer_fills_quorum:
+  "not (Ex Init a H #c. Commit(Init, a, H, H) @ #c)"
+
+/* (e) UNSIGNED ACTION NEVER COMMITS: there is no trace in which action
+ *     a is committed while an uncompromised approver H1 named in the
+ *     quorum never signed exactly a. Because the attacker can obtain
+ *     honest signoffs over arbitrary OTHER actions (Quorum_Request
+ *     takes the action from the network), this rules out transplanting
+ *     an approver's signature over any a' != a onto a committed a. */
+lemma commit_requires_signature_over_that_action:
+  "not (Ex Init a H1 H2 #c.
+           Commit(Init, a, H1, H2) @ #c
+         & not (Ex #r. RevealLtk(H1) @ #r & #r < #c)
+         & not (Ex n1 #g1. Signed(Init, H1, a, n1) @ #g1 & #g1 < #c))"
+
+end

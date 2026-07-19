@@ -7,9 +7,9 @@
 // — then records the decision with key_class 'A' and the assertion itself,
 // so the receipt verifies offline against the approver's enrolled key.
 //
-// Decisions: body.decision 'approved' (default) or 'rejected'. Per the EP
-// draft §5.3, a denial is signed the same way — refusals are equally
-// non-repudiable and equally terminal.
+// Decisions: the outcome is carried inside the persisted Authorization
+// Context and therefore inside the WebAuthn-signed challenge. body.decision is
+// only a consistency assertion; it can never relabel the signed outcome.
 
 import { NextResponse } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
@@ -23,17 +23,24 @@ import {
   SIGNOFF_ID_PATTERN,
 } from '@/lib/webauthn';
 import { loadSignoffForSigning } from '@/lib/webauthn-signoff';
+import { normalizeUserName } from '@/lib/scim/core';
 import { canAccept } from '@/lib/signoff/quorum-session.js';
 import { decisionToMember, decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import { strictJsonGate } from '@/lib/strict-json.js';
 
 const MAX_WEBAUTHN_APPROVE_BYTES = 256 * 1024;
 
 function submittedChallenge(assertion) {
   try {
     const raw = assertion?.response?.clientDataJSON;
-    if (typeof raw !== 'string') return null;
-    const clientData = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    if (typeof raw !== 'string' || raw.length === 0 || raw.length > 32 * 1024
+        || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
+    const bytes = Buffer.from(raw, 'base64url');
+    if (bytes.toString('base64url') !== raw || bytes.length > 16 * 1024) return null;
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    if (!strictJsonGate(text).ok) return null;
+    const clientData = JSON.parse(text);
     return typeof clientData.challenge === 'string' ? clientData.challenge : null;
   } catch {
     return null;
@@ -55,7 +62,15 @@ export async function POST(request, { params }) {
     if (!body.assertion?.id || !body.assertion?.response) {
       return epProblem(400, 'missing_assertion', 'assertion (authentication response) is required');
     }
-    const decision = body.decision === 'rejected' ? 'rejected' : 'approved';
+    if (body.decision !== undefined
+      && body.decision !== 'approved'
+      && body.decision !== 'rejected'
+      && body.decision !== 'denied') {
+      return epProblem(400, 'invalid_decision', 'decision must be approved, rejected, or denied');
+    }
+    const submittedSignedDecision = body.decision === undefined
+      ? null
+      : (body.decision === 'approved' ? 'approved' : 'denied');
 
     const supabase = getGuardedClient();
 
@@ -116,6 +131,19 @@ export async function POST(request, { params }) {
       return epProblem(410, 'challenge_expired', 'Signing challenge expired — request webauthn-options again');
     }
 
+    // The decision is part of the canonical context whose hash the device
+    // signed. Never choose it from a post-signature request field: doing so
+    // would let a valid denial assertion be relabeled as approval (or vice
+    // versa) without invalidating the signature.
+    const signedDecision = challengeRow.context?.decision;
+    if (signedDecision !== 'approved' && signedDecision !== 'denied') {
+      return epProblem(409, 'decision_binding_required', 'Signing context does not bind an approved or denied decision');
+    }
+    if (submittedSignedDecision !== null && submittedSignedDecision !== signedDecision) {
+      return epProblem(409, 'decision_mismatch', 'Submitted decision does not match the device-signed decision');
+    }
+    const decision = signedDecision === 'denied' ? 'rejected' : 'approved';
+
     // The signed context must bind this exact action (BindingMatch).
     if (challengeRow.context?.action_hash !== loaded.actionHash) {
       return epProblem(409, 'action_hash_mismatch', 'Signing context does not bind the receipt-issued action_hash');
@@ -147,7 +175,14 @@ export async function POST(request, { params }) {
       return epProblem(500, 'internal_error', 'Failed to load credential');
     }
     const credential = (creds || [])[0];
-    if (!credential || credential.approver_id !== body.approver_id) {
+    // A directory-anchored credential is stored under the normalized approver_id;
+    // accept either the exact stored id or a normalization-equal one so a
+    // directory approver's credential is not silently unfindable. Additive: the
+    // exact-match branch preserves the prior raw comparison.
+    const approverMatches = !!credential
+      && (credential.approver_id === body.approver_id
+        || normalizeUserName(credential.approver_id) === normalizeUserName(body.approver_id));
+    if (!approverMatches) {
       return epProblem(403, 'credential_not_enrolled', 'Assertion credential is not an active enrollment for this approver');
     }
 
@@ -237,7 +272,10 @@ export async function POST(request, { params }) {
             signature: body.assertion.response.signature,
           },
         });
-        const verdict = canAccept(quorumPolicy, loaded.actionHash, existingMembers, incoming, { rpId: rpID });
+        const verdict = canAccept(quorumPolicy, loaded.actionHash, existingMembers, incoming, {
+          rpId: rpID,
+          allowedOrigins: [origin],
+        });
         if (!verdict.ok) {
           return epProblem(409, 'quorum_signer_rejected', `Signer cannot be admitted to the quorum: ${verdict.reason}`);
         }
@@ -319,6 +357,7 @@ export async function POST(request, { params }) {
       approver_id: body.approver_id,
       key_class: 'A',
       context_hash: challengeRow.context_hash,
+      signed_decision: signedDecision,
       decided_at: decidedAt,
     });
   } catch (err) {

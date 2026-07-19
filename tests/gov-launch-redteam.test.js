@@ -42,6 +42,7 @@ function makeInsertClient(calls) {
 describe('government-launch red-team regressions', () => {
   beforeEach(() => {
     mockGetGuardedClient.mockReset();
+    vi.unstubAllEnvs();
   });
 
   it('public dispute view never leaks raw evidence values, even short PII-like values', async () => {
@@ -119,6 +120,31 @@ describe('government-launch red-team regressions', () => {
     expect(mockGetGuardedClient).not.toHaveBeenCalled();
   });
 
+  it('public entity registration is production-closed unless explicitly enabled', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EP_ENABLE_PUBLIC_ENTITY_REGISTRATION', '');
+
+    const res = await EntityRoute.POST(jsonReq({ name: 'Anonymous Key Mint' }));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.type).toContain('self_serve_registration_disabled');
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('public entity registration rejects text/plain form posts before parsing', async () => {
+    const res = await EntityRoute.POST(new Request('https://x/api/entity', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: '{"name":"csrf-style"}',
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(415);
+    expect(body.type).toContain('unsupported_media_type');
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
   it('self-serve pilot sandbox keys are born org-bound to the sandbox id', async () => {
     const calls = { inserts: [] };
     mockGetGuardedClient.mockReturnValue(makeInsertClient(calls));
@@ -126,10 +152,12 @@ describe('government-launch red-team regressions', () => {
     const res = await SandboxProvision.POST(jsonReq({ org: 'County Benefits Office', vertical: 'gov' }));
     const body = await res.json();
     const entityInsert = calls.inserts.find((c) => c.table === 'entities').payload;
+    const keyInsert = calls.inserts.find((c) => c.table === 'api_keys').payload;
 
     expect(res.status).toBe(201);
     expect(entityInsert.organization_id).toBe(body.sandbox_id);
     expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
+    expect(keyInsert.permissions).toEqual([]);
     expect(body.try_now.curl).toContain(`"organization_id":"${body.sandbox_id}"`);
   });
 

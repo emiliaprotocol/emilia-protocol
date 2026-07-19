@@ -3,15 +3,19 @@
 
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { createDelegation, EPError } from '@/lib/delegation';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 export async function POST(request) {
   try {
     const ip = getClientIP(request);
-    const rl = await checkRateLimit(ip, 'write');
+    const rl = await checkRateLimit(ip, 'protocol_write');
     if (!rl.allowed) {
       return EP_ERRORS.RATE_LIMITED();
     }
@@ -20,15 +24,15 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const { principal_id, agent_entity_id, scope, max_value_usd, expires_at, constraints } = body;
 
     // Principal must match authenticated entity (no forgery)
-    const authEntityId = typeof auth.entity === 'object'
-      ? (auth.entity.entity_id || auth.entity.id)
-      : auth.entity;
+    const callerEntityId = authEntityId(auth);
 
-    if (principal_id && authEntityId && principal_id !== authEntityId) {
+    if (principal_id && callerEntityId && principal_id !== callerEntityId) {
       return epProblem(403, 'not_authorized', 'principal_id must match authenticated entity');
     }
 

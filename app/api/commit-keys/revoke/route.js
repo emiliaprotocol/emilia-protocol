@@ -13,11 +13,9 @@
 // otherwise-valid signature, so a stolen key cannot continue to sustain
 // authorizations.
 //
-// Operational runbook on suspected key compromise:
-//   1. Generate a new keypair; set EP_COMMIT_SIGNING_KEY to the new seed and add
-//      the new public key to EP_COMMIT_SIGNING_KEYS (new kid). Redeploy.
-//   2. Re-issue any still-needed authorizations (they sign under the new kid).
-//   3. POST here to revoke the OLD kid — old commits stop verifying immediately.
+// The full compromise-response procedure is kept in the private operator
+// runbook. This public route comment intentionally exposes no secret names or
+// rotation timing details.
 //
 // Body: { "kid": "<compromised-kid>", "reason"?: "<free text>" }
 
@@ -27,28 +25,29 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { authenticateOperator } from '@/lib/operator-auth';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '@/lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 export async function POST(request) {
   const auth = authenticateOperator(request, { requireOperatorIdentity: true });
   if (!auth.valid) return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return epProblem(400, 'invalid_json', 'Body must be valid JSON');
-  }
+  const parsed = await readEpJson(request, MAX_BODY_BYTES);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
   const kid = typeof body?.kid === 'string' ? body.kid.trim() : '';
   if (!kid) return epProblem(400, 'missing_kid', 'kid is required');
   const reason = typeof body?.reason === 'string' ? body.reason.slice(0, 500) : null;
 
-  const revoked_at = new Date().toISOString();
   const supabase = getGuardedClient();
-  const { error } = await supabase
-    .from('revoked_commit_keys')
-    .upsert({ kid, reason, revoked_by: auth.operator_id, revoked_at }, { onConflict: 'kid' });
+  const { data, error } = await supabase.rpc('revoke_commit_key_atomic', {
+    p_kid: kid,
+    p_reason: reason,
+    p_revoked_by: auth.operator_id,
+  });
 
   if (error) {
     logger.error('[commit-keys/revoke] failed:', error);
@@ -56,6 +55,12 @@ export async function POST(request) {
   }
 
   // Loud by design — revoking a signing key is a high-consequence operation.
+  const revoked_at = data?.[0]?.revoked_at || data?.revoked_at;
+  if (!revoked_at) {
+    logger.error('[commit-keys/revoke] RPC returned no revocation record');
+    return epProblem(503, 'revoke_failed', 'Could not record key revocation');
+  }
+
   logger.warn('[commit-keys/revoke] commit signing key REVOKED', { kid, operator: auth.operator_id });
   return NextResponse.json({ revoked: true, kid, revoked_at, revoked_by: auth.operator_id });
 }

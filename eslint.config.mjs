@@ -6,6 +6,7 @@
 // needed and produced confusing stack traces under v16.
 
 import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import noRawAuthEntity from './eslint-rules/no-raw-auth-entity.mjs';
 
 const config = [
   // Global ignores — flat config replaces .eslintrc `ignorePatterns`.
@@ -46,6 +47,22 @@ const config = [
       '@next/next/no-html-link-for-pages': 'warn',
       '@next/next/no-page-custom-font': 'warn',
       'jsx-a11y/alt-text': 'warn',
+    },
+  },
+
+  // Security boundary: authenticated entity rows are not caller identities.
+  // Keep this rule scoped to runtime code so tests and documentation can show
+  // the bad shape when they are explicitly exercising the regression guard.
+  {
+    files: ['app/**/*.js', 'app/**/*.jsx', 'lib/**/*.js', 'lib/**/*.mjs'],
+    ignores: ['lib/**/*.test.js', 'lib/**/*.test.jsx', 'lib/**/*.test.mjs'],
+    plugins: {
+      'ep-security': {
+        rules: { 'no-raw-auth-entity': noRawAuthEntity },
+      },
+    },
+    rules: {
+      'ep-security/no-raw-auth-entity': 'error',
     },
   },
 ];

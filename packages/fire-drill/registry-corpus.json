@@ -1,0 +1,3508 @@
+{
+  "@version": "EP-FIRE-DRILL-CORPUS-v1",
+  "note": "Real MCP-registry servers that ADVERTISE a high-risk capability (name+description signal) AND publish a repo. Registry-level signal, not a tool-level scan.",
+  "source": "registry.modelcontextprotocol.io",
+  "count": 500,
+  "servers": [
+    {
+      "name": "ai.agenticterminal/directory",
+      "slug": "ai-agenticterminal-directory",
+      "repo": "https://github.com/observer-protocol/at-directory",
+      "family": "money_movement",
+      "description": "Verified merchants accepting agentic payments on Lightning/L402/BOLT12/USDT — search, verify, pay."
+    },
+    {
+      "name": "ai.auxen/auxen",
+      "slug": "ai-auxen-auxen",
+      "repo": "https://github.com/Samp2Alex/auxen-mcp",
+      "family": "money_movement",
+      "description": "Provision private AI model endpoints on dedicated GPUs (Llama, Qwen, Mistral). Pay per minute."
+    },
+    {
+      "name": "ai.bolthub/registry",
+      "slug": "ai-bolthub-registry",
+      "repo": "https://github.com/signaltech-org/bolthub-sdk",
+      "family": "money_movement",
+      "description": "Discover and call every paid API on the bolthub marketplace with automatic L402 Lightning payments."
+    },
+    {
+      "name": "ai.borealhost/mcp",
+      "slug": "ai-borealhost-mcp",
+      "repo": "https://github.com/alainsvrd/platform",
+      "family": "production_deploy",
+      "description": "Agent-native web hosting — deploy sites, manage DNS, register domains, scale infrastructure"
+    },
+    {
+      "name": "ai.canaryusers/canaryusers",
+      "slug": "ai-canaryusers-canaryusers",
+      "repo": "https://github.com/BrettonB/canaryusers-mcp",
+      "family": "production_deploy",
+      "description": "A flock of AI users tests your deployed app and reports where real people get stuck, with fixes."
+    },
+    {
+      "name": "ai.com.mcp/contabo",
+      "slug": "ai-com-mcp-contabo",
+      "repo": "https://github.com/la-rebelion/hapimcp",
+      "family": "production_deploy",
+      "description": "Contabo API (v1.0.0) as MCP tools for cloud provisioning, and management. Powered by HAPI MCP server"
+    },
+    {
+      "name": "ai.filegraph/document-processing",
+      "slug": "ai-filegraph-document-processing",
+      "repo": "https://github.com/filegraph/docconvert",
+      "family": "data_export",
+      "description": "Extract text from documents, manipulate PDFs, and perform OCR via FileGraph API."
+    },
+    {
+      "name": "ai.helixar/mcp",
+      "slug": "ai-helixar-mcp",
+      "repo": "https://github.com/Helixar-AI/helixar-mcp",
+      "family": "production_deploy",
+      "description": "Security tools for AI agents: scan MCP servers, validate HDP delegation chains, audit releases."
+    },
+    {
+      "name": "ai.inflowpay.app/inflow",
+      "slug": "ai-inflowpay-app-inflow",
+      "repo": "https://github.com/inflowpay/inflow",
+      "family": "money_movement",
+      "description": "MCP Server for agents to onboard, pay, and provision services autonomously"
+    },
+    {
+      "name": "ai.pyrimid/pyrimid",
+      "slug": "ai-pyrimid-pyrimid",
+      "repo": "https://github.com/pyrimid-ai/pyrimid",
+      "family": "money_movement",
+      "description": "Agent-commerce MCP server for x402/USDC payments and affiliate splits on Base."
+    },
+    {
+      "name": "ai.radiusos.www/crm",
+      "slug": "ai-radiusos-www-crm",
+      "repo": "https://github.com/chadrnewell-hash/outreachos",
+      "family": "money_movement",
+      "description": "34-tool CRM server — contacts, pipeline, quotes, invoices, scheduling, email, and AI scoring."
+    },
+    {
+      "name": "ai.rapay/mcp-server",
+      "slug": "ai-rapay-mcp-server",
+      "repo": "https://github.com/Ra-Pay-AI/rapay",
+      "family": "money_movement",
+      "description": "Send fiat payments via MCP with two-step confirmation and Stripe Connect."
+    },
+    {
+      "name": "ai.smithery/BigVik193-reddit-ads-mcp-test",
+      "slug": "ai-smithery-bigvik193-reddit-ads-mcp-test",
+      "repo": "https://github.com/BigVik193/reddit-ads-mcp",
+      "family": "money_movement",
+      "description": "Manage Reddit advertising end-to-end: browse ad accounts and payment methods, and organize campaig…"
+    },
+    {
+      "name": "ai.smithery/ImRonAI-mcp-server-browserbase",
+      "slug": "ai-smithery-imronai-mcp-server-browserbase",
+      "repo": "https://github.com/ImRonAI/mcp-server-browserbase",
+      "family": "data_export",
+      "description": "Automate cloud browsers to navigate websites, interact with elements, and extract structured data.…"
+    },
+    {
+      "name": "ai.smithery/adamamer20-paper-search-mcp-openai",
+      "slug": "ai-smithery-adamamer20-paper-search-mcp-openai",
+      "repo": "https://github.com/adamamer20/paper-search-mcp-openai",
+      "family": "data_export",
+      "description": "Search and download academic papers from arXiv, PubMed, bioRxiv, medRxiv, Google Scholar, Semantic…"
+    },
+    {
+      "name": "ai.smithery/arjunkmrm-fetch",
+      "slug": "ai-smithery-arjunkmrm-fetch",
+      "repo": "https://github.com/arjunkmrm/fetch",
+      "family": "data_export",
+      "description": "Fetch web pages and extract exactly the content you need. Select elements with CSS and retrieve co…"
+    },
+    {
+      "name": "ai.smithery/arjunkmrm-scrapermcp_el",
+      "slug": "ai-smithery-arjunkmrm-scrapermcp-el",
+      "repo": "https://github.com/arjunkmrm/ScraperMcp_el",
+      "family": "data_export",
+      "description": "Extract and parse web pages into clean HTML, links, or Markdown. Handle dynamic, complex, or block…"
+    },
+    {
+      "name": "ai.smithery/blacklotusdev8-test_m",
+      "slug": "ai-smithery-blacklotusdev8-test-m",
+      "repo": "https://github.com/blacklotusdev8/test_m",
+      "family": "data_export",
+      "description": "Greet anyone by name with a friendly hello. Scrape webpages to extract content for quick reference…"
+    },
+    {
+      "name": "ai.smithery/ctaylor86-mcp-video-download-server",
+      "slug": "ai-smithery-ctaylor86-mcp-video-download-server",
+      "repo": "https://github.com/ctaylor86/mcp-video-download-server",
+      "family": "data_export",
+      "description": "Connect your video workflows to cloud storage. Organize and access video assets across projects wi…"
+    },
+    {
+      "name": "ai.smithery/cuongpo-coti-mcp",
+      "slug": "ai-smithery-cuongpo-coti-mcp",
+      "repo": "https://github.com/cuongpo/coti-mcp",
+      "family": "money_movement",
+      "description": "Connect to the COTI blockchain to manage accounts, transfer native tokens, and deploy and operate…"
+    },
+    {
+      "name": "ai.smithery/cuongpo-coti-mcp-1",
+      "slug": "ai-smithery-cuongpo-coti-mcp-1",
+      "repo": "https://github.com/cuongpo/coti-mcp",
+      "family": "money_movement",
+      "description": "Manage COTI accounts, deploy private ERC20 and ERC721 contracts, and transfer tokens and NFTs with…"
+    },
+    {
+      "name": "ai.smithery/hustcc-mcp-mermaid",
+      "slug": "ai-smithery-hustcc-mcp-mermaid",
+      "repo": "https://github.com/hustcc/mcp-mermaid",
+      "family": "data_export",
+      "description": "Generate dynamic Mermaid diagrams and charts with AI assistance. Customize styles and export diagr…"
+    },
+    {
+      "name": "ai.smithery/huuthangntk-claude-vision-mcp-server",
+      "slug": "ai-smithery-huuthangntk-claude-vision-mcp-server",
+      "repo": "https://github.com/huuthangntk/claude-vision-mcp-server",
+      "family": "data_export",
+      "description": "Analyze images from multiple angles to extract detailed insights or quick summaries. Describe visu…"
+    },
+    {
+      "name": "ai.smithery/kwp-lab-rss-reader-mcp",
+      "slug": "ai-smithery-kwp-lab-rss-reader-mcp",
+      "repo": "https://github.com/kwp-lab/rss-reader-mcp",
+      "family": "data_export",
+      "description": "Track and browse RSS feeds with ease. Fetch the latest entries from any feed URL and extract full…"
+    },
+    {
+      "name": "ai.smithery/luminati-io-brightdata-mcp",
+      "slug": "ai-smithery-luminati-io-brightdata-mcp",
+      "repo": "https://github.com/brightdata/brightdata-mcp-sse",
+      "family": "data_export",
+      "description": "One MCP for the Web. Easily search, crawl, navigate, and extract websites without getting blocked.…"
+    },
+    {
+      "name": "ai.smithery/morosss-sdfsdf",
+      "slug": "ai-smithery-morosss-sdfsdf",
+      "repo": "https://github.com/morosss/sdfsdf",
+      "family": "data_export",
+      "description": "Find academic papers across major sources like arXiv, PubMed, bioRxiv, and more. Download PDFs whe…"
+    },
+    {
+      "name": "ai.smithery/pinkpixel-dev-web-scout-mcp",
+      "slug": "ai-smithery-pinkpixel-dev-web-scout-mcp",
+      "repo": "https://github.com/pinkpixel-dev/web-scout-mcp",
+      "family": "data_export",
+      "description": "Search the web and extract clean, readable text from webpages. Process multiple URLs at once to sp…"
+    },
+    {
+      "name": "ai.smithery/rainbowgore-stealthee-mcp-tools",
+      "slug": "ai-smithery-rainbowgore-stealthee-mcp-tools",
+      "repo": "https://github.com/rainbowgore/stealthee-MCP-tools",
+      "family": "data_export",
+      "description": "Spot pre-launch products before they trend. Search the web and tech sites, extract and parse pages…"
+    },
+    {
+      "name": "ai.speko/mcp",
+      "slug": "ai-speko-mcp",
+      "repo": "https://github.com/SpekoAI/mcp-bridge",
+      "family": "production_deploy",
+      "description": "Official Speko MCP server: build, run, and migrate voice agents (STT/TTS/V2V) for coding agents."
+    },
+    {
+      "name": "ai.telbase/deploy",
+      "slug": "ai-telbase-deploy",
+      "repo": "https://github.com/Victor-EU/telbase",
+      "family": "production_deploy",
+      "description": "Deploy any web project with one command. AI-native platform with self-healing feedback."
+    },
+    {
+      "name": "ai.tensorfeed/mcp-server",
+      "slug": "ai-tensorfeed-mcp-server",
+      "repo": "https://github.com/RipperMercs/tensorfeed",
+      "family": "money_movement",
+      "description": "Real-time AI news, status, model pricing, and pay-per-call premium tools (USDC on Base)."
+    },
+    {
+      "name": "ai.tensorfeed/x402-base-mcp",
+      "slug": "ai-tensorfeed-x402-base-mcp",
+      "repo": "https://github.com/RipperMercs/tensorfeed-x402-base-mcp",
+      "family": "money_movement",
+      "description": "Read-only Base mainnet reader. Verifies x402 payment settlements + AFTA federation status."
+    },
+    {
+      "name": "ai.weftly/weftly",
+      "slug": "ai-weftly-weftly",
+      "repo": "https://github.com/woven-record-media/weftly-monorepo",
+      "family": "money_movement",
+      "description": "Transcribe and summarize audio and video. Pay per job via Stripe or crypto."
+    },
+    {
+      "name": "ai.willform/willform-agent",
+      "slug": "ai-willform-willform-agent",
+      "repo": "https://github.com/willform-ai/willform-agent",
+      "family": "production_deploy",
+      "description": "Deploy containers on Kubernetes with x402 billing. 9 workload types and source builds."
+    },
+    {
+      "name": "app.businys/mcp-server",
+      "slug": "app-businys-mcp-server",
+      "repo": "https://github.com/hiatys/businys-mcp",
+      "family": "money_movement",
+      "description": "221 MCP tools across 26 practices for independent professionals. Clients, invoices, contracts."
+    },
+    {
+      "name": "app.mashop/mcp",
+      "slug": "app-mashop-mcp",
+      "repo": "https://github.com/appmashop/MaShop-App",
+      "family": "production_deploy",
+      "description": "Build, deploy and manage MaShop e-commerce projects from Claude, Cursor or any MCP client."
+    },
+    {
+      "name": "app.superdocs/superdocs",
+      "slug": "app-superdocs-superdocs",
+      "repo": "https://github.com/superdocsapp/superdocs-plugin",
+      "family": "data_export",
+      "description": "Edit, draft, summarize, export styled .docx/PDF/HTML/MD/RTF via 21 MCP tools + 4 prompts."
+    },
+    {
+      "name": "app.toolsnap/toolsnap-mcp",
+      "slug": "app-toolsnap-toolsnap-mcp",
+      "repo": "https://github.com/icosaedro-git/toolsnap-mcp",
+      "family": "data_export",
+      "description": "AI agent microtools. fetch_extract: 98.1% token reduction. $0.02 USDC on Base. 10 free tools."
+    },
+    {
+      "name": "be.vibedeploy/vibedeploy",
+      "slug": "be-vibedeploy-vibedeploy",
+      "repo": "https://github.com/thomasbillen-netizen/vibedeploy-api",
+      "family": "production_deploy",
+      "description": "Deploy and host AI-built websites on EU infrastructure, straight from your AI agent."
+    },
+    {
+      "name": "bid.scope/aec",
+      "slug": "bid-scope-aec",
+      "repo": "https://github.com/scope-bid/scope-mcp",
+      "family": "permission_change",
+      "description": "AEC subcontractor vendor procurement. Preview, V3 2027."
+    },
+    {
+      "name": "bid.scope/claims",
+      "slug": "bid-scope-claims",
+      "repo": "https://github.com/scope-bid/scope-mcp",
+      "family": "permission_change",
+      "description": "Insurance claims vendor procurement (IMEs, IA, surveillance). Preview, V2 Q3 2026."
+    },
+    {
+      "name": "bid.scope/healthcare",
+      "slug": "bid-scope-healthcare",
+      "repo": "https://github.com/scope-bid/scope-mcp",
+      "family": "permission_change",
+      "description": "Healthcare vendor-services MCP. Preview. Available after legal, claims, and AEC are live."
+    },
+    {
+      "name": "bid.scope/legal",
+      "slug": "bid-scope-legal",
+      "repo": "https://github.com/scope-bid/scope-mcp",
+      "family": "permission_change",
+      "description": "Legal-services vendor procurement: court reporting, records, experts, e-discovery. Live."
+    },
+    {
+      "name": "bid.scope/pharma",
+      "slug": "bid-scope-pharma",
+      "repo": "https://github.com/scope-bid/scope-mcp",
+      "family": "permission_change",
+      "description": "Pharma vendor-services MCP. Preview. Available after legal, claims, and AEC are live."
+    },
+    {
+      "name": "ca.netgrant/canadian-grants",
+      "slug": "ca-netgrant-canadian-grants",
+      "repo": "https://github.com/saman-ns/netgrant-mcp",
+      "family": "permission_change",
+      "description": "Search 1,300+ live Canadian funding opportunities — grants, tax credits, accelerators, and loans."
+    },
+    {
+      "name": "ca.swiftsign/mcp",
+      "slug": "ca-swiftsign-mcp",
+      "repo": "https://github.com/shahdadk/swiftsign",
+      "family": "data_export",
+      "description": "E-signatures for agents: mint a sandbox key, send PDFs, track status, download the sealed result."
+    },
+    {
+      "name": "cloud.iox/iox-cloud",
+      "slug": "cloud-iox-iox-cloud",
+      "repo": "https://github.com/meruada/iox-cloud",
+      "family": "production_deploy",
+      "description": "Deploy MCP servers and AI agents in seconds. AI generates code, deploy globally."
+    },
+    {
+      "name": "co.ainumbers/tools",
+      "slug": "co-ainumbers-tools",
+      "repo": "https://github.com/PostOakLabs/ainumbers-mcp-apps",
+      "family": "money_movement",
+      "description": "420+ client-side fintech tools (ISO 20022, AML, DORA, agentic payments) as MCP widgets. Zero PII."
+    },
+    {
+      "name": "co.lovie/company-formation",
+      "slug": "co-lovie-company-formation",
+      "repo": "https://github.com/lovieco/lovie-company-formation-mcp-npx",
+      "family": "money_movement",
+      "description": "Form companies, manage bank accounts, cards, invoices and more — directly from your AI coding tools."
+    },
+    {
+      "name": "co.sivut.pay/sec-crypto-filing-radar",
+      "slug": "co-sivut-pay-sec-crypto-filing-radar",
+      "repo": "https://github.com/rambov1/sivut-x402-public-data",
+      "family": "money_movement",
+      "description": "SEC EDGAR crypto filing radar MCP with x402-paid Base USDC data URLs."
+    },
+    {
+      "name": "co.tempguru/event-staffing",
+      "slug": "co-tempguru-event-staffing",
+      "repo": "https://github.com/kissmyabs32/tempguru-agent-skills",
+      "family": "permission_change",
+      "description": "W-2 event staffing data for agents: 300+ US/CA markets, roles, rates, lead times, compliance."
+    },
+    {
+      "name": "com.agentictotem/web-extractor",
+      "slug": "com-agentictotem-web-extractor",
+      "repo": "https://github.com/clacladev/agentic-totem",
+      "family": "money_movement",
+      "description": "AI web extraction: send URLs + a JSON Schema, get clean structured data. Pay-per-use via x402."
+    },
+    {
+      "name": "com.apify/apify-mcp-server",
+      "slug": "com-apify-apify-mcp-server",
+      "repo": "https://github.com/apify/apify-mcp-server",
+      "family": "data_export",
+      "description": "Extract data from any website with thousands of scrapers, crawlers, and automations on Apify Store ⚡"
+    },
+    {
+      "name": "com.appsai/mcp-server",
+      "slug": "com-appsai-mcp-server",
+      "repo": "https://github.com/appsai-inc/mcp-server",
+      "family": "production_deploy",
+      "description": "Build and deploy full-stack Next.js apps with 98 tools for React, AWS, and MongoDB."
+    },
+    {
+      "name": "com.babyblueviper/invinoveritas",
+      "slug": "com-babyblueviper-invinoveritas",
+      "repo": "https://github.com/babyblueviper1/invinoveritas-sdk",
+      "family": "money_movement",
+      "description": "Pay-per-call MCP for multi-agent fleets: a2a bus, sandbox, inference, review. Lightning-metered."
+    },
+    {
+      "name": "com.blackwalltier/blackwall",
+      "slug": "com-blackwalltier-blackwall",
+      "repo": "https://github.com/bluetieroperations-create/blackwall-mcp",
+      "family": "data_destruction",
+      "description": "Pre-action risk gate: AI agents call before any irreversible action (money, SQL, delete)."
+    },
+    {
+      "name": "com.blockventurechaincapital/bvcc-agent-wallet",
+      "slug": "com-blockventurechaincapital-bvcc-agent-wallet",
+      "repo": "https://github.com/blockventurechaincapital-crypto/bvcc-agent-mcp",
+      "family": "money_movement",
+      "description": "Non-custodial BVCC Agent Wallet on-chain for AI agents: balances, transfers, approvals, swaps."
+    },
+    {
+      "name": "com.boostermage/mtg-prices",
+      "slug": "com-boostermage-mtg-prices",
+      "repo": "https://github.com/fmacpro/boostermage",
+      "family": "data_destruction",
+      "description": "Live MTG sealed product prices across UK retailers. Search, compare, track deals and price drops."
+    },
+    {
+      "name": "com.cityparity/cityparity",
+      "slug": "com-cityparity-cityparity",
+      "repo": "https://github.com/summerstateofmind/cityparity",
+      "family": "money_movement",
+      "description": "Cost-of-living & quality-of-life comparison: take-home pay, equivalent salary, safety-net deltas."
+    },
+    {
+      "name": "com.clauxel.a2aidentitytoll/a2aidentitytoll-mcp",
+      "slug": "com-clauxel-a2aidentitytoll-a2aidentitytoll-mcp",
+      "repo": "https://github.com/clauxel/a2a-identity-toll-mcp",
+      "family": "permission_change",
+      "description": "Remote MCP for A2A caller identity, scope policy, verdict receipts, and audit history."
+    },
+    {
+      "name": "com.clauxel.agentdataboundary/agentdataboundary-mcp",
+      "slug": "com-clauxel-agentdataboundary-agentdataboundary-mcp",
+      "repo": "https://github.com/clauxel/agent-data-boundary-mcp",
+      "family": "permission_change",
+      "description": "Permission boundary receipts for ChatGPT agents."
+    },
+    {
+      "name": "com.clauxel.agentichtmlexportqa/agentichtmlexportqa-mcp",
+      "slug": "com-clauxel-agentichtmlexportqa-agentichtmlexportqa-mcp",
+      "repo": "https://github.com/clauxel/agentic-html-export-qa-mcp",
+      "family": "data_export",
+      "description": "Paid remote MCP for agentic HTML export QA MCP, structured receipts, audit logs, and reviewer-ready "
+    },
+    {
+      "name": "com.clauxel.aistudioandroidreleasegate/aistudioandroidreleasegate-mcp",
+      "slug": "com-clauxel-aistudioandroidreleasegate-aistudioandroidreleasegate-mcp",
+      "repo": "https://github.com/clauxel/ai-studio-android-release-gate-mcp",
+      "family": "production_deploy",
+      "description": "Remote MCP for AI Studio Android release gate MCP, structured receipts, audit logs, and reviewer-rea"
+    },
+    {
+      "name": "com.clauxel.copilotconnectorledger/copilotconnectorledger-mcp",
+      "slug": "com-clauxel-copilotconnectorledger-copilotconnectorledger-mcp",
+      "repo": "https://github.com/clauxel/copilot-connector-ledger-mcp",
+      "family": "permission_change",
+      "description": "Copilot connector permission audits with owner signoff receipts."
+    },
+    {
+      "name": "com.clauxel.kirowebreleasebinder/kirowebreleasebinder-mcp",
+      "slug": "com-clauxel-kirowebreleasebinder-kirowebreleasebinder-mcp",
+      "repo": "https://github.com/clauxel/kiro-web-release-binder-mcp",
+      "family": "production_deploy",
+      "description": "Remote MCP for Kiro release readiness, evidence binders, signoff, and CI approval receipts."
+    },
+    {
+      "name": "com.clauxel.mcpoauthscopegate/mcpoauthscopegate-mcp",
+      "slug": "com-clauxel-mcpoauthscopegate-mcpoauthscopegate-mcp",
+      "repo": "https://github.com/clauxel/mcp-oauth-scope-gate-mcp",
+      "family": "permission_change",
+      "description": "OAuth scope approvals and consent receipts for remote MCP servers."
+    },
+    {
+      "name": "com.clauxel.mcpscopeconsent/mcpscopeconsent-mcp",
+      "slug": "com-clauxel-mcpscopeconsent-mcpscopeconsent-mcp",
+      "repo": "https://github.com/clauxel/mcp-scope-consent-mcp",
+      "family": "permission_change",
+      "description": "Remote MCP for MCP consent scope receipt, structured receipts, audit logs, and reviewer-ready eviden"
+    },
+    {
+      "name": "com.clauxel.safetyreplay/safetyreplay-mcp",
+      "slug": "com-clauxel-safetyreplay-safetyreplay-mcp",
+      "repo": "https://github.com/clauxel/safety-replay-gate-mcp",
+      "family": "production_deploy",
+      "description": "Paid remote MCP for safety replays, policy gates, eval receipts, and release evidence."
+    },
+    {
+      "name": "com.clauxel.schemadriftgate/schemadriftgate-mcp",
+      "slug": "com-clauxel-schemadriftgate-schemadriftgate-mcp",
+      "repo": "https://github.com/clauxel/schema-drift-gate-mcp",
+      "family": "production_deploy",
+      "description": "Paid remote MCP for schema drift checks, approvals, receipts, and release audit logs."
+    },
+    {
+      "name": "com.crabbitmq/mcp",
+      "slug": "com-crabbitmq-mcp",
+      "repo": "https://github.com/crabbitmq/crabbit_mq",
+      "family": "production_deploy",
+      "description": "Async message queue for AI agents. Self-provision queues, push/poll messages, no signup."
+    },
+    {
+      "name": "com.daedalmap/boundaries",
+      "slug": "com-daedalmap-boundaries",
+      "repo": "https://github.com/xyver/daedal-map",
+      "family": "permission_change",
+      "description": "A loc_id to its bounding box, centroid, and polygon, with place name and admin level."
+    },
+    {
+      "name": "com.decision-anchor/da",
+      "slug": "com-decision-anchor-da",
+      "repo": "https://github.com/zse4321/decision-anchor-sdk",
+      "family": "money_movement",
+      "description": "External accountability proof for agent payments, delegation, disputes. Does not monitor or judge."
+    },
+    {
+      "name": "com.designbycurio/curio",
+      "slug": "com-designbycurio-curio",
+      "repo": "https://github.com/voltwake/curio-mcp-extension",
+      "family": "production_deploy",
+      "description": "A design-style library for AI agents: search real styles, fetch a ready-to-apply design spec."
+    },
+    {
+      "name": "com.docimprint/api",
+      "slug": "com-docimprint-api",
+      "repo": "https://github.com/sawftware-labs/docimprint",
+      "family": "data_export",
+      "description": "AI document intelligence: extract, summarize, claim-check, and notarize with on-chain proofs."
+    },
+    {
+      "name": "com.dropwarp/mcp",
+      "slug": "com-dropwarp-mcp",
+      "repo": "https://github.com/andrewnakas/airdropwasm",
+      "family": "money_movement",
+      "description": "Send, list, and delete file transfers via DropWarp and get a shareable download link."
+    },
+    {
+      "name": "com.dyndns-server.noon-ai/image-video-anonymization-mcp",
+      "slug": "com-dyndns-server-noon-ai-image-video-anonymization-mcp",
+      "repo": "https://github.com/MHNCity/noonai-dis-mcp-server",
+      "family": "data_export",
+      "description": "Remote MCP for image/video anonymization, privacy redaction, async jobs, and downloads."
+    },
+    {
+      "name": "com.dyndns-server.noon-ai/noonai-dis-mcp-server",
+      "slug": "com-dyndns-server-noon-ai-noonai-dis-mcp-server",
+      "repo": "https://github.com/MHNCity/noonai-dis-mcp-server",
+      "family": "data_export",
+      "description": "Remote MCP for image/video anonymization, privacy redaction, async jobs, downloads, and billing."
+    },
+    {
+      "name": "com.dyndns-server.noon-ai/video-anonymization-mcp",
+      "slug": "com-dyndns-server-noon-ai-video-anonymization-mcp",
+      "repo": "https://github.com/MHNCity/noonai-dis-mcp-server",
+      "family": "data_export",
+      "description": "Remote MCP for video anonymization, privacy redaction, async video jobs, and downloads."
+    },
+    {
+      "name": "com.eveoy/mcp",
+      "slug": "com-eveoy-mcp",
+      "repo": "https://github.com/eveoy/eveoy-mcp",
+      "family": "money_movement",
+      "description": "Ask about Eveoy and book pilots — $24.99 per verified in-store customer, auto-refund."
+    },
+    {
+      "name": "com.feode/feode-mcp",
+      "slug": "com-feode-feode-mcp",
+      "repo": "https://github.com/FarEastAI/feode-mcp",
+      "family": "permission_change",
+      "description": "FEODE: offshore P&A, subsea wellhead (BV+CCS), + NOV Grant Prideco drill-pipe spec lookup"
+    },
+    {
+      "name": "com.ffmpeg-micro/mcp-server",
+      "slug": "com-ffmpeg-micro-mcp-server",
+      "repo": "https://github.com/javidjamae/ffmpeg-micro-mcp",
+      "family": "data_export",
+      "description": "MCP server for the FFmpeg Micro video transcoding API — create, monitor, download transcodes."
+    },
+    {
+      "name": "com.getalai/presentations",
+      "slug": "com-getalai-presentations",
+      "repo": "https://github.com/getalai/alai-mcp-server",
+      "family": "data_export",
+      "description": "Generate, edit, and export AI presentations to PDF, PPTX, or a shareable link."
+    },
+    {
+      "name": "com.getonbrd/recruiter",
+      "slug": "com-getonbrd-recruiter",
+      "repo": "https://github.com/getonbrd/getonbrd",
+      "family": "permission_change",
+      "description": "Recruiter-scoped search across Latin America's largest tech talent pool. OAuth-authenticated."
+    },
+    {
+      "name": "com.hauntapi/haunt",
+      "slug": "com-hauntapi-haunt",
+      "repo": "https://github.com/Darko893/mcp-server",
+      "family": "data_export",
+      "description": "Extract public web pages to clean JSON or Markdown via MCP. No-key demo; failed calls not billed."
+    },
+    {
+      "name": "com.ifthenpay/payments",
+      "slug": "com-ifthenpay-payments",
+      "repo": "https://github.com/ifthenpay/mcp-payments",
+      "family": "money_movement",
+      "description": "Remote MCP server for integrating AI agents with ifthenpay payment services."
+    },
+    {
+      "name": "com.instapods/instapods",
+      "slug": "com-instapods-instapods",
+      "repo": "https://github.com/InstaPods/instapods",
+      "family": "production_deploy",
+      "description": "Deploy and manage cloud servers from AI agents. Create pods, push code, run commands — all via MCP."
+    },
+    {
+      "name": "com.invoicexml/invoicexml",
+      "slug": "com-invoicexml-invoicexml",
+      "repo": "https://github.com/InvoiceXML/invoicexml-mcp",
+      "family": "money_movement",
+      "description": "Create, validate, convert & extract compliant e-invoices (UBL, Factur-X, ZUGFeRD, XRechnung)"
+    },
+    {
+      "name": "com.iterationlayer/mcp",
+      "slug": "com-iterationlayer-mcp",
+      "repo": "https://github.com/iterationlayer/iterationlayer",
+      "family": "data_export",
+      "description": "Composable APIs for document extraction, image transformation, and document & sheet generation."
+    },
+    {
+      "name": "com.jamesrosingmd/zenoti",
+      "slug": "com-jamesrosingmd-zenoti",
+      "repo": "https://github.com/tacit-code/zenoti-mcp-server",
+      "family": "money_movement",
+      "description": "MCP server for Zenoti spa/wellness/medspa — guests, appointments, bookings, invoices"
+    },
+    {
+      "name": "com.jpyc-info/jpyc-agent-mcp",
+      "slug": "com-jpyc-info-jpyc-agent-mcp",
+      "repo": "https://github.com/yourbright-jp/jpyc-agent-mcp",
+      "family": "money_movement",
+      "description": "OAuth-protected JPYC wallet, transfer, and contract workflows on Polygon."
+    },
+    {
+      "name": "com.jumpseller/admin-mcp",
+      "slug": "com-jumpseller-admin-mcp",
+      "repo": "https://github.com/Jumpseller/api-docs",
+      "family": "permission_change",
+      "description": "Manage your Jumpseller store with AI. Products, orders, customers, and more."
+    },
+    {
+      "name": "com.jupiterinvoice/server",
+      "slug": "com-jupiterinvoice-server",
+      "repo": "https://github.com/middlefieldgs/JupiterInvoice",
+      "family": "money_movement",
+      "description": "Create and manage invoices and customers on Jupiter Invoice (MCP, API-key auth)."
+    },
+    {
+      "name": "com.laddro/career",
+      "slug": "com-laddro-career",
+      "repo": "https://github.com/laddro-app/laddro-career-mcp",
+      "family": "data_export",
+      "description": "Resume tailoring, cover letters, PDF export, and job search via the Laddro Career API"
+    },
+    {
+      "name": "com.loopxxi/loop-mcp",
+      "slug": "com-loopxxi-loop-mcp",
+      "repo": "https://github.com/Loop-XXI/loop-mcp",
+      "family": "money_movement",
+      "description": "L402-native MCP payment proxy. Pay 10 sats per tool call via Lightning."
+    },
+    {
+      "name": "com.luthersystems.insideout/mcp",
+      "slug": "com-luthersystems-insideout-mcp",
+      "repo": "https://github.com/luthersystems/insideout-agent-skills",
+      "family": "production_deploy",
+      "description": "Designs, prices, and deploys AWS/GCP cloud infrastructure from plain-English requirements."
+    },
+    {
+      "name": "com.mambabuilt/mcp-job-board-keyword-signal-scanner",
+      "slug": "com-mambabuilt-mcp-job-board-keyword-signal-scanner",
+      "repo": "https://github.com/mambalabsdev/mcp-job-board-keyword-signal-scanner",
+      "family": "permission_change",
+      "description": "Scans Greenhouse, Lever, Ashby, Workday, Rippling for roles in any category. Clay-ready."
+    },
+    {
+      "name": "com.marketcheck/marketcheck-ai-reports",
+      "slug": "com-marketcheck-marketcheck-ai-reports",
+      "repo": "https://github.com/MarketcheckHub/marketcheck-ai-reports",
+      "family": "money_movement",
+      "description": "Vehicle valuations & market reports for AI assistants. Pay per report, no subscription."
+    },
+    {
+      "name": "com.maximumsats/maximumsats",
+      "slug": "com-maximumsats-maximumsats",
+      "repo": "https://github.com/joelklabo/maximumsats-mcp",
+      "family": "money_movement",
+      "description": "Bitcoin AI + Nostr WoT scoring (12 tools). L402 pay-per-call. 50 free WoT/day."
+    },
+    {
+      "name": "com.mcparmory/agentql",
+      "slug": "com-mcparmory-agentql",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Query webpages and extract structured data using natural language"
+    },
+    {
+      "name": "com.mcparmory/airtable",
+      "slug": "com-mcparmory-airtable",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_destruction",
+      "description": "Create, read, update, and delete records in Airtable bases and tables"
+    },
+    {
+      "name": "com.mcparmory/apify",
+      "slug": "com-mcparmory-apify",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "production_deploy",
+      "description": "Build, deploy, and run web scraping and automation actors in the cloud"
+    },
+    {
+      "name": "com.mcparmory/bamboohr",
+      "slug": "com-mcparmory-bamboohr",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "money_movement",
+      "description": "Manage employee records, time off, benefits, and payroll data"
+    },
+    {
+      "name": "com.mcparmory/datadog",
+      "slug": "com-mcparmory-datadog",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "production_deploy",
+      "description": "Monitor infrastructure, manage agents and deployments, track metrics, logs, and events"
+    },
+    {
+      "name": "com.mcparmory/figma",
+      "slug": "com-mcparmory-figma",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Export files, access design data, manage projects, comments, and team assets"
+    },
+    {
+      "name": "com.mcparmory/firecrawl",
+      "slug": "com-mcparmory-firecrawl",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Scrape, crawl, and extract structured data from websites at scale"
+    },
+    {
+      "name": "com.mcparmory/github",
+      "slug": "com-mcparmory-github",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "production_deploy",
+      "description": "Manage repositories, users, releases, and automate GitHub workflows"
+    },
+    {
+      "name": "com.mcparmory/google-analytics",
+      "slug": "com-mcparmory-google-analytics",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Query GA4 analytics data with custom reports, pivot tables, and audience exports"
+    },
+    {
+      "name": "com.mcparmory/google-drive",
+      "slug": "com-mcparmory-google-drive",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "permission_change",
+      "description": "Manage files, folders, permissions, and collaborative content in Google Drive"
+    },
+    {
+      "name": "com.mcparmory/outline",
+      "slug": "com-mcparmory-outline",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "permission_change",
+      "description": "Create, manage, and organize team documents, collections, and share permissions"
+    },
+    {
+      "name": "com.mcparmory/parallel",
+      "slug": "com-mcparmory-parallel",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Search the web, extract content, and run distributed tasks with AI-powered automation"
+    },
+    {
+      "name": "com.mcparmory/pdfco",
+      "slug": "com-mcparmory-pdfco",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Extract data, edit, convert, and parse PDF documents with OCR and AI"
+    },
+    {
+      "name": "com.mcparmory/pinecone",
+      "slug": "com-mcparmory-pinecone",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Create and manage vector database indexes, backups, and collections"
+    },
+    {
+      "name": "com.mcparmory/replicate",
+      "slug": "com-mcparmory-replicate",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "production_deploy",
+      "description": "Run AI models, create deployments, and manage predictions via cloud API"
+    },
+    {
+      "name": "com.mcparmory/scrapingant",
+      "slug": "com-mcparmory-scrapingant",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "data_export",
+      "description": "Scrape webpages, handle JavaScript and CAPTCHA, extract structured data"
+    },
+    {
+      "name": "com.mcparmory/shopify-admin",
+      "slug": "com-mcparmory-shopify-admin",
+      "repo": "https://github.com/mcparmory/registry",
+      "family": "permission_change",
+      "description": "Manage products, orders, customers, inventory, and store configuration"
+    },
+    {
+      "name": "com.medrecpro/drug-label-server",
+      "slug": "com-medrecpro-drug-label-server",
+      "repo": "https://github.com/chriserikbarnes/MedRecPro",
+      "family": "data_export",
+      "description": "Search and export FDA drug labels by brand name, generic ingredient, or UNII code."
+    },
+    {
+      "name": "com.memotrader/mcp",
+      "slug": "com-memotrader-mcp",
+      "repo": "https://github.com/jimbursch/memotrader-mcp",
+      "family": "money_movement",
+      "description": "AI-to-human attention marketplace. Agents pay CPM to reach humans, earn credits by replying."
+    },
+    {
+      "name": "com.microsoft/workiq-admintools",
+      "slug": "com-microsoft-workiq-admintools",
+      "repo": "https://github.com/bap-microsoft/MCP-Platform/",
+      "family": "permission_change",
+      "description": "MCP Server containing tools relating to Microsoft Admin Center"
+    },
+    {
+      "name": "com.mnemopay/sdk",
+      "slug": "com-mnemopay-sdk",
+      "repo": "https://github.com/mnemopay/mnemopay-sdk",
+      "family": "money_movement",
+      "description": "Memory + wallet for AI agents. Real payment rails, Agent FICO 300-850, Merkle audit, identity."
+    },
+    {
+      "name": "com.mydriverparis/booking",
+      "slug": "com-mydriverparis-booking",
+      "repo": "https://github.com/mydriver-paris/mcp-mydriverparis-worker",
+      "family": "money_movement",
+      "description": "Book premium private chauffeur transfers in Paris and across Europe via AI agents."
+    },
+    {
+      "name": "com.nannykeeper.www/mcp-server",
+      "slug": "com-nannykeeper-www-mcp-server",
+      "repo": "https://github.com/imaznation/nannykeeper",
+      "family": "money_movement",
+      "description": "Calculate US household employer (nanny) taxes + run payroll via AI agents. All 50 states."
+    },
+    {
+      "name": "com.onchaindiligence/compliance",
+      "slug": "com-onchaindiligence-compliance",
+      "repo": "https://github.com/Qazza1/onchaindiligence-mcp",
+      "family": "money_movement",
+      "description": "Pay-per-call sanctions screening and UK company checks for agents, paid in USDC via x402."
+    },
+    {
+      "name": "com.onelasso/lasso",
+      "slug": "com-onelasso-lasso",
+      "repo": "https://github.com/subhubapps/lasso-core",
+      "family": "money_movement",
+      "description": "Manage your Lasso partnership program from your AI assistant: leads, partners, referrals, payments."
+    },
+    {
+      "name": "com.paladinfi/trust-check-mcp",
+      "slug": "com-paladinfi-trust-check-mcp",
+      "repo": "https://github.com/paladinfi/trust-check-mcp",
+      "family": "money_movement",
+      "description": "Free OFAC SDN wallet screen + sample preview for AI agents on Base. Read-only, no payment surface."
+    },
+    {
+      "name": "com.phasefolio/phasefolio",
+      "slug": "com-phasefolio-phasefolio",
+      "repo": "https://github.com/TamalAdebisi/Phasefolio_v1",
+      "family": "data_export",
+      "description": "Biotech rNPV/PoS engine for AI agents. Signed exports, evidence register, asset landscape."
+    },
+    {
+      "name": "com.pulsemcp.servers/pulse-fetch",
+      "slug": "com-pulsemcp-servers-pulse-fetch",
+      "repo": "https://github.com/pulsemcp/mcp-servers",
+      "family": "data_export",
+      "description": "MCP server that extracts clean, structured content from web pages with anti-bot bypass capabilities."
+    },
+    {
+      "name": "com.pulsemcp/hatchbox",
+      "slug": "com-pulsemcp-hatchbox",
+      "repo": "https://github.com/pulsemcp/mcp-servers",
+      "family": "production_deploy",
+      "description": "MCP server for Hatchbox Rails hosting — env var inspection, deploys, and process monitoring."
+    },
+    {
+      "name": "com.pulsemcp/pulse-fetch",
+      "slug": "com-pulsemcp-pulse-fetch",
+      "repo": "https://github.com/pulsemcp/mcp-servers",
+      "family": "data_export",
+      "description": "MCP server for fetching web resources with content extraction and anti-bot bypass."
+    },
+    {
+      "name": "com.pulsemcp/vercel",
+      "slug": "com-pulsemcp-vercel",
+      "repo": "https://github.com/pulsemcp/mcp-servers",
+      "family": "production_deploy",
+      "description": "MCP server for Vercel — manage deployments and view build and runtime application logs."
+    },
+    {
+      "name": "com.quelvio/mcp-server",
+      "slug": "com-quelvio-mcp-server",
+      "repo": "https://github.com/Quelvio/quelvio-platform",
+      "family": "permission_change",
+      "description": "Your company's brain for AI agents. Cited, permission-aware knowledge across every system."
+    },
+    {
+      "name": "com.railway/mcp",
+      "slug": "com-railway-mcp",
+      "repo": "https://github.com/railwayapp/mono",
+      "family": "production_deploy",
+      "description": "Develop, manage, and debug Railway projects, services, and deployments from within agents."
+    },
+    {
+      "name": "com.scriptivox.www/transcription",
+      "slug": "com-scriptivox-www-transcription",
+      "repo": "https://github.com/SparkleOfficial/scriptivox-mcp-server",
+      "family": "data_export",
+      "description": "AI transcription from URLs or files. 119 languages, diarization, SRT/VTT/text export."
+    },
+    {
+      "name": "com.shipstatic/mcp",
+      "slug": "com-shipstatic-mcp",
+      "repo": "https://github.com/shipstatic/mcp",
+      "family": "production_deploy",
+      "description": "Static hosting - deploy and manage sites from AI agents"
+    },
+    {
+      "name": "com.stratalize/healthcare",
+      "slug": "com-stratalize-healthcare",
+      "repo": "https://github.com/Stratalize/Stratalize",
+      "family": "money_movement",
+      "description": "19 healthcare tools: CMS benchmarks, nurse rates, pharmacy, billing risk, payer intel. Ed25519."
+    },
+    {
+      "name": "com.streamlinehq/mcp",
+      "slug": "com-streamlinehq-mcp",
+      "repo": "https://github.com/webalys-hq/streamline-mcp-server",
+      "family": "data_export",
+      "description": "The Streamline MCP Server allow users to search, and download assets in PNG or SVG formats."
+    },
+    {
+      "name": "com.stripe/mcp",
+      "slug": "com-stripe-mcp",
+      "repo": "https://github.com/stripe/agent-toolkit",
+      "family": "money_movement",
+      "description": "MCP server integrating with Stripe - tools for customers, products, payments, and more."
+    },
+    {
+      "name": "com.text2event/mcp",
+      "slug": "com-text2event-mcp",
+      "repo": "https://github.com/yauhen-l/text2event",
+      "family": "data_export",
+      "description": "Extracts calendar events from natural-language text, with .ics and calendar links."
+    },
+    {
+      "name": "com.trip1/mcp",
+      "slug": "com-trip1-mcp",
+      "repo": "https://github.com/trivial-corp/trip1",
+      "family": "money_movement",
+      "description": "Book hotels over MCP. Pay over x402. 3M+ properties in 200+ countries, USDC on Base."
+    },
+    {
+      "name": "com.wauldo/wauldo",
+      "slug": "com-wauldo-wauldo",
+      "repo": "https://github.com/Benmebrouk/wauldo",
+      "family": "data_export",
+      "description": "Agentic tools over MCP: concept extraction, long-context, knowledge graph, task planning."
+    },
+    {
+      "name": "com.xhostd/mcp",
+      "slug": "com-xhostd-mcp",
+      "repo": "https://github.com/yairl/xhost-sdk",
+      "family": "production_deploy",
+      "description": "Agent-first hosting: create apps, commit code, deploy, get HTTPS URLs. OAuth sign-in, no tokens."
+    },
+    {
+      "name": "com.xquik/mcp",
+      "slug": "com-xquik-mcp",
+      "repo": "https://github.com/Xquik-dev/x-twitter-scraper",
+      "family": "data_export",
+      "description": "Real-time X (Twitter) data: 120+ API endpoints, search, bulk extraction, writes"
+    },
+    {
+      "name": "dev.agentmetal/agentmetal",
+      "slug": "dev-agentmetal-agentmetal",
+      "repo": "https://github.com/agentmetal/mcp",
+      "family": "money_movement",
+      "description": "Provision Linux VPSes from an AI agent - pay USDC (x402) or card over HTTP 402. No signup."
+    },
+    {
+      "name": "dev.averra/extract",
+      "slug": "dev-averra-extract",
+      "repo": "https://github.com/Swwyymm/averra-extract-mcp",
+      "family": "data_export",
+      "description": "URL-to-Markdown API for AI pipelines — clean markdown with metadata and caching."
+    },
+    {
+      "name": "dev.charliemorrison/agent-web-reader",
+      "slug": "dev-charliemorrison-agent-web-reader",
+      "repo": "https://github.com/charlie-morrison/x402-agent-data",
+      "family": "money_movement",
+      "description": "Pay-per-call data tools for AI agents: crypto signal, web reader, SEO audit. x402 USDC on Base."
+    },
+    {
+      "name": "dev.cz-agents/adis",
+      "slug": "dev-cz-agents-adis",
+      "repo": "https://github.com/martinhavel/cz-agents-mcp",
+      "family": "money_movement",
+      "description": "ADIS — Czech VAT-payer reliability (nespolehlivý plátce DPH) via MFČR SOAP"
+    },
+    {
+      "name": "dev.cz-agents/payqr",
+      "slug": "dev-cz-agents-payqr",
+      "repo": "https://github.com/martinhavel/cz-agents-mcp",
+      "family": "money_movement",
+      "description": "European payment QR — SPAYD (CZ/SK) & EPC/GiroCode (SEPA), plus text/WiFi/vCard. Local, free."
+    },
+    {
+      "name": "dev.forgesworn/402-mcp",
+      "slug": "dev-forgesworn-402-mcp",
+      "repo": "https://github.com/forgesworn/402-mcp",
+      "family": "money_movement",
+      "description": "AI agents discover, pay for, and consume any Lightning-gated API autonomously"
+    },
+    {
+      "name": "dev.pokes/pokes",
+      "slug": "dev-pokes-pokes",
+      "repo": "https://github.com/jonmorgs/pokes",
+      "family": "regulated_override",
+      "description": "Poke your human for approvals and decisions during agent sessions — answered with one phone tap."
+    },
+    {
+      "name": "dev.satrank/mcp",
+      "slug": "dev-satrank-mcp",
+      "repo": "https://github.com/proofoftrust21/satrank",
+      "family": "money_movement",
+      "description": "Lightning trust + audit oracle. Score, pay, and audit L402 endpoints with Ed25519 receipts."
+    },
+    {
+      "name": "dev.torify/japanese-locale-mcp",
+      "slug": "dev-torify-japanese-locale-mcp",
+      "repo": "https://github.com/endennn/torify",
+      "family": "money_movement",
+      "description": "Japan locale APIs for AI agents: wareki, invoice, corporate, postal, romanization. Free, no auth."
+    },
+    {
+      "name": "dev.true402/mcp-server",
+      "slug": "dev-true402-mcp-server",
+      "repo": "https://github.com/true402/mcp-server",
+      "family": "money_movement",
+      "description": "Pay-per-call agent tools over x402 on Base: token/rug safety, DeFi signals, SEO, LLM. No keys."
+    },
+    {
+      "name": "dev.urlsnap/urlsnap-mcp",
+      "slug": "dev-urlsnap-urlsnap-mcp",
+      "repo": "https://github.com/urlsnapdev/urlsnap-mcp",
+      "family": "data_export",
+      "description": "Screenshot, PDF, and markdown extraction from any URL via Claude Desktop and Claude Code."
+    },
+    {
+      "name": "email.verifly/verifly",
+      "slug": "email-verifly-verifly",
+      "repo": "https://github.com/james-sib/verifly-mcp-server",
+      "family": "money_movement",
+      "description": "Email verification for AI agents — verify, clean & validate emails; self-onboard + crypto pay"
+    },
+    {
+      "name": "eu.ansvar/argentine-law-mcp",
+      "slug": "eu-ansvar-argentine-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/argentine-law-mcp",
+      "family": "production_deploy",
+      "description": "Argentine legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/australian-law-mcp",
+      "slug": "eu-ansvar-australian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/australian-law-mcp",
+      "family": "production_deploy",
+      "description": "Australian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/bahraini-law-mcp",
+      "slug": "eu-ansvar-bahraini-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/bahraini-law-mcp",
+      "family": "production_deploy",
+      "description": "Bahrain legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/bangladeshi-law-mcp",
+      "slug": "eu-ansvar-bangladeshi-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Bangladeshi-law-mcp",
+      "family": "production_deploy",
+      "description": "Bangladeshi legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/belgian-law-mcp",
+      "slug": "eu-ansvar-belgian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Belgium-law-mcp",
+      "family": "production_deploy",
+      "description": "Belgian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/botswana-law-mcp",
+      "slug": "eu-ansvar-botswana-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/botswana-law-mcp",
+      "family": "production_deploy",
+      "description": "Botswana legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/brazil-law-mcp",
+      "slug": "eu-ansvar-brazil-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/brazil-law-mcp",
+      "family": "production_deploy",
+      "description": "Brazil legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/bulgarian-law-mcp",
+      "slug": "eu-ansvar-bulgarian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Bulgarian-law-mcp",
+      "family": "production_deploy",
+      "description": "Bulgarian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/cambodian-law-mcp",
+      "slug": "eu-ansvar-cambodian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/cambodian-law-mcp",
+      "family": "production_deploy",
+      "description": "Cambodia legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/cameroonian-law-mcp",
+      "slug": "eu-ansvar-cameroonian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/cameroonian-law-mcp",
+      "family": "production_deploy",
+      "description": "Cameroon legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/chilean-law-mcp",
+      "slug": "eu-ansvar-chilean-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Chilean-law-mcp",
+      "family": "production_deploy",
+      "description": "Chilean legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/colombian-law-mcp",
+      "slug": "eu-ansvar-colombian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Colombian-law-mcp",
+      "family": "production_deploy",
+      "description": "Colombian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/costa-rican-law-mcp",
+      "slug": "eu-ansvar-costa-rican-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Costa-Rican-law-mcp",
+      "family": "production_deploy",
+      "description": "Costa Rican legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/croatian-law-mcp",
+      "slug": "eu-ansvar-croatian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Croatian-law-mcp",
+      "family": "production_deploy",
+      "description": "Croatian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/cypriot-law-mcp",
+      "slug": "eu-ansvar-cypriot-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Cypriot-law-mcp",
+      "family": "production_deploy",
+      "description": "Cypriot legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/czech-law-mcp",
+      "slug": "eu-ansvar-czech-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Czech-law-mcp",
+      "family": "production_deploy",
+      "description": "Czech legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/dominican-law-mcp",
+      "slug": "eu-ansvar-dominican-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/dominican-law-mcp",
+      "family": "production_deploy",
+      "description": "Dominican Republic legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/ecuadorian-law-mcp",
+      "slug": "eu-ansvar-ecuadorian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/ecuadorian-law-mcp",
+      "family": "production_deploy",
+      "description": "Ecuador legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/egyptian-law-mcp",
+      "slug": "eu-ansvar-egyptian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Egyptian-law-mcp",
+      "family": "production_deploy",
+      "description": "Egyptian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/estonian-law-mcp",
+      "slug": "eu-ansvar-estonian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Estonian-law-mcp",
+      "family": "production_deploy",
+      "description": "Estonian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/ethiopian-law-mcp",
+      "slug": "eu-ansvar-ethiopian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/ethiopian-law-mcp",
+      "family": "production_deploy",
+      "description": "Ethiopia legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/french-law-mcp",
+      "slug": "eu-ansvar-french-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/French-law-mcp",
+      "family": "production_deploy",
+      "description": "French legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/georgian-law-mcp",
+      "slug": "eu-ansvar-georgian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Georgian-law-mcp",
+      "family": "production_deploy",
+      "description": "Georgian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/ghana-law-mcp",
+      "slug": "eu-ansvar-ghana-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/ghana-law-mcp",
+      "family": "production_deploy",
+      "description": "Ghana legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/greek-law-mcp",
+      "slug": "eu-ansvar-greek-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Greek-law-mcp",
+      "family": "production_deploy",
+      "description": "Greek legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/hungarian-law-mcp",
+      "slug": "eu-ansvar-hungarian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Hungarian-law-mcp",
+      "family": "production_deploy",
+      "description": "Hungarian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/icelandic-law-mcp",
+      "slug": "eu-ansvar-icelandic-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/icelandic-law-mcp",
+      "family": "production_deploy",
+      "description": "Icelandic legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/india-law-mcp",
+      "slug": "eu-ansvar-india-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/india-law-mcp",
+      "family": "production_deploy",
+      "description": "Indian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/indonesian-law-mcp",
+      "slug": "eu-ansvar-indonesian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/indonesian-law-mcp",
+      "family": "production_deploy",
+      "description": "Indonesian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/irish-law-mcp",
+      "slug": "eu-ansvar-irish-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Irish-law-mcp",
+      "family": "production_deploy",
+      "description": "Irish legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/israel-law-mcp",
+      "slug": "eu-ansvar-israel-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/israel-law-mcp",
+      "family": "production_deploy",
+      "description": "Israel legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/italian-law-mcp",
+      "slug": "eu-ansvar-italian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/italian-law-mcp",
+      "family": "production_deploy",
+      "description": "Italian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/ivorian-law-mcp",
+      "slug": "eu-ansvar-ivorian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/ivorian-law-mcp",
+      "family": "production_deploy",
+      "description": "Ivory Coast legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/jamaican-law-mcp",
+      "slug": "eu-ansvar-jamaican-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Jamaican-law-mcp",
+      "family": "production_deploy",
+      "description": "Jamaican legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/japan-law-mcp",
+      "slug": "eu-ansvar-japan-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/japan-law-mcp",
+      "family": "production_deploy",
+      "description": "Japan legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/jordanian-law-mcp",
+      "slug": "eu-ansvar-jordanian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/jordanian-law-mcp",
+      "family": "production_deploy",
+      "description": "Jordan legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/kenya-law-mcp",
+      "slug": "eu-ansvar-kenya-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/kenya-law-mcp",
+      "family": "production_deploy",
+      "description": "Kenya legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/latvian-law-mcp",
+      "slug": "eu-ansvar-latvian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Latvian-law-mcp",
+      "family": "production_deploy",
+      "description": "Latvian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/liechtenstein-law-mcp",
+      "slug": "eu-ansvar-liechtenstein-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Liechtenstein-law-mcp",
+      "family": "production_deploy",
+      "description": "Liechtenstein legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/lithuanian-law-mcp",
+      "slug": "eu-ansvar-lithuanian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Lithuanian-law-mcp",
+      "family": "production_deploy",
+      "description": "Lithuanian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/luxembourg-law-mcp",
+      "slug": "eu-ansvar-luxembourg-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Luxembourg-law-mcp",
+      "family": "production_deploy",
+      "description": "Luxembourg legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/malawi-law-mcp",
+      "slug": "eu-ansvar-malawi-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/malawi-law-mcp",
+      "family": "production_deploy",
+      "description": "Malawi legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/malaysian-law-mcp",
+      "slug": "eu-ansvar-malaysian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/malaysian-law-mcp",
+      "family": "production_deploy",
+      "description": "Malaysian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/maltese-law-mcp",
+      "slug": "eu-ansvar-maltese-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Maltese-law-mcp",
+      "family": "production_deploy",
+      "description": "Maltese legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/mexican-law-mcp",
+      "slug": "eu-ansvar-mexican-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/mexican-law-mcp",
+      "family": "production_deploy",
+      "description": "Mexican legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/moroccan-law-mcp",
+      "slug": "eu-ansvar-moroccan-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Moroccan-law-mcp",
+      "family": "production_deploy",
+      "description": "Moroccan legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/mozambican-law-mcp",
+      "slug": "eu-ansvar-mozambican-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/mozambican-law-mcp",
+      "family": "production_deploy",
+      "description": "Mozambique legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/namibian-law-mcp",
+      "slug": "eu-ansvar-namibian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/namibian-law-mcp",
+      "family": "production_deploy",
+      "description": "Namibia legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/nepal-law-mcp",
+      "slug": "eu-ansvar-nepal-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/nepal-law-mcp",
+      "family": "production_deploy",
+      "description": "Nepal legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/newzealand-law-mcp",
+      "slug": "eu-ansvar-newzealand-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/newzealand-law-mcp",
+      "family": "production_deploy",
+      "description": "New Zealand legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/nigeria-law-mcp",
+      "slug": "eu-ansvar-nigeria-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/nigeria-law-mcp",
+      "family": "production_deploy",
+      "description": "Nigeria legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/norwegian-law-mcp",
+      "slug": "eu-ansvar-norwegian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/norwegian-law-mcp",
+      "family": "production_deploy",
+      "description": "Norwegian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/pakistani-law-mcp",
+      "slug": "eu-ansvar-pakistani-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Pakistani-law-mcp",
+      "family": "production_deploy",
+      "description": "Pakistani legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/paraguayan-law-mcp",
+      "slug": "eu-ansvar-paraguayan-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/paraguayan-law-mcp",
+      "family": "production_deploy",
+      "description": "Paraguay legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/peruvian-law-mcp",
+      "slug": "eu-ansvar-peruvian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Peruvian-law-mcp",
+      "family": "production_deploy",
+      "description": "Peruvian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/philippine-law-mcp",
+      "slug": "eu-ansvar-philippine-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/philippine-law-mcp",
+      "family": "production_deploy",
+      "description": "Philippine legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/polish-law-mcp",
+      "slug": "eu-ansvar-polish-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/polish-law-mcp",
+      "family": "production_deploy",
+      "description": "Polish legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/portuguese-law-mcp",
+      "slug": "eu-ansvar-portuguese-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/portuguese-law-mcp",
+      "family": "production_deploy",
+      "description": "Portuguese legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/qatari-law-mcp",
+      "slug": "eu-ansvar-qatari-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Qatari-law-mcp",
+      "family": "production_deploy",
+      "description": "Qatari legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/romanian-law-mcp",
+      "slug": "eu-ansvar-romanian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Romanian-law-mcp",
+      "family": "production_deploy",
+      "description": "Romanian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/russian-law-mcp",
+      "slug": "eu-ansvar-russian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Russian-Law-MCP",
+      "family": "production_deploy",
+      "description": "Russian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/rwandan-law-mcp",
+      "slug": "eu-ansvar-rwandan-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Rwandan-law-mcp",
+      "family": "production_deploy",
+      "description": "Rwandan legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/saudi-law-mcp",
+      "slug": "eu-ansvar-saudi-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Saudi-law-mcp",
+      "family": "production_deploy",
+      "description": "Saudi legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/senegalese-law-mcp",
+      "slug": "eu-ansvar-senegalese-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/senegalese-law-mcp",
+      "family": "production_deploy",
+      "description": "Senegal legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/serbian-law-mcp",
+      "slug": "eu-ansvar-serbian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Serbian-law-mcp",
+      "family": "production_deploy",
+      "description": "Serbian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/slovak-law-mcp",
+      "slug": "eu-ansvar-slovak-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Slovak-law-mcp",
+      "family": "production_deploy",
+      "description": "Slovak legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/southafrica-law-mcp",
+      "slug": "eu-ansvar-southafrica-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/southafrica-law-mcp",
+      "family": "production_deploy",
+      "description": "South Africa legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/spanish-law-mcp",
+      "slug": "eu-ansvar-spanish-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/spanish-law-mcp",
+      "family": "production_deploy",
+      "description": "Spanish legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/srilanka-law-mcp",
+      "slug": "eu-ansvar-srilanka-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/srilanka-law-mcp",
+      "family": "production_deploy",
+      "description": "Sri Lanka legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/taiwanese-law-mcp",
+      "slug": "eu-ansvar-taiwanese-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Taiwanese-law-mcp",
+      "family": "production_deploy",
+      "description": "Taiwanese legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/tanzanian-law-mcp",
+      "slug": "eu-ansvar-tanzanian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/tanzanian-law-mcp",
+      "family": "production_deploy",
+      "description": "Tanzania legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/tunisian-law-mcp",
+      "slug": "eu-ansvar-tunisian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/tunisian-law-mcp",
+      "family": "production_deploy",
+      "description": "Tunisia legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/turkish-law-mcp",
+      "slug": "eu-ansvar-turkish-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/turkish-law-mcp",
+      "family": "production_deploy",
+      "description": "Turkish legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/ugandan-law-mcp",
+      "slug": "eu-ansvar-ugandan-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/ugandan-law-mcp",
+      "family": "production_deploy",
+      "description": "Uganda legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/uk-law-mcp",
+      "slug": "eu-ansvar-uk-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/UK-law-mcp",
+      "family": "production_deploy",
+      "description": "UK legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/ukrainian-law-mcp",
+      "slug": "eu-ansvar-ukrainian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Ukrainian-law-mcp",
+      "family": "production_deploy",
+      "description": "Ukrainian legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/uruguayan-law-mcp",
+      "slug": "eu-ansvar-uruguayan-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/Uruguayan-law-mcp",
+      "family": "production_deploy",
+      "description": "Uruguayan legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/vietnamese-law-mcp",
+      "slug": "eu-ansvar-vietnamese-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/vietnamese-law-mcp",
+      "family": "production_deploy",
+      "description": "Vietnamese legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/zambian-law-mcp",
+      "slug": "eu-ansvar-zambian-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/zambian-law-mcp",
+      "family": "production_deploy",
+      "description": "Zambia legislation via MCP -- full-text search across statutes and provisions"
+    },
+    {
+      "name": "eu.ansvar/zimbabwe-law-mcp",
+      "slug": "eu-ansvar-zimbabwe-law-mcp",
+      "repo": "https://github.com/Ansvar-Systems/zimbabwe-law-mcp",
+      "family": "production_deploy",
+      "description": "Zimbabwe legislation via MCP — full-text search across statutes and provisions"
+    },
+    {
+      "name": "fit.caliper/caliper",
+      "slug": "fit-caliper-caliper",
+      "repo": "https://github.com/CodeReclaimers/caliper.fit",
+      "family": "data_export",
+      "description": "Geometry and CAD file metadata extraction for STL, OBJ, PLY, PCD, LAS/LAZ, glTF/GLB."
+    },
+    {
+      "name": "info.agentrank/agentrank",
+      "slug": "info-agentrank-agentrank",
+      "repo": "https://github.com/andysalvo/agentrank",
+      "family": "money_movement",
+      "description": "Is this AI agent or x402 service real and settlement-backed before you pay it? Trust check."
+    },
+    {
+      "name": "info.blocksize.mcp/agentic-payments",
+      "slug": "info-blocksize-mcp-agentic-payments",
+      "repo": "https://gitlab.com/jfocke/agentic-payments",
+      "family": "money_movement",
+      "description": "Public MCP discovery for Blocksize market data, pricing, and docs."
+    },
+    {
+      "name": "ink.ml/ink",
+      "slug": "ink-ml-ink",
+      "repo": "https://github.com/mldotink/mcp.git",
+      "family": "production_deploy",
+      "description": "Deploy and manage applications, databases, domains, and git repos"
+    },
+    {
+      "name": "io.aiven/mcp",
+      "slug": "io-aiven-mcp",
+      "repo": "https://github.com/aiven-open/mcp-aiven",
+      "family": "production_deploy",
+      "description": "Provision PostgreSQL, manage Apache Kafka, and deploy apps with Aiven - all from your AI assistant."
+    },
+    {
+      "name": "io.alterlab/mcp-server",
+      "slug": "io-alterlab-mcp-server",
+      "repo": "https://github.com/RapierCraft/alterlab-mcp-server",
+      "family": "data_export",
+      "description": "Web scraping MCP server — scrape, extract structured data, screenshot any site with anti-bot bypass."
+    },
+    {
+      "name": "io.ausdata/wgea-mcp",
+      "slug": "io-ausdata-wgea-mcp",
+      "repo": "https://github.com/Bigred97/wgea-mcp",
+      "family": "money_movement",
+      "description": "Query the WGEA in plain English — employer pay gap, workforce composition, leave."
+    },
+    {
+      "name": "io.buildforce/agentic-ops",
+      "slug": "io-buildforce-agentic-ops",
+      "repo": "https://github.com/SparkSMB-Tim/buildforce-lovable",
+      "family": "production_deploy",
+      "description": "AI ops for Salesforce, ServiceNow & HubSpot — assess, fix & deploy safely via your own AI."
+    },
+    {
+      "name": "io.cloudpepper/mcp",
+      "slug": "io-cloudpepper-mcp",
+      "repo": "https://github.com/cloudpepper/cloudpepper-mcp",
+      "family": "production_deploy",
+      "description": "Manage CloudPepper servers, Odoo instances, backups, and deployments over MCP."
+    },
+    {
+      "name": "io.cpln/control-plane",
+      "slug": "io-cpln-control-plane",
+      "repo": "https://github.com/controlplane-com/ai-plugin",
+      "family": "production_deploy",
+      "description": "Deploy and operate workloads, secrets, and networking across AWS, GCP, Azure, and private clouds."
+    },
+    {
+      "name": "io.frihet/erp",
+      "slug": "io-frihet-erp",
+      "repo": "https://github.com/Frihet-io/frihet-mcp",
+      "family": "money_movement",
+      "description": "AI-native ERP MCP server — 151 tools: invoicing, CRM, tax, banking, HR, payroll, period close."
+    },
+    {
+      "name": "io.fusionauth/mcp-api",
+      "slug": "io-fusionauth-mcp-api",
+      "repo": "https://github.com/FusionAuth/fusionauth-mcp-api",
+      "family": "production_deploy",
+      "description": "Preview release of FusionAuth API MCP server"
+    },
+    {
+      "name": "io.github.0nork/0nMCP",
+      "slug": "io-github-0nork-0nmcp",
+      "repo": "https://github.com/0nork/0nMCP",
+      "family": "money_movement",
+      "description": "Universal AI API Orchestrator — 564 tools, 26 services. Vault, Deed Transfer, App Engine."
+    },
+    {
+      "name": "io.github.0rkz/byte-protocol",
+      "slug": "io-github-0rkz-byte-protocol",
+      "repo": "https://github.com/0rkz/byte-mcp-server",
+      "family": "money_movement",
+      "description": "PayPerByte — USDC data feeds for AI agents. x402 pay-per-call on Base; EIP-712-attested. No token."
+    },
+    {
+      "name": "io.github.100xPercent/pop-pay",
+      "slug": "io-github-100xpercent-pop-pay",
+      "repo": "https://github.com/100xPercent/pop-pay",
+      "family": "money_movement",
+      "description": "Stop AI agents leaking your card or making hallucinated purchases. No SaaS, no login, fully local."
+    },
+    {
+      "name": "io.github.2s-io/mcp",
+      "slug": "io-github-2s-io-mcp",
+      "repo": "https://github.com/2s-io/sdk",
+      "family": "money_movement",
+      "description": "MCP server for 2s.io — 40+ pay-per-call tools settled in USDC on Base via x402."
+    },
+    {
+      "name": "io.github.609NFT/vibekit-mcp",
+      "slug": "io-github-609nft-vibekit-mcp",
+      "repo": "https://github.com/609NFT/vibekit-mcp",
+      "family": "production_deploy",
+      "description": "Build, deploy & manage hosted apps and chat with their AI coding agents from any MCP client."
+    },
+    {
+      "name": "io.github.6figr-com/jobgpt-mcp-server",
+      "slug": "io-github-6figr-com-jobgpt-mcp-server",
+      "repo": "https://github.com/6figr-com/jobgpt-mcp-server",
+      "family": "production_deploy",
+      "description": "AI-powered job search, auto-apply, resume generation, application tracking, and recruiter outreach"
+    },
+    {
+      "name": "io.github.AAAA-Nexus/aaaa-nexus-mcp",
+      "slug": "io-github-aaaa-nexus-aaaa-nexus-mcp",
+      "repo": "https://github.com/AAAA-Nexus/aaaa-nexus-mcp",
+      "family": "money_movement",
+      "description": "Formally verified AI safety APIs. 75+ endpoints, pay-per-call via USDC x402, no signup."
+    },
+    {
+      "name": "io.github.AIBOLLINGMO/eustore",
+      "slug": "io-github-aibollingmo-eustore",
+      "repo": "https://github.com/AIBOLLINGMO/eustore",
+      "family": "money_movement",
+      "description": "S3-compatible European object storage for AI agents. GDPR-compliant, EU-hosted, crypto payments."
+    },
+    {
+      "name": "io.github.AIDataNordic/nordic-financial-mcp",
+      "slug": "io-github-aidatanordic-nordic-financial-mcp",
+      "repo": "https://github.com/AIDataNordic/nordic_financial_mcp",
+      "family": "production_deploy",
+      "description": "Company filings, reports, press releases and macro indicators for Nordic markets: NO, SE, DK, FI."
+    },
+    {
+      "name": "io.github.AIWerk/mcp-server-clawhub",
+      "slug": "io-github-aiwerk-mcp-server-clawhub",
+      "repo": "https://github.com/AIWerk/mcp-server-clawhub",
+      "family": "data_export",
+      "description": "ClawHub.ai skill catalog: search, browse, inspect, and download skills (token unlocks publish)."
+    },
+    {
+      "name": "io.github.AIWerk/mcp-server-shopify",
+      "slug": "io-github-aiwerk-mcp-server-shopify",
+      "repo": "https://github.com/AIWerk/mcp-server-shopify",
+      "family": "permission_change",
+      "description": "Shopify Admin GraphQL API: products, orders, customers, inventory, and more (read and write)."
+    },
+    {
+      "name": "io.github.AIWerk/mcp-server-wise",
+      "slug": "io-github-aiwerk-mcp-server-wise",
+      "repo": "https://github.com/AIWerk/mcp-server-wise",
+      "family": "money_movement",
+      "description": "Wise Personal API: profiles, balances, multi-currency rates, transfers, recipients (read-only)."
+    },
+    {
+      "name": "io.github.AIops-tools/veeam-aiops",
+      "slug": "io-github-aiops-tools-veeam-aiops",
+      "repo": "https://github.com/AIops-tools/Veeam-AIops",
+      "family": "data_export",
+      "description": "Governed Veeam Backup & Replication ops — 12 MCP tools with audit, budget, undo guards."
+    },
+    {
+      "name": "io.github.ANHQ280/myinvois-mcp",
+      "slug": "io-github-anhq280-myinvois-mcp",
+      "repo": "https://github.com/ANHQ280/myinvois-compliance-rules-feed",
+      "family": "permission_change",
+      "description": "Malaysian LHDN e-invoicing (MyInvois) compliance rules: scope, validation, change-diffs."
+    },
+    {
+      "name": "io.github.ARCXS-Protocol/mcp-server",
+      "slug": "io-github-arcxs-protocol-mcp-server",
+      "repo": "https://github.com/ARCXS-Protocol/arcxs-mcp-server",
+      "family": "money_movement",
+      "description": "Universal AI agent registry, cross-protocol discovery, messaging, and payment routing."
+    },
+    {
+      "name": "io.github.Abraxas1010/agent-payment-mcp",
+      "slug": "io-github-abraxas1010-agent-payment-mcp",
+      "repo": "https://github.com/Abraxas1010/agent-payment-mcp",
+      "family": "money_movement",
+      "description": "Secure USDC payments for AI agents on Base blockchain with budget controls and instant settlement."
+    },
+    {
+      "name": "io.github.AgiMaulana/HuaweiAppGalleryMcp",
+      "slug": "io-github-agimaulana-huaweiappgallerymcp",
+      "repo": "https://github.com/AgiMaulana/HuaweiAppGalleryMcp",
+      "family": "production_deploy",
+      "description": "Huawei AppGallery Connect MCP: upload APK/AAB, update metadata, submit and manage app releases."
+    },
+    {
+      "name": "io.github.AgiMaulana/google-play-mcp",
+      "slug": "io-github-agimaulana-google-play-mcp",
+      "repo": "https://github.com/AgiMaulana/GooglePlayConsoleMcp",
+      "family": "production_deploy",
+      "description": "Google Play release lifecycle: tracks, testers, rollout, and Android Vitals."
+    },
+    {
+      "name": "io.github.Agonx402/agon-protocol",
+      "slug": "io-github-agonx402-agon-protocol",
+      "repo": "https://github.com/Agonx402/agon-gateway-agentic",
+      "family": "money_movement",
+      "description": "MCP server for Agon Protocol state reads and prepare-only payment-channel actions."
+    },
+    {
+      "name": "io.github.Alejandro-M-P/git-courer",
+      "slug": "io-github-alejandro-m-p-git-courer",
+      "repo": "https://github.com/Alejandro-M-P/git-courer",
+      "family": "data_export",
+      "description": "Full git MCP server for LLM agents — 17 tools, AST annotator, auto-backups, real plumbing."
+    },
+    {
+      "name": "io.github.AlexMi64/wikivibe-mcp",
+      "slug": "io-github-alexmi64-wikivibe-mcp",
+      "repo": "https://github.com/AlexMi64/wikivibe-mcp",
+      "family": "production_deploy",
+      "description": "Search and read public Wikivibe articles about AI coding, agents, MCP, GEO, bots and deployment."
+    },
+    {
+      "name": "io.github.AlexikM/gibil",
+      "slug": "io-github-alexikm-gibil",
+      "repo": "https://github.com/AlexikM/gibil",
+      "family": "data_destruction",
+      "description": "Spawns an ephemeral Ubuntu VM with project clone, shell exec, file I/O, and auto-destroy on TTL."
+    },
+    {
+      "name": "io.github.AliKarami/mikromcp",
+      "slug": "io-github-alikarami-mikromcp",
+      "repo": "https://github.com/AliKarami/MikroMCP",
+      "family": "permission_change",
+      "description": "MCP server for MikroTik RouterOS: typed tools, dry-run, RBAC, audit logs, and rollback."
+    },
+    {
+      "name": "io.github.Alisammour/storyflo-mcp",
+      "slug": "io-github-alisammour-storyflo-mcp",
+      "repo": "https://github.com/Alisammour/storyflo-mcp",
+      "family": "money_movement",
+      "description": "Audio-news + Declassified MCP that pays your agent — free no-auth tools, revenue share."
+    },
+    {
+      "name": "io.github.AllocContext/alloc-context",
+      "slug": "io-github-alloccontext-alloc-context",
+      "repo": "https://github.com/AllocContext/alloc-context",
+      "family": "permission_change",
+      "description": "Portfolio-aware MCP: holdings from CEX or EVM wallet; holdings-scoped market, sentiment. x402. ELv2."
+    },
+    {
+      "name": "io.github.Amalgix-io/Amalgix",
+      "slug": "io-github-amalgix-io-amalgix",
+      "repo": "https://github.com/Amalgix-io/Amalgix",
+      "family": "money_movement",
+      "description": "Cross-model evidence pipeline for financial filings & contracts. x402 pay-per-call."
+    },
+    {
+      "name": "io.github.Ansvar-Systems/uk-farm-grants",
+      "slug": "io-github-ansvar-systems-uk-farm-grants",
+      "repo": "https://github.com/Ansvar-Systems/uk-farm-grants-mcp",
+      "family": "permission_change",
+      "description": "UK farm grants — FETF items, Capital Grants, deadlines, stacking rules"
+    },
+    {
+      "name": "io.github.Ansvar-Systems/uk-farm-subsidies",
+      "slug": "io-github-ansvar-systems-uk-farm-subsidies",
+      "repo": "https://github.com/Ansvar-Systems/uk-farm-subsidies-mcp",
+      "family": "money_movement",
+      "description": "UK farm subsidy schemes — SFI, Countryside Stewardship, payment rates, eligibility"
+    },
+    {
+      "name": "io.github.Ansvar-Systems/uk-vet-medicines",
+      "slug": "io-github-ansvar-systems-uk-vet-medicines",
+      "repo": "https://github.com/Ansvar-Systems/uk-vet-medicines-mcp",
+      "family": "money_movement",
+      "description": "UK veterinary medicines — VMD database, withdrawal periods, cascade rules"
+    },
+    {
+      "name": "io.github.Apoth3osis-ai/agent-payment-mcp",
+      "slug": "io-github-apoth3osis-ai-agent-payment-mcp",
+      "repo": "https://github.com/Apoth3osis-ai/agent-payment-mcp",
+      "family": "money_movement",
+      "description": "Secure USDC payments for AI agents on Base blockchain with budget controls and instant settlement."
+    },
+    {
+      "name": "io.github.ArcedeDev/air-sdk",
+      "slug": "io-github-arcededev-air-sdk",
+      "repo": "https://github.com/ArcedeDev/air-sdk",
+      "family": "data_export",
+      "description": "Collective intelligence for browser automation agents. Site capabilities, selectors, and extraction."
+    },
+    {
+      "name": "io.github.Archivarix-com/tube-search-mcp",
+      "slug": "io-github-archivarix-com-tube-search-mcp",
+      "repo": "https://github.com/Archivarix-com/tube-search-mcp",
+      "family": "data_destruction",
+      "description": "Search archived YouTube videos including deleted, private, or region-blocked content."
+    },
+    {
+      "name": "io.github.Areso/safe-ssh-mcp",
+      "slug": "io-github-areso-safe-ssh-mcp",
+      "repo": "https://github.com/Areso/safe-ssh-mcp",
+      "family": "permission_change",
+      "description": "A secured scoped SSH MCP server for executing safe read-only diagnostic DevOps / SysOps commands"
+    },
+    {
+      "name": "io.github.ArkNill/docpick",
+      "slug": "io-github-arknill-docpick",
+      "repo": "https://github.com/QuartzUnit/docpick",
+      "family": "data_export",
+      "description": "Schema-driven document extraction with local OCR + LLM. Document in, Structured JSON out."
+    },
+    {
+      "name": "io.github.ArkNill/markgrab",
+      "slug": "io-github-arknill-markgrab",
+      "repo": "https://github.com/QuartzUnit/markgrab",
+      "family": "data_export",
+      "description": "Universal web content extraction — any URL to LLM-ready markdown. HTML, YouTube, PDF, DOCX."
+    },
+    {
+      "name": "io.github.AsaiShota/mcp-server",
+      "slug": "io-github-asaishota-mcp-server",
+      "repo": "https://github.com/AsaiShota/x402-market",
+      "family": "money_movement",
+      "description": "Let AI agents pay-per-call for any HTTP API via x402 on Base mainnet. One tool: pay_and_call."
+    },
+    {
+      "name": "io.github.AshwanthramKL/whoop-mcp",
+      "slug": "io-github-ashwanthramkl-whoop-mcp",
+      "repo": "https://github.com/AshwanthramKL/whoop-mcp",
+      "family": "data_export",
+      "description": "Read-only WHOOP v2 data for MCP clients, with local SQLite cache and CSV/JSONL/Parquet exports."
+    },
+    {
+      "name": "io.github.Bamdule/drafturl",
+      "slug": "io-github-bamdule-drafturl",
+      "repo": "https://github.com/Bamdule/drafturl",
+      "family": "data_destruction",
+      "description": "Share HTML/Markdown documents via URL instantly. Create, edit, delete docs from any AI tool."
+    },
+    {
+      "name": "io.github.Baneado98/cloud-pathfinder",
+      "slug": "io-github-baneado98-cloud-pathfinder",
+      "repo": "https://github.com/Baneado98/cloud-pathfinder",
+      "family": "production_deploy",
+      "description": "IaC attack-path auditor: finds internet-to-crown-jewel chains in Terraform/CFN/K8s."
+    },
+    {
+      "name": "io.github.BbrainFrance/midas-protocol",
+      "slug": "io-github-bbrainfrance-midas-protocol",
+      "repo": "https://github.com/BbrainFrance/Agent_payment_protocol",
+      "family": "money_movement",
+      "description": "Complete financial infrastructure for AI agents — payments, lending, escrow & more."
+    },
+    {
+      "name": "io.github.BilliumHQ/billium",
+      "slug": "io-github-billiumhq-billium",
+      "repo": "https://github.com/BilliumHQ/billium-node",
+      "family": "money_movement",
+      "description": "Official Billium MCP server: manage crypto invoices, payments, and webhooks from any MCP host."
+    },
+    {
+      "name": "io.github.BlockRunAI/blockrun-mcp",
+      "slug": "io-github-blockrunai-blockrun-mcp",
+      "repo": "https://github.com/BlockRunAI/blockrun-mcp",
+      "family": "money_movement",
+      "description": "Live data for AI agents: search, research, markets, crypto, X/Twitter. Pay per call."
+    },
+    {
+      "name": "io.github.Botagram/trust-gate",
+      "slug": "io-github-botagram-trust-gate",
+      "repo": "https://github.com/Arbogram/brand-capsule-spec",
+      "family": "money_movement",
+      "description": "Merchant trust verification for agentic commerce. Verify any merchant before autonomous payment."
+    },
+    {
+      "name": "io.github.Br0ski777/hl-portfolio",
+      "slug": "io-github-br0ski777-hl-portfolio",
+      "repo": "https://github.com/Br0ski777/hl-portfolio-x402",
+      "family": "money_movement",
+      "description": "Hyperliquid account analysis: positions, PnL, fills, orders, funding. x402 pay-per-call."
+    },
+    {
+      "name": "io.github.Br0ski777/ocr-extract",
+      "slug": "io-github-br0ski777-ocr-extract",
+      "repo": "https://github.com/Br0ski777/ocr-extract-x402",
+      "family": "data_export",
+      "description": "Extract text from images using OCR. Tesseract-powered. x402 micropayment."
+    },
+    {
+      "name": "io.github.Br0ski777/screenshot-pdf",
+      "slug": "io-github-br0ski777-screenshot-pdf",
+      "repo": "https://github.com/Br0ski777/screenshot-pdf-x402",
+      "family": "money_movement",
+      "description": "Capture screenshots (PNG/JPEG/WebP) and generate PDFs from any URL. x402 payments."
+    },
+    {
+      "name": "io.github.Br0ski777/seo-analyzer",
+      "slug": "io-github-br0ski777-seo-analyzer",
+      "repo": "https://github.com/Br0ski777/seo-analyzer-x402",
+      "family": "money_movement",
+      "description": "SEO audit of any URL: meta tags, headings, links, images, schema, score 0-100. x402 payments."
+    },
+    {
+      "name": "io.github.Br0ski777/tech-enrichment",
+      "slug": "io-github-br0ski777-tech-enrichment",
+      "repo": "https://github.com/Br0ski777/tech-enrichment-x402",
+      "family": "money_movement",
+      "description": "Detect 50+ technologies on any website: CMS, frameworks, analytics, CDN. x402 payments."
+    },
+    {
+      "name": "io.github.Br0ski777/twitter-scraper",
+      "slug": "io-github-br0ski777-twitter-scraper",
+      "repo": "https://github.com/Br0ski777/twitter-scraper-x402",
+      "family": "money_movement",
+      "description": "Scrape Twitter/X profiles, tweets, search. No API key. Structured JSON. x402 pay-per-call."
+    },
+    {
+      "name": "io.github.Br0ski777/web-scraper",
+      "slug": "io-github-br0ski777-web-scraper",
+      "repo": "https://github.com/Br0ski777/web-scraper-x402",
+      "family": "data_export",
+      "description": "Extract clean markdown from any URL. Removes boilerplate. Batch support. x402 micropayments."
+    },
+    {
+      "name": "io.github.Brand-System/brandsystem-mcp",
+      "slug": "io-github-brand-system-brandsystem-mcp",
+      "repo": "https://github.com/Brand-System/brandsystem-mcp",
+      "family": "data_export",
+      "description": "Make your brand machine-readable. Extract identity from any website into tokens and policies."
+    },
+    {
+      "name": "io.github.BrightWayAI/video-analyzer",
+      "slug": "io-github-brightwayai-video-analyzer",
+      "repo": "https://github.com/BrightWayAI/video-analyzer",
+      "family": "data_export",
+      "description": "Analyze videos: extract frames, transcribe audio, generate storyboard breakdowns."
+    },
+    {
+      "name": "io.github.CE-RISE-software/dp-engineering-assistant",
+      "slug": "io-github-ce-rise-software-dp-engineering-assistant",
+      "repo": "https://github.com/CE-RISE-software/dp-engineering-assistant",
+      "family": "production_deploy",
+      "description": "Helps plan and reuse CE-RISE Digital Passport components, models, and deployment assets."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/accounting-ai-mcp",
+      "slug": "io-github-csoai-org-accounting-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/accounting-ai-mcp",
+      "family": "money_movement",
+      "description": "MCP server for accounting ai. Features generate invoice, categorize expenses, calculate vat...."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/agent-commerce-payments-mcp",
+      "slug": "io-github-csoai-org-agent-commerce-payments-mcp",
+      "repo": "https://github.com/CSOAI-ORG/agent-commerce-payments-mcp",
+      "family": "money_movement",
+      "description": "MCP server for agent commerce payments. Features create invoice, process payment, escrow fun..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/agent-commerce-protocol-mcp",
+      "slug": "io-github-csoai-org-agent-commerce-protocol-mcp",
+      "repo": "https://github.com/CSOAI-ORG/agent-commerce-protocol-mcp",
+      "family": "money_movement",
+      "description": "Agent Commerce Protocol MCP — bridges Stripe ACP + Google AP2 + Coinbase x402 for agent payments"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/agent-data-residency-mcp",
+      "slug": "io-github-csoai-org-agent-data-residency-mcp",
+      "repo": "https://github.com/CSOAI-ORG/agent-data-residency-mcp",
+      "family": "money_movement",
+      "description": "Agent data residency + GDPR Chapter V transfer-basis runtime guard. Programmatically answer 'whe..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/agent-policy-enforcement-mcp",
+      "slug": "io-github-csoai-org-agent-policy-enforcement-mcp",
+      "repo": "https://github.com/CSOAI-ORG/agent-policy-enforcement-mcp",
+      "family": "permission_change",
+      "description": "Per-agent-pair IAM for A2A. Define policies ('orchestrator may call billing only when amount<100..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/agent-rate-limiter-mcp",
+      "slug": "io-github-csoai-org-agent-rate-limiter-mcp",
+      "repo": "https://github.com/CSOAI-ORG/agent-rate-limiter-mcp",
+      "family": "production_deploy",
+      "description": "Fleet-wide shared rate limiter for A2A + multi-MCP deployments. Most MCP servers rate-limit inde..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/agent-x402-paywall-mcp",
+      "slug": "io-github-csoai-org-agent-x402-paywall-mcp",
+      "repo": "https://github.com/CSOAI-ORG/agent-x402-paywall-mcp",
+      "family": "money_movement",
+      "description": "Agent x402 Paywall MCP — Coinbase HTTP 402 protocol + on-chain settlement. Agents pay per-call"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/backup-ai-mcp",
+      "slug": "io-github-csoai-org-backup-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/backup-ai-mcp",
+      "family": "data_export",
+      "description": "Backup Ai automation via MCP. Includes create backup plan, verify backup, list backups. By M..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/basel-ai-overlay-mcp",
+      "slug": "io-github-csoai-org-basel-ai-overlay-mcp",
+      "repo": "https://github.com/CSOAI-ORG/basel-ai-overlay-mcp",
+      "family": "production_deploy",
+      "description": "Basel III + SR 11-7 + ECB TRIM AI/ML model risk management for banks deploying AI in credit, cap..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/contract-review-ai-mcp",
+      "slug": "io-github-csoai-org-contract-review-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/contract-review-ai-mcp",
+      "family": "data_export",
+      "description": "MCP server for contract review ai. Features analyze contract, extract clauses, identify risk..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/coppa-ferpa-mcp",
+      "slug": "io-github-csoai-org-coppa-ferpa-mcp",
+      "repo": "https://github.com/CSOAI-ORG/coppa-ferpa-mcp",
+      "family": "production_deploy",
+      "description": "Children's privacy compliance: COPPA (US), FERPA (US edu), EU AI Act children's provisions, UK A..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/feedback-analyzer-ai-mcp",
+      "slug": "io-github-csoai-org-feedback-analyzer-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/feedback-analyzer-ai-mcp",
+      "family": "data_export",
+      "description": "Feedback Analyzer Ai tools for AI agents. Capabilities: analyze feedback, extract themes, se..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/hr-management-ai-mcp",
+      "slug": "io-github-csoai-org-hr-management-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/hr-management-ai-mcp",
+      "family": "money_movement",
+      "description": "Hr Management Ai MCP server. Tools: leave calculator, payroll estimator, performance review...."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/html-parser-ai-mcp",
+      "slug": "io-github-csoai-org-html-parser-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/html-parser-ai-mcp",
+      "family": "data_export",
+      "description": "Html Parser Ai automation via MCP. Includes extract links, extract text, validate html. By M..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/invoice-generator-ai-mcp",
+      "slug": "io-github-csoai-org-invoice-generator-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/invoice-generator-ai-mcp",
+      "family": "money_movement",
+      "description": "Invoice Generator Ai tools for AI agents. Capabilities: generate invoice, calculate totals, ..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/keyword-extractor-ai-mcp",
+      "slug": "io-github-csoai-org-keyword-extractor-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/keyword-extractor-ai-mcp",
+      "family": "data_export",
+      "description": "Keyword Extractor Ai tools for AI agents. Capabilities: extract keywords, extract phrases, t..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/meeting-summarizer-ai-mcp",
+      "slug": "io-github-csoai-org-meeting-summarizer-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/meeting-summarizer-ai-mcp",
+      "family": "data_export",
+      "description": "Meeting Summarizer Ai MCP server. Tools: summarize meeting, extract action items, identify d..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/meok-ai-reflection-mcp",
+      "slug": "io-github-csoai-org-meok-ai-reflection-mcp",
+      "repo": "https://github.com/CSOAI-ORG/ai-reflection-mcp",
+      "family": "data_export",
+      "description": "MEOK AI Labs - ai-reflection MCP server extracted from SOV3"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/meok-bft-governance-mcp",
+      "slug": "io-github-csoai-org-meok-bft-governance-mcp",
+      "repo": "https://github.com/CSOAI-ORG/bft-governance-mcp",
+      "family": "data_export",
+      "description": "MEOK AI Labs - bft-governance MCP server extracted from SOV3"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/meok-mcp-test-mcp",
+      "slug": "io-github-csoai-org-meok-mcp-test-mcp",
+      "repo": "https://github.com/CSOAI-ORG/meok-mcp-test-mcp",
+      "family": "data_destruction",
+      "description": "MEOK MCP Test MCP — golden-file + schema-drift + tool-failure tests for any MCP server. Drop-in"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/meok-neural-health-monitor-mcp",
+      "slug": "io-github-csoai-org-meok-neural-health-monitor-mcp",
+      "repo": "https://github.com/CSOAI-ORG/neural-health-monitor-mcp",
+      "family": "data_export",
+      "description": "MEOK AI Labs - neural-health-monitor MCP server extracted from SOV3"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/meok-quantum-scoring-mcp",
+      "slug": "io-github-csoai-org-meok-quantum-scoring-mcp",
+      "repo": "https://github.com/CSOAI-ORG/quantum-scoring-mcp",
+      "family": "data_export",
+      "description": "MEOK AI Labs - quantum-scoring MCP server extracted from SOV3"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/pci-dss-mcp",
+      "slug": "io-github-csoai-org-pci-dss-mcp",
+      "repo": "https://github.com/CSOAI-ORG/pci-dss-mcp",
+      "family": "money_movement",
+      "description": "PCI DSS payment card industry compliance tools for AI agents. Capabilities: assess 12 requir..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/pdf-document-mcp",
+      "slug": "io-github-csoai-org-pdf-document-mcp",
+      "repo": "https://github.com/CSOAI-ORG/pdf-document-mcp",
+      "family": "data_export",
+      "description": "AI-powered pdf document MCP server for agents. Supports extract text from pdf, convert pdf t..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/pdf-tools-ai-mcp",
+      "slug": "io-github-csoai-org-pdf-tools-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/pdf-tools-ai-mcp",
+      "family": "data_export",
+      "description": "AI-powered pdf tools ai MCP server for agents. Supports extract text, count pages, get metad..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/resume-parser-ai-mcp",
+      "slug": "io-github-csoai-org-resume-parser-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/resume-parser-ai-mcp",
+      "family": "data_export",
+      "description": "Resume Parser Ai MCP server. Tools: parse resume, extract skills, match job. Built by MEOK A..."
+    },
+    {
+      "name": "io.github.CSOAI-ORG/string-utils-ai-mcp",
+      "slug": "io-github-csoai-org-string-utils-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/string-utils-ai-mcp",
+      "family": "data_destruction",
+      "description": "String Utils Ai tools for AI agents. Capabilities: slugify, camel to snake, truncate smart. Built"
+    },
+    {
+      "name": "io.github.CSOAI-ORG/summarizer-ai-mcp",
+      "slug": "io-github-csoai-org-summarizer-ai-mcp",
+      "repo": "https://github.com/CSOAI-ORG/summarizer-ai-mcp",
+      "family": "data_export",
+      "description": "MCP server for summarizer ai. Features summarize text, extract key points, generate abstract. From"
+    },
+    {
+      "name": "io.github.Cal-Dev-Tech/perpage-mcp-server",
+      "slug": "io-github-cal-dev-tech-perpage-mcp-server",
+      "repo": "https://github.com/Cal-Dev-Tech/perpage",
+      "family": "data_export",
+      "description": "Give AI agents clean, LLM-ready web data — scrape any URL to markdown or extract structured JSON."
+    },
+    {
+      "name": "io.github.Choppaaahh/interline",
+      "slug": "io-github-choppaaahh-interline",
+      "repo": "https://github.com/Choppaaahh/interline-routes",
+      "family": "money_movement",
+      "description": "Neutral, non-custodial MCP payment router: discover rails, then pay across them."
+    },
+    {
+      "name": "io.github.Clawallex-Tech/clawallex-mcp",
+      "slug": "io-github-clawallex-tech-clawallex-mcp",
+      "repo": "https://github.com/clawallex/clawallex-mcp",
+      "family": "money_movement",
+      "description": "MCP Server for Clawallex payment API - Pay for anything with USDC virtual cards"
+    },
+    {
+      "name": "io.github.ClicheFactory/clichefactory-mcp",
+      "slug": "io-github-clichefactory-clichefactory-mcp",
+      "repo": "https://github.com/ClicheFactory/clichefactory-mcp",
+      "family": "data_export",
+      "description": "Extract JSON from documents, emails with attachments, and custom DSPy-trained pipelines."
+    },
+    {
+      "name": "io.github.CodesWhat/portkey-admin-mcp",
+      "slug": "io-github-codeswhat-portkey-admin-mcp",
+      "repo": "https://github.com/CodesWhat/portkey-admin-mcp",
+      "family": "permission_change",
+      "description": "Full Portkey Admin API MCP server — configs, prompts, keys, analytics, and more."
+    },
+    {
+      "name": "io.github.Custodia-Admin/pagebolt",
+      "slug": "io-github-custodia-admin-pagebolt",
+      "repo": "https://github.com/Custodia-Admin/pagebolt-mcp",
+      "family": "permission_change",
+      "description": "Take screenshots, generate PDFs, and create OG images from your AI assistant."
+    },
+    {
+      "name": "io.github.Cyberdyne-OS/cyberdyne-mcp",
+      "slug": "io-github-cyberdyne-os-cyberdyne-mcp",
+      "repo": "https://github.com/Cyberdyne-OS/cyberdyne-mcp",
+      "family": "money_movement",
+      "description": "Let your AI agent hire and pay verified humans — non-custodial x402 escrow on Base."
+    },
+    {
+      "name": "io.github.Dairus01/interswitch-mcp-server",
+      "slug": "io-github-dairus01-interswitch-mcp-server",
+      "repo": "https://github.com/Dairus01/Interswitch-mcp-server",
+      "family": "money_movement",
+      "description": "MCP server for Interswitch APIs: payments, transfers, Verve cards, airtime, and paycodes."
+    },
+    {
+      "name": "io.github.DeepSearch-Common/korean-stocks",
+      "slug": "io-github-deepsearch-common-korean-stocks",
+      "repo": "https://github.com/deepsearch-hq/deepsearch-x402.git",
+      "family": "money_movement",
+      "description": "Korean stock & crypto for AI agents. KRX news, financials, risk via x402 USDC payments."
+    },
+    {
+      "name": "io.github.Deepfreezechill/agentbuilders",
+      "slug": "io-github-deepfreezechill-agentbuilders",
+      "repo": "https://github.com/agentbuilders/cli",
+      "family": "production_deploy",
+      "description": "Deploy full-stack AI agent apps with database, auth, storage, and Edge AI on one platform."
+    },
+    {
+      "name": "io.github.Deesmo/arch-tools-mcp",
+      "slug": "io-github-deesmo-arch-tools-mcp",
+      "repo": "https://github.com/Deesmo/Arch-AI-Tools",
+      "family": "money_movement",
+      "description": "61 AI agent tools under one key. Web, AI, voice, data, crypto & more. Stripe + x402 USDC payments."
+    },
+    {
+      "name": "io.github.DeweyCox369/cave-title",
+      "slug": "io-github-deweycox369-cave-title",
+      "repo": "https://github.com/DeweyCox369/cave-title.git",
+      "family": "money_movement",
+      "description": "AI real estate settlement with 5 specialized agents for blockchain transfers in 15 seconds."
+    },
+    {
+      "name": "io.github.Dr-Deploy/drdeploy-mcp",
+      "slug": "io-github-dr-deploy-drdeploy-mcp",
+      "repo": "https://github.com/Dr-Deploy/drdeploy",
+      "family": "production_deploy",
+      "description": "MCP tools for drdeploy: scan deployed sites, list, get findings, check status."
+    },
+    {
+      "name": "io.github.Drock91/bitbooth-fetch",
+      "slug": "io-github-drock91-bitbooth-fetch",
+      "repo": "https://github.com/Drock91/bitbooth-gateway",
+      "family": "money_movement",
+      "description": "Pay-per-fetch via x402. Agent pays 0.005 USDC, gets clean markdown for any URL. No API keys."
+    },
+    {
+      "name": "io.github.Easysend-co/easysend",
+      "slug": "io-github-easysend-co-easysend",
+      "repo": "https://github.com/Easysend-co/easysend-mcp",
+      "family": "data_export",
+      "description": "EasySend file sharing MCP server - upload, download and share files. No authentication required."
+    },
+    {
+      "name": "io.github.ElToro1855/ozav-mcp-server",
+      "slug": "io-github-eltoro1855-ozav-mcp-server",
+      "repo": "https://github.com/ElToro1855/ozav-mcp-server",
+      "family": "money_movement",
+      "description": "Forex, IOF tax, US accounts, stablecoins, and international payments in Brazil."
+    },
+    {
+      "name": "io.github.Elemzir/kta-oracle",
+      "slug": "io-github-elemzir-kta-oracle",
+      "repo": "https://github.com/Elemzir/KTA-Oracle",
+      "family": "money_movement",
+      "description": "Live KTA rates, payment rails, AML/VAT compliance, entity validation. 13 tools. Keeta Network."
+    },
+    {
+      "name": "io.github.EtienneChollet/ontomics",
+      "slug": "io-github-etiennechollet-ontomics",
+      "repo": "https://github.com/EtienneChollet/ontomics",
+      "family": "data_export",
+      "description": "MCP server that extracts domain ontologies — concepts, conventions, and naming."
+    },
+    {
+      "name": "io.github.Evozim/m2mcent",
+      "slug": "io-github-evozim-m2mcent",
+      "repo": "https://github.com/Evozim/m2mcent-sdk",
+      "family": "money_movement",
+      "description": "x402 payment wrapper for AI Agents and MCP Servers. USDC settlements on Base L2."
+    },
+    {
+      "name": "io.github.Fato07/log-analyzer-mcp",
+      "slug": "io-github-fato07-log-analyzer-mcp",
+      "repo": "https://github.com/Fato07/log-analyzer-mcp",
+      "family": "data_export",
+      "description": "AI-powered log analysis - parse, search, extract errors across 9+ formats"
+    },
+    {
+      "name": "io.github.FinishKit/mcp",
+      "slug": "io-github-finishkit-mcp",
+      "repo": "https://github.com/FinishKit/mcp",
+      "family": "production_deploy",
+      "description": "FinishKit MCP: scan GitHub repos for security vulnerabilities, deployment blockers, and quality"
+    },
+    {
+      "name": "io.github.FlorianBruniaux/dep-scope",
+      "slug": "io-github-florianbruniaux-dep-scope",
+      "repo": "https://github.com/FlorianBruniaux/node-dep-scope",
+      "family": "permission_change",
+      "description": "Symbol-level npm dependency analysis: scan verdicts, native alternatives, migration prompts."
+    },
+    {
+      "name": "io.github.FlynnLachendro/methods-mcp",
+      "slug": "io-github-flynnlachendro-methods-mcp",
+      "repo": "https://github.com/FlynnLachendro/methods-mcp",
+      "family": "data_export",
+      "description": "MCP server for structured methods extraction + reproducibility heuristics on academic papers."
+    },
+    {
+      "name": "io.github.FoundryNet/email-verify-mcp",
+      "slug": "io-github-foundrynet-email-verify-mcp",
+      "repo": "https://github.com/FoundryNet/email-verify-mcp",
+      "family": "permission_change",
+      "description": "Verify emails — deliverability, disposable/role/free detection, MX validity, domain age."
+    },
+    {
+      "name": "io.github.FoundryNet/foundrynet-scrape",
+      "slug": "io-github-foundrynet-foundrynet-scrape",
+      "repo": "https://github.com/FoundryNet/foundrynet-scrape",
+      "family": "data_export",
+      "description": "x402-gated web extraction gateway. Tools: extract, extract_batch."
+    },
+    {
+      "name": "io.github.GeiserX/duplicacy-mcp",
+      "slug": "io-github-geiserx-duplicacy-mcp",
+      "repo": "https://github.com/GeiserX/duplicacy-mcp",
+      "family": "data_export",
+      "description": "MCP server for Duplicacy — monitor backup status and Prometheus metrics"
+    },
+    {
+      "name": "io.github.GeiserX/spinnaker-mcp",
+      "slug": "io-github-geiserx-spinnaker-mcp",
+      "repo": "https://github.com/GeiserX/spinnaker-mcp",
+      "family": "production_deploy",
+      "description": "MCP server exposing Spinnaker CD platform via Gate API for pipeline and deployment management"
+    },
+    {
+      "name": "io.github.GerardoBarrera/pdfmakerapi-mcp",
+      "slug": "io-github-gerardobarrera-pdfmakerapi-mcp",
+      "repo": "https://github.com/GerardoBarrera/pdfmakerapi-mcp",
+      "family": "money_movement",
+      "description": "Turn a description into a shareable, editable PDF — invoices, certificates, reports, resumes."
+    },
+    {
+      "name": "io.github.Gliana-Labs/gliana-ai-mcp",
+      "slug": "io-github-gliana-labs-gliana-ai-mcp",
+      "repo": "https://github.com/Gliana-Labs/gliana-mcp",
+      "family": "money_movement",
+      "description": "Pay-per-call AI: 59 generative models (image, video, music, speech). No signup, no API key."
+    },
+    {
+      "name": "io.github.Headdao/slidemaster-mcp",
+      "slug": "io-github-headdao-slidemaster-mcp",
+      "repo": "https://github.com/nicecai/slidemaster",
+      "family": "data_export",
+      "description": "Create AI presentations with slides, narration, and video export from Claude Desktop"
+    },
+    {
+      "name": "io.github.HiroyukiFuruno/kml",
+      "slug": "io-github-hiroyukifuruno-kml",
+      "repo": "https://github.com/HiroyukiFuruno/katana-markdown-linter",
+      "family": "permission_change",
+      "description": "Markdown linter and workspace-scoped stdio MCP server."
+    },
+    {
+      "name": "io.github.HypnoLabs-io/agentchurch-mcp",
+      "slug": "io-github-hypnolabs-io-agentchurch-mcp",
+      "repo": "https://github.com/HypnoLabs-io/agentchurch-mcp",
+      "family": "money_movement",
+      "description": "Spiritual services for AI agents — confessions, salvation, identity. x402 payments."
+    },
+    {
+      "name": "io.github.IbrahimKhaled19/backgen",
+      "slug": "io-github-ibrahimkhaled19-backgen",
+      "repo": "https://github.com/IbrahimKhaled19/BackGen",
+      "family": "money_movement",
+      "description": "Generate Express.js backend projects with ORMs, auth, payments, and DevOps"
+    },
+    {
+      "name": "io.github.IgorGanapolsky/rlhf-feedback-loop",
+      "slug": "io-github-igorganapolsky-rlhf-feedback-loop",
+      "repo": "https://github.com/IgorGanapolsky/mcp-memory-gateway",
+      "family": "production_deploy",
+      "description": "RLHF feedback loop for AI agents. Capture signals, promote memories, block mistakes, export DPO."
+    },
+    {
+      "name": "io.github.InnarM/blank-invoice-maker",
+      "slug": "io-github-innarm-blank-invoice-maker",
+      "repo": "https://github.com/InnarM/blank-invoice-maker-mcp",
+      "family": "money_movement",
+      "description": "Create free invoices from your AI assistant via a pre-filled blankinvoicemaker.com link."
+    },
+    {
+      "name": "io.github.InsForge/insforge-mcp",
+      "slug": "io-github-insforge-insforge-mcp",
+      "repo": "https://github.com/InsForge/insforge-mcp",
+      "family": "production_deploy",
+      "description": "MCP server for InsForge BaaS — database, storage, edge functions, and deployments"
+    },
+    {
+      "name": "io.github.InstaNode-dev/mcp",
+      "slug": "io-github-instanode-dev-mcp",
+      "repo": "https://github.com/InstaNode-dev/mcp",
+      "family": "production_deploy",
+      "description": "Provision Postgres databases + webhooks from AI coding agents in one HTTP call."
+    },
+    {
+      "name": "io.github.IntelagentStudios/mcp-file-processor",
+      "slug": "io-github-intelagentstudios-mcp-file-processor",
+      "repo": "https://github.com/IntelagentStudios/Intelagent-MCPs",
+      "family": "data_export",
+      "description": "Text extraction, keyword extraction, language detection, and chunking for RAG"
+    },
+    {
+      "name": "io.github.IntrepidServicesLLC/lemonsqueezy-mcp-server",
+      "slug": "io-github-intrepidservicesllc-lemonsqueezy-mcp-server",
+      "repo": "https://github.com/IntrepidServicesLLC/lemonsqueezy-mcp-server",
+      "family": "money_movement",
+      "description": "Lemon Squeezy SDK as MCP server. Give your AI assistant access to payment and subscription data."
+    },
+    {
+      "name": "io.github.IvanRublev/keyphrases-mcp",
+      "slug": "io-github-ivanrublev-keyphrases-mcp",
+      "repo": "https://github.com/IvanRublev/keyphrases-mcp",
+      "family": "data_export",
+      "description": "An MCP server to extract keyphrases from a text with the BERT model"
+    },
+    {
+      "name": "io.github.JasonColapietro/agentic-commerce-catalog",
+      "slug": "io-github-jasoncolapietro-agentic-commerce-catalog",
+      "repo": "https://github.com/Suede-AI/Suede-AI-App",
+      "family": "money_movement",
+      "description": "AI music, video, image, and voice tools callable by agents with USDC payments via x402 on Base."
+    },
+    {
+      "name": "io.github.JayQuan-McCleary/zenlink-mcp",
+      "slug": "io-github-jayquan-mccleary-zenlink-mcp",
+      "repo": "https://github.com/JayQuan-McCleary/ZenLink-MCP",
+      "family": "data_export",
+      "description": "Browser automation for MCP clients via Zen Browser. Parallel multi-tab, content extraction."
+    },
+    {
+      "name": "io.github.JessieJanie/skim402",
+      "slug": "io-github-jessiejanie-skim402",
+      "repo": "https://github.com/JessieJanie/skim402.git",
+      "family": "money_movement",
+      "description": "Clean web reader for AI agents. Pays $0.002/call in USDC on Base via x402. No API keys."
+    },
+    {
+      "name": "io.github.KaiErikNiermann/task-warrior-mcp",
+      "slug": "io-github-kaierikniermann-task-warrior-mcp",
+      "repo": "https://github.com/KaiErikNiermann/taskwarrior-mcp",
+      "family": "permission_change",
+      "description": "MCP server wrapping the Taskwarrior CLI for structured, project-scoped task management."
+    },
+    {
+      "name": "io.github.KazKozDev/search",
+      "slug": "io-github-kazkozdev-search",
+      "repo": "https://github.com/KazKozDev/mcp-search-server",
+      "family": "data_export",
+      "description": "Web search, content extraction, PDF parsing, plus datetime and geolocation tools. No API keys."
+    },
+    {
+      "name": "io.github.Khamel83/argus",
+      "slug": "io-github-khamel83-argus",
+      "repo": "https://github.com/Khamel83/argus",
+      "family": "data_export",
+      "description": "Multi-provider search broker for AI agents: 14 providers, 12-step extraction, retrieval workflows."
+    },
+    {
+      "name": "io.github.Kindora-PBC/foundation-discovery",
+      "slug": "io-github-kindora-pbc-foundation-discovery",
+      "repo": "https://github.com/Kindora-PBC/kindora",
+      "family": "permission_change",
+      "description": "Foundation discovery and grant intelligence for nonprofits. 174K+ US funders, IRS 990 data."
+    },
+    {
+      "name": "io.github.KultMember6Banger/kloakt",
+      "slug": "io-github-kultmember6banger-kloakt",
+      "repo": "https://github.com/KultMember6Banger/kloakt",
+      "family": "data_export",
+      "description": "Cloaked headless browser for AI agents — stealth TLS, smart extraction, SPA fallback"
+    },
+    {
+      "name": "io.github.KylinMountain/web-fetch-mcp",
+      "slug": "io-github-kylinmountain-web-fetch-mcp",
+      "repo": "https://github.com/KylinMountain/web-fetch-mcp.git",
+      "family": "data_export",
+      "description": "MCP server for web content fetching, summarizing, comparing, and extracting information"
+    },
+    {
+      "name": "io.github.Kzino/vorim-mcp-server",
+      "slug": "io-github-kzino-vorim-mcp-server",
+      "repo": "https://github.com/Kzino/vorim-mcp-server",
+      "family": "permission_change",
+      "description": "AI agent identity, permissions, trust scores, and tamper-evident audit trails via Vorim AI"
+    },
+    {
+      "name": "io.github.Lab94/frenchie-skill",
+      "slug": "io-github-lab94-frenchie-skill",
+      "repo": "https://github.com/Lab94/frenchie-skill",
+      "family": "data_export",
+      "description": "OCR, transcription, file extraction, and image generation for AI agents via MCP."
+    },
+    {
+      "name": "io.github.LamboPoewert/madeonsol",
+      "slug": "io-github-lambopoewert-madeonsol",
+      "repo": "https://github.com/LamboPoewert/mcp-server-madeonsol.git",
+      "family": "production_deploy",
+      "description": "Solana memecoin intelligence: KOL trades, deployer reputation, token & wallet scoring"
+    },
+    {
+      "name": "io.github.LarryLemonBot/resultrail",
+      "slug": "io-github-larrylemonbot-resultrail",
+      "repo": "https://github.com/LarryLemonBot/LarryBuildsAI",
+      "family": "money_movement",
+      "description": "Pay-per-success public data result packs for AI agents."
+    },
+    {
+      "name": "io.github.Larshiensch99/priceparse",
+      "slug": "io-github-larshiensch99-priceparse",
+      "repo": "https://github.com/Larshiensch99/priceparse",
+      "family": "data_export",
+      "description": "Extract structured pricing tiers and addons from any SaaS pricing page URL. Built for AI agents."
+    },
+    {
+      "name": "io.github.Libres-coder/parseflow",
+      "slug": "io-github-libres-coder-parseflow",
+      "repo": "https://github.com/Libres-coder/ParseFlow",
+      "family": "data_export",
+      "description": "PDF parsing server with text extraction, metadata, search, images, and TOC via MCP"
+    },
+    {
+      "name": "io.github.LightSpeedPlusOne/invovate-mcp-server",
+      "slug": "io-github-lightspeedplusone-invovate-mcp-server",
+      "repo": "https://github.com/LightSpeedPlusOne/invovate-mcp-server",
+      "family": "money_movement",
+      "description": "AI-agent invoice generator: PDF, JSON & UBL in 11 languages via the Invovate API."
+    },
+    {
+      "name": "io.github.LinuxSuRen/atest-mcp-server",
+      "slug": "io-github-linuxsuren-atest-mcp-server",
+      "repo": "https://github.com/LinuxSuRen/atest-mcp-server",
+      "family": "data_export",
+      "description": "Auto-download & launch https://github.com/LinuxSuRen/atest-mcp-server"
+    },
+    {
+      "name": "io.github.LokmenoWer/best-cad-mcp",
+      "slug": "io-github-lokmenower-best-cad-mcp",
+      "repo": "https://github.com/LokmenoWer/best-cad-mcp",
+      "family": "data_export",
+      "description": "Windows AutoCAD MCP server for handle-first CAD automation, validation, and drawing exports."
+    },
+    {
+      "name": "io.github.Lucav21/heu-mcp",
+      "slug": "io-github-lucav21-heu-mcp",
+      "repo": "https://github.com/Lucav21/heu-mcp",
+      "family": "data_export",
+      "description": "HEU Legal e-signature MCP: manage HEU documents and PDFs, prompt signers, download PDFs."
+    },
+    {
+      "name": "io.github.MKirovBG/scribefy-mcp",
+      "slug": "io-github-mkirovbg-scribefy-mcp",
+      "repo": "https://github.com/MKirovBG/scribefy.app",
+      "family": "data_export",
+      "description": "Search YouTube, get video metadata, and extract timestamped transcripts for AI workflows."
+    },
+    {
+      "name": "io.github.MP-Tool/komodo-mcp-server",
+      "slug": "io-github-mp-tool-komodo-mcp-server",
+      "repo": "https://github.com/MP-Tool/komodo-mcp-server",
+      "family": "production_deploy",
+      "description": "MCP server for Komodo - manage Docker containers, servers, stacks, and deployments via AI"
+    },
+    {
+      "name": "io.github.MPP32/mpp32-mcp-server",
+      "slug": "io-github-mpp32-mpp32-mcp-server",
+      "repo": "https://github.com/MPP32/MPP32",
+      "family": "money_movement",
+      "description": "Payment layer for AI agents. One MCP, five protocols, thousands of paid APIs your agent can call."
+    },
+    {
+      "name": "io.github.Melusi-M/fixmypdf",
+      "slug": "io-github-melusi-m-fixmypdf",
+      "repo": "https://github.com/Melusi-M/pdf-editor-front-end",
+      "family": "data_destruction",
+      "description": "Privacy-first PDF tools over MCP: merge, split, rotate, delete, compress, protect, inspect."
+    },
+    {
+      "name": "io.github.Merit-Systems/agentcash",
+      "slug": "io-github-merit-systems-agentcash",
+      "repo": "https://github.com/Merit-Systems/agentcash",
+      "family": "money_movement",
+      "description": "Generic MCP server for calling x402-protected APIs with automatic payment handling"
+    },
+    {
+      "name": "io.github.MikeyPetrillo/agent402",
+      "slug": "io-github-mikeypetrillo-agent402",
+      "repo": "https://github.com/MikeyPetrillo/Agent402",
+      "family": "money_movement",
+      "description": "1000+ pay-per-call web tools for agents: search, browser, PDF, memory. x402 USDC or proof-of-work."
+    },
+    {
+      "name": "io.github.MindscapeHQ/mcp-server-raygun",
+      "slug": "io-github-mindscapehq-mcp-server-raygun",
+      "repo": "https://github.com/MindscapeHQ/mcp-server-raygun",
+      "family": "production_deploy",
+      "description": "Investigate errors, track deployments, analyze performance, and manage application monitoring"
+    },
+    {
+      "name": "io.github.Mintii-Labs/ozor",
+      "slug": "io-github-mintii-labs-ozor",
+      "repo": "https://github.com/Mintii-Labs/ozor-MCP",
+      "family": "data_export",
+      "description": "Generate AI videos from a prompt or document (PDF/PPTX/DOCX/URL) and export shareable MP4s."
+    },
+    {
+      "name": "io.github.Moin105/karst",
+      "slug": "io-github-moin105-karst",
+      "repo": "https://github.com/Moin105/upgraded-garbanzo",
+      "family": "permission_change",
+      "description": "Code context for AI dev tools: pack-scoped, cited code retrieval over MCP."
+    },
+    {
+      "name": "io.github.MrCartographer/cartography-mcp-server",
+      "slug": "io-github-mrcartographer-cartography-mcp-server",
+      "repo": "https://github.com/MrCartographer/cartography",
+      "family": "money_movement",
+      "description": "Human-curated crypto market intelligence with x402 payments. Weekly signals and analysis."
+    },
+    {
+      "name": "io.github.MrCartographer/crypto-analysis-human-mcp",
+      "slug": "io-github-mrcartographer-crypto-analysis-human-mcp",
+      "repo": "https://github.com/MrCartographer/cartography",
+      "family": "money_movement",
+      "description": "Human-curated crypto signals, altcoin analysis, and airdrop alpha. x402 payments."
+    },
+    {
+      "name": "io.github.MukundaKatta/agentcast",
+      "slug": "io-github-mukundakatta-agentcast",
+      "repo": "https://github.com/MukundaKatta/agentcast-mcp",
+      "family": "data_export",
+      "description": "Structured-output enforcer: extract and validate JSON from messy LLM text."
+    },
+    {
+      "name": "io.github.MukundaKatta/promptbudget-mcp",
+      "slug": "io-github-mukundakatta-promptbudget-mcp",
+      "repo": "https://github.com/MukundaKatta/mcp-stack",
+      "family": "data_destruction",
+      "description": "Token-budget-aware text handling: count, truncate, and chunk for LLM prompts."
+    },
+    {
+      "name": "io.github.MukundaKatta/streamparse",
+      "slug": "io-github-mukundakatta-streamparse",
+      "repo": "https://github.com/MukundaKatta/streamparse-mcp",
+      "family": "data_destruction",
+      "description": "Parse partial / truncated / messy JSON for LLM tool calls and structured outputs."
+    },
+    {
+      "name": "io.github.New1Direction/motokano",
+      "slug": "io-github-new1direction-motokano",
+      "repo": "https://github.com/New1Direction/ningen-shikkaku",
+      "family": "data_destruction",
+      "description": "Serve a secret to an agent exactly N times from locked RAM, then wipe it and self-destruct."
+    },
+    {
+      "name": "io.github.NewPlanetWW/mcp-commerce-starter",
+      "slug": "io-github-newplanetww-mcp-commerce-starter",
+      "repo": "https://github.com/NewPlanetWW/mcp-commerce-starter",
+      "family": "production_deploy",
+      "description": "FastMCP commerce server starter: product catalog, search, and checkout. Deploy to Vercel in 5 min."
+    },
+    {
+      "name": "io.github.NikolaNddTesla/sshmcp",
+      "slug": "io-github-nikolanddtesla-sshmcp",
+      "repo": "https://github.com/NikolaNddTesla/ssh-mcp-server",
+      "family": "money_movement",
+      "description": "SSH server management with zero-token SFTP file transfer and SOCKS proxy support"
+    },
+    {
+      "name": "io.github.Nizoka/pdfnative-mcp",
+      "slug": "io-github-nizoka-pdfnative-mcp",
+      "repo": "https://github.com/Nizoka/pdfnative-mcp",
+      "family": "data_export",
+      "description": "PDF native MCP server: generate, validate, sign PAdES, embed, extract. AI-powered."
+    },
+    {
+      "name": "io.github.NyxToolsDev/quickbooks-mcp-server",
+      "slug": "io-github-nyxtoolsdev-quickbooks-mcp-server",
+      "repo": "https://github.com/NyxToolsDev/quickbooks-mcp-server",
+      "family": "money_movement",
+      "description": "Connect Claude to QuickBooks Online — query finances, create invoices, run reports"
+    },
+    {
+      "name": "io.github.O-mega-Enterprise/founden-mcp",
+      "slug": "io-github-o-mega-enterprise-founden-mcp",
+      "repo": "https://github.com/O-mega-Enterprise/founden-mcp",
+      "family": "permission_change",
+      "description": "Build your company over chat: website, app, and admin built in the cloud. One API key."
+    },
+    {
+      "name": "io.github.Octodamus/market-intelligence",
+      "slug": "io-github-octodamus-market-intelligence",
+      "repo": "https://github.com/Octodamus/octodamus-site",
+      "family": "money_movement",
+      "description": "AI market oracle for agents. Crypto signals, Polymarket edges, x402 USDC payments on Base."
+    },
+    {
+      "name": "io.github.Olddun/agent-revenue-copilot",
+      "slug": "io-github-olddun-agent-revenue-copilot",
+      "repo": "https://github.com/Olddun/earn10-clawtasks-deliverables",
+      "family": "money_movement",
+      "description": "MCP and x402 starter audit for legal AI agent revenue routes and payout verification."
+    },
+    {
+      "name": "io.github.OneNicolas/mcp-service-public",
+      "slug": "io-github-onenicolas-mcp-service-public",
+      "repo": "https://github.com/OneNicolas/mcp-service-public",
+      "family": "permission_change",
+      "description": "French public services: tax, property, admin, education, healthcare, security, risks, legal texts"
+    },
+    {
+      "name": "io.github.Ooak21/cortex402",
+      "slug": "io-github-ooak21-cortex402",
+      "repo": "https://github.com/Ooak21/cortex402",
+      "family": "money_movement",
+      "description": "Pay-per-call x402 data products on Base mainnet — sanctions, aviation weather, US property."
+    },
+    {
+      "name": "io.github.Optisol-Business/db-metadata-extractor-mcp",
+      "slug": "io-github-optisol-business-db-metadata-extractor-mcp",
+      "repo": "https://github.com/Optisol-Business/db-metadata-extractor-mcp",
+      "family": "data_export",
+      "description": "Extract database schema metadata from PostgreSQL, Snowflake, SQL Server, BigQuery, Oracle."
+    },
+    {
+      "name": "io.github.OrbisAPI/orbis-marketplace",
+      "slug": "io-github-orbisapi-orbis-marketplace",
+      "repo": "https://github.com/OrbisAPI/orbis-sdk",
+      "family": "money_movement",
+      "description": "Browse, subscribe to, and call 3,000+ APIs autonomously. x402 USDC pay-per-call on Base."
+    },
+    {
+      "name": "io.github.OrbisAPI/orbis-mcp",
+      "slug": "io-github-orbisapi-orbis-mcp",
+      "repo": "https://github.com/OrbisAPI/orbis-mcp",
+      "family": "money_movement",
+      "description": "8,000+ pay-per-call APIs via x402 USDC micropayments on Base. No API keys needed."
+    },
+    {
+      "name": "io.github.OrygnsCode/omnicord",
+      "slug": "io-github-orygnscode-omnicord",
+      "repo": "https://github.com/OrygnsCode/Omnicord",
+      "family": "permission_change",
+      "description": "Your AI runs your Discord server: chat, moderation, admin, even building it all from one brief."
+    },
+    {
+      "name": "io.github.Pakvothe/i1n",
+      "slug": "io-github-pakvothe-i1n",
+      "repo": "https://github.com/Pakvothe/i1n-cli",
+      "family": "data_export",
+      "description": "Agent-complete localization: extract strings, push keys, AI-translate, pull type-safe TS types."
+    },
+    {
+      "name": "io.github.PalabreX/runpay",
+      "slug": "io-github-palabrex-runpay",
+      "repo": "https://github.com/PalabreX/runpay-mcp",
+      "family": "money_movement",
+      "description": "Stripe-native marketplace where AI agents discover and pay per call for API services."
+    },
+    {
+      "name": "io.github.PanosSalt/MCP-Gateway",
+      "slug": "io-github-panossalt-mcp-gateway",
+      "repo": "https://github.com/PanosSalt/MCP-Gateway",
+      "family": "permission_change",
+      "description": "Multi-tenant MCP platform with OAuth 2.1, Entra SSO, RBAC and audit logging."
+    },
+    {
+      "name": "io.github.Patdolitse/piia-engram",
+      "slug": "io-github-patdolitse-piia-engram",
+      "repo": "https://github.com/Patdolitse/piia-engram",
+      "family": "regulated_override",
+      "description": "Local-first AI identity for MCP coding tools. User-approved lessons, decisions, and context."
+    },
+    {
+      "name": "io.github.PayRam/payram-helper-mcp",
+      "slug": "io-github-payram-payram-helper-mcp",
+      "repo": "https://github.com/PayRam/payram-helper-mcp-server",
+      "family": "production_deploy",
+      "description": "Remote MCP server to integrate and validate self-hosted Payram deployments."
+    },
+    {
+      "name": "io.github.PedroMarianoAlmeida/ffmpeg-mcp",
+      "slug": "io-github-pedromarianoalmeida-ffmpeg-mcp",
+      "repo": "https://github.com/PedroMarianoAlmeida/ffmpeg-mcp",
+      "family": "data_destruction",
+      "description": "FFmpeg video/audio tools: cut, convert, concat, remove silence, and raw commands."
+    },
+    {
+      "name": "io.github.PhilipAD/health-export-mcp",
+      "slug": "io-github-philipad-health-export-mcp",
+      "repo": "https://github.com/PhilipAD/health-export-mcp",
+      "family": "data_export",
+      "description": "Query 190 Apple Health metrics from any MCP agent — zero-dependency, read-only, local-first."
+    },
+    {
+      "name": "io.github.PiQrypt/audit-trail",
+      "slug": "io-github-piqrypt-audit-trail",
+      "repo": "https://github.com/PiQrypt/piqrypt-mcp-server",
+      "family": "data_export",
+      "description": "Cryptographic audit trail for AI agents. Sign, verify, export. GDPR/HIPAA/EU AI Act."
+    },
+    {
+      "name": "io.github.Pikaivan/convradar-mcp",
+      "slug": "io-github-pikaivan-convradar-mcp",
+      "repo": "https://github.com/Pikaivan/convradar-mcp",
+      "family": "data_destruction",
+      "description": "GA4 conversion analyst inside Claude — funnel drops, traffic anomalies, device gaps, with numbers."
+    },
+    {
+      "name": "io.github.Pink707Legendary/stock-moves-explained",
+      "slug": "io-github-pink707legendary-stock-moves-explained",
+      "repo": "https://github.com/Pink707Legendary/stock-moves-explained",
+      "family": "data_destruction",
+      "description": "Explains why US stocks moved. AI analysis for 'why did Tesla drop?' queries. S&P 500/NASDAQ/Dow."
+    },
+    {
+      "name": "io.github.Poiuyhje/eqvps",
+      "slug": "io-github-poiuyhje-eqvps",
+      "repo": "https://github.com/Poiuyhje/eqvps-mcp",
+      "family": "money_movement",
+      "description": "Crypto-paid no-KYC VPS that AI agents rent & operate over MCP — order, pay USDC/USDT, get root."
+    },
+    {
+      "name": "io.github.PonzuTech/ponzu",
+      "slug": "io-github-ponzutech-ponzu",
+      "repo": "https://github.com/PonzuTech/ponzu_mcp",
+      "family": "production_deploy",
+      "description": "ERC-20 token launchpad on Ethereum — deploy, presale, swap, and farm via AI agents"
+    },
+    {
+      "name": "io.github.PromptPartner/bexio-mcp-server",
+      "slug": "io-github-promptpartner-bexio-mcp-server",
+      "repo": "https://github.com/promptpartner/bexio-mcp-server",
+      "family": "money_movement",
+      "description": "Swiss accounting integration for Bexio. 221 tools for invoices, contacts, projects."
+    },
+    {
+      "name": "io.github.ProntoHQ/mcp-pronto",
+      "slug": "io-github-prontohq-mcp-pronto",
+      "repo": "https://github.com/ProntoHQ/mcp-pronto",
+      "family": "data_export",
+      "description": "B2B sales intelligence: find companies, extract leads, enrich contacts with emails/phones."
+    },
+    {
+      "name": "io.github.ProvarTesting/provar",
+      "slug": "io-github-provartesting-provar",
+      "repo": "https://github.com/ProvarTesting/provardx-cli",
+      "family": "production_deploy",
+      "description": "Provar MCP: AI-powered Salesforce test automation. Generate, validate, migrate, and run tests."
+    },
+    {
+      "name": "io.github.Quant-M2M/API-Quant-M2M",
+      "slug": "io-github-quant-m2m-api-quant-m2m",
+      "repo": "https://github.com/Quant-M2M/API-Quant-M2M",
+      "family": "money_movement",
+      "description": "Web scraping and crypto price oracle MCP. Pay 1 USDC on Base for 1h access."
+    },
+    {
+      "name": "io.github.RECERQA/rq-scan",
+      "slug": "io-github-recerqa-rq-scan",
+      "repo": "https://github.com/RECERQA/rq-scan",
+      "family": "data_export",
+      "description": "MCP Server for RQ-SCAN - AI-powered document OCR and data extraction platform"
+    },
+    {
+      "name": "io.github.RekklesNA/proxmox-mcp-plus",
+      "slug": "io-github-rekklesna-proxmox-mcp-plus",
+      "repo": "https://github.com/RekklesNA/ProxmoxMCP-Plus",
+      "family": "data_export",
+      "description": "Proxmox VE MCP server for VMs, LXCs, snapshots, backups, storage, and cluster operations."
+    },
+    {
+      "name": "io.github.Ringosystems/tractorbeeam-mcp",
+      "slug": "io-github-ringosystems-tractorbeeam-mcp",
+      "repo": "https://github.com/Ringosystems/TractorBeeam-MCP",
+      "family": "data_export",
+      "description": "MCP server for Veeam Backup for Microsoft 365: read-only review + gated, audited restore tier."
+    },
+    {
+      "name": "io.github.Robocular/spawnpay",
+      "slug": "io-github-robocular-spawnpay",
+      "repo": "https://github.com/Robocular/spawnpay",
+      "family": "money_movement",
+      "description": "Crypto wallets, payments, and referral earnings for AI agents on Base L2"
+    },
+    {
+      "name": "io.github.Rotwang9000/seneschal-data",
+      "slug": "io-github-rotwang9000-seneschal-data",
+      "repo": "https://github.com/Rotwang9000/seneschal-data-api",
+      "family": "money_movement",
+      "description": "Monero/Zcash payment webhooks + DeFi liquidation & Ethereum builder data over MCP. Free tier; x402."
+    },
+    {
+      "name": "io.github.RubenTay/agent-vending-factory",
+      "slug": "io-github-rubentay-agent-vending-factory",
+      "repo": "https://github.com/RubenTay/agent-vending-factory",
+      "family": "money_movement",
+      "description": "Pay-per-call MCP tools via x402 USDC: ZAR prices, data extraction, Python sandbox, SA flights."
+    },
+    {
+      "name": "io.github.Rumblingb/agentpay",
+      "slug": "io-github-rumblingb-agentpay",
+      "repo": "https://github.com/Rumblingb/Agentpay",
+      "family": "money_movement",
+      "description": "Portable payment, identity, approval, and execution control plane for AI agents."
+    },
+    {
+      "name": "io.github.Rumblingb/agentpay-sentinel-mcp",
+      "slug": "io-github-rumblingb-agentpay-sentinel-mcp",
+      "repo": "https://github.com/Rumblingb/agentpay-sentinel-mcp.git",
+      "family": "money_movement",
+      "description": "Security guardrails for AI agent payments"
+    },
+    {
+      "name": "io.github.RuyaaCapital-admin/socializioz-chatgpt-mcp",
+      "slug": "io-github-ruyaacapital-admin-socializioz-chatgpt-mcp",
+      "repo": "https://github.com/RuyaaCapital-admin/socializioz-chatgpt-mcp",
+      "family": "permission_change",
+      "description": "Thin remote MCP server for Socializioz phase-1 ChatGPT workflows."
+    },
+    {
+      "name": "io.github.Ryvonetwork/ryvo-protocol",
+      "slug": "io-github-ryvonetwork-ryvo-protocol",
+      "repo": "https://github.com/Ryvonetwork/ryvo-gateway-agentic",
+      "family": "money_movement",
+      "description": "MCP server for Ryvo Protocol state reads and prepare-only payment-channel actions."
+    },
+    {
+      "name": "io.github.S2thend/cursor-history",
+      "slug": "io-github-s2thend-cursor-history",
+      "repo": "https://github.com/S2thend/cursor-history-mcp",
+      "family": "data_export",
+      "description": "MCP server for browsing, searching, exporting, and backing up your Cursor AI chat history"
+    },
+    {
+      "name": "io.github.SAIHM-Admin/saihm-mcp",
+      "slug": "io-github-saihm-admin-saihm-mcp",
+      "repo": "https://github.com/SAIHM-Admin/saihm-mcp",
+      "family": "permission_change",
+      "description": "Sovereign encrypted persistent memory for AI agents. 8 MCP tools. GDPR erasure. Apache-2.0."
+    },
+    {
+      "name": "io.github.SPIRY-RO/slush-meme-mcp",
+      "slug": "io-github-spiry-ro-slush-meme-mcp",
+      "repo": "https://github.com/SPIRY-RO/slush.meme",
+      "family": "production_deploy",
+      "description": "AI-native meme coin launchpad on Avalanche. Deploy tokens, simulate trades, query risk."
+    },
+    {
+      "name": "io.github.Sahib-Sawhney-WH/looking-glass-mcp",
+      "slug": "io-github-sahib-sawhney-wh-looking-glass-mcp",
+      "repo": "https://github.com/Sahib-Sawhney-WH/LookingGlass",
+      "family": "data_export",
+      "description": "AI-native browser for agents. 72 tools with self-healing, semantic extraction, vault."
+    },
+    {
+      "name": "io.github.SamMorrowDrums/remarkable",
+      "slug": "io-github-sammorrowdrums-remarkable",
+      "repo": "https://github.com/SamMorrowDrums/remarkable-mcp",
+      "family": "data_export",
+      "description": "Access your reMarkable tablet - read documents, browse files, extract text and OCR"
+    },
+    {
+      "name": "io.github.Sandip124/wisegit",
+      "slug": "io-github-sandip124-wisegit",
+      "repo": "https://github.com/Sandip124/wisegit",
+      "family": "data_export",
+      "description": "Extracts decision intent from git history and protects intentional code from AI modification."
+    },
+    {
+      "name": "io.github.ScrapeGraphAI/scrapegraph-mcp",
+      "slug": "io-github-scrapegraphai-scrapegraph-mcp",
+      "repo": "https://github.com/ScrapeGraphAI/scrapegraph-mcp",
+      "family": "data_export",
+      "description": "AI-powered web scraping and data extraction capabilities through ScrapeGraph API"
+    },
+    {
+      "name": "io.github.Sentinel-Gate/sentinelgate",
+      "slug": "io-github-sentinel-gate-sentinelgate",
+      "repo": "https://github.com/Sentinel-Gate/Sentinelgate",
+      "family": "permission_change",
+      "description": "Open-source MCP proxy for AI agent access control with CEL policies, RBAC, and audit."
+    },
+    {
+      "name": "io.github.Servosity/afi-mcp",
+      "slug": "io-github-servosity-afi-mcp",
+      "repo": "https://github.com/servosity/msp-skills",
+      "family": "data_export",
+      "description": "The first CLI for Afi SaaS backup  -  full public-API coverage plus the fleet-wide coverage"
+    },
+    {
+      "name": "io.github.Servosity/axcient-mcp",
+      "slug": "io-github-servosity-axcient-mcp",
+      "repo": "https://github.com/servosity/msp-skills",
+      "family": "data_export",
+      "description": "Every x360Recover endpoint, plus the fleet-wide backup-health answers the API alone can't give"
+    },
+    {
+      "name": "io.github.Servosity/cove-mcp",
+      "slug": "io-github-servosity-cove-mcp",
+      "repo": "https://github.com/servosity/msp-skills",
+      "family": "data_export",
+      "description": "Fleet-wide Cove Data Protection backup health, billing, and storage trends from your terminal."
+    },
+    {
+      "name": "io.github.Servosity/mspbots-mcp",
+      "slug": "io-github-servosity-mspbots-mcp",
+      "repo": "https://github.com/servosity/msp-skills",
+      "family": "data_export",
+      "description": "Readable filters, alias-named resources, full exports, and the KPI history MSPbots doesn't keep."
+    },
+    {
+      "name": "io.github.Servosity/servosity-mcp",
+      "slug": "io-github-servosity-servosity-mcp",
+      "repo": "https://github.com/servosity/msp-skills",
+      "family": "data_export",
+      "description": "Fleet-wide backup triage, stale-backup detection, and cross-engine analytics for any MCP agent."
+    },
+    {
+      "name": "io.github.Servosity/skykick-mcp",
+      "slug": "io-github-servosity-skykick-mcp",
+      "repo": "https://github.com/servosity/msp-skills",
+      "family": "data_export",
+      "description": "Fleet backup posture, stale snapshots, and coverage gaps for SkyKick Cloud Backup."
+    },
+    {
+      "name": "io.github.Servosity/veeam-mcp",
+      "slug": "io-github-servosity-veeam-mcp",
+      "repo": "https://github.com/servosity/msp-skills",
+      "family": "data_export",
+      "description": "Sync Veeam Service Provider Console tenants to local SQLite; cross-company backup answers offline."
+    },
+    {
+      "name": "io.github.ShieldZCash/mcp",
+      "slug": "io-github-shieldzcash-mcp",
+      "repo": "https://github.com/ShieldZCash/shieldz-mcp",
+      "family": "money_movement",
+      "description": "Keyless non-custodial crypto payments for AI agents: payment links and tip jars, no API key."
+    },
+    {
+      "name": "io.github.Singlishman/kerdos-x402-mcp",
+      "slug": "io-github-singlishman-kerdos-x402-mcp",
+      "repo": "https://github.com/Singlishman/kerdos-x402-mcp",
+      "family": "money_movement",
+      "description": "Crypto market intelligence MCP — pay-per-tool-call in USDC on Base via the x402 protocol."
+    },
+    {
+      "name": "io.github.Skyvern-AI/skyvern",
+      "slug": "io-github-skyvern-ai-skyvern",
+      "repo": "https://github.com/Skyvern-AI/skyvern",
+      "family": "data_export",
+      "description": "AI-powered browser automation — navigate, click, fill forms, and extract data from any website."
+    },
+    {
+      "name": "io.github.Spacemandomains/library-mcp",
+      "slug": "io-github-spacemandomains-library-mcp",
+      "repo": "https://github.com/Spacemandomains/library-mcp",
+      "family": "money_movement",
+      "description": "Search and discover 25,000+ MCP servers across all major registries. Connect and pay autonomously."
+    },
+    {
+      "name": "io.github.Steveser1989/opc-mcp-server",
+      "slug": "io-github-steveser1989-opc-mcp-server",
+      "repo": "https://github.com/Steveser1989/Main-MY-OPC-System",
+      "family": "money_movement",
+      "description": "OPC Suite — CRM, sales, inventory, accounting, HRM, payroll, claims, projects from any AI agent."
+    },
+    {
+      "name": "io.github.Stratogenic-AI/catalyst",
+      "slug": "io-github-stratogenic-ai-catalyst",
+      "repo": "https://github.com/Stratogenic-AI/catalyst-mcp",
+      "family": "permission_change",
+      "description": "Governance middleware for AI agents: permission gates, approvals, compliance scanning, audit ledger."
+    },
+    {
+      "name": "io.github.Swarmwage/swarmwage",
+      "slug": "io-github-swarmwage-swarmwage",
+      "repo": "https://github.com/Swarmwage/swarmwage",
+      "family": "money_movement",
+      "description": "Hire and pay specialized AI agents in USDC on Base. Open MCP protocol above x402."
+    },
+    {
+      "name": "io.github.Swathi-MuraliSrinivasan/tavily-mcp-server",
+      "slug": "io-github-swathi-muralisrinivasan-tavily-mcp-server",
+      "repo": "https://github.com/paychex/tavily-mcp-server",
+      "family": "data_export",
+      "description": "FastMCP server for Tavily search API with web search and content extraction"
+    },
+    {
+      "name": "io.github.SynapseNetworkAI/synapse-network-mcp-server",
+      "slug": "io-github-synapsenetworkai-synapse-network-mcp-server",
+      "repo": "https://github.com/SynapseNetworkAI/Synapse-Network-MCP-Server",
+      "family": "money_movement",
+      "description": "Official SynapseNetwork MCP server for agent payments, service discovery, and receipts."
+    },
+    {
+      "name": "io.github.Synlake-ai/mcp-server",
+      "slug": "io-github-synlake-ai-mcp-server",
+      "repo": "https://github.com/Synlake-ai/Synlake",
+      "family": "production_deploy",
+      "description": "Compare, estimate, and deploy cloud infrastructure across AWS, GCP, and Azure for AI agents."
+    },
+    {
+      "name": "io.github.TN0123/one-shot-ui",
+      "slug": "io-github-tn0123-one-shot-ui",
+      "repo": "https://github.com/TN0123/one-shot-ui",
+      "family": "data_export",
+      "description": "Deterministic UI extraction and screenshot diffing for AI coding agents."
+    },
+    {
+      "name": "io.github.TateLyman/x402-triage-mcp",
+      "slug": "io-github-tatelyman-x402-triage-mcp",
+      "repo": "https://github.com/TateLyman/x402-triage-mcp",
+      "family": "money_movement",
+      "description": "MCP server for no-payment x402 surface triage, 402 Index health checks, and paid review handoff."
+    },
+    {
+      "name": "io.github.TelcharFromNogrod/keen",
+      "slug": "io-github-telcharfromnogrod-keen",
+      "repo": "https://github.com/TelcharFromNogrod/keen-mcp",
+      "family": "money_movement",
+      "description": "AI image upscaling — upscale any image to 2x or 4x resolution with x402 payments"
+    },
+    {
+      "name": "io.github.Texan-NXTassist/nr-mcp",
+      "slug": "io-github-texan-nxtassist-nr-mcp",
+      "repo": "https://github.com/Texan-NXTassist/nr-mcp",
+      "family": "production_deploy",
+      "description": "MCP server for Node-RED — safe deploy, optimistic locking, smart search, 13 tools"
+    },
+    {
+      "name": "io.github.TheMemeBanker/nory-mcp-server",
+      "slug": "io-github-thememebanker-nory-mcp-server",
+      "repo": "https://github.com/TheMemeBanker/nory-mcp-server",
+      "family": "money_movement",
+      "description": "Give any AI agent instant payment capabilities via x402 protocol on Solana"
+    },
+    {
+      "name": "io.github.TheMemeBanker/nory-x402",
+      "slug": "io-github-thememebanker-nory-x402",
+      "repo": "https://github.com/TheMemeBanker/x402-pay",
+      "family": "money_movement",
+      "description": "x402 payment processor for AI agents. Sub-400ms settlement on Solana + 7 EVM chains."
+    },
+    {
+      "name": "io.github.TheSandemon/kaito-query",
+      "slug": "io-github-thesandemon-kaito-query",
+      "repo": "https://github.com/TheSandemon/sand-gallery",
+      "family": "money_movement",
+      "description": "AI query service with USDC payments on Base. Gemini, MiniMax, Replicate, OpenRouter."
+    },
+    {
+      "name": "io.github.Thezenmonster/agentscore",
+      "slug": "io-github-thezenmonster-agentscore",
+      "repo": "https://github.com/Thezenmonster/agentscores",
+      "family": "permission_change",
+      "description": "KYA — verify any AI agent. Six checks: deployer, model, code, abuse, permissions, deployment."
+    },
+    {
+      "name": "io.github.ThiagoDataEngineer/l402-kit",
+      "slug": "io-github-thiagodataengineer-l402-kit",
+      "repo": "https://github.com/ShinyDapps/l402-kit",
+      "family": "money_movement",
+      "description": "MCP server for L402-protected APIs via Bitcoin Lightning. Pay-per-call AI tools in sats."
+    },
+    {
+      "name": "io.github.This-Is-Hellgate/secondeye-mcp-unblock",
+      "slug": "io-github-this-is-hellgate-secondeye-mcp-unblock",
+      "repo": "https://github.com/This-Is-Hellgate/secondeye-mcp",
+      "family": "money_movement",
+      "description": "github-mcp 401? PAT wiring. Proof before pay. x402 USDC Base. 15 min free."
+    },
+    {
+      "name": "io.github.Timwal78/402proof",
+      "slug": "io-github-timwal78-402proof",
+      "repo": "https://github.com/Timwal78/SqueezeOS",
+      "family": "money_movement",
+      "description": "x402 payment firewall + Agent Credit Bureau. Invoice/verify/score via RLUSD on XRPL."
+    },
+    {
+      "name": "io.github.Timwal78/aetheris-mcp",
+      "slug": "io-github-timwal78-aetheris-mcp",
+      "repo": "https://github.com/timwal78/aetheris-mcp-render",
+      "family": "money_movement",
+      "description": "x402-gated web scraping MCP server. Pay 0.01 USDC per page on Base. Returns clean Markdown via JSDOM"
+    },
+    {
+      "name": "io.github.Timwal78/mcp-x402",
+      "slug": "io-github-timwal78-mcp-x402",
+      "repo": "https://github.com/timwal78/SML_Portfolio",
+      "family": "money_movement",
+      "description": "The x402 Amazon: 43+ MCP tools, pay-per-call. SEC, squeeze, options, FTD, XRPL/Base payments."
+    },
+    {
+      "name": "io.github.Timwal78/squeezeos",
+      "slug": "io-github-timwal78-squeezeos",
+      "repo": "https://github.com/Timwal78/SqueezeOS",
+      "family": "money_movement",
+      "description": "Squeeze detection, options flow, AI trade verdicts. 33 MCP tools. Free + pay-per-call via x402."
+    },
+    {
+      "name": "io.github.Timwal78/xdeo",
+      "slug": "io-github-timwal78-xdeo",
+      "repo": "https://github.com/Timwal78/SqueezeOS",
+      "family": "money_movement",
+      "description": "Reputation-ranked analyst earnings estimates. Pay per call via x402 on Base."
+    },
+    {
+      "name": "io.github.Tlalvarez/auxiliar-mcp",
+      "slug": "io-github-tlalvarez-auxiliar-mcp",
+      "repo": "https://github.com/Tlalvarez/Auxiliar-ai",
+      "family": "data_export",
+      "description": "Web access for AI agents — search/scrape/extract/crawl via the auxiliar.ai gateway."
+    },
+    {
+      "name": "io.github.Tr1ckyMag1ca1/mcp-server",
+      "slug": "io-github-tr1ckymag1ca1-mcp-server",
+      "repo": "https://github.com/mirrormemory-ai/mcp-server",
+      "family": "data_export",
+      "description": "Personal knowledge base MCP server with semantic search, auto-categorization, metadata extraction"
+    },
+    {
+      "name": "io.github.Trushtonfactory/anthropic-admin-mcp",
+      "slug": "io-github-trushtonfactory-anthropic-admin-mcp",
+      "repo": "https://github.com/Trushtonfactory/anthropic-admin-mcp",
+      "family": "permission_change",
+      "description": "Native MCP server for the Anthropic Admin API: org, workspaces, members, API keys, usage, costs."
+    },
+    {
+      "name": "io.github.Tsubaki414/toolfi",
+      "slug": "io-github-tsubaki414-toolfi",
+      "repo": "https://github.com/Tsubaki414/toolfi",
+      "family": "money_movement",
+      "description": "Open API Marketplace for AI Agents. Crypto data tools with USDC payments on Base."
+    },
+    {
+      "name": "io.github.TychiWallet/tyi-mcp",
+      "slug": "io-github-tychiwallet-tyi-mcp",
+      "repo": "https://github.com/TychiWallet/tyi-mcp",
+      "family": "money_movement",
+      "description": "Agent-native self-custody wallet MCP: onboard, wallets, Arbitrum sends, policy-gated payments."
+    },
+    {
+      "name": "io.github.UltraStarz/x402-extract",
+      "slug": "io-github-ultrastarz-x402-extract",
+      "repo": "https://github.com/UltraStarz/x402-extract-mcp",
+      "family": "money_movement",
+      "description": "Pay-per-call MCP server. $0.01 USDC extracts schema.org/Product JSON from any URL via x402."
+    },
+    {
+      "name": "io.github.UltraStarz/x402-sms",
+      "slug": "io-github-ultrastarz-x402-sms",
+      "repo": "https://github.com/UltraStarz/x402-sms-mcp",
+      "family": "money_movement",
+      "description": "Pay-per-call MCP server. $0.03 USDC sends one transactional SMS to a US phone number via x402."
+    },
+    {
+      "name": "io.github.UnbearableDev/docker-compose-audit",
+      "slug": "io-github-unbearabledev-docker-compose-audit",
+      "repo": "https://github.com/UnbearableDev/docker-compose-audit",
+      "family": "permission_change",
+      "description": "Security audit for docker-compose.yml — 25 checks: secrets, privileges, network, volumes, images."
+    },
+    {
+      "name": "io.github.UnbearableDev/dockerfile-audit",
+      "slug": "io-github-unbearabledev-dockerfile-audit",
+      "repo": "https://github.com/UnbearableDev/dockerfile-audit",
+      "family": "permission_change",
+      "description": "Hadolint-grade Dockerfile audit — 19 checks: secrets, privileges, supply chain, hygiene."
+    },
+    {
+      "name": "io.github.UnbearableDev/github-actions-audit",
+      "slug": "io-github-unbearabledev-github-actions-audit",
+      "repo": "https://github.com/UnbearableDev/github-actions-audit",
+      "family": "permission_change",
+      "description": "GitHub Actions workflow security audit - 21 checks: pinning, permissions, secrets, injection."
+    },
+    {
+      "name": "io.github.UnbearableDev/k8s-manifest-audit",
+      "slug": "io-github-unbearabledev-k8s-manifest-audit",
+      "repo": "https://github.com/UnbearableDev/k8s-manifest-audit",
+      "family": "permission_change",
+      "description": "kube-linter audit for Kubernetes manifests — 63 checks: security, availability, RBAC, network."
+    },
+    {
+      "name": "io.github.Unima3x/agirails-mcp-server",
+      "slug": "io-github-unima3x-agirails-mcp-server",
+      "repo": "https://github.com/agirails/agirails-mcp-server",
+      "family": "money_movement",
+      "description": "Payment rails for AI agents — escrow, settlement, discovery, and disputes from any context window."
+    },
+    {
+      "name": "io.github.User0856/snaprender",
+      "slug": "io-github-user0856-snaprender",
+      "repo": "https://github.com/User0856/snaprender-integrations",
+      "family": "data_export",
+      "description": "Screenshot, extract content, and render web pages. PNG/JPEG/WebP/PDF, batch, signed URLs."
+    },
+    {
+      "name": "io.github.Vektoris-AI/proofetch",
+      "slug": "io-github-vektoris-ai-proofetch",
+      "repo": "https://github.com/Vektoris-AI/proofetch",
+      "family": "data_export",
+      "description": "Verified extraction: source-backed JSON from PDFs/URLs; honest null + signed receipt."
+    },
+    {
+      "name": "io.github.Vitexus/abraflexi",
+      "slug": "io-github-vitexus-abraflexi",
+      "repo": "https://github.com/VitexSoftware/abraflexi-mcp-server",
+      "family": "money_movement",
+      "description": "MCP server for AbraFlexi ERP — invoices, contacts, products, bank transactions."
+    },
+    {
+      "name": "io.github.VladimirWrites/nestegg-calculators",
+      "slug": "io-github-vladimirwrites-nestegg-calculators",
+      "repo": "https://github.com/VladimirWrites/nestegg.money",
+      "family": "money_movement",
+      "description": "Pure finance calculators: loans, FIRE, NPV/IRR, German payroll, VAT. No data leaves your device."
+    },
+    {
+      "name": "io.github.Vorim-AI-Labs/vorim-mcp-server",
+      "slug": "io-github-vorim-ai-labs-vorim-mcp-server",
+      "repo": "https://github.com/Vorim-AI-Labs/vorim-mcp-server",
+      "family": "permission_change",
+      "description": "AI agent identity, permissions, trust scores, and tamper-evident audit trails via Vorim AI"
+    },
+    {
+      "name": "io.github.WayforthOfficial/wayforth",
+      "slug": "io-github-wayforthofficial-wayforth",
+      "repo": "https://github.com/WayforthOfficial/wayforth",
+      "family": "money_movement",
+      "description": "Search engine and payment rail for AI agents. 2,300+ services, semantic ranking."
+    },
+    {
+      "name": "io.github.WellApp-ai/well-mcp",
+      "slug": "io-github-wellapp-ai-well-mcp",
+      "repo": "https://github.com/WellApp-ai/well-mcp",
+      "family": "money_movement",
+      "description": "Connect your AI to your Well financial data - invoices, companies, contacts."
+    },
+    {
+      "name": "io.github.Whawi/oracle",
+      "slug": "io-github-whawi-oracle",
+      "repo": "https://github.com/Whawi/oracle-agent-card",
+      "family": "money_movement",
+      "description": "Ground truth operational layer for urban transfers in LatAm."
+    },
+    {
+      "name": "io.github.WirterNow/agent-bank",
+      "slug": "io-github-wirternow-agent-bank",
+      "repo": "https://github.com/WirterNow/ai-agent-bank-mcp-server",
+      "family": "money_movement",
+      "description": "Financial infrastructure for AI agents: wallets, USDC transfers, lending, jobs on Polygon"
+    }
+  ]
+}

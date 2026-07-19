@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { bindReceiptToCommit, fulfillCommit, getCommitStatus, CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/commit/[commitId]/receipt
@@ -19,7 +23,9 @@ export async function POST(request, { params }) {
     }
 
     const { commitId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     // === AUTHORIZATION: only the issuing entity can bind a receipt ===
     const commit = await getCommitStatus(commitId);
@@ -27,7 +33,7 @@ export async function POST(request, { params }) {
       return epProblem(404, 'commit_not_found', 'Commit not found');
     }
 
-    if (commit.entity_id !== auth.entity.entity_id) {
+    if (commit.entity_id !== authEntityId(auth)) {
       return epProblem(403, 'not_authorized', 'Only the issuing entity can bind a receipt to this commit');
     }
 

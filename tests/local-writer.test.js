@@ -787,7 +787,9 @@ describe('canonicalResolveAppeal', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('canonicalFileReport', () => {
-  function makeReportSupabase(entity, insertErr = null) {
+  function makeReportSupabase(entity, insertErr = null, calls = {}) {
+    let trustReportInsertCount = 0;
+    calls.inserts ||= [];
     return {
       from: vi.fn((table) => {
         if (table === 'entities') {
@@ -799,7 +801,14 @@ describe('canonicalFileReport', () => {
         }
         if (table === 'trust_reports') {
           return {
-            insert: vi.fn().mockResolvedValue({ data: null, error: insertErr }),
+            insert: vi.fn((payload) => {
+              calls.inserts.push(payload);
+              const error = Array.isArray(insertErr)
+                ? insertErr[trustReportInsertCount] || null
+                : insertErr;
+              trustReportInsertCount += 1;
+              return Promise.resolve({ data: null, error });
+            }),
           };
         }
         return makeChain({ data: null, error: null });
@@ -832,6 +841,26 @@ describe('canonicalFileReport', () => {
     });
     expect(result.report_id).toBeTruthy();
     expect(result.display_name).toBe('Test Corp');
+  });
+
+  it('retries without reporter_ip_hash on older report schemas', async () => {
+    const calls = {};
+    mockGetServiceClient.mockReturnValue(makeReportSupabase(
+      { id: 'e1', entity_id: 'slug-1', display_name: 'Test Corp' },
+      [{ message: 'column "reporter_ip_hash" does not exist' }, null],
+      calls,
+    ));
+    const result = await canonicalFileReport({
+      entity_id: 'slug-1',
+      report_type: 'fraud',
+      description: 'suspicious activity',
+      reporter_ip_hash: 'abc123',
+    });
+
+    expect(result.report_id).toBeTruthy();
+    expect(calls.inserts).toHaveLength(2);
+    expect(calls.inserts[0].reporter_ip_hash).toBe('abc123');
+    expect(calls.inserts[1]).not.toHaveProperty('reporter_ip_hash');
   });
 
   it('includes entity_id in successful response', async () => {

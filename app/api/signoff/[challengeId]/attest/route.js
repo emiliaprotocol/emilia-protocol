@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
 import { createAttestation } from '@/lib/signoff/attest';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validateSignoffAttest } from '@/lib/validation/schemas';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/signoff/[challengeId]/attest
@@ -26,7 +30,9 @@ export async function POST(request, { params }) {
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
     const { challengeId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     // ── Schema validation (early gate) ────────────────────────────────
     const { valid, data, errors } = validateSignoffAttest(body);
@@ -42,8 +48,16 @@ export async function POST(request, { params }) {
       }
     }
 
+    // The human named by an attestation is a security identity, not display
+    // metadata. Do not let an authenticated actor submit an attestation for a
+    // different humanEntityRef and launder that identity into the audit trail.
+    const actor = authEntityActor(auth);
+    if (!actor?.entity_id || body.humanEntityRef !== actor.entity_id) {
+      return epProblem(403, 'attestation_identity_mismatch', 'humanEntityRef must match the authenticated actor');
+    }
+
     const result = await createAttestation({
-      actor: auth.entity,
+      actor,
       challengeId,
       ...data,
     });
@@ -54,10 +68,11 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
+    // Log the raw error server-side only; never echo err.message/err.code back
+    // to the client (may carry DB/internal detail — LOW audit finding).
     logger.error('Signoff attestation error:', err.message, err.code);
-    // Structured error response for debugging attestation failures
     return NextResponse.json({
-      error: { code: 'EP-9001', message: err.message, detail: err.code || null }
+      error: { code: 'EP-9001', message: 'Attestation could not be processed.', detail: null }
     }, { status: err.status || 500 });
   }
 }

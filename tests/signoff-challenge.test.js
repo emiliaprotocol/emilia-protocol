@@ -30,6 +30,11 @@ import { SignoffError } from '../lib/signoff/errors.js';
 function makeMockSupabase({
   handshake = null,
   handshakeError = null,
+  parties = [
+    { entity_ref: 'entity-issuer', party_role: 'initiator' },
+    { entity_ref: 'entity-alice', party_role: 'responder' },
+  ],
+  partyError = null,
   binding = null,
   bindingError = null,
   rpcData = null,
@@ -51,6 +56,12 @@ function makeMockSupabase({
         }
         return Promise.resolve({ data: null, error: null });
       }),
+      then: (resolve, reject) => {
+        const value = tableName === 'handshake_parties'
+          ? { data: parties, error: partyError }
+          : { data: null, error: null };
+        return Promise.resolve(value).then(resolve, reject);
+      },
     };
     return chain;
   });
@@ -71,6 +82,7 @@ function validBinding() {
 function validParams(overrides = {}) {
   return {
     handshakeId: 'hs-1',
+    actor: { entity_id: 'entity-issuer' },
     bindingHash: 'sha256-binding-abc',
     accountableActorRef: 'entity-alice',
     signoffPolicyId: 'policy-001',
@@ -173,6 +185,32 @@ describe('issueChallenge — handshake DB checks', () => {
 
 describe('issueChallenge — binding DB checks', () => {
   beforeEach(() => { vi.clearAllMocks(); });
+
+  it('throws CALLER_NOT_HANDSHAKE_PARTY when actor is not on the handshake', async () => {
+    const supabase = makeMockSupabase({
+      handshake: validHandshake(),
+      parties: [{ entity_ref: 'entity-alice', party_role: 'responder' }],
+      binding: validBinding(),
+    });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(issueChallenge(validParams({ actor: { entity_id: 'entity-outsider' } })))
+      .rejects.toMatchObject({ code: 'CALLER_NOT_HANDSHAKE_PARTY', status: 403 });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it('throws ACCOUNTABLE_ACTOR_NOT_HANDSHAKE_PARTY when named actor is not on the handshake', async () => {
+    const supabase = makeMockSupabase({
+      handshake: validHandshake(),
+      parties: [{ entity_ref: 'entity-issuer', party_role: 'initiator' }],
+      binding: validBinding(),
+    });
+    mockGetServiceClient.mockReturnValue(supabase);
+
+    await expect(issueChallenge(validParams({ accountableActorRef: 'entity-outsider' })))
+      .rejects.toMatchObject({ code: 'ACCOUNTABLE_ACTOR_NOT_HANDSHAKE_PARTY', status: 403 });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
 
   it('throws DB_ERROR when binding fetch fails', async () => {
     const supabase = makeMockSupabase({

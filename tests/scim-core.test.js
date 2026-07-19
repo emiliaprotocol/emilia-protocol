@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import {
   SCIM, scimError, toScimUser, fromScimUser, toScimGroup, fromScimGroup,
   listResponse, parseFilter, applyPatch, serviceProviderConfig, resourceTypes,
+  SCIM_LIMITS, validateScimUser, validateScimGroup, validateScimPatch,
 } from '../lib/scim/core.js';
 
 const userRow = {
@@ -198,6 +199,115 @@ describe('SCIM PATCH (RFC 7644 §3.5.2)', () => {
     const { error } = applyPatch(base(), { foo: 'bar' });
     expect(error.status).toBe(400);
   });
+});
+
+describe('SCIM bounded validation', () => {
+  const enterprise = SCIM.ENTERPRISE_USER;
+
+  function nested(depth) {
+    let value = 'leaf';
+    for (let i = 0; i < depth; i += 1) value = { next: value };
+    return value;
+  }
+
+  it('accepts bounded RFC extensions verbatim without storage-time HTML escaping', () => {
+    const body = {
+      schemas: [SCIM.USER, enterprise],
+      userName: 'bounded@example.com',
+      name: { formatted: 'Bounded User', givenName: 'Bounded', familyName: 'User' },
+      title: 'Auditor',
+      externalId: 'idp-123',
+      emails: [{ value: 'bounded@example.com', type: 'work', primary: true }],
+      phoneNumbers: [{ value: '+1-555-0100', type: 'work' }],
+      [enterprise]: { department: '<script>literal extension data</script>' },
+    };
+    expect(validateScimUser(body).ok).toBe(true);
+    expect(fromScimUser(body).raw[enterprise].department).toBe('<script>literal extension data</script>');
+  });
+
+  it.each([
+    ['userName', { userName: 'u'.repeat(SCIM_LIMITS.userName + 1) }],
+    ['name.givenName', { userName: 'u', name: { givenName: 'n'.repeat(SCIM_LIMITS.namePart + 1) } }],
+    ['title', { userName: 'u', title: 't'.repeat(SCIM_LIMITS.title + 1) }],
+    ['externalId', { userName: 'u', externalId: 'e'.repeat(SCIM_LIMITS.externalId + 1) }],
+    ['email value', { userName: 'u', emails: [{ value: 'e'.repeat(SCIM_LIMITS.emailValue + 1) }] }],
+    ['phone value', { userName: 'u', phoneNumbers: [{ value: 'p'.repeat(SCIM_LIMITS.phoneValue + 1) }] }],
+    ['malformed email', { userName: 'u', emails: [42] }],
+    ['malformed phone', { userName: 'u', phoneNumbers: [{ value: { nested: true } }] }],
+  ])('rejects an invalid or oversized user %s', (_label, body) => {
+    const result = validateScimUser(body);
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatchObject({ status: 400, scimType: 'invalidValue' });
+  });
+
+  it('caps email and phone entry counts', () => {
+    const emails = Array.from({ length: SCIM_LIMITS.emails + 1 }, (_, i) => ({ value: `u${i}@example.com` }));
+    const phoneNumbers = Array.from({ length: SCIM_LIMITS.phoneNumbers + 1 }, (_, i) => ({ value: `+1555${i}` }));
+    expect(validateScimUser({ userName: 'u', emails }).ok).toBe(false);
+    expect(validateScimUser({ userName: 'u', phoneNumbers }).ok).toBe(false);
+  });
+
+  it('rejects deep and oversized raw extensions', () => {
+    const deep = validateScimUser({ userName: 'u', [enterprise]: nested(SCIM_LIMITS.extensionDepth + 2) });
+    const long = validateScimUser({
+      userName: 'u',
+      [enterprise]: { department: 'x'.repeat(SCIM_LIMITS.extensionString + 1) },
+    });
+    expect(deep.ok).toBe(false);
+    expect(long.ok).toBe(false);
+    expect(deep.error.scimType).toBe('invalidValue');
+    expect(long.error.scimType).toBe('invalidValue');
+  });
+
+  it('bounds group names and member payloads', () => {
+    const tooManyMembers = Array.from(
+      { length: SCIM_LIMITS.groupMembers + 1 },
+      (_, i) => ({ value: `user-${i}` }),
+    );
+    expect(validateScimGroup({ displayName: 'g'.repeat(SCIM_LIMITS.displayName + 1) }).ok).toBe(false);
+    expect(validateScimGroup({ displayName: 'Approvers', members: [{ value: { id: 'u1' } }] }).ok).toBe(false);
+    expect(validateScimGroup({ displayName: 'Approvers', members: tooManyMembers }).ok).toBe(false);
+  });
+
+  it('bounds PATCH count, path length, nesting, and operation shape', () => {
+    const tooMany = {
+      Operations: Array.from(
+        { length: SCIM_LIMITS.patchOperations + 1 },
+        () => ({ op: 'replace', path: 'active', value: false }),
+      ),
+    };
+    const longPath = {
+      Operations: [{ op: 'replace', path: 'x'.repeat(SCIM_LIMITS.patchPath + 1), value: true }],
+    };
+    const deepValue = {
+      Operations: [{ op: 'replace', path: enterprise, value: nested(SCIM_LIMITS.rawDepth + 1) }],
+    };
+    expect(validateScimPatch(tooMany).error.scimType).toBe('tooMany');
+    expect(validateScimPatch(longPath).ok).toBe(false);
+    expect(validateScimPatch(deepValue).ok).toBe(false);
+    expect(validateScimPatch({ Operations: [null] }).ok).toBe(false);
+    expect(validateScimPatch({ Operations: [{ op: 'replace', path: 'active' }] }).ok).toBe(false);
+    expect(validateScimPatch({
+      Operations: [{ op: 'replace', path: 'active', value: { truthy: true } }],
+    }).ok).toBe(false);
+    expect(validateScimPatch({
+      Operations: [{ op: 'replace', value: { active: 'not-a-boolean' } }],
+    }).ok).toBe(false);
+  });
+
+  it('fails closed on prototype-oriented PATCH paths', () => {
+    const original = baseUser();
+    const result = applyPatch(original, {
+      Operations: [{ op: 'replace', path: 'name.__proto__', value: { polluted: true } }],
+    });
+    expect(result.error).toBeUndefined();
+    expect(result.resource.name.polluted).toBeUndefined();
+    expect(Object.prototype.polluted).toBeUndefined();
+  });
+
+  function baseUser() {
+    return toScimUser(userRow);
+  }
 });
 
 describe('SCIM envelopes', () => {

@@ -18,7 +18,30 @@ Thank you for your interest in contributing to EP. This document explains how to
 3. Make your changes
 4. Run tests: `npm run test:run`
 5. Run conformance suite: `npm run test:run -- conformance/`
-6. Submit a pull request
+6. Sign off every commit: `git commit -s` — CI enforces the [Developer Certificate of Origin](https://developercertificate.org/) and a PR with unsigned commits fails the `DCO` check
+7. Submit a pull request against `main`
+
+Maintainer review is required on all paths (see `.github/CODEOWNERS`).
+
+### Integration examples
+
+Runnable integration demos live in `examples/<topic>/`. To contribute one:
+
+1. One self-contained `.mjs` file (plus a README section) under the relevant
+   `examples/<topic>/` directory, runnable with `node examples/<topic>/your-demo.mjs`
+2. Start the file with an SPDX header: `// SPDX-License-Identifier: Apache-2.0`
+3. No new dependencies — import from `packages/` and `node:` built-ins only
+4. Demonstrate the refusal paths, not just the happy path: adversarial inputs
+   should be shown returning a distinct machine-readable reason
+5. Disclose demo shortcuts (ephemeral keys, fixed clocks) in comments; they must
+   not change the verification logic being demonstrated
+6. Sign off commits (`git commit -s`) and open a PR against `main`
+
+Examples are not wired into the conformance suites, so no fixtures or vectors are
+required. CI will run the full test suite, build, and language-governance checks
+against your PR; a new example file does not by itself trip any of them. If the
+integration graduates into a specified profile, conformance vectors come later,
+with maintainer support.
 
 ### Spec changes
 
@@ -52,7 +75,7 @@ npm test                     # Run all tests in watch mode
 npm run test:run conformance/  # Run conformance suite only
 ```
 
-Expected output: 4,220 tests passing across 173 files.
+Expected output: the full suite passes with zero failures (several thousand tests; CI runs the same command and is authoritative).
 
 ### MCP Server (standalone)
 ```bash
@@ -103,7 +126,14 @@ app/api/
   leaderboard/            — GET ranked entities
   cron/expire/            — deadline enforcement
 
+packages/                 — publishable protocol packages (issue, verify, gate,
+                            require-receipt, go-verify, python-verify, ...)
+examples/                 — runnable integration demos and interop/seam vectors
+                            (one directory per topic; see "Integration examples")
+standards/                — Internet-Draft sources (posted revisions in standards/posted/)
+
 conformance/
+  suites.mjs              — authoritative list of live conformance suites (JS/Py/Go)
   fixtures.json           — canonical test vectors
   conformance.test.js     — conformance test runner
   verify_hashes.py        — cross-language hash verification
@@ -121,7 +151,7 @@ docs/
   EP-CORE-RFC.md          — canonical specification (v1.1)
   EP-SX-SOFTWARE-TRUST.md — software trust extension
   EP-IX-IDENTITY-CONTINUITY.md — identity continuity spec
-  AAIF-PROPOSAL-v2.md     — AAIF working group proposal
+  docs/archive/grants-and-applications-2026-06-29/AAIF-PROPOSAL-v2.md — archived AAIF working group proposal
 ```
 
 ## Style

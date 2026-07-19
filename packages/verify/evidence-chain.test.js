@@ -30,7 +30,17 @@ function hydrate(chain) {
 
 for (const v of suite.vectors) {
   test(`[aec] ${v.name}`, () => {
-    const r = verifyAuthorizationChain(hydrate(v.chain), { verifiers });
+    const requirement = v.expect_requirement_source === 'presenter'
+      ? undefined
+      : (v.relying_party_requirement ?? v.chain.requirement);
+    const r = verifyAuthorizationChain(hydrate(v.chain), {
+      verifiers,
+      requirement,
+      expectedActionDigest: `sha256:${D}`,
+    });
     assert.equal(r.allow, v.expect_allow, `reasons: ${r.reasons.join('; ')}`);
+    assert.equal(r.satisfied, v.expect_allow, `reasons: ${r.reasons.join('; ')}`);
+    assert.equal(r.allow, r.satisfied, 'legacy allow alias must equal satisfied');
+    if (v.expect_requirement_source) assert.equal(r.requirement_source, v.expect_requirement_source);
   });
 }

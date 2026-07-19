@@ -32,10 +32,26 @@ import { makeReceiptGate } from '../require-receipt/gate.js';
 
 // ── (1) Offline receipt gate — the recommended path ──────────────────────────
 
-/** Process-local consumed-receipt store shared across gates in this process, so
- *  one receipt is spent at most once. Pass `store` for a durable/shared store. */
-const consumed = new Set();
-const sharedStore = { has: (id) => consumed.has(id), add: (id) => consumed.add(id) };
+/** Process-local atomic receipt state shared across gates in this process. */
+const consumed = new Map();
+const sharedStore = {
+  ownershipFenced: true,
+  async reserve(id) {
+    if (consumed.has(id)) return false;
+    consumed.set(id, 'reserved');
+    return true;
+  },
+  async commit(id) {
+    if (consumed.get(id) !== 'reserved') throw new Error('reservation_not_owned');
+    consumed.set(id, 'committed');
+    return true;
+  },
+  async release(id) {
+    if (consumed.get(id) !== 'reserved') throw new Error('reservation_not_owned');
+    consumed.delete(id);
+    return true;
+  },
+};
 
 /** Reset consumed receipts. Test/ops helper — not a production control. */
 export function _resetConsumed() {
@@ -78,7 +94,7 @@ function defaultGetReceipt(input, config) {
  *   (proves integrity, NOT issuer trust) — demo only.
  * @param {number} [opts.maxAgeSec=900]
  * @param {(input:any, config:any)=>(object|null|undefined)} [opts.getReceipt]
- * @param {{has:(id:string)=>boolean, add:(id:string)=>void}} [opts.store]
+ * @param {{reserve:Function, commit:Function, release:Function}} [opts.store]
  * @returns {T}
  */
 export function requireReceiptForLangChainTool(tool, opts = {}) {
@@ -90,9 +106,10 @@ export function requireReceiptForLangChainTool(tool, opts = {}) {
     maxAgeSec = 900,
     getReceipt = defaultGetReceipt,
     store = sharedStore,
+    ...gateOptions
   } = opts;
 
-  if (!action && typeof actionFor !== 'function') {
+  if (typeof actionFor !== 'function' && (typeof action !== 'string' || !action)) {
     throw new TypeError('requireReceiptForLangChainTool: provide opts.action (string) or opts.actionFor (input)=>action_type');
   }
   const originalInvoke = typeof tool?.invoke === 'function' ? tool.invoke : null;
@@ -100,24 +117,45 @@ export function requireReceiptForLangChainTool(tool, opts = {}) {
     throw new Error('requireReceiptForLangChainTool: tool must expose an .invoke(input, config) method');
   }
 
-  // Function action folds the target in itself; string action binds via :target.
-  const gate = makeReceiptGate({
-    action: actionFor || action,
-    trustedKeys,
-    allowInlineKey,
-    maxAgeSec,
-    store,
-  });
+  // Derive the action exactly once per invocation. Evaluating a caller-supplied
+  // mapper twice creates a TOCTOU surface if it is stateful or nondeterministic.
+  const gates = new Map();
+  const gateFor = (boundAction) => {
+    if (!gates.has(boundAction)) {
+      gates.set(boundAction, makeReceiptGate({
+        action: boundAction,
+        trustedKeys,
+        allowInlineKey,
+        maxAgeSec,
+        store,
+        ...gateOptions,
+      }));
+    }
+    return gates.get(boundAction);
+  };
 
   const gatedInvoke = async (input, config, ...rest) => {
     const receipt = getReceipt(input, config);
-    const target = actionFor ? input : undefined;
-    const r = await gate.run(receipt, { target }, async () =>
+    let boundAction = action;
+    if (actionFor) {
+      try {
+        boundAction = actionFor(input);
+      } catch {
+        boundAction = null;
+      }
+      if (typeof boundAction !== 'string' || !boundAction) {
+        const err = new Error('EMILIA blocked tool call: action_binding_invalid');
+        err.emilia = { status: 428, reason: 'action_binding_invalid' };
+        throw err;
+      }
+    }
+    const gate = gateFor(boundAction);
+    const r = await gate.run(receipt, {}, async () =>
       originalInvoke.call(tool, input, config, ...rest),
     );
     if (!r.ok) {
       const reason = r.body?.rejected?.reason || (r.body?.required ? 'receipt_required' : 'refused');
-      const err = new Error(`EMILIA blocked "${gate.boundActionFor(target)}": ${reason}`);
+      const err = new Error(`EMILIA blocked "${boundAction}": ${reason}`);
       err.emilia = { status: r.status, reason, body: r.body };
       throw err;
     }
@@ -135,11 +173,11 @@ export function requireReceiptForLangChainTool(tool, opts = {}) {
 
 /** Lower-level: get the underlying makeReceiptGate for advanced orchestration. */
 export function makeLangChainReceiptGate(opts = {}) {
-  const { action, actionFor, trustedKeys = [], allowInlineKey = false, maxAgeSec = 900, store = sharedStore } = opts;
-  if (!action && typeof actionFor !== 'function') {
+  const { action, actionFor, store = sharedStore, ...gateOptions } = opts;
+  if (typeof actionFor !== 'function' && (typeof action !== 'string' || !action)) {
     throw new TypeError('makeLangChainReceiptGate: provide opts.action or opts.actionFor');
   }
-  return makeReceiptGate({ action: actionFor || action, trustedKeys, allowInlineKey, maxAgeSec, store });
+  return makeReceiptGate({ action: actionFor || action, ...gateOptions, store });
 }
 
 // ── (2) Legacy hosted policy gate — kept for back-compat ─────────────────────
@@ -156,20 +194,30 @@ export async function guardAction({ actor, action, context = {}, gateUrl = DEFAU
   const doFetch = fetchImpl || globalThis.fetch;
   if (!doFetch) throw new Error('guardAction: no fetch implementation available; pass { fetchImpl }');
 
-  const res = await doFetch(gateUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ actor, action, context }),
-  });
-  const raw = await res.json().catch(() => ({}));
+  let res;
+  let raw;
+  try {
+    res = await doFetch(gateUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ actor, action, context }),
+    });
+    raw = await res.json().catch(() => ({}));
+  } catch {
+    return { allow: false, deny: true, signoffRequired: false, reason: 'gate_unavailable', raw: {} };
+  }
 
   const decision = String(raw.decision || raw.verdict || '');
-  const deny = decision === 'deny' || raw.allowed === false;
+  const httpOk = res?.ok === true
+    || (res?.ok === undefined && Number.isInteger(res?.status) && res.status >= 200 && res.status < 300);
   const signoffRequired = raw.signoff_required === true
     || decision === 'allow_with_signoff'
-    || decision === 'signoff_required';
-  const allow = !deny && !signoffRequired;
-  return { allow, deny, signoffRequired, reason: raw.reason, raw };
+    || decision === 'signoff_required'
+    || decision === 'review';
+  const allow = httpOk && decision === 'allow' && raw.allowed !== false && !signoffRequired;
+  const deny = !allow && !signoffRequired;
+  const reason = raw.reason || (!httpOk ? 'gate_unavailable' : (!allow && !signoffRequired ? 'unrecognized_gate_decision' : undefined));
+  return { allow, deny, signoffRequired, reason, raw };
 }
 
 /** LEGACY hosted-gate wrapper. Prefer requireReceiptForLangChainTool. */
@@ -192,8 +240,13 @@ export function withGuard(tool, opts = {}) {
       throw new Error(`EMILIA blocked action "${action}"${decision.reason ? `: ${decision.reason}` : ''}`);
     }
     if (decision.signoffRequired) {
-      if (typeof onSignoff === 'function') await onSignoff(decision, input);
-      else throw new Error(`EMILIA requires human signoff for "${action}" before it can run`);
+      if (typeof onSignoff !== 'function') {
+        throw new Error(`EMILIA requires human signoff for "${action}" before it can run`);
+      }
+      const signoff = await onSignoff(decision, input);
+      if (signoff?.approved !== true) {
+        throw new Error(`EMILIA did not receive verified signoff for "${action}"`);
+      }
     }
     return originalInvoke.call(tool, input, ...rest);
   };

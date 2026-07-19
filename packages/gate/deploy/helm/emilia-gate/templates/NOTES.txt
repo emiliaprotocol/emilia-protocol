@@ -1,0 +1,49 @@
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $fullname := default (printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-") .Values.fullnameOverride }}
+EMILIA Gate — Trusted Action Firewall (chart {{ .Chart.Name }}-{{ .Chart.Version }}, contract EP-GATE-HELM-v1)
+
+  Release:   {{ .Release.Name }} (namespace {{ .Release.Namespace }})
+  Image:     {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+  Replicas:  {{ .Values.replicaCount }}
+
+STATUS: DEPRECATED reference chart — EXPERIMENTAL, BYOC. Prefer the
+emilia-gate-service chart. Review the rendered manifests before trusting
+production traffic to them.
+
+1. Issuer keys (already enforced at render time — this release referenced the
+   existing Secret "{{ .Values.issuerKeys.existingSecret }}", key
+   "{{ .Values.issuerKeys.secretKey }}"). The chart never renders key
+   material; rotate keys by updating that Secret and restarting the pods:
+
+     kubectl -n {{ .Release.Namespace }} rollout restart deploy/{{ $fullname }}
+
+2. Check the gate is up:
+
+     kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ $fullname }}
+     kubectl -n {{ .Release.Namespace }} port-forward svc/{{ $fullname }} {{ .Values.service.port }}:{{ .Values.service.port }}
+     curl -s http://127.0.0.1:{{ .Values.service.port }}{{ .Values.probes.readiness.path }}
+
+3. Action-risk manifest:
+{{- if .Values.manifest.existingConfigMap }}
+   Using YOUR ConfigMap "{{ .Values.manifest.existingConfigMap }}"
+   (key "{{ .Values.manifest.fileName }}"). Pods do NOT roll automatically
+   when you change it — restart the deployment after edits.
+{{- else }}
+   Rendered from values into ConfigMap "{{ $fullname }}" and mounted at
+   /etc/emilia-gate/{{ .Values.manifest.fileName }}. Pods roll automatically
+   when the manifest changes (checksum annotation). The default manifest is a
+   SUBSET of the built-in high-risk packs — replace it with your own.
+{{- end }}
+
+4. Metrics:
+{{- if .Values.metrics.enabled }}
+   ENABLED — /metrics is exposed and a ServiceMonitor stub was rendered
+   (requires the Prometheus Operator CRDs in this cluster).
+{{- else }}
+   disabled. Enable with --set metrics.enabled=true to expose {{ .Values.metrics.path }}
+   and render a ServiceMonitor stub.
+{{- end }}
+
+The gate FAILS CLOSED: no valid, in-scope, sufficiently-assured, fresh,
+unused receipt — no execution. Every decision is appended to the
+tamper-evident evidence log. No receipt, no execution.

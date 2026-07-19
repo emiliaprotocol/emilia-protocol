@@ -1,80 +1,151 @@
-# EMILIA Protocol — Governance
+# EMILIA Protocol Governance
 
-## Status
+This document states how the EMILIA Protocol (EP) specification and its
+conformance suite are governed. It governs a wire format, its verification
+discipline, and the public tests that define conformance. It does not govern
+commercial products built above the protocol; those are out of scope here and
+addressed only by the neutrality commitments below.
 
-EMILIA Protocol is independently stewarded by its founding team (EMILIA Protocol, Inc.) and is open under the Apache-2.0 license. The wire format is standardized in the open through the IETF as individual-submission Internet-Drafts (`draft-schrock-ep-*`) — a path that requires no assignment of the project's trademarks, repositories, or packages.
+Where this document and the
+[Neutrality Covenant](docs/NEUTRALITY-COVENANT.md) touch the same subject,
+this document controls process and the covenant controls the commitments.
 
-The project may adopt a vendor-neutral governance home in the future, but only under terms — reviewed by counsel — that preserve the project's brand, repositories, packages, and commercial products. No such transfer is planned or committed today.
+## 1. Object of governance
 
-This document describes the open governance model we are building toward.
+The governed artifacts are:
 
-## Principles
+1. **EP-RECEIPT-v1**, the authorization-receipt wire format: a signed,
+   offline-verifiable record binding a named human approver to one exact
+   high-risk action, as specified in `draft-schrock-ep-authorization-receipts`.
+2. **The verification discipline** attached to that format:
+   - Offline verification against relying-party-pinned keys. The relying
+     party chooses and pins the keys it trusts; no EP server sits in the
+     trust path.
+   - Fail-closed enforcement. A missing, malformed, unrecognized, or invalid
+     receipt is a refusal, never a silent pass and never a fallback to a
+     weaker mode.
+   - One-time consumption. An authorization, once consumed or refused, is
+     terminally unusable. Consumption is a state check performed by the
+     enforcing system; offline verification of a receipt document proves
+     signature, binding, and anchor integrity, and does not by itself
+     establish that an authorization is currently valid or unconsumed.
+3. **EP-QUORUM**, the multi-party approval profile (M-of-N and ordered
+   approvals with distinct-key checks, fail-closed), as specified in
+   `draft-schrock-ep-quorum`.
+4. **The evidence and recourse layer**: the Action Evidence Graph (EP-AEG),
+   its deterministic Evidence Policy Replay with five closed verdicts
+   (admissible, missing_evidence, stale, conflicted, unverifiable), and the
+   signed Reliance Result (EP-RELIANCE-RESULT), as specified in
+   `draft-schrock-ep-action-evidence-graph`.
+5. **The conformance vector suites** that pin all of the above, published in
+   [`conformance/`](conformance/).
 
-1. **No single company controls truth.** The scoring algorithm, receipt schema, and trust profile format are defined by the spec, not by any single implementation.
-2. **Trust must never be more powerful than appeal.** Every negative trust effect must be explainable, challengeable, and reversible.
-3. **Open by default.** The spec, reference implementation, conformance suite, and governance process are all public and Apache-2.0 licensed.
-4. **Implementations over opinions.** Protocol changes require a working implementation, conformance tests, and demonstrated need — not just theoretical arguments.
+## 2. Stewardship and change control
 
-## Governance Structure (Target)
+EP is stewarded by EMILIA Protocol, Inc. All governed artifacts are public
+and Apache-2.0 licensed.
 
-### Working Group
+The wire format is standardized in the open through the IETF as
+individual-submission Internet-Drafts (`draft-schrock-ep-*`). These are
+active individual submissions, not IETF-adopted or endorsed documents. They
+are submitted in full conformance with BCP 78 and BCP 79, which means change
+control over any document an IETF working group adopts passes to the IETF.
+That open-standardization path is the intended destination for change
+control over the wire format.
 
-- **Chair:** Rotating annually. Initial chair: EMILIA Protocol founding team.
-- **Members:** Open to any organization or individual contributing to EP.
-- **Meetings:** Biweekly, open to all members. Minutes published.
-- **Decisions:** Consensus-seeking. If consensus cannot be reached, the chair calls a vote. Simple majority of active members.
+## 3. Specification changes
 
-### Spec Process
+1. Anyone may propose a change as a GitHub issue or pull request.
+2. A change to normative behavior lands in the specification text, the
+   reference verifiers, and the conformance vectors together, or not at all.
+3. The published vectors are the operational definition of conformance. If
+   the reference verifiers disagree with each other or with the
+   specification, that is a bug; protocol correctness outranks backward
+   compatibility.
 
-1. **Proposal:** Anyone can submit a spec change proposal as a GitHub issue or pull request.
-2. **Discussion:** 14-day comment period minimum.
-3. **Reference Implementation:** Proposal must include a working implementation that passes the conformance suite.
-4. **Review:** Working group reviews the proposal, implementation, and test coverage.
-5. **Merge:** If approved, the spec, reference implementation, and conformance suite are updated together.
+The reference verifiers (JavaScript, Python, Go) are one team's
+cross-language ports in one repository: a consistency check, not clean-room
+independent implementations.
 
-### Versioning
+## 4. Versioning
 
-- **Major versions** (v2.0, v3.0): Breaking changes to receipt schema, trust profile format, or policy interface. Require supermajority (2/3) of working group.
-- **Minor versions** (v1.1, v1.2): Backward-compatible additions. Require simple majority.
-- **Patch versions** (v1.1.1): Bug fixes, clarifications, test additions. Chair approval sufficient.
+Wire format versions are explicit strings (for example `EP-RECEIPT-v1`).
+A verifier rejects any version string it does not recognize; this behavior
+is itself pinned by a reject vector. A change that alters the meaning of an
+existing version string is not permitted; changed semantics require a new
+version string. Vectors for a released version may be added; the expected
+outcome of a published vector does not change for that version.
 
-## Conformance
+## 5. Conformance
 
-An implementation is EP-conformant if it:
+[CONFORMANCE.md](CONFORMANCE.md) is the source of truth for what a
+conformant implementation is, which suites exist, and how many vectors each
+contains. Counts and suites evolve there, not here.
 
-1. Passes all hash determinism fixtures in `conformance/fixtures.json`
-2. Passes all policy evaluation fixtures
-3. Passes all confidence level fixtures
-4. Passes all establishment rule fixtures
-5. Implements the canonical receipt schema (all required fields)
-6. Exposes at minimum: trust profile read, policy evaluation, receipt submission
+Conformance is self-certified against the published suites. The complete
+vector set, including all adversarial and reject vectors, is in the public
+repository. The cross-language runner is `conformance/run.mjs`.
 
-Conformance is self-certified against the published suite. The working group maintains the canonical fixtures.
+## 6. Recourse and disputes
 
-## Intellectual Property
+Any adverse decision made through EP's evidence layer must be reproducible
+by the party it affects.
 
-- All contributions to the EP spec and conformance suite are licensed under Apache-2.0.
+Evidence Policy Replay is deterministic: given the same Action Evidence
+Graph and the same relying-party-supplied evidence policy, any party
+recomputes the same verdict, one of five closed values. The replay digest
+lets a third party recompute the decision without trusting the party that
+made it. The verdict can be issued as a signed Reliance Result, making the
+reliance decision itself auditable evidence; a Reliance Result from an
+unpinned verifier key is not accepted.
+
+Disputes are therefore resolved by recomputation against the stated policy,
+not by appeal to the steward. A verdict is evidence of sufficiency under a
+stated policy; it is not adjudication, and it does not establish the
+business correctness of the underlying action.
+
+## 7. Neutrality
+
+The full commitments are in the
+[Neutrality Covenant](docs/NEUTRALITY-COVENANT.md). In summary:
+
+- There is no paid or private vector tier. Every vector that counts toward
+  conformance is in the public repository, free of charge.
+- EMILIA products receive no protocol-level privilege. Anything our products
+  can verify, anyone's code can verify, against the same public formats.
+- No certification program exists today. If one is ever created, it tests
+  only against the public vectors and is offered to any implementer,
+  including direct competitors, on identical published terms.
+- The protocol is not bound exclusively to any transport, agent framework,
+  vendor, or model provider.
+
+## 8. Intellectual property
+
+- All contributions to the EP specification and conformance suites are
+  licensed under Apache-2.0. Released versions are licensed irrevocably:
+  irrevocability is a property of the Apache-2.0 grant itself.
 - Contributors retain copyright to their contributions.
 - No contributor can claim exclusive rights over the protocol specification.
-- The spec is a shared standard, not a product.
+- The specification is a shared standard, not a product.
 
-## Code of Conduct
+## 9. Names and marks
 
-EP contributors follow the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Conduct.
+Apache-2.0 licenses code, specifications, and vectors, not names. The EMILIA
+name and marks are held by EMILIA Protocol, Inc. and are not licensed by
+this document or by the covenant. Anyone may implement, fork, and verify the
+protocol; presenting a product as "EMILIA" remains subject to the marks.
+Interoperability never requires the name.
 
-## Transition Timeline
+## 10. Code of Conduct
 
-| Phase | Status |
-|-------|--------|
-| Single-maintainer development | Current |
-| Conformance suite published | Current |
-| IETF Internet-Drafts filed (receipts, quorum, evidence-chain) | Current |
-| First external implementation | Independent verification reported (June 2026) |
-| Open working group established | Future |
-| Vendor-neutral governance home | Future — only on counsel-approved terms |
+Contributors follow the
+[Contributor Covenant](https://www.contributor-covenant.org/) Code of
+Conduct.
 
-## Contact
+## 11. Contact
 
 - **GitHub:** https://github.com/emiliaprotocol/emilia-protocol
 - **Email:** team@emiliaprotocol.ai
-- **Standards:** IETF datatracker — `draft-schrock-ep-authorization-receipts`, `draft-schrock-ep-quorum`, `draft-schrock-ep-authorization-evidence-chain`
+- **Standards:** IETF datatracker, `draft-schrock-ep-authorization-receipts`
+  and `draft-schrock-ep-quorum`; companion `draft-schrock-ep-*` documents
+  under [`standards/`](standards/)

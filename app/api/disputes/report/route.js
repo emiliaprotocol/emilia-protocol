@@ -5,7 +5,10 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { checkAbuse } from '@/lib/procedural-justice';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getClientIP } from '@/lib/rate-limit';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/disputes/report
@@ -17,7 +20,9 @@ import { logger } from '../../../../lib/logger.js';
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     // Accept both field naming conventions
     const entityId = body.entity_id;
@@ -49,7 +54,7 @@ export async function POST(request) {
       entity_id: entityId,
       report_type: reportType,
       reporter_ip_hash: reporterIpHash,
-    });
+    }, { failClosed: true });
 
     if (!abuseCheck.allowed) {
       return epProblem(429, 'report_throttled', `Report throttled: ${abuseCheck.pattern}. Try again later.`, {

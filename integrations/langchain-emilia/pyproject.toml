@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "langchain-emilia"
-version = "0.1.0"
+version = "0.1.1"
 description = "EMILIA Protocol guard for LangChain tools: a named human approves the exact irreversible action (Face ID / passkey) before it executes — fail-closed, with offline-verifiable Trust Receipts."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,0 +1,41 @@
+name: Publish Attest
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example attest-v0.1.0
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/attest@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
+  publish:
+    needs: approval
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/_publish-npm-package.yml
+    with:
+      package_dir: packages/attest
+      package_name: '@emilia-protocol/attest'
+      artifact_id: attest
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: attest-v

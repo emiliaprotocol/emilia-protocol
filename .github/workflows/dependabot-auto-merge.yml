@@ -1,5 +1,7 @@
 name: Dependabot Auto-Merge
 
+permissions: read-all
+
 # Opt every JavaScript-based action into the Node.js 24 runner.
 # GitHub forces this default in June 2026; doing it now eliminates the
 # deprecation-warning noise on every run and surfaces any Node-24 incompat
@@ -7,13 +9,15 @@ name: Dependabot Auto-Merge
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# Auto-approves and auto-merges Dependabot PRs that are:
-#   • patch-version updates on any package, OR
-#   • minor-version updates on packages we treat as safe to auto-bump
+# Auto-merges Dependabot PRs that are EITHER:
+#   • semver-patch version updates (any package), OR
+#   • security updates at patch OR minor level (any package)
 #
-# Major-version updates and minor-version updates on framework-shaped
-# packages (next, react, typescript, eslint, eslint-config-next) are
-# left for human review — these have surfaced real breakage in the past.
+# Everything else — routine (non-security) minor bumps, and ALL major
+# bumps — is left for human review. A malicious or breaking dependency
+# release is most likely to slip in via an auto-merged minor bump, so we
+# only take minor bumps automatically when they close a known security
+# advisory (where the risk of NOT merging outweighs the review cost).
 #
 # Uses pull_request_target (not pull_request) so the GITHUB_TOKEN has the
 # write permissions needed to approve and merge. This is the GitHub-
@@ -26,14 +30,13 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Fetch Dependabot metadata
         id: meta
@@ -44,42 +47,42 @@ jobs:
         env:
           UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
           DEP_NAMES: ${{ steps.meta.outputs.dependency-names }}
+          # ghsa-ids is populated only when the PR closes one or more security
+          # advisories — this is our "is this a security update?" signal.
+          GHSA_IDS: ${{ steps.meta.outputs.ghsa-ids }}
         run: |
           # update-type is one of:
           #   version-update:semver-patch
           #   version-update:semver-minor
           #   version-update:semver-major
-          # plus security-update variants that we always merge if patch/minor.
 
-          # Packages that require human review even on minor bumps —
-          # past minor releases of these have introduced breaking changes
-          # on this repo (e.g. eslint-config-next 16 dropped `next lint`,
-          # react 19.2 mismatched react-dom).
-          REVIEW_REQUIRED='next react react-dom typescript eslint eslint-config-next'
+          IS_SECURITY=false
+          if [ -n "$GHSA_IDS" ]; then
+            IS_SECURITY=true
+          fi
 
           ELIGIBLE=false
           REASON="not eligible"
 
           case "$UPDATE_TYPE" in
             version-update:semver-patch)
+              # Patch bumps auto-merge whether or not they're security-driven.
               ELIGIBLE=true
               REASON="patch update"
               ;;
             version-update:semver-minor)
-              # Block if any dependency in the PR is in REVIEW_REQUIRED
-              ELIGIBLE=true
-              REASON="minor update"
-              for dep in $DEP_NAMES; do
-                for guarded in $REVIEW_REQUIRED; do
-                  if [ "$dep" = "$guarded" ]; then
-                    ELIGIBLE=false
-                    REASON="minor update on review-required package: $dep"
-                    break 2
-                  fi
-                done
-              done
+              # Routine minor bumps are NOT auto-merged. A minor bump only
+              # auto-merges when it closes a security advisory.
+              if [ "$IS_SECURITY" = "true" ]; then
+                ELIGIBLE=true
+                REASON="security update (minor) — advisory: $GHSA_IDS"
+              else
+                ELIGIBLE=false
+                REASON="non-security minor update — human review required"
+              fi
               ;;
             version-update:semver-major)
+              # Major bumps always require human review, even for security.
               ELIGIBLE=false
               REASON="major update — human review required"
               ;;
@@ -90,6 +93,7 @@ jobs:
           echo "## Dependabot auto-merge decision" >> "$GITHUB_STEP_SUMMARY"
           echo "- **update-type**: $UPDATE_TYPE"   >> "$GITHUB_STEP_SUMMARY"
           echo "- **dependencies**: $DEP_NAMES"    >> "$GITHUB_STEP_SUMMARY"
+          echo "- **security-update**: $IS_SECURITY" >> "$GITHUB_STEP_SUMMARY"
           echo "- **eligible**: $ELIGIBLE"         >> "$GITHUB_STEP_SUMMARY"
           echo "- **reason**: $REASON"             >> "$GITHUB_STEP_SUMMARY"
 

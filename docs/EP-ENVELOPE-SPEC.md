@@ -53,7 +53,7 @@ makes third-party profiles safe to register: an untrusted plugin cannot make a
 structurally-invalid envelope verify, and cannot affect any other profile.
 
 ## Wrapped vs native profiles (honest scope)
-The five built-in profiles are **wrapped**: their `validateBody` adapts the uniform
+The six built-in profiles are **wrapped**: their `validateBody` adapts the uniform
 envelope to the profile's existing verifier (which already fails closed, e.g.
 rejecting unpinned signer keys). The envelope adds the shared pipeline + the
 composition guarantee on top; the inner verifier still performs the profile-specific

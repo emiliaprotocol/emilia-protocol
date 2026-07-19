@@ -27,12 +27,22 @@ const RELEASES = [
     tag: 'Experimental profiles',
     points: [
       'EP-QUORUM-v1 — multi-party signoff (the two-person rule): M-of-N / ordered approval, each named human bound to the exact action, fail-closed. Three reference verifiers (JS / Python / Go) agree on it in cross-language conformance; live in-browser demo at /try/multi-party; server-side enforcement merged into the authorization path, pending production end-to-end validation.',
-      'EP-AEC-v1 — Authorization Evidence Chain: composes heterogeneous agent-authorization receipts (delegation, policy/permit, and EP human-authorization) all bound to one canonical action into a single offline, fail-closed ALLOW/DENY. Filed as draft-schrock-ep-authorization-evidence-chain (IETF individual submission); tri-language reference verifier (JS / Python / Go) with portable conformance vectors.',
+      'EP-AEC-v1 — Authorization Evidence Chain: composes heterogeneous agent-authorization receipts (delegation, policy/permit, and EP human-authorization) all bound to one canonical action into a single offline, fail-closed SATISFIED/UNSATISFIED evidence verdict. The executor makes the separate authorization decision. Filed as draft-schrock-ep-authorization-evidence-chain (IETF individual submission); tri-language reference verifier (JS / Python / Go) with portable conformance vectors.',
       'EP-PROVENANCE-CHAIN-v1 — chained provenance receipt. EXPERIMENTAL, additive over the frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-009).',
       'EP-DISPLAY-ATTESTATION-v1 — display attestation for WYSIWYS rendering. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-010).',
       'EP-EXECUTION-INTEGRITY-v1 — execution binding between approved bytes and executed action. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-010).',
       'EP-REVOCATION-v1 — portable, offline-verifiable revocation statement. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-011).',
       'EP-EYE-SET-v1 — Eye continuous-eval advisory as a signed Security Event Token. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-011).',
+    ],
+  },
+  {
+    version: '1.1.1',
+    date: '2026-07-07',
+    tag: 'Security hardening',
+    points: [
+      'Closed a set of authorization-path hardening findings, each with a negative conformance vector, green across JS / Python / Go: a Class-A (WebAuthn) approver could be downgraded to a bare signature; offline quorum accepted self-approval (initiator now excluded) and one device key could fill two seats (key-uniqueness now unconditional); a gate decision could be replayed for unlimited high-stakes issuances (now one-time-consumed).',
+      'RLS / grant drift on the revocation and replay tables journaled to prod (migrations 129–130).',
+      'Published packages: @emilia-protocol/verify 3.6.2, @emilia-protocol/gate 0.9.3 (npm); emilia-verify 2.4.2 (PyPI); go packages/go-verify/v2.1.2.',
     ],
   },
   {

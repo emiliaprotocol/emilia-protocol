@@ -1,10 +1,9 @@
 {
-  "generatedAt": "2026-06-25T02:38:28.009Z",
+  "generatedAt": "2026-07-19T06:50:23.103Z",
   "tests": {
-    "passed": 4220,
-    "skipped": 29,
-    "total": 4249,
-    "files": 173
+    "total": 6729,
+    "files": 353,
+    "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
     "invariants": 26,
@@ -12,8 +11,33 @@
   },
   "alloy": {
     "facts": 35,
-    "assertions": 22,
-    "version": "6.0.0 (CI)"
+    "assertions": 32,
+    "version": "6.2.0 (CI)"
+  },
+  "tamarin": {
+    "model": "EP-RELIANCE-COMPOSED-v2",
+    "verifiedObligations": 10,
+    "deliberatelyUnsafeCounterexamples": 2,
+    "version": "1.10.0",
+    "modelSha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3"
+  },
+  "securityCase": {
+    "status": "passed",
+    "claims": 26,
+    "evidenceFiles": 121,
+    "evidenceBundleSha256": "14ec5126857fc5bd43b047a485c80fe4277088de7e0030a39ba632f9c1b2eb7e"
+  },
+  "conformance": {
+    "suites": 18,
+    "vectors": 251,
+    "referencePorts": 3,
+    "relationship": "same_team_ports"
+  },
+  "externalImplementation": {
+    "language": "Rust",
+    "vectors": 164,
+    "hostilityCases": 359,
+    "strictCleanRoomAcceptance": false
   },
   "redTeamCases": 85
 }

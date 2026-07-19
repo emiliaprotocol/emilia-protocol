@@ -1,0 +1,108 @@
+#!/bin/sh
+# EMILIA Protocol — pre-push guard against "stranded commit" no-op pushes to main.
+#
+# WHY. Multiple agent sessions edit this ONE shared working tree and sometimes
+# switch the checkout to a feature branch mid-session. A commit then lands on
+# that branch, and a following `git push origin main` silently pushes the
+# UNCHANGED main ref (a no-op) — the work never reaches main and nobody notices.
+# This has bitten three times. Fail LOUD instead of silently succeeding.
+#
+# RULE. If a push updates refs/heads/main but the current HEAD is NOT contained
+# in the commit being pushed (you have local commits that won't reach main),
+# refuse and explain. Legit pushes — on main, or an explicit `<sha>:main`
+# fast-forward recovery where HEAD == that sha — are allowed.
+#
+# Escape hatch for a deliberate, understood push: EP_ALLOW_MAIN_PUSH=1 git push ...
+
+# husky runs hooks with `sh -e`. This hook manages its own exit codes, and several
+# lines are not errexit-safe: the env-var test below fails when the var is unset,
+# and `grep -c` returns 1 on zero matches. Under `set -e` that aborts the hook on
+# line 1 with code 1 before any guard runs (it blocked every normal push to main).
+# Disable errexit so the guard logic actually executes.
+set +e
+
+[ "$EP_ALLOW_MAIN_PUSH" = "1" ] && exit 0
+
+head_sha=$(git rev-parse HEAD 2>/dev/null) || exit 0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Only guard pushes that update the remote main branch.
+  case "$remote_ref" in
+    refs/heads/main) ;;
+    *) continue ;;
+  esac
+  # Skip branch deletions (local_sha is all zeros).
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+
+  # If HEAD is not an ancestor of the commit going to main, local work is being
+  # left behind — almost certainly a stranded commit on a switched-under-you branch.
+  if ! git merge-base --is-ancestor "$head_sha" "$local_sha" 2>/dev/null; then
+    cur=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    echo "" >&2
+    echo "✗ pre-push BLOCKED — refusing to push to main." >&2
+    echo "  HEAD ($cur @ $(git rev-parse --short HEAD)) is NOT contained in the commit" >&2
+    echo "  you are pushing to main ($(git rev-parse --short "$local_sha" 2>/dev/null))." >&2
+    echo "  Your latest commit likely landed on '$cur', not main — a concurrent agent may" >&2
+    echo "  have switched this shared checkout. Pushing now would be a silent no-op." >&2
+    echo "" >&2
+    echo "  Fix (land your commit on main):" >&2
+    echo "    git push origin $(git rev-parse --short HEAD):main   # if it is a clean fast-forward" >&2
+    echo "    # or: git checkout main && git cherry-pick <sha>" >&2
+    echo "  Deliberate override: EP_ALLOW_MAIN_PUSH=1 git push ..." >&2
+    echo "" >&2
+    exit 1
+  fi
+
+  # Proof-stats staleness guard. lib/proof-stats.json holds the exact automated-test
+  # count that CI (check:proof-stats) compares against a live suite run, and that
+  # app/page.js renders. If a push changes the number of tests but does not
+  # regenerate that file, CI reds main and someone scrambles (it happened 3x in a
+  # day). Docs state the count as a floor, so they never need syncing; only this one
+  # file does. Block with the one-command fix when test defs changed net but the
+  # file was not updated. Heuristic (cheap, no suite run); override with the escape.
+  case "$remote_sha" in
+    *[!0]*)
+      changed=$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null)
+      if ! printf '%s\n' "$changed" | grep -q '^lib/proof-stats\.json$'; then
+        diff_body=$(git diff "$remote_sha" "$local_sha" -- '*.test.js' '*.test.mjs' '*.test.ts' 'tests/' 2>/dev/null)
+        added=$(printf '%s\n' "$diff_body" | grep -cE '^\+[^+].*\b(it|test)\s*\(')
+        removed=$(printf '%s\n' "$diff_body" | grep -cE '^-[^-].*\b(it|test)\s*\(')
+        if [ "${added:-0}" -ne "${removed:-0}" ]; then
+          echo "" >&2
+          echo "✗ pre-push BLOCKED — test definitions changed but lib/proof-stats.json was not regenerated." >&2
+          echo "  CI (check:proof-stats) compares that file to a live suite run and will red main." >&2
+          echo "" >&2
+          echo "  Fix (one command, one file):" >&2
+          echo "    npm run sync:proof-stats && git add lib/proof-stats.json" >&2
+          echo "    git commit --amend --no-edit   # or a fresh commit, then re-push" >&2
+          echo "  Docs state the count as a floor, so no doc edits are needed." >&2
+          echo "  Deliberate override: EP_ALLOW_MAIN_PUSH=1 git push ..." >&2
+          echo "" >&2
+          exit 1
+        fi
+      fi
+      ;;
+  esac
+
+  # LLM-context staleness guard. CI's language-governance job runs
+  # check:llm-context, which reds main whenever a push changes any generator
+  # input (standards/, examples/, conformance counts, ...) without regenerating
+  # the four derived artifacts (AI_CONTEXT.md, public/llms*.txt,
+  # public/.well-known/emilia-context.json). This redded main twice on
+  # 2026-07-13 alone (a904480, 8f200ca). The check is a hash comparison over
+  # the working tree (~1s, no build), so just run it; same escape hatch above.
+  if ! npm run --silent check:llm-context >/dev/null 2>&1; then
+    echo "" >&2
+    echo "✗ pre-push BLOCKED — generated llm-context artifacts are stale." >&2
+    echo "  CI (language-governance -> check:llm-context) will red main." >&2
+    echo "" >&2
+    echo "  Fix (one command):" >&2
+    echo "    npm run sync:llm-context && git add -A && git commit --amend --no-edit" >&2
+    echo "    # or a fresh 'chore: sync llm-context' commit, then re-push" >&2
+    echo "  Deliberate override: EP_ALLOW_MAIN_PUSH=1 git push ..." >&2
+    echo "" >&2
+    exit 1
+  fi
+done
+
+exit 0

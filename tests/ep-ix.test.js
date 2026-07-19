@@ -305,6 +305,22 @@ describe('verifyBinding', () => {
     const result = await verifyBinding('ep_bind_xyz', 'op_1');
     expect(result.binding).toEqual(binding);
   });
+
+  it('refuses an anonymous/empty verifier and does not write (defense in depth)', async () => {
+    // The route authorizes and passes a named operator_id; this guard ensures a
+    // caller reaching verifyBinding without a named verifier cannot record an
+    // unattributable verification. No supabase write should occur.
+    mockSupabase.from.mockImplementation(() => {
+      throw new Error('verifyBinding must not touch the DB without a named verifier');
+    });
+
+    for (const bad of [undefined, null, '', '   ']) {
+      const result = await verifyBinding('ep_bind_xyz', bad);
+      expect(result.status).toBe(400);
+      expect(result.error).toMatch(/named verifier/i);
+    }
+    expect(mockSupabase.from).not.toHaveBeenCalled();
+  });
 });
 
 // ── fileContinuityClaim ───────────────────────────────────────────────────────
@@ -529,6 +545,36 @@ describe('challengeContinuity', () => {
     });
 
     expect(result.challenge).toEqual(challenge);
+  });
+
+  it('fails closed when ownership lookup is unavailable', async () => {
+    const claim = makeClaim();
+    let callCount = 0;
+    mockSupabase.from.mockImplementation((table) => {
+      callCount++;
+      if (callCount === 1) {
+        const chain = makeChain({ data: claim, error: null });
+        chain.single = vi.fn().mockResolvedValue({ data: claim, error: null });
+        return chain;
+      }
+      if (callCount === 2) {
+        const chain = makeChain({ data: null, error: null, count: 0 });
+        chain.in = vi.fn().mockReturnThis();
+        return chain;
+      }
+      const chain = makeChain({ data: null, error: { message: 'ownership lookup timeout' } });
+      return chain;
+    });
+
+    const result = await challengeContinuity({
+      continuity_id: claim.continuity_id,
+      challenger_type: 'operator',
+      challenger_id: 'owned-delegate',
+      reason: 'evidence of fraud',
+    });
+
+    expect(result.status).toBe(503);
+    expect(result.error).toContain('ownership');
   });
 });
 

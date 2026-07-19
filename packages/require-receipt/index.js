@@ -3,8 +3,9 @@
  * @license Apache-2.0
  *
  * One line that lets ANY service refuse an irreversible agent action unless it
- * arrives with a verifiable EMILIA Trust Receipt — proof that a named human
- * accountably authorized this exact action. This is NOT auth ("who are you")
+ * arrives with a verifiable EMILIA Trust Receipt at the relying party's
+ * configured assurance tier. A software-tier receipt is not proof that a named
+ * human was present; Class-A/quorum profiles add that requirement. This is NOT auth ("who are you")
  * and NOT permissions ("are you allowed here"). It is *portable accountability
  * evidence the service keeps for its own liability*.
  *
@@ -17,6 +18,7 @@
  * @emilia-protocol/verify. Zero network. Pin the issuer keys you trust.
  */
 import crypto from 'node:crypto';
+import { strictJsonGate } from './strict-json.js';
 
 export const LEGACY_RECEIPT_REQUIRED_STATUS = 402;
 export const RECEIPT_REQUIRED_STATUS = 428;
@@ -24,12 +26,63 @@ export const RECEIPT_REQUIRED_HEADER = 'Receipt-Required';
 export const RECEIPT_PROOF_HEADER = 'X-EMILIA-Receipt';
 export const ACTION_RISK_MANIFEST_VERSION = 'EP-ACTION-RISK-MANIFEST-v0.1';
 export const DEFAULT_ACTION_RISK_MANIFEST = '/.well-known/agent-actions.json';
+export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
+export const ASSURANCE_PROOF_VERSION = 'EP-ASSURANCE-PROOF-v1';
+export const MAX_RECEIPT_CARRIER_BYTES = 8 * 1024 * 1024;
+const ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
+const FLAG_UP = 0x01;
+const FLAG_UV = 0x04;
+const RECEIPT_UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
+
+/**
+ * Decode an HTTP/MCP receipt carrier without inheriting Buffer's permissive
+ * base64 behavior. The bytes must use one canonical alphabet, be valid UTF-8,
+ * contain strict JSON (no duplicate member names), and decode to an object.
+ */
+export function parseReceiptCarrier(value, { maxBytes = MAX_RECEIPT_CARRIER_BYTES } = {}) {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) return null;
+  if (value.length > Math.ceil(maxBytes * 4 / 3) + 4) return null;
+  if (!/^[A-Za-z0-9+/_-]+={0,2}$/.test(value) || value.length % 4 === 1) return null;
+  const hasBase64url = /[-_]/.test(value);
+  const hasBase64 = /[+/]/.test(value);
+  if (hasBase64url && hasBase64) return null;
+  const encoding = hasBase64url ? 'base64url' : 'base64';
+  try {
+    const bytes = Buffer.from(value, encoding);
+    if (bytes.length === 0 || bytes.length > maxBytes) return null;
+    const supplied = value.replace(/=+$/, '');
+    const canonical = bytes.toString(encoding).replace(/=+$/, '');
+    if (canonical !== supplied) return null;
+    const text = RECEIPT_UTF8_DECODER.decode(bytes);
+    if (!strictJsonGate(text).ok) return null;
+    const parsed = JSON.parse(text);
+    return isObject(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
   if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
   if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
   return JSON.stringify(v);
+}
+
+/**
+ * EP canonicalization profile: JCS over an I-JSON value subset. Signed receipt
+ * payloads must contain only strings, booleans, null, arrays, objects, and safe
+ * integers. Non-finite numbers, floats, BigInt, undefined, functions, and
+ * symbols are rejected before signature verification so implementations never
+ * diverge on canonical bytes.
+ */
+export function isCanonicalizable(value) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isInteger(value) && Number.isSafeInteger(value);
+  if (Array.isArray(value)) return value.every(isCanonicalizable);
+  if (typeof value === 'object') return Object.values(value).every(isCanonicalizable);
+  return false;
 }
 
 /**
@@ -71,6 +124,253 @@ function isObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v);
 }
 
+function normalizeAssuranceClass(value) {
+  return ASSURANCE_TIERS.includes(value) ? value : 'software';
+}
+
+function b64urlDecode(value) {
+  return Buffer.from(String(value || ''), 'base64url');
+}
+
+function sha256Bytes(value) {
+  return crypto.createHash('sha256').update(value).digest();
+}
+
+function sha256Hex(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function proofContext(doc) {
+  return {
+    '@version': 'EP-ASSURANCE-CONTEXT-v1',
+    receipt_id: doc?.payload?.receipt_id || null,
+    claim_hash: `sha256:${sha256Hex(canonicalize(doc?.payload?.claim || {}))}`,
+  };
+}
+
+function verifyEd25519Digest(signature, digest, publicKeyB64u) {
+  try {
+    const pub = crypto.createPublicKey({ key: b64urlDecode(publicKeyB64u), format: 'der', type: 'spki' });
+    return crypto.verify(null, digest, pub, b64urlDecode(signature));
+  } catch {
+    return false;
+  }
+}
+
+function spkiFingerprint(publicKeyB64u) {
+  try {
+    const key = crypto.createPublicKey({ key: b64urlDecode(publicKeyB64u), format: 'der', type: 'spki' });
+    const der = key.export({ type: 'spki', format: 'der' });
+    return sha256Hex(der);
+  } catch {
+    return null;
+  }
+}
+
+function verifyWebAuthnDigest(webauthn, digest, publicKeyB64u, opts = {}) {
+  try {
+    if (!webauthn || typeof webauthn !== 'object') return false;
+    const allowedOrigins = Array.isArray(opts.allowedOrigins)
+      ? opts.allowedOrigins.filter((origin) => typeof origin === 'string' && origin.length > 0)
+      : [];
+    if (typeof opts.rpId !== 'string' || !opts.rpId || allowedOrigins.length === 0) return false;
+    const authData = b64urlDecode(webauthn.authenticator_data);
+    const clientDataBytes = b64urlDecode(webauthn.client_data_json);
+    if (authData.length < 37) return false;
+    const flags = authData[32];
+    if ((flags & FLAG_UP) !== FLAG_UP || (flags & FLAG_UV) !== FLAG_UV) return false;
+    const clientDataText = clientDataBytes.toString('utf8');
+    if (!strictJsonGate(clientDataText).ok) return false;
+    const clientData = JSON.parse(clientDataText);
+    if (clientData.type !== 'webauthn.get') return false;
+    if (clientData.challenge !== Buffer.from(digest).toString('base64url')) return false;
+    if (!allowedOrigins.includes(clientData.origin) || clientData.crossOrigin === true) return false;
+    const expectedRpIdHash = sha256Bytes(opts.rpId);
+    if (!expectedRpIdHash.equals(authData.subarray(0, 32))) return false;
+    const signedData = Buffer.concat([authData, sha256Bytes(clientDataBytes)]);
+    const pub = crypto.createPublicKey({ key: b64urlDecode(publicKeyB64u), format: 'der', type: 'spki' });
+    return crypto.verify('sha256', signedData, pub, b64urlDecode(webauthn.signature));
+  } catch {
+    return false;
+  }
+}
+
+function normalizeApproverKeys(input) {
+  if (!input || typeof input !== 'object') return {};
+  return input;
+}
+
+/**
+ * Validate the quorum rule supplied by the relying party. The policy is a trust
+ * input, not evidence: a receipt creator's own threshold or roster never
+ * establishes the organization's actual two-person rule.
+ */
+export function validatePinnedQuorumPolicy(policy) {
+  if (!isObject(policy)) return { ok: false, reason: 'quorum_policy_required' };
+  if (policy.mode !== 'threshold' && policy.mode !== 'ordered') {
+    return { ok: false, reason: 'quorum_policy_invalid_mode' };
+  }
+  const approvers = Array.isArray(policy.approvers) ? policy.approvers : [];
+  if (approvers.length < 2 || approvers.some((entry) => !isObject(entry)
+      || typeof entry.approver !== 'string' || !entry.approver
+      || typeof entry.role !== 'string' || !entry.role)) {
+    return { ok: false, reason: 'quorum_policy_invalid_roster' };
+  }
+  const people = approvers.map((entry) => entry.approver);
+  const slots = approvers.map((entry) => `${entry.role}\u0000${entry.approver}`);
+  if (new Set(people).size !== people.length || new Set(slots).size !== slots.length) {
+    return { ok: false, reason: 'quorum_policy_duplicate_roster_entry' };
+  }
+  if (policy.distinct_humans === false) {
+    return { ok: false, reason: 'quorum_policy_distinct_humans_required' };
+  }
+  const required = policy.mode === 'ordered' ? approvers.length : policy.required;
+  if (!Number.isInteger(required) || required < 2 || required > approvers.length) {
+    return { ok: false, reason: 'quorum_policy_invalid_threshold' };
+  }
+  if (policy.window_sec !== undefined
+      && (!Number.isSafeInteger(policy.window_sec) || policy.window_sec <= 0)) {
+    return { ok: false, reason: 'quorum_policy_invalid_window' };
+  }
+  return { ok: true, reason: null, policy, required, approvers };
+}
+
+function verifyPinnedAssuranceProof(doc, opts = {}) {
+  const proof = doc?.payload?.assurance_proof || doc?.assurance_proof;
+  if (!proof || typeof proof !== 'object') return { ok: false, tier: 'software', reason: 'assurance_proof_required' };
+  if (proof['@version'] !== ASSURANCE_PROOF_VERSION) {
+    return { ok: false, tier: 'software', reason: 'assurance_proof_bad_version' };
+  }
+  const approverKeys = normalizeApproverKeys(opts.approverKeys || opts.approver_keys);
+  const signoffs = Array.isArray(proof.signoffs) ? proof.signoffs : [];
+  if (!signoffs.length) return { ok: false, tier: 'software', reason: 'assurance_proof_missing_signoffs' };
+
+  const context = proofContext(doc);
+  const contextHash = `sha256:${sha256Hex(canonicalize(context))}`;
+  if (proof.context_hash && proof.context_hash !== contextHash) {
+    return { ok: false, tier: 'software', reason: 'assurance_context_mismatch' };
+  }
+  const digest = Buffer.from(contextHash.replace(/^sha256:/, ''), 'hex');
+  const valid = [];
+  for (const s of signoffs) {
+    const keyId = s?.approver_key_id;
+    const entry = keyId ? approverKeys[keyId] : null;
+    if (!entry?.public_key) continue;
+    // The pinned directory entry is authoritative. A presenter-controlled
+    // key_class must never upgrade a software key into a human ceremony.
+    const keyClass = entry.key_class === 'A' ? 'A' : 'B';
+    const ok = keyClass === 'A'
+      ? verifyWebAuthnDigest(s.webauthn, digest, entry.public_key, opts)
+      : verifyEd25519Digest(s.signature, digest, entry.public_key);
+    if (!ok) continue;
+    const keyFingerprint = spkiFingerprint(entry.public_key);
+    if (!keyFingerprint) continue;
+    // Distinctness MUST key on the PINNED SIGNING KEY (approver_key_id), never the
+    // attacker-controlled `approver` label. One key signing the same digest twice
+    // under two names is ONE approver — it must not inflate the quorum count and
+    // satisfy a two-person rule with a single key.
+    valid.push({
+      keyId: String(keyId),
+      keyFingerprint,
+      approver: typeof entry.approver_id === 'string' && entry.approver_id ? entry.approver_id : null,
+      keyClass,
+    });
+  }
+  if (!valid.length) return { ok: false, tier: 'software', reason: 'assurance_proof_invalid' };
+  const classA = valid.filter((entry) => entry.keyClass === 'A');
+  const claimedApprover = doc?.payload?.claim?.approver;
+  if (claimedApprover !== undefined
+      && (typeof claimedApprover !== 'string' || !claimedApprover
+        || !classA.some((entry) => entry.approver === claimedApprover))) {
+    return {
+      ok: false,
+      tier: 'software',
+      reason: 'assurance_claimed_approver_mismatch',
+      approvers: classA.map((entry) => entry.approver).filter(Boolean),
+    };
+  }
+  const policyCheck = validatePinnedQuorumPolicy(opts.quorumPolicy || opts.quorum_policy);
+  if (policyCheck.ok && policyCheck.policy.mode === 'threshold') {
+    const eligible = new Set(policyCheck.approvers.map((entry) => entry.approver));
+    const admitted = valid.filter((entry) => entry.keyClass === 'A'
+      && entry.approver && eligible.has(entry.approver));
+    // A single SPKI registered under two key IDs is still one signing key.
+    const distinctKeys = new Set(admitted.map((entry) => entry.keyFingerprint));
+    const distinctHumans = new Set(admitted.map((entry) => entry.approver));
+    if (distinctKeys.size >= policyCheck.required && distinctHumans.size >= policyCheck.required) {
+      return {
+        ok: true,
+        tier: 'quorum',
+        reason: 'assurance_proof_verified_against_pinned_policy',
+        approvers: [...distinctHumans],
+      };
+    }
+  }
+  if (classA.length) {
+    return {
+      ok: true,
+      tier: 'class_a',
+      reason: 'assurance_proof_verified',
+      approvers: [...new Set(classA.map((entry) => entry.approver).filter(Boolean))],
+    };
+  }
+  return { ok: true, tier: 'software', reason: 'assurance_proof_verified', approvers: [] };
+}
+
+function normalizeVerifierResult(result) {
+  if (result && typeof result === 'object') {
+    return {
+      // Elevated assurance is a positive security decision. Missing `ok` is
+      // malformed, never implicit success.
+      ok: result.ok === true,
+      tier: normalizeAssuranceClass(result.tier || result.have || result.assuranceClass),
+      reason: result.reason || 'custom_assurance_verifier',
+    };
+  }
+  return { ok: false, tier: 'software', reason: 'custom_assurance_result_invalid' };
+}
+
+function invokeCustomAssurance(verifier, doc, requiredTier) {
+  try {
+    return normalizeVerifierResult(verifier(doc, { requiredTier }));
+  } catch {
+    return { ok: false, tier: 'software', reason: 'assurance_verification_failed' };
+  }
+}
+
+export function receiptAssuranceTier(doc, opts = {}) {
+  const custom = typeof opts.verifyAssurance === 'function'
+    ? invokeCustomAssurance(opts.verifyAssurance, doc, 'quorum')
+    : null;
+  if (custom?.ok) return custom.tier;
+  return verifyPinnedAssuranceProof(doc, opts).tier;
+}
+
+export function evaluateReceiptAssurance(doc, required, opts = {}) {
+  const need = normalizeAssuranceClass(required);
+  if (need === 'software') return { ok: true, have: 'software', need, reason: 'software_receipt' };
+  const custom = typeof opts.verifyAssurance === 'function'
+    ? invokeCustomAssurance(opts.verifyAssurance, doc, need)
+    : null;
+  if (need === 'quorum' && !custom) {
+    const policy = validatePinnedQuorumPolicy(opts.quorumPolicy || opts.quorum_policy);
+    if (!policy.ok) {
+      const lower = verifyPinnedAssuranceProof(doc, { ...opts, quorumPolicy: null, quorum_policy: null });
+      return { ok: false, have: normalizeAssuranceClass(lower.tier), need, reason: policy.reason };
+    }
+  }
+  const proof = custom || verifyPinnedAssuranceProof(doc, opts);
+  const have = normalizeAssuranceClass(proof.tier);
+  const rankOk = (ASSURANCE_RANK[have] ?? 0) >= (ASSURANCE_RANK[need] ?? 0);
+  return {
+    ok: proof.ok === true && rankOk,
+    have,
+    need,
+    reason: proof.ok === true && !rankOk ? 'assurance_too_low' : (proof.reason || (proof.ok ? 'assurance_ok' : 'assurance_proof_required')),
+    approvers: Array.isArray(proof.approvers) ? proof.approvers : [],
+  };
+}
+
 function challengeHeaderParams(opts = {}) {
   return definedEntries({
     action: opts.action,
@@ -99,17 +399,21 @@ export function receiptRequiredHeader(opts = {}) {
  * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own inline key (proves integrity, NOT trust)
  * @param {string|null} [opts.action] require the receipt to be bound to this action_type
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this
+ * @param {()=>number} [opts.now=Date.now] trusted clock used for freshness
  * @param {string[]} [opts.allowedOutcomes] acceptable claim.outcome values
- * @returns {{ok:boolean, reason?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
+ * @returns {{ok:boolean, reason?:string, detail?:string, outcome?:string, subject?:string, receipt_id?:string, signer?:string}}
  */
 export function verifyEmiliaReceipt(doc, opts = {}) {
   const { trustedKeys = [], allowInlineKey = false, action = null, maxAgeSec = 900,
-    allowedOutcomes = ['allow', 'allow_with_signoff'] } = opts;
+    now = Date.now, allowedOutcomes = ['allow', 'allow_with_signoff'] } = opts;
 
   if (!doc || doc['@version'] !== 'EP-RECEIPT-v1' || !doc.payload || !doc.signature?.value) {
     return { ok: false, reason: 'malformed_receipt' };
   }
   const payload = doc.payload;
+  if (!isCanonicalizable(payload)) {
+    return { ok: false, reason: 'payload_outside_ijson_profile' };
+  }
 
   const candidates = [...trustedKeys];
   if (allowInlineKey && doc.public_key) candidates.push(doc.public_key);
@@ -129,9 +433,14 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
   }
   if (!signer) return { ok: false, reason: 'untrusted_or_invalid_signature' };
 
-  if (maxAgeSec && payload.created_at) {
-    const ageSec = (Date.now() - Date.parse(payload.created_at)) / 1000;
-    if (Number.isFinite(ageSec) && ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
+  // Freshness fail-closed: when a max age is enforced, a receipt MUST carry a
+  // parseable created_at. A missing or unparseable created_at is treated as
+  // EXPIRED (not skipped) so an undated receipt can never slip past the age
+  // gate — matching what /api/v1/guarded enforces on the demand side.
+  if (maxAgeSec) {
+    const nowMs = typeof now === 'function' ? now() : Number.NaN;
+    const ageSec = (nowMs - Date.parse(payload.created_at)) / 1000;
+    if (!Number.isFinite(ageSec) || ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
   }
   if (action && payload.claim?.action_type !== action) {
     return { ok: false, reason: 'action_mismatch', detail: `receipt is for "${payload.claim?.action_type}", required "${action}"` };
@@ -205,8 +514,22 @@ export function validateActionRiskManifest(manifest) {
     if (action.receipt_required && !['medium', 'high', 'critical'].includes(action.risk)) {
       errors.push(`${p}.risk must be medium, high, or critical when receipt_required is true`);
     }
+    if (action.receipt_required && !action.assurance_class) {
+      // Omitting the tier on a guarded action would silently downgrade it to the
+      // weakest 'software' tier at enforcement time, letting a critical action
+      // accept a bare machine-signed receipt with no human signoff. Require it.
+      errors.push(`${p}.assurance_class is required when receipt_required is true (software, class_a, or quorum)`);
+    }
     if (action.assurance_class && !['software', 'class_a', 'quorum'].includes(action.assurance_class)) {
       errors.push(`${p}.assurance_class must be software, class_a, or quorum`);
+    }
+    if (action.receipt_required && action.risk === 'critical' && action.assurance_class === 'software') {
+      // A critical (typically irreversible) action must be bound to a human key,
+      // not a bare software/machine key. Require at least class_a (a WebAuthn
+      // human signature) so the weakest tier cannot satisfy the highest-
+      // consequence action. This is the author-time key-class floor; the gate
+      // separately fails closed on any receipt weaker than the declared tier.
+      errors.push(`${p}.assurance_class must be class_a or quorum when risk is critical (software is not sufficient for a critical action)`);
     }
   }
 
@@ -248,7 +571,7 @@ export function requireEmiliaReceipt(opts = {}) {
     const challengeOpts = { ...opts, action, status };
     let doc = null;
     const hdr = req.headers?.['x-emilia-receipt'];
-    if (hdr) { try { doc = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8')); } catch { /* fallthrough */ } }
+    if (hdr) doc = parseReceiptCarrier(hdr);
     if (!doc && req.body && req.body.emilia_receipt) doc = req.body.emilia_receipt;
 
     if (!doc) {
@@ -265,6 +588,19 @@ export function requireEmiliaReceipt(opts = {}) {
         res.setHeader('WWW-Authenticate', `EMILIA realm="agent-actions"${action ? `, action="${action}"` : ''}`);
       }
       return res.status(status).json({ ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, challengeOpts), rejected: v });
+    }
+    if (opts.assuranceClass || opts.assurance_class) {
+      const tier = evaluateReceiptAssurance(doc, opts.assuranceClass || opts.assurance_class, opts);
+      if (!tier.ok) {
+        res.setHeader(RECEIPT_REQUIRED_HEADER, receiptRequiredHeader(challengeOpts));
+        if (status === LEGACY_RECEIPT_REQUIRED_STATUS) {
+          res.setHeader('WWW-Authenticate', `EMILIA realm="agent-actions"${action ? `, action="${action}"` : ''}`);
+        }
+        return res.status(status).json({
+          ...receiptChallenge(action, `Receipt rejected: ${tier.reason}.`, challengeOpts),
+          rejected: { ok: false, reason: tier.reason, have_tier: tier.have, need_tier: tier.need },
+        });
+      }
     }
     req.emiliaReceipt = v;
     return next();
@@ -285,8 +621,8 @@ export function requireEmiliaReceipt(opts = {}) {
  * @param {string} p.tool       receipt-required tool/route name to probe
  * @param {object} [p.args]     arguments passed to the tool
  * @param {string} p.action     canonical action_type the receipt must bind
- * @param {()=>(object|Promise<object>)} p.issueReceipt  mints a FRESH valid
- *   EP-RECEIPT-v1 bound to `action` that this dispatcher accepts
+ * @param {(action:string)=>(object|Promise<object>)} p.issueReceipt  mints a FRESH
+ *   valid EP-RECEIPT-v1 bound to `action` (passed in) that this dispatcher accepts
  * @param {object} [p.manifest] optional Action Risk Manifest to validate
  * @returns {Promise<{level:string, passed:boolean, checks:object, detail:object}>}
  */
@@ -343,3 +679,17 @@ export default requireReceiptExports;
 // Canonical hardened gate: target binding + consume-after-success + sanitized
 // rejections, in one reviewed place. Prefer this over hand-rolling a guard.
 export { makeReceiptGate } from './gate.js';
+export { strictJsonGate } from './strict-json.js';
+
+// EP-RECEIPT-JWS-PROFILE-v1: serialize/verify an EP receipt as a standard
+// compact JWS (RFC 7515, EdDSA per RFC 8037) so any JOSE verifier can consume
+// it. Parallel envelope over the SAME JCS canonical payload — not a replacement
+// for the native EP-RECEIPT-v1 signature.
+export {
+  serializeReceiptJws,
+  verifyReceiptJws,
+  deriveKid,
+  JWS_PROFILE_VERSION,
+  JWS_ALG,
+  JWS_TYP,
+} from './jws.js';

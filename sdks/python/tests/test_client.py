@@ -103,6 +103,31 @@ class TestEPClientInit(unittest.TestCase):
         self.assertEqual(client._timeout, 30)
         self.assertEqual(client._retries, 0)
 
+    def test_init_rejects_cleartext_remote_base_url_by_default(self):
+        with self.assertRaisesRegex(ValueError, "cleartext remote"):
+            EPClient(base_url="http://api.example.com", api_key="secret")
+
+    def test_init_allows_loopback_http_for_local_development(self):
+        client = EPClient(base_url="http://127.0.0.1:3000/")
+        self.assertEqual(client._base_url, "http://127.0.0.1:3000")
+
+    def test_init_requires_explicit_opt_in_for_remote_http(self):
+        client = EPClient(
+            base_url="http://dev.internal.example/api",
+            allow_insecure_http=True,
+        )
+        self.assertEqual(client._base_url, "http://dev.internal.example/api")
+
+    def test_init_rejects_embedded_credentials_query_and_fragment(self):
+        for unsafe_url in (
+            "https://user:pass@api.example.com",
+            "https://api.example.com?redirect=https://attacker.example",
+            "https://api.example.com/#token",
+        ):
+            with self.subTest(unsafe_url=unsafe_url):
+                with self.assertRaises(ValueError):
+                    EPClient(base_url=unsafe_url)
+
     def test_cloud_sub_client_attached(self):
         from ep import EPCloudClient
         client = EPClient(base_url="https://emiliaprotocol.ai")

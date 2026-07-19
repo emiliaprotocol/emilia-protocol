@@ -56,7 +56,7 @@ A receipt can serve as evidence that a **specific governed action** was authoriz
 | Receipt field / check | What it can serve as evidence *for* under CC6.1 | Boundary (what it does not establish) |
 |---|---|---|
 | `approver_id` | That a named, enrolled human — not an unattributed process — granted the authorization for this action | Binds a key to an enrolled name; does not by itself prove real-world identity proofing. Pair with the auditee's enrollment/IDM records. |
-| `approver_key_class` | The assurance tier of the approver's credential. Class A = approver-held device key the operator never possesses | Class C is platform-held; it does not evidence approver-sole control of the key |
+| `approver_key_class` | The key-custody class of the approver's credential (receipts-06 Section 5.1: key classes classify custody, not assurance). Class A = approver-held device key the operator never possesses | Class C is platform-held; it does not evidence approver-sole control of the key |
 | `user_verified` (check) | That biometric or PIN verification was performed at the moment of approval | Verification ≠ absence of coercion; UV proves a factor was satisfied, not the approver's free will |
 | `user_present` (check) | That a human was present at the signing device, not a headless replay | — |
 | `challenge_binding` (check) | That the authorization is scoped to *this exact action*, not a broad session grant | Tampering with any parameter invalidates the receipt; this is parameter-binding, not policy adequacy |

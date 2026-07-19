@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getDomainScores, KNOWN_DOMAINS } from '@/lib/domain-scoring';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {
@@ -13,6 +14,11 @@ export async function GET(request, { params }) {
     if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
 
     const { entityId } = await params;
+    const actorId = authEntityId(auth);
+    if (actorId !== entityId) {
+      return EP_ERRORS.FORBIDDEN('Domain scores require authorization for the requested entity');
+    }
+
     const url = new URL(request.url);
     const domainsParam = url.searchParams.get('domains');
     const domains = domainsParam ? domainsParam.split(',').map(d => d.trim()).filter(Boolean) : null;

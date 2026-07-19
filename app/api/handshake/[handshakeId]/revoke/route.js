@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { revokeHandshake } from '@/lib/handshake';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { validateRevokeBody } from '@/lib/handshake/schema';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 /**
  * POST /api/handshake/[handshakeId]/revoke
@@ -17,7 +21,9 @@ export async function POST(request, { params }) {
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
     const { handshakeId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     const validation = validateRevokeBody(body);
     if (!validation.valid) {
@@ -26,9 +32,7 @@ export async function POST(request, { params }) {
 
     // Access control: only parties to the handshake may revoke it
     const supabase = getGuardedClient();
-    const entityId = typeof auth.entity === 'object'
-      ? (auth.entity.entity_id || auth.entity.id)
-      : auth.entity;
+    const entityId = authEntityId(auth);
 
     const { data: party } = await supabase
       .from('handshake_parties')
@@ -41,10 +45,12 @@ export async function POST(request, { params }) {
       return epProblem(403, 'not_party', 'Only parties to the handshake may revoke it');
     }
 
-    const result = await revokeHandshake(handshakeId, validation.sanitized.reason, auth.entity);
+    const result = await revokeHandshake(handshakeId, validation.sanitized.reason, entityId);
 
     if (result.error) {
-      return epProblem(result.status || 500, 'handshake_revocation_failed', result.error);
+      // The writer/DB error can carry internal detail; epDbError logs it
+      // server-side and returns a generic client-facing message. (LOW audit finding.)
+      return epDbError(result.status || 500, 'handshake_revocation_failed', result.error, 'handshake:revoke');
     }
 
     return NextResponse.json(result);

@@ -11,6 +11,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import proofStats from '@/lib/proof-stats.json';
 import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
@@ -50,7 +51,7 @@ const ARTICLES = [
     num: 'Art. 11',
     title: 'Technical documentation',
     burden: 'Documentation kept current and available to authorities on request.',
-    ep: 'TLA+ spec, Alloy facts, and 4,220 automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.',
+    ep: `TLA+ spec, Alloy facts, and ${proofStats.tests.total.toLocaleString('en-US')} automated test cases are public. Apache 2.0 — auditors read source, not vendor PDFs.`,
   },
   {
     num: 'Art. 12',
@@ -76,7 +77,7 @@ const ARTICLES = [
     num: 'Art. 15',
     title: 'Accuracy, robustness, cybersecurity',
     burden: 'System must be resilient to errors, faults, and unauthorized third-party alteration.',
-    ep: '26 TLA+ theorems and 35 Alloy facts prove the ceremony cannot be replayed, forged, or partially executed.',
+    ep: '26 TLA+ theorems and 35 Alloy facts prove the ceremony logic cannot be replayed or partially executed, given signature soundness.',
   },
 ];
 

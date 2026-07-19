@@ -1,0 +1,85 @@
+{
+  "@purpose": "EP WHO-leg sample for the verifiable-curtailment cross-vector. The subject digest for the composition join is receipt.action_hash; human_authorization_ref = { receipt_id, action_hash }.",
+  "policy": {
+    "policy_id": "ep:grace:curtailment-settlement:v1",
+    "rule": "a named human authorizes the exact shed before the controller acts"
+  },
+  "receipt": {
+    "receipt_id": "ep:receipt:U7mecGDxynVpsQ",
+    "action": {
+      "ep_version": "1.0",
+      "action_type": "grid.curtailment.shed",
+      "organization_id": "org-grace-flagship",
+      "target": {
+        "system": "grace.curtailment",
+        "resource": "facility/dc-04/feeder-2"
+      },
+      "parameters": {
+        "target_delta_w": "12000000",
+        "window_start": "2026-07-15T17:00:00-07:00",
+        "window_end": "2026-07-15T21:00:00-07:00",
+        "curtailment_order_digest": "sha256:0d3de26d37b12f7481ac14192ef7d2e3abc7bba7b447340752fbb257c742d834",
+        "baseline_method_hash": "sha256:9d2f0f2c1a7e4b7f8c1d3e5a6b8c0d2e4f60718293a4b5c6d7e8f9a0b1c2d3e4"
+      },
+      "initiator": "ep:entity:grace-scheduler",
+      "policy_id": "ep:grace:curtailment-settlement:v1",
+      "requested_at": "2026-07-15T16:45:00-07:00"
+    },
+    "action_hash": "sha256:695bfde580ba97a0b8dee0c36cbf5c19998c3f63afd2ca520cc49420f9fe7774",
+    "contexts": [
+      {
+        "ep_version": "1.0",
+        "context_type": "ep.signoff.v1",
+        "action_hash": "sha256:695bfde580ba97a0b8dee0c36cbf5c19998c3f63afd2ca520cc49420f9fe7774",
+        "policy_id": "ep:grace:curtailment-settlement:v1",
+        "policy_hash": "sha256:769ec5658f53f574aa6c0015557d2de28caa8d282cb9f7263df95f4effaf52d2",
+        "initiator": "ep:entity:grace-scheduler",
+        "approver": "ep:approver:grid-ops-director",
+        "approver_index": 1,
+        "required_approvals": 1,
+        "nonce": "Itacauby9Bmj2YGfOehAIQ",
+        "issued_at": "2026-07-13T02:17:06.909Z",
+        "expires_at": "2026-07-13T03:17:06.909Z"
+      }
+    ],
+    "signoffs": [
+      {
+        "context_hash": "sha256:161ab06869cbd12ac3809a94295868436b08489c219a4a2c6fedfa3c1eded48b",
+        "key_class": "B",
+        "approver_key_id": "ep:key:grid-ops-director#1",
+        "signed_at": "2026-07-13T02:17:06.909Z",
+        "signature": "cN2SsvYHFZJWraGvXOvUceA0yf_kjRTvuSge1xoel8ZhjZ7X2ExuVvTmTSeKMjwMkjJFmVTCtu51l6xj6-DQCA"
+      }
+    ],
+    "consumption": {
+      "nonce": "eay4PM8JeVqz7kDW7bzdkQ",
+      "state": "COMMITTED",
+      "committed_at": "2026-07-13T02:17:06.909Z"
+    },
+    "log_proof": {
+      "alg": "EP-MERKLE-v2",
+      "leaf_hash": "sha256:397ad915db882a21950ab75a40475e05d1ac63425f91947a314fa8bbfcdff802",
+      "leaf_index": 0,
+      "inclusion_path": [],
+      "checkpoint": {
+        "tree_size": 1,
+        "root_hash": "sha256:397ad915db882a21950ab75a40475e05d1ac63425f91947a314fa8bbfcdff802",
+        "log_key_id": "ep:log:grace-flagship#1",
+        "merkle_alg": "EP-MERKLE-v2",
+        "log_signature": "PsRMxTfIh1Jc__Q3M14vrCQLD_PIvg7zMAAd8wMledykVMtnn1meAfkoTw80aj3uiAeiX7GHKRFzldNj6_xzCQ"
+      }
+    }
+  },
+  "verification": {
+    "approver_keys": {
+      "ep:key:grid-ops-director#1": {
+        "approver_id": "ep:approver:grid-ops-director",
+        "public_key": "MCowBQYDK2VwAyEAh4PyFANU-iL0UvNCbpr96bNdRgxm0sSxnE3lcxgFkts",
+        "key_class": "B",
+        "valid_from": "2026-01-01T00:00:00Z",
+        "valid_to": "2036-01-01T00:00:00Z"
+      }
+    },
+    "log_public_key": "MCowBQYDK2VwAyEA7wy_CnPlCG65cZnu3FxfSbz2YQ-9HqlUrg2DQDit1xE"
+  }
+}

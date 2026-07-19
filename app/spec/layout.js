@@ -9,7 +9,7 @@ export const metadata = {
     title: 'EP Protocol Specification',
     description:
       'State machine, formal invariants, receipt schema, and conformance ' +
-      'tests for the EMILIA Protocol open standard.',
+      'tests for the EMILIA Protocol open protocol.',
     url: 'https://www.emiliaprotocol.ai/spec',
     type: 'article',
   },

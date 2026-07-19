@@ -16,6 +16,7 @@ import {
   contextHashBytes,
   coseToSpkiP256,
 } from '../lib/webauthn.js';
+import { canonicalize as sharedCanonicalize } from '../lib/canonical-json.js';
 import { Encoder } from 'cbor-x';
 
 const RP_ID = 'emiliaprotocol.ai';
@@ -30,6 +31,7 @@ function makeContext(overrides = {}) {
     signoffId: `sig_${'c'.repeat(32)}`,
     issuedAt: '2026-06-09T17:21:05.000Z',
     expiresAt: '2026-06-09T17:26:05.000Z',
+    decision: 'approved',
     ...overrides,
   });
 }
@@ -93,6 +95,22 @@ describe('verifyWebAuthnSignoff — offline Class A verification', () => {
     expect(result.valid).toBe(false);
   });
 
+  it('verifies a device-signed denial as the co-equal terminal outcome', () => {
+    const context = makeContext({ decision: 'denied' });
+    const { signoff, spkiB64u } = makeAssertion(context);
+    expect(verifyWebAuthnSignoff(signoff, spkiB64u, { rpId: RP_ID }).valid).toBe(true);
+    expect(signoff.context.decision).toBe('denied');
+  });
+
+  it('FAILS when a signed denial is relabeled as approval after signing', () => {
+    const context = makeContext({ decision: 'denied' });
+    const { signoff, spkiB64u } = makeAssertion(context);
+    signoff.context = { ...context, decision: 'approved' };
+    const result = verifyWebAuthnSignoff(signoff, spkiB64u, { rpId: RP_ID });
+    expect(result.checks.challenge_binding).toBe(false);
+    expect(result.valid).toBe(false);
+  });
+
   it('FAILS when the nonce is tampered (replay against a different attempt)', () => {
     const context = makeContext();
     const { signoff, spkiB64u } = makeAssertion(context);
@@ -149,10 +167,20 @@ describe('authEntityId — actor identity is a string, never the entity row', ()
 });
 
 describe('lib/webauthn helpers', () => {
+  it('rejects non-canonical signed decision values', () => {
+    expect(() => makeContext({ decision: 'rejected' })).toThrow(/approved, denied/);
+  });
+
   it('challenge is single-use by construction: nonce inside the hashed context', () => {
     const a = makeContext({ signoffId: `sig_${'1'.repeat(32)}` });
     const b = makeContext({ signoffId: `sig_${'2'.repeat(32)}` });
     expect(contextHashBytes(a).equals(contextHashBytes(b))).toBe(false);
+  });
+
+  it('approval and denial produce different device challenges for the same action', () => {
+    const approved = makeContext({ decision: 'approved' });
+    const denied = makeContext({ decision: 'denied' });
+    expect(contextHashBytes(approved).equals(contextHashBytes(denied))).toBe(false);
   });
 
   it('canonicalize is key-order independent at every depth', () => {
@@ -162,6 +190,12 @@ describe('lib/webauthn helpers', () => {
     const ctx1 = { b: 2, a: 1, nested: { y: [1, 2], x: 'z' } };
     const ctx2 = { nested: { x: 'z', y: [1, 2] }, a: 1, b: 2 };
     expect(canonicalize(ctx1)).toBe(canonicalize(ctx2));
+  });
+
+  it('uses the shared canonicalizer and refuses out-of-profile values', () => {
+    const context = makeContext();
+    expect(canonicalize(context)).toBe(sharedCanonicalize(context));
+    expect(() => canonicalize({ omitted: undefined })).toThrow(/canonicalization profile/);
   });
 
   it('coseToSpkiP256 converts a COSE EC2 key and the result verifies signatures', () => {

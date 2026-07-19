@@ -39,17 +39,129 @@ const canonicalize = (v) => (v === null || v === undefined ? JSON.stringify(v)
     : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`
       : JSON.stringify(v));
 
+// Self-contained DEMO ceremony. The gate still verifies a real P-256
+// WebAuthn-shaped assertion against relying-party-pinned keys, RP ID, origin,
+// and quorum policy. Production integrations replace these process-local demo
+// keys with enrolled passkey credentials and their own organizational policy.
+const DEMO_RP_ID = 'mcp-demo.emiliaprotocol.ai';
+const DEMO_ORIGIN = `https://${DEMO_RP_ID}`;
+const makeDemoApprover = (keyId, approverId) => {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  return {
+    keyId,
+    approverId,
+    privateKey,
+    publicKey: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+  };
+};
+const DEMO_APPROVERS = [
+  makeDemoApprover('mcp-demo-approver-1', 'ep:approver:demo-primary'),
+  makeDemoApprover('mcp-demo-approver-2', 'ep:approver:demo-secondary'),
+];
+const DEMO_APPROVER_KEYS = Object.freeze(Object.fromEntries(DEMO_APPROVERS.map((entry) => [
+  entry.keyId,
+  Object.freeze({
+    public_key: entry.publicKey,
+    key_class: 'A',
+    approver_id: entry.approverId,
+  }),
+])));
+const DEMO_QUORUM_POLICY = Object.freeze({
+  mode: 'threshold',
+  required: 2,
+  distinct_humans: true,
+  window_sec: 900,
+  approvers: Object.freeze(DEMO_APPROVERS.map((entry, index) => Object.freeze({
+    role: index === 0 ? 'operator' : 'reviewer',
+    approver: entry.approverId,
+  }))),
+});
+const sha256 = (value) => crypto.createHash('sha256').update(value).digest();
+const sha256Hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
+
+function demoWebAuthnSignoff(payload, approver) {
+  const context = {
+    '@version': 'EP-ASSURANCE-CONTEXT-v1',
+    receipt_id: payload.receipt_id,
+    claim_hash: `sha256:${sha256Hex(canonicalize(payload.claim || {}))}`,
+  };
+  const contextHash = `sha256:${sha256Hex(canonicalize(context))}`;
+  const digest = Buffer.from(contextHash.slice('sha256:'.length), 'hex');
+  const clientDataBytes = Buffer.from(JSON.stringify({
+    type: 'webauthn.get',
+    challenge: digest.toString('base64url'),
+    origin: DEMO_ORIGIN,
+    crossOrigin: false,
+  }), 'utf8');
+  const counter = Buffer.alloc(4);
+  counter.writeUInt32BE(1);
+  const authenticatorData = Buffer.concat([
+    sha256(DEMO_RP_ID),
+    Buffer.from([0x05]), // user present + user verified
+    counter,
+  ]);
+  const signature = crypto.sign(
+    'sha256',
+    Buffer.concat([authenticatorData, sha256(clientDataBytes)]),
+    approver.privateKey,
+  );
+  return {
+    contextHash,
+    signoff: {
+      approver_key_id: approver.keyId,
+      key_class: 'A',
+      webauthn: {
+        authenticator_data: authenticatorData.toString('base64url'),
+        client_data_json: clientDataBytes.toString('base64url'),
+        signature: signature.toString('base64url'),
+      },
+    },
+  };
+}
+
+function demoAssuranceProof(payload, { outcome, quorum, duplicateQuorum = false }) {
+  if (outcome !== 'allow_with_signoff') return null;
+  const approvers = quorum?.required
+    ? (duplicateQuorum ? [DEMO_APPROVERS[0], DEMO_APPROVERS[0]] : DEMO_APPROVERS)
+    : [DEMO_APPROVERS[0]];
+  const signed = approvers.map((entry) => demoWebAuthnSignoff(payload, entry));
+  return {
+    '@version': 'EP-ASSURANCE-PROOF-v1',
+    context_hash: signed[0].contextHash,
+    signoffs: signed.map((entry) => entry.signoff),
+  };
+}
+
 // A named human's device signs the EXACT action. Minted locally here so the
 // demo is self-contained; in production it's a real Face ID / passkey signoff.
-export function signAction(action, { approver, tamper = false } = {}) {
+export function signAction(action, { approver, outcome = 'allow_with_signoff', quorum = null, tamper = false } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const duplicateQuorum = quorum?.required && quorum.second_approver === approver;
+  const quorumClaim = quorum?.required
+    ? {
+        quorum: {
+          threshold: quorum.m || 2,
+          signers: duplicateQuorum
+            ? [DEMO_APPROVERS[0].approverId, DEMO_APPROVERS[0].approverId]
+            : DEMO_APPROVERS.map((entry) => entry.approverId),
+        },
+      }
+    : {};
   const payload = {
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
-    claim: { action_type: action, outcome: 'allow_with_signoff', approver },
+    claim: {
+      action_type: action,
+      outcome,
+      approver: DEMO_APPROVERS[0].approverId,
+      approver_display: approver || DEMO_APPROVERS[0].approverId,
+      ...quorumClaim,
+    },
   };
+  const assuranceProof = demoAssuranceProof(payload, { outcome, quorum, duplicateQuorum });
+  if (assuranceProof) payload.assurance_proof = assuranceProof;
   const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
   const doc = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
   if (tamper) doc.payload = { ...payload, claim: { ...payload.claim, action_type: 'something.harmless' } };
@@ -77,8 +189,8 @@ export function actionForCall(tool, action, args = {}) {
 
 // A manifest-driven MCP tool dispatcher. The manifest decides whether a tool
 // requires a receipt; the canonical makeReceiptGate enforces verify + per-target
-// action-binding + reserve→run→commit-on-success/release-on-failure (replay-safe,
-// one-time consumption) + sanitized {reason} rejections. Read-only / unlisted
+// action-binding + reserve→run→commit-after-invocation (replay-safe, one-time
+// consumption) + sanitized {reason} rejections. Read-only / unlisted
 // tools pass straight through. One gate PER action_type (each keeps its own
 // consumed store) so the binding/replay guarantees are per-resource.
 export function makeGuardedServer({ tool }) {
@@ -93,6 +205,11 @@ export function makeGuardedServer({ tool }) {
         statusCode: RR,
         manifestUrl: MANIFEST_URL,
         assuranceClass: req.assurance_class,
+        quorum: req.quorum,
+        approverKeys: DEMO_APPROVER_KEYS,
+        rpId: DEMO_RP_ID,
+        allowedOrigins: [DEMO_ORIGIN],
+        ...(req.assurance_class === 'quorum' ? { quorumPolicy: DEMO_QUORUM_POLICY } : {}),
       });
       gates.set(req.action_type, gate);
     }
@@ -111,7 +228,8 @@ export function makeGuardedServer({ tool }) {
     const gate = gateFor(req);
     const action = gate.boundActionFor(target);
 
-    // run() = verify+reserve → perform → commit on success / release on failure.
+    // run() = verify+reserve → perform → commit after any invocation attempt.
+    // An exception is indeterminate and burns the approval to prevent replay.
     const res = await gate.run(receipt, { target }, async () => ({ ran: true, action, ...args }));
     if (!res.ok) return { status: res.status, body: res.body }; // 428 challenge / {rejected:{reason}}
     return {
@@ -149,8 +267,11 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   // The signoff is bound to the SPECIFIC target (action_type:<resource>), so it
   // authorizes exactly this resource — not any other repo/payment/deploy.
   const boundAction = actionForCall(tool, action, args);
-  const receipt = signAction(boundAction, { approver });
+  const receipt = signAction(boundAction, { approver, quorum: req.quorum });
   line(`     receipt_id ${receipt.payload.receipt_id} · outcome ${receipt.payload.claim.outcome}`);
+  if (receipt.payload.claim.quorum) {
+    line(`     quorum ${receipt.payload.claim.quorum.threshold}-of-N · signers ${receipt.payload.claim.quorum.signers.join(', ')}`);
+  }
   line('     agent retries WITH the receipt:');
   res = await server(tool, args, receipt);
   show(res);
@@ -163,12 +284,12 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   await pause(700);
 
   line('\n  4. A forged receipt (a signed field altered) is presented');
-  res = await server(tool, args, signAction(boundAction, { approver, tamper: true }));
+  res = await server(tool, args, signAction(boundAction, { approver, quorum: req.quorum, tamper: true }));
   show(res);
 
   if (req.quorum?.required) {
     line(`\n  note: the manifest escalates ${tool} to a ${req.quorum.m}-of-N quorum (EP-QUORUM-v1);`);
-    line('        this shows the single-signoff base rail — the quorum path adds distinct human #2.');
+    line('        the demo receipt carries two distinct human approvers, and a single-signoff receipt is refused.');
   }
   line('\n  No receipt, no irreversible action. If it ran, anyone can verify who authorized exactly what.');
   line();

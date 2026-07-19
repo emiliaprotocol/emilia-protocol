@@ -1,7 +1,7 @@
 export const metadata = {
   title: 'About — EMILIA Protocol',
   description:
-    'The team and advisors behind EMILIA Protocol — the open standard for ' +
+    'The team and advisors behind EMILIA Protocol — the open protocol for ' +
     'verifiable pre-action authorization in AI agent and high-risk-action ' +
     'workflows. Apache 2.0, formally verified, reference runtime.',
   alternates: { canonical: '/about' },

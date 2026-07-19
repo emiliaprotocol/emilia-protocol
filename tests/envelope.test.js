@@ -21,7 +21,7 @@ function ed25519() {
 }
 
 describe('EP-ENVELOPE-v1 — registry + URN discipline', () => {
-  it('registers the five built-in profiles', () => {
+  it('registers every built-in profile', () => {
     for (const p of BUILTIN_PROFILES) expect(listProfiles()).toContain(p);
   });
   it('accepts core and reserved-vendor URNs, rejects garbage', () => {
@@ -126,6 +126,7 @@ describe('EP-ENVELOPE-v1 — lossless migration + wrapped-profile parity', () =>
       ['urn:ep:profile:execution-integrity:v1', {}],
       ['urn:ep:profile:wysiwys:v1', {}],
       ['urn:ep:profile:provenance-chain:v1', {}],
+      ['urn:ep:profile:resolution:v1', {}],
     ];
     for (const [urn, payload] of cases) {
       const r = verifyEnvelope({ ep: EP_ENVELOPE_VERSION, profile: urn, payload }, {});

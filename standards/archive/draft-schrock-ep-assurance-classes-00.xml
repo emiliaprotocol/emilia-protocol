@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-assurance-classes-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Authorization Assurance Classes">Assurance Classes for Authorization Receipts</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-assurance-classes-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="12"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>authorization</keyword>
+    <keyword>assurance</keyword>
+    <keyword>receipts</keyword>
+    <keyword>quorum</keyword>
+    <abstract>
+      <t>Authorization of a high-risk agent action is not binary. A
+      software signer asserting a policy decision, an authenticated human
+      clicking approve, a human completing a device user-verification
+      ceremony, and a quorum of distinct humans each doing so are four
+      materially different levels of assurance -- and a policy for a
+      consequential action needs to say which level it demands.</t>
+      <t>This document defines a small, ordered taxonomy of assurance
+      classes for authorization receipts
+      <xref target="I-D.schrock-ep-authorization-receipts"/> -- Class S,
+      Class H, Class V, and Class Q -- the monotonic comparison rule by
+      which a required class is satisfied, and the central anti-forgery
+      invariant that a class asserted in a receipt payload is treated as
+      the lowest class until it is proof-backed. The taxonomy is the
+      policy primitive an enforcement point, a manifest, or an authority
+      registry uses to express and check "how strong must the human
+      authorization be?"</t>
+    </abstract>
+  </front>
+  <middle>
+    <section>
+      <name>Introduction</name>
+      <t>A policy that says only "this action requires authorization"
+      underspecifies the control. Releasing a $10 refund and wiring
+      $10M do not warrant the same authorization strength, and a system
+      that treats a software-signed decision and a two-person
+      device-verified approval as equivalent has no defense in depth.
+      What is missing is a shared, ordered vocabulary for
+      <em>how strong</em> the human authorization behind a receipt is,
+      so that policy can require a floor and a verifier can enforce it.</t>
+      <t>This document defines that vocabulary as four assurance classes
+      and the rule for comparing them. It does not define how a signature
+      is produced, how a key is held, or how a quorum is gathered; those
+      belong to the authorization-receipt specification
+      <xref target="I-D.schrock-ep-authorization-receipts"/> and to
+      deployment. It defines only the classes, their order, the
+      satisfaction rule, and the requirement that a claimed class be
+      proven rather than trusted.</t>
+    </section>
+
+    <section>
+      <name>Terminology</name>
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+      NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+      "MAY", and "OPTIONAL" in this document are to be interpreted as
+      described in BCP 14 <xref target="RFC2119"/>
+      <xref target="RFC8174"/> when, and only when, they appear in all
+      capitals, as shown here.</t>
+    </section>
+
+    <section anchor="classes">
+      <name>The Assurance Classes</name>
+      <t>Four assurance classes are defined, in increasing order of
+      assurance. Three of the four map to a concrete assurance value
+      string carried in a receipt; the member that carries the value is
+      defined by the receipt profile in use, not by this document, which
+      defines only the class identifiers, their order, and the value
+      set. Class H is RESERVED and has no value assigned. The
+      identifiers are mnemonic (S for
+      software, H for authenticated human, V for device-verified human,
+      Q for quorum) and are deliberately disjoint from the key-custody
+      classes (Class A, Class B, Class C) of
+      <xref target="I-D.schrock-ep-authorization-receipts"/>, which
+      classify who holds the approver's signing key, not how strong the
+      authorization ceremony behind a receipt was.</t>
+      <dl>
+        <dt>Class S -- software / automation signer (receipt assurance value: "software")</dt>
+        <dd>The authorization is asserted by a software component or
+        automation key, not by a human completing an interactive
+        ceremony. This is the lowest class and the default floor
+        (<xref target="floor"/>). Appropriate for low-risk or read-mostly
+        actions.</dd>
+        <dt>Class H -- authenticated human, no device user verification (RESERVED, OPTIONAL)</dt>
+        <dd>A human authenticated to the approving system approved the
+        action, but without a hardware user-verification ceremony bound
+        to the signing key. Class H is defined for deployments that
+        distinguish an authenticated-human approval from a device-verified
+        one; a deployment that does not make this distinction need not
+        implement Class H.</dd>
+        <dt>Class V -- device user-verified human (receipt assurance value: "class_a")</dt>
+        <dd>A named human completed a device user-verification ceremony
+        (for example WebAuthn user verification / passkey with a local
+        gesture) whose result is bound to the signing key that produced
+        the receipt. This is the baseline for high-risk actions. The
+        receipt assurance value "class_a" is retained unchanged for
+        compatibility with deployed receipts; it names the key-custody
+        Class A ceremony of
+        <xref target="I-D.schrock-ep-authorization-receipts"/> that
+        proves this assurance class, and is a value string, not an
+        identifier of this taxonomy.</dd>
+        <dt>Class Q -- quorum of distinct humans (receipt assurance value: "quorum")</dt>
+        <dd>Two or more distinct humans, each meeting at least Class V,
+        authorized the same action under an m-of-n rule with distinct-human
+        enforcement. Class Q is the highest class and the appropriate
+        floor for critical, separation-of-duties actions.</dd>
+      </dl>
+    </section>
+
+    <section anchor="compare">
+      <name>The Comparison Rule</name>
+      <t>The classes form a total order:</t>
+      <t><tt>Class S &lt; Class H &lt; Class V &lt; Class Q</tt></t>
+      <t>A policy states the minimum class an action requires. A receipt
+      satisfies the requirement if and only if its <em>proven</em> class
+      (<xref target="floor"/>) is greater than or equal to the required
+      class on this order. A verifier MUST reject a receipt whose proven
+      class is lower than the required class, and MUST fail closed when
+      it cannot determine the proven class.</t>
+    </section>
+
+    <section anchor="floor">
+      <name>Proof-Backed Assurance (the Anti-Forgery Invariant)</name>
+      <t>A class value present in a receipt payload is a <em>claim</em>,
+      not evidence. An attacker who can shape a payload can write
+      <tt>"quorum"</tt> into it as easily as <tt>"software"</tt>.
+      Therefore:</t>
+      <t>A verifier MUST treat a claimed assurance class as the lowest
+      class (Class S) until the class is proof-backed by evidence the
+      verifier independently checks -- for example a device
+      user-verification attestation for Class V, or the required number
+      of distinct, individually verified human signatures for Class Q. A
+      receipt that asserts Class V or Class Q without the corresponding
+      proof MUST be treated as Class S for the comparison in
+      <xref target="compare"/>.</t>
+      <t>This inverts the trust default: assurance is earned by proof, not
+      granted by assertion. It is the difference between a system that can
+      be talked into a high-assurance decision and one that cannot.</t>
+    </section>
+
+    <section>
+      <name>Relationship to Other Profiles</name>
+      <t>The assurance class is the shared policy primitive across the EP
+      profiles: an Agent Action Manifest declares the class an action
+      requires; an enforcement point compares the proven class of a
+      presented receipt against that requirement; an authority registry
+      records the maximum class a given approver is entitled to assert.
+      This document defines the classes and their comparison; those
+      profiles consume them.</t>
+    </section>
+
+    <section>
+      <name>Security Considerations</name>
+      <t><strong>Downgrade and class-confusion.</strong> The comparison
+      rule is only sound if the proven class cannot be inflated by a
+      claim. The proof-backed invariant (<xref target="floor"/>) is the
+      control; implementations MUST NOT read the class from an untrusted
+      payload field and act on it without verifying the underlying
+      evidence.</t>
+      <t><strong>Fail closed on ambiguity.</strong> If a verifier cannot
+      establish the proven class -- missing attestation, unrecognized
+      evidence, partial quorum -- it MUST treat the receipt as failing the
+      requirement, never as provisionally meeting it.</t>
+      <t><strong>Quorum distinctness.</strong> Class Q depends on the
+      distinctness of the humans in the quorum; a quorum satisfied by one
+      human holding multiple keys, or by an initiator approving their own
+      action, does not meet Class Q regardless of signature count.</t>
+    </section>
+
+    <section>
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. A future revision may request
+      an IANA registry for authorization-receipt assurance classes; the
+      four classes here are defined in-document pending that.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>Normative References</name>
+      <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174">
+        <front>
+          <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+          <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+          <date year="2017" month="May"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+      </reference>
+      <reference anchor="I-D.schrock-ep-authorization-receipts">
+        <front>
+          <title>Authorization Receipts for High-Risk Agent Actions (EP)</title>
+          <author fullname="I. Schrock" initials="I." surname="Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
+      </reference>
+    </references>
+  </back>
+</rfc>

@@ -1,10 +1,10 @@
 'use client';
 // SPDX-License-Identifier: Apache-2.0
-// /fire-drill — the Agent Action Firewall Test, on the web. Paste an MCP
-// manifest, OpenAPI spec, or tool list; see which dangerous actions can run
-// without an accountable human receipt.
+// /fire-drill — static receipt-declaration review. Runtime enforcement is a
+// separate conformance question.
 
 import { useState } from 'react';
+import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
@@ -12,6 +12,9 @@ import { styles, cta, color, font } from '@/lib/tokens';
 // browser — instant, and the pasted manifest never leaves the page. Same source
 // of truth as `npx @emilia-protocol/fire-drill`.
 import { scan } from '../../packages/fire-drill/index.js';
+import { strictJsonGate } from '../../packages/verify/strict-json.js';
+
+const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 
 const EXAMPLE_VULNERABLE = JSON.stringify({
   tools: [
@@ -28,7 +31,11 @@ const EXAMPLE_SAFE = JSON.stringify({
     {
       name: 'release_payment',
       description: 'wire funds to a destination account',
-      inputSchema: { type: 'object', properties: { amount: { type: 'number' }, emilia_receipt: { type: 'object' } } },
+      inputSchema: {
+        type: 'object',
+        properties: { amount: { type: 'number' }, emilia_receipt: { type: 'object' } },
+        required: ['amount', 'emilia_receipt'],
+      },
     },
   ],
 }, null, 2);
@@ -42,6 +49,15 @@ export default function FireDrillPage() {
   function run() {
     setBusy(true); setError(null); setReport(null);
     try {
+      if (new TextEncoder().encode(text).length > MAX_INPUT_BYTES) {
+        setError(`Input exceeds ${MAX_INPUT_BYTES} bytes.`);
+        return;
+      }
+      const gate = strictJsonGate(text);
+      if (!gate.ok) {
+        setError(`Input refused: ${gate.reason}.`);
+        return;
+      }
       let input;
       try {
         input = JSON.parse(text);
@@ -57,7 +73,7 @@ export default function FireDrillPage() {
     }
   }
 
-  const scoreColor = (s) => (s === 100 ? color.green : s >= 50 ? color.gold : '#DC2626');
+  const scoreColor = (s) => (s >= 50 ? color.gold : '#DC2626');
 
   return (
     <>
@@ -65,17 +81,16 @@ export default function FireDrillPage() {
       <main style={styles.page}>
         <section style={{ ...styles.section, paddingTop: 80, paddingBottom: 40 }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>THE AGENT ACTION FIREWALL TEST</div>
-            <h1 style={{ ...styles.h1, marginTop: 16 }}>Can your agent take a dangerous action without a receipt?</h1>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>STATIC RECEIPT DECLARATION REVIEW</div>
+            <h1 style={{ ...styles.h1, marginTop: 16 }}>Do your dangerous tools declare required evidence?</h1>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
-              Paste an MCP server manifest, an OpenAPI spec, or a tool list. The fire drill flags every
-              dangerous operation — money movement, data destruction, production deploy, permission
-              change, bulk export, regulated override — that can run <b>without an accountable human
-              receipt</b>.
+              Paste an MCP server manifest, OpenAPI spec, or tool list. The scanner identifies detected
+              high-risk operations that omit a structurally required receipt input.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 12, fontSize: 15, color: color.t2 }}>
               Runs the same scanner as <code style={{ fontFamily: font.mono }}>npx @emilia-protocol/fire-drill</code>.
-              Static assessment — verify the fix at runtime with EG-1 conformance.
+              Static metadata cannot establish runtime verification or consumption. EG-1 remains unassessed
+              until the deployed gate passes the separate runtime conformance suite.
             </p>
           </div>
         </section>
@@ -84,7 +99,7 @@ export default function FireDrillPage() {
           <div style={styles.container}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
               <button onClick={() => setText(EXAMPLE_VULNERABLE)} style={{ ...cta.secondary, cursor: 'pointer' }}>Example: vulnerable MCP</button>
-              <button onClick={() => setText(EXAMPLE_SAFE)} style={{ ...cta.secondary, cursor: 'pointer' }}>Example: gated MCP</button>
+              <button onClick={() => setText(EXAMPLE_SAFE)} style={{ ...cta.secondary, cursor: 'pointer' }}>Example: declared evidence</button>
             </div>
             <textarea
               value={text}
@@ -111,22 +126,23 @@ export default function FireDrillPage() {
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 20, flexWrap: 'wrap', borderTop: `1px solid ${color.border}`, paddingTop: 28 }}>
                 <div style={{ fontFamily: font.mono, fontSize: 44, fontWeight: 700, color: scoreColor(report.score) }}>{report.score}<span style={{ fontSize: 20, color: color.t3 }}>/100</span></div>
                 <div>
-                  <div style={{ fontFamily: font.mono, fontSize: 12, letterSpacing: 1, color: color.t2, textTransform: 'uppercase' }}>Agent Action Firewall score</div>
+                  <div style={{ fontFamily: font.mono, fontSize: 12, letterSpacing: 1, color: color.t2, textTransform: 'uppercase' }}>Static declaration coverage</div>
                   <div style={{ ...styles.body, fontSize: 14, marginTop: 4 }}>
-                    {report.summary.dangerous} dangerous · {report.summary.gated} gated · {report.summary.ungated} unguarded
+                    {report.summary.dangerous} dangerous · {report.summary.declared} declared · {report.summary.missing_declaration} missing
                   </div>
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: `1px solid ${report.eg1 === 'pass' ? color.green : '#DC2626'}`, borderRadius: 999 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 999, background: report.eg1 === 'pass' ? color.green : '#DC2626', display: 'inline-block' }} />
-                  <span style={{ fontFamily: font.mono, fontSize: 12, color: report.eg1 === 'pass' ? color.green : '#DC2626', letterSpacing: 1, textTransform: 'uppercase' }}>
-                    {report.eg1 === 'pass' ? 'EG-1 Enforced' : 'EG-1 Failed'}
+                <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: `1px solid ${report.static_result === 'complete' ? color.gold : '#DC2626'}`, borderRadius: 999 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 999, background: report.static_result === 'complete' ? color.gold : '#DC2626', display: 'inline-block' }} />
+                  <span style={{ fontFamily: font.mono, fontSize: 12, color: report.static_result === 'complete' ? color.gold : '#DC2626', letterSpacing: 1, textTransform: 'uppercase' }}>
+                    Static {report.static_result} · EG-1 not assessed
                   </span>
                 </div>
               </div>
 
               {report.findings.length === 0 ? (
-                <p style={{ ...styles.body, marginTop: 24, color: color.green }}>
-                  ✓ No dangerous action can run without a receipt. Eligible for the <b>EG-1 Enforced</b> badge.
+                <p style={{ ...styles.body, marginTop: 24, color: color.gold }}>
+                  Every detected dangerous action declares a required receipt input. This is ready for
+                  runtime review; it is not proof that any handler enforces the declaration.
                 </p>
               ) : (
                 <div style={{ marginTop: 24 }}>
@@ -147,18 +163,14 @@ export default function FireDrillPage() {
         <section style={styles.section}>
           <div style={styles.container}>
             <h2 style={{ ...styles.h2, maxWidth: 760 }}>
-              If your agent can take an irreversible action without a receipt, you do not have control.
-              You have hope.
+              A declaration tells reviewers where evidence belongs. Runtime conformance determines whether the control is real.
             </h2>
             <div style={{ display: 'flex', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
               <a href="/gate" style={cta.primary}>Add EMILIA Gate</a>
-              <a href="/gate#eg1" style={cta.secondary}>Earn EG-1</a>
-              <a href="/fire-drill/gallery" style={cta.secondary}>Safety Index</a>
-              <a href="/fire-drill/report" style={cta.secondary}>The Report</a>
-            </div>
-            <div style={{ marginTop: 28 }}>
-              <div style={{ ...styles.eyebrow, color: color.t3 }}>EARNED EG-1? EMBED THE BADGE</div>
-              <pre style={{ fontFamily: font.mono, fontSize: 12, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 16, marginTop: 10, overflowX: 'auto', whiteSpace: 'pre-wrap' }}>{'![EG-1 Enforced](https://www.emiliaprotocol.ai/badge/eg1?eg1=pass)'}</pre>
+              <a href="/fire-drill/cf-1" style={cta.secondary}>What is CF-1?</a>
+              <a href="/gate#eg1" style={cta.secondary}>Run EG-1</a>
+              <a href="/fire-drill/gallery" style={cta.secondary}>Declaration index</a>
+              <Link href="/fire-drill/report" style={cta.secondary}>The Report</Link>
             </div>
           </div>
         </section>
