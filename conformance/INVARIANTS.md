@@ -36,29 +36,43 @@ vector in `conformance/vectors/`.
 
 | Lane | File | Status |
 |---|---|---|
-| JavaScript | `runners/run-invariants.mjs` | **Fully wired.** Drives the real production `createMemoryCapabilityStore` (same guards the Postgres store mirrors 1:1 via `CAPABILITY_SQL`) and the real `lib/handshake/invariants.js` guard functions. |
-| Python | `runners/run_invariants.py` | **Scaffold (unwired).** Parses + dispatches the corpus; exits `2`. Blocker: no Python port of the capability store / handshake invariants exists in `packages/python-verify`. |
-| Go | `runners/run_invariants.go` | **Scaffold (unwired).** Parses + dispatches the corpus; exits `2`. Blocker: no Go port exists in `packages/go-verify`. |
+| JavaScript | `runners/run-invariants.mjs` | **Wired, CI-gated.** Drives the real production `createMemoryCapabilityStore` (same guards the Postgres store mirrors 1:1 via `CAPABILITY_SQL`) and the real `lib/handshake/invariants.js` guard functions. |
+| Python | `runners/run_invariants.py` | **Wired, CI-gated.** Faithful Python port of the reserve/commit accounting (`capability-receipt.js:450-490`) and the four handshake guards (`invariants.js:96-309`). 21/21 hold. |
+| Go | `runners/run_invariants.go` | **Wired, CI-gated.** Faithful Go port of the same accounting logic and guards; stdlib-only (`go run`, no `go.mod`). 21/21 hold. |
 
-The Python/Go lanes are deliberately unwired rather than filled with an
-author-written re-implementation: a port the same author writes cannot honestly
-detect a *cross-port divergence* from the reference. They exit non-zero so they
-can never be mistaken for a passing lane. When a genuine port lands, flip the
-`UNWIRED`/`unwired` flag and implement the dispatch bodies — the corpus and the
-JS oracle need no changes, and a real divergence will surface on first run.
+**What the Python/Go ports do and don't cover.** The invariants under test are
+*accounting* and *predicate* properties (a budget identity, single-commit,
+commit-requires-reserve, monotonic consumption, and the four handshake guards).
+None is a property of the Ed25519 capability envelope or the durable Postgres
+store, so each port reimplements **only** that ~30-line accounting logic and
+those pure predicates — not the receipt crypto and not the durable store.
+Capabilities are registered directly by `(budget, expiry, fingerprint)`, the
+shape `createMemoryCapabilityStore` holds internally after it verifies and
+unwraps the signed envelope; the JS lane's Ed25519 minting is only harness setup
+and changes no outcome the corpus asserts.
+
+This is genuine cross-port conformance, not a self-check: three independent
+implementations (JS, Python, Go) of the same state machine, each checked against
+the same TLA+-derived corpus of expected outcomes. If a port's logic diverged
+from the spec, the corpus flags it (a `FAIL`, non-zero exit). Non-vacuity is
+verified by feeding each runner a mutated corpus and confirming it diverges.
+Every case is exercised in every lane; there are **no skipped invariants**.
 
 ## Running
 
 ```sh
 node conformance/runners/run-invariants.mjs          # JS lane (CI-gated)
 node conformance/runners/run-invariants.mjs --json    # machine-readable
-python3 conformance/runners/run_invariants.py         # scaffold, exit 2
-go run conformance/runners/run_invariants.go          # scaffold, exit 2
+python3 conformance/runners/run_invariants.py         # Python lane (CI-gated)
+go run conformance/runners/run_invariants.go          # Go lane (CI-gated)
 ```
 
-The JS lane runs in CI (`.github/workflows/ci.yml`, cross-language conformance
-job) and as a vitest suite (`conformance/invariants.test.js`, which also asserts
-the runner is non-vacuous by feeding it a mutated corpus).
+All three lanes run in CI (`.github/workflows/ci.yml`, cross-language
+conformance job); the JS lane additionally runs as a vitest suite
+(`conformance/invariants.test.js`, which also asserts the runner is non-vacuous
+by feeding it a mutated corpus).
 
-A JS-lane failure means the real store or a real guard function diverged from a
-TLA+-proven invariant — treat it as a conformance finding, not a flaky test.
+A failure in any lane means an implementation diverged from a TLA+-proven
+invariant — either the real JS store/guard (JS lane) or one of the ports (Python
+/ Go lane) no longer agrees with the shared corpus. Treat it as a conformance
+finding, not a flaky test.

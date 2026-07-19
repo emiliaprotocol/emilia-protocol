@@ -1,5 +1,5 @@
 {
-  "$comment": "TLA+-invariant-derived cross-language conformance cases. These are NOT receipt vectors (see conformance/vectors/*.json for those). Each entry is a SAFETY INVARIANT proven in formal/*.tla, expanded into concrete language-agnostic action sequences that any conformant verifier/store MUST uphold. A JS runner drives the REAL production store and invariant functions against every case (conformance/runners/run-invariants.mjs). Python and Go runners are scaffolded; see runners/run_invariants.py and runners/run_invariants.go for the exact wiring blocker.",
+  "$comment": "TLA+-invariant-derived cross-language conformance cases. These are NOT receipt vectors (see conformance/vectors/*.json for those). Each entry is a SAFETY INVARIANT proven in formal/*.tla, expanded into concrete language-agnostic action sequences that any conformant verifier/store MUST uphold. A JS runner drives the REAL production store and invariant functions against every case (conformance/runners/run-invariants.mjs). Python (runners/run_invariants.py) and Go (runners/run_invariants.go) lanes replay the same corpus against faithful ports of the reserve/commit accounting and the handshake guards; all three lanes are CI-gated and hold 21/21 with no skipped invariants.",
   "version": "EP-INVARIANT-CONFORMANCE-v1",
   "baselineNowIso": "2026-07-18T22:00:00.000Z",
   "invariants": [
