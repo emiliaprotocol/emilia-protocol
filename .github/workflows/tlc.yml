@@ -22,7 +22,7 @@ on:
 
 jobs:
   tlc:
-    name: Verify ep_handshake.tla
+    name: Verify ep_handshake.tla + ep_capability.tla
     runs-on: ubuntu-latest
 
     steps:
@@ -75,10 +75,37 @@ jobs:
             exit 1
           fi
 
+      - name: Run TLC on ep_capability.tla
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_capability.cfg \
+            ep_capability.tla \
+            2>&1 | tee tlc-capability-output.txt
+
+      - name: Check ep_capability TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-capability-output.txt; then
+            echo "TLC found an error — one or more capability invariants are violated."
+            grep -A 20 "Error:" tlc-capability-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-capability-output.txt; then
+            echo "TLC: all capability invariants hold. No counterexample found."
+          else
+            echo "TLC did not produce a clean completion message. Check the artifact."
+            cat tlc-capability-output.txt
+            exit 1
+          fi
+
       - name: Upload TLC output
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: tlc-output
-          path: formal/tlc-output.txt
+          path: |
+            formal/tlc-output.txt
+            formal/tlc-capability-output.txt
           retention-days: 90
