@@ -17,6 +17,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { hashCanonicalAction } from '../lib/guard-policies.js';
 import {
   createProgramIntegrityEngine,
   verifyProgramIntegrityEvidencePacket,
@@ -67,6 +68,12 @@ function clone(value) {
   return structuredClone(value);
 }
 
+function rehashPacket(packet) {
+  const unsigned = clone(packet);
+  delete unsigned.packet_digest;
+  packet.packet_digest = `sha256:${hashCanonicalAction(unsigned)}`;
+}
+
 function makeAuthorization(actionCaid, over = {}) {
   return {
     '@version': 'EP-HEALTH-PROGRAM-INTEGRITY-AUTHORIZATION-v1',
@@ -113,6 +120,7 @@ function makeHarness({
   authority = AUTHORITY,
   providerResult = { status: 'executed', effect_reference: 'claim-effect-001' },
   verifyEvidence,
+  engineConfig = {},
 } = {}) {
   const submit = vi.fn(async () => clone(providerResult));
   const resolveReviewerAuthority = vi.fn(async () => (
@@ -132,6 +140,7 @@ function makeHarness({
     resolveReviewerAuthority,
     verifyProviderEvidence,
     submit,
+    ...engineConfig,
   });
   return {
     engine,
@@ -198,6 +207,46 @@ describe('Health Program Integrity hostile contract', () => {
 
     expectRefusal(prepared, 'unsupported_action_type');
     expect(harness.submit).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['caller-selected CAID', (action) => { action.action_caid = `caid:${'a'.repeat(64)}`; }, 'caller_selected_caid_refused'],
+    ['wrong envelope version', (action) => { action['@version'] = 'EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v0'; }, 'unsupported_action_profile'],
+    ['different versioned action type', (action) => { action.action_type = 'health.medicare.hospice-claim-payment.1'; }, 'unsupported_action_profile'],
+    ['missing required string', (action) => { delete action.organization_id; }, 'invalid_action'],
+    ['malformed NPI', (action) => { action.provider_npi = '123'; }, 'invalid_action'],
+    ['malformed member reference', (action) => { action.member_ref = 'member:raw'; }, 'invalid_action'],
+    ['malformed service start', (action) => { action.service_period_start = '2026-02-30'; }, 'invalid_action'],
+    ['malformed service end', (action) => { action.service_period_end = 'not-a-date'; }, 'invalid_action'],
+    ['reversed service period', (action) => {
+      action.service_period_start = '2026-07-16';
+      action.service_period_end = '2026-07-15';
+    }, 'invalid_action'],
+    ['malformed authorization digest', (action) => { action.authorization_form_digest = 'raw'; }, 'invalid_action'],
+    ['fractional amount precision', (action) => { action.amount = '1250.001'; }, 'invalid_action'],
+    ['zero amount', (action) => { action.amount = '0.00'; }, 'invalid_action'],
+    ['wrong currency', (action) => { action.currency = 'EUR'; }, 'invalid_action'],
+    ['malformed destination digest', (action) => { action.payment_destination_digest = 'raw'; }, 'invalid_action'],
+    ['malformed reviewer ID', (action) => { action.reviewer_id = ' '; }, 'invalid_action'],
+    ['malformed authority proof', (action) => { action.authority_proof_digest = 'raw'; }, 'invalid_action'],
+    ['fractional policy version', (action) => { action.policy_version = 1.5; }, 'invalid_action'],
+    ['non-positive policy version', (action) => { action.policy_version = 0; }, 'invalid_action'],
+    ['malformed policy hash', (action) => { action.policy_hash = 'raw'; }, 'invalid_action'],
+  ])('refuses malformed exact-action boundary: %s', async (_label, mutate, reason) => {
+    const harness = makeHarness();
+    const action = clone(ACTION);
+    mutate(action);
+
+    const result = await harness.engine.prepare({ action });
+
+    expectRefusal(result, reason);
+    expect(harness.submit).not.toHaveBeenCalled();
+  });
+
+  it.each([null, [], 'not-an-action'])('refuses a non-object exact action %#', async (action) => {
+    const harness = makeHarness();
+    const result = await harness.engine.prepare({ action });
+    expectRefusal(result, 'invalid_action');
   });
 
   it.each([
@@ -377,6 +426,248 @@ describe('Health Program Integrity hostile contract', () => {
     expectRefusal(conflict, 'reconciliation_conflict');
   });
 
+  it('fails closed without durable state and uses a configured durable store idempotently', async () => {
+    const unavailable = makeHarness({
+      engineConfig: {
+        allow_ephemeral_state: false,
+      },
+    });
+    const prepared = await unavailable.engine.prepare({ action: clone(ACTION) });
+    const refused = await unavailable.engine.precheck({
+      action: clone(ACTION),
+      authorization: makeAuthorization(prepared.action_caid),
+    });
+    expectRefusal(refused, 'state_storage_unavailable');
+
+    const records = new Map();
+    const stateStore = {
+      get: vi.fn(async (operationId) => records.get(operationId) || null),
+      set: vi.fn(async (operationId, operation) => {
+        records.set(operationId, clone(operation));
+      }),
+    };
+    const durable = makeHarness({
+      engineConfig: {
+        allow_ephemeral_state: false,
+        state_store: stateStore,
+      },
+    });
+    const first = await prepareReady(durable);
+    const duplicate = await durable.engine.precheck({
+      action: clone(ACTION),
+      authorization: clone(first.authorization),
+    });
+
+    expect(duplicate).toMatchObject({
+      ok: true,
+      decision: 'READY',
+      operation_id: first.ready.operation_id,
+      idempotent: true,
+    });
+    expect(stateStore.get).toHaveBeenCalled();
+    expect(stateStore.set).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed for an incomplete durable store and refuses conflicting stored operations', async () => {
+    const incomplete = makeHarness({
+      engineConfig: {
+        allow_ephemeral_state: false,
+        state_store: {},
+      },
+    });
+    const incompletePrepared = await incomplete.engine.prepare({ action: clone(ACTION) });
+    const unavailable = await incomplete.engine.precheck({
+      action: clone(ACTION),
+      authorization: makeAuthorization(incompletePrepared.action_caid),
+    });
+    expectRefusal(unavailable, 'state_storage_unavailable');
+
+    let stored;
+    const collisionStore = {
+      get: vi.fn(async () => stored),
+      set: vi.fn(async () => undefined),
+    };
+    const collision = makeHarness({
+      engineConfig: {
+        allow_ephemeral_state: false,
+        state_store: collisionStore,
+      },
+    });
+    const collisionPrepared = await collision.engine.prepare({ action: clone(ACTION) });
+    const authorization = makeAuthorization(collisionPrepared.action_caid);
+
+    stored = {
+      action_caid: `caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:${'A'.repeat(43)}`,
+      decision: 'READY',
+    };
+    const mismatched = await collision.engine.precheck({
+      action: clone(ACTION),
+      authorization: clone(authorization),
+    });
+    expectRefusal(mismatched, 'operation_action_mismatch');
+
+    stored = {
+      action_caid: collisionPrepared.action_caid,
+      decision: 'EXECUTED',
+    };
+    const replay = await collision.engine.precheck({
+      action: clone(ACTION),
+      authorization: clone(authorization),
+    });
+    expectRefusal(replay, 'replay_refused');
+  });
+
+  it('uses the default clock safely and refuses unknown operations on both terminal APIs', async () => {
+    const defaultClockEngine = createProgramIntegrityEngine({
+      allow_ephemeral_state: true,
+    });
+    const prepared = await defaultClockEngine.prepare({ action: clone(ACTION) });
+    expect(prepared).toMatchObject({ ok: true });
+
+    const harness = makeHarness();
+    expectRefusal(await harness.engine.execute({
+      operation_id: 'health-op-missing',
+      action: clone(ACTION),
+    }), 'operation_not_found');
+    expectRefusal(await harness.engine.reconcile({
+      operation_id: 'health-op-missing',
+      evidence: {},
+    }), 'operation_not_found');
+  });
+
+  it('exports a minimal executed packet when optional provider metadata and effect references are absent', async () => {
+    const harness = makeHarness({
+      providerResult: { status: 'executed' },
+      engineConfig: {
+        provider_id: undefined,
+        provider_environment: undefined,
+        provider_snapshot_digest: undefined,
+      },
+    });
+    const { ready } = await prepareReady(harness);
+    const executed = await harness.engine.execute({
+      operation_id: ready.operation_id,
+      action: clone(ACTION),
+    });
+    expect(executed).toMatchObject({ ok: true, decision: 'EXECUTED' });
+
+    const packet = await harness.engine.exportEvidence({
+      operation_id: ready.operation_id,
+    });
+    expect(packet.provider).toEqual({
+      provider_id: null,
+      environment: null,
+      snapshot_digest: null,
+    });
+    expect(verifyProgramIntegrityEvidencePacket(packet)).toEqual({
+      valid: true,
+      reasons: [],
+    });
+  });
+
+  it('fails closed when the provider adapter is absent, refuses an explicit provider denial, and blocks early export', async () => {
+    const noAdapter = makeHarness({
+      engineConfig: {
+        submit: undefined,
+      },
+    });
+    const missing = await prepareReady(noAdapter);
+    const indeterminate = await noAdapter.engine.execute({
+      operation_id: missing.ready.operation_id,
+      action: clone(ACTION),
+    });
+    expect(indeterminate).toMatchObject({
+      ok: false,
+      decision: 'INDETERMINATE',
+      reason: 'provider_outcome_indeterminate',
+    });
+
+    const denied = makeHarness({
+      providerResult: { status: 'refused' },
+    });
+    const ready = await prepareReady(denied);
+    const premature = await denied.engine.exportEvidence({
+      operation_id: ready.ready.operation_id,
+    });
+    expectRefusal(premature, 'evidence_not_available');
+
+    const refusal = await denied.engine.execute({
+      operation_id: ready.ready.operation_id,
+      action: clone(ACTION),
+    });
+    expectRefusal(refusal, 'provider_refused');
+
+    const missingOperation = await denied.engine.exportEvidence({
+      operation_id: 'health-op-missing',
+    });
+    expectRefusal(missingOperation, 'operation_not_found');
+  });
+
+  it('records an authenticated not-executed reconciliation as a terminal verifiable outcome', async () => {
+    const harness = makeHarness({
+      providerResult: {
+        status: 'indeterminate',
+        dispatch_confirmed: true,
+      },
+    });
+    const { ready } = await prepareReady(harness);
+    const unknown = await harness.engine.execute({
+      operation_id: ready.operation_id,
+      action: clone(ACTION),
+    });
+    const evidence = makeProviderEvidence(unknown, {
+      outcome: 'not_executed',
+      provider_effect_reference: null,
+    });
+    const reconciled = await harness.engine.reconcile({
+      operation_id: ready.operation_id,
+      evidence,
+    });
+    expect(reconciled).toMatchObject({
+      ok: true,
+      decision: 'RECONCILED_FAILED',
+      authenticated_provider_evidence: true,
+    });
+
+    const packet = await harness.engine.exportEvidence({
+      operation_id: ready.operation_id,
+    });
+    expect(verifyProgramIntegrityEvidencePacket(packet)).toEqual({
+      valid: true,
+      reasons: [],
+    });
+  });
+
+  it('fails closed when provider-evidence verification throws and forbids reconciliation before an indeterminate outcome', async () => {
+    const readyHarness = makeHarness();
+    const ready = await prepareReady(readyHarness);
+    const early = await readyHarness.engine.reconcile({
+      operation_id: ready.ready.operation_id,
+      evidence: makeProviderEvidence(ready.ready),
+    });
+    expectRefusal(early, 'reconciliation_not_allowed');
+
+    const throwing = makeHarness({
+      providerResult: {
+        status: 'indeterminate',
+        dispatch_confirmed: true,
+      },
+      verifyEvidence: () => {
+        throw new Error('provider trust service unavailable');
+      },
+    });
+    const prepared = await prepareReady(throwing);
+    const unknown = await throwing.engine.execute({
+      operation_id: prepared.ready.operation_id,
+      action: clone(ACTION),
+    });
+    const refused = await throwing.engine.reconcile({
+      operation_id: prepared.ready.operation_id,
+      evidence: makeProviderEvidence(unknown),
+    });
+    expectRefusal(refused, 'provider_evidence_invalid');
+  });
+
   it.each([
     ['runtime observe flag', { enforcement_mode: 'observe' }],
     ['caller allow flag', { fail_open: true }],
@@ -504,8 +795,39 @@ describe('Health Program Integrity hostile contract', () => {
   it.each([
     ['missing action CAID', (packet) => { delete packet.action_caid; }],
     ['missing operation ID', (packet) => { delete packet.operation_id; }],
+    ['wrong packet version', (packet) => { packet['@version'] = 'EP-HEALTH-PROGRAM-INTEGRITY-EVIDENCE-v0'; }],
+    ['empty operation ID', (packet) => { packet.operation_id = ''; }],
+    ['non-string action CAID', (packet) => { packet.action_caid = 7; }],
+    ['non-object action', (packet) => { packet.action = []; }],
+    ['embedded raw authorization', (packet) => { packet.authorization = { form: 'raw' }; }],
+    ['nested PHI in an array', (packet) => { packet.annotations = [{ clinical_note: 'raw' }]; }],
+    ['malformed action digest', (packet) => { packet.action_digest = 'not-a-digest'; }],
     ['summary/action mismatch', (packet) => { packet.action.amount = '9999.00'; }],
+    ['wrong exact-action CAID', (packet) => {
+      packet.action_caid = packet.action_caid.replace(
+        /jcs-sha256:[A-Za-z0-9_-]{43}$/,
+        `jcs-sha256:${'A'.repeat(43)}`,
+      );
+    }],
     ['conflicting outcome', (packet) => { packet.outcome = 'not_executed'; }],
+    ['unknown decision', (packet) => {
+      packet.decision = 'READY';
+      packet.outcome = 'ready';
+    }],
+    ['non-array operation records', (packet) => { packet.operations = {}; }],
+    ['empty operation records', (packet) => { packet.operations = []; }],
+    ['wrong operation record', (packet) => {
+      packet.operations = [{
+        operation_id: 'health-op-other',
+        decision: packet.decision,
+      }];
+    }],
+    ['wrong operation decision', (packet) => {
+      packet.operations = [{
+        operation_id: packet.operation_id,
+        decision: 'REFUSED',
+      }];
+    }],
     ['duplicate operation records', (packet) => {
       packet.operations = [
         { operation_id: packet.operation_id, decision: 'EXECUTED' },
@@ -523,10 +845,40 @@ describe('Health Program Integrity hostile contract', () => {
       operation_id: ready.operation_id,
     }));
     mutate(packet);
+    rehashPacket(packet);
 
     const verdict = verifyProgramIntegrityEvidencePacket(packet);
 
     expect(verdict.valid).toBe(false);
     expect(verdict.reasons).toContain('evidence_packet_ambiguous');
+  });
+
+  it('accepts an optional single operation record that exactly matches the packet', async () => {
+    const harness = makeHarness();
+    const { ready } = await prepareReady(harness);
+    await harness.engine.execute({
+      operation_id: ready.operation_id,
+      action: clone(ACTION),
+    });
+    const packet = clone(await harness.engine.exportEvidence({
+      operation_id: ready.operation_id,
+    }));
+    packet.operations = [{
+      operation_id: packet.operation_id,
+      decision: packet.decision,
+    }];
+    rehashPacket(packet);
+
+    expect(verifyProgramIntegrityEvidencePacket(packet)).toEqual({
+      valid: true,
+      reasons: [],
+    });
+  });
+
+  it.each([null, [], 'not-a-packet'])('refuses a non-object evidence packet %#', (packet) => {
+    expect(verifyProgramIntegrityEvidencePacket(packet)).toEqual({
+      valid: false,
+      reasons: ['evidence_packet_ambiguous'],
+    });
   });
 });
