@@ -221,7 +221,9 @@ async function main() {
   assert.equal(act3.status, 428);
   assert.equal(act3.reason, 'receipt_required');
   assert.ok(act3.challenge?.required, 'ACT 3 must carry a Receipt-Required challenge');
-  assert.match(act3.header, /action=/);
+  // header is only absent on non-challenge branches of check(); the 428 + challenge
+  // asserted immediately above proves this is the Receipt-Required challenge branch.
+  assert.match(/** @type {string} */ (act3.header), /action=/);
   say('ACT 3    — payment.release attempted with NO receipt                       → REFUSED 428 (Receipt-Required challenge issued)');
   advance();
 

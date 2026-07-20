@@ -72,6 +72,8 @@
     "src/metrics.ts",
     "src/evidence.ts",
     "src/store.ts",
-    "src/mcp.ts"
+    "src/mcp.ts",
+    "src/index.ts",
+    "src/protocol-state.ts"
   ]
 }

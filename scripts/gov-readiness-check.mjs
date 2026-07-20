@@ -75,13 +75,15 @@ check('approver enrollment requires an explicit capability', () => {
 });
 
 check('async Gate providers cannot bypass a guarded action', () => {
-  const gate = read('packages/gate/index.js');
+  // packages/gate/index.js is now a compiled-TS re-export shim (src/index.ts ->
+  // dist/index.js); the real source to scan is src/index.ts.
+  const gate = read('packages/gate/src/index.ts');
   for (const needle of [
     '? await opts.selector(...args)',
     '? await opts.receipt(...args)',
     '? await opts.observedAction(...args)',
   ]) {
-    if (!gate.includes(needle)) throw new Error(`packages/gate/index.js missing ${needle}`);
+    if (!gate.includes(needle)) throw new Error(`packages/gate/src/index.ts missing ${needle}`);
   }
   return 'guard resolves async selector, receipt, and observed-action providers before check';
 });
