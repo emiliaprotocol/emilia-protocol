@@ -15,6 +15,12 @@
 
 import { runAllInvariants, ASSURANCE_RANK } from '@/lib/handshake/invariants.js';
 
+/** One step of a simulator trace, as emitted by simulateOne. */
+type SimulationTraceEntry =
+  | { step: 'context_built'; keys: string[] }
+  | { step: 'invariant_failed'; code: string; message: string }
+  | { step: 'all_invariants_passed' };
+
 /**
  * Simulate a policy evaluation for a single scenario.
  *
@@ -38,7 +44,7 @@ export function simulateOne({ policy, scenario }) {
   if (!scenario) throw new Error('simulateOne: scenario is required');
 
   const t0 = performance.now();
-  const trace = [];
+  const trace: SimulationTraceEntry[] = [];
 
   // Build the context exactly as runAllInvariants expects at runtime.
   const context = {
@@ -74,6 +80,11 @@ export function simulateOne({ policy, scenario }) {
   };
 }
 
+/** One failed case from simulateBatch, as pushed onto its `failed` result array. */
+type SimulationBatchFailure =
+  | { case: string; reason: string; result: ReturnType<typeof simulateOne> }
+  | { case: string; reason: string; violations: ReturnType<typeof simulateOne>['violations'] };
+
 /**
  * Run a batch of scenarios with expected outcomes. Used as a test harness
  * for policy regression: every time a policy version bumps, rerun the batch.
@@ -86,7 +97,7 @@ export function simulateOne({ policy, scenario }) {
 export function simulateBatch({ policy, cases }) {
   if (!Array.isArray(cases)) throw new Error('simulateBatch: cases must be an array');
   let passed = 0;
-  const failed = [];
+  const failed: SimulationBatchFailure[] = [];
 
   for (const c of cases) {
     const result = simulateOne({ policy, scenario: c.scenario });

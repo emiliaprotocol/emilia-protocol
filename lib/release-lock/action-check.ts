@@ -407,11 +407,25 @@ export function buildReleaseLockActionCheck({
   now = Date.now,
   randomBytes = crypto.randomBytes,
   randomInt = crypto.randomInt,
+}: {
+  lockId?: string;
+  version?: number;
+  round?: string;
+  role?: string;
+  contactBindingId?: string;
+  contractorEntityId?: string;
+  credentialId?: string;
+  action?: any;
+  actionHash?: string;
+  authorizationExpiresAt?: string | null;
+  now?: () => number;
+  randomBytes?: typeof crypto.randomBytes;
+  randomInt?: typeof crypto.randomInt;
 } = {}) {
-  if (!RELEASE_LOCK_ROUNDS.includes(/** @type {string} */ (round))
-      || !RELEASE_LOCK_ROLES.includes(/** @type {string} */ (role))
+  if (!RELEASE_LOCK_ROUNDS.includes(round as string)
+      || !RELEASE_LOCK_ROLES.includes(role as string)
       || !Number.isSafeInteger(version)
-      || /** @type {number} */ (version) < 1
+      || (version as number) < 1
       || !RELEASE_LOCK_CREDENTIAL_ID_PATTERN.test(credentialId || '')
       || !RELEASE_LOCK_DIGEST_PATTERN.test(actionHash || '')
       || action?.lock_id !== lockId
@@ -584,6 +598,14 @@ export async function verifyReleaseLockActionCheck({
   rpId,
   allowedOrigins,
   evaluationTime = new Date(),
+}: {
+  challenge?: any;
+  submittedAnswers?: any;
+  assertion?: any;
+  credential?: any;
+  rpId?: string;
+  allowedOrigins?: string[];
+  evaluationTime?: Date;
 } = {}) {
   if (!assertStoredChallenge(challenge)) {
     throw releaseLockRefusal(409, 'stored_challenge_inconsistent', 'Stored Action Check binding is inconsistent.');

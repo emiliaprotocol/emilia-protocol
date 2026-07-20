@@ -5,9 +5,13 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const script = join(root, 'scripts', 'emilia-gate.mjs');
+// scripts/emilia-gate.mjs (and its imports) are being migrated .js -> .ts with
+// specifiers left as .js (see scripts/ts-loader/README.md); plain `node` needs
+// the resolution loader to follow that, unlike webpack/vite which do it natively.
+const tsLoader = join(root, 'scripts', 'ts-loader', 'register.mjs');
 
 function hook(input, env = {}) {
-  return spawnSync(process.execPath, [script, '--hook'], {
+  return spawnSync(process.execPath, ['--import', tsLoader, script, '--hook'], {
     cwd: root,
     input,
     encoding: 'utf8',

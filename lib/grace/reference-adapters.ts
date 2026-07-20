@@ -39,6 +39,13 @@ function fixed(value) {
   return Number(value).toFixed(3);
 }
 
+/** The curtailment-action shape actually read by createReferenceMeter().observe(). */
+type ReferenceCurtailmentAction = {
+  action_id: string;
+  target_delta_kw: string;
+  window: { not_before: string; not_after: string };
+};
+
 export function createFencedMemoryStore() {
   const states = new Map();
   return {
@@ -58,7 +65,11 @@ export function createFencedMemoryStore() {
   };
 }
 
-export function verifyCosaReferenceAcknowledgment(ack, trust, expected = {}) {
+export function verifyCosaReferenceAcknowledgment(ack, trust, expected: {
+  event_id?: string;
+  action_hash?: string;
+  request_digest?: string;
+} = {}) {
   return exact(ack, ACK_MEMBERS)
     && ack.adapter === 'cosa-reference'
     && ack.adapter_version === '1.0.0'
@@ -75,18 +86,16 @@ export function verifyCosaReferenceAcknowledgment(ack, trust, expected = {}) {
     && (expected.request_digest === undefined || ack.request_digest === expected.request_digest);
 }
 
-/**
- * @param {object} [opts]
- * @param {*} [opts.privateKey]
- * @param {string} [opts.keyId]
- * @param {string} [opts.actuatorId]
- * @param {() => string} [opts.clock]
- */
 export function createCosaReferenceActuator({
   privateKey,
   keyId,
   actuatorId = 'cosa:reference:actuator-1',
   clock = () => new Date().toISOString(),
+}: {
+  privateKey?: unknown;
+  keyId?: string;
+  actuatorId?: string;
+  clock?: () => string;
 } = {}) {
   const invocations = new Map();
   return {
@@ -128,7 +137,10 @@ export function createCosaReferenceActuator({
   };
 }
 
-export function verifyReferenceMeterStatement(statement, trust, expected = {}) {
+export function verifyReferenceMeterStatement(statement, trust, expected: {
+  event_id?: string;
+  action_hash?: string;
+} = {}) {
   if (!exact(statement, METER_MEMBERS)
       || statement.measurement_class !== 'reference_simulation'
       || statement.simulation !== true
@@ -152,15 +164,6 @@ export function verifyReferenceMeterStatement(statement, trust, expected = {}) {
     && (expected.action_hash === undefined || statement.action_hash === expected.action_hash);
 }
 
-/**
- * @param {object} [opts]
- * @param {*} [opts.privateKey]
- * @param {string} [opts.keyId]
- * @param {string} [opts.meterId]
- * @param {string} [opts.baselineMw]
- * @param {number} [opts.complianceFactor]
- * @param {() => string} [opts.clock]
- */
 export function createReferenceMeter({
   privateKey,
   keyId,
@@ -168,6 +171,13 @@ export function createReferenceMeter({
   baselineMw = '64.000',
   complianceFactor = 0.996,
   clock = () => new Date().toISOString(),
+}: {
+  privateKey?: unknown;
+  keyId?: string;
+  meterId?: string;
+  baselineMw?: string;
+  complianceFactor?: number;
+  clock?: () => string;
 } = {}) {
   if (!DECIMAL.test(baselineMw) || !Number.isFinite(complianceFactor)
       || complianceFactor < 0 || complianceFactor > 1.2) {
@@ -177,24 +187,29 @@ export function createReferenceMeter({
     kind: 'reference-meter',
     simulation: true,
     verify: verifyReferenceMeterStatement,
-    /**
-     * @param {object} [opts]
-     * @param {*} [opts.action]
-     * @param {*} [opts.acknowledgment]
-     */
-    async observe({ action, acknowledgment } = {}) {
+    async observe({
+      action,
+      acknowledgment,
+    }: {
+      action?: ReferenceCurtailmentAction;
+      acknowledgment?: { event_id?: string; action_hash?: string; status?: string };
+    } = {}) {
       if (!validateCurtailmentAction(action).valid
-          || acknowledgment?.event_id !== action.action_id
+          || acknowledgment?.event_id !== action?.action_id
           || acknowledgment?.action_hash !== graceDigest(action)
           || acknowledgment?.status !== 'dispatched') {
         throw new Error('reference meter refused unbound dispatch');
       }
+      // The guard above (validateCurtailmentAction + the action_id/hash cross
+      // checks) has already proven action is a well-formed curtailment action
+      // by this point; bind it to its real shape for the remaining reads.
+      const boundAction = action as ReferenceCurtailmentAction;
       const baseline = Number(baselineMw);
-      const ordered = Number(action.target_delta_kw) / 1000;
+      const ordered = Number(boundAction.target_delta_kw) / 1000;
       const delivered = ordered * complianceFactor;
       const finalLoad = Math.max(0, baseline - delivered);
-      const start = Date.parse(action.window.not_before);
-      const end = Date.parse(action.window.not_after);
+      const start = Date.parse(boundAction.window.not_before);
+      const end = Date.parse(boundAction.window.not_after);
       const count = 4;
       const intervals = Array.from({ length: count }, (_, index) => ({
         sequence: index + 1,
@@ -207,9 +222,9 @@ export function createReferenceMeter({
       return signGraceArtifact({
         '@version': GRACE_METER_VERSION,
         meter_id: meterId,
-        event_id: action.action_id,
-        action_hash: graceDigest(action),
-        window: structuredClone(action.window),
+        event_id: boundAction.action_id,
+        action_hash: graceDigest(boundAction),
+        window: structuredClone(boundAction.window),
         unit: 'MW',
         baseline_mw: fixed(baseline),
         intervals,

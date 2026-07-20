@@ -495,7 +495,11 @@ describe('Action State adapter honesty', () => {
 
 describe('GRACE live control-room artifact', () => {
   it('runs the public one-command circuit and all attacks refuse', () => {
+    // examples/grace/* (and the lib/ it imports) are being migrated .js -> .ts
+    // with specifiers left as .js (see scripts/ts-loader/README.md); plain
+    // `node` needs the resolution loader, unlike webpack/vite.
     const output = execFileSync('node', [
+      '--import', path.join(ROOT, 'scripts/ts-loader/register.mjs'),
       path.join(ROOT, 'examples/grace/live-control-room.mjs'),
     ], { encoding: 'utf8' });
     expect(output).toContain('MOBILE      2 distinct Class-A handshakes: VERIFIED');

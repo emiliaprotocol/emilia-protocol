@@ -176,7 +176,7 @@ export async function POST(request, { params }) {
       );
     }
     const rolloutQuorum = buildPolicyRolloutQuorumPolicy(quorumTemplate.template);
-    if (!rolloutQuorum.policy && rolloutQuorum.ok === false) {
+    if ('ok' in rolloutQuorum) {
       return epProblem(rolloutQuorum.status, rolloutQuorum.code, rolloutQuorum.detail);
     }
     const quorumPolicy = rolloutQuorum.policy;
@@ -255,7 +255,7 @@ export async function POST(request, { params }) {
         quorumPolicy,
       },
     });
-    if (!authorization.ok) {
+    if ('status' in authorization) {
       return epProblem(authorization.status, authorization.code, authorization.detail);
     }
 

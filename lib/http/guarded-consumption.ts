@@ -78,7 +78,7 @@ export function createSupabaseBackend(supabase) {
   };
 }
 
-let _memoryStore = null;
+let _memoryStore: ReturnType<typeof createDurableConsumptionStore> | null = null;
 
 /**
  * Resolve the consumption store.

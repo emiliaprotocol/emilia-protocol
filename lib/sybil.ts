@@ -130,7 +130,7 @@ export async function detectVelocitySpike(supabase, submittedBy) {
  * @returns {Promise<{ uniqueSubmitters: number, thinGraph: boolean, flags: string[] }>}
  */
 export async function analyzeReceiptGraph(supabase, entityId) {
-  const flags = [];
+  const flags: Array<'thin_graph' | 'single_source' | 'cluster_detected'> = [];
 
   // Count unique submitters
   const { data: submitters, error: submittersError } = await supabase
@@ -182,12 +182,13 @@ export async function analyzeReceiptGraph(supabase, entityId) {
 
 /**
  * Split an array into chunks of at most `size` elements.
+ * Only ever called with receipt id (UUID string) arrays in this module.
  * @param {Array} arr
  * @param {number} size
  * @returns {Array[]}
  */
-function chunk(arr, size) {
-  const chunks = [];
+function chunk(arr: string[], size: number): string[][] {
+  const chunks: string[][] = [];
   for (let i = 0; i < arr.length; i += size) {
     chunks.push(arr.slice(i, i + size));
   }
@@ -207,7 +208,7 @@ function chunk(arr, size) {
 async function retroactivelyApplyGraphWeight(supabase, entityId, submittedBy, newWeight) {
   let updated = 0;
   let failed = 0;
-  const failedIds = [];
+  const failedIds: string[] = [];
 
   try {
     // Fetch existing receipts between this pair
@@ -236,8 +237,9 @@ async function retroactivelyApplyGraphWeight(supabase, entityId, submittedBy, ne
         for (const id of batch) failedIds.push(id);
         // NOTE: logger.error(msg, fields) only accepts 2 params (lib/logger.js);
         // this 3rd argument is silently dropped at runtime — flagged, not fixed
-        // (Iron Rule: JSDoc-only). Loose cast below reflects that reality for tsc.
-        /** @type {(...args: any[]) => void} */ (logger.error)('Retroactive weight update chunk failed:', e.message, { entityId, submittedBy, newWeight, batchSize: batch.length });
+        // (Iron Rule: type around it, don't fix the bug). Native TS cast below
+        // reflects that reality for tsc (JSDoc @type casts have no effect in .ts files).
+        (logger.error as (...args: unknown[]) => void)('Retroactive weight update chunk failed:', e.message, { entityId, submittedBy, newWeight, batchSize: batch.length });
       }
     }
   } catch (e) {
@@ -286,7 +288,7 @@ async function retroactivelyApplyGraphWeight(supabase, entityId, submittedBy, ne
  * @param {string} submittedBy - Entity submitting (UUID)
  */
 export async function runReceiptFraudChecks(supabase, entityId, submittedBy) {
-  const flags = [];
+  const flags: Array<{ flagged: boolean; reason?: string; detail?: string }> = [];
 
   // Check closed loop
   const loop = await detectClosedLoop(supabase, entityId, submittedBy);

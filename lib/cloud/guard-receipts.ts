@@ -3,7 +3,28 @@
 // client bypasses RLS, so tenancy must be part of every query and re-checked
 // while building the response.
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+
+/** Minimal logger surface this module actually calls; callers may pass any logger. */
+interface GuardReceiptsLogger {
+  warn?: (...args: unknown[]) => void;
+}
+
+/** Console-safe projection of a single Guard trust receipt's lifecycle state. */
+interface GuardReceipt {
+  receipt_id: string;
+  action_type: string;
+  organization_id: string;
+  decision: string;
+  enforcement_mode: string;
+  status: string;
+  adapter: string | null;
+  amount: number | null;
+  currency: string | null;
+  created_at: string;
+  signoff_required: boolean;
+}
 
 export const RECENT_EVENT_LIMIT = 500;
 export const RECENT_RECEIPT_LIMIT = 100;
@@ -21,7 +42,7 @@ export function replayGuardReceipts(events, allowedReceiptIds) {
     byReceipt.get(event.target_id).push(event);
   }
 
-  const receipts = [];
+  const receipts: GuardReceipt[] = [];
   for (const [receiptId, receiptEvents] of byReceipt) {
     const eventsAsc = [...receiptEvents].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
     const created = eventsAsc.find((event) => event.event_type === 'guard.trust_receipt.created');
@@ -58,7 +79,15 @@ export function replayGuardReceipts(events, allowedReceiptIds) {
  * @param {string} [opts.tenantId]
  * @param {*} [opts.log]
  */
-export async function loadTenantGuardReceipts({ supabase, tenantId, log } = {}) {
+export async function loadTenantGuardReceipts({
+  supabase,
+  tenantId,
+  log,
+}: {
+  supabase?: SupabaseClient;
+  tenantId?: string;
+  log?: GuardReceiptsLogger;
+} = {}) {
   if (!supabase || typeof supabase.from !== 'function') {
     return { receipts: [], error: 'Dashboard storage unavailable.' };
   }

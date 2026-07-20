@@ -20,6 +20,55 @@
 
 import { validatePolicyRules } from '@/lib/handshake/policy.js';
 
+type Severity = 'info' | 'warning' | 'error';
+type ActionClass = 'low' | 'medium' | 'high' | 'critical';
+
+export interface Finding {
+  rule: string;
+  severity: Severity;
+  path: string;
+  message: string;
+  suggestion?: string;
+}
+
+export interface LintReport {
+  findings: Finding[];
+  ok: boolean;
+}
+
+interface LintOptions {
+  /** Action risk class: 'low' | 'medium' | 'high' | 'critical'. Default 'high'. */
+  action_class?: ActionClass;
+}
+
+interface RequiredPartyDef {
+  required_claims?: string[];
+  minimum_assurance?: string;
+  [key: string]: unknown;
+}
+
+/** The policy.rules object (not the whole policy row). */
+interface PolicyRules {
+  required_parties?: Record<string, RequiredPartyDef>;
+  binding?: {
+    nonce_required?: boolean;
+    payload_hash_required?: boolean;
+    expiry_minutes?: number;
+    [key: string]: unknown;
+  };
+  storage?: {
+    store_raw_payload?: boolean;
+    store_normalized_claims?: boolean;
+    [key: string]: unknown;
+  };
+  signoff?: {
+    required?: boolean;
+    re_auth_required?: boolean;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 const ASSURANCE_RANK = { low: 1, medium: 2, substantial: 3, high: 4 };
 
 // Severity levels, ranked so filterBySeverity can compare.
@@ -35,9 +84,9 @@ const SEVERITY_RANK = { info: 1, warning: 2, error: 3 };
  *   Default 'high' — most EP policies gate high-risk actions.
  * @returns {{ findings: Array<{ rule: string, severity: string, path: string, message: string, suggestion?: string }>, ok: boolean }}
  */
-export function lintPolicy(rules, options = {}) {
-  const action_class = options.action_class || 'high';
-  const findings = [];
+export function lintPolicy(rules: PolicyRules, options: LintOptions = {}): LintReport {
+  const action_class: ActionClass = options.action_class || 'high';
+  const findings: Finding[] = [];
 
   // Step 1: structural validation. If it fails, surface as errors and stop —
   // semantic lints on a malformed policy produce noise.
@@ -69,7 +118,7 @@ export function lintPolicy(rules, options = {}) {
  * @param {{ findings: Array }} report
  * @param {'info'|'warning'|'error'} minSeverity
  */
-export function filterBySeverity(report, minSeverity) {
+export function filterBySeverity(report: LintReport, minSeverity: Severity): LintReport {
   const min = SEVERITY_RANK[minSeverity];
   if (min === undefined) throw new Error(`Unknown severity: ${minSeverity}`);
   return {
@@ -87,13 +136,13 @@ export function filterBySeverity(report, minSeverity) {
  * a 'high' action accepting 'medium' raises a warning. This prevents the
  * classic copy-paste defect where a stub policy is left on a critical path.
  */
-function lintAssuranceFloor(rules, action_class, findings) {
+function lintAssuranceFloor(rules: PolicyRules, action_class: ActionClass, findings: Finding[]): void {
   const floors = { low: 1, medium: 2, high: 3, critical: 4 };
   const floor = floors[action_class] ?? 3;
   if (!rules.required_parties) return;
 
   for (const [role, def] of Object.entries(rules.required_parties)) {
-    const rank = ASSURANCE_RANK[def.minimum_assurance];
+    const rank = def.minimum_assurance === undefined ? undefined : ASSURANCE_RANK[def.minimum_assurance];
     if (rank === undefined) continue; // caught by structural validator
     if (rank < floor) {
       findings.push({
@@ -114,7 +163,7 @@ function lintAssuranceFloor(rules, action_class, findings) {
  * at the hash level and replay attacks are possible. Without payload_hash_required,
  * the exact action content is not bound — classic bait-and-switch.
  */
-function lintBindingStrength(rules, action_class, findings) {
+function lintBindingStrength(rules: PolicyRules, action_class: ActionClass, findings: Finding[]): void {
   if (!rules.binding) return;
   if (rules.binding.nonce_required !== true) {
     findings.push({
@@ -142,7 +191,7 @@ function lintBindingStrength(rules, action_class, findings) {
  * A policy with zero required parties is a no-op — every request passes the
  * party check vacuously. Almost always an authoring error.
  */
-function lintRequiredParties(rules, findings) {
+function lintRequiredParties(rules: PolicyRules, findings: Finding[]): void {
   if (!rules.required_parties || typeof rules.required_parties !== 'object') return;
   const roles = Object.keys(rules.required_parties);
   if (roles.length === 0) {
@@ -172,7 +221,7 @@ function lintRequiredParties(rules, findings) {
  * If payload_hash_required = true but store_raw_payload = false, audit replay
  * will be impossible. Warn the author to choose explicitly.
  */
-function lintStorageConsistency(rules, findings) {
+function lintStorageConsistency(rules: PolicyRules, findings: Finding[]): void {
   if (!rules.binding || !rules.storage) return;
   if (rules.binding.payload_hash_required === true && rules.storage.store_raw_payload === false) {
     findings.push({
@@ -191,12 +240,12 @@ function lintStorageConsistency(rules, findings) {
  * Too short → legitimate users fail. Too long → replay window widens.
  * Defaults: high-risk = 5–60 min; critical = 1–15 min.
  */
-function lintExpiryBounds(rules, action_class, findings) {
+function lintExpiryBounds(rules: PolicyRules, action_class: ActionClass, findings: Finding[]): void {
   if (!rules.binding) return;
   const mins = rules.binding.expiry_minutes;
   if (typeof mins !== 'number') return;
 
-  const bounds = {
+  const bounds: Record<ActionClass, { min: number; max: number }> = {
     low:      { min: 1,  max: 1440 },
     medium:   { min: 1,  max: 240 },
     high:     { min: 1,  max: 60 },
@@ -226,12 +275,12 @@ function lintExpiryBounds(rules, action_class, findings) {
 /**
  * EP-L006: duplicate required_claims within a role.
  */
-function lintDuplicateClaims(rules, findings) {
+function lintDuplicateClaims(rules: PolicyRules, findings: Finding[]): void {
   if (!rules.required_parties) return;
   for (const [role, def] of Object.entries(rules.required_parties)) {
     if (!Array.isArray(def.required_claims)) continue;
-    const seen = new Set();
-    const dups = [];
+    const seen = new Set<string>();
+    const dups: string[] = [];
     for (const c of def.required_claims) {
       if (seen.has(c)) dups.push(c);
       seen.add(c);
@@ -254,7 +303,7 @@ function lintDuplicateClaims(rules, findings) {
  * Reaches flag unknown roles — these will never bind because handshake_parties
  * only accepts initiator/responder/verifier/delegate.
  */
-function lintUnreachableRoles(rules, findings) {
+function lintUnreachableRoles(rules: PolicyRules, findings: Finding[]): void {
   if (!rules.required_parties) return;
   const CANONICAL = new Set(['initiator', 'responder', 'verifier', 'delegate']);
   for (const role of Object.keys(rules.required_parties)) {
@@ -277,13 +326,13 @@ function lintUnreachableRoles(rules, findings) {
  * the party and binding settings are consistent — signoff requires a specific
  * human identity bound, which means medium+ assurance.
  */
-function lintSignoffConsistency(rules, action_class, findings) {
+function lintSignoffConsistency(rules: PolicyRules, action_class: ActionClass, findings: Finding[]): void {
   if (!rules.signoff || rules.signoff.required !== true) return;
   if (!rules.required_parties) return;
 
   // Signoff requires at least one party with assurance >= substantial.
   const haveHighAssurance = Object.values(rules.required_parties).some(
-    def => ASSURANCE_RANK[def.minimum_assurance] >= ASSURANCE_RANK.substantial,
+    def => def.minimum_assurance !== undefined && ASSURANCE_RANK[def.minimum_assurance] >= ASSURANCE_RANK.substantial,
   );
   if (!haveHighAssurance) {
     findings.push({
@@ -313,7 +362,7 @@ function lintSignoffConsistency(rules, action_class, findings) {
  * @param {{ findings: Array, ok: boolean }} report
  * @returns {string}
  */
-export function formatReport(report) {
+export function formatReport(report: LintReport): string {
   if (report.findings.length === 0) {
     return 'Policy lint: OK (0 findings).';
   }

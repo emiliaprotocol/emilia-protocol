@@ -12,8 +12,27 @@
 // See docs/gov-readiness/ASSURANCE-TIER-ENFORCEMENT.md.
 
 /** Required distinct, valid approvals for a value tier. dual -> 2, else 1. */
-export function requiredApprovalsForTier(tier) {
+export function requiredApprovalsForTier(tier?: string | null): number {
   return tier === 'dual' ? 2 : 1;
+}
+
+/** A single approval record attached to a trust receipt consume request. */
+export interface ApprovalRecord {
+  approver_id?: string;
+  key_class?: string;
+  role?: string;
+}
+
+/** Verdict from the live, not-revoked authority check for one approval. */
+export interface AuthorityResolution {
+  authorized: boolean;
+}
+
+export interface CountDistinctValidApproversOptions {
+  initiatorId?: string | null;
+  requiredAssurance?: string | null;
+  /** Live, not-revoked authority check (revocation-at-execution). */
+  resolveAuthority: (approval: ApprovalRecord) => Promise<AuthorityResolution>;
 }
 
 /**
@@ -22,21 +41,15 @@ export function requiredApprovalsForTier(tier) {
  *   - not the initiator (self-approval guard);
  *   - distinct human (one approver counts once, however many times they signed);
  *   - backed by a valid, not-revoked authority (resolveAuthority(approval) -> {authorized}).
- *
- * @param {Array<{approver_id?:string, key_class?:string, role?:string}>} approvals
- * @param {{ initiatorId?:string|null, requiredAssurance?:string|null,
- *           resolveAuthority:(approval:object)=>Promise<{authorized:boolean}>}} opts
- * @returns {Promise<number>} distinct valid approver count
  */
-export async function countDistinctValidApprovers(approvals, {
-  initiatorId = null,
-  requiredAssurance = null,
-  resolveAuthority,
-} = /** @type {any} */ ({})) {
+export async function countDistinctValidApprovers(
+  approvals: Array<ApprovalRecord | null | undefined> | null | undefined,
+  { initiatorId = null, requiredAssurance = null, resolveAuthority }: CountDistinctValidApproversOptions,
+): Promise<number> {
   if (typeof resolveAuthority !== 'function') {
     throw new Error('countDistinctValidApprovers requires a resolveAuthority(approval) function');
   }
-  const distinct = new Set();
+  const distinct = new Set<string>();
   for (const a of approvals || []) {
     if (!a) continue;
     const keyClass = a.key_class || 'C';

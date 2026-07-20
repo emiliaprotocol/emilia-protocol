@@ -131,7 +131,7 @@ export async function POST(request, { params }) {
         issuedBy: `entity:${userRef}`,
       },
     );
-    if (result.error) {
+    if ('error' in result) {
       return epProblem(
         result.status || 500,
         result.status === 400 ? 'invalid_permissions' : 'tenant_api_key_issue_failed',

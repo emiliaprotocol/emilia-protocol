@@ -19,7 +19,9 @@ import path from 'node:path';
 import { sha256 } from '../crypto.js';
 
 export class ExtractionUnsupportedError extends Error {
-  constructor(format, detail) {
+  format: string;
+
+  constructor(format: string, detail: string) {
     super(`extraction unsupported for ${format}: ${detail}`);
     this.name = 'ExtractionUnsupportedError';
     this.format = format;
@@ -56,14 +58,45 @@ const MAX_DOCX_ENTRY_BYTES = 16 * 1024 * 1024;
 const MAX_DOCX_TOTAL_UNCOMPRESSED = 64 * 1024 * 1024;
 const MAX_DOCX_COMPRESSION_RATIO = 200;
 
+// A raw question as produced by any of the format-specific parsers, before
+// normalization (id assignment, whitespace collapsing, freeform/confidence
+// scoring).
+type RawQuestion = {
+  text: string;
+  section: string;
+  locator: string;
+};
+
+// The normalized shape returned to callers of extractQuestions.
+type NormalizedQuestion = {
+  id: string;
+  text: string;
+  section: string;
+  requires_freeform: boolean;
+  extraction_confidence: number;
+  locator: string | null;
+};
+
 /**
- * @param {object} opts
- * @param {string} [opts.filePath] path to the questionnaire on disk
- * @param {Buffer|string} [opts.content] raw content (alternative to filePath)
- * @param {string} [opts.filename] original filename (drives format detection)
- * @returns {Promise<{source_format,total_questions,questions:Array,warnings:string[],source_sha256:string}>}
+ * @param opts.filePath path to the questionnaire on disk
+ * @param opts.content raw content (alternative to filePath)
+ * @param opts.filename original filename (drives format detection)
  */
-export async function extractQuestions({ filePath, content, filename } = {}) {
+export async function extractQuestions({
+  filePath,
+  content,
+  filename,
+}: {
+  filePath?: string;
+  content?: Buffer | string;
+  filename?: string;
+} = {}): Promise<{
+  source_format: string;
+  total_questions: number;
+  questions: NormalizedQuestion[];
+  warnings: string[];
+  source_sha256: string;
+}> {
   const name = filename || (filePath ? path.basename(filePath) : 'questionnaire.txt');
   const format = detectFormat(name);
   const raw =
@@ -114,14 +147,14 @@ export async function extractQuestions({ filePath, content, filename } = {}) {
 
 // ── Format detection ──────────────────────────────────────────────────────
 
-function detectFormat(filename) {
+function detectFormat(filename: string): string {
   const ext = path.extname(filename).toLowerCase().replace('.', '');
   return ext || 'txt';
 }
 
 // ── Native parsers ─────────────────────────────────────────────────────────
 
-function extractNative(format, text, warnings) {
+function extractNative(format: string, text: string, warnings: string[]): RawQuestion[] {
   switch (format) {
     case 'csv':
       return extractDelimited(text, ',', warnings);
@@ -143,9 +176,9 @@ function extractNative(format, text, warnings) {
  * bulleted list item, or a line under a "## Section" heading. Section headings
  * are tracked so each question carries its section.
  */
-function extractText(text, warnings) {
+function extractText(text: string, warnings: string[]): RawQuestion[] {
   const lines = text.split(/\r?\n/);
-  const out = [];
+  const out: RawQuestion[] = [];
   let section = '';
   for (const line of lines) {
     const trimmed = line.trim();
@@ -180,7 +213,7 @@ function extractText(text, warnings) {
  * question|control|requirement|ask, else the column with the longest average
  * cell text). Each data row becomes one question.
  */
-function extractDelimited(text, delim, warnings) {
+function extractDelimited(text: string, delim: string, warnings: string[]): RawQuestion[] {
   const rows = parseDelimited(text, delim);
   if (rows.length === 0) {
     warnings.push('empty delimited file');
@@ -207,8 +240,8 @@ function extractDelimited(text, delim, warnings) {
     }));
 }
 
-function extractJson(text, warnings) {
-  let parsed;
+function extractJson(text: string, warnings: string[]): RawQuestion[] {
+  let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
@@ -216,19 +249,25 @@ function extractJson(text, warnings) {
     return [];
   }
   // Accept: [{question}], [{text}], {questions:[...]}, ["string", ...]
-  let arr = [];
+  // `parsed` is genuinely unknown-shaped attacker/customer JSON — the property
+  // accesses below are cast, not guarded, to preserve the exact original
+  // runtime behavior (including throwing if `parsed` is e.g. null).
+  let arr: unknown[] = [];
   if (Array.isArray(parsed)) arr = parsed;
-  else if (Array.isArray(parsed.questions)) arr = parsed.questions;
-  else if (Array.isArray(parsed.items)) arr = parsed.items;
+  else if (Array.isArray((parsed as { questions?: unknown }).questions))
+    arr = (parsed as { questions: unknown[] }).questions;
+  else if (Array.isArray((parsed as { items?: unknown }).items))
+    arr = (parsed as { items: unknown[] }).items;
   else {
     warnings.push('JSON shape not recognized (expected array or {questions:[]})');
     return [];
   }
-  return arr.map((item, i) => {
+  return arr.map((item, i): RawQuestion => {
     if (typeof item === 'string') return { text: item.trim(), section: '', locator: `[${i}]` };
+    const obj = item as { question?: unknown; text?: unknown; q?: unknown; section?: unknown; category?: unknown };
     return {
-      text: String(item.question || item.text || item.q || '').trim(),
-      section: String(item.section || item.category || '').trim(),
+      text: String(obj.question || obj.text || obj.q || '').trim(),
+      section: String(obj.section || obj.category || '').trim(),
       locator: `[${i}]`,
     };
   });
@@ -236,7 +275,7 @@ function extractJson(text, warnings) {
 
 // ── Optional binary parsers (dynamic import, escalate if missing) ───────────
 
-async function extractXlsx(buf, warnings) {
+async function extractXlsx(buf: Buffer, warnings: string[]): Promise<RawQuestion[]> {
   let xlsx;
   try {
     // Externalized via next.config serverExternalPackages — traced, not bundled.
@@ -290,7 +329,7 @@ async function extractXlsx(buf, warnings) {
     }
   }
 
-  const out = [];
+  const out: RawQuestion[] = [];
   for (const sheetName of sheetNames) {
     const rows = xlsx.utils.sheet_to_csv(wb.Sheets[sheetName]);
     const qs = extractDelimited(rows, ',', warnings);
@@ -299,7 +338,7 @@ async function extractXlsx(buf, warnings) {
   return out;
 }
 
-async function extractPdf(buf, warnings) {
+async function extractPdf(buf: Buffer, warnings: string[]): Promise<RawQuestion[]> {
   let PDFParse;
   try {
     // pdf-parse v2: named export `PDFParse`, instance API `new PDFParse({data}).getText()`.
@@ -319,7 +358,7 @@ async function extractPdf(buf, warnings) {
   }
 }
 
-async function extractDocx(buf, warnings) {
+async function extractDocx(buf: Buffer, warnings: string[]): Promise<RawQuestion[]> {
   preflightDocxZip(buf);
   let mammoth;
   try {
@@ -387,9 +426,9 @@ function preflightDocxZip(buf) {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 /** RFC-4180-ish delimited parser: handles quoted fields + embedded delims. */
-function parseDelimited(text, delim) {
-  const rows = [];
-  let row = [];
+function parseDelimited(text: string, delim: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
   let field = '';
   let inQuotes = false;
   for (let i = 0; i < text.length; i++) {
@@ -427,8 +466,8 @@ function parseDelimited(text, delim) {
   return rows.filter((r) => r.some((cell) => cell.trim().length > 0));
 }
 
-function widestColumn(rows) {
-  const widths = {};
+function widestColumn(rows: string[][]): number {
+  const widths: Record<string, number> = {};
   for (const r of rows) {
     r.forEach((cell, i) => {
       widths[i] = (widths[i] || 0) + (cell || '').length;
@@ -445,7 +484,7 @@ function widestColumn(rows) {
   return best;
 }
 
-function normalizeQuestion(q, index) {
+function normalizeQuestion(q: RawQuestion, index: number): NormalizedQuestion {
   const text = String(q.text || '').replace(/\s+/g, ' ').trim();
   return {
     id: `q_${String(index + 1).padStart(3, '0')}`,

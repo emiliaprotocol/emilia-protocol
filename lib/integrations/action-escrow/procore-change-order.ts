@@ -156,7 +156,12 @@ function validateProcoreOrigin(value) {
   return origin;
 }
 
-function closedResult(kind, fields = {}) {
+// `kind` is generic so each call site keeps its own literal (e.g. 'refused',
+// 'mismatch') instead of widening to `string`/`any`; callers elsewhere in
+// this file discriminate on that literal (e.g. `evidence.kind === 'evidence_ready'`
+// against this function's sibling `Object.freeze({ kind: 'evidence_ready', ... })`
+// result), which only type-checks if the literal survives here too.
+function closedResult<K extends string>(kind: K, fields = {}) {
   return deepFreezeJson({
     kind,
     provider: 'procore',
@@ -365,11 +370,28 @@ function validObservedAt(value) {
 }
 
 /**
+ * Caller-pinned coordinates the retrieved project record must match.
+ * Values are validated at runtime (exactKeys + per-field checks below); the
+ * type only records that this is untrusted, caller-supplied input.
+ */
+interface ProcoreExpectedProjectRecord {
+  snapshotDigest?: unknown;
+  apiOrigin?: unknown;
+  companyId?: unknown;
+  projectId?: unknown;
+  changeOrderType?: unknown;
+  changeOrderId?: unknown;
+}
+
+/**
  * Re-perform the complete project-record digest under relying-party-pinned
  * source coordinates. Provider data remains evidence only and cannot fill an
  * agreement-acceptance or release-authorization row.
  */
-export function verifyProcoreChangeOrderEvidence(value, expected = {}) {
+export function verifyProcoreChangeOrderEvidence(
+  value,
+  expected: ProcoreExpectedProjectRecord = {},
+) {
   try {
     if (!exactKeys(expected, PROJECT_RECORD_EXPECTED_KEYS)
       || !exactKeys(value, PROJECT_RECORD_KEYS)
@@ -380,7 +402,7 @@ export function verifyProcoreChangeOrderEvidence(value, expected = {}) {
       || value.establishes_acceptance !== false
       || value.claim_boundary !== PROJECT_RECORD_CLAIM_BOUNDARY
       || !HASH.test(value.snapshot_digest)
-      || !HASH.test(expected.snapshotDigest)
+      || !HASH.test(String(expected.snapshotDigest))
       || value.snapshot_digest !== expected.snapshotDigest) {
       return Object.freeze({ valid: false, reason: 'project_record_malformed' });
     }
@@ -392,7 +414,7 @@ export function verifyProcoreChangeOrderEvidence(value, expected = {}) {
     if (!expectedCompanyId
       || !expectedProjectId
       || !expectedChangeOrderId
-      || !Object.hasOwn(RESOURCE_BY_TYPE, expected.changeOrderType)
+      || !Object.hasOwn(RESOURCE_BY_TYPE, String(expected.changeOrderType))
       || value.api_origin !== expectedOrigin
       || value.company_id !== expectedCompanyId
       || value.project_id !== expectedProjectId
@@ -452,16 +474,17 @@ export function verifyProcoreChangeOrderEvidence(value, expected = {}) {
  * source facts map to one final document and action.
  */
 /**
- * @typedef {{
- *   kind: 'response',
- *   status: number,
- *   headers: object,
- *   bytes: Uint8Array
- * } | {
- *   kind: 'failure',
- *   reason: 'timeout'|'network'|'response_too_large'|'invalid_response'
- * }} LocalBoundedFetchResult
+ * Mirrors bounded-fetch.js's BoundedFetchResult JSDoc typedef. Declared
+ * locally as a real type (rather than relied on via JSDoc, which is not
+ * type-checked in a .ts file) so `call()`'s two return paths stay one
+ * discriminated union instead of widening to `{ kind: string; ... }`.
  */
+type LocalBoundedFetchResult =
+  | { kind: 'response'; status: number; headers: object; bytes: Uint8Array }
+  | {
+    kind: 'failure';
+    reason: 'timeout' | 'network' | 'response_too_large' | 'invalid_response';
+  };
 
 /**
  * @param {object} [opts]
@@ -473,6 +496,16 @@ export function verifyProcoreChangeOrderEvidence(value, expected = {}) {
  * @param {number} [opts.maxMetadataBytes]
  * @param {() => string} [opts.clock]
  */
+interface ProcoreChangeOrderAdapterOptions {
+  apiOrigin?: string;
+  accessToken?: unknown;
+  companyId?: unknown;
+  fetch?: Function;
+  timeoutMs?: number;
+  maxMetadataBytes?: number;
+  clock?: () => string;
+}
+
 export function createProcoreChangeOrderAdapter({
   apiOrigin = 'https://api.procore.com',
   accessToken,
@@ -481,11 +514,13 @@ export function createProcoreChangeOrderAdapter({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxMetadataBytes = DEFAULT_MAX_METADATA_BYTES,
   clock = () => new Date().toISOString(),
-} = {}) {
+}: ProcoreChangeOrderAdapterOptions = {}) {
   const origin = validateProcoreOrigin(apiOrigin);
   const normalizedCompanyId = identifier(companyId);
   if (!normalizedCompanyId) throw new TypeError('companyId is invalid');
-  if (!validString(accessToken, 8192) || /\s/.test(accessToken)) {
+  if (typeof accessToken !== 'string'
+      || !validString(accessToken, 8192)
+      || /\s/.test(accessToken)) {
     throw new TypeError('accessToken is invalid');
   }
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch must be injected');
@@ -499,11 +534,14 @@ export function createProcoreChangeOrderAdapter({
    * @param {number} deadline
    * @returns {Promise<LocalBoundedFetchResult>}
    */
-  async function call(path, deadline) {
+  async function call(path: string, deadline: number): Promise<LocalBoundedFetchResult> {
     const remaining = deadline - Date.now();
     if (remaining < 1) return { kind: 'failure', reason: 'timeout' };
+    // fetchImpl's `typeof fetchImpl !== 'function'` guard above narrows it in
+    // this outer scope only; TS does not carry that narrowing into this
+    // nested closure, so the invariant is re-asserted here explicitly.
     return requestBounded(
-      /** @type {Function} */ (fetchImpl),
+      fetchImpl as Function,
       `${origin}${path}`,
       {
         method: 'GET',
@@ -521,7 +559,14 @@ export function createProcoreChangeOrderAdapter({
     );
   }
 
-  async function fetchJson(path, deadline, operation) {
+  async function fetchJson(
+    path: string,
+    deadline: number,
+    operation: string,
+  ): Promise<
+    | { ok: true; value: Record<string, unknown>; response: Extract<LocalBoundedFetchResult, { kind: 'response' }> }
+    | { ok: false; result: ReturnType<typeof providerFailure> }
+  > {
     const response = await call(path, deadline);
     if (response.kind === 'failure') {
       return { ok: false, result: providerFailure(operation, response) };
@@ -551,23 +596,35 @@ export function createProcoreChangeOrderAdapter({
     return { ok: true, value: parsed.value, response };
   }
 
-  async function fetchLineItems(resource, projectId, changeOrderId, deadline) {
-    const items = [];
+  async function fetchLineItems(
+    resource: string,
+    projectId: string,
+    changeOrderId: string,
+    deadline: number,
+  ): Promise<
+    | { ok: true; value: NonNullable<ReturnType<typeof normalizeLineItem>>[] }
+    | { ok: false; result: ReturnType<typeof providerFailure> | ReturnType<typeof closedResult<'refused'>> }
+  > {
+    const items: NonNullable<ReturnType<typeof normalizeLineItem>>[] = [];
     let page = 1;
-    let expectedTotal = null;
+    let expectedTotal: number | null = null;
     while (items.length <= MAX_LINE_ITEMS) {
-      const path = `/rest/v2.0/companies/${encodeURIComponent(/** @type {string} */ (normalizedCompanyId))}`
+      // normalizedCompanyId is guarded non-null in the outer scope above, but
+      // that narrowing does not persist into this nested closure.
+      const path = `/rest/v2.0/companies/${encodeURIComponent(normalizedCompanyId as string)}`
         + `/projects/${encodeURIComponent(projectId)}`
         + `/${resource}/${encodeURIComponent(changeOrderId)}/line_items`
         + `?page=${page}&per_page=${PAGE_SIZE}&view=extended`;
       const fetched = await fetchJson(path, deadline, 'fetch_change_order_line_items');
-      if (!fetched.ok) return fetched;
+      if (!fetched.ok) {
+        return { ok: false, result: fetched.result as ReturnType<typeof providerFailure> };
+      }
       if (!Array.isArray(fetched.value.data)) {
         return {
           ok: false,
           result: providerFailure('fetch_change_order_line_items', {
             kind: 'invalid',
-            status: /** @type {NonNullable<typeof fetched.response>} */ (fetched.response).status,
+            status: (fetched.response as unknown as { status: number }).status,
           }),
         };
       }
@@ -638,11 +695,33 @@ export function createProcoreChangeOrderAdapter({
     };
   }
 
-  async function fetchSnapshot(resource, projectId, changeOrderId, deadline) {
+  async function fetchSnapshot(
+    resource: string,
+    projectId: string,
+    changeOrderId: string,
+    deadline: number,
+  ): Promise<
+    | {
+      ok: true;
+      value: {
+        change_order: NonNullable<ReturnType<typeof normalizeChangeOrder>>;
+        line_items: NonNullable<ReturnType<typeof normalizeLineItem>>[];
+      };
+    }
+    | {
+      ok: false;
+      result:
+        | ReturnType<typeof providerFailure>
+        | ReturnType<typeof closedResult<'mismatch'>>
+        | ReturnType<typeof closedResult<'refused'>>;
+    }
+  > {
     const orderPath = `/rest/v1.0/projects/${encodeURIComponent(projectId)}`
       + `/${resource}/${encodeURIComponent(changeOrderId)}`;
     const order = await fetchJson(orderPath, deadline, 'fetch_change_order');
-    if (!order.ok) return order;
+    if (!order.ok) {
+      return { ok: false, result: order.result as ReturnType<typeof providerFailure> };
+    }
     const normalizedOrder = normalizeChangeOrder(order.value, changeOrderId);
     if (!normalizedOrder) {
       return {
@@ -681,10 +760,15 @@ export function createProcoreChangeOrderAdapter({
       changeOrderId,
       changeOrderType,
       expected,
+    }: {
+      projectId?: unknown;
+      changeOrderId?: unknown;
+      changeOrderType?: string;
+      expected?: unknown;
     } = input;
     const normalizedProjectId = identifier(projectId);
     const normalizedChangeOrderId = identifier(changeOrderId);
-    const resource = RESOURCE_BY_TYPE[changeOrderType];
+    const resource = RESOURCE_BY_TYPE[changeOrderType as keyof typeof RESOURCE_BY_TYPE];
     const normalizedExpected = normalizeExpected(expected);
     if (!normalizedProjectId || !normalizedChangeOrderId || !resource
         || !normalizedExpected) {

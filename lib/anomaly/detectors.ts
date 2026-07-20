@@ -35,7 +35,28 @@
  * @license Apache-2.0
  */
 
-/** @typedef {Record<string, any>} Finding */
+/** A detector finding. Every detector emits `detector`/`severity`/`message`
+ * plus detector-specific fields (actor_entity_ref, peak_count_60s, etc.). */
+export interface Finding {
+  detector: string;
+  severity: string;
+  message: string;
+  [key: string]: unknown;
+}
+
+type Thresholds = typeof DEFAULTS;
+
+interface DetectorWindows {
+  binding_events?: unknown[];
+  signoff_events?: unknown[];
+  policy_events?: unknown[];
+  authority_events?: unknown[];
+  delegation_events?: unknown[];
+}
+
+interface DetectAllOptions {
+  thresholds?: Partial<Thresholds>;
+}
 
 const DEFAULTS = Object.freeze({
   // Per-actor binding creation ceiling in a 60-second window.
@@ -67,9 +88,9 @@ const DEFAULTS = Object.freeze({
  * @param {object} [opts.thresholds] Override DEFAULTS.
  * @returns {Array<Finding>}
  */
-export function detectAll(windows = {}, opts = {}) {
-  const thresholds = { ...DEFAULTS, ...(opts.thresholds || {}) };
-  const findings = [];
+export function detectAll(windows: DetectorWindows = {}, opts: DetectAllOptions = {}) {
+  const thresholds: Thresholds = { ...DEFAULTS, ...(opts.thresholds || {}) };
+  const findings: Finding[] = [];
   findings.push(...detectBindingBurst(windows.binding_events || [], thresholds));
   findings.push(...detectGlobalBindingBurst(windows.binding_events || [], thresholds));
   findings.push(...detectAbandonedSignoffs(windows.signoff_events || [], thresholds));
@@ -98,7 +119,7 @@ export function detectBindingBurst(events, thresholds = DEFAULTS) {
     byActor.get(actor).push(t);
   }
 
-  const findings = [];
+  const findings: Finding[] = [];
   for (const [actor, stamps] of byActor.entries()) {
     stamps.sort((a, b) => a - b);
     const hit = slidingWindowMax(stamps, 60_000);
@@ -164,18 +185,18 @@ export function detectAbandonedSignoffs(events, thresholds = DEFAULTS) {
 
   const now = Date.now();
   const ttl = thresholds.signoff_abandoned_minutes * 60_000;
-  const findings = [];
+  const findings: Finding[] = [];
   for (const [id, evts] of bySignoff.entries()) {
     // Safe: every event in `evts` was filtered at insertion (line 160) to have
     // a non-null toMillis(created_at), so these casts don't change behavior.
-    evts.sort((a, b) => /** @type {number} */ (toMillis(a.created_at)) - /** @type {number} */ (toMillis(b.created_at)));
+    evts.sort((a, b) => (toMillis(a.created_at) as number) - (toMillis(b.created_at) as number));
     const issued = evts.find(e => e.event_type === 'challenge_issued' || e.event_type === 'signoff_issued');
     if (!issued) continue;
     const terminal = evts.find(e => ['consumed', 'denied', 'expired', 'revoked'].includes(e.event_type));
     if (terminal) continue;
     // Safe: `issued` was found within `evts`, which is drawn only from events
     // whose toMillis(created_at) is non-null (filtered at line 160).
-    const age = now - /** @type {number} */ (toMillis(issued.created_at));
+    const age = now - (toMillis(issued.created_at) as number);
     if (age > ttl) {
       // Severity ladder (increasing with age):
       //   info     — ttl < age <= 4*ttl
@@ -218,7 +239,7 @@ export function detectPolicyChurn(events, thresholds = DEFAULTS) {
     if (!id) continue;
     policies.set(id, (policies.get(id) || 0) + 1);
   }
-  const findings = [];
+  const findings: Finding[] = [];
   for (const [id, count] of policies.entries()) {
     if (count >= thresholds.policy_churn_daily) {
       findings.push({
@@ -267,7 +288,7 @@ export function detectAuthorityChurn(events, thresholds = DEFAULTS) {
  * multi-hop authority (rare) or attempted authority laundering (more common).
  */
 export function detectDelegationDepth(events, thresholds = DEFAULTS) {
-  const findings = [];
+  const findings: Finding[] = [];
   for (const e of events) {
     const depth = Array.isArray(e.delegation_chain) ? e.delegation_chain.length : 0;
     if (depth >= thresholds.delegation_depth_error) {

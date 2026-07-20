@@ -130,6 +130,16 @@ const VOUCHER_LIMIT = 20;        // cap at 20 most-recent vouchers
  *   direction: string,       // 'submitted_about' | 'received_from' | 'both'
  * }>>}
  */
+type Voucher = {
+  entity_id: string;       // entities.id (UUID)
+  entity_slug: string;     // entities.entity_id (human slug)
+  display_name: string;    // entities.display_name
+  confidence: string;      // confidence tier string
+  confidence_score: number; // 0.0–1.0 weight for this voucher's vote
+  receipt_count: number;   // how many shared receipts with disputed entity
+  direction: 'both' | 'submitted_about' | 'received_from';
+};
+
 export async function findVouchers(disputedEntityId, supabase) {
   // --- Direction 1: voucher submitted receipts ABOUT the disputed entity ---
   // receipts.submitted_by = voucher, receipts.entity_id = disputed
@@ -179,7 +189,7 @@ export async function findVouchers(disputedEntityId, supabase) {
   if (!entityRows || entityRows.length === 0) return [];
 
   // Filter to admitted confidence tiers and build voucher list
-  const vouchers = [];
+  const vouchers: Voucher[] = [];
   for (const entity of entityRows) {
     // Read confidence from trust_snapshot (materialized) or fall back to a
     // safe default. We never trust self-reported confidence.
@@ -456,7 +466,7 @@ export function computeWeightedVote(voucherSentiments) {
  *   adjudicated_at: string,
  * } | { error: string, status: number }>}
  */
-export async function adjudicateDispute(disputeId, supabaseOverride) {
+export async function adjudicateDispute(disputeId, supabaseOverride?) {
   const supabase = supabaseOverride ?? getServiceClient();
 
   // -------------------------------------------------------------------

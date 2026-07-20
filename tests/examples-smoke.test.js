@@ -12,8 +12,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// The examples (and lib/ they import) are being migrated .js -> .ts with
+// specifiers left as .js (see scripts/ts-loader/README.md); plain `node` needs
+// the resolution loader to follow that, unlike webpack/vite which do it natively.
+const tsLoader = resolve(root, 'scripts/ts-loader/register.mjs');
 const run = (rel) =>
-  execFileSync('node', [resolve(root, rel)], {
+  execFileSync('node', ['--import', tsLoader, resolve(root, rel)], {
     env: { ...process.env, FAST: '1' },
     encoding: 'utf8',
     timeout: 30_000,

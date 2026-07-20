@@ -13,6 +13,15 @@
 // submitters supplying most of a target's evidence; timing anomalies are
 // machine-cadence bursts no organic cohort produces.
 
+type CollusionSeverity = 'high' | 'medium' | 'low';
+
+interface CollusionFinding {
+  type: string;
+  severity: CollusionSeverity;
+  members: string[];
+  detail?: Record<string, unknown>;
+}
+
 const DEFAULTS = {
   ringMaxLen: 6, // A->...->A; rings longer than this read as organic, not a farm
   ringMinLen: 2, // a 2-cycle is a bilateral pair
@@ -41,7 +50,7 @@ export function buildSubmissionGraph(receipts) {
 
 /** Mutual edges A<->B — the cheapest reciprocal-vouch pattern. */
 export function detectBilateralPairs(graph) {
-  const pairs = [];
+  const pairs: CollusionFinding[] = [];
   const seen = new Set();
   for (const [a, tos] of graph.out) {
     for (const b of tos.keys()) {
@@ -59,7 +68,7 @@ export function detectBilateralPairs(graph) {
 /** Directed cycles up to ringMaxLen — manufactured submitter diversity. */
 export function detectRings(graph, opts = {}) {
   const { ringMaxLen, ringMinLen } = { ...DEFAULTS, ...opts };
-  const rings = [];
+  const rings: CollusionFinding[] = [];
   const seen = new Set();
 
   const record = (cycle) => {
@@ -105,7 +114,7 @@ export function detectConcentration(receipts, opts = {}) {
     const m = byTarget.get(r.entity_id);
     m.set(r.submitted_by, (m.get(r.submitted_by) || 0) + 1);
   }
-  const findings = [];
+  const findings: CollusionFinding[] = [];
   for (const [target, submitters] of byTarget) {
     const total = [...submitters.values()].reduce((a, b) => a + b, 0);
     if (total < concentrationMinReceipts) continue;
@@ -134,7 +143,7 @@ export function detectTimingAnomalies(receipts, opts = {}) {
     if (!bySubmitter.has(r.submitted_by)) bySubmitter.set(r.submitted_by, []);
     bySubmitter.get(r.submitted_by).push(t);
   }
-  const findings = [];
+  const findings: CollusionFinding[] = [];
   for (const [submitter, times] of bySubmitter) {
     times.sort((a, b) => a - b);
     // sliding window: max receipts within any burstWindowMs

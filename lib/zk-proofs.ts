@@ -244,10 +244,10 @@ export async function generateCommitmentProof(entityId, claim, supabase) {
   const evaluation = await evaluateClaim(entityId, claim, db);
 
   if (!evaluation.provable) {
-    const err = /** @type {Error & {code: string, measured_value: number}} */ (new Error(
+    const err = new Error(
       `claim_not_provable: ${claim.type} threshold ${claim.threshold} not met ` +
       `(measured: ${evaluation.measured_value.toFixed(4)})`
-    ));
+    ) as Error & { code: string; measured_value: number };
     err.code = 'claim_not_provable';
     err.measured_value = evaluation.measured_value;
     throw err;
@@ -256,7 +256,7 @@ export async function generateCommitmentProof(entityId, claim, supabase) {
   const receiptsForClaim = evaluation.receipts_for_claim;
 
   if (receiptsForClaim.length === 0) {
-    const err = /** @type {Error & {code: string}} */ (new Error('claim_not_provable: no receipts to build proof from'));
+    const err = new Error('claim_not_provable: no receipts to build proof from') as Error & { code: string };
     err.code = 'claim_not_provable';
     throw err;
   }
@@ -480,8 +480,8 @@ export async function verifyCommitmentProof(proofId, supabase) {
 // INTERNAL HELPERS
 // =============================================================================
 
-function buildClaimObject(proof) {
-  const claim = {
+function buildClaimObject(proof): { type: string; threshold: number; domain?: string } {
+  const claim: { type: string; threshold: number; domain?: string } = {
     type: proof.claim_type,
     threshold: Number(proof.claim_threshold),
   };

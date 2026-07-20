@@ -56,16 +56,15 @@ function invitationUrl(origin, input) {
   return url.href;
 }
 
-/**
- * @param {{
- *   apiKey?: string,
- *   from?: string,
- *   publicAppOrigin?: string,
- *   fetch?: typeof fetch,
- *   timeoutMs?: number,
- *   maxResponseBytes?: number,
- * }} [options]
- */
+interface ResendReleaseLockInvitationAdapterOptions {
+  apiKey?: string;
+  from?: string;
+  publicAppOrigin?: string;
+  fetch?: typeof fetch;
+  timeoutMs?: number;
+  maxResponseBytes?: number;
+}
+
 export function createResendReleaseLockInvitationAdapter({
   apiKey,
   from,
@@ -73,7 +72,7 @@ export function createResendReleaseLockInvitationAdapter({
   fetch: fetchImpl,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
-} = {}) {
+}: ResendReleaseLockInvitationAdapterOptions = {}) {
   const key = cleanText(apiKey, 'Resend API key', 4096);
   if (/\s/.test(key)) throw new TypeError('Resend API key is invalid');
   const sender = senderIdentity(from);
@@ -81,6 +80,7 @@ export function createResendReleaseLockInvitationAdapter({
   const timeout = validateTimeout(timeoutMs);
   const responseLimit = validateResponseLimit(maxResponseBytes, 'maxResponseBytes');
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch must be injected');
+  const boundFetch: typeof fetch = fetchImpl;
   const resendOrigin = validatePinnedOrigin(RESEND_ORIGIN, /** @type {any} */ ({
     allowedHosts: RESEND_HOSTS,
     fieldName: 'Resend API origin',
@@ -112,7 +112,7 @@ export function createResendReleaseLockInvitationAdapter({
       ].join('\n'),
     });
     const response = await requestBounded(
-      /** @type {typeof fetch} */ (fetchImpl),
+      boundFetch,
       `${resendOrigin}/emails`,
       {
         method: 'POST',

@@ -88,6 +88,7 @@
  */
 
 import crypto from 'node:crypto';
+import type { KeyObject } from 'node:crypto';
 
 // Compose the FROZEN v1 issuer's canonicalizer. Imported READ-ONLY by relative
 // path to the in-repo package source — the SAME convention as
@@ -151,19 +152,15 @@ function decodeJsonSegment(seg, maxBytes) {
 }
 
 /** A non-empty string. */
-const isStr = (v) => typeof v === 'string' && v.length > 0;
+const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
 
 /** A non-empty array of non-empty strings. */
-function isStrArray(v) {
+function isStrArray(v): v is string[] {
   return Array.isArray(v) && v.length > 0 && v.every(isStr);
 }
 
-/**
- * Whole, finite, non-negative seconds-since-epoch.
- * @param {*} v
- * @returns {v is number}
- */
-function isEpochSeconds(v) {
+/** Whole, finite, non-negative seconds-since-epoch. */
+function isEpochSeconds(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 && Number.isInteger(v);
 }
 
@@ -259,7 +256,27 @@ function singleEvent(payload) {
  *   addition to the event's expires_at).
  * @returns {string} the compact SET.
  */
-export function buildEyeSet(advisory, { signer, audience, jti, iat, exp } = {}) {
+export function buildEyeSet(
+  advisory,
+  {
+    signer,
+    audience,
+    jti,
+    iat,
+    exp,
+  }: {
+    signer?: {
+      kid: string;
+      iss?: string;
+      privateKey?: KeyObject;
+      sign?: (input: string) => string;
+    };
+    audience?: string;
+    jti?: string;
+    iat?: number;
+    exp?: number;
+  } = {},
+) {
   if (!advisory || typeof advisory !== 'object') {
     throw new Error('buildEyeSet requires an advisory object');
   }
@@ -314,7 +331,22 @@ export function buildEyeSet(advisory, { signer, audience, jti, iat, exp } = {}) 
     kid: signer.kid,
   };
 
-  const payload = {
+  const payload: {
+    iss: string;
+    iat: number;
+    jti: string;
+    sub_id: string;
+    events: Record<string, {
+      status: string;
+      reason_codes: string[];
+      recommended_policy_action: string;
+      advisory_hash: string;
+      expires_at: string;
+      never_sole_gate: boolean;
+    }>;
+    aud?: string;
+    exp?: number;
+  } = {
     iss: isStr(signer.iss) ? signer.iss : signer.kid,
     iat: isEpochSeconds(iat) ? iat : Math.floor(Date.now() / 1000),
     jti: isStr(jti) ? jti : crypto.randomUUID(),
@@ -343,9 +375,12 @@ export function buildEyeSet(advisory, { signer, audience, jti, iat, exp } = {}) 
   const payloadSeg = b64uEncode(Buffer.from(canonicalize(payload), 'utf8'));
   const signingInput = `${headerSeg}.${payloadSeg}`;
 
+  // hasSignCb (checked above) guarantees signer.sign is a function in this
+  // branch, and the earlier `!hasSignCb && !signer.privateKey` guard
+  // guarantees signer.privateKey is set in the other branch.
   const signatureB64u = hasSignCb
-    ? /** @type {(input: string) => string} */ (signer.sign)(signingInput)
-    : crypto.sign(null, Buffer.from(signingInput, 'ascii'), signer.privateKey).toString('base64url');
+    ? (signer.sign as (input: string) => string)(signingInput)
+    : crypto.sign(null, Buffer.from(signingInput, 'ascii'), signer.privateKey as KeyObject).toString('base64url');
 
   return `${signingInput}.${signatureB64u}`;
 }
@@ -388,7 +423,16 @@ export function buildEyeSet(advisory, { signer, audience, jti, iat, exp } = {}) 
  * @returns {{ valid:boolean, checks:object, errors:string[], posture:object|null }}
  *   `posture` is present ONLY on valid:true and is NEVER allow/deny.
  */
-export function verifyEyeSet(setCompact, opts = {}) {
+export function verifyEyeSet(
+  setCompact,
+  opts: {
+    pinnedKeys?: Record<string, { public_key: string } | string>;
+    audience?: string;
+    requireFresh?: boolean;
+    maxAgeSec?: number;
+    now?: number;
+  } = {},
+) {
   const checks = {
     alg_is_eddsa: false,
     typ_ok: false,
@@ -400,7 +444,7 @@ export function verifyEyeSet(setCompact, opts = {}) {
     status_is_actionable: false,
     never_sole_gate_present: false,
   };
-  const errors = [];
+  const errors: string[] = [];
   const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
   const done = () => ({ valid: false, checks, errors, posture: null });
 
@@ -474,7 +518,7 @@ export function verifyEyeSet(setCompact, opts = {}) {
 
   // ── 5. required claims ────────────────────────────────────────────────────
   const event = singleEvent(payload);
-  const claimProblems = [];
+  const claimProblems: string[] = [];
   if (!isStr(payload.iss)) claimProblems.push('iss');
   if (!isEpochSeconds(payload.iat)) claimProblems.push('iat');
   if (!isStr(payload.jti)) claimProblems.push('jti');

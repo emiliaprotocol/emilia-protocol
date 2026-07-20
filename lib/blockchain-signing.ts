@@ -13,9 +13,38 @@
 const EXTERNAL_MODES = new Set(['kms', 'hsm']);
 const ETH_TX_ALGORITHM = 'secp256k1/eth-transaction';
 
-let registeredProvider = null;
+/**
+ * The viem account factories a signer's createAccount() may call. Declared with
+ * method-shorthand signatures (not arrow-typed properties) so real viem factory
+ * functions — whose parameters are narrower (e.g. `Hex`) than the plain `string`
+ * used here — remain assignable at the call site in blockchain.js.
+ */
+export interface BlockchainAccountFactories {
+  privateKeyToAccount?(privateKey: string): unknown;
+  toAccount?(source: {
+    address?: string;
+    signTransaction: (transaction: unknown, options?: unknown) => Promise<unknown>;
+  }): unknown;
+}
 
-function normalizePrivateKey(privateKey) {
+export interface BlockchainSignerMetadata {
+  provider: string;
+  keyId: string;
+  algorithm: string;
+  address: string | null;
+}
+
+export interface BlockchainSigner {
+  mode: string;
+  keyId: string;
+  getAlgorithm: () => string;
+  getMetadata: () => BlockchainSignerMetadata;
+  createAccount: (factories: BlockchainAccountFactories) => unknown;
+}
+
+let registeredProvider: BlockchainSigner | null = null;
+
+function normalizePrivateKey(privateKey?: string): string {
   const normalized = String(privateKey || '').replace(/^0x/i, '');
   if (!/^[0-9a-f]{64}$/i.test(normalized)) {
     throw new Error('EP_WALLET_PRIVATE_KEY must be a 32-byte hexadecimal secp256k1 key');
@@ -23,14 +52,22 @@ function normalizePrivateKey(privateKey) {
   return `0x${normalized}`;
 }
 
-function assertAccountFactory(factory, name) {
+function assertAccountFactory<T>(factory: T, name: string): asserts factory is NonNullable<T> {
   if (typeof factory !== 'function') throw new Error(`${name} account factory is required`);
 }
 
 /**
  * @param {{ mode: string, keyId: string, address?: string|null }} params
  */
-function metadata({ mode, keyId, address = null }) {
+function metadata({
+  mode,
+  keyId,
+  address = null,
+}: {
+  mode: string;
+  keyId: string;
+  address?: string | null;
+}): BlockchainSignerMetadata {
   return Object.freeze({
     provider: mode,
     keyId,
@@ -48,7 +85,13 @@ function metadata({ mode, keyId, address = null }) {
  * @param {string} [options.keyId]
  * @returns {Object}
  */
-export function createEnvBlockchainSigner({ privateKey, keyId = 'env:EP_WALLET_PRIVATE_KEY' } = {}) {
+export function createEnvBlockchainSigner({
+  privateKey,
+  keyId = 'env:EP_WALLET_PRIVATE_KEY',
+}: {
+  privateKey?: string;
+  keyId?: string;
+} = {}): BlockchainSigner {
   const normalized = normalizePrivateKey(privateKey);
   return {
     mode: 'env',
@@ -79,7 +122,12 @@ export function createExternalBlockchainSigner({
   keyId,
   address,
   signTransaction,
-} = {}) {
+}: {
+  mode?: string;
+  keyId?: string;
+  address?: string;
+  signTransaction?: (transaction: unknown, options?: unknown) => Promise<unknown>;
+} = {}): BlockchainSigner {
   if (!EXTERNAL_MODES.has(mode)) throw new Error('external blockchain signer mode must be "kms" or "hsm"');
   if (!keyId || typeof keyId !== 'string') throw new Error('external blockchain signer requires a stable keyId');
   if (!/^0x[0-9a-f]{40}$/i.test(String(address || ''))) {
@@ -105,7 +153,7 @@ export function createExternalBlockchainSigner({
 }
 
 /** Register the process-wide external provider during deployment boot. */
-export function registerBlockchainSigner(provider) {
+export function registerBlockchainSigner(provider: BlockchainSigner): BlockchainSigner {
   if (!provider || !EXTERNAL_MODES.has(provider.mode) || typeof provider.createAccount !== 'function') {
     throw new Error('registerBlockchainSigner requires a KMS/HSM provider with createAccount()');
   }
@@ -126,30 +174,32 @@ export function clearBlockchainSigner() {
  * Resolve the configured provider. External modes never fall back to an env
  * key, even if one is present, because that would silently defeat custody.
  */
-export function resolveBlockchainSigner(config = {}) {
+export function resolveBlockchainSigner(
+  config: { signingMode?: string; signingKeyId?: string; walletPrivateKey?: string } = {},
+): BlockchainSigner | null {
   const mode = config.signingMode || 'env';
   if (EXTERNAL_MODES.has(mode)) {
     if (!config.signingKeyId) {
-      const error = /** @type {Error & {code: string}} */ (new Error('EP_BLOCKCHAIN_SIGNING_KEY_ID is required for external blockchain custody'));
+      const error = new Error('EP_BLOCKCHAIN_SIGNING_KEY_ID is required for external blockchain custody') as Error & { code: string };
       error.code = 'blockchain_signer_key_id_required';
       throw error;
     }
     if (!registeredProvider || registeredProvider.mode !== mode) {
-      const error = /** @type {Error & {code: string}} */ (new Error(
+      const error = new Error(
         `EP_BLOCKCHAIN_SIGNING_MODE=${mode} but no matching blockchain signer is registered; refusing env-key fallback`,
-      ));
+      ) as Error & { code: string };
       error.code = 'blockchain_signer_not_registered';
       throw error;
     }
     if (config.signingKeyId && registeredProvider.keyId !== config.signingKeyId) {
-      const error = /** @type {Error & {code: string}} */ (new Error('registered blockchain signer key id does not match EP_BLOCKCHAIN_SIGNING_KEY_ID'));
+      const error = new Error('registered blockchain signer key id does not match EP_BLOCKCHAIN_SIGNING_KEY_ID') as Error & { code: string };
       error.code = 'blockchain_signer_key_mismatch';
       throw error;
     }
     return registeredProvider;
   }
   if (mode !== 'env') {
-    const error = /** @type {Error & {code: string}} */ (new Error(`Unsupported EP_BLOCKCHAIN_SIGNING_MODE=${mode}`));
+    const error = new Error(`Unsupported EP_BLOCKCHAIN_SIGNING_MODE=${mode}`) as Error & { code: string };
     error.code = 'blockchain_signer_mode_invalid';
     throw error;
   }

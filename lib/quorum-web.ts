@@ -53,7 +53,7 @@ export async function verifyQuorum(quorum, opts = {}) {
     within_window: false,
   };
   const members = Array.isArray(quorum?.members) ? quorum.members : null;
-  const memberResults = [];
+  const memberResults: Array<{ approver: string | null; role: string | null; valid: boolean }> = [];
 
   try {
     const policy = quorum?.policy;
@@ -78,7 +78,7 @@ export async function verifyQuorum(quorum, opts = {}) {
 
     let allSigsValid = true;
     let allBound = true;
-    const issuedAts = [];
+    const issuedAts: Array<number | null> = [];
     for (const m of members) {
       const r = await verifyWebAuthnSignoff(m?.signoff, m?.approver_public_key, opts);
       memberResults.push({ approver: m?.signoff?.context?.approver ?? null, role: m?.role ?? null, valid: !!r.valid });
@@ -130,7 +130,7 @@ export async function verifyQuorum(quorum, opts = {}) {
       const seqRolesOk = eligible.every((e, idx) => members[idx]?.role === e.role
         && members[idx]?.signoff?.context?.approver === e.approver);
       const times = issuedAts.slice(0, eligible.length);
-      const timesOk = times.every((t, idx) => t !== null && (idx === 0 || t > /** @type {number} */ (times[idx - 1])));
+      const timesOk = times.every((t, idx) => t !== null && (idx === 0 || t > (times[idx - 1] as number)));
       checks.order_satisfied = members.length >= eligible.length && seqRolesOk && timesOk;
     } else {
       checks.order_satisfied = true;

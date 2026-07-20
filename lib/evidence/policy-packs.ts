@@ -20,9 +20,30 @@
 import crypto from 'node:crypto';
 import { canonicalize } from '../canonical-json.js';
 
-const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const sha256hex = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 
-const packs = {
+interface PolicyPackRequiredEdge {
+  from_type: string;
+  rel: string;
+  to_type: string;
+}
+
+interface PolicyPack {
+  policy_id: string;
+  reliance_purpose: string;
+  action_family: string;
+  requirement: string;
+  freshness_sec: Record<string, number>;
+  revocation_required: string[];
+  required_edges: PolicyPackRequiredEdge[];
+  trust_anchor_slots: string[];
+  // Stamped onto each pack after construction (see the freeze loop below) —
+  // optional here because a pack literal is hashed BEFORE it is stamped.
+  policy_hash?: string;
+  profile_hash?: string;
+}
+
+const packs: Record<string, PolicyPack> = {
   'ep:pack:wire-transfer:v1': {
     policy_id: 'ep:pack:wire-transfer:v1',
     reliance_purpose: 'money_movement',

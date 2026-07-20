@@ -127,6 +127,17 @@ export async function POST(request) {
     }, { status: 503 });
   }
 
+  if (!store) {
+    // Defense in depth: getGuardedConsumptionStore() is only meant to throw
+    // (caught above) or resolve to a usable store, never resolve to null/undefined.
+    // Fail closed anyway rather than dereference an absent store.
+    logger.error('[guarded] consumption store resolved empty — failing closed', {});
+    return NextResponse.json({
+      ...receiptChallenge(action, 'Replay-defense store is unavailable; the action cannot be authorized right now.'),
+      rejected: { ok: false, reason: 'consumption_store_unavailable' },
+    }, { status: 503 });
+  }
+
   let reserved;
   try {
     reserved = await store.reserve(key);

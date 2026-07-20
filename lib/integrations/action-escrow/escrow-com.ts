@@ -224,31 +224,31 @@ export function escrowReferenceForEffect(effectReference) {
   return `ep-${digest.slice(0, 21)}`;
 }
 
-/**
- * @typedef {{
- *   effectReference: string,
- *   providerReference: string,
- *   currency: string,
- *   description: string,
- *   buyerCustomer: string,
- *   sellerCustomer: string,
- *   milestones: Array<{
- *     reference: string,
- *     title: string,
- *     description: string,
- *     amount: string|null,
- *     dueDate: string,
- *     inspectionPeriodSeconds: number,
- *   }>,
- * }} EscrowCreateRequest
- */
+type EscrowCreateRequest = {
+  effectReference: string;
+  providerReference: string;
+  currency: string;
+  description: string;
+  buyerCustomer: string;
+  sellerCustomer: string;
+  milestones: Array<{
+    reference: string;
+    title: string;
+    description: string;
+    amount: string | null;
+    dueDate: string;
+    inspectionPeriodSeconds: number;
+  }>;
+};
 
 /**
  * @param {*} request
  * @param {string} accountEmail
- * @returns {{ ok: true, value: EscrowCreateRequest } | { ok: false, reason_code: string }}
  */
-function validateCreateRequest(request, accountEmail) {
+function validateCreateRequest(
+  request,
+  accountEmail,
+): { ok: true; value: EscrowCreateRequest } | { ok: false; reason_code: string } {
   if (!isRecord(request) || !validateEffectReference(request.effectReference)) {
     return { ok: false, reason_code: 'INVALID_EFFECT_REFERENCE' };
   }
@@ -267,7 +267,7 @@ function validateCreateRequest(request, accountEmail) {
   }
 
   const references = new Set();
-  const milestones = [];
+  const milestones: EscrowCreateRequest['milestones'] = [];
   for (const item of request.milestones) {
     const amount = canonicalMoney(item?.amount);
     if (!isRecord(item)
@@ -353,7 +353,7 @@ function transactionMatchesRequest(transaction, request, accountEmail) {
   }
 
   if (transaction.milestones.length !== request.milestones.length) return false;
-  const actualByReference = new Map(
+  const actualByReference = new Map<string | null, EscrowMilestone>(
     transaction.milestones.map((milestone) => [milestone.reference, milestone]),
   );
   return request.milestones.every((expected) => {
@@ -435,6 +435,47 @@ function releaseStateResult(environment, operation, request, transaction, milest
   );
 }
 
+type EscrowTransaction = NonNullable<ReturnType<typeof normalizeTransaction>>;
+
+/** Normalized milestone shape produced by {@link normalizeMilestone}. */
+interface EscrowMilestone {
+  provider_item_id: string;
+  reference: string | null;
+  title: string;
+  description: string;
+  inspection_period_seconds: number | null;
+  schedules: Array<{
+    amount: string;
+    payer_customer: string;
+    beneficiary_customer: string;
+    due_date: string | null;
+  }>;
+}
+
+/** Discriminated result of a single Escrow.com HTTP call. */
+type EscrowCallResult =
+  | { kind: 'invalid'; status: number | null }
+  | { kind: 'failure'; reason: 'timeout' | 'network' | 'response_too_large' | 'invalid_response' }
+  | { kind: 'not_found'; status: 404 }
+  | { kind: 'http_error'; status: number }
+  | { kind: 'ok'; status: number; value: any };
+
+/** Result of resolving a transaction locator to a normalized transaction. */
+type FetchTransactionResult =
+  | Exclude<EscrowCallResult, { kind: 'ok' }>
+  | { kind: 'ok'; status: number; transaction: EscrowTransaction };
+
+interface EscrowComAdapterOptions {
+  environment: keyof typeof ESCROW_ORIGINS;
+  email: string;
+  apiKey: string;
+  fetch: typeof fetch;
+  customerDiligence?: unknown;
+  claimEffectBinding: (binding: object) => Promise<boolean>;
+  timeoutMs?: number;
+  maxResponseBytes?: number;
+}
+
 /**
  * Escrow.com REST adapter. It models Escrow.com as an external provider and
  * never represents EMILIA as the holder or transmitter of funds.
@@ -449,17 +490,23 @@ function releaseStateResult(environment, operation, request, transaction, milest
  * @param {number} [opts.timeoutMs]
  * @param {number} [opts.maxResponseBytes]
  */
-export function createEscrowComAdapter({
-  environment,
-  email,
-  apiKey,
-  fetch: fetchImpl,
-  customerDiligence,
-  claimEffectBinding,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-  maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
-} = {}) {
-  if (!Object.hasOwn(ESCROW_ORIGINS, /** @type {PropertyKey} */ (environment))) {
+export function createEscrowComAdapter(opts?: EscrowComAdapterOptions) {
+  // The options object itself is optional (callers may invoke with zero
+  // arguments); every field within it is not. The fallback below asserts an
+  // empty object into the required shape purely to satisfy the destructure —
+  // the guards immediately below throw on every field that is actually
+  // missing or invalid, so no unchecked value ever escapes this block.
+  const {
+    environment,
+    email,
+    apiKey,
+    fetch: fetchImpl,
+    customerDiligence,
+    claimEffectBinding,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+  } = opts ?? ({} as EscrowComAdapterOptions);
+  if (!Object.hasOwn(ESCROW_ORIGINS, environment)) {
     throw new TypeError('environment must be sandbox or production');
   }
   if (!validCustomer(email) || email === 'me'
@@ -470,9 +517,7 @@ export function createEscrowComAdapter({
   if (typeof claimEffectBinding !== 'function') {
     throw new TypeError('claimEffectBinding must be a durable fail-closed function');
   }
-  const origin = validatePinnedOrigin(ESCROW_ORIGINS[
-    /** @type {'sandbox'|'production'} */ (environment)
-  ], /** @type {*} */ ({
+  const origin = validatePinnedOrigin(ESCROW_ORIGINS[environment], /** @type {*} */ ({
     allowedHosts: ESCROW_HOSTS,
     fieldName: 'Escrow.com API origin',
   }));
@@ -480,18 +525,10 @@ export function createEscrowComAdapter({
   const responseLimit = validateResponseLimit(maxResponseBytes, 'maxResponseBytes');
   const authorization = `Basic ${Buffer.from(`${email}:${apiKey}`, 'utf8').toString('base64')}`;
 
-  /**
-   * @param {string} path
-   * @param {{ method?: string, body?: object }} [opts]
-   * @returns {Promise<
-   *   { kind: 'invalid', status: number|null }
-   *   | { kind: 'failure', reason: 'timeout'|'network'|'response_too_large'|'invalid_response' }
-   *   | { kind: 'not_found', status: 404 }
-   *   | { kind: 'http_error', status: number }
-   *   | { kind: 'ok', status: number, value: any }
-   * >}
-   */
-  async function callJson(path, { method = 'GET', body } = {}) {
+  async function callJson(
+    path: string,
+    { method = 'GET', body }: { method?: string; body?: unknown } = {},
+  ): Promise<EscrowCallResult> {
     const serialized = body === undefined ? undefined : JSON.stringify(body);
     if (serialized !== undefined && Buffer.byteLength(serialized, 'utf8') > MAX_REQUEST_BYTES) {
       return { kind: 'invalid', status: null };
@@ -528,11 +565,9 @@ export function createEscrowComAdapter({
       : { kind: 'invalid', status: response.status };
   }
 
-  /**
-   * @param {{ type: string, value: string }} locator
-   * @returns {Promise<{ kind: string, status?: number|null, value?: any, reason?: string, transaction?: object }>}
-   */
-  async function fetchTransaction(locator) {
+  async function fetchTransaction(
+    locator: { type: string; value: string },
+  ): Promise<FetchTransactionResult> {
     const path = locator.type === 'id'
       ? `/transaction/${encodeURIComponent(locator.value)}`
       : `/transaction/reference/${encodeURIComponent(locator.value)}`;
@@ -610,7 +645,7 @@ export function createEscrowComAdapter({
   }
 
   async function createTransaction(input) {
-    const validation = validateCreateRequest(input, /** @type {string} */ (email));
+    const validation = validateCreateRequest(input, email);
     if (!validation.ok) {
       return closedResult(environment, 'refused', {
         operation: 'create_transaction',
@@ -692,9 +727,7 @@ export function createEscrowComAdapter({
     }
     let effectClaim;
     try {
-      effectClaim = await (/** @type {(binding: object) => Promise<boolean>} */ (
-        claimEffectBinding
-      ))(deepFreezeJson({
+      effectClaim = await claimEffectBinding(deepFreezeJson({
         effect_reference: request.effectReference,
         transaction_id: request.transactionId,
         milestone_id: request.milestoneId,
@@ -744,7 +777,7 @@ export function createEscrowComAdapter({
     const isAuthenticatedBuyer = before.transaction.parties.some(
       (party) => party.role === 'buyer'
         && comparableCustomer(party.customer, email)
-          === (/** @type {string} */ (email)).toLowerCase(),
+          === email.toLowerCase(),
     );
     if (!isAuthenticatedBuyer) {
       return closedResult(environment, 'provider_action_required', {
@@ -793,7 +826,7 @@ export function createEscrowComAdapter({
       effect_reference: request.effectReference,
       transaction_id: request.transactionId,
       milestone_id: request.milestoneId,
-      http_status: /** @type {{ status?: number|null }} */ (attempted).status ?? null,
+      http_status: 'status' in attempted ? (attempted.status ?? null) : null,
     });
   }
 

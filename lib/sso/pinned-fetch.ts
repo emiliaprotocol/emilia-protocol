@@ -21,18 +21,49 @@
 // surface discover()/exchangeCode() and jose's remote-JWKS fetch consume.
 
 import https from 'node:https';
+import type * as dnsPromises from 'node:dns/promises';
 import { validateSsoProviderUrl } from './url-policy.js';
 
 const MAX_RESPONSE_BYTES = 1024 * 1024; // discovery/JWKS/token responses are tiny; cap defensively
 const DEFAULT_TIMEOUT_MS = 10_000;
 
+// Same shape as node:dns/promises' `lookup` — the only thing tests inject.
+type PromiseLookupFn = typeof dnsPromises.lookup;
+
+interface PinnedFetchInit {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string | Buffer | null;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  // Accepted for fetch-API-call-site compatibility (callers pass 'error' to
+  // document the SSRF posture they intend) but never read: this shim never
+  // follows redirects regardless of the value — a 3xx always surfaces as a
+  // non-2xx status, per the module comment above.
+  redirect?: 'error' | 'manual' | 'follow';
+}
+
+interface PinnedFetchOpts {
+  lookup?: PromiseLookupFn;
+}
+
+interface PinnedFetchResponse {
+  ok: boolean;
+  status: number;
+  json(): Promise<any>;
+  text(): Promise<string>;
+}
+
 /**
- * @param {string|URL} input   the URL to fetch (tenant-influenced, re-validated here)
- * @param {object} [init]      fetch-like init: { method, headers, body, signal, timeoutMs }
- * @param {object} [opts]      { lookup } — injectable DNS lookup (tests only)
- * @returns {Promise<{ ok:boolean, status:number, json():Promise<any>, text():Promise<string> }>}
+ * @param input   the URL to fetch (tenant-influenced, re-validated here)
+ * @param init    fetch-like init: { method, headers, body, signal, timeoutMs }
+ * @param opts    { lookup } — injectable DNS lookup (tests only)
  */
-export async function safePinnedFetch(input, init = {}, { lookup } = {}) {
+export async function safePinnedFetch(
+  input: string | URL,
+  init: PinnedFetchInit = {},
+  { lookup }: PinnedFetchOpts = {},
+): Promise<PinnedFetchResponse> {
   const target = input instanceof URL ? input.href : String(input);
 
   // Validate + resolve in one shot; get back the exact public IP to pin to.
@@ -61,7 +92,7 @@ export async function safePinnedFetch(input, init = {}, { lookup } = {}) {
       },
       (res) => {
         const status = res.statusCode || 0;
-        const chunks = [];
+        const chunks: Buffer[] = [];
         let total = 0;
         res.on('data', (c) => {
           total += c.length;

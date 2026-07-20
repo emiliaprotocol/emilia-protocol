@@ -15,17 +15,96 @@ import { shortClaimId } from './ids.js';
 import { putPublishedPage } from './page-store.js';
 import { logger } from '../logger.js';
 
+// Fields read off the intake record. `engagement.intake` is preferred, but
+// callers may pass a flattened engagement that carries these fields directly
+// (see `const intake = engagement.intake || engagement;` below).
+type Intake = {
+  company?: string;
+  website?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_role?: string;
+  product_description?: string;
+  tier_preference?: string;
+  tier?: string;
+  buyer_name?: string;
+};
+
+type Engagement = Intake & {
+  intake?: Intake;
+  created_at?: string;
+  engagement_id: string;
+};
+
+// One answerer output (shape produced by answerAll() / consumed by the
+// verifier and the trust-page templates).
+type AnswerItem = {
+  id: string;
+  question: string;
+  section: string;
+  status: string;
+  answer: unknown;
+  sources: unknown;
+  confidence: unknown;
+  escalation_reason?: string | null;
+};
+
+type VerificationResult = {
+  decision: string;
+  passRate: number;
+  counts: { passed: number; failed: number };
+};
+
+// mintPolicies() output — a minted, signed policy document.
+type PolicyDoc = {
+  doc_id: string;
+  title: string;
+  filename: string;
+  content: string;
+  content_hash: string;
+  bytes: number;
+};
+
+type RawClaim = {
+  id: string;
+  title: string;
+  category: string;
+  source_file: string;
+  summary: string;
+  bullets: string[];
+  content_hash: string;
+  policy_version: string;
+};
+
+type SignedClaim = RawClaim & {
+  claim_id: string;
+  payload_hash: string;
+  signed_at: string;
+  signer: string;
+  signature: string;
+};
+
 /**
- * @param {object} opts
- * @param {object} opts.engagement   the engagement record (intake + ids)
- * @param {Array}  opts.answers      answerer outputs
- * @param {object} opts.verification verifyEngagement() result
- * @param {Array}  opts.policies     mintPolicies() result (each has .content)
- * @param {string} opts.slug
- * @param {number} [opts.expiryMonths=6]
- * @returns {Promise<{ slug, claims, expires_at, published_at }>}
+ * @param opts.engagement   the engagement record (intake + ids)
+ * @param opts.answers      answerer outputs
+ * @param opts.verification verifyEngagement() result
+ * @param opts.policies     mintPolicies() result (each has .content)
  */
-export async function mintTrustPage({ engagement, answers, verification, policies, slug, expiryMonths = 6 }) {
+export async function mintTrustPage({
+  engagement,
+  answers,
+  verification,
+  policies,
+  slug,
+  expiryMonths = 6,
+}: {
+  engagement: Engagement;
+  answers: AnswerItem[];
+  verification: VerificationResult;
+  policies: PolicyDoc[];
+  slug: string;
+  expiryMonths?: number;
+}): Promise<{ slug: string; claims: SignedClaim[]; expires_at: string; published_at: string }> {
   const intake = engagement.intake || engagement;
   const key = getSigningKey();
   const now = new Date();
@@ -55,7 +134,7 @@ export async function mintTrustPage({ engagement, answers, verification, policie
   };
 
   // ── Assemble claims ──
-  const rawClaims = [];
+  const rawClaims: RawClaim[] = [];
 
   // 1) Questionnaire response claim
   rawClaims.push({
@@ -161,7 +240,7 @@ export async function mintTrustPage({ engagement, answers, verification, policie
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function sectionHeadings(content) {
+function sectionHeadings(content: string): string[] {
   return String(content || '')
     .split('\n')
     .filter((l) => /^##\s+/.test(l))
@@ -169,12 +248,12 @@ function sectionHeadings(content) {
     .map((l) => l.replace(/^##\s+/, '').replace(/^[\d.]+\s*/, '').trim());
 }
 
-function truncate(s, n) {
+function truncate(s: string, n: number): string {
   const str = String(s || '');
   return str.length > n ? `${str.slice(0, n - 1)}…` : str;
 }
 
-function addMonths(date, months) {
+function addMonths(date: Date, months: number): Date {
   const d = new Date(date);
   d.setMonth(d.getMonth() + months);
   return d;

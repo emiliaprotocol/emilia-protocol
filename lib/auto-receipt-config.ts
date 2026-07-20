@@ -140,7 +140,18 @@ export async function getAutoReceiptConfig(entityId) {
  * @param {'standard'|'anonymous'} [opts.privacy_mode] - Privacy mode.
  * @returns {Promise<AutoReceiptConfig>} The updated configuration.
  */
-export async function setAutoReceiptConfig(entityId, { enabled, redact_fields = [], privacy_mode = DEFAULT_PRIVACY_MODE } = {}) {
+export async function setAutoReceiptConfig(
+  entityId: string,
+  {
+    enabled,
+    redact_fields = [],
+    privacy_mode = DEFAULT_PRIVACY_MODE,
+  }: {
+    enabled?: boolean;
+    redact_fields?: string[];
+    privacy_mode?: 'standard' | 'anonymous';
+  } = {},
+) {
   if (!entityId) {
     throw new Error('entityId is required');
   }

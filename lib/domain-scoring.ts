@@ -45,7 +45,7 @@ const BEHAVIOR_WEIGHTS = {
  * @param {string[]|null} domains - Specific domains to compute. If null, computes all.
  * @returns {Promise<Object>} { entity_id, domains: { [domain]: { confidence, evidence_count, completion_rate, dispute_rate } } }
  */
-export async function getDomainScores(entityId, domains = null) {
+export async function getDomainScores(entityId, domains: string[] | null = null) {
   const supabase = getServiceClient();
 
   const targetDomains = domains?.length ? domains : KNOWN_DOMAINS;

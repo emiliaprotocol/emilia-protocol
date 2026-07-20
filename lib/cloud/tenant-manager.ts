@@ -112,7 +112,7 @@ export async function updateTenant(tenantId, updates) {
   const supabase = getServiceClient();
 
   // Only allow safe fields
-  const allowed = {};
+  const allowed: { name?: string; plan?: string; settings?: Record<string, unknown> } = {};
   if (updates.name !== undefined) allowed.name = updates.name;
   if (updates.plan !== undefined) allowed.plan = updates.plan;
   if (updates.settings !== undefined) allowed.settings = updates.settings;
@@ -281,7 +281,7 @@ export function validateTenantApiKeyPermissions(permissions) {
     };
   }
 
-  const normalized = [];
+  const normalized: string[] = [];
   for (const permission of permissions) {
     if (typeof permission !== 'string' || !TENANT_API_KEY_PERMISSION_SET.has(permission)) {
       return {
@@ -314,7 +314,7 @@ export async function generateApiKey(
   environment = 'production',
   name,
   permissions,
-  { expiresAt, issuedBy } = {},
+  { expiresAt, issuedBy }: { expiresAt?: string; issuedBy?: string } = {},
 ) {
   let normalizedPermissions;
   if (permissions !== undefined) {

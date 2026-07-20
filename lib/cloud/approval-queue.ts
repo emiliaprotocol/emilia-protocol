@@ -3,7 +3,33 @@
 // The service-role client bypasses RLS, so receipt ownership is established
 // before timeline loading and re-checked while replaying every response.
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { findBoundSignoffDecision } from '../guard-signoff-binding.js';
+
+/** Minimal logger surface this module actually calls; callers may pass any logger. */
+interface ApprovalQueueLogger {
+  warn?: (...args: unknown[]) => void;
+}
+
+/** Console-safe projection of a single fixed high-risk payment approval. */
+interface ApprovalQueueEntry {
+  receipt_id: string;
+  action_hash: string | null;
+  action_caid: string | null;
+  action_type: string;
+  amount: number | null;
+  currency: string | null;
+  counterparty_name: string | null;
+  target_resource_id: string | null;
+  payment_destination_hash: string | null;
+  created_at: string | null;
+  expires_at: string | null;
+  status: 'pending' | 'consumed' | 'rejected' | 'approved' | 'expired';
+  signoff_id: string | null;
+  approver_id: string | null;
+  review_path: string | null;
+  consumed_at: string | null;
+}
 
 export const APPROVAL_EVENT_LIMIT = 500;
 export const APPROVAL_RECEIPT_LIMIT = 100;
@@ -65,7 +91,12 @@ function requestForDecision(requestEvents, decisionEvent) {
  * @param {string} tenantId
  * @param {Date|string|number} [now]
  */
-export function replayApprovalQueue(events, allowedReceiptIds, tenantId, now = Date.now()) {
+export function replayApprovalQueue(
+  events,
+  allowedReceiptIds,
+  tenantId,
+  now: Date | string | number = Date.now(),
+) {
   if (!validTenantId(tenantId)) return [];
 
   const allowed = new Set(Array.isArray(allowedReceiptIds) ? allowedReceiptIds : []);
@@ -78,7 +109,7 @@ export function replayApprovalQueue(events, allowedReceiptIds, tenantId, now = D
   }
 
   const nowMs = timestamp(now);
-  const requests = [];
+  const requests: ApprovalQueueEntry[] = [];
   for (const [receiptId, receiptEvents] of byReceipt) {
     const eventsAsc = [...receiptEvents]
       .sort((a, b) => String(a?.created_at).localeCompare(String(b?.created_at)));
@@ -133,7 +164,7 @@ export function replayApprovalQueue(events, allowedReceiptIds, tenantId, now = D
     const expiresAt = safeString(requestState.expires_at) || safeString(base.expires_at);
     const expiresAtMs = timestamp(expiresAt);
 
-    let status = 'pending';
+    let status: ApprovalQueueEntry['status'] = 'pending';
     if (consumed) status = 'consumed';
     else if (rejected) status = 'rejected';
     else if (approved) status = 'approved';
@@ -184,6 +215,11 @@ export async function loadTenantApprovalQueue({
   tenantId,
   log,
   now = Date.now(),
+}: {
+  supabase?: SupabaseClient;
+  tenantId?: string;
+  log?: ApprovalQueueLogger;
+  now?: Date | string | number;
 } = {}) {
   if (!supabase || typeof supabase.from !== 'function') {
     return { approvals: [], error: 'Approval storage unavailable.' };

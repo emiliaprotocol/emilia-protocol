@@ -11,6 +11,127 @@ import { getRpConfig } from '../webauthn.js';
 import { decisionsToMembers } from '../signoff/attestation-members.js';
 import { quorumGate } from '../signoff/quorum-session.js';
 
+// A row from the `policy_rollouts` table as selected by the rollout route
+// (rollout_id, policy_id, version, environment, strategy, canary_pct,
+// metadata, authorization_receipt_id) — see
+// app/api/cloud/policies/[policyId]/rollout/route.js.
+interface PolicyRolloutActiveRow {
+  rollout_id: string;
+  policy_id: string;
+  version: number;
+  environment: string;
+  strategy: string;
+  canary_pct?: number | null;
+  metadata?: Record<string, unknown> | null;
+  authorization_receipt_id?: string | null;
+}
+
+interface PolicyRolloutQuorumApprover {
+  role: string;
+  approver: string;
+}
+
+// The materialized EP-QUORUM-v1 policy shape produced by
+// buildPolicyRolloutQuorumPolicy and consumed by quorumGate/decisionsToMembers.
+interface PolicyRolloutQuorumPolicy {
+  mode: 'threshold' | 'ordered';
+  required: number;
+  approvers: PolicyRolloutQuorumApprover[];
+  distinct_humans: boolean;
+  window_sec: number;
+}
+
+// The inputs verifyPolicyRolloutEvidenceShape needs to bind a stored
+// authorization receipt to the exact rollout being activated. Mirrors the
+// `expected` object built in app/api/cloud/policies/[policyId]/rollout/route.js.
+interface PolicyRolloutEvidenceExpected {
+  tenantId: string;
+  executingKeyId: string;
+  policyId: string;
+  policyKey: string;
+  version: number;
+  policyRules: unknown;
+  policyMode: string;
+  policyStatus: string;
+  environment: string;
+  strategy: string;
+  canaryPct?: number | null;
+  metadata?: Record<string, unknown> | null;
+  beforeState: unknown;
+  afterState: unknown;
+  receiptId?: string;
+  quorumPolicy?: PolicyRolloutQuorumPolicy | null;
+  now?: number;
+}
+
+type PolicyRolloutFailure = {
+  ok: false;
+  status: number;
+  code: string;
+  detail: string;
+};
+
+// The stored `audit_events` rows (guard.trust_receipt.created/consumed,
+// guard.signoff.approved/rejected) have no formal schema anywhere in this
+// codebase yet — they are genuinely untyped JSON payloads at this stage of
+// the migration, so createdEvent/created/action/approvals/approved are `any`
+// by design rather than a suppressed error.
+interface PolicyRolloutQuorumEvidence {
+  ok: true;
+  createdEvent: any;
+  created: any;
+  action: any;
+  approvals: any[];
+  quorumPolicy: PolicyRolloutQuorumPolicy;
+  actionHash: string;
+}
+
+interface PolicyRolloutSingleEvidence {
+  ok: true;
+  createdEvent: any;
+  created: any;
+  action: any;
+  approved: any;
+  // Absent (rather than untyped) on the single-approval branch so that
+  // `shaped.quorumPolicy` type-checks as a discriminant across both success
+  // shapes without a cast.
+  quorumPolicy?: undefined;
+  actionHash: string;
+}
+
+type PolicyRolloutEvidenceResult =
+  | PolicyRolloutFailure
+  | PolicyRolloutQuorumEvidence
+  | PolicyRolloutSingleEvidence;
+
+interface PolicyRolloutDependencies {
+  getRpConfig?: typeof getRpConfig;
+  deriveSignoffUserVerification?: typeof deriveSignoffUserVerification;
+  resolveGuardAuthority?: typeof resolveGuardAuthority;
+  quorumGate?: typeof quorumGate;
+}
+
+// buildPolicyRolloutReceiptRequest only forwards the quorum policy opaquely
+// into the receipt payload (it never reads a field off it), and the org
+// template's own quorum builder (buildPolicyRolloutQuorumPolicy, below)
+// widens `mode` to `string` rather than the stricter literal union — so this
+// is intentionally the loose shape actually produced at the call site, not
+// the strict PolicyRolloutQuorumPolicy the evidence-shape checks use.
+type PolicyRolloutReceiptRequestInput = Omit<PolicyRolloutEvidenceExpected, 'receiptId' | 'now' | 'quorumPolicy'> & {
+  quorumPolicy?: Record<string, unknown> | null;
+};
+
+interface PolicyRolloutQuorumAuthorityMember {
+  authority_id: string;
+  approver_id: string;
+  credential_id: string | null;
+  assurance_class: string | null;
+  authority_check: string;
+  action_scope: string;
+  role: string | null;
+  user_verification: string;
+}
+
 export const POLICY_ROLLOUT_ACTION_TYPE = 'policy_rollout';
 export const POLICY_ROLLOUT_EXECUTING_SYSTEM = 'emilia.cloud.policy_rollout';
 export const POLICY_ROLLOUT_RECEIPT_TTL_SEC = 15 * 60;
@@ -39,7 +160,7 @@ export function policyRolloutTargetResource(policyKey) {
   return `policy:${policyKey}`;
 }
 
-export function buildPolicyRolloutBeforeState(activeRollouts = []) {
+export function buildPolicyRolloutBeforeState(activeRollouts: PolicyRolloutActiveRow[] = []) {
   const normalized = (activeRollouts || []).map((row) => ({
     rollout_id: row.rollout_id,
     policy_id: row.policy_id,
@@ -96,7 +217,7 @@ export function buildPolicyRolloutReceiptRequest({
   beforeState,
   afterState,
   quorumPolicy = null,
-}) {
+}: PolicyRolloutReceiptRequestInput) {
   return {
     organization_id: tenantId,
     action_type: POLICY_ROLLOUT_ACTION_TYPE,
@@ -211,7 +332,7 @@ export function validatePolicyRolloutInput(body, { requireAuthorization = false 
   return null;
 }
 
-function failure(status, code, detail) {
+function failure(status: number, code: string, detail: string): PolicyRolloutFailure {
   return { ok: false, status, code, detail };
 }
 
@@ -233,7 +354,7 @@ export function verifyPolicyRolloutEvidenceShape(events, {
   receiptId,
   quorumPolicy = null,
   now = Date.now(),
-}) {
+}): PolicyRolloutEvidenceResult {
   if (!Array.isArray(events)) {
     return failure(503, 'rollout_authorization_unavailable', 'Could not load Accountable Signoff evidence');
   }
@@ -358,12 +479,7 @@ export function verifyPolicyRolloutEvidenceShape(events, {
  *   supabase: object,
  *   events: object[],
  *   expected: object,
- *   dependencies?: {
- *     getRpConfig?: typeof getRpConfig,
- *     deriveSignoffUserVerification?: typeof deriveSignoffUserVerification,
- *     resolveGuardAuthority?: typeof resolveGuardAuthority,
- *     quorumGate?: typeof quorumGate
- *   }
+ *   dependencies?: PolicyRolloutDependencies
  * }} input
  */
 export async function verifyPolicyRolloutAuthorization({
@@ -371,6 +487,11 @@ export async function verifyPolicyRolloutAuthorization({
   events,
   expected,
   dependencies = {},
+}: {
+  supabase: any;
+  events: any;
+  expected: any;
+  dependencies?: PolicyRolloutDependencies;
 }) {
   const shaped = verifyPolicyRolloutEvidenceShape(events, expected);
   if (!shaped.ok) return shaped;
@@ -425,7 +546,7 @@ export async function verifyPolicyRolloutAuthorization({
       return failure(403, 'quorum_not_satisfied', 'The policy-rollout quorum could not be cryptographically re-verified');
     }
 
-    const authorityMembers = [];
+    const authorityMembers: PolicyRolloutQuorumAuthorityMember[] = [];
     for (const state of approvedStates) {
       const approverId = state?.approver_id || state?.context?.approver || null;
       const credentialId = state?.webauthn?.credential_id;

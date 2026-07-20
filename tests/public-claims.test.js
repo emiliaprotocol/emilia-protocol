@@ -11,13 +11,16 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveSourcePath } from '../scripts/ts-loader/resolve-source-path.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function readFile(relPath) {
-  return fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+  // Source files are being migrated .js -> .ts; resolveSourcePath finds the
+  // renamed sibling for a literal path (see scripts/ts-loader/README.md).
+  return fs.readFileSync(path.join(ROOT, resolveSourcePath(ROOT, relPath)), 'utf-8');
 }
 
 /**
