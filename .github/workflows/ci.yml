@@ -972,10 +972,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
         with:
           fetch-depth: 0
+      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
+        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - name: Install gitleaks CLI
         # Pin the version AND verify the SHA-256 (from the release's published
         # checksums.txt) so a re-cut/compromised asset can't inject a binary.
