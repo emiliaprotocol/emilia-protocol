@@ -74,10 +74,14 @@ export default function handshakeCreate() {
  * @param {{ metrics: Record<string, { values?: Record<string, number> }> }} data
  */
 export function handleSummary(data) {
-  const p50 = data.metrics.ep_handshake_create_duration?.values?.['p(50)'] || 'N/A';
-  const p95 = data.metrics.ep_handshake_create_duration?.values?.['p(95)'] || 'N/A';
-  const p99 = data.metrics.ep_handshake_create_duration?.values?.['p(99)'] || 'N/A';
+  const p50 = data.metrics.ep_handshake_create_duration?.values?.['p(50)'];
+  const p95 = data.metrics.ep_handshake_create_duration?.values?.['p(95)'];
+  const p99 = data.metrics.ep_handshake_create_duration?.values?.['p(99)'];
   const errRate = data.metrics.ep_handshake_create_errors?.values?.rate || 0;
+  /** @param {number | undefined} v */
+  const fmt = (v) => (typeof v === 'number' ? String(Math.round(v)) : 'N/A');
+  /** @param {number | undefined} v @param {number} target */
+  const slo = (v, target) => (typeof v === 'number' && v < target ? 'PASS' : 'FAIL');
 
   const summary = `
 ╔══════════════════════════════════════════════════════════════╗
@@ -85,9 +89,9 @@ export function handleSummary(data) {
 ╠══════════════════════════════════════════════════════════════╣
 ║  Metric        Actual       SLO Target      Status          ║
 ║  ─────────     ─────────    ──────────      ──────          ║
-║  p50           ${String(Math.round(p50)).padEnd(12)} < ${String(SLO.handshakeCreate.p50 + 'ms').padEnd(13)} ${p50 < SLO.handshakeCreate.p50 ? 'PASS' : 'FAIL'}            ║
-║  p95           ${String(Math.round(p95)).padEnd(12)} < ${String(SLO.handshakeCreate.p95 + 'ms').padEnd(13)} ${p95 < SLO.handshakeCreate.p95 ? 'PASS' : 'FAIL'}            ║
-║  p99           ${String(Math.round(p99)).padEnd(12)} < ${String(SLO.handshakeCreate.p99 + 'ms').padEnd(13)} ${p99 < SLO.handshakeCreate.p99 ? 'PASS' : 'FAIL'}            ║
+║  p50           ${fmt(p50).padEnd(12)} < ${String(SLO.handshakeCreate.p50 + 'ms').padEnd(13)} ${slo(p50, SLO.handshakeCreate.p50)}            ║
+║  p95           ${fmt(p95).padEnd(12)} < ${String(SLO.handshakeCreate.p95 + 'ms').padEnd(13)} ${slo(p95, SLO.handshakeCreate.p95)}            ║
+║  p99           ${fmt(p99).padEnd(12)} < ${String(SLO.handshakeCreate.p99 + 'ms').padEnd(13)} ${slo(p99, SLO.handshakeCreate.p99)}            ║
 ║  Error rate    ${String((errRate * 100).toFixed(2) + '%').padEnd(12)} < ${String((SLO.errorRate * 100) + '%').padEnd(14)}${errRate < SLO.errorRate ? 'PASS' : 'FAIL'}            ║
 ╚══════════════════════════════════════════════════════════════╝
 `;

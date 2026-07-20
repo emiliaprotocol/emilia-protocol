@@ -74,10 +74,5 @@ const adapter = createAdapter({ system: 'cloudflare', ops: OPS });
 export const CLOUDFLARE_OPS = adapter.OPS;
 /** @param {object[]} extra */
 export function createCloudflareManifest(extra = []) { return manifestFromPack(CLOUDFLARE_ACTION_PACK, extra); }
-/**
- * @param {object} gate    a gate built with createCloudflareManifest()
- * @param {CloudflareClient} client  { deleteDnsRecord, deleteZone, setFirewallRule }
- * @param {{ op: string, params?: object, receipt?: any }} args    { op, params, receipt }
- */
 export function guardCloudflareMutation(gate, client, args) { return adapter.guard(gate, client, args); }
 export default { CLOUDFLARE_ACTION_PACK, CLOUDFLARE_OPS, createCloudflareManifest, guardCloudflareMutation };

@@ -1522,7 +1522,7 @@ function validateKernelRecord(record) {
 
 /**
  * @param {any} value
- * @param {{agreementId: string, bindingDigest: string, documentDigest: string}} expected
+ * @param {{agreementId: string, bindingDigest: string | null, documentDigest: string | null}} expected
  * @param {boolean} required
  */
 function validateDocumentExecution(value, expected, required) {

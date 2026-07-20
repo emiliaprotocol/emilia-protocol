@@ -932,7 +932,7 @@ function foundOperationOk(entry) {
  * @param {Record<string, any>} record
  * @param {Record<string, any>} normalized
  * @param {string} operation
- * @param {string} code
+ * @param {string | undefined} code
  * @param {string} at
  * @param {Record<string, any>} [result]
  */
@@ -957,7 +957,7 @@ function appendOperation(next, record, normalized, operation, code, at, result =
  * @param {Record<string, any>} record
  * @param {Record<string, any>} normalized
  * @param {string} operation
- * @param {string} code
+ * @param {string | undefined} code
  * @param {string} at
  * @param {(next: Record<string, any>) => void} mutate
  * @param {Record<string, any>} [result]
@@ -1171,6 +1171,7 @@ export function createActionEscrowKernel(options = {}) {
 
   /**
    * @param {Record<string, any>|null} record
+   * @returns {{error: string, at?: undefined} | {error?: undefined, at: string}}
    */
   function operationInstant(record = null) {
     const at = instant();
@@ -2110,6 +2111,10 @@ export function createActionEscrowKernel(options = {}) {
     };
   }
 
+  /**
+   * @param {Record<string, any>} record
+   * @returns {Promise<{error: string, artifact?: undefined, verification?: undefined} | {error?: undefined, artifact: any, verification: Record<string, any>}>}
+   */
   async function authoritativeProviderRelease(record) {
     const request = {
       ...record.release.provider_request,
@@ -2192,7 +2197,7 @@ export function createActionEscrowKernel(options = {}) {
   /**
    * @param {Record<string, any>} record
    * @param {string} targetState
-   * @param {string} code
+   * @param {string | undefined} code
    * @param {string} at
    * @param {{ artifact: any, verification: any } | null} providerResult
    */
@@ -2242,7 +2247,7 @@ export function createActionEscrowKernel(options = {}) {
   /**
    * @param {Record<string, any>} record
    * @param {string} operation
-   * @param {string} code
+   * @param {string | undefined} code
    * @param {{ artifact: any, verification: any } | null} providerResult
    */
   async function freezeIndeterminate(record, operation, code, providerResult = null) {
@@ -2282,7 +2287,7 @@ export function createActionEscrowKernel(options = {}) {
           record: current,
         });
       }
-      const { at } = operationTime;
+      const { at } = /** @type {{at: string}} */ (operationTime);
       const transition = internalReleaseTransition(
         current,
         'release_indeterminate',
@@ -2346,7 +2351,7 @@ export function createActionEscrowKernel(options = {}) {
         providerResult,
       );
     }
-    const { at } = operationTime;
+    const { at } = /** @type {{at: string}} */ (operationTime);
     const targetState = status === 'released'
       ? 'released'
       : status === 'not_released'
@@ -2440,7 +2445,7 @@ export function createActionEscrowKernel(options = {}) {
         if (operationTime.error) {
           return outcome({ code: operationTime.error, operation, record });
         }
-        const { at } = operationTime;
+        const { at } = /** @type {{at: string}} */ (operationTime);
         const precondition = await releasePreconditions(record, at);
         if (precondition) {
           return outcome({
@@ -2511,7 +2516,11 @@ export function createActionEscrowKernel(options = {}) {
           'release_effect_indeterminate',
         );
       }
-      return commitReleaseResult(reserved, reconciled, operation);
+      return commitReleaseResult(
+        reserved,
+        /** @type {{artifact: any, verification: any}} */ (reconciled),
+        operation,
+      );
     });
   }
 
@@ -2568,7 +2577,7 @@ export function createActionEscrowKernel(options = {}) {
             type: 'indeterminate',
           });
         }
-        const { at } = operationTime;
+        const { at } = /** @type {{at: string}} */ (operationTime);
         const providerVerification = /** @type {{ status: string }} */ (
           providerResult.verification
         );

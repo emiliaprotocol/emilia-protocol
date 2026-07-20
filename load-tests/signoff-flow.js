@@ -160,10 +160,14 @@ export default function signoffFlow() {
  * @param {{ metrics: Object<string, {values?: {rate?: number, 'p(50)'?: number, 'p(95)'?: number, 'p(99)'?: number}}> }} data - k6 run summary
  */
 export function handleSummary(data) {
-  const p50 = data.metrics.ep_signoff_flow_duration?.values?.['p(50)'] || 'N/A';
-  const p95 = data.metrics.ep_signoff_flow_duration?.values?.['p(95)'] || 'N/A';
-  const p99 = data.metrics.ep_signoff_flow_duration?.values?.['p(99)'] || 'N/A';
+  const p50 = data.metrics.ep_signoff_flow_duration?.values?.['p(50)'];
+  const p95 = data.metrics.ep_signoff_flow_duration?.values?.['p(95)'];
+  const p99 = data.metrics.ep_signoff_flow_duration?.values?.['p(99)'];
   const errRate = data.metrics.ep_signoff_flow_errors?.values?.rate || 0;
+  /** @param {number | undefined} v */
+  const fmt = (v) => (typeof v === 'number' ? String(Math.round(v)) : 'N/A');
+  /** @param {number | undefined} v @param {number} target */
+  const slo = (v, target) => (typeof v === 'number' && v < target ? 'PASS' : 'FAIL');
 
   const summary = `
 ╔══════════════════════════════════════════════════════════════╗
@@ -171,9 +175,9 @@ export function handleSummary(data) {
 ╠══════════════════════════════════════════════════════════════╣
 ║  Metric        Actual       SLO Target      Status          ║
 ║  ─────────     ─────────    ──────────      ──────          ║
-║  p50           ${String(Math.round(p50)).padEnd(12)} < ${String(SLO.signoffFlow.p50 + 'ms').padEnd(13)} ${p50 < SLO.signoffFlow.p50 ? 'PASS' : 'FAIL'}            ║
-║  p95           ${String(Math.round(p95)).padEnd(12)} < ${String(SLO.signoffFlow.p95 + 'ms').padEnd(13)} ${p95 < SLO.signoffFlow.p95 ? 'PASS' : 'FAIL'}            ║
-║  p99           ${String(Math.round(p99)).padEnd(12)} < ${String(SLO.signoffFlow.p99 + 'ms').padEnd(13)} ${p99 < SLO.signoffFlow.p99 ? 'PASS' : 'FAIL'}            ║
+║  p50           ${fmt(p50).padEnd(12)} < ${String(SLO.signoffFlow.p50 + 'ms').padEnd(13)} ${slo(p50, SLO.signoffFlow.p50)}            ║
+║  p95           ${fmt(p95).padEnd(12)} < ${String(SLO.signoffFlow.p95 + 'ms').padEnd(13)} ${slo(p95, SLO.signoffFlow.p95)}            ║
+║  p99           ${fmt(p99).padEnd(12)} < ${String(SLO.signoffFlow.p99 + 'ms').padEnd(13)} ${slo(p99, SLO.signoffFlow.p99)}            ║
 ║  Error rate    ${String((errRate * 100).toFixed(2) + '%').padEnd(12)} < ${String((SLO.errorRate * 100) + '%').padEnd(14)}${errRate < SLO.errorRate ? 'PASS' : 'FAIL'}            ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Per-step breakdown (p50):                                  ║

@@ -446,7 +446,9 @@ async function rejectOversizedApiBody(request) {
   if (!request.body) return null;
   let reader;
   try {
-    reader = request.clone().body.getReader();
+    const clonedBody = request.clone().body;
+    if (!clonedBody) return null;
+    reader = clonedBody.getReader();
   } catch {
     // If the body can't be cloned we cannot safely enforce the stream cap here;
     // in-route readLimitedJson() remains the backstop. Do not fail the request.

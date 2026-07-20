@@ -77,7 +77,7 @@ export const ACTION_CONTROL_CONFORMANCE_CHECKS = Object.freeze([
  * @property {string} action_type
  * @property {string} risk
  * @property {boolean} receipt_required
- * @property {string} assurance_class
+ * @property {'software'|'class_a'|'quorum'} assurance_class
  * @property {number} max_age_sec
  * @property {Record<string, any>} match
  * @property {string|null} why
@@ -108,10 +108,12 @@ function normalizeRisk(risk) {
 
 /**
  * @param {string} [value]
- * @returns {string}
+ * @returns {'software'|'class_a'|'quorum'}
  */
 function normalizeAssurance(value) {
-  return ASSURANCE_CLASSES.has(/** @type {string} */ (value)) ? /** @type {string} */ (value) : 'software';
+  return ASSURANCE_CLASSES.has(/** @type {string} */ (value))
+    ? /** @type {'software'|'class_a'|'quorum'} */ (value)
+    : 'software';
 }
 
 /**

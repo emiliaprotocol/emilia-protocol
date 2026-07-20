@@ -533,7 +533,7 @@ export function buildActionEscrowEvidencePackage({
       ? {
         project_record: {
           media_type: 'application/json',
-          digest: sha256(projectBytes),
+          digest: sha256(/** @type {Buffer} */ (projectBytes)),
           byte_length: /** @type {Buffer} */ (projectBytes).length,
           ...(projectRecordFileName === null
             ? {}
