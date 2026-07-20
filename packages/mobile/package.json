@@ -5,10 +5,13 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
-  "types": "index.d.ts",
+  "types": "dist/index.d.ts",
   "files": [
     "index.js",
     "index.d.ts",
+    "dist/",
+    "src/",
+    "tsconfig.json",
     "attestation.js",
     "enrollment.js",
     "government.js",
@@ -44,6 +47,8 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test *.test.js"
   },
   "publishConfig": {

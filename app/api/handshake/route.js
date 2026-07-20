@@ -90,8 +90,8 @@ export async function GET(request) {
     const actorId = authEntityId(auth);
     const filters = {
       entity_ref: actorId, // forced — callers may only list their own handshakes
-      status: searchParams.get('status') || null,
-      mode: searchParams.get('mode') || null,
+      status: searchParams.get('status') || undefined,
+      mode: searchParams.get('mode') || undefined,
     };
 
     const result = await listHandshakes(filters, actorId);

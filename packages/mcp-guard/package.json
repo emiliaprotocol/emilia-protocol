@@ -6,11 +6,15 @@
   "main": "index.js",
   "exports": {
     ".": {
-      "import": "./index.js"
+      "import": "./index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
     "index.js",
+    "dist/",
+    "src/",
+    "tsconfig.json",
     "README.md",
     "LICENSE"
   ],
@@ -33,6 +37,8 @@
     "node": ">=18"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "cd ../.. && npx vitest run tests/mcp-guard-boundary.test.js"
   },
   "peerDependencies": {

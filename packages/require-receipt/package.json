@@ -4,20 +4,33 @@
   "description": "Demand a verifiable EMILIA authorization receipt for any irreversible agent action. Emits Receipt Required challenges (428, with legacy 402 compatibility) and tells the agent exactly what to bring.",
   "type": "module",
   "main": "index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./index.js"
+      "import": "./index.js",
+      "types": "./dist/index.d.ts"
     },
-    "./strict-json": "./strict-json.js"
+    "./strict-json": {
+      "import": "./strict-json.js",
+      "types": "./dist/strict-json.d.ts"
+    }
   },
   "files": [
     "index.js",
+    "index.d.ts",
     "gate.js",
+    "gate.d.ts",
     "strict-json.js",
+    "strict-json.d.ts",
     "jws.js",
+    "jws.d.ts",
+    "dist/",
+    "src/",
     "README.md"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test",
     "build:drop-in": "node build-drop-in.mjs"
   },

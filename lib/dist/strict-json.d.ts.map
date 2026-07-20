@@ -1,0 +1,1 @@
+{"version":3,"file":"strict-json.d.ts","sourceRoot":"","sources":["../strict-json.ts"],"names":[],"mappings":"AAIA,eAAO,MAAM,cAAc,KAAK,CAAC;AAGjC,MAAM,WAAW,gBAAgB;IAAG,EAAE,EAAE,OAAO,CAAC;IAAC,MAAM,CAAC,EAAE,MAAM,CAAA;CAAE;AAElE,wBAAgB,cAAc,CAAC,GAAG,EAAE,OAAO,GAAG,gBAAgB,CAmF7D;AAED,QAAA,MAAM,UAAU;;;CAAqC,CAAC;AAEtD,eAAe,UAAU,CAAC"}

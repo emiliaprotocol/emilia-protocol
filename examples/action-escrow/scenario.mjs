@@ -787,7 +787,7 @@ function verifyResolutionArtifact(artifact, {
     bindingMoment: createActionEscrowReleaseBindingMoment(bindingInput),
     expectedActionHash: bindings.release_action_digest,
     expectedSelectedOption: 0,
-    expectedNonce: computeActionEscrowResolutionNonce(bindingInput, party.party_id),
+    expectedNonce: computeActionEscrowResolutionNonce(bindingInput, party.party_id) ?? undefined,
     expectedInitiator: 'contractor:oak-line-builders',
     evaluationTime: CREATED_AT,
     rpId: RESOLUTION_RP_ID,

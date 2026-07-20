@@ -1,6 +1,9 @@
 /**
  * Guard: the app's vendored browser verifier (lib/verify-web.js) must stay
- * byte-identical to the published source of truth (packages/verify/web.js).
+ * byte-identical to the published source of truth — now the COMPILED output
+ * of packages/verify/src/web.ts (packages/verify/dist/web.js), since verify
+ * moved from hand-written JS to TypeScript. packages/verify/dist is itself
+ * regenerated from src by `npm run build` and is not hand-edited.
  *
  * The /verify page imports the vendored copy so Next can bundle it client-side;
  * the package is what ships on npm. If they drift, a buyer could see a green
@@ -18,14 +21,14 @@ import { dirname, resolve } from 'path';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('browser verifier — published source vs app copy', () => {
-  it('lib/verify-web.js is byte-identical to packages/verify/web.js', () => {
-    const published = readFileSync(resolve(root, 'packages/verify/web.js'), 'utf8');
+  it('lib/verify-web.js is byte-identical to packages/verify/dist/web.js', () => {
+    const published = readFileSync(resolve(root, 'packages/verify/dist/web.js'), 'utf8');
     const vendored = readFileSync(resolve(root, 'lib/verify-web.js'), 'utf8');
     expect(vendored).toBe(published);
   });
 
   it('the strict nested-JSON gate is byte-identical in both browser bundles', () => {
-    const published = readFileSync(resolve(root, 'packages/verify/strict-json.js'), 'utf8');
+    const published = readFileSync(resolve(root, 'packages/verify/dist/strict-json.js'), 'utf8');
     const vendored = readFileSync(resolve(root, 'lib/strict-json.js'), 'utf8');
     expect(vendored).toBe(published);
   });

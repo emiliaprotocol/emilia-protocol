@@ -36,6 +36,7 @@ export async function GET(request, { params }) {
       return epError(EP_ERROR_CODES.FORBIDDEN, 'Only parties to the handshake may view it');
     }
 
+    /** @type {any} */
     const result = await getHandshake(handshakeId, entityId);
 
     if (result.error) {

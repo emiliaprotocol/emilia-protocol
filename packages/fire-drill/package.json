@@ -6,9 +6,9 @@
   "type": "module",
   "main": "index.js",
   "bin": { "fire-drill": "cli.mjs" },
-  "exports": { ".": "./index.js", "./corpus.js": "./corpus.js", "./package.json": "./package.json" },
-  "files": ["index.js", "cli.mjs", "corpus.js", "corpus.mjs", "ingest.mjs", "registry-index.json", "README.md"],
-  "scripts": { "test": "node --test" },
+  "exports": { ".": { "import": "./index.js", "types": "./dist/index.d.ts" }, "./corpus.js": "./corpus.js", "./package.json": "./package.json" },
+  "files": ["index.js", "dist", "src", "tsconfig.json", "cli.mjs", "corpus.js", "corpus.mjs", "ingest.mjs", "registry-index.json", "README.md"],
+  "scripts": { "build": "tsc -p tsconfig.json", "pretest": "npm run build", "test": "node --test" },
   "dependencies": { "@emilia-protocol/verify": "^3.10.0" },
   "repository": {
     "type": "git",

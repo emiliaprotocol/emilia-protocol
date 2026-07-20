@@ -5,33 +5,37 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
-  "types": "index.d.ts",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./index.js",
       "types": "./index.d.ts"
     },
     "./web": {
-      "import": "./web.js"
+      "import": "./web.js",
+      "types": "./dist/web.d.ts"
     },
     "./strict-json": {
-      "import": "./strict-json.js"
+      "import": "./strict-json.js",
+      "types": "./dist/strict-json.d.ts"
     },
     "./federation": {
-      "import": "./federation.js"
+      "import": "./federation.js",
+      "types": "./dist/federation.d.ts"
     },
     "./pq-hybrid": {
       "import": "./pq-hybrid.js"
     },
     "./consent-grant": {
-      "import": "./consent-grant.js"
+      "import": "./consent-grant.js",
+      "types": "./dist/consent-grant.d.ts"
     },
     "./resolution": {
       "import": "./resolution.js"
     },
     "./document-action-binding": {
       "import": "./document-action-binding.js",
-      "types": "./document-action-binding.d.ts"
+      "types": "./dist/document-action-binding.d.ts"
     },
     "./witness.js": {
       "import": "./witness.js"
@@ -40,32 +44,46 @@
       "import": "./consumption-proof.js"
     },
     "./authority-proof": {
-      "import": "./authority-proof.js"
+      "import": "./authority-proof.js",
+      "types": "./dist/authority-proof.d.ts"
     },
     "./reliance": {
-      "import": "./reliance.js"
+      "import": "./reliance.js",
+      "types": "./dist/reliance.d.ts"
     },
     "./reliance-profile-registry": {
-      "import": "./reliance-profile-registry.js"
+      "import": "./reliance-profile-registry.js",
+      "types": "./dist/reliance-profile-registry.d.ts"
+    },
+    "./reliance-agreement": {
+      "import": "./reliance-agreement.js",
+      "types": "./dist/reliance-agreement.d.ts"
     },
     "./reliance-gap": {
-      "import": "./reliance-gap.js"
+      "import": "./reliance-gap.js",
+      "types": "./dist/reliance-gap.d.ts"
     },
     "./evidence-chain": {
-      "import": "./evidence-chain.js"
+      "import": "./evidence-chain.js",
+      "types": "./dist/evidence-chain.d.ts"
     },
     "./agentroa": {
-      "import": "./agentroa.js"
+      "import": "./agentroa.js",
+      "types": "./dist/agentroa.d.ts"
     },
     "./orprg": {
-      "import": "./orprg.js"
+      "import": "./orprg.js",
+      "types": "./dist/orprg.d.ts"
     },
     "./outcome-binding": {
-      "import": "./outcome-binding.js"
+      "import": "./outcome-binding.js",
+      "types": "./dist/outcome-binding.d.ts"
     }
   },
   "files": [
     "index.js",
+    "dist",
+    "src",
     "strict-json.js",
     "web.js",
     "federation.js",
@@ -126,6 +144,8 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
+    "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
+    "pretest": "npm run build",
     "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js"
   },
   "bin": {

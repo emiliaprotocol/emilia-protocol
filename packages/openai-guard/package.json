@@ -6,15 +6,19 @@
   "main": "index.js",
   "exports": {
     ".": {
-      "import": "./index.js"
+      "import": "./index.js",
+      "types": "./dist/index.d.ts"
     },
     "./receipt": {
-      "import": "./receipt.js"
+      "import": "./receipt.js",
+      "types": "./dist/receipt.d.ts"
     }
   },
-  "files": ["index.js", "receipt.js", "README.md", "LICENSE"],
+  "files": ["index.js", "receipt.js", "dist/", "src/", "tsconfig.json", "README.md", "LICENSE"],
   "license": "Apache-2.0",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test"
   },
   "dependencies": {

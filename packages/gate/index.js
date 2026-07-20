@@ -1467,7 +1467,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
    * never released automatically. Callers that need retries must make the
    * downstream effect idempotent under the receipt id and reconcile its result.
    */
-  async function run({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
+  /**
+   * @param {{selector?: any, receipt?: any, observedAction?: any, admissibilityProfile?: any, reliancePacket?: any, admissibility?: any, capability?: any}} [arg]
+   * @param {Function} [fn]
+   * @param {{recordExecution?: boolean}} [opts]
+   */
+  async function run({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = /** @type {any} */ ({}), fn, opts = /** @type {any} */ ({})) {
     if (typeof fn !== 'function') throw new Error('EMILIA Gate run(): fn is required');
     if (capability) {
       return runCapability({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket, admissibility, capability }, fn, opts);
