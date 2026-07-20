@@ -70,6 +70,8 @@
   },
   "files": [
     "index.js",
+    "dist",
+    "src",
     "strict-json.js",
     "store.js",
     "challenge-store.js",
@@ -156,6 +158,8 @@
     "reports/external-verification.js"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test",
     "demo": "node demo.mjs",
     "eg1": "node eg1.mjs",
