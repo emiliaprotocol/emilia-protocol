@@ -5,11 +5,11 @@
  * operator because TLS API responses are not portable offline evidence.
  */
 import crypto from 'node:crypto';
-import { canonicalize, hashCanonical } from '../execution-binding.js';
+import { canonicalize, hashCanonical } from './execution-binding.js';
 import {
   ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
   validateActionEscrowReleaseTemplate,
-} from '../action-escrow-verifiers.js';
+} from './action-escrow-verifiers.js';
 
 export const ACTION_ESCROW_CUSTODIAN_OBSERVATION_VERSION =
   'EP-ACTION-ESCROW-CUSTODIAN-OBSERVATION-v1';
@@ -82,18 +82,32 @@ function normalizeKernelRequest(value, adapter) {
       || !isRecord(value.release_action_template)) {
       return null;
     }
+    // `validateActionEscrowReleaseTemplate` (action-escrow-verifiers.ts,
+    // outside this file's scope) still infers its options parameter type
+    // from only the one destructured property that carries a default value,
+    // so a fresh object literal here trips the excess-property check.
+    // Routing through a locally typed variable avoids that without changing
+    // what gets passed at runtime.
+    const releaseTemplateOptions: {
+      profileDigest?: any;
+      agreementId?: any;
+      agreementDigest?: any;
+      milestoneId?: any;
+      documentDigest?: any;
+      contractorProjectSource?: boolean;
+    } = {
+      profileDigest: value.profile_digest,
+      agreementId: value.agreement_id,
+      agreementDigest: value.agreement_digest,
+      milestoneId: value.milestone_id,
+      documentDigest: value.document_digest,
+      contractorProjectSource:
+        value.release_action_template.action_escrow_template_profile
+          === ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
+    };
     const template = validateActionEscrowReleaseTemplate(
       value.release_action_template,
-      {
-        profileDigest: value.profile_digest,
-        agreementId: value.agreement_id,
-        agreementDigest: value.agreement_digest,
-        milestoneId: value.milestone_id,
-        documentDigest: value.document_digest,
-        contractorProjectSource:
-          value.release_action_template.action_escrow_template_profile
-            === ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION,
-      },
+      releaseTemplateOptions,
     );
     if (!template
       || template.custodian_provider !== adapter.provider

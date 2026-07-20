@@ -7,7 +7,7 @@
  * state machine must refuse rather than treating an outage as absent state.
  */
 import crypto from 'node:crypto';
-import { strictJsonGate } from '../strict-json.js';
+import { strictJsonGate } from './strict-json.js';
 
 export const ACTION_ESCROW_PG_STORE_VERSION = 'EP-ACTION-ESCROW-PG-STORE-v1';
 export const ACTION_ESCROW_STATE_TABLE = 'ep_action_escrow_state';

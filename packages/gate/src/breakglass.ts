@@ -41,8 +41,8 @@
  * from the wall clock implicitly, so verification is deterministic.
  */
 import crypto from 'node:crypto';
-import { strictJsonGate } from '../strict-json.js';
-import { canonicalize as canonical } from '../execution-binding.js';
+import { strictJsonGate } from './strict-json.js';
+import { canonicalize as canonical } from './execution-binding.js';
 import { verifyEvidenceRecord } from '../evidence.js';
 import { isSecureConsumptionStore } from '../store.js';
 

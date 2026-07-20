@@ -17,7 +17,7 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { ristretto255, ristretto255_hasher } from '@noble/curves/ed25519.js';
-import { canonicalize } from '../execution-binding.js';
+import { canonicalize } from './execution-binding.js';
 export const ZK_RANGE_RECEIPT_VERSION = 'EP-ZK-RANGE-RECEIPT-v1';
 export const ZK_RANGE_SCHEME = 'Bulletproofs-Ristretto255-range-v1';
 export const ZK_RANGE_BACKEND_PACKAGE = '@aptos-labs/confidential-asset-bindings@1.1.2';

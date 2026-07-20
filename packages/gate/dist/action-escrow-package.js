@@ -9,11 +9,11 @@
  * artifact slots that the kernel intentionally does not own.
  */
 import crypto from 'node:crypto';
-import { ACTION_ESCROW_PROFILE_VERSION, ACTION_ESCROW_STATE_VERSION, ACTION_ESCROW_STATES, ACTION_ESCROW_TRANSITIONS, computeActionEscrowReleaseBindingMomentDigest, computeActionEscrowResolutionNonce, } from '../action-escrow.js';
-import { buildActionEscrowEvidencePackage } from '../action-escrow-evidence.js';
-import { ACTION_ESCROW_STATE_STATEMENT_DOMAIN, ACTION_ESCROW_STATE_STATEMENT_VERSION, } from '../action-escrow-state.js';
-import { ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION, computeActionEscrowAgreementDigest, validateActionEscrowReleaseTemplate, } from '../action-escrow-verifiers.js';
-import { canonicalize, hashCanonical } from '../execution-binding.js';
+import { ACTION_ESCROW_PROFILE_VERSION, ACTION_ESCROW_STATE_VERSION, ACTION_ESCROW_STATES, ACTION_ESCROW_TRANSITIONS, computeActionEscrowReleaseBindingMomentDigest, computeActionEscrowResolutionNonce, } from './action-escrow.js';
+import { buildActionEscrowEvidencePackage } from './action-escrow-evidence.js';
+import { ACTION_ESCROW_STATE_STATEMENT_DOMAIN, ACTION_ESCROW_STATE_STATEMENT_VERSION, } from './action-escrow-state.js';
+import { ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION, computeActionEscrowAgreementDigest, validateActionEscrowReleaseTemplate, } from './action-escrow-verifiers.js';
+import { canonicalize, hashCanonical } from './execution-binding.js';
 import { computeDocumentActionBindingDigest, computeDocumentSha256, computeReleaseActionDigest, } from '@emilia-protocol/verify/document-action-binding';
 const HASH = /^sha256:[0-9a-f]{64}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:/#@+-]{0,255}$/;
@@ -670,7 +670,12 @@ function validateBindingContainer(container, record, { bindingDigest = record.do
     const currentContractorProfile = binding.release_action?.template?.action_escrow_template_profile
         === ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION;
     const projectRecordBound = validDigest(binding.release_action?.template?.project_record_snapshot_digest);
-    const releaseActionTemplate = validateActionEscrowReleaseTemplate(binding.release_action?.template, {
+    // `validateActionEscrowReleaseTemplate` (action-escrow-verifiers.ts, outside
+    // this file's scope) still infers its options parameter type from only the
+    // one destructured property that carries a default value, so a fresh object
+    // literal here trips the excess-property check. Routing through a locally
+    // typed variable avoids that without changing what gets passed at runtime.
+    const releaseTemplateOptions = {
         profileDigest: record.profile_digest,
         agreementId: binding.agreement_id,
         agreementDigest: record.agreement_digest,
@@ -678,7 +683,8 @@ function validateBindingContainer(container, record, { bindingDigest = record.do
         documentDigest: bindingDocumentDigest,
         materialTerms: binding.material_terms,
         contractorProjectSource: currentContractorProfile,
-    });
+    };
+    const releaseActionTemplate = validateActionEscrowReleaseTemplate(binding.release_action?.template, releaseTemplateOptions);
     const requiredVerification = new Set(BINDING_VERIFICATION_KEYS);
     if (supersedesDigest === null) {
         requiredVerification.delete('supersedes_document_action_binding_digest');

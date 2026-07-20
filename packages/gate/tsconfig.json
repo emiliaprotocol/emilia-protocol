@@ -34,6 +34,12 @@
     "src/reliance-packet.ts",
     "src/store-postgres.ts",
     "src/witness-postgres.ts",
-    "src/zk-range-proof.ts"
+    "src/zk-range-proof.ts",
+    "src/action-escrow.ts",
+    "src/action-escrow-evidence.ts",
+    "src/action-escrow-state.ts",
+    "src/action-escrow-verifiers.ts",
+    "src/execution-binding.ts",
+    "src/strict-json.ts"
   ]
 }
