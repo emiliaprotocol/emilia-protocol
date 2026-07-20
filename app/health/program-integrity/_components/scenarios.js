@@ -34,9 +34,9 @@ export const STAGES = [
 ];
 
 const ACTION_CAID =
-  'caid:1:health.medi_cal.hospice_claim_payment.1:jcs-sha256:nE41DtIawwnJ8wWH8mVMKezBrLUEe22bVhbqYqfBfUU';
+  'caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:_gaImSfYxk3C1BAqP2t3_bYhoHLb1FbGdvh8uk9jM28';
 const DESTINATION_MISMATCH_CAID =
-  'caid:1:health.medi_cal.hospice_claim_payment.1:jcs-sha256:At3Eq5XkHQcB_DxHNvDXA3-YzVAWzOam3EEU4lQeVtQ';
+  'caid:1:health.medi-cal.hospice-claim-payment.1:jcs-sha256:wXcsyN3_SxaS5xeYe5Owb10NCbcQDdB_2BqW9Ges0lQ';
 const MEMBER_REF = `member:sha256:${'1'.repeat(64)}`;
 const AUTHORIZATION_FORM_DIGEST = `sha256:${'2'.repeat(64)}`;
 const AUTHORITY_PROOF_DIGEST = `sha256:${'4'.repeat(64)}`;
@@ -60,7 +60,7 @@ const BASE_FIELDS = [
   {
     id: 'action_type',
     label: 'Action type',
-    value: 'health.medi_cal.hospice_claim_payment.1',
+    value: 'health.medi-cal.hospice-claim-payment.1',
     state: 'match',
   },
   {
