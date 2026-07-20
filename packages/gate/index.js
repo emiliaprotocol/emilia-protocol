@@ -1394,7 +1394,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       executeAction,
     };
     const capabilityResult = Array.isArray(context.shares)
-      ? await executeWithThreshold({ ...executorInput, shares: context.shares })
+      ? await executeWithThreshold(/** @type {any} */ ({ ...executorInput, shares: context.shares }))
       : await executeWithCapability(/** @type {any} */ ({ ...executorInput, secret: context.secret }));
 
     authorization = authorization || capabilityResult.authorization || null;

@@ -22,7 +22,7 @@
  * resolved manifest requirement). `cf1Conformance` / `cf1ConformanceSelfTest`
  * in index.js wire real gates to it.
  */
-import { EG1_CHECKS, runEg1 } from '../eg1-conformance.js';
+import { EG1_CHECKS, runEg1 } from './eg1-conformance.js';
 export const CF1_VERSION = 'CF-1';
 // The nine CF-1 checks: the declaration bookend, the eight EG-1 runtime checks,
 // then the two that distinguish a firewall from an enforced gate.
@@ -32,15 +32,6 @@ export const CF1_CHECKS = Object.freeze([
     { id: 'wrong_authority_refused', title: 'gate pinned to the wrong authority cannot authorize' },
     { id: 'evidence_verifies_offline', title: 'allowed run emits reliance evidence verifiable offline' },
 ]);
-/**
- * Drive a subject through the CF-1 checks and return a JSON report.
- * @param {object} [o]
- * @param {(scenario:object)=>Promise<object>} [o.invoke]   the gate under test
- * @param {(scenario:object)=>Promise<object>} [o.wrongInvoke] a sibling gate pinned to a DIFFERENT (wrong) issuer key
- * @param {object} [o.harness]      from createEg1Harness()
- * @param {object} [o.action]     the high-risk action (defaults to the harness action)
- * @param {object} [o.requirement] the manifest requirement resolved for this action (findActionRequirement)
- */
 export async function runCf1({ invoke, wrongInvoke, harness, action, requirement, } = {}) {
     if (typeof invoke !== 'function')
         throw new Error('runCf1 requires an invoke(scenario) function');

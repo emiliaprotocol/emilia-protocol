@@ -21,7 +21,7 @@
  * resolved manifest requirement). `cf1Conformance` / `cf1ConformanceSelfTest`
  * in index.js wire real gates to it.
  */
-import { EG1_CHECKS, runEg1 } from '../eg1-conformance.js';
+import { EG1_CHECKS, runEg1 } from './eg1-conformance.js';
 
 type Obj = Record<string, any>;
 
@@ -45,12 +45,15 @@ export const CF1_CHECKS = Object.freeze([
  * @param {object} [o.action]     the high-risk action (defaults to the harness action)
  * @param {object} [o.requirement] the manifest requirement resolved for this action (findActionRequirement)
  */
+type Eg1Invoke = NonNullable<Parameters<typeof runEg1>[0]>['invoke'];
+type Eg1Harness = NonNullable<Parameters<typeof runEg1>[0]>['harness'];
+
 export async function runCf1({
   invoke, wrongInvoke, harness, action, requirement,
 }: {
-  invoke?: (scenario: Obj) => Promise<Obj>;
-  wrongInvoke?: (scenario: Obj) => Promise<Obj>;
-  harness?: { mint: (args: Obj) => any; action?: any; now?: () => number };
+  invoke?: Eg1Invoke;
+  wrongInvoke?: Eg1Invoke;
+  harness?: Eg1Harness;
   action?: Obj;
   requirement?: { receipt_required?: boolean; assurance_class?: any; action_type?: any };
 } = {}) {
