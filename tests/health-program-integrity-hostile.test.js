@@ -187,6 +187,19 @@ describe('Health Program Integrity hostile contract', () => {
     expectRefusal(confused, 'action_caid_mismatch');
   });
 
+  it('refuses the unversioned action type as an action-identity downgrade', async () => {
+    const harness = makeHarness();
+    const unversioned = {
+      ...clone(ACTION),
+      action_type: 'health.medi_cal.hospice_claim_payment',
+    };
+
+    const prepared = await harness.engine.prepare({ action: unversioned });
+
+    expectRefusal(prepared, 'unsupported_action_type');
+    expect(harness.submit).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['amount', (action) => { action.amount = '12500.00'; }],
     ['destination', (action) => { action.payment_destination_digest = `sha256:${'8'.repeat(64)}`; }],
