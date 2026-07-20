@@ -130,8 +130,8 @@ copying protected data into another uncontrolled log?
 
 **Human oversight should be something California can verify**
 
-Not just a policy promise.  
-Not just a checkbox.  
+Not just a policy promise.<br>
+Not just a checkbox.<br>
 A record of the person, the exact action, and the consequence.
 
 **Footer:** Broad policy briefing · California Assembly · July 2026
@@ -470,13 +470,20 @@ format.
 
 ## Option B — Minimum contents of an oversight record
 
-> An oversight record for a material automated action should identify or bind, as applicable:  
-> (1) the material terms of the proposed action;  
-> (2) the person or accountable role exercising oversight and the basis of authority;  
-> (3) the information and material terms presented for decision;  
-> (4) the applicable policy, criteria, or rule version;  
-> (5) the time and validity period of the decision;  
-> (6) whether the authority was accepted, refused, expired, revoked, or consumed; and  
+> An oversight record for a material automated action should identify or bind, as applicable:
+>
+> (1) the material terms of the proposed action;
+>
+> (2) the person or accountable role exercising oversight and the basis of authority;
+>
+> (3) the information and material terms presented for decision;
+>
+> (4) the applicable policy, criteria, or rule version;
+>
+> (5) the time and validity period of the decision;
+>
+> (6) whether the authority was accepted, refused, expired, revoked, or consumed; and
+>
 > (7) the execution status, including whether the outcome is indeterminate.
 
 **Drafting note:** “Bind” allows privacy-preserving references or commitments rather than requiring
