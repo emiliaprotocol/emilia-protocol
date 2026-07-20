@@ -212,6 +212,7 @@ const vectors = [
 // before we write the suite (a generator that emits a vector its own reference
 // rejects is a bug, not a vector).
 for (const v of vectors) {
+  /** @type {any} */
   const r = verifyTimestampProof(v.timestamp_proof, v.expected_digest, v.pinned_tsa_keys);
   if (r.verified !== v.expect.valid) {
     throw new Error(`self-check failed for ${v.id}: JS verified=${r.verified} reason=${r.reason} expected valid=${v.expect.valid}`);

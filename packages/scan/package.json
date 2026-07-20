@@ -5,12 +5,21 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "emilia-scan": "cli.mjs",
     "emilia-harden": "codemod.mjs"
   },
   "files": [
     "index.js",
+    "dist",
+    "src",
     "risk-packs.js",
     "cli.mjs",
     "codemod.mjs",
@@ -18,6 +27,8 @@
     "LICENSE"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test test.js"
   },
   "dependencies": {

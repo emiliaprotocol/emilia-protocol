@@ -1,0 +1,244 @@
+/**
+ * @emilia-protocol/require-receipt — makeReceiptGate
+ * @license Apache-2.0
+ *
+ * The canonical, hardened Receipt-Required gate. Encodes, in ONE reviewed place,
+ * the three properties that are easy to get wrong when hand-rolling a guard:
+ *
+ *   1. TARGET BINDING — a receipt is bound to the exact resource, not just the
+ *      action type, so a valid receipt for resource A cannot act on resource B.
+ *   2. CONSUME-BEFORE-RETRY (+ replay safety) — a receipt is RESERVED before the
+ *      side effect and permanently COMMITTED after any execution attempt. Once
+ *      execution begins, an exception cannot distinguish "nothing happened"
+ *      from "the effect happened but its response was lost", so automatic retry
+ *      would risk duplicating an irreversible action.
+ *   3. SANITIZED REJECTIONS — a refusal returns only a `{ reason }` code, never
+ *      the verified receipt's signer/subject/library detail.
+ *
+ * Prefer `gate.run(receipt, { target }, fn)` — it orchestrates verify → reserve →
+ * attempt → commit so a caller cannot get the ordering wrong. Use the lower-level
+ * `check` / `commit` / `release` only when you can prove the effect has not begun.
+ */
+import {
+  verifyEmiliaReceipt,
+  receiptChallenge,
+  RECEIPT_REQUIRED_STATUS,
+  evaluateReceiptAssurance,
+  receiptAssuranceTier,
+} from './index.js';
+
+type AnyRecord = Record<string, any>;
+
+/** Default process-local atomic store. Fleets must pass an ownership-fenced
+ * shared store implementing the same reserve/commit/release contract. */
+function inMemoryStore() {
+  const states = new Map();
+  return {
+    durable: false,
+    ownershipFenced: true,
+    async reserve(id: string) {
+      if (states.has(id)) return false;
+      states.set(id, 'reserved');
+      return true;
+    },
+    async commit(id: string) {
+      if (states.get(id) !== 'reserved') throw new Error('consumption reservation not owned');
+      states.set(id, 'committed');
+      return true;
+    },
+    async release(id: string) {
+      if (states.get(id) !== 'reserved') throw new Error('consumption reservation not owned');
+      states.delete(id);
+      return true;
+    },
+  };
+}
+
+function normalizeTarget(target: any) {
+  if (target === undefined || target === null) return null;
+  if (Array.isArray(target)) return target.map(String).sort().join(',');
+  return String(target);
+}
+
+const TIER_RANK: Record<string, number> = { software: 0, class_a: 1, quorum: 2 };
+
+function normalizeGateAssuranceClass(value: any): string {
+  return Object.prototype.hasOwnProperty.call(TIER_RANK, value) ? value : 'software';
+}
+
+export { receiptAssuranceTier };
+
+/**
+ * Build a hardened Receipt-Required gate for one action type.
+ *
+ * @param {object} [opts]
+ * @param {string|((target:any)=>string)} [opts.action]  base action_type, or a fn
+ *   that derives the fully-bound action from the target. Required at runtime
+ *   (throws when absent); optional in the type so a `{}` default is well-formed.
+ * @param {string[]} [opts.trustedKeys]      issuer SPKI keys you trust (recommended).
+ * @param {boolean} [opts.allowInlineKey=false] also accept the receipt's own key
+ *   (proves integrity, NOT issuer trust) — demo only; leave off in production.
+ * @param {number} [opts.maxAgeSec=900]
+ * @param {string[]} [opts.allowedOutcomes]
+ * @param {number} [opts.statusCode=428]
+ * @param {string} [opts.manifestUrl]
+ * @param {string} [opts.assuranceClass]
+ * @param {object} [opts.quorum]
+ * @param {object} [opts.quorumPolicy] relying-party-pinned organizational quorum rule
+ * @param {Record<string, any>} [opts.approverKeys] pinned approver keys (assurance eval).
+ * @param {Record<string, any>} [opts.approver_keys] snake_case alias of approverKeys.
+ * @param {(receipt:any, requiredTier:string, ctx:any)=>any} [opts.verifyAssurance]
+ *   optional override for assurance evaluation.
+ * @param {string} [opts.rpId] expected WebAuthn RP ID for Class-A assurance checks.
+ * @param {string[]} [opts.allowedOrigins] allowed WebAuthn origins for Class-A checks.
+ * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
+ *   commit:(id:string)=>Promise<boolean>|boolean,
+ *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]
+ *   Atomic ownership-fenced consumption store; defaults to process-local memory.
+ *   Fleet stores MUST make reserve() an atomic insert-if-absent and MUST leave an
+ *   uncertain reservation closed until operator reconciliation.
+ */
+export function makeReceiptGate(opts: AnyRecord = {}) {
+  const {
+    action,
+    trustedKeys = [],
+    allowInlineKey = false,
+    maxAgeSec = 900,
+    allowedOutcomes,
+    statusCode = RECEIPT_REQUIRED_STATUS,
+    manifestUrl,
+    assuranceClass,
+    quorum,
+    quorumPolicy,
+    approverKeys,
+    approver_keys,
+    verifyAssurance,
+    rpId,
+    allowedOrigins,
+    store = inMemoryStore(),
+  } = opts;
+
+  if (!action) throw new Error('makeReceiptGate: `action` is required');
+  for (const method of ['reserve', 'commit', 'release']) {
+    if (typeof store?.[method] !== 'function') {
+      throw new Error(`makeReceiptGate: store must implement atomic ${method}(); legacy {has, add} stores are not fleet-safe`);
+    }
+  }
+
+  const boundActionFor = (target: any): string => {
+    const base = typeof action === 'function' ? action(target) : action;
+    if (typeof action === 'function') return base; // fn already folds in the target
+    const t = normalizeTarget(target);
+    return t === null ? base : `${base}:${t}`;
+  };
+
+  const requiredTier = normalizeGateAssuranceClass(assuranceClass);
+  const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass: requiredTier, quorum, maxAgeSec });
+
+  /** @returns {{ok:false, status:number, body:any}} */
+  function refuse(boundAction: string, reason: string) {
+    return {
+      ok: false,
+      status: statusCode,
+      body: { ...receiptChallenge(boundAction, `Receipt rejected: ${reason}.`, challengeOpts()), rejected: { reason } },
+    };
+  }
+
+  /**
+   * Verify + reserve a receipt WITHOUT consuming it. On ok, the caller MUST
+   * later call commit(receiptId) after an execution attempt, or release(receiptId)
+   * only when it can prove the external effect never began.
+   * @returns {Promise<{ok:true, receiptId, outcome, signer, subject, boundAction}
+   *          | {ok:false, status, body}>}
+   */
+  async function check(receipt: AnyRecord | null | undefined, { target }: { target?: any } = {}) {
+    const boundAction = boundActionFor(target);
+
+    if (!receipt) {
+      return {
+        ok: false,
+        status: statusCode,
+        body: receiptChallenge(boundAction, 'This action requires an accountable, verifiable authorization receipt.', challengeOpts()),
+      };
+    }
+
+    const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
+    if (!v.ok) return refuse(boundAction, v.reason || 'receipt_invalid'); // sanitized: reason code only
+
+    // No receipt_id means no consumption identity: every no-id receipt collapses
+    // to the same empty consume key, so the reservation below would neither
+    // identify nor protect this receipt. Refuse before touching the store, as
+    // app/api/v1/guarded and packages/gate already do (redteam HI-5).
+    const receiptId = v.receipt_id;
+    if (typeof receiptId !== 'string' || receiptId === '') {
+      return refuse(boundAction, 'missing_receipt_id');
+    }
+
+    const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
+      approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy,
+    });
+    if (!assurance.ok || (TIER_RANK[assurance.have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
+      return refuse(boundAction, assurance.reason || 'assurance_too_low');
+    }
+
+    let reserved;
+    try {
+      reserved = await store.reserve(receiptId);
+    } catch {
+      return refuse(boundAction, 'consumption_store_unavailable');
+    }
+    if (reserved !== true) return refuse(boundAction, 'replay_refused');
+    return { ok: true, receiptId, outcome: v.outcome, signer: v.signer, subject: v.subject, boundAction };
+  }
+
+  /** Finalize one-time consumption after an execution attempt begins. */
+  async function commit(receiptId: string) {
+    const committed = await store.commit(receiptId);
+    if (committed !== true) throw new Error('consumption commit failed closed');
+  }
+
+  /** Release only when the caller can prove the external effect never began. */
+  async function release(receiptId: string) {
+    const released = await store.release(receiptId);
+    if (released !== true) throw new Error('consumption release failed closed');
+  }
+
+  /**
+   * The safe path: verify+reserve, run the side effect, then commit regardless
+   * of its return value. An exception after invocation is an indeterminate
+   * outcome and MUST consume the approval to prevent duplicate execution.
+   * Receives the check result: fn({ receiptId, outcome, signer, ... }).
+   * @returns {Promise<{ok:true, receiptId, outcome, signer, result}|{ok:false, status, body}>}
+   */
+  async function run(receipt: AnyRecord | null | undefined, ctx: AnyRecord | ((checkResult: AnyRecord) => unknown) = {}, fn?: (checkResult: AnyRecord) => unknown) {
+    if (typeof ctx === 'function') { fn = ctx as (checkResult: AnyRecord) => unknown; ctx = {}; }
+    if (typeof fn !== 'function') throw new Error('makeReceiptGate.run: fn is required');
+    const c = await check(receipt, ctx || {});
+    if (!c.ok) return /** @type {{ok:false, status:any, body:any}} */ (c);
+    const receiptId = c.receiptId;
+    if (typeof receiptId !== 'string') throw new Error('makeReceiptGate.run: receipt id is required');
+    let attempted = false;
+    let committed = false;
+    try {
+      attempted = true;
+      const result = await fn(c);
+      await commit(receiptId);
+      committed = true;
+      return { ok: true, receiptId, outcome: c.outcome, signer: c.signer, result };
+    } catch (err) {
+      if (attempted && !committed) {
+        try {
+          await commit(receiptId); // effect may have occurred before the exception
+        } catch (commitError) {
+          if (err && typeof err === 'object') {
+            (err as Record<string, unknown>).consumption_error =
+              String(commitError instanceof Error ? commitError.message : commitError);
+          }
+        }
+      }
+      throw err;
+    }
+  }
+
+  return { check, commit, release, run, boundActionFor };
+}

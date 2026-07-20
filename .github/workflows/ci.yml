@@ -175,7 +175,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Type-check the security core (checkJs)
-        run: npx tsc -p tsconfig.core.json
+        run: npx tsc -p tsconfig.core.json --incremental false
 
   # ── Job 2d: lib/ type gate (tsc --checkJs, zero errors) ──────────
   # The full lib/ tree is kept clean under `tsc -p tsconfig.lib.json`
@@ -193,7 +193,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Type-check lib/ (checkJs)
-        run: npx tsc -p tsconfig.lib.json
+        run: npx tsc -p tsconfig.lib.json --incremental false
 
   # ── Job 2e: backend/tooling type gate (tsc --checkJs, zero errors) ──
   # scripts/, examples/, conformance/, mcp-server/, and packages/{mcp-guard,
@@ -213,7 +213,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Type-check backend/tooling tier (checkJs)
-        run: npx tsc -p tsconfig.rest.json
+        run: npx tsc -p tsconfig.rest.json --incremental false
 
   # ── Job 2f: app/ type gate (tsc --checkJs, zero errors) ──────────
   # The React/Next tier (app/**) is kept clean under `tsc -p tsconfig.app.json`
@@ -232,7 +232,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Type-check app/ (checkJs)
-        run: npx tsc -p tsconfig.app.json
+        run: npx tsc -p tsconfig.app.json --incremental false
 
   # ── Job 2g: remaining production compiler surfaces ───────────────
   # The secure mobile app has its own dependency graph. Declaration files and

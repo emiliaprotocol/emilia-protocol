@@ -135,8 +135,9 @@ console.log('no-map   valid=true authorizes_action=false');
 
 const relabeled = structuredClone(receipts.declined);
 relabeled.signoff.context.resolution = { outcome: 'approved', selected_option: 0 };
+/** @type {any} */
 const attack = verifyResolutionReceipt(relabeled, verifyOpts);
 if (attack.valid || attack.authorizes_action) throw new Error('outcome relabeling was accepted');
-console.log(`relabel  refused=${!attack.valid} reason=${attack.reason}`);
+console.log(`relabel  refused=${!attack.valid} reason=${attack.reason ?? 'unspecified'}`);
 
 console.log('OK: four meanings preserved; only a pinned, authentic approval authorizes.');

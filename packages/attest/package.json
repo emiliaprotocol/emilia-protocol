@@ -5,8 +5,17 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "index.js",
+    "dist",
+    "src",
     "README.md",
     "LICENSE"
   ],
@@ -38,6 +47,8 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test test.js"
   },
   "publishConfig": {

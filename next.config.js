@@ -32,6 +32,16 @@ const nextConfig = {
   // in-repo implementations for the website and reference control rooms.
   /** @param {import('webpack').Configuration & { resolve: { alias: Record<string, string> } }} config */
   webpack(config) {
+    // During the TypeScript migration, keep explicit `.js` imports stable while
+    // allowing webpack to resolve the source file after it becomes `.ts`/`.tsx`.
+    // Node-run tools will use the compiled package/runtime path instead; this
+    // alias is intentionally bundler-only.
+    config.resolve.extensionAlias = {
+      ...(config.resolve.extensionAlias || {}),
+      '.js': ['.ts', '.tsx', '.js'],
+      '.jsx': ['.tsx', '.jsx'],
+      '.mjs': ['.mts', '.mjs'],
+    };
     // `$` keeps exported package subpaths (for example
     // @emilia-protocol/verify/document-action-binding) resolvable through the
     // package's exports map instead of appending them to index.js.

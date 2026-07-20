@@ -84,6 +84,7 @@ vi.mock('@/lib/actor.js', () => ({
 // Import after mocks
 import { initiateHandshake, _handleInitiateHandshake } from '../lib/handshake/create.js';
 import { HandshakeError } from '../lib/handshake/errors.js';
+import { buildBindingMaterial } from '../lib/handshake/binding.js';
 
 // ── DB mock builder ───────────────────────────────────────────────────────────
 
@@ -477,6 +478,42 @@ describe('_handleInitiateHandshake — RPC error (line ~363)', () => {
     expect(res._protocolEventWritten).toBe(true);
     expect(res.result.handshake_id).toBe('hs-new-1');
     expect(res.result.status).toBe('initiated');
+  });
+
+  it('binds the server-derived expiry, not a caller-supplied binding override', async () => {
+    const db = buildSupabaseMock({ rpcResult: { handshake_id: 'hs-expiry-source' } });
+    mockGetServiceClient.mockReturnValue(db);
+    const serverExpiry = new Date(Date.now() + 600_000).toISOString();
+    const callerExpiry = new Date(Date.now() + 1_200_000).toISOString();
+
+    await _handleInitiateHandshake({
+      actor: 'system',
+      input: {
+        mode: 'basic',
+        policy_id: 'pol-1',
+        policy_version: null,
+        interaction_id: null,
+        parties: [{ role: 'initiator', entity_ref: 'entity-1' }],
+        payload_hash: 'hash-expiry',
+        nonce: 'nonce-expiry',
+        expires_at: serverExpiry,
+        metadata: {},
+        binding: { expires_at: callerExpiry, session_ref: 'session-1' },
+        idempotency_key: null,
+        action_type: null,
+        resource_ref: null,
+        intent_ref: null,
+        action_hash: null,
+      },
+    });
+
+    expect(buildBindingMaterial).toHaveBeenCalledWith(expect.objectContaining({ expires_at: serverExpiry }));
+    expect(db.rpc).toHaveBeenCalledWith(
+      'create_handshake_atomic',
+      expect.objectContaining({
+        p_binding: expect.objectContaining({ expires_at: serverExpiry, session_ref: 'session-1' }),
+      }),
+    );
   });
 
   it('result includes party list with correct structure', async () => {

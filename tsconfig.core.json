@@ -13,11 +13,13 @@
   },
   "include": [
     "packages/verify/**/*.js",
+    "packages/gate/**/*.ts",
     "lib/handshake/**/*.js",
     "packages/gate/**/*.js"
   ],
   "exclude": [
     "**/*.test.js",
+    "packages/verify/dist/**",
     "**/node_modules/**"
   ]
 }

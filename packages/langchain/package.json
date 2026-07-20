@@ -6,16 +6,21 @@
   "main": "index.js",
   "exports": {
     ".": {
-      "import": "./index.js"
+      "import": "./index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
     "index.js",
+    "dist",
+    "src",
     "README.md",
     "LICENSE"
   ],
   "license": "Apache-2.0",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "node --test"
   },
   "keywords": [

@@ -30,6 +30,8 @@
     "typecheck:lib": "tsc -p tsconfig.lib.json",
     "typecheck:rest": "tsc -p tsconfig.rest.json",
     "typecheck:app": "tsc -p tsconfig.app.json",
+    "typecheck:strict": "node scripts/typecheck-strict.mjs",
+    "build:ts-runtime": "node scripts/build-ts-runtime.mjs",
     "typecheck:secure-app": "tsc -p tsconfig.secure-app.json",
     "typecheck:declarations": "tsc -p tsconfig.declarations.json",
     "typecheck:sdk": "tsc -p sdks/typescript/tsconfig.json --noEmit",
@@ -154,6 +156,7 @@
     "pg": "^8.22.0",
     "qrcode": "1.5.4",
     "typescript": "^5.9.3",
+    "tsx": "^4.19.3",
     "vitest": "^4.1.0",
     "yaml": "2.9.0"
   }

@@ -25,9 +25,18 @@ import { dirname, join } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(here, 'package.json'), 'utf8'));
 
-let index = readFileSync(join(here, 'index.js'), 'utf8');
-let gate = readFileSync(join(here, 'gate.js'), 'utf8');
-let strictJson = readFileSync(join(here, 'strict-json.js'), 'utf8');
+// The package's public .js files are compatibility launchers after the
+// TypeScript migration. Generate the zero-dependency artifact from the
+// compiled runtime instead of the launcher, preserving the old source markers.
+const runtimeDir = join(here, 'dist');
+let index = readFileSync(join(runtimeDir, 'index.js'), 'utf8');
+let gate = readFileSync(join(runtimeDir, 'gate.js'), 'utf8');
+let strictJson = readFileSync(join(runtimeDir, 'strict-json.js'), 'utf8');
+// Source maps belong to the package build, not to a copy-in artifact. Remove
+// compiler trailers so adopters do not get broken relative-map warnings.
+index = index.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
+gate = gate.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
+strictJson = strictJson.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 
 // Inline the nested-JSON ambiguity guard so the copy-in artifact stays zero-dep.
 index = index.replace("import { strictJsonGate } from './strict-json.js';\n", '');
@@ -67,7 +76,12 @@ if (badImports.length) throw new Error(`build-drop-in: drop-in is not zero-dep â
 
 const hash = createHash('sha256').update(body).digest('hex').slice(0, 16);
 
-const banner = `// SPDX-License-Identifier: Apache-2.0
+const banner = `// @ts-nocheck
+// This file is compiled output (from dist/, itself compiled from src/*.ts);
+// its type annotations are already erased, so re-checking it elsewhere in the
+// repo with checkJs hits control-flow-inference gaps the original .ts source
+// never had. It is already verified by the TypeScript build that produced it.
+// SPDX-License-Identifier: Apache-2.0
 //
 // emilia-gate.mjs â€” the EMILIA Receipt-Required gate, as a single drop-in file.
 //

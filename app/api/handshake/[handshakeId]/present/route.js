@@ -69,8 +69,8 @@ export async function POST(request, { params }) {
       {
         type: presentation_type,
         data: claims,
-        issuer_ref,
-        disclosure_mode,
+        issuer_ref: issuer_ref ?? undefined,
+        disclosure_mode: disclosure_mode ?? undefined,
       },
       actorId
     );

@@ -78,6 +78,7 @@ else {
   input = ingest(file);
 }
 
+/** @type {any} */
 const rep = scanActions(input.actions, { source: input.source });
 const isHttp = input.source === 'openapi';
 

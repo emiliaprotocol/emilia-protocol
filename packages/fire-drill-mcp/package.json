@@ -8,11 +8,22 @@
     "emilia-fire-drill-mcp": "./index.js"
   },
   "main": "./index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "index.js",
+    "dist",
+    "src",
     "README.md"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "start": "node index.js",
     "test": "node --test index.test.js"
   },
