@@ -86,11 +86,17 @@ export function predictedEffectsDigest(predictedEffects: any): string {
 // Canonical decimal: optional sign, no leading zeros on the integer part,
 // optional fraction. Trailing fraction zeros are tolerated ("1.50") and
 // normalized for comparison; "01" is rejected (not canonical).
+function trimTrailingDecimalZeros(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 0x30) end -= 1;
+  return end === value.length ? value : value.slice(0, end);
+}
+
 function splitDecimal(s: unknown): { neg: boolean; int: string; frac: string } | null {
   if (typeof s !== 'string') return null;
   const m = /^(-?)(0|[1-9][0-9]*)(?:\.([0-9]+))?$/.exec(s);
   if (!m) return null;
-  const out = { neg: m[1] === '-', int: m[2], frac: (m[3] || '').replace(/0+$/, '') };
+  const out = { neg: m[1] === '-', int: m[2], frac: trimTrailingDecimalZeros(m[3] || '') };
   if (out.int === '0' && out.frac === '') out.neg = false; // -0 == 0
   return out;
 }
