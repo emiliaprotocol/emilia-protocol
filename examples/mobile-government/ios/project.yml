@@ -3,6 +3,16 @@ options:
   bundleIdPrefix: ai.emiliaprotocol
   deploymentTarget:
     iOS: "16.0"
+schemes:
+  GovernmentApproval:
+    build:
+      targets:
+        GovernmentApproval: all
+        GovernmentApprovalTests:
+          - test
+    test:
+      targets:
+        - GovernmentApprovalTests
 packages:
   EmiliaMobile:
     path: ../../../sdks/swift-mobile
@@ -45,3 +55,18 @@ targets:
           APP_ATTEST_ENVIRONMENT: development
         Release:
           APP_ATTEST_ENVIRONMENT: production
+  GovernmentApprovalTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: GovernmentApproval
+      - package: EmiliaMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.emiliaprotocol.approver.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: 6.0
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/EMILIA Approver.app/EMILIA Approver"
+        BUNDLE_LOADER: "$(TEST_HOST)"

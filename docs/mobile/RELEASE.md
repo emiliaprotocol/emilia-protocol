@@ -27,9 +27,14 @@ Changing one without the others intentionally causes refusal.
    before any write. Reconcile missing migrations from their reviewed source
    artifacts; do not create empty placeholders or repair the remote ledger just
    to make a push pass. Then run `supabase db push --dry-run` and confirm the
-   mobile migration is the only pending production change.
+   reviewed mobile migrations are the only pending production changes.
 2. Apply `supabase/migrations/20260715180000_mobile_production_platform.sql` to
-   the production project through the normal reviewed migration path.
+   the production project through the normal reviewed migration path, then
+   apply
+   `supabase/migrations/20260720181619_mobile_action_continuity.sql`, then
+   `supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql`.
+   Do not mark any migration as applied without verifying its tables, functions,
+   RLS, grants, and live contract.
 3. Configure the production environment values documented for the deployment,
    including the canonical Android signing certificate, Apple environment, Play cloud project,
    API-key material, and production rate-limit storage.
@@ -37,8 +42,14 @@ Changing one without the others intentionally causes refusal.
    directly from `www.emiliaprotocol.ai` over HTTPS without a redirect.
 5. Exercise pairing, enrollment, challenge issuance, terminal commit, concurrent
    replay, database outage, platform-verifier outage, action/evidence transaction
-   rollback, lost commit response recovery, and atomic disconnect
+   rollback, lost commit response recovery, atomic disconnect, revision
+   supersession, quorum projection, pre-consumption withdrawal, one-time
+   consequence consumption with a frozen executor key, indeterminate timeout,
+   key-rotation race refusal, and retained pinned-evidence reconciliation
    against the production-shaped staging database.
+6. Register the intended provider-outcome Ed25519 public key with an
+   organization-admin credential. Keep the private key in the protected
+   executor; do not place it in the web or native app environment.
 
 ### Apple
 
@@ -83,6 +94,8 @@ source .env.production && npm run mobile:production-readiness
 MOBILE_TEST_DATABASE_URL='postgresql://...' npm run mobile:db-contract
 node --test packages/mobile/*.test.js
 npx vitest run \
+  tests/mobile-action-continuity.test.js \
+  tests/mobile-action-continuity-routes.test.js \
   tests/mobile-production-attestation.test.js \
   tests/mobile-production-routes.test.js \
   tests/mobile-production-runtime.test.js \
@@ -118,9 +131,21 @@ cannot be recovered by the stable record ID.
 
 The production service role has read-only access to mobile tables. Pairing,
 session touch/revocation, challenge state, enrollment, counters, demo seeding,
-and terminal decisions mutate only through public-revoked security-definer
-functions. `node scripts/check-write-discipline.js` and the disposable database
-contract enforce both the JavaScript guard and PostgreSQL privilege boundary.
+terminal decisions, action groups and revisions, lifecycle events, operations,
+executor-key pins, and alignment records mutate only through public-revoked
+security-definer functions. `node scripts/check-write-discipline.js` and the
+disposable database contract enforce both the JavaScript guard and PostgreSQL
+privilege boundary.
+
+The continuity release candidate must also prove that challenge v2 signs
+`action_reference`, `action_caid`, and `action_digest`; a changed material field
+creates a new CAID and visible revision diff; quorum is aggregated from distinct
+assignments; consumption is one-time; and a provider timeout records
+`INDETERMINATE` with `retry_safe=false`. Only exact provider evidence signed by
+the Ed25519 key frozen at consumption and still active for the organization may
+reconcile that operation to `EXECUTED` or `REFUSED`. The database retains the
+signed statement. The decision passport inspection must confirm that raw WebAuthn,
+platform-attestation, and provider evidence is absent.
 
 Required protected secrets are:
 
@@ -163,7 +188,11 @@ wrong approver, stale challenge, second presentation, concurrent presentation,
 revoked session, revoked device credential, App Attest counter rollback, wrong
 Play signing certificate, unlicensed Android install, failed integrity service,
 captured Android screen, recorded or mirrored iOS screen, offline attestation,
-database outage, and executor call without a consumed ceremony.
+database outage, executor call without a consumed ceremony, CAID or digest
+substitution, superseded-revision consumption, duplicate operation ID, second
+consumption, withdrawal after consumption, blind retry after provider timeout,
+unregistered executor key, wrong pinned key, provider-signature mutation, and
+provider evidence bound to another operation, CAID, digest, or nonce.
 
 Export the accepted and refused evidence, verify it with the shipped verifier
 from a separate machine, and retain the command output with the signed artifact
@@ -176,3 +205,8 @@ after the hostile run is attached to the release. Public store publication is a
 separate owner decision after privacy, accessibility, support, incident-response,
 and pilot acceptance sign-off. The July standards work does not require public
 store availability.
+
+Repository source, a merged change, a journaled migration, an applied migration,
+a deployed API, a signed native artifact, internal testing, and public app-store
+availability are distinct release states. Record evidence for each state
+separately; never infer a later state from an earlier one.

@@ -69,6 +69,12 @@ for (const [table, columns] of [
   ['mobile_evidence_records', 'record_id,record'],
   ['mobile_actions', 'action_reference,presentation,decision_evidence'],
   ['mobile_action_challenges', 'challenge_id,session_id'],
+  ['mobile_action_groups', 'group_id,active_revision,state,current_action_caid'],
+  ['mobile_action_revisions', 'group_id,revision,action_caid,action_digest'],
+  ['mobile_action_events', 'event_id,event_type,evidence_digest'],
+  ['mobile_action_operations', 'operation_id,status,consumption_nonce,executor_id,executor_key_id,provider_evidence_digest,provider_evidence'],
+  ['mobile_executor_keys', 'executor_id,key_id,status'],
+  ['mobile_action_alignments', 'group_id,revision,system_name,verdict'],
 ]) {
   const { error } = await supabase.from(table).select(columns).limit(1);
   if (error) throw new Error(`${table} is unavailable: ${error.code || error.message}`);
@@ -135,6 +141,136 @@ const invalidDemoAction = await supabase.rpc('create_mobile_demo_action', {
 });
 assert(!invalidDemoAction.error && invalidDemoAction.data === false,
   'mobile demo action RPC exists and refuses malformed input');
+
+const invalidDemoActionV2 = await supabase.rpc('create_mobile_demo_action_v2', {
+  p_group_id: null,
+  p_action_reference: null,
+  p_entity_ref: null,
+  p_approver_id: null,
+  p_initiator_id: null,
+  p_action: {},
+  p_presentation: {},
+  p_policy: {},
+  p_policy_id: null,
+  p_action_caid: null,
+  p_action_digest: null,
+  p_expires_at: readinessNow,
+  p_now: readinessNow,
+});
+assert(!invalidDemoActionV2.error && invalidDemoActionV2.data === false,
+  'CAID-bound mobile action RPC exists and refuses malformed input');
+
+const invalidGraceV2 = await supabase.rpc('create_grace_mobile_action_group_v2', {
+  p_group_id: null,
+  p_assignments: [],
+  p_entity_ref: null,
+  p_initiator_id: null,
+  p_action: {},
+  p_presentation: {},
+  p_policy: {},
+  p_policy_id: null,
+  p_action_caid: null,
+  p_action_digest: null,
+  p_expires_at: readinessNow,
+  p_now: readinessNow,
+});
+assert(!invalidGraceV2.error && invalidGraceV2.data === false,
+  'CAID-bound quorum action RPC exists and refuses malformed input');
+
+const invalidSupersession = await supabase.rpc('supersede_mobile_action', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_current_action_reference: '__mobile_readiness_nonexistent__',
+  p_assignments: [],
+  p_initiator_id: '__mobile_readiness_nonexistent__',
+  p_action: {},
+  p_presentation: {},
+  p_policy: {},
+  p_policy_id: '__mobile_readiness_nonexistent__',
+  p_action_caid: null,
+  p_action_digest: null,
+  p_change_set: [],
+  p_expires_at: readinessNow,
+  p_now: readinessNow,
+});
+assert(!invalidSupersession.error && invalidSupersession.data?.ok === false,
+  'action supersession RPC exists and refuses malformed input');
+
+const invalidWithdrawal = await supabase.rpc('withdraw_mobile_action', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_session_id: nonexistentSessionId,
+  p_action_reference: '__mobile_readiness_nonexistent__',
+  p_now: readinessNow,
+});
+assert(!invalidWithdrawal.error && invalidWithdrawal.data?.ok === false,
+  'pre-consumption withdrawal RPC exists and refuses an inactive session');
+
+const invalidConsumption = await supabase.rpc('consume_mobile_action', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_action_reference: '__mobile_readiness_nonexistent__',
+  p_operation_id: 'short',
+  p_consumption_nonce: 'short',
+  p_executor_id: 'x',
+  p_now: readinessNow,
+});
+assert(!invalidConsumption.error && invalidConsumption.data?.ok === false,
+  'single-consumption RPC exists and refuses malformed input');
+
+const invalidIndeterminate = await supabase.rpc('mark_mobile_action_indeterminate', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_operation_id: '__mobile_readiness_nonexistent__',
+  p_now: readinessNow,
+});
+assert(!invalidIndeterminate.error && invalidIndeterminate.data?.reason === 'not_found',
+  'indeterminate outcome RPC exists and refuses an unknown operation');
+
+const invalidReconciliation = await supabase.rpc('reconcile_mobile_action_operation', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_operation_id: '__mobile_readiness_nonexistent__',
+  p_executor_id: '__mobile_readiness_nonexistent__',
+  p_executor_key_id: `ep:executor-key:sha256:${'0'.repeat(64)}`,
+  p_outcome: 'unknown',
+  p_provider_reference: null,
+  p_evidence_digest: null,
+  p_provider_evidence: null,
+  p_now: readinessNow,
+});
+assert(!invalidReconciliation.error && invalidReconciliation.data?.ok === false,
+  'provider reconciliation RPC exists and refuses unauthenticated outcome input');
+
+const invalidExecutorKey = await supabase.rpc('register_mobile_executor_key', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_executor_id: 'x',
+  p_key_id: 'invalid',
+  p_public_key: 'invalid',
+  p_now: readinessNow,
+});
+assert(!invalidExecutorKey.error && invalidExecutorKey.data === false,
+  'executor-key registration RPC exists and refuses an invalid pin');
+
+const invalidAlignment = await supabase.rpc('record_mobile_action_alignment', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_action_reference: '__mobile_readiness_nonexistent__',
+  p_system_name: 'AgentROA',
+  p_verdict: 'EQUIVALENT_UNDER_PROFILE',
+  p_profile_id: null,
+  p_profile_hash: null,
+  p_native_verified: false,
+  p_evidence_digest: null,
+  p_reason: null,
+  p_now: readinessNow,
+});
+assert(!invalidAlignment.error && invalidAlignment.data === false,
+  'cross-system alignment RPC exists and refuses an unverified equivalence claim');
+
+const emptyContinuity = await supabase.rpc('list_mobile_action_continuity', {
+  p_entity_ref: '__mobile_readiness_nonexistent__',
+  p_approver_id: '__mobile_readiness_nonexistent__',
+  p_pending_only: false,
+  p_now: readinessNow,
+});
+assert(!emptyContinuity.error && Array.isArray(emptyContinuity.data)
+  && emptyContinuity.data.length === 0,
+'consistent mobile continuity snapshot RPC exists and remains tenant scoped');
 
 const validPresentation = await supabase.rpc('mobile_presentation_is_valid', {
   p_value: {

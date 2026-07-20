@@ -19,7 +19,7 @@ import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { signEvidenceReceipt } from '@/lib/guard-evidence-receipt.js';
 import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
-import { buildPortableSignoffDecision } from '@/lib/signoff/decision-evidence.js';
+import { buildPortableSignoffDecision } from '@/lib/signoff/decision-evidence.ts';
 import { canReadReceipt } from '@/lib/tenant-binding';
 
 export async function GET(request, { params }) {

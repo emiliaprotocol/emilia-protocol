@@ -81,6 +81,7 @@ export function createGovernmentMobileController({ service, profiles, resolveReq
             }
             const issued = await service.issue({
                 action: resolved.action,
+                actionReference: request.action_reference,
                 policy: resolved.policy || null,
                 policyId: resolved.policy_id || null,
                 initiatorId: resolved.initiator_id,

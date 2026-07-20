@@ -30,7 +30,7 @@ Generated output is ignored by Git.
 synthetic system of record
   -> CAID for the exact action
   -> server-resolved action and review presentation
-  -> EP-MOBILE-CHALLENGE-v1
+  -> EP-MOBILE-CHALLENGE-v2 (signed action reference + CAID + action digest)
   -> user-verified P-256 passkey assertion
   -> context-bound platform-attestation verification
   -> atomic one-time challenge consumption

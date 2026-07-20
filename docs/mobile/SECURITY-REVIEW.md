@@ -4,6 +4,11 @@ Review date: 2026-07-15. Scope: the native iOS and Android reference apps,
 mobile SDKs, `/api/v1/mobile`, platform-attestation adapters, durable PostgreSQL
 state, and signed-release workflow.
 
+Continuity extension review date: 2026-07-20. Added scope: CAID-bound challenge
+v2, action groups and revisions, aggregate quorum, consequence consumption,
+indeterminate provider outcomes, pinned Ed25519 reconciliation, cross-system
+alignment records, and bounded decision passports.
+
 This review covers source and unsigned local artifacts. A store-signed build is
 not acceptance-cleared until the physical-device campaign in `RELEASE.md` has
 run under the final Apple profile and Play signing certificate.
@@ -28,6 +33,14 @@ run under the final Apple profile and Play signing certificate.
 | Medium | Personalized mobile responses and refusal details did not all carry an explicit private cache policy. | Every mobile success and problem response now sets `no-store`, `no-cache`, `nosniff`, and `no-referrer`. |
 | Medium | iOS could expose exact-action content in the app-switcher snapshot or while capture was detected. | Inactive and captured states render a neutral privacy shield; capture also clears the pending ceremony and blocks signing/submission. Android uses `FLAG_SECURE`. |
 | Medium | A production demo injector could have become an accidental action-authoring API. | It is disabled unless `MOBILE_DEMO_ENABLED=true`, requires a write principal, accepts only a named built-in scenario, and never accepts caller-supplied action bytes. The local visual showroom is compiled only in Debug and is visibly marked `DEMO`. |
+| Critical | An approval could identify display bytes without cryptographically joining the tenant action reference, interoperable action identity, and authoritative digest. | `EP-MOBILE-CHALLENGE-v2` signs `action_reference`, server-computed `action_caid`, and `action_digest`; issuance and verification recompute the identity from authoritative action bytes, and the decision write checks those signed values against the persisted revision. |
+| Critical | A provider timeout could be mistaken for refusal and invite a duplicate irreversible effect. | Consequence authority is consumed once under a unique operation and random nonce. Timeout records durable `INDETERMINATE` with `retry_safe=false`; there is no blind-retry transition. |
+| Critical | A caller could assert that an ambiguous operation executed without authenticated provider proof, or rotate a key between verification and commit. | Consumption freezes the intended executor and active key. Terminal reconciliation requires a closed `EP-MOBILE-PROVIDER-OUTCOME-v1` statement bound to that executor/key, operation, CAID, action digest, and consumption nonce; the database rechecks the exact active pin under lock in the commit transaction and retains the signed statement. |
+| High | A caller-selected operation ID could be reserved from another tenant. | The operation primary key is `(entity_ref, operation_id)`, and every read and state transition includes the tenant binding. |
+| High | Independent approver assignments could diverge on revision or quorum state, or a stale assignment could remain executable after a material change. | Normalized action-group and immutable revision tables project one aggregate quorum. Supersession cancels pending assignments on the prior revision, computes a deterministic material diff and new CAID, and is refused after consumption. |
+| High | A mobile approval could be withdrawn after its authority had already been consumed. | The withdrawal RPC locks the paired session, assignment, and action group; it permits only the same approver's approved active revision and refuses every consumed or terminal consequence state. |
+| High | Cross-system equivalence could be asserted from a label or shared local reference. | `EQUIVALENT_UNDER_PROFILE` survives only with native verification, a named SHA-256-pinned mapping profile, and an evidence digest. Missing verification or profile pins produces `INDETERMINATE`; equivalence is never inferred. |
+| High | A portable history export could leak replayable passkey, platform, or provider proof material. | The bounded decision passport contains CAID, action digest, decision and outcome evidence digests, lifecycle, quorum, consumption nonce, and a passport digest. Raw WebAuthn, platform-attestation, and provider evidence stays server-side. |
 
 ## Executed attack classes
 
@@ -42,6 +55,14 @@ run under the final Apple profile and Play signing certificate.
 - Database head contention, stale expected heads, malformed canonical records,
   response loss after commit, direct table mutation, session touch/revocation
   races, store outage, audit outage, and verifier outage.
+- Action-reference, CAID, action-digest, revision, predecessor, and material-diff
+  substitution; stale-revision consumption; duplicate operation and duplicate
+  consequence consumption; withdrawal after consumption.
+- Provider timeout, blind retry, forged terminal outcome, wrong executor key,
+  changed provider signature, and provider evidence replayed across operation,
+  CAID, action digest, or consumption nonce.
+- Unverified or unpinned cross-system equivalence and passport raw-evidence
+  leakage.
 - Debug signing, wrong package/bundle identity, wrong certificate, development
   App Attest entitlement, `get-task-allow`, secret-file leakage, and release
   version drift in the signed-artifact workflow.
@@ -71,16 +92,32 @@ run under the final Apple profile and Play signing certificate.
   remain operational trust anchors.
 - The system proves what passed through this executor gate. It cannot prove an
   organization has no uninstrumented path around the gate.
+- CAID proves deterministic identity for the action bytes in its definition. It
+  does not prove authorization, legal effect, semantic equivalence, provider
+  execution, or physical-world outcome.
+- A verified provider statement establishes what the pinned executor key
+  attested for the bound operation. It does not create an independent physical
+  sensor or eliminate compromise of that executor.
 
 ## Remaining acceptance gates
 
 1. Reconcile the production migration ledger with reviewed source artifacts,
-   apply the mobile migration through the normal migration path, and pass
-   `npm run mobile:production-readiness` against the live deployment.
+   apply the mobile production migration,
+   `20260720181619_mobile_action_continuity.sql`, and
+   `20260720193917_mobile_action_continuity_hardening.sql` through the normal migration
+   path, and pass `npm run mobile:production-readiness` against the live
+   deployment.
 2. Register the Apple App ID/profile and Play app/signing identity, then run the
    protected signed-release workflow.
-3. Execute the physical-device hostile and accessibility matrix from
+3. Register the production executor key through the admin route, then retain
+   evidence for one duplicate-consumption refusal, one indeterminate timeout,
+   one blind-retry refusal, and one exact pinned-evidence reconciliation.
+4. Execute the physical-device hostile and accessibility matrix from
    `RELEASE.md`; retain its output beside the signed artifact hashes.
-4. Publish to TestFlight and Play internal testing first. Public store release
+5. Publish to TestFlight and Play internal testing first. Public store release
    remains an owner decision after pilot, privacy, accessibility, support, and
    incident-response acceptance.
+
+These are acceptance gates, not claims of current deployment. Source closure,
+migration application, web deployment, signed native artifacts, internal
+testing, and public store publication must be recorded independently.

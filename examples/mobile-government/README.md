@@ -21,11 +21,14 @@ or denial with a passkey and platform integrity evidence bound to those bytes.
 ```text
 government system of record
   -> exact action + exact presentation
-  -> body-bound mobile challenge
+  -> server-computed CAID + action digest
+  -> challenge v2 signed Action Lock
   -> native review + passkey + app/device integrity
   -> pinned server verification
   -> atomic challenge consumption + durable evidence
-  -> local government executor authorizes or refuses
+  -> aggregate quorum authorization
+  -> one-time consequence consumption
+  -> executed / refused / indeterminate reconciliation
 ```
 
 The native apps never accept caller-provided trust keys or profiles. The
@@ -34,6 +37,37 @@ selects the reliance profile from server configuration. Its mandatory
 authorization hook receives the agency-authenticated principal separately from
 the request body and refuses before protected work when that principal is not
 permitted to act for the requested approver and enrolled device.
+
+## Continuity experience
+
+The reference clients consume the same hosted continuity model on iOS and
+Android:
+
+- **Action Lock:** the review surface shows a stable fingerprint derived from
+  the server-computed CAID. Challenge v2 signs `action_reference`,
+  `action_caid`, and `action_digest`; the clients do not invent them.
+- **Revision safety:** a successor action receives a new CAID and revision, and
+  the app shows every added, changed, or removed material field.
+- **Quorum progress:** approved, required, denied, and withdrawn counts are
+  presented as one aggregate action state rather than independent assignments.
+- **Consequence state:** the app distinguishes authorization from consumption
+  and provider outcome. `INDETERMINATE` is shown as “do not retry,” not as a
+  denial or a safe retry.
+- **Decision passport:** history can display/export the bounded CAID, decision,
+  quorum, lifecycle, and evidence-digest summary without raw passkey,
+  attestation, or provider evidence.
+- **Cross-system alignment:** equivalence is shown only under a named,
+  hash-pinned mapping profile with native verification; otherwise the result is
+  explicitly indeterminate.
+- **Withdrawal:** an approver may withdraw their own approval before
+  consequence authority is consumed. There is no claim that withdrawal undoes
+  an already consumed or executed effect.
+
+The hosted HTTP contract is documented in
+[`openapi.yaml`](../../openapi.yaml). Mobile-session routes provide inbox,
+history, passport, and pre-consumption withdrawal. Organization operator routes
+provide consumption, outcome reconciliation, supersession, and alignment
+recording; executor-key registration requires an organization admin key.
 
 ## Build
 
@@ -75,3 +109,5 @@ open reference clients, not evidence that any state or agency has adopted or
 endorsed the platform. Production distribution remains blocked until the
 account-owned store, signing, attestation, and privacy steps in
 [`docs/mobile/RELEASE.md`](../../docs/mobile/RELEASE.md) are complete.
+The continuity migration, web deployment, signed native release, and app-store
+publication remain separately verified gates.

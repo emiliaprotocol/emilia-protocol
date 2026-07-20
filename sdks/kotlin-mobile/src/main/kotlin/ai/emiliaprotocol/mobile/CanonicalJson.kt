@@ -2,6 +2,7 @@
 package ai.emiliaprotocol.mobile
 
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.security.MessageDigest
 import java.util.Base64
 import kotlinx.serialization.encodeToString
@@ -37,13 +38,16 @@ object EmiliaCanonicalJson {
 
     private fun canonicalInteger(text: String): String {
         val integer = try {
-            BigDecimal(text).toBigIntegerExact().longValueExact()
+            BigDecimal(text).toBigIntegerExact()
         } catch (_: ArithmeticException) {
             throw EmiliaMobileException.NonCanonicalJson
         } catch (_: NumberFormatException) {
             throw EmiliaMobileException.NonCanonicalJson
         }
-        if (integer < -MAX_SAFE_INTEGER || integer > MAX_SAFE_INTEGER) throw EmiliaMobileException.NonCanonicalJson
+        if (integer < BigInteger.valueOf(-MAX_SAFE_INTEGER)
+            || integer > BigInteger.valueOf(MAX_SAFE_INTEGER)) {
+            throw EmiliaMobileException.NonCanonicalJson
+        }
         return integer.toString()
     }
 }

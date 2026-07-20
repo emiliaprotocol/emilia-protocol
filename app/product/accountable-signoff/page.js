@@ -28,8 +28,8 @@ export default function AccountableSignoffPage() {
   }
 
   const METHODS = [
-    { title: 'iOS reference app', body: 'A buildable SwiftUI client renders the closed exact-action presentation, uses a passkey for user verification, and binds Apple App Attest evidence to the same ceremony. Public distribution remains release-gated.' },
-    { title: 'Android reference app', body: 'A buildable Kotlin client uses Credential Manager, a non-exportable Android Keystore key, and Google Play Integrity under a server-pinned package and signing certificate. Public distribution remains release-gated.' },
+    { title: 'iOS reference app', body: 'A buildable SwiftUI client renders the exact-action presentation, CAID Action Lock, material changes, quorum, and consequence state; it uses a passkey and binds Apple App Attest evidence to the same ceremony. Public distribution remains release-gated.' },
+    { title: 'Android reference app', body: 'A buildable Kotlin client renders the same Action Lock and lifecycle, then uses Credential Manager, a non-exportable Android Keystore key, and Google Play Integrity under server-pinned app identity. Public distribution remains release-gated.' },
     { title: 'Passkey ceremony', body: 'The Class-A signoff uses WebAuthn/passkeys with user presence and user verification. The mobile layer composes with this established primitive instead of inventing new cryptography.' },
     { title: 'Embeddable SDKs', body: 'Swift and Kotlin libraries let an organization embed the same ceremony into its own branded, self-hosted application while keeping its own trust roots and execution boundary.' },
     { title: 'Distinct-human quorum', body: 'A profile can require multiple enrolled approvers, initiator exclusion, ordering, and separate device-bound ceremonies over the same exact action before Gate permits execution.' },
@@ -58,9 +58,10 @@ export default function AccountableSignoffPage() {
         <div style={styles.eyebrowBlue}>EMILIA Approver Apps</div>
         <h1 style={styles.h1}>The human decision edge of EMILIA Gate</h1>
         <p style={{ ...styles.body, maxWidth: 640 }}>
-          Gate creates the exact-action challenge. The app shows the material fields on a
-          separate device, captures an approve or deny decision, and returns
-          device-bound evidence for Gate to verify and consume.
+          Gate creates the exact-action challenge. The app shows the material fields and a
+          stable CAID fingerprint on a separate device, captures an approve or deny
+          decision, and follows that decision through quorum, consumption, uncertainty,
+          and authenticated outcome reconciliation.
         </p>
         <a href="#pilot" className="ep-cta" style={cta.primary}>Pilot the Approver apps</a>
       </section>
@@ -94,12 +95,13 @@ export default function AccountableSignoffPage() {
       {/* How it works */}
       <section style={styles.section}>
         <h2 style={styles.h2}>How it works</h2>
-        <p style={styles.body}>Three steps across the app and the enforcement boundary.</p>
+        <p style={styles.body}>Four steps across the app and the enforcement boundary.</p>
         <div style={{ display: 'grid', gap: 20 }}>
           {[
-            { step: '01', label: 'Challenge', detail: 'Gate resolves the action and presentation from the protected system, selects the pinned profile, and registers a fresh body-bound challenge. The phone does not author its own action or trust policy.' },
-            { step: '02', label: 'Decide', detail: 'The app renders the closed material-field presentation, then binds the approver’s decision, passkey assertion, and supported app or device integrity evidence to the same request.' },
-            { step: '03', label: 'Consume', detail: 'Gate verifies the ceremony under relying-party-pinned inputs and atomically consumes an accepted challenge before the integrated executor mutates state. Refusals remain evidence and never authorize an effect.' },
+            { step: '01', label: 'Lock', detail: 'Gate resolves the action and presentation from the protected system, computes its CAID and authoritative digest, and signs the action reference, CAID, digest, policy, approver, and expiry into one challenge.' },
+            { step: '02', label: 'Decide', detail: 'The app verifies the Action Lock, renders every material field and any revision changes, then binds the approver’s decision, passkey assertion, and supported app or device integrity evidence to the same request.' },
+            { step: '03', label: 'Consume', detail: 'After the required quorum, Gate atomically consumes the accepted authority and freezes the intended executor key before any integrated system mutates state. An approval can be withdrawn before consumption, never after.' },
+            { step: '04', label: 'Reconcile', detail: 'If the provider times out after invocation, the action becomes indeterminate and cannot be blindly retried. Only retained, authenticated provider evidence bound to the same operation, executor key, and Action Lock can resolve the outcome.' },
           ].map((s2, i) => (
             <div key={i} style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
               <div style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: color.green, flexShrink: 0, lineHeight: 1, minWidth: 44 }}>{s2.step}</div>
@@ -112,44 +114,67 @@ export default function AccountableSignoffPage() {
         </div>
       </section>
 
-      {/* Methods */}
+      {/* Continuity */}
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
-          <h2 style={styles.h2}>Signoff methods</h2>
-          <p style={styles.body}>Open reference clients and SDKs capture the decision. The relying party still chooses the acceptable apps, keys, integrity services, and assurance floor.</p>
+          <h2 style={styles.h2}>The approval does not disappear after the tap</h2>
           <p style={styles.body}>
-            The ceremony establishes that a pinned enrolled key completed a verified response over
-            exact bytes. It does not prove perception, comprehension, legal sufficiency, or that a
-            compromised device displayed honest pixels.
+            The reference apps keep the exact decision and the downstream consequence
+            connected without pretending that authorization proves execution.
           </p>
-          <div style={grid.stack}>
-            {METHODS.map((m, i) => (
-              <div key={i} className="ep-card-hover" style={styles.card}>
-                <div style={styles.cardTitle}>{m.title}</div>
-                <div style={styles.cardBody}>{m.body}</div>
+          <div style={grid.auto(280)}>
+            {[
+              { title: 'Action Lock', body: 'A short fingerprint comes from the CAID of the complete authoritative action. The signed context also carries the action reference and digest, so a changed action is a new decision.' },
+              { title: 'Revision-aware review', body: 'When material fields change, the prior approval is superseded. The app shows what was added, changed, or removed and requires a fresh ceremony for the new CAID.' },
+              { title: 'Quorum and lifecycle', body: 'See approvals still required and distinguish authorized, consumed, indeterminate, executed, refused, withdrawn, expired, and cancelled states.' },
+              { title: 'Decision passport', body: 'Export a bounded record of action identity, decision, quorum, and effect state. It carries evidence digests, not raw passkey or provider evidence.' },
+            ].map((item) => (
+              <div key={item.title} className="ep-card-hover" style={styles.card}>
+                <div style={styles.cardTitle}>{item.title}</div>
+                <div style={styles.cardBody}>{item.body}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* When required */}
+      {/* Methods */}
       <section style={styles.section}>
-        <h2 style={styles.h2}>When signoff is required</h2>
-        <p style={styles.body}>Policy defines when accountable signoff is required. These are the most common trigger surfaces.</p>
-        <div style={grid.auto(280)}>
-          {WHEN_REQUIRED.map((w, i) => (
+        <h2 style={styles.h2}>Signoff methods</h2>
+        <p style={styles.body}>Open reference clients and SDKs capture the decision. The relying party still chooses the acceptable apps, keys, integrity services, and assurance floor.</p>
+        <p style={styles.body}>
+          The ceremony establishes that a pinned enrolled key completed a verified response over
+          exact bytes. It does not prove perception, comprehension, legal sufficiency, or that a
+          compromised device displayed honest pixels.
+        </p>
+        <div style={grid.stack}>
+          {METHODS.map((m, i) => (
             <div key={i} className="ep-card-hover" style={styles.card}>
-              <div style={styles.cardTitle}>{w.title}</div>
-              <div style={styles.cardBody}>{w.body}</div>
+              <div style={styles.cardTitle}>{m.title}</div>
+              <div style={styles.cardBody}>{m.body}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Why it matters */}
+      {/* When required */}
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
+          <h2 style={styles.h2}>When signoff is required</h2>
+          <p style={styles.body}>Policy defines when accountable signoff is required. These are the most common trigger surfaces.</p>
+          <div style={grid.auto(280)}>
+            {WHEN_REQUIRED.map((w, i) => (
+              <div key={i} className="ep-card-hover" style={styles.card}>
+                <div style={styles.cardTitle}>{w.title}</div>
+                <div style={styles.cardBody}>{w.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why it matters */}
+      <section style={styles.section}>
           <h2 style={styles.h2}>Why it matters</h2>
           <p style={styles.body}>Different environments need accountable signoff for different reasons. The mechanism is the same; each organization decides what control or legal conclusion the evidence supports.</p>
           <div style={grid.auto(280)}>
@@ -163,7 +188,6 @@ export default function AccountableSignoffPage() {
               </div>
             ))}
           </div>
-        </div>
       </section>
 
       {/* Pilot form */}

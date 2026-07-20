@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-20T17:33:21.194Z",
+  "evidence_snapshot_at": "2026-07-20T20:04:44.941Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "54c30e7dab0e87003aa2621add622f555bb8b0a7570cb3be7abfe596b20e792b",
+    "input_digest_sha256": "a2dd24fb069fa1d561d97a3bc28211516bec18fe3e86ec2e8997b6000a0ba675",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,13 +17,13 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "9fc4ddc76fefa4617204673f62b2d4c502cb4e7c65f09e1e18b5ee52a73b2500",
+        "sha256": "54ff9babebde034e27330b05b01a67baa7ff1053fd7ca7f375114b8f0b92c987",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "d3033023fb316eaa2433185ce9353088a727ebbe4a145551da2a977bc0dbaba2",
-        "bytes": 6360
+        "sha256": "3450d7ebe73c19d0a4110ea9b53c34c91c99615ca569140013505323df4a37ba",
+        "bytes": 6361
       },
       {
         "path": "conformance/external/rust-cleanroom-jdieselny.v1.json",
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "afc098b6cbc6bd754f201c92a26de5d936a86bb58e6306bf07626460bb5c27d7",
-        "bytes": 138788
+        "sha256": "dc6ec7ea062c836a3159f7a27eadbc77b040ad8d48ed9bb5e69a1df134f075c1",
+        "bytes": 144336
       },
       {
         "path": "security/security-case.json",
-        "sha256": "4ee11546bb1078da6fbc97bfbaa9788eb5a6a588c1344b90a28b132f66e58585",
-        "bytes": 223192
+        "sha256": "7fa930625ba026120387de5c8b2f59ccb03953aa091e72fc9bde96a707d2a97a",
+        "bytes": 232915
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -256,8 +256,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7256,
-      "files": 383,
+      "total": 7320,
+      "files": 385,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -266,7 +266,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "1e9b401e2f3ad8f9b7eb542ac8571c0d7ce3f92c6975abba7fe57f9f1680bd93",
+      "manifest_sha256": "6a87d56dea2f0490685d356c8a349a655f9dd78767849ad6b47ae6a4965f0ad8",
       "vector_bundle_sha256": "2f614283d4024c2dc4e89535cd1a56b8ba2548fc66f9b96760fc8fb56825cd3d"
     },
     "formal": {
@@ -286,9 +286,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 28,
-      "evidence_files": 140,
-      "evidence_bundle_sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+      "claims": 29,
+      "evidence_files": 156,
+      "evidence_bundle_sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
     },
     "caid": {
       "core_vectors": 48,
@@ -408,13 +408,13 @@
         },
         {
           "language": "javascript",
-          "file": "lib/signoff/decision-evidence.js",
+          "file": "lib/signoff/decision-evidence.ts",
           "symbol": "buildPortableSignoffDecision",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyWebAuthnSignoff",
           "exported": true
         }
@@ -479,7 +479,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/resolution.js",
+          "file": "packages/verify/src/resolution.ts",
           "symbol": "verifyResolutionReceipt",
           "exported": true
         },
@@ -603,7 +603,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyTrustReceipt",
           "exported": true
         }
@@ -661,7 +661,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyTrustReceipt",
           "exported": true
         },
@@ -731,7 +731,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/quorum.js",
+          "file": "packages/verify/src/quorum.ts",
           "symbol": "verifyQuorum",
           "exported": true
         }
@@ -872,25 +872,25 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/reliance.js",
+          "file": "packages/verify/src/reliance.ts",
           "symbol": "evaluateReliance",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyTrustReceipt",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/authority-proof.js",
+          "file": "packages/verify/src/authority-proof.ts",
           "symbol": "verifyAuthorityProof",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/revocation.js",
+          "file": "packages/verify/src/revocation.ts",
           "symbol": "verifyRevocation",
           "exported": true
         }
@@ -954,7 +954,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/revocation.js",
+          "file": "packages/verify/src/revocation.ts",
           "symbol": "verifyRevocation",
           "exported": true
         }
@@ -1026,19 +1026,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyOutcomeBinding",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/outcome-binding.js",
+          "file": "packages/verify/src/outcome-binding.ts",
           "symbol": "verifyOutcomeBindingCore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/outcome-binding.js",
+          "file": "packages/verify/src/outcome-binding.ts",
           "symbol": "verifyOutcomeAttestation",
           "exported": true
         }
@@ -1222,7 +1222,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/timestamp-proof.js",
+          "file": "packages/verify/src/timestamp-proof.ts",
           "symbol": "verifyTimestampProof",
           "exported": true
         }
@@ -2112,7 +2112,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/evidence-chain.js",
+          "file": "packages/verify/src/evidence-chain.ts",
           "symbol": "verifyAuthorizationChain",
           "exported": true
         }
@@ -2251,25 +2251,25 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "verifyMobileCeremony",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "createMobileCeremonyService",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/government.js",
+          "file": "packages/mobile/src/government.ts",
           "symbol": "createGovernmentMobileController",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/http.js",
+          "file": "packages/mobile/src/http.ts",
           "symbol": "createMobileHttpHandler",
           "exported": true
         }
@@ -2329,6 +2329,86 @@
       ]
     },
     {
+      "claim_id": "mobile-action-continuity-is-tenant-and-executor-bound",
+      "statement": "A CAID-bound mobile action becomes executable only after its approval threshold is met; consequence authority is consumed once under a tenant-scoped operation identifier, server-random nonce, and frozen executor key. A provider timeout becomes durable INDETERMINATE and is not retry-safe. A terminal outcome is accepted only from an exact signed provider statement bound to the same operation, CAID, action digest, nonce, executor, and still-active frozen key; the database rechecks that key in the commit transaction and retains the signed statement while bounded mobile exports expose only its digest.",
+      "acceptance_roots": [
+        "the relying party computes the exact action CAID and immutable revision from its system of record",
+        "distinct authenticated approver decisions project one threshold under the active action revision",
+        "the protected executor key is registered by an organization administrator and remains uncompromised",
+        "PostgreSQL serializes action consumption, executor-key rotation, timeout, and reconciliation transitions"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/mobile/action-continuity.js",
+          "symbol": "deriveMobileActionContinuity",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/action-continuity.js",
+          "symbol": "verifyMobileProviderOutcome",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/store.js",
+          "symbol": "consumeMobileAction",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/store.js",
+          "symbol": "reconcileMobileActionOperation",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "The durable mobile consequence state machine and PostgreSQL transition boundary have no Python implementation."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "The durable mobile consequence state machine and PostgreSQL transition boundary have no Go implementation."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_pinned_provider_reconciliation",
+          "polarity": "positive"
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "refuse_blind_retry_and_unpinned_provider_outcome",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The mixed-decision quorum projection, tenant-scoped operation key, executor-key rotation lock, retained evidence, and indeterminate reconciliation state machine are executable contracts but are not represented together in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "all consequential provider calls are mediated by the consumption endpoint and no bypass can mutate the protected system",
+        "the executor's Ed25519 private key and the organization's administrative key-registration path remain protected",
+        "the provider's signed statement is truthful about the bound provider-side effect",
+        "the production database preserves transaction isolation, row locking, constraints, RLS, and function grants"
+      ],
+      "exclusions": [
+        "a verified provider statement authenticates the pinned executor's assertion but is not an independent physical-world sensor",
+        "INDETERMINATE does not claim success or failure and may require provider-specific investigation",
+        "same-team Swift, Kotlin, and JavaScript behavior is conformance evidence, not an independent implementation",
+        "the guarantee does not cover any protected-system path that bypasses the integrated executor"
+      ]
+    },
+    {
       "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
       "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
       "acceptance_roots": [
@@ -2339,13 +2419,13 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "createMobileExecutionRecord",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "verifyMobileExecutionRecord",
           "exported": true
         },
@@ -2410,13 +2490,13 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/mobile/enrollment.js",
+          "file": "packages/mobile/src/enrollment.ts",
           "symbol": "buildMobileEnrollmentBinding",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/enrollment.js",
+          "file": "packages/mobile/src/enrollment.ts",
           "symbol": "createMobileEnrollmentService",
           "exported": true
         }
@@ -2600,19 +2680,19 @@
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/escrow-com.js",
+          "file": "lib/integrations/action-escrow/escrow-com.ts",
           "symbol": "createEscrowComAdapter",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "file": "lib/integrations/action-escrow/procore-change-order.ts",
           "symbol": "createProcoreChangeOrderAdapter",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "file": "lib/integrations/action-escrow/procore-change-order.ts",
           "symbol": "verifyProcoreChangeOrderEvidence",
           "exported": true
         }

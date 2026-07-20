@@ -1,7 +1,9 @@
 # EMILIA Mobile for Android
 
-Native Android client for `EP-MOBILE-CEREMONY-v1`, using Credential Manager
-passkeys and Play Integrity Standard requests.
+Native Android client for `EP-MOBILE-CHALLENGE-v2` and
+`EP-MOBILE-CEREMONY-v1`, using Credential Manager passkeys and Play Integrity
+Standard requests. V2 binds the selected inbox action reference, CAID, and
+action digest into the signed exact context before passkey invocation.
 
 ```kotlin
 val integrity = EmiliaPlayIntegrityProvider.prepare(
@@ -14,7 +16,12 @@ val coordinator = EmiliaMobileCeremonyCoordinator(
     appId = packageName,
     deviceKeyId = enrolledDeviceKeyId,
 )
-val response = coordinator.perform(challengeBytes)
+val response = coordinator.perform(
+    challengeData = challengeBytes,
+    requestedDecision = EmiliaMobileDecision.APPROVED,
+    expectedActionIdentity = selectedAction.expectedChallengeIdentity()
+        ?: error("The inbox action has no valid CAID lock"),
+)
 ```
 
 The server must call Google's decode endpoint and pin package name, signing

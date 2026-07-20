@@ -21,11 +21,11 @@
         { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js", "symbol": "POST", "exported": true },
         { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js", "symbol": "POST", "exported": true },
         { "language": "javascript", "file": "lib/guard-signoff.js", "symbol": "handleSignoffDecision", "exported": true },
-        { "language": "javascript", "file": "lib/signoff/decision-evidence.js", "symbol": "buildPortableSignoffDecision", "exported": true },
-        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyWebAuthnSignoff", "exported": true }
+        { "language": "javascript", "file": "lib/signoff/decision-evidence.ts", "symbol": "buildPortableSignoffDecision", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyWebAuthnSignoff", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "lib/signoff/decision-evidence.js", "export": "buildPortableSignoffDecision" },
+        { "language": "javascript", "file": "lib/signoff/decision-evidence.ts", "export": "buildPortableSignoffDecision" },
         { "language": "javascript", "file": "packages/verify/index.js", "export": "verifyWebAuthnSignoff" }
       ],
       "language_coverage": {
@@ -57,7 +57,7 @@
       "statement": "A binding-moment resolution preserves approved, declined, amended, and rejected as distinct device-signed outcomes bound to the exact well-formed source envelope and action; no negative outcome authorizes the original action, and an approval authorizes only under a complete relying-party-pinned acceptance context.",
       "acceptance_roots": ["role-scoped principal key and principal identity pinned by the relying party", "exact source binding-moment envelope and action digest supplied by the relying party", "WebAuthn RP ID and exact origin allowlist pinned by the relying party", "option-to-action mapping, nonce, initiator, and evaluation time pinned by the relying party"],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/resolution.js", "symbol": "verifyResolutionReceipt", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/resolution.ts", "symbol": "verifyResolutionReceipt", "exported": true },
         { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_resolution_receipt", "exported": true },
         { "language": "go", "file": "packages/go-verify/resolution.go", "symbol": "VerifyResolutionReceipt", "exported": true }
       ],
@@ -105,7 +105,7 @@
       "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",
       "acceptance_roots": ["approver credential key and key class pinned from enrollment"],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyTrustReceipt", "exported": true }
+        { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyTrustReceipt", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/verify/index.js", "export": "verifyTrustReceipt" },
@@ -136,7 +136,7 @@
       "statement": "An authentic device-signed negative human decision remains verifiable decision evidence but cannot satisfy approval, separation-of-duties, quorum, assurance, authority, action-material, or reliance predicates in the Trust Receipt verifier.",
       "acceptance_roots": ["approver credential keys and relying-party policy pinned independently of the presented receipt"],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyTrustReceipt", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyTrustReceipt", "exported": true },
         { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_trust_receipt" },
         { "language": "go", "file": "packages/go-verify/trust_receipt.go", "symbol": "VerifyTrustReceipt" }
       ],
@@ -169,7 +169,7 @@
       "statement": "A quorum cannot count the initiator as an approver or let one device key fill two approval seats.",
       "acceptance_roots": ["organization-pinned quorum policy", "enrollment-pinned approver keys"],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/quorum.js", "symbol": "verifyQuorum", "exported": true }
+        { "language": "javascript", "file": "packages/verify/src/quorum.ts", "symbol": "verifyQuorum", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/verify/quorum.js", "export": "verifyQuorum" },
@@ -236,10 +236,10 @@
       "statement": "A cryptographically valid packet still refuses reliance unless signed action material satisfies the relying party's pinned assurance, organization-bound authority, exact registry head and epoch floor, policy, revocation, issuer, and consumption profile.",
       "acceptance_roots": ["EP-RELIANCE-PROFILE-v1 pinned by the relying party"],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/reliance.js", "symbol": "evaluateReliance", "exported": true },
-        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyTrustReceipt", "exported": true },
-        { "language": "javascript", "file": "packages/verify/authority-proof.js", "symbol": "verifyAuthorityProof", "exported": true },
-        { "language": "javascript", "file": "packages/verify/revocation.js", "symbol": "verifyRevocation", "exported": true }
+        { "language": "javascript", "file": "packages/verify/src/reliance.ts", "symbol": "evaluateReliance", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyTrustReceipt", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/authority-proof.ts", "symbol": "verifyAuthorityProof", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/revocation.ts", "symbol": "verifyRevocation", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/verify/reliance.js", "export": "evaluateReliance" }
@@ -271,7 +271,7 @@
       "statement": "A terminal revocation is accepted only under a pinned revoker key, for the exact well-formed target, with a valid effective instant at or before the evaluation time; once effective, it does not age out. Fresh evidence that a target is currently not revoked is a separate status input.",
       "acceptance_roots": ["revocation authority key pinned by the relying party", "trusted evaluation time for future-effective revocations"],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/revocation.js", "symbol": "verifyRevocation", "exported": true }
+        { "language": "javascript", "file": "packages/verify/src/revocation.ts", "symbol": "verifyRevocation", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/verify/revocation.js", "export": "verifyRevocation" },
@@ -313,9 +313,9 @@
         "the signed Action Object carries a valid predicted-effects array and its exact digest"
       ],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/index.js", "symbol": "verifyOutcomeBinding", "exported": true },
-        { "language": "javascript", "file": "packages/verify/outcome-binding.js", "symbol": "verifyOutcomeBindingCore", "exported": true },
-        { "language": "javascript", "file": "packages/verify/outcome-binding.js", "symbol": "verifyOutcomeAttestation", "exported": true }
+        { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyOutcomeBinding", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/outcome-binding.ts", "symbol": "verifyOutcomeBindingCore", "exported": true },
+        { "language": "javascript", "file": "packages/verify/src/outcome-binding.ts", "symbol": "verifyOutcomeAttestation", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/verify/index.js", "export": "verifyOutcomeBinding" },
@@ -441,7 +441,7 @@
       "statement": "A timestamp token carries weight only when its imprint binds the expected receipt digest and its signer matches a relying-party-pinned TSA key.",
       "acceptance_roots": ["TSA public key pinned by the relying party"],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/verify/timestamp-proof.js", "symbol": "verifyTimestampProof", "exported": true }
+        { "language": "javascript", "file": "packages/verify/src/timestamp-proof.ts", "symbol": "verifyTimestampProof", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/verify/timestamp-proof.js", "export": "verifyTimestampProof" },
@@ -969,7 +969,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/evidence-chain.js",
+          "file": "packages/verify/src/evidence-chain.ts",
           "symbol": "verifyAuthorizationChain",
           "exported": true
         }
@@ -1055,10 +1055,10 @@
         "government system of record computes the protected action and presentation"
       ],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "verifyMobileCeremony", "exported": true },
-        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "createMobileCeremonyService", "exported": true },
-        { "language": "javascript", "file": "packages/mobile/government.js", "symbol": "createGovernmentMobileController", "exported": true },
-        { "language": "javascript", "file": "packages/mobile/http.js", "symbol": "createMobileHttpHandler", "exported": true }
+        { "language": "javascript", "file": "packages/mobile/src/index.ts", "symbol": "verifyMobileCeremony", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/src/index.ts", "symbol": "createMobileCeremonyService", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/src/government.ts", "symbol": "createGovernmentMobileController", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/src/http.ts", "symbol": "createMobileHttpHandler", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/mobile/index.js", "export": "verifyMobileCeremony" },
@@ -1103,6 +1103,69 @@
       "release_artifacts": ["mobile-sdk", "verify-sdk", "security-evidence"]
     },
     {
+      "claim_id": "mobile-action-continuity-is-tenant-and-executor-bound",
+      "statement": "A CAID-bound mobile action becomes executable only after its approval threshold is met; consequence authority is consumed once under a tenant-scoped operation identifier, server-random nonce, and frozen executor key. A provider timeout becomes durable INDETERMINATE and is not retry-safe. A terminal outcome is accepted only from an exact signed provider statement bound to the same operation, CAID, action digest, nonce, executor, and still-active frozen key; the database rechecks that key in the commit transaction and retains the signed statement while bounded mobile exports expose only its digest.",
+      "acceptance_roots": [
+        "the relying party computes the exact action CAID and immutable revision from its system of record",
+        "distinct authenticated approver decisions project one threshold under the active action revision",
+        "the protected executor key is registered by an organization administrator and remains uncompromised",
+        "PostgreSQL serializes action consumption, executor-key rotation, timeout, and reconciliation transitions"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "symbol": "deriveMobileActionContinuity", "exported": true },
+        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "symbol": "verifyMobileProviderOutcome", "exported": true },
+        { "language": "javascript", "file": "lib/mobile/store.js", "symbol": "consumeMobileAction", "exported": true },
+        { "language": "javascript", "file": "lib/mobile/store.js", "symbol": "reconcileMobileActionOperation", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "export": "deriveMobileActionContinuity" },
+        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "export": "verifyMobileProviderOutcome" },
+        { "language": "javascript", "file": "lib/mobile/store.js", "export": "consumeMobileAction" },
+        { "language": "javascript", "file": "lib/mobile/store.js", "export": "reconcileMobileActionOperation" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },
+        "python": { "status": "gap", "reason": "The durable mobile consequence state machine and PostgreSQL transition boundary have no Python implementation." },
+        "go": { "status": "gap", "reason": "The durable mobile consequence state machine and PostgreSQL transition boundary have no Go implementation." }
+      },
+      "vectors": [
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "accept_pinned_provider_reconciliation", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "mobile/conformance/mobile-core.v1.json", "case_id": "refuse_blind_retry_and_unpinned_provider_outcome", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/mobile-action-continuity.test.js", "title": "keeps authorization, consumption, uncertainty, and execution separate", "runner": "vitest" },
+        { "file": "tests/mobile-action-continuity.test.js", "title": "reconciles only an exact signed provider outcome and preserves terminal refusals", "runner": "vitest" },
+        { "file": "tests/mobile-action-continuity-routes.test.js", "title": "atomically consumes once, marks timeout indeterminate, and refuses blind replay semantics", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        {
+          "file": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
+          "contains": [
+            "primary key (entity_ref, operation_id)",
+            "executor_key_not_active",
+            "provider_evidence = p_provider_evidence",
+            "where entity_ref = p_entity_ref and operation_id = p_operation_id"
+          ]
+        }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The mixed-decision quorum projection, tenant-scoped operation key, executor-key rotation lock, retained evidence, and indeterminate reconciliation state machine are executable contracts but are not represented together in the current TLA+, Alloy, or Tamarin models." }
+      ],
+      "assumptions": [
+        "all consequential provider calls are mediated by the consumption endpoint and no bypass can mutate the protected system",
+        "the executor's Ed25519 private key and the organization's administrative key-registration path remain protected",
+        "the provider's signed statement is truthful about the bound provider-side effect",
+        "the production database preserves transaction isolation, row locking, constraints, RLS, and function grants"
+      ],
+      "exclusions": [
+        "a verified provider statement authenticates the pinned executor's assertion but is not an independent physical-world sensor",
+        "INDETERMINATE does not claim success or failure and may require provider-specific investigation",
+        "same-team Swift, Kotlin, and JavaScript behavior is conformance evidence, not an independent implementation",
+        "the guarantee does not cover any protected-system path that bypasses the integrated executor"
+      ],
+      "release_artifacts": ["mobile-sdk", "security-evidence"]
+    },
+    {
       "claim_id": "mobile-regulatory-export-separates-proof-from-runtime-assertion",
       "statement": "A regulatory mobile evidence package is accepted only when its CAID, exact action, Class-A WebAuthn signoff, presentation, policy, enrollment, receipt-log proof, signed operator execution record, and atomic audit record join under a separately provisioned relying-party trust bundle. The offline report distinguishes directly recomputed cryptographic facts from the operator's signed statements about online platform verification, one-time challenge consumption, and durable audit append.",
       "acceptance_roots": [
@@ -1111,8 +1174,8 @@
         "the Class-A receipt verifier, CAID verifier, mobile execution-record verifier, and atomic evidence-record verifier"
       ],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "createMobileExecutionRecord", "exported": true },
-        { "language": "javascript", "file": "packages/mobile/index.js", "symbol": "verifyMobileExecutionRecord", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/src/index.ts", "symbol": "createMobileExecutionRecord", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/src/index.ts", "symbol": "verifyMobileExecutionRecord", "exported": true },
         { "language": "javascript", "file": "examples/regulatory-mobile-oversight/lib.mjs", "symbol": "verifyRegulatoryEvidence", "exported": true }
       ],
       "implementations": [
@@ -1162,8 +1225,8 @@
         "durable body-bound challenge store and atomic enrollment-directory audit commit"
       ],
       "enforcement_path": [
-        { "language": "javascript", "file": "packages/mobile/enrollment.js", "symbol": "buildMobileEnrollmentBinding", "exported": true },
-        { "language": "javascript", "file": "packages/mobile/enrollment.js", "symbol": "createMobileEnrollmentService", "exported": true }
+        { "language": "javascript", "file": "packages/mobile/src/enrollment.ts", "symbol": "buildMobileEnrollmentBinding", "exported": true },
+        { "language": "javascript", "file": "packages/mobile/src/enrollment.ts", "symbol": "createMobileEnrollmentService", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/mobile/enrollment.js", "export": "buildMobileEnrollmentBinding" },
@@ -1280,9 +1343,9 @@
         { "language": "javascript", "file": "packages/gate/action-escrow-package.js", "symbol": "assembleActionEscrowContractorEvidencePackage", "exported": true },
         { "language": "javascript", "file": "packages/gate/action-escrow-evidence.js", "symbol": "verifyActionEscrowEvidencePackage", "exported": true },
         { "language": "javascript", "file": "packages/gate/action-escrow-postgres.js", "symbol": "createActionEscrowPostgresStore", "exported": true },
-        { "language": "javascript", "file": "lib/integrations/action-escrow/escrow-com.js", "symbol": "createEscrowComAdapter", "exported": true },
-        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "symbol": "createProcoreChangeOrderAdapter", "exported": true },
-        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "symbol": "verifyProcoreChangeOrderEvidence", "exported": true }
+        { "language": "javascript", "file": "lib/integrations/action-escrow/escrow-com.ts", "symbol": "createEscrowComAdapter", "exported": true },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.ts", "symbol": "createProcoreChangeOrderAdapter", "exported": true },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.ts", "symbol": "verifyProcoreChangeOrderEvidence", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "packages/gate/action-escrow.js", "export": "createActionEscrowKernel" },
@@ -1291,9 +1354,9 @@
         { "language": "javascript", "file": "packages/gate/action-escrow-package.js", "export": "assembleActionEscrowContractorEvidencePackage" },
         { "language": "javascript", "file": "packages/gate/action-escrow-evidence.js", "export": "verifyActionEscrowEvidencePackage" },
         { "language": "javascript", "file": "packages/gate/action-escrow-postgres.js", "export": "createActionEscrowPostgresStore" },
-        { "language": "javascript", "file": "lib/integrations/action-escrow/escrow-com.js", "export": "createEscrowComAdapter" },
-        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "export": "createProcoreChangeOrderAdapter" },
-        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.js", "export": "verifyProcoreChangeOrderEvidence" }
+        { "language": "javascript", "file": "lib/integrations/action-escrow/escrow-com.ts", "export": "createEscrowComAdapter" },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.ts", "export": "createProcoreChangeOrderAdapter" },
+        { "language": "javascript", "file": "lib/integrations/action-escrow/procore-change-order.ts", "export": "verifyProcoreChangeOrderEvidence" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "security/vectors.v1.json" },

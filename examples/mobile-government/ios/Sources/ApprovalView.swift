@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
+import EmiliaMobile
 import SwiftUI
 
 struct ApprovalView: View {
     @ObservedObject var model: ApprovalViewModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @State private var showsWithdrawalConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -106,24 +108,33 @@ struct ApprovalView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
                 statusBand
+                Picker("Action list", selection: $model.actionList) {
+                    ForEach(ApprovalViewModel.ActionList.allCases) { list in
+                        Text(list.rawValue).tag(list)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: model.actionList) { _ in
+                    Task { await model.refreshSelectedList() }
+                }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Protected actions")
+                    Text(model.actionList == .pending ? "Protected actions" : "Action history")
                         .font(.largeTitle.weight(.semibold))
-                    Text(model.actions.isEmpty ? "Nothing is waiting for you." : "\(model.actions.count) decision\(model.actions.count == 1 ? "" : "s") waiting")
+                    Text(listSummary)
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
-                if !model.isEnrolled {
+                if !model.isEnrolled && model.actionList == .pending {
                     enrollmentCallout
-                } else if model.actions.isEmpty {
+                } else if model.visibleActions.isEmpty {
                     emptyState
                 } else {
-                    ForEach(model.actions) { action in
+                    ForEach(model.visibleActions) { action in
                         ActionCard(action: action) { model.select(action) }
                     }
                 }
                 Button {
-                    Task { await model.refreshInbox() }
+                    Task { await model.refreshSelectedList() }
                 } label: {
                     Label("Refresh", systemImage: "arrow.clockwise")
                         .frame(minHeight: 44)
@@ -136,7 +147,18 @@ struct ApprovalView: View {
         }
         .navigationTitle("EMILIA Approver")
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await model.refreshInbox() }
+        .refreshable { await model.refreshSelectedList() }
+    }
+
+    private var listSummary: String {
+        if model.actionList == .history {
+            return model.visibleActions.isEmpty
+                ? "No completed or in-progress decisions yet."
+                : "\(model.visibleActions.count) recorded action\(model.visibleActions.count == 1 ? "" : "s")"
+        }
+        return model.visibleActions.isEmpty
+            ? "Nothing is waiting for you."
+            : "\(model.visibleActions.count) decision\(model.visibleActions.count == 1 ? "" : "s") waiting"
     }
 
     private var statusBand: some View {
@@ -194,9 +216,13 @@ struct ApprovalView: View {
                 .font(.system(size: 42))
                 .foregroundStyle(Brand.green)
                 .accessibilityHidden(true)
-            Text("All clear")
+            Text(model.actionList == .pending ? "All clear" : "No history")
                 .font(.title3.weight(.semibold))
-            Text("New protected actions will appear here.")
+            Text(
+                model.actionList == .pending
+                    ? "New protected actions will appear here."
+                    : "Recorded decisions and execution states will appear here."
+            )
                 .font(.body)
                 .foregroundStyle(.secondary)
         }
@@ -254,6 +280,13 @@ struct ApprovalView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityElement(children: .combine)
                 }
+                if let action = model.selectedAction {
+                    actionIdentity(action)
+                    actionContinuity(action)
+                    materialChanges(action)
+                    systemAlignments(action)
+                    actionTimeline(action)
+                }
                 decisionControls
             }
             .padding(20)
@@ -264,6 +297,204 @@ struct ApprovalView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .privacySensitive()
+        .confirmationDialog(
+            "Withdraw this approval?",
+            isPresented: $showsWithdrawalConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Withdraw approval", role: .destructive) {
+                Task { await model.withdrawSelectedAction() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Withdrawal is final and is accepted only before execution authority is consumed.")
+        }
+    }
+
+    @ViewBuilder
+    private func actionIdentity(_ action: MobileAPI.InboxAction) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Action identity", systemImage: "number.square.fill")
+                .font(.headline)
+            if let identity = action.identity {
+                Text(identity.fingerprint)
+                    .font(.title3.monospaced().weight(.semibold))
+                    .foregroundStyle(Brand.ink)
+                    .accessibilityLabel("CAID fingerprint \(identity.fingerprint)")
+                LabeledContent("CAID") {
+                    Text(identity.actionCAID)
+                        .font(.caption.monospaced())
+                        .multilineTextAlignment(.trailing)
+                        .textSelection(.enabled)
+                }
+                LabeledContent("Action digest") {
+                    Text(identity.actionDigest)
+                        .font(.caption.monospaced())
+                        .multilineTextAlignment(.trailing)
+                        .textSelection(.enabled)
+                }
+                if action.revision > 1 {
+                    LabeledContent("Revision", value: String(action.revision))
+                }
+            } else {
+                Label(
+                    "Identity unavailable from this legacy response. Decision controls are disabled.",
+                    systemImage: "exclamationmark.shield"
+                )
+                .font(.footnote)
+                .foregroundStyle(Brand.red)
+            }
+        }
+        .detailCard()
+    }
+
+    @ViewBuilder
+    private func actionContinuity(_ action: MobileAPI.InboxAction) -> some View {
+        if let continuity = action.continuity {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Action lifecycle", systemImage: "point.3.connected.trianglepath.dotted")
+                        .font(.headline)
+                    Spacer()
+                    LifecycleBadge(action: action)
+                }
+                if continuity.state == .executed && !action.canDisplayExecuted {
+                    Label(
+                        "The server reported execution, but this response lacks a matching digest-valid outcome passport. EXECUTED is not asserted.",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(Brand.red)
+                } else {
+                    Text(lifecycleExplanation(continuity.state))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                if let quorum = action.quorumProgress {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Quorum")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text("\(quorum.approved) of \(quorum.required) approved")
+                                .font(.subheadline.monospacedDigit())
+                        }
+                        ProgressView(value: quorum.fractionComplete)
+                            .tint(quorum.remaining == 0 ? Brand.green : Brand.brass)
+                        if quorum.denied > 0 || quorum.withdrawn > 0 {
+                            Text("\(quorum.denied) denied · \(quorum.withdrawn) withdrawn")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .detailCard()
+        }
+    }
+
+    @ViewBuilder
+    private func materialChanges(_ action: MobileAPI.InboxAction) -> some View {
+        if !action.changes.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Material changes", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.headline)
+                if let predecessor = action.supersedesActionCAID {
+                    Text("Supersedes \(EmiliaActionIdentity.stableFingerprint(for: predecessor) ?? predecessor)")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(Array(action.changes.enumerated()), id: \.offset) { _, change in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(change.field.replacingOccurrences(of: "_", with: " ").localizedCapitalized)
+                            .font(.subheadline.weight(.semibold))
+                        Text(change.change.rawValue.uppercased())
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(Brand.brass)
+                        if let before = change.before {
+                            Text("Before: \(before)")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let after = change.after {
+                            Text("After: \(after)")
+                                .font(.footnote)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .detailCard()
+        }
+    }
+
+    @ViewBuilder
+    private func systemAlignments(_ action: MobileAPI.InboxAction) -> some View {
+        if !action.alignments.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Cross-system alignment", systemImage: "arrow.left.arrow.right")
+                    .font(.headline)
+                ForEach(Array(action.alignments.enumerated()), id: \.offset) { _, alignment in
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(alignment.system)
+                                .font(.subheadline.weight(.semibold))
+                            if let profile = alignment.profileID {
+                                Text(profile)
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let reason = alignment.reason {
+                                Text(reason)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Text(alignment.effectiveVerdict.rawValue.replacingOccurrences(of: "_", with: " "))
+                            .font(.caption2.weight(.bold))
+                            .multilineTextAlignment(.trailing)
+                            .foregroundStyle(
+                                alignment.effectiveVerdict == .equivalentUnderProfile
+                                    ? Brand.green
+                                    : Brand.brass
+                            )
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .detailCard()
+        }
+    }
+
+    @ViewBuilder
+    private func actionTimeline(_ action: MobileAPI.InboxAction) -> some View {
+        if !action.events.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Lifecycle history", systemImage: "clock.arrow.circlepath")
+                    .font(.headline)
+                ForEach(action.events) { event in
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle()
+                            .fill(Brand.ink)
+                            .frame(width: 7, height: 7)
+                            .padding(.top, 6)
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(event.type.replacingOccurrences(of: "_", with: " ").localizedCapitalized)
+                                .font(.subheadline.weight(.semibold))
+                            if !event.createdAt.isEmpty {
+                                Text(event.createdAt)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .detailCard()
+        }
     }
 
     @ViewBuilder
@@ -288,7 +519,7 @@ struct ApprovalView: View {
                 Button("Cancel", role: .cancel) { model.cancelReview() }
                     .frame(minHeight: 44)
             }
-        } else {
+        } else if model.canDecideSelectedAction {
             VStack(spacing: 10) {
                 Button {
                     Task { await model.begin(decision: .approved) }
@@ -307,6 +538,67 @@ struct ApprovalView: View {
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("decision.deny")
             }
+        } else if let action = model.selectedAction {
+            VStack(alignment: .leading, spacing: 12) {
+                if let json = model.shareablePassportJSON {
+                    ShareLink(
+                        item: json,
+                        subject: Text("EMILIA decision passport"),
+                        message: Text("Bounded action-continuity evidence in JSON.")
+                    ) {
+                        Label("Share decision passport", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("passport.share")
+                } else if model.actionList == .history || action.passport != nil {
+                    Button {
+                        Task { await model.prepareSelectedPassport() }
+                    } label: {
+                        Label("Prepare decision passport", systemImage: "doc.badge.arrow.up")
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("passport.prepare")
+                }
+                if action.canWithdraw {
+                    Button(role: .destructive) {
+                        showsWithdrawalConfirmation = true
+                    } label: {
+                        Label("Withdraw approval", systemImage: "arrow.uturn.backward.circle")
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("decision.withdraw")
+                    Text("Available only until execution authority is consumed.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else if model.actionList == .pending && action.identity == nil {
+                    Label(
+                        "Refresh this action to obtain its server-supplied CAID identity.",
+                        systemImage: "arrow.clockwise.circle"
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func lifecycleExplanation(_ state: EmiliaActionLifecycleState) -> String {
+        switch state {
+        case .awaitingDecision: "Waiting for a device-bound decision."
+        case .quorumPending: "At least one approval is recorded; the required quorum is not complete."
+        case .authorized: "The approval requirement is satisfied, but execution authority is not consumed."
+        case .consumed: "Execution authority has been consumed. Withdrawal and blind retry are blocked."
+        case .indeterminate: "The provider boundary was entered, but the outcome is not safely known."
+        case .executed: "Authenticated provider evidence confirms execution."
+        case .refused: "Authenticated provider evidence confirms that execution was refused."
+        case .denied: "The action was denied."
+        case .withdrawn: "A recorded approval was withdrawn before consumption."
+        case .expired: "The decision window expired."
+        case .cancelled: "The action was cancelled."
+        case .unknown(let value): "The server returned lifecycle state \(value)."
         }
     }
 
@@ -417,6 +709,16 @@ private struct ActionCard: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.leading)
                     .lineLimit(3)
+                HStack(spacing: 8) {
+                    if let identity = action.identity {
+                        Text(identity.fingerprint)
+                            .font(.caption.monospaced().weight(.semibold))
+                            .foregroundStyle(Brand.ink)
+                    }
+                    if action.continuity != nil {
+                        LifecycleBadge(action: action)
+                    }
+                }
                 if let first = action.materialFields.sorted(by: { $0.key < $1.key }).first {
                     Text(first.value)
                         .font(.headline)
@@ -458,6 +760,36 @@ private struct MaterialField: View {
     }
 }
 
+private struct LifecycleBadge: View {
+    let action: MobileAPI.InboxAction
+
+    private var label: String {
+        (action.lifecycleLabel ?? action.status.uppercased())
+            .replacingOccurrences(of: "_", with: " ")
+    }
+
+    private var color: Color {
+        guard let state = action.continuity?.state else { return Brand.brass }
+        if state == .executed && !action.canDisplayExecuted { return Brand.red }
+        switch state {
+        case .executed, .authorized: return Brand.green
+        case .consumed, .indeterminate, .refused: return Brand.brass
+        case .denied, .withdrawn, .expired, .cancelled: return Brand.red
+        case .awaitingDecision, .quorumPending, .unknown: return Brand.ink
+        }
+    }
+
+    var body: some View {
+        Text(label)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.12), in: Capsule())
+            .accessibilityLabel("Lifecycle \(label)")
+    }
+}
+
 private struct RiskLabel: View {
     let text: String
 
@@ -466,6 +798,17 @@ private struct RiskLabel: View {
             .font(.caption2.weight(.bold))
             .foregroundStyle(Brand.red)
             .accessibilityLabel("Risk: \(text)")
+    }
+}
+
+private extension View {
+    func detailCard() -> some View {
+        padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                Color(.secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 8)
+            )
     }
 }
 

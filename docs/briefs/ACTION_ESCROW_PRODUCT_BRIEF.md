@@ -87,7 +87,7 @@ The reference scenario imports and exercises:
   - `verifyActionEscrowEvidencePackage`
 - `lib/integrations/action-escrow/acrobat-sign.js`
   - deterministic authenticated-refetch simulation
-- `lib/integrations/action-escrow/procore-change-order.js`
+- `lib/integrations/action-escrow/procore-change-order.ts`
   - read-only complete-view and stable-snapshot enforcement
 - `lib/integrations/action-escrow/licensed-custodian.js`
   - deterministic external-custodian simulation

@@ -54,7 +54,7 @@ import { defineExternalCustodianAdapter } from '../../lib/integrations/action-es
 import {
   createProcoreChangeOrderAdapter,
   verifyProcoreChangeOrderEvidence,
-} from '../../lib/integrations/action-escrow/procore-change-order.js';
+} from '../../lib/integrations/action-escrow/procore-change-order.ts';
 
 /**
  * @typedef {import('../../packages/verify/document-action-binding.js').DocumentActionMaterialTerm} DocumentActionMaterialTerm

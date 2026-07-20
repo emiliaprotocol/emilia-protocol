@@ -9,20 +9,34 @@
 /* Begin PBXBuildFile section */
 		01E8C24E94DD26835D7336DF /* ApprovalViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF17E15552A9CF7EC51289F5 /* ApprovalViewModel.swift */; };
 		04FDD7D61C2302F37C87C7BF /* GovernmentApprovalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DF4662081B3CB1ED5BB2239 /* GovernmentApprovalApp.swift */; };
+		07C3877E50D2048AA15B6E8E /* MobileAPIRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B51863D46C3137AFEC31258 /* MobileAPIRecoveryTests.swift */; };
 		0D41BF79144A6FB0862AF175 /* MobileAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6816E1C43526C9993D515432 /* MobileAPI.swift */; };
 		16E288A618DC59CE061AAD5A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 35D83E2E13AE2787DD49709E /* Assets.xcassets */; };
 		1EEF2D4D464AB4CD07733BE7 /* ApprovalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DCC19A8F18AF7066265A4EF /* ApprovalView.swift */; };
+		5D9CBA599193E66B65854744 /* EmiliaMobile in Frameworks */ = {isa = PBXBuildFile; productRef = 68380C9C7E26F5E8B6057B83 /* EmiliaMobile */; };
 		684AF4893CFDF54871F9BB09 /* SecureSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C3B7AA837027766F5A762C6 /* SecureSessionStore.swift */; };
 		72D3EB9584998B04FEE0E32B /* EmiliaMobile in Frameworks */ = {isa = PBXBuildFile; productRef = 2CD8417B6634BE765E5ADCE2 /* EmiliaMobile */; };
 		D7DAC012E0A109DAC92B6169 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 63C32FED57D685A8C4DF94CF /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		34E3347C825300A56AA6A0B1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ABFF384297D9B36D24B100E5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2820447296BEEF0D802DC51E;
+			remoteInfo = GovernmentApproval;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		1B51863D46C3137AFEC31258 /* MobileAPIRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileAPIRecoveryTests.swift; sourceTree = "<group>"; };
 		1C3B7AA837027766F5A762C6 /* SecureSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureSessionStore.swift; sourceTree = "<group>"; };
 		2DCC19A8F18AF7066265A4EF /* ApprovalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalView.swift; sourceTree = "<group>"; };
 		35D83E2E13AE2787DD49709E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3DF4662081B3CB1ED5BB2239 /* GovernmentApprovalApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GovernmentApprovalApp.swift; sourceTree = "<group>"; };
 		58E880CCE688957D2CF83B93 /* swift-mobile */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "swift-mobile"; path = "../../../sdks/swift-mobile"; sourceTree = SOURCE_ROOT; };
+		5AD3D4D1399B3DEF4F5D0BED /* GovernmentApprovalTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GovernmentApprovalTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		63C32FED57D685A8C4DF94CF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		644C1B82307E266BB67CA6AF /* GovernmentApproval.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GovernmentApproval.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6816E1C43526C9993D515432 /* MobileAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileAPI.swift; sourceTree = "<group>"; };
@@ -30,6 +44,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		1D0898A157AFB7DDD9A2DF73 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5D9CBA599193E66B65854744 /* EmiliaMobile in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2605CDB167828618BFC3B6BB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -41,10 +63,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		341CD620F535AEDFA2F79A2E /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				1B51863D46C3137AFEC31258 /* MobileAPIRecoveryTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
 		5BB7BC56DD51D191489E1C53 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				644C1B82307E266BB67CA6AF /* GovernmentApproval.app */,
+				5AD3D4D1399B3DEF4F5D0BED /* GovernmentApprovalTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -54,6 +85,7 @@
 			children = (
 				8544FF53EA63BE1D7E9E690E /* Packages */,
 				852BB7EC484EBB4D24BDF28D /* Sources */,
+				341CD620F535AEDFA2F79A2E /* Tests */,
 				5BB7BC56DD51D191489E1C53 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -103,6 +135,26 @@
 			productReference = 644C1B82307E266BB67CA6AF /* GovernmentApproval.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BFA4E5207307A3DB2C34178E /* GovernmentApprovalTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F1E777336C29E1282F70863B /* Build configuration list for PBXNativeTarget "GovernmentApprovalTests" */;
+			buildPhases = (
+				DB4054AF22BBB768A7543E1D /* Sources */,
+				1D0898A157AFB7DDD9A2DF73 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CD8243EE5E7056FCCE25AD96 /* PBXTargetDependency */,
+			);
+			name = GovernmentApprovalTests;
+			packageProductDependencies = (
+				68380C9C7E26F5E8B6057B83 /* EmiliaMobile */,
+			);
+			productName = GovernmentApprovalTests;
+			productReference = 5AD3D4D1399B3DEF4F5D0BED /* GovernmentApprovalTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -136,6 +188,7 @@
 			projectRoot = "";
 			targets = (
 				2820447296BEEF0D802DC51E /* GovernmentApproval */,
+				BFA4E5207307A3DB2C34178E /* GovernmentApprovalTests */,
 			);
 		};
 /* End PBXProject section */
@@ -165,7 +218,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DB4054AF22BBB768A7543E1D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				07C3877E50D2048AA15B6E8E /* MobileAPIRecoveryTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CD8243EE5E7056FCCE25AD96 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2820447296BEEF0D802DC51E /* GovernmentApproval */;
+			targetProxy = 34E3347C825300A56AA6A0B1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		051BDA36C862FED910E960E6 /* Release */ = {
@@ -229,6 +298,42 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
+		};
+		68110BA59614D5A01F780CC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.emiliaprotocol.approver.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EMILIA Approver.app/EMILIA Approver";
+			};
+			name = Debug;
+		};
+		9964B90B2FF8905F8CD6308E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.emiliaprotocol.approver.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EMILIA Approver.app/EMILIA Approver";
+			};
+			name = Release;
 		};
 		BBAA1E4117DC1E4468991739 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -370,6 +475,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		F1E777336C29E1282F70863B /* Build configuration list for PBXNativeTarget "GovernmentApprovalTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68110BA59614D5A01F780CC2 /* Debug */,
+				9964B90B2FF8905F8CD6308E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -381,6 +495,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		2CD8417B6634BE765E5ADCE2 /* EmiliaMobile */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EmiliaMobile;
+		};
+		68380C9C7E26F5E8B6057B83 /* EmiliaMobile */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = EmiliaMobile;
 		};

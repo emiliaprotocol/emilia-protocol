@@ -64,7 +64,7 @@ const STACK_LAYERS = [
   {
     label: 'Decide',
     title: 'Approver Apps',
-    body: 'The iOS, Android, and embeddable SDK ceremony that shows the exact material action and captures a device-bound human decision.',
+    body: 'The iOS, Android, and embeddable SDK ceremony that locks a device-bound decision to the exact CAID, then tracks quorum, consumption, and outcome.',
     href: '/product/accountable-signoff',
     accent: color.green,
   },
