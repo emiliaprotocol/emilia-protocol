@@ -18,8 +18,8 @@ mints a DOI, no scope moderation).
 
 | File | What it is | State |
 |---|---|---|
-| `main.tex` | Full LaTeX source synchronized to the canonical Markdown and current repo evidence | Checker-gated |
-| `main.pdf` | Compiled PDF (~22 pages), built from `main.tex` with `tectonic` | Rebuilt and checker-gated |
+| `main.tex` | Full LaTeX source carrying the canonical Markdown fingerprint and current repo evidence claims | Rebuilt locally; claim-checker gated |
+| `main.pdf` | Compiled PDF (~22 pages), built from `main.tex` with `tectonic` | Rebuilt locally; claim-checker gated |
 | `STAGING.md` | This checklist | — |
 
 The PDF is the artifact IACR ePrint and Zenodo both host directly (they do not
@@ -36,13 +36,16 @@ npm run check:preprint
 npm run test:preprint
 ```
 
-`check:preprint` derives claims from the live conformance manifest, proof ledger,
-proof statistics, standards status, and pinned external-verifier evidence. It
-checks the canonical Markdown fingerprint and rejects drift in `main.tex`,
-extracted `main.pdf` text, or this staging record. Passing the checker establishes
-local synchronization only; it is not publication approval or venue acceptance.
-The build command fixes `SOURCE_DATE_EPOCH` to `2026-07-19T00:00:00Z`; repeated
-builds from identical source with the same Tectonic toolchain are byte-identical.
+`check:preprint` derives selected evidence-bearing claims from the live
+conformance manifest, proof ledger, proof statistics, standards status, and
+pinned external-verifier evidence. It checks declared source fingerprints and
+those claims in `main.tex`, extracted `main.pdf` text, and this staging record.
+It is not a complete semantic comparison of every TeX paragraph to the PDF.
+Run `preprint:build` first to prove the PDF derives from the checked-in TeX;
+passing the checker then establishes local evidence synchronization only, not
+publication approval or venue acceptance. The build command fixes
+`SOURCE_DATE_EPOCH` to `2026-07-19T00:00:00Z`; repeated builds from identical
+source with the same Tectonic toolchain are byte-identical.
 
 ## Primary venue — IACR Cryptology ePrint Archive (eprint.iacr.org)
 

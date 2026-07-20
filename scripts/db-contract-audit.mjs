@@ -136,6 +136,16 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
     if (bad.length === 0) pass();
     else fail(`DIRECT SERVICE-ROLE TABLE GRANT on ${table}: ${bad.map((g) => g.privilege).join(', ')}`);
   }
+  for (const table of schemaContract.tableWriteGrantsNoServiceRole || []) {
+    const bad = tableGrants.filter(
+      (grant) => grant.t === table
+        && roleName(grant.grantee) === 'service_role'
+        && ['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'ALL']
+          .includes(String(grant.privilege || '').toUpperCase()),
+    );
+    if (bad.length === 0) pass();
+    else fail(`DIRECT SERVICE-ROLE WRITE GRANT on ${table}: ${bad.map((g) => g.privilege).join(', ')}`);
+  }
 
   // 8. Column ACLs close the independent column-level disclosure/write path.
   const sensitiveColumns = Object.entries(schemaContract.sensitiveColumnsNoPublicGrant || {})

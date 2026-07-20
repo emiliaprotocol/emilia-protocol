@@ -11,7 +11,7 @@
 
 This runbook covers full and partial disaster recovery for the Emilia Protocol infrastructure:
 - Vercel deployment (Next.js app)
-- Supabase database (Postgres 15, production project ref stored outside public docs)
+- Supabase database (Postgres 17, production project ref stored outside public docs)
 - Base L2 anchoring wallet
 
 It does **not** cover user data breach response (see `INCIDENT_RESPONSE.md`).

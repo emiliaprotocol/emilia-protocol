@@ -189,6 +189,10 @@ export const contract = {
   // narrowly-granted SECURITY DEFINER functions but must not query the tables.
   tableGrantsNoServiceRoleDirect: [...RELEASE_LOCK_TABLES],
 
+  // Policy rollouts remain service-readable for control-plane status, but
+  // activation is RPC-only after the contract migration.
+  tableWriteGrantsNoServiceRole: ['policy_rollouts'],
+
   // Column-level least-privilege on secret material. RLS gates ROWS; a column
   // GRANT is a SEPARATE gate. (2026-07 sweep: anon+authenticated held column
   // SELECT/INSERT/UPDATE on entities.private_key_encrypted — a Supabase bootstrap
