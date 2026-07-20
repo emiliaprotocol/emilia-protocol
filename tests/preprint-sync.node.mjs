@@ -12,7 +12,7 @@ const evidence = {
   canonicalMarkdownSha256: 'a'.repeat(64),
   conformance: {
     suites: 21,
-    vectors: 329,
+    vectors: 328,
     manifestSha256: 'b'.repeat(64),
   },
   tla: {
@@ -61,10 +61,10 @@ unchecked_registry_view_is_current (all-traces): falsified
 `;
 
 const sharedClaims = `
-A cross-language conformance battery (21 suites, 329 vectors).
-A conformance battery of 21 suites comprising 329 vectors.
-The 21-suite / 329-vector conformance battery.
-The ports show agreement across all 329 current vectors.
+A cross-language conformance battery (21 suites, 328 vectors).
+A conformance battery of 21 suites comprising 328 vectors.
+The 21-suite / 328-vector conformance battery.
+The ports show agreement across all 328 current vectors.
 413,137 states (45,342 distinct) with no counterexample against 26 invariants.
 four Alloy models (6.2.0, SAT4J), with 32 assertions.
 Pinned commit 7faba36010e7590727bebbc5b9dcceee60539b9b.
@@ -80,14 +80,14 @@ ${composedBlock}
 
 const tex = `
 % Canonical Markdown SHA-256: ${'a'.repeat(64)}
-% conformance 21 suites / 329 vectors
+% conformance 21 suites / 328 vectors
 % manifest_sha256=${'b'.repeat(64)}
 ${sharedClaims}
 `;
 
 const staging = `
 Status: LOCALLY REPRODUCIBLE; NOT APPROVED TO POST.
-Conformance 21 suites / 329 vectors.
+Conformance 21 suites / 328 vectors.
 10 composed obligations + 2 deliberate falsifications.
 TLA+ 413,137 states / 26 invariants.
 32 assertions across four CI-gated models at analyzer 6.2.0.
@@ -111,7 +111,7 @@ describe('preprint evidence synchronization guard', () => {
   });
 
   it('rejects stale conformance totals in the source', () => {
-    const staleTex = tex.replaceAll('21 suites', '18 suites').replaceAll('329 vectors', '251 vectors');
+    const staleTex = tex.replaceAll('21 suites', '18 suites').replaceAll('328 vectors', '251 vectors');
     assert.ok(
       audit({ tex: staleTex }).some((failure) =>
         /main\.tex claims 18 suites \/ 251 vectors/.test(failure)),
@@ -132,7 +132,7 @@ describe('preprint evidence synchronization guard', () => {
   it('rejects a PDF whose claim text was not rebuilt from the synchronized source', () => {
     assert.ok(
       audit({
-        pdfText: sharedClaims.replaceAll('329 vectors', '251 vectors'),
+        pdfText: sharedClaims.replaceAll('328 vectors', '251 vectors'),
       }).some((failure) => /main\.pdf claims 21 suites \/ 251 vectors/.test(failure)),
     );
   });

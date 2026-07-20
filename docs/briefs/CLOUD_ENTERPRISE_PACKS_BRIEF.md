@@ -1,7 +1,7 @@
 # Cloud, Enterprise, and Packs Brief
 
 ## What's new (June 2026)
-- **21 suites / 329 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
+- **21 suites / 328 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
 - **Composition (EP-AEC):** EP composes delegation, policy-permit, and human-authorization receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The executor separately authorizes the action. A pack can therefore require machine-policy evidence *and* a named human's authorization bound to the same action.
 - **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (the mandated independent double-check, PHI-free receipts) extend the same primitive across verticals.
 

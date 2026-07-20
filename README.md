@@ -40,7 +40,7 @@ EMILIA ships a security case that reviewers can execute. The current repository 
 security claims over 140 hashed evidence files**, verifies **10 obligations in one composed Tamarin
 Dolev-Yao model**, and preserves **2 deliberately weakened variants that produce concrete replay
 and stale-registry attack traces**. The live same-team conformance corpus contains **21 suites and
-329 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
+328 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
 **7,033 automated tests across 372 files**.
 

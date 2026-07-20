@@ -36,7 +36,7 @@ integration, schema contracts, fuzzing, E2E smoke tests, secret scanning, and a
 production build.
 
 The current same-team reference ports are JavaScript, Python, and Go. They agree
-over **21 suites and 329 vectors** according to
+over **21 suites and 328 vectors** according to
 [`conformance/conformance-manifest.json`](conformance/conformance-manifest.json).
 That is a cross-language consistency result across one team's ports, not three
 independent implementations.
