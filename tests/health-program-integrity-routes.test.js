@@ -46,7 +46,7 @@ const DIGEST = (digit) => `sha256:${digit.repeat(64)}`;
 const ACTION = Object.freeze({
   '@version': 'EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1',
   profile_id: 'medi-cal.hospice-integrity.v1',
-  action_type: 'health.medi_cal.hospice_claim_payment.1',
+  action_type: 'health.medi-cal.hospice-claim-payment.1',
   organization_id: 'org:one',
   provider_npi: '1234567890',
   member_ref: `member:sha256:${'1'.repeat(64)}`,
@@ -187,6 +187,22 @@ describe('health hospice claim program-integrity routes', () => {
     expect(mocks.engine.prepare).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'health.medi_cal.hospice_claim_payment.1',
+    'health.medi-cal.hospice-claim-payment',
+  ])('rejects unsupported exact action type %s', async (actionType) => {
+    const response = await precheck(request(
+      '/api/v1/adapters/health/hospice-claim/precheck',
+      body({ action: { ...structuredClone(ACTION), action_type: actionType } }),
+    ));
+
+    expect(response.status).toBe(400);
+    expect(await responseBody(response)).toMatchObject({
+      type: expect.stringContaining('unsupported_action_profile'),
+    });
+    expect(mocks.engine.prepare).not.toHaveBeenCalled();
+  });
+
   it('rejects an unauthenticated caller', async () => {
     mocks.authenticateRequest.mockResolvedValue({ error: 'invalid key', status: 401 });
 
@@ -253,7 +269,7 @@ describe('health hospice claim program-integrity routes', () => {
     expect(JSON.stringify(result)).not.toContain('SHOULD NEVER LEAVE THE ENGINE');
     expect(mocks.createProgramIntegrityEngine).toHaveBeenCalledWith(expect.objectContaining({
       profile_id: 'medi-cal.hospice-integrity.v1',
-      action_type: 'health.medi_cal.hospice_claim_payment.1',
+      action_type: 'health.medi-cal.hospice-claim-payment.1',
     }));
     expect(mocks.engine.prepare).toHaveBeenCalledWith(expect.objectContaining({
       action: expect.objectContaining({ organization_id: 'org:one' }),
@@ -275,7 +291,7 @@ describe('health hospice claim program-integrity routes', () => {
     ));
     const result = await responseBody(response);
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(422);
     expect(result).toMatchObject({
       ok: false,
       decision: 'REFUSED',
@@ -430,5 +446,55 @@ describe('health hospice claim program-integrity routes', () => {
     expect(raw).not.toContain('secret diagnosis');
     expect(raw).toContain('prohibited_phi');
     expect(mocks.engine.prepare).not.toHaveBeenCalled();
+  });
+
+  it('refuses nested PHI fields in authorization and reconciliation evidence', async () => {
+    const authorizationResponse = await precheck(request(
+      '/api/v1/adapters/health/hospice-claim/precheck',
+      body({ authorization: { ...AUTHORIZATION, context: { diagnosis: 'secret diagnosis' } } }),
+    ));
+    const authorizationRaw = await authorizationResponse.text();
+    expect(authorizationResponse.status).toBe(400);
+    expect(authorizationRaw).toContain('prohibited_phi');
+    expect(authorizationRaw).not.toContain('secret diagnosis');
+
+    const evidenceResponse = await reconcile(request(
+      '/api/v1/adapters/health/hospice-claim/reconcile',
+      reconcileBody({ evidence: providerEvidence({ context: { clinical_note: 'secret note' } }) }),
+    ));
+    const evidenceRaw = await evidenceResponse.text();
+    expect(evidenceResponse.status).toBe(400);
+    expect(evidenceRaw).toContain('prohibited_phi');
+    expect(evidenceRaw).not.toContain('secret note');
+  });
+
+  it('refuses PHI nested inside authorization and provider-evidence arrays', async () => {
+    const authorizationResponse = await precheck(request(
+      '/api/v1/adapters/health/hospice-claim/precheck',
+      body({
+        authorization: {
+          ...AUTHORIZATION,
+          context: [{ controls: [{ diagnosis: 'array diagnosis' }] }],
+        },
+      }),
+    ));
+    const authorizationRaw = await authorizationResponse.text();
+    expect(authorizationResponse.status).toBe(400);
+    expect(authorizationRaw).toContain('prohibited_phi');
+    expect(authorizationRaw).not.toContain('array diagnosis');
+
+    const evidenceResponse = await reconcile(request(
+      '/api/v1/adapters/health/hospice-claim/reconcile',
+      reconcileBody({
+        evidence: providerEvidence({
+          context: [{ controls: [{ clinical_note: 'array note' }] }],
+        }),
+      }),
+    ));
+    const evidenceRaw = await evidenceResponse.text();
+    expect(evidenceResponse.status).toBe(400);
+    expect(evidenceRaw).toContain('prohibited_phi');
+    expect(evidenceRaw).not.toContain('array note');
+    expect(mocks.engine.reconcile).not.toHaveBeenCalled();
   });
 });

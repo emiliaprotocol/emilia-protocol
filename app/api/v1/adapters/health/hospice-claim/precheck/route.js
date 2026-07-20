@@ -12,11 +12,11 @@ import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
-import { createProgramIntegrityEngine } from '../../../../../../lib/health/program-integrity.js';
+import { createProgramIntegrityEngine } from '@/lib/health/program-integrity.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
 const PROFILE_ID = 'medi-cal.hospice-integrity.v1';
-const ACTION_TYPE = 'health.medi_cal.hospice_claim_payment.1';
+const ACTION_TYPE = 'health.medi-cal.hospice-claim-payment.1';
 
 const REQUIRED_ACTION_FIELDS = Object.freeze([
   'profile_id',
@@ -107,8 +107,13 @@ function safeToken(value) {
   return /^[a-zA-Z0-9_.:-]+$/.test(value) ? value : null;
 }
 
+/**
+ * @param {unknown} value
+ * @param {string | null} [fallback]
+ * @returns {string | null}
+ */
 function safeDecision(value, fallback = 'REFUSED') {
-  return SAFE_DECISIONS.has(value) ? value : fallback;
+  return typeof value === 'string' && SAFE_DECISIONS.has(value) ? value : fallback;
 }
 
 function safeStatus(value) {
@@ -198,8 +203,26 @@ function actionFromBody(body) {
   return action;
 }
 
-function containsProhibitedPhi(action) {
-  return Object.keys(action).find((key) => PROHIBITED_PHI_FIELDS.has(key)) || null;
+function containsProhibitedPhi(value, depth = 0, budget = { entries: 0 }) {
+  if (depth > 8 || budget.entries > 2048) return null;
+  if (Array.isArray(value)) {
+    for (const nested of value) {
+      budget.entries += 1;
+      if (budget.entries > 2048) return null;
+      const found = containsProhibitedPhi(nested, depth + 1, budget);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  for (const [key, nested] of Object.entries(value)) {
+    budget.entries += 1;
+    if (budget.entries > 2048) return null;
+    if (PROHIBITED_PHI_FIELDS.has(key)) return key;
+    const found = containsProhibitedPhi(nested, depth + 1, budget);
+    if (found) return found;
+  }
+  return null;
 }
 
 function validateActionShape(action) {
@@ -281,7 +304,7 @@ function responseForPrecheck(prepared, checked, authorization) {
   if (!checked.ok) {
     payload.reason = safeReason(checked.reason);
     payload.reconciliation_required = decision === 'INDETERMINATE';
-    return json(payload, 201);
+    return json(payload, refusalStatus(checked));
   }
   if (decision !== 'READY') return engineContractFailure();
   return json(payload, 201);
@@ -306,6 +329,10 @@ export async function POST(request) {
     if (!isObject(body.authorization)) {
       return problem(400, 'missing_authorization', 'authorization is required');
     }
+    const authorizationPhi = containsProhibitedPhi(body.authorization);
+    if (authorizationPhi) {
+      return problem(400, 'prohibited_phi', `authorization contains prohibited field: ${authorizationPhi}`);
+    }
     if (action.fail_open === true || action.bypass_checks === true || action.enforcement_mode !== undefined) {
       return problem(422, 'runtime_downgrade_refused', 'runtime fail-open controls are not accepted');
     }
@@ -323,7 +350,7 @@ export async function POST(request) {
     });
     return responseForPrecheck(prepared, checked, body.authorization);
   } catch {
-    logger.error('[adapter:health.medi_cal.hospice_claim_payment.precheck] failed');
+    logger.error('[adapter:health.medi-cal.hospice-claim-payment.1.precheck] failed');
     return engineContractFailure();
   }
 }

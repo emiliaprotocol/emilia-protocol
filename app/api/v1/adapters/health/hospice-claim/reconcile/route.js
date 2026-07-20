@@ -11,11 +11,11 @@ import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
-import { createProgramIntegrityEngine } from '../../../../../../lib/health/program-integrity.js';
+import { createProgramIntegrityEngine } from '@/lib/health/program-integrity.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
 const PROFILE_ID = 'medi-cal.hospice-integrity.v1';
-const ACTION_TYPE = 'health.medi_cal.hospice_claim_payment.1';
+const ACTION_TYPE = 'health.medi-cal.hospice-claim-payment.1';
 const PROVIDER_EVIDENCE_VERSION = 'EP-HEALTH-PROGRAM-INTEGRITY-PROVIDER-EVIDENCE-v1';
 const SAFE_TERMINAL_DECISIONS = new Set(['RECONCILED_EXECUTED', 'RECONCILED_FAILED']);
 const SAFE_DECISIONS = new Set(['REFUSED', 'INDETERMINATE', ...SAFE_TERMINAL_DECISIONS]);
@@ -70,8 +70,13 @@ function safeReason(value) {
   return safeToken(value)?.toLowerCase() || 'provider_evidence_invalid';
 }
 
+/**
+ * @param {unknown} value
+ * @param {string | null} [fallback]
+ * @returns {string | null}
+ */
 function safeDecision(value, fallback = 'REFUSED') {
-  return SAFE_DECISIONS.has(value) ? value : fallback;
+  return typeof value === 'string' && SAFE_DECISIONS.has(value) ? value : fallback;
 }
 
 function safeStatus(value) {
@@ -125,8 +130,26 @@ function refusalStatus(result) {
   return 422;
 }
 
-function hasProhibitedPhi(evidence) {
-  return Object.keys(evidence).find((key) => PROHIBITED_PHI_FIELDS.has(key)) || null;
+function hasProhibitedPhi(value, depth = 0, budget = { entries: 0 }) {
+  if (depth > 8 || budget.entries > 2048) return null;
+  if (Array.isArray(value)) {
+    for (const nested of value) {
+      budget.entries += 1;
+      if (budget.entries > 2048) return null;
+      const found = hasProhibitedPhi(nested, depth + 1, budget);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!isObject(value)) return null;
+  for (const [key, nested] of Object.entries(value)) {
+    budget.entries += 1;
+    if (budget.entries > 2048) return null;
+    if (PROHIBITED_PHI_FIELDS.has(key)) return key;
+    const found = hasProhibitedPhi(nested, depth + 1, budget);
+    if (found) return found;
+  }
+  return null;
 }
 
 function validateProviderEvidence(operationId, evidence) {
@@ -229,7 +252,7 @@ export async function POST(request) {
     });
     return responseForReconciliation(result, operationId);
   } catch {
-    logger.error('[adapter:health.medi_cal.hospice_claim_payment.reconcile] failed');
+    logger.error('[adapter:health.medi-cal.hospice-claim-payment.1.reconcile] failed');
     return problem(503, 'program_integrity_engine_unavailable', 'Program integrity decision service is unavailable');
   }
 }
