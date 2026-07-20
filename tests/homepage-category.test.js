@@ -95,6 +95,9 @@ describe('homepage category contract', () => {
     expect(homepage).toContain('The Assurance Plane then re-performs the record');
     expect(gate).toContain('A match is not authorization');
     expect(gate).toContain('consumes the reservation as indeterminate: no blind retry or refund');
+    expect(gate).toContain('RECEIPT PROGRAMS');
+    expect(gate).toContain('npm run demo:receipt-program');
+    expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
     expect(investors).toContain('none is an RFC or adopted standard.');
     expect(investors).toContain('No physical hardware attestation in production or independently operated witness network is claimed today.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');

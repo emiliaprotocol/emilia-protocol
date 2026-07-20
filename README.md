@@ -36,8 +36,8 @@ fallback; it is not authority to withhold medically necessary care.
 
 ## Engineering evidence, not architecture claims
 
-EMILIA ships a security case that reviewers can execute. The current repository resolves **28
-security claims over 140 hashed evidence files**, verifies **10 obligations in one composed Tamarin
+EMILIA ships a security case that reviewers can execute. The current repository resolves **30
+security claims over 159 hashed evidence files**, verifies **10 obligations in one composed Tamarin
 Dolev-Yao model**, and preserves **2 deliberately weakened variants that produce concrete replay
 and stale-registry attack traces**. The live same-team conformance corpus contains **21 suites and
 328 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
@@ -87,6 +87,18 @@ node examples/mcp/payment-server.mjs    # release_payment  — refuses without a
 node examples/mcp/github-admin.mjs      # delete_repo      — refuses without a receipt
 node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without a receipt
 ```
+
+The deeper composition demo executes a CAID-bound delegated payment through
+Gate's real bounded-capability path, then verifies the signed execution
+certificate offline:
+
+```bash
+npm run demo:receipt-program
+```
+
+It deliberately includes no blockchain or simulated zero-knowledge claim. See
+the [receipt-program architecture](docs/architecture/RECEIPT-PROGRAM-EXECUTION-KERNEL.md)
+for the production state and trust requirements.
 
 Wrap your own tool dispatcher in production — see [examples/mcp/](examples/mcp/) and [`/mcp`](https://www.emiliaprotocol.ai/mcp):
 

@@ -266,6 +266,81 @@
       "id": "reject_action_escrow_project_source_context_relabeling",
       "expect": { "valid": false },
       "execution": { "runner": "node-test", "file": "examples/action-escrow/scenario.test.mjs", "title": "refuses project-source context relabeling even after package rehash" }
+    },
+    {
+      "id": "accept_receipt_program_exact_execution_certificate",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "receipt program executes one CAID-bound capability and emits a trusted certificate" }
+    },
+    {
+      "id": "reject_receipt_program_caid_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "receipt program refuses a CAID substitution before reservation or effect" }
+    },
+    {
+      "id": "reject_receipt_program_blind_retry_after_timeout",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "provider timeout becomes signed indeterminate state and replay stays refused" }
+    },
+    {
+      "id": "reject_receipt_program_runtime_trust_or_operation_relabeling",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "receipt program refuses runtime trust configuration and operation relabeling" }
+    },
+    {
+      "id": "reject_receipt_program_live_authorization_mutation",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "provider cannot mutate Gate authorization before execution evidence is committed" }
+    },
+    {
+      "id": "reject_receipt_program_post_commit_evidence_contradiction",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "post-commit evidence failure never becomes a contradictory indeterminate certificate" }
+    },
+    {
+      "id": "reject_receipt_program_signer_or_persistence_false_proof",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "signer and certificate-log failures preserve the terminal Gate outcome without false proof" }
+    },
+    {
+      "id": "reject_receipt_program_resigned_schema_contradictions",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "verifier rejects re-signed structural, context, time, and evidence-kind contradictions" }
+    },
+    {
+      "id": "reject_gate_reused_error_metadata",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "Gate wraps reused provider errors with request-local minimal terminal metadata" }
+    },
+    {
+      "id": "accept_receipt_program_result_projection",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "constructor-pinned result projection prevents successful provider secret disclosure" }
+    },
+    {
+      "id": "reject_receipt_program_forged_evidence_inclusion",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "a locally rehashed evidence wrapper cannot prove durable certificate inclusion" }
+    },
+    {
+      "id": "reject_receipt_program_key_id_public_key_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "certificate key identity maps the context key id to exactly one trusted public key" }
+    },
+    {
+      "id": "reject_receipt_program_indeterminate_evidence_false_certificate",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "indeterminate execution-evidence failure never emits or persists an unverifiable certificate" }
+    },
+    {
+      "id": "reject_gate_executed_outcome_relabeling",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "ordinary Gate preserves executed after a post-commit evidence failure" }
+    },
+    {
+      "id": "accept_receipt_program_expected_digest_refusal",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/receipt-program.test.js", "title": "expected program digest mismatch emits a verifiable recoverable refusal" }
     }
   ]
 }
