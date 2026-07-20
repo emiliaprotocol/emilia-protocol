@@ -60,7 +60,7 @@ export default function ProgramIntegrityGate() {
   const [runState, setRunState] = useState('idle');
   const [activeStage, setActiveStage] = useState(-1);
   const [downloaded, setDownloaded] = useState(false);
-  const timers = useRef([]);
+  const timers = useRef(/** @type {number[]} */ ([]));
 
   const scenario = useMemo(
     () => SCENARIOS.find((item) => item.id === selectedId) || SCENARIOS[0],
