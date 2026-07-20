@@ -166,3 +166,115 @@ CREATE TABLE fraud_flags (
   metadata   JSONB DEFAULT '{}'::jsonb,
   flagged_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- ── Policy rollout Accountable Signoff (migration integration fixture) ─────
+-- Minimal live-shape dependencies for applying and executing
+-- 20260719123000_policy_rollout_accountable_signoff.sql in plain PostgreSQL.
+
+DO $$
+BEGIN
+  CREATE ROLE anon NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$
+BEGIN
+  CREATE ROLE authenticated NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$
+BEGIN
+  CREATE ROLE service_role NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE handshake_policies (
+  policy_id UUID PRIMARY KEY,
+  policy_key TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  mode TEXT NOT NULL,
+  status TEXT NOT NULL,
+  rules JSONB NOT NULL,
+  tenant_id UUID
+);
+
+CREATE TABLE policy_rollouts (
+  rollout_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  policy_id UUID NOT NULL REFERENCES handshake_policies(policy_id),
+  version INTEGER NOT NULL,
+  environment TEXT NOT NULL,
+  strategy TEXT NOT NULL CHECK (strategy IN ('immediate', 'canary')),
+  status TEXT NOT NULL CHECK (status IN ('active', 'rolled_back', 'superseded', 'failed')),
+  initiated_by TEXT NOT NULL,
+  tenant_id TEXT,
+  canary_pct SMALLINT,
+  initiated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  metadata JSONB
+);
+
+CREATE TABLE audit_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  actor_type TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  before_state JSONB,
+  after_state JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE tenant_api_keys (
+  key_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  environment TEXT NOT NULL DEFAULT 'production',
+  key_hash TEXT NOT NULL,
+  key_prefix TEXT NOT NULL,
+  name TEXT NOT NULL,
+  permissions TEXT[] DEFAULT '{read,write}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX guard_receipt_consume_once
+  ON audit_events (target_id)
+  WHERE event_type = 'guard.trust_receipt.consumed'
+    AND target_type = 'trust_receipt';
+
+CREATE TABLE authorities (
+  authority_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key_id TEXT NOT NULL UNIQUE,
+  public_key TEXT NOT NULL,
+  algorithm TEXT NOT NULL DEFAULT 'Ed25519',
+  role TEXT NOT NULL,
+  status TEXT NOT NULL,
+  valid_from TIMESTAMPTZ NOT NULL DEFAULT now(),
+  valid_to TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  organization_id TEXT,
+  subject_type TEXT,
+  subject_ref TEXT,
+  assurance_class TEXT,
+  action_scopes TEXT[],
+  metadata_json JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE approver_credentials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id TEXT NOT NULL,
+  approver_id TEXT NOT NULL,
+  credential_id TEXT NOT NULL UNIQUE,
+  public_key_spki TEXT NOT NULL,
+  key_class TEXT NOT NULL,
+  valid_from TIMESTAMPTZ NOT NULL DEFAULT now(),
+  valid_to TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ
+);
+
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT ALL ON TABLE
+  handshake_policies, policy_rollouts, audit_events, authorities,
+  approver_credentials, tenant_api_keys
+TO service_role;
