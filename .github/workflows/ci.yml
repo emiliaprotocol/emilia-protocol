@@ -30,14 +30,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run test suite with coverage (vitest)
+        # A handful of individual tests spawn `node` as a subprocess to run a
+        # script/example that imports from lib/ (now .ts; import specifiers
+        # unchanged, per the bundler/NodeNext convention used repo-wide). This
+        # step-scoped env (never $GITHUB_ENV, which GitHub blocks for
+        # NODE_OPTIONS; never workflow/job-level, which would also apply to
+        # actions/checkout before the repo exists) resolves that for just this
+        # step's subprocesses. See scripts/ts-loader/README.md.
+        env:
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: npx vitest run --coverage
       - name: Verify package suites (node:test)
         # packages/verify and packages/issue ship zero-dependency standalone
@@ -89,8 +96,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -146,8 +151,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 24
@@ -166,8 +169,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -186,8 +187,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: 20
@@ -208,8 +207,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: 20
@@ -229,8 +226,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: 20
@@ -249,8 +244,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 24
@@ -275,8 +268,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -293,8 +284,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -309,8 +298,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 24
@@ -328,8 +315,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -347,8 +332,6 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           # Must match the npm publication workflows: the security case binds
@@ -366,12 +349,18 @@ jobs:
       - name: Execute exact claims and require the checked-in security case to be current
         run: npm run check:security-case
       - name: Run deterministic cross-language hostile corpus
+        env:
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: npm run conformance:hostility
       - name: Run Model-to-Matter executor profile vectors
+        env:
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: npm run m2m:conformance
       - name: Exercise external implementation intake protocol
         run: npm run conformance:clean-room:contract
       - name: Require the checked-in cross-language conformance manifest to be current
+        env:
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: npm run conformance:manifest:check
       - name: Verify exact frozen clean-room evidence baseline
         run: npm run conformance:manifest:clean-room
@@ -405,8 +394,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -428,8 +415,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -443,8 +428,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -459,8 +442,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -476,8 +457,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -489,8 +468,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -510,8 +487,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -559,8 +534,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -588,8 +561,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -605,8 +576,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -631,8 +600,6 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}/sdks/python/src
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: "3.11"
@@ -655,8 +622,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -668,12 +633,16 @@ jobs:
           go-version: "1.22"
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
+        env:
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: node conformance/run.mjs
       - name: Conformance docs count guard
         run: npm run check:conformance-docs
       - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
         run: node conformance/run-signoffs.mjs
       - name: TLA+-invariant conformance (JS lane drives the real store + guards)
+        env:
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: node conformance/runners/run-invariants.mjs
       - name: TLA+-invariant conformance (Python lane — faithful state-machine port)
         run: python3 conformance/runners/run_invariants.py
@@ -777,8 +746,6 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -818,8 +785,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: "3.12"
@@ -839,8 +804,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: "3.12"
@@ -858,8 +821,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -871,8 +832,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
 
       # NOTE on --exclude-dir=.github: every grep here scans the working tree
       # for stale strings. The grep patterns themselves live in this
@@ -974,8 +933,6 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - name: Install gitleaks CLI
         # Pin the version AND verify the SHA-256 (from the release's published
         # checksums.txt) so a re-cut/compromised asset can't inject a binary.
@@ -1003,8 +960,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 20
@@ -1016,8 +971,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - name: Build Docker image
         run: docker build -t ep-test .
 
@@ -1033,8 +986,6 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 24
@@ -1089,8 +1040,6 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
-        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: 24
