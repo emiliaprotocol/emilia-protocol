@@ -109,7 +109,7 @@
     "@noble/curves": "2.2.0",
     "@noble/post-quantum": "^0.6.1",
     "@node-saml/node-saml": "^5.1.0",
-    "@remotion/player": "^4.0.488",
+    "@remotion/player": "^4.0.489",
     "@sentry/nextjs": "10.65.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.2",
