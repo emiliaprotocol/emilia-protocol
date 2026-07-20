@@ -8,7 +8,7 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "skipLibCheck": true,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "resolveJsonModule": true
   },
   "include": [
