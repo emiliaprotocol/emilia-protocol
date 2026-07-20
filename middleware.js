@@ -262,6 +262,13 @@ const ROUTE_POLICIES = {
   'GET /api/cloud/signoff/queue':     { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/signoff/dashboard': { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/signoff/analytics': { rateCategory: 'cloud_read', useAuth: true },
+  // Connected high-risk payment approval reference endpoint. Route-level
+  // authorization additionally requires the named approval_request capability
+  // (or admin) and binds every operation to the authenticated tenant/key.
+  'GET /api/cloud/approvals':          { rateCategory: 'cloud_read',  useAuth: true },
+  'POST /api/cloud/approvals':         { rateCategory: 'cloud_write', useAuth: true },
+  'POST /api/cloud/approvals/*/consume': { rateCategory: 'cloud_write', useAuth: true },
+  'GET /api/cloud/approvals/*/evidence': { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/audit/export':      { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/audit/integrity':   { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/audit/report':      { rateCategory: 'cloud_read', useAuth: true },

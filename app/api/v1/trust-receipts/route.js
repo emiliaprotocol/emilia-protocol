@@ -51,6 +51,8 @@ import {
   resolveGuardEnforcementMode,
   validateGuardActionInput,
 } from '@/lib/guard-action-inputs';
+import { computeCaid } from '@/caid/impl/js/caid.mjs';
+import caidActionTypeRegistry from '@/caid/registry/action-types.json';
 
 // Receipt expiry: 24 hours by default AND hard maximum. Per MD §2.3, expires_at
 // is required on every receipt. Higher-risk actions should live for minutes, not
@@ -60,6 +62,11 @@ import {
 const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
 const RECEIPT_TTL_MIN_MS = 60 * 1000;
 const MAX_TRUST_RECEIPT_CREATE_BYTES = 256 * 1024;
+const SHA256_DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
+const PAYMENT_RELEASE_CAID_DEFINITION = caidActionTypeRegistry.types.find(
+  (definition) => definition.action_type === 'payment.release.1'
+    && definition.status === 'active',
+);
 
 function resolveReceiptTtlMs(expiresInSec, maxTtlMs = RECEIPT_TTL_MS) {
   const n = Number(expiresInSec);
@@ -114,6 +121,10 @@ export async function POST(request) {
     // match the authenticated entity id (or be absent).
     const actor_id = authEntityId(auth);
     const authStrength = resolveVerifiedAuthStrength(auth);
+    const cloudPermissions = Array.isArray(auth.permissions) ? auth.permissions : [];
+    const cloudIsAdmin = cloudPermissions.includes('admin');
+    const cloudMayRollout = cloudIsAdmin || cloudPermissions.includes('policy_rollout');
+    const cloudMayRequestApproval = cloudIsAdmin || cloudPermissions.includes('approval_request');
     if (body.action_type === GUARD_ACTION_TYPES.POLICY_ROLLOUT
         && !isCloudGuardPrincipal(auth)) {
       return epProblem(
@@ -123,19 +134,82 @@ export async function POST(request) {
       );
     }
     if (isCloudGuardPrincipal(auth)) {
-      if (body.action_type !== GUARD_ACTION_TYPES.POLICY_ROLLOUT) {
+      const isRollout = body.action_type === GUARD_ACTION_TYPES.POLICY_ROLLOUT;
+      const isApprovalRequest = body.action_type === GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE;
+      if ((!isRollout && !isApprovalRequest)
+          || (isRollout && !cloudMayRollout)
+          || (isApprovalRequest && !cloudMayRequestApproval)) {
         return epProblem(
           403,
           'cloud_guard_action_forbidden',
-          'Tenant control-plane keys may create Trust Receipts only for policy rollout authorization',
+          'Tenant control-plane keys may create only the Guard action authorized by their named capability',
         );
       }
-      if (body.executing_key_id !== auth.guard_cloud.key_id) {
+      if (isRollout && body.executing_key_id !== auth.guard_cloud.key_id) {
         return epProblem(
           403,
           'executing_key_mismatch',
           'Policy rollout executing_key_id must match the authenticated tenant API key',
         );
+      }
+      if (isApprovalRequest) {
+        // approval_request is deliberately a narrow product capability. It
+        // cannot put a high-risk payment into observe/warn mode or stretch the
+        // review window beyond the reference endpoint's one-hour bound.
+        const requestedMode = body.enforcement_mode ?? body.mode ?? ENFORCEMENT_MODES.ENFORCE;
+        if (requestedMode !== ENFORCEMENT_MODES.ENFORCE) {
+          return epProblem(
+            403,
+            'cloud_approval_enforcement_required',
+            'Cloud payment approvals must use enforce mode',
+          );
+        }
+        if (body.expires_in_sec !== undefined
+            && (!Number.isFinite(Number(body.expires_in_sec))
+              || Number(body.expires_in_sec) < 60
+              || Number(body.expires_in_sec) > 3600)) {
+          return epProblem(
+            400,
+            'invalid_approval_expiry',
+            'Cloud payment approval receipts must expire from 60 through 3600 seconds after issuance',
+          );
+        }
+        body.enforcement_mode = ENFORCEMENT_MODES.ENFORCE;
+        if (!SHA256_DIGEST_PATTERN.test(body.payment_destination_hash || '')) {
+          return epProblem(
+            400,
+            'invalid_payment_destination_hash',
+            'Cloud payment approvals require payment_destination_hash as sha256:<64 lowercase hex>',
+          );
+        }
+
+        // CAID is derived by the server from the same typed material the
+        // executor must later observe. A caller-supplied identifier is ignored:
+        // CAID equality identifies content but never grants authority.
+        const caidAction = {
+          action_type: 'payment.release.1',
+          amount: String(body.amount),
+          currency: body.currency,
+          beneficiary_account: body.payment_destination_hash,
+          payment_instruction_id: body.target_resource_id,
+          ...(typeof body.counterparty_name === 'string' && body.counterparty_name.trim()
+            ? { memo: body.counterparty_name.trim() }
+            : {}),
+        };
+        const caidResult = computeCaid(caidAction, {
+          suite: 'jcs-sha256',
+          definitions: [PAYMENT_RELEASE_CAID_DEFINITION],
+        });
+        if (!caidResult.caid || !caidResult.digest) {
+          return epProblem(
+            400,
+            'invalid_caid_action',
+            `Payment material cannot form payment.release.1 CAID (${(caidResult.refusals || []).join(', ')})`,
+          );
+        }
+        body.action_caid = caidResult.caid;
+        body.caid_digest = caidResult.digest;
+        body.caid_action = caidAction;
       }
     }
     if (body.actor_id && body.actor_id !== actor_id) {
@@ -204,7 +278,10 @@ export async function POST(request) {
     const now = new Date();
     const receiptMaxTtlMs = body.action_type === GUARD_ACTION_TYPES.POLICY_ROLLOUT
       ? 15 * 60 * 1000
-      : RECEIPT_TTL_MS;
+      : (isCloudGuardPrincipal(auth)
+          && body.action_type === GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE)
+        ? 60 * 60 * 1000
+        : RECEIPT_TTL_MS;
     const expiresAt = new Date(
       now.getTime() + resolveReceiptTtlMs(body.expires_in_sec, receiptMaxTtlMs),
     );
@@ -261,6 +338,19 @@ export async function POST(request) {
       nonce,
       expires_at: expiresAt.toISOString(),
       requested_at: now.toISOString(),
+      // CAID is computed above by the server for the connected payment
+      // approval endpoint. Keep the typed action and digest inside the
+      // canonical action so action_hash, every approver assertion, and the
+      // exported evidence all bind the same cross-system identifier. These are
+      // correlation fields, not a substitute for the execution-binding fields
+      // that the executor must observe independently.
+      ...(body.action_caid
+        ? {
+            action_caid: body.action_caid,
+            caid_digest: body.caid_digest,
+            caid_action: body.caid_action,
+          }
+        : {}),
     };
     const actionDetails = extractGuardActionDetails(body, changedFields);
     const canonicalAction = enrichCanonicalActionForExecution(canonicalActionBase, actionDetails);

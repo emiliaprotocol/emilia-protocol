@@ -92,6 +92,7 @@ export async function POST(request, { params }) {
     // action into the signed context, so the approver signs what they saw — not
     // just the action hash. Class-A/high-risk signoffs require this binding.
     let displayHash = null;
+    let rendering = null;
     const canonicalAction = loaded.createdState?.canonical_action;
     const displayBindingRequired = loaded.createdState?.required_assurance === 'A';
     if (displayBindingRequired && !canonicalAction) {
@@ -99,7 +100,8 @@ export async function POST(request, { params }) {
     }
     if (canonicalAction) {
       try {
-        displayHash = renderAction(canonicalAction).display_hash;
+        rendering = renderAction(canonicalAction);
+        displayHash = rendering.display_hash;
       } catch (e) {
         logger.warn('[webauthn] signoff options: renderAction failed:', e?.message);
         if (displayBindingRequired) {
@@ -161,6 +163,12 @@ export async function POST(request, { params }) {
       // signed — same canonical object whose hash is the challenge.
       context,
       context_hash: contextHashHex(context),
+      // The browser already holds an independently rendered copy from the
+      // stored canonical action. Returning this deterministic rendering lets
+      // it compare action hash, display hash, and profile before opening the
+      // authenticator. The signed context still carries the authoritative
+      // action_hash + display_hash; this object adds no trust by itself.
+      rendering,
     });
   } catch (err) {
     logger.error('[webauthn] POST webauthn-options error:', err);

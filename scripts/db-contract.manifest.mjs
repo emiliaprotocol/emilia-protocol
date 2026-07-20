@@ -62,6 +62,10 @@ const RELEASE_LOCK_SERVICE_RPCS = [
 // necessary but not sufficient: a table ACL is a separate Data API gate, so
 // the live contract checks both controls.
 const SERVICE_ONLY_TABLES = [
+  // Append-only Trust Receipt/signoff/evidence ledger. Every application read
+  // is tenant-projected by the server; client roles must never query or append
+  // rows directly.
+  'audit_events',
   'api_keys',
   'tenant_api_keys',
   'sso_connections',
@@ -231,7 +235,7 @@ export const contract = {
   // policy for the existing guarded-client paths. The other service-only
   // tables either rely on service_role's bypass or are RPC-only.
   serviceRolePoliciesRequired: [
-    'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions', 'session_cutoffs',
+    'audit_events', 'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions', 'session_cutoffs',
   ],
 
   // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/

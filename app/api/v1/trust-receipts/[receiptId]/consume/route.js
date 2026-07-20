@@ -12,7 +12,7 @@
 // inside a single transaction that also checks the prior consume sentinel.
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateGuardRequest, isCloudGuardPrincipal } from '@/lib/guard-auth.js';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
@@ -34,8 +34,8 @@ const MAX_TRUST_RECEIPT_CONSUME_BYTES = 32 * 1024;
 
 export async function POST(request, { params }) {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+    const auth = await authenticateGuardRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
 
     const { receiptId } = await params;
     if (!RECEIPT_ID_PATTERN.test(receiptId || '')) {
@@ -76,6 +76,16 @@ export async function POST(request, { params }) {
       return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
     }
     const base = created.after_state;
+    if (isCloudGuardPrincipal(auth)) {
+      const permissions = Array.isArray(auth.permissions) ? auth.permissions : [];
+      const mayConsumeApproval = permissions.includes('admin')
+        || permissions.includes('approval_request');
+      if (!mayConsumeApproval
+          || base.action_type !== 'large_payment_release'
+          || created.actor_id !== authEntityId(auth)) {
+        return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+      }
+    }
     if (base.action_type === 'policy_rollout') {
       return epProblem(
         409,

@@ -60,12 +60,21 @@ export async function POST(request) {
 
     const created = events.find((e) => e.event_type === 'guard.trust_receipt.created');
     if (!created) return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
-    if (isCloudGuardPrincipal(auth) && created.after_state?.action_type !== 'policy_rollout') {
-      return epProblem(
-        403,
-        'cloud_guard_action_forbidden',
-        'Tenant control-plane keys may request signoff only for policy rollout receipts',
-      );
+    if (isCloudGuardPrincipal(auth)) {
+      const permissions = Array.isArray(auth.permissions) ? auth.permissions : [];
+      const isAdmin = permissions.includes('admin');
+      const actionType = created.after_state?.action_type;
+      const allowed = (actionType === 'policy_rollout'
+          && (isAdmin || permissions.includes('policy_rollout')))
+        || (actionType === 'large_payment_release'
+          && (isAdmin || permissions.includes('approval_request')));
+      if (!allowed) {
+        return epProblem(
+          403,
+          'cloud_guard_action_forbidden',
+          'Tenant control-plane keys may request signoff only for the Guard action authorized by their named capability',
+        );
+      }
     }
     if (!created.actor_id || created.actor_id !== initiatorEntityId) {
       return epProblem(

@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { assertArtifactBytesMatch, verifyReproduciblePackage } from '../scripts/verify-reproducible-package.mjs';
+import { gzipSync } from 'node:zlib';
+import {
+  assertArtifactBytesMatch,
+  canonicalizeNpmTarball,
+  verifyReproduciblePackage,
+} from '../scripts/verify-reproducible-package.mjs';
 import { assertPythonArtifactBytesMatch } from '../scripts/python-artifact-integrity.mjs';
 
 describe('release byte reproducibility', () => {
@@ -43,6 +48,17 @@ describe('release byte reproducibility', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it('canonicalizes different host gzip streams to identical publish bytes', () => {
+    const tarPayload = Buffer.from('stable tar payload'.repeat(64));
+    const fastHostArchive = gzipSync(tarPayload, { level: 1, mtime: 0 });
+    const compactHostArchive = gzipSync(tarPayload, { level: 9, mtime: 0 });
+
+    expect(fastHostArchive.equals(compactHostArchive)).toBe(false);
+    expect(canonicalizeNpmTarball(fastHostArchive)).toEqual(
+      canonicalizeNpmTarball(compactHostArchive),
+    );
   });
 
   it('accepts a registry artifact only when every published byte matches', () => {

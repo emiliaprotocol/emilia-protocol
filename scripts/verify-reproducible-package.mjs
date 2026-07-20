@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import pako from 'pako';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -20,6 +21,25 @@ export function assertArtifactBytesMatch(expected, observed) {
     throw new Error(`published artifact bytes differ: ${expectedHash} != ${observedHash}`);
   }
   return crypto.createHash('sha256').update(left).digest('hex');
+}
+
+/**
+ * npm delegates gzip compression to the host Node/zlib toolchain. The tar
+ * payload is stable, but npm 10/Node 20 and npm 11/Node 25 can emit different
+ * DEFLATE streams for the same payload. Recompress with a pinned pure-JS
+ * implementation so the bytes we attest and publish are toolchain-independent.
+ *
+ * @param {Buffer|Uint8Array} archive
+ */
+export function canonicalizeNpmTarball(archive) {
+  const tarBytes = pako.ungzip(archive);
+  return Buffer.from(pako.gzip(tarBytes, {
+    level: 9,
+    header: {
+      time: 0,
+      os: 255,
+    },
+  }));
 }
 
 /**
@@ -90,7 +110,9 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
     const destination = path.join(scratch, label);
     fs.mkdirSync(destination);
     const report = runPack([packageInput, '--pack-destination', destination], label);
-    const bytes = fs.readFileSync(path.join(destination, report.filename));
+    const bytes = canonicalizeNpmTarball(
+      fs.readFileSync(path.join(destination, report.filename)),
+    );
     return {
       bytes,
       filename: report.filename,

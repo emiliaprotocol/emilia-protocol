@@ -72,6 +72,13 @@ tags:
     description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
     description: Cloud tenant API — scoring calibration, policy simulation, and tenant-scoped configuration
+  - name: Cloud Approval Prototype
+    description: |
+      Experimental pre-standard connected prototype for one tenant-scoped
+      `large_payment_release` approval flow. This is not a production API, is
+      not a certification program, and is not an interoperability claim. Its
+      server-computed CAID identifies exact `payment.release.1` typed action
+      content; CAID does not establish authorization.
   - name: Internal
     description: |
       Cron jobs, operator-only actions, and internal infrastructure endpoints.
@@ -4354,6 +4361,200 @@ paths:
         '500':
           description: Test delivery failed
 
+  /api/cloud/approvals:
+    get:
+      tags: [Cloud Approval Prototype]
+      summary: List the tenant's connected approval queue
+      description: |
+        Experimental pre-standard prototype. Lists only approval requests
+        created by the authenticated tenant's Cloud key through this connected
+        surface. Every item is the fixed `large_payment_release` action type.
+        Each item exposes the server-computed `action_caid` for the exact
+        `payment.release.1` typed content. CAID identifies content; it does not
+        establish authorization.
+        Requires a tenant-bound Cloud bearer key with `approval_request` or
+        `admin`.
+
+        This route is not a production API, is not a certification program,
+        and is not an interoperability claim.
+      operationId: listCloudApprovalPrototype
+      security:
+        - CloudBearerAuth: []
+      x-emilia-maturity: experimental-pre-standard-prototype
+      x-emilia-permissions: [approval_request, admin]
+      x-emilia-fixed-action-type: large_payment_release
+      x-emilia-caid-action-type: payment.release.1
+      responses:
+        '200':
+          description: Tenant-scoped approval queue and status summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudApprovalQueueResponse'
+        '401':
+          description: A valid Cloud API key is required
+        '403':
+          description: The Cloud key lacks approval_request or admin
+        '503':
+          description: The tenant-scoped approval queue is unavailable
+        '500':
+          description: Approval queue failed unexpectedly
+    post:
+      tags: [Cloud Approval Prototype]
+      summary: Create one connected large-payment approval request
+      description: |
+        Experimental pre-standard prototype. Creates exactly one
+        `large_payment_release` receipt in enforce mode, binds the amount,
+        currency, counterparty name, payment destination hash, and payment
+        reference, and opens a one-hour signoff request for the named
+        `approver_id`. The response includes a server-computed `action_caid`
+        for `payment.release.1`. CAID identifies exact typed action content; it
+        does not establish authorization. The route refuses to continue unless
+        receipt creation requires Class-A assurance.
+
+        The returned `review_path` enters the WebAuthn/WYSIWYS Class-A review
+        flow. The plain bearer-key signoff decision routes are Class C and
+        cannot decide this request. Requires a tenant-bound Cloud bearer key
+        with `approval_request` or `admin`.
+
+        This route is not a production API, is not a certification program,
+        and is not an interoperability claim.
+      operationId: createCloudApprovalPrototype
+      security:
+        - CloudBearerAuth: []
+      x-emilia-maturity: experimental-pre-standard-prototype
+      x-emilia-permissions: [approval_request, admin]
+      x-emilia-fixed-action-type: large_payment_release
+      x-emilia-caid-action-type: payment.release.1
+      x-emilia-required-assurance: A
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudApprovalCreateRequest'
+      responses:
+        '201':
+          description: Pending Class-A approval request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudApprovalCreateResponse'
+        '400':
+          description: Invalid payment or approver input
+        '401':
+          description: A valid Cloud API key is required
+        '403':
+          description: The Cloud key lacks approval_request or admin, or cannot create the bounded receipt
+        '413':
+          description: Request body exceeds 32 KiB
+        '404':
+          description: A delegated receipt or signoff resource was not found
+        '409':
+          description: Delegated signoff state conflicts with the new request
+        '410':
+          description: The delegated receipt expired before signoff creation
+        '500':
+          description: Approval creation failed or the Class-A invariant was not met
+
+  /api/cloud/approvals/{receiptId}/consume:
+    post:
+      tags: [Cloud Approval Prototype]
+      summary: Consume an approved connected request exactly once
+      description: |
+        Experimental pre-standard prototype. Consumes the tenant-owned
+        `large_payment_release` receipt once after its Class-A approval. The
+        supplied `action_hash` must exactly match issuance. The server fixes
+        `executing_system` to `emilia_cloud_approval_endpoint`; callers cannot
+        override it. A consumed receipt cannot be reused.
+
+        Consumption records one-time authorization use; this prototype route
+        does not itself move money. Requires a tenant-bound Cloud bearer key
+        with `approval_request` or `admin`.
+
+        This route is not a production API, is not a certification program,
+        and is not an interoperability claim.
+      operationId: consumeCloudApprovalPrototype
+      security:
+        - CloudBearerAuth: []
+      x-emilia-maturity: experimental-pre-standard-prototype
+      x-emilia-permissions: [approval_request, admin]
+      x-emilia-fixed-action-type: large_payment_release
+      x-emilia-caid-action-type: payment.release.1
+      x-emilia-consumption: one-time
+      parameters:
+        - $ref: '#/components/parameters/CloudApprovalReceiptId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloudApprovalConsumeRequest'
+      responses:
+        '200':
+          description: Receipt consumed once
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudApprovalConsumeResponse'
+        '400':
+          description: Invalid receipt_id or action_hash
+        '401':
+          description: A valid Cloud API key is required
+        '403':
+          description: The Cloud key lacks approval_request or admin, or Class-A approval is absent or rejected
+        '404':
+          description: No tenant-owned connected approval receipt was found
+        '409':
+          description: Receipt already consumed or action_hash mismatch
+        '410':
+          description: Receipt expired
+
+  /api/cloud/approvals/{receiptId}/evidence:
+    get:
+      tags: [Cloud Approval Prototype]
+      summary: Export the connected approval evidence packet
+      description: |
+        Experimental pre-standard prototype. Exports the tenant-owned JSON
+        evidence packet for the fixed `large_payment_release` receipt,
+        including its audit timeline, recorded signoff decision, consumption
+        state, and signed offline-verifiable receipt fields when the underlying
+        evidence route can honestly produce them. For a signed packet,
+        `document.payload.claim.canonical_action.action_caid` carries the
+        server-computed `payment.release.1` identifier. The create response and
+        queue expose `action_caid` directly. CAID identifies exact typed action
+        content; it does not establish authorization.
+
+        The export is evidence, not a certification or an interoperability
+        result. Requires a tenant-bound Cloud bearer key with
+        `approval_request` or `admin`.
+      operationId: exportCloudApprovalPrototypeEvidence
+      security:
+        - CloudBearerAuth: []
+      x-emilia-maturity: experimental-pre-standard-prototype
+      x-emilia-permissions: [approval_request, admin]
+      x-emilia-fixed-action-type: large_payment_release
+      x-emilia-caid-action-type: payment.release.1
+      parameters:
+        - $ref: '#/components/parameters/CloudApprovalReceiptId'
+      responses:
+        '200':
+          description: JSON approval evidence packet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudApprovalEvidence'
+        '400':
+          description: Invalid receipt_id
+        '401':
+          description: A valid Cloud API key is required
+        '403':
+          description: The Cloud key lacks approval_request or admin
+        '404':
+          description: No tenant-owned connected approval receipt was found
+        '500':
+          description: Approval evidence export failed
+
   /api/v1/approvers/webauthn/register-options:
     post:
       tags: [Class A Signoff]
@@ -5362,6 +5563,14 @@ components:
       type: http
       scheme: bearer
       description: EP API key (ep_live_...)
+    CloudBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ep_ or ept_ Cloud API key
+      description: |
+        Active tenant-bound Cloud API key supplied as
+        `Authorization: Bearer <key>`. Connected approval operations require
+        the named `approval_request` capability or `admin`.
     MobileSessionAuth:
       type: http
       scheme: bearer
@@ -5386,6 +5595,14 @@ components:
         the session token is never returned in a JSON body.
 
   parameters:
+    CloudApprovalReceiptId:
+      name: receiptId
+      in: path
+      required: true
+      description: Connected approval receipt ID
+      schema:
+        type: string
+        pattern: '^tr_[a-f0-9]{32}$'
     ReleaseLockId:
       name: lockId
       in: path
@@ -5409,6 +5626,281 @@ components:
         format: uri
 
   schemas:
+    CloudApprovalCreateRequest:
+      type: object
+      description: |
+        Inputs for the single connected action. Callers do not choose an
+        action type; the server always creates `large_payment_release`.
+      x-emilia-fixed-action-type: large_payment_release
+      x-emilia-caid-action-type: payment.release.1
+      required:
+        [amount, currency, counterparty_name, payment_destination_hash,
+         payment_reference, approver_id]
+      properties:
+        amount:
+          type: number
+          format: double
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 1000000000000
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          description: Three-letter uppercase ISO-style currency code
+        counterparty_name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          description: Printable counterparty display name
+        payment_destination_hash:
+          type: string
+          pattern: '^sha256:[a-f0-9]{64}$'
+          description: |
+            SHA-256 digest of the normalized payment destination. This becomes
+            the `beneficiary_account` material field in the server-computed
+            `payment.release.1` CAID.
+        payment_reference:
+          type: string
+          minLength: 3
+          maxLength: 200
+          pattern: '^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9:._/-]{2,199}$'
+          description: Safe payment identifier; `..` is forbidden
+        approver_id:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+          description: Named approver who will complete the Class-A review
+        comment:
+          type: string
+          maxLength: 500
+
+    CloudApprovalCreateResponse:
+      type: object
+      required:
+        [receipt_id, action_hash, action_caid, expires_at, signoff_id, approver_id,
+         required_assurance, status, review_path, implementation_status]
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        action_hash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        action_caid:
+          type: string
+          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          description: |
+            Server-computed identifier for exact `payment.release.1` typed
+            action content. CAID does not establish authorization.
+        expires_at:
+          type: string
+          format: date-time
+        signoff_id:
+          type: string
+          pattern: '^sig_[a-f0-9]{32}$'
+        approver_id:
+          type: string
+        required_assurance:
+          type: string
+          enum: [A]
+        status:
+          type: string
+          enum: [pending]
+        review_path:
+          type: string
+          pattern: '^/signoff/sig_[a-f0-9]{32}$'
+          description: WebAuthn/WYSIWYS Class-A review path
+        implementation_status:
+          type: string
+          enum: [prototype]
+
+    CloudApprovalRecord:
+      type: object
+      required:
+        [receipt_id, action_caid, action_type, payment_destination_hash, status]
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        action_hash:
+          type: string
+          nullable: true
+        action_caid:
+          type: string
+          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          description: |
+            Server-computed typed-content identifier; not an authorization
+            decision or proof.
+        action_type:
+          type: string
+          enum: [large_payment_release]
+        amount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        counterparty_name:
+          type: string
+          nullable: true
+        payment_destination_hash:
+          type: string
+          pattern: '^sha256:[a-f0-9]{64}$'
+          description: SHA-256 digest of the normalized payment destination
+        target_resource_id:
+          type: string
+          nullable: true
+          description: The submitted payment_reference
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [pending, approved, rejected, expired, consumed]
+        signoff_id:
+          type: string
+          nullable: true
+        approver_id:
+          type: string
+          nullable: true
+        review_path:
+          type: string
+          nullable: true
+        consumed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CloudApprovalQueueResponse:
+      type: object
+      required: [tenant_id, approvals, summary, implementation_status]
+      properties:
+        tenant_id:
+          type: string
+        approvals:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CloudApprovalRecord'
+        summary:
+          type: object
+          required: [pending, approved, rejected, expired, consumed]
+          properties:
+            pending: { type: integer, minimum: 0 }
+            approved: { type: integer, minimum: 0 }
+            rejected: { type: integer, minimum: 0 }
+            expired: { type: integer, minimum: 0 }
+            consumed: { type: integer, minimum: 0 }
+        implementation_status:
+          type: string
+          enum: [prototype]
+
+    CloudApprovalConsumeRequest:
+      type: object
+      description: |
+        The exact action hash returned at creation. The server supplies the
+        fixed executing_system and does not accept a caller-selected executor
+        identity.
+      required: [action_hash]
+      properties:
+        action_hash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+
+    CloudApprovalConsumeResponse:
+      type: object
+      required: [receipt_id, status, consumed_at, consumed_by_system]
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        status:
+          type: string
+          enum: [consumed]
+        consumed_at:
+          type: string
+          format: date-time
+        consumed_by_system:
+          type: string
+          enum: [emilia_cloud_approval_endpoint]
+        execution_reference_id:
+          type: string
+          nullable: true
+
+    CloudApprovalEvidence:
+      type: object
+      description: |
+        JSON projection delegated to the trust-receipt evidence route. Signed
+        receipt fields are present only when that route can honestly mint them.
+      required:
+        [receipt_id, organization_id, actor, action, policy, signoff, consume,
+         replay_attempts, timeline, signed, verify_with, issued_at, expires_at,
+         format, schema_version]
+      properties:
+        document:
+          type: object
+          nullable: true
+          description: |
+            Signed EP receipt when available. For connected payment approvals,
+            `payload.claim.canonical_action.action_caid` is the server-computed
+            `payment.release.1` typed-content identifier; it does not establish
+            authorization.
+        public_key:
+          type: string
+          nullable: true
+        signed:
+          type: boolean
+        verify_with:
+          type: string
+          enum: ['@emilia-protocol/verify']
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        organization_id:
+          type: string
+        actor:
+          type: object
+        action:
+          type: object
+          required: [type, action_hash]
+          properties:
+            type:
+              type: string
+              enum: [large_payment_release]
+            action_hash:
+              type: string
+        policy:
+          type: object
+        signoff:
+          type: object
+        consume:
+          type: object
+        replay_attempts:
+          type: integer
+          minimum: 0
+        timeline:
+          type: array
+          items:
+            type: object
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        format:
+          type: string
+          enum: [application/json]
+        schema_version:
+          type: string
+          enum: [ep-guard-evidence-v1]
+
     ReleaseLockId:
       type: string
       pattern: '^rlk_[a-f0-9]{32}$'

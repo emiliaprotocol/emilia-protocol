@@ -118,6 +118,10 @@
     {
       "term": "complete mediation",
       "definition": "Enforcement is non-bypassable only when every protected action path reaches a verifier at the actual system of record or actuator. Middleware-only deployments provide evidence and agent-side enforcement but cannot constrain an operator who controls an alternate execution path."
+    },
+    {
+      "term": "approval endpoint prototype",
+      "definition": "A connected reference surface for one bounded high-risk action: an authenticated tenant key requests a large payment release, the server computes its payment.release.1 CAID from typed material, a named approver reviews the complete canonical action, a user-verified WebAuthn assertion binds the decision to the action and deterministic display hashes, Gate permits one atomic consumption only after the required signoff, and the tenant can export the evidence packet. CAID identifies exact content and does not grant authority. This is an experimental pre-standard implementation prototype, not a production-service, certification, adoption, or interoperability claim."
     }
   ],
   "layer_map": [
@@ -210,7 +214,8 @@
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
     "The GRACE live control room uses signed COSA and meter reference adapters. It exercises real verification and one-time state transitions but does not claim a physical grid event, production COSA integration, utility adoption, meter truth, or SCITT anchoring.",
-    "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims."
+    "Portable human-intent and approval evidence exists outside EMILIA. AuthZEN AARP includes requestable denial, asynchronous approval, an approval object with optional opaque proof or verifier state, JWS interoperability for by-value state, an exact-match baseline, and PDP re-evaluation. Mastercard's Verifiable Intent, co-developed with Google and contributed to the FIDO Alliance, also provides portable intent evidence; the cited FIDO page describes a contribution and prospective standardization, not a final FIDO specification. Comparisons must use exact guarantee profiles rather than zero-rival claims.",
+    "The connected Cloud approval endpoint is an implementation prototype for one fixed large_payment_release workflow. It must not be described as a production service, customer deployment, certification, independent interoperability result, or standards adoption."
   ],
   "source_precedence": [
     {

@@ -28,7 +28,7 @@ describe('Guard authentication bridge', () => {
     expect(isCloudGuardPrincipal(auth)).toBe(false);
   });
 
-  it.each([['admin'], ['policy_rollout']])(
+  it.each([['admin'], ['policy_rollout'], ['approval_request']])(
     'projects a %s tenant key into an org-bound, attributable principal',
     async (permission) => {
     const protocol = vi.fn();
@@ -49,6 +49,7 @@ describe('Guard authentication bridge', () => {
         organization_id: '33333333-3333-4333-8333-333333333333',
       },
       auth_strength: 'service_account',
+      permissions: [permission],
       guard_cloud: {
         key_id: 'key-abc123',
         environment: 'production',
@@ -58,7 +59,7 @@ describe('Guard authentication bridge', () => {
     },
   );
 
-  it('fails a tenant key closed when authentication or rollout permission is absent', async () => {
+  it('fails a tenant key closed when authentication or a Guard capability is absent', async () => {
     const failed = await authenticateGuardRequest(request('ept_live_bad'), {
       authenticateCloud: async () => null,
     });
@@ -74,7 +75,7 @@ describe('Guard authentication bridge', () => {
     });
     expect(unprivileged).toMatchObject({
       status: 403,
-      code: 'cloud_rollout_permission_required',
+      code: 'cloud_guard_permission_required',
     });
   });
 });
