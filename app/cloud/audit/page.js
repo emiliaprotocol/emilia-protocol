@@ -22,7 +22,7 @@ export default function AuditExportPage() {
   const [generating, setGenerating] = useState(false);
   const [reports, setReports] = useState(MOCK_REPORTS);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
 
   const handleGenerate = async () => {
     if (!dateFrom || !dateTo) { setError('Date range is required.'); return; }

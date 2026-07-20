@@ -35,7 +35,10 @@ export async function POST(request, { params }) {
     // ── Schema validation (early gate) ────────────────────────────────
     const { valid, data, errors } = validatePresent(body);
     if (!valid) {
-      return epError(EP_ERROR_CODES.INVALID_INPUT, errors.join('; '));
+      // validatePresent's !valid branch always populates `errors` (never
+      // `data`) — the compiler can't see that pairing from the loosely-typed
+      // return shape, but the invariant holds for every code path.
+      return epError(EP_ERROR_CODES.INVALID_INPUT, /** @type {string[]} */ (errors).join('; '));
     }
 
     // ── Manual validation (belt-and-suspenders fallback) ──────────────
@@ -44,7 +47,12 @@ export async function POST(request, { params }) {
       return epError(EP_ERROR_CODES.INVALID_INPUT, validation.error);
     }
 
-    const { party_role, presentation_type, claims, issuer_ref, disclosure_mode } = data;
+    // validatePresent's valid branch always populates `data` with this exact
+    // shape — the compiler widens it to `{} | undefined` across the union
+    // return type, but the invariant holds whenever `valid` is true.
+    const { party_role, presentation_type, claims, issuer_ref, disclosure_mode } =
+      /** @type {{ party_role: string, presentation_type: string, claims: object, issuer_ref: string|null, disclosure_mode: string|null }} */
+      (data);
 
     // ── Authorization: caller must OWN the party_role they present as ─────
     // Without this, any authenticated entity could post a presentation to any

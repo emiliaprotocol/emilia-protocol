@@ -25,8 +25,14 @@ export async function POST(request, { params }) {
     if (!parsed.ok) return parsed.response;
     const body = parsed.value;
 
+    // authenticateRequest() only returns without `error` when the auth RPC
+    // resolved a live, active entity (see resolve_authenticated_actor SQL),
+    // so authEntityActor() is guaranteed non-null here even though its
+    // general signature allows null for the no-entity case.
+    const actor = /** @type {{ id: string, entity_id: string }} */ (authEntityActor(auth));
+
     const result = await denyChallenge({
-      actor: authEntityActor(auth),
+      actor,
       challengeId,
       reason: body.reason || null,
     });

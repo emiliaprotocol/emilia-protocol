@@ -35,7 +35,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const transport = new StdioClientTransport({ command: 'node', args: ['--no-warnings', join(here, 'passport-demo.mjs')] });
 const agent = new Client({ name: 'demo-agent', version: '1.0.0' }, { capabilities: {} });
 await agent.connect(transport);
-const call = async (name, args) => JSON.parse((await agent.callTool({ name, arguments: args })).content[0].text);
+const call = async (name, args) => JSON.parse((/** @type {{ content: Array<{ text: string }> }} */ (await agent.callTool({ name, arguments: args }))).content[0].text);
 
 // ── Title card ───────────────────────────────────────────────────────────
 log();

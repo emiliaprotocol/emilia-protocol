@@ -163,8 +163,8 @@ export function buildAssurancePackage(decisions = [], { profile, organization = 
  * @param {object} pkg  an EP-ASSURANCE-PACKAGE-v1
  * @param {object} opts
  * @param {object} [opts.approverKeys]  auditor-pinned approver keys (out of band)
- * @param {string} [opts.logPublicKey]  auditor-pinned transparency-log key
- * @param {string} [opts.rpId]
+ * @param {string|null} [opts.logPublicKey]  auditor-pinned transparency-log key
+ * @param {string|null} [opts.rpId]
  * @param {string[]} [opts.allowedOrigins]
  * @param {object} [opts.revokerKeys]
  * @param {(key:object)=>boolean} [opts.isConsumed] auditor-owned consumption lookup
@@ -268,7 +268,7 @@ export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey
     },
     control_catalog: RELIANCE_CONTROL_CATALOG,
     results,
-    reperformance_digest: null, // filled below
+    reperformance_digest: /** @type {string|null} */ (null), // filled below
     // Conclusion fields are ALWAYS null: a machine may support re-performance, it
     // may never fill in the auditor's sign-off. A renderer must refuse to print a
     // non-null conclusion here.

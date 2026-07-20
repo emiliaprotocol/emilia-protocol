@@ -38,7 +38,11 @@ export async function DELETE(request) {
     await revokeSession(session.jti, {
       subject: session.sub,
       tenant: session.tenant,
-      expiresAt: session.exp ? new Date(session.exp * 1000).toISOString() : null,
+      // revokeSession's destructured default (`expiresAt = null`) makes TS infer
+      // the param as `null | undefined` — same gap that lets `subject`/`tenant`
+      // (JWTPayload claims) pass through untyped here. Cast, not a behavior
+      // change: the callee already does `expiresAt || new Date(...)`.
+      expiresAt: /** @type {any} */ (session.exp ? new Date(session.exp * 1000).toISOString() : null),
     });
   }
   const res = NextResponse.json({ logged_out: true });

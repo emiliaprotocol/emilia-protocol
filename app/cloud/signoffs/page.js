@@ -25,6 +25,24 @@ import { useState, useEffect } from 'react';
  * @property {import('react').CSSProperties} error
  */
 
+/**
+ * @typedef {Object} SignoffSummary
+ * @property {number} pending
+ * @property {number} completed
+ * @property {number} expired
+ */
+
+/**
+ * @typedef {Object} Signoff
+ * @property {string} id
+ * @property {string} handshake
+ * @property {string} policy
+ * @property {string} signer
+ * @property {string} status
+ * @property {string} created
+ * @property {string} expires
+ */
+
 /** @type {SignoffStyles} */
 const s = {
   page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
@@ -62,9 +80,9 @@ const statusColor = { pending: '#22C55E', completed: '#22C55E', expired: '#f8717
 
 export default function SignoffsPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [summary, setSummary] = useState(null);
-  const [signoffs, setSignoffs] = useState([]);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [summary, setSummary] = useState(/** @type {SignoffSummary | null} */ (null));
+  const [signoffs, setSignoffs] = useState(/** @type {Signoff[]} */ ([]));
   const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {

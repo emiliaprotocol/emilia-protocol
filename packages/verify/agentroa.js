@@ -416,6 +416,11 @@ function validateProfile(profile) {
     && validateManifest(profile.capability_manifest);
 }
 
+/**
+ * @param {string[]} capabilities
+ * @param {Record<string, string[]>} manifest
+ * @returns {{ ok: true, capabilities: Set<string> } | { ok: false, reason: string }}
+ */
 function resolveCapabilities(capabilities, manifest) {
   const resolved = new Set();
   for (const capability of capabilities) {

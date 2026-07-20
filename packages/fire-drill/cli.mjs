@@ -38,7 +38,9 @@ if (!raw) {
 
 let report;
 try {
-  if (input.length > MAX_INPUT_BYTES) throw new Error(`input exceeds ${MAX_INPUT_BYTES} bytes`);
+  // input is provably non-null here: raw = input?.toString() was checked truthy above,
+  // and toString() on a null input would yield undefined, not a truthy string.
+  if (/** @type {Buffer} */ (input).length > MAX_INPUT_BYTES) throw new Error(`input exceeds ${MAX_INPUT_BYTES} bytes`);
   const gate = strictJsonGate(raw);
   if (!gate.ok) throw new Error(gate.reason);
   report = scan(JSON.parse(raw));

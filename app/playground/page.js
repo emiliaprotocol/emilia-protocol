@@ -66,11 +66,11 @@ function ResultPanel({ title, data, status }) {
 }
 
 export default function PlaygroundPage() {
-  const [entities, setEntities] = useState([]);
-  const [receipts, setReceipts] = useState([]);
-  const [handshakes, setHandshakes] = useState([]);
+  const [entities, setEntities] = useState(/** @type {{id: string, name: string}[]} */ ([]));
+  const [receipts, setReceipts] = useState(/** @type {any[]} */ ([]));
+  const [handshakes, setHandshakes] = useState(/** @type {any[]} */ ([]));
   const [profiles, setProfiles] = useState({});
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(/** @type {{data: any, status: 'success'|'error', title: string} | null} */ (null));
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0);
 

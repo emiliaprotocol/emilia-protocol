@@ -6,6 +6,23 @@ import { epProblem } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
 
 /**
+ * @typedef {{
+ *   batch_id: any,
+ *   merkle_alg: any,
+ *   merkle_root: any,
+ *   merkle_proof: any,
+ *   leaf_index: any,
+ *   proof_valid: boolean,
+ *   legacy_refused: boolean,
+ *   transaction_hash: any,
+ *   chain_id: any,
+ *   block_number: any,
+ *   explorer_url: any,
+ *   anchored_at: any,
+ * }} AnchorInfo
+ */
+
+/**
  * GET /api/verify/[receiptId]
  *
  * Verify a receipt's cryptographic integrity and blockchain anchor.
@@ -114,7 +131,7 @@ export async function GET(request, { params }) {
       },
 
       // Blockchain anchor (if present)
-      anchor: null,
+      anchor: /** @type {AnchorInfo | null} */ (null),
     };
 
     // Add anchor verification if this receipt has been anchored

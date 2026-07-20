@@ -23,8 +23,8 @@ for (const line of fs.readFileSync('.env.local', 'utf8').split('\n')) {
 }
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  /** @type {string} */ (process.env.NEXT_PUBLIC_SUPABASE_URL),
+  /** @type {string} */ (process.env.SUPABASE_SERVICE_ROLE_KEY),
   { auth: { persistSession: false } },
 );
 

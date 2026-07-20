@@ -14,9 +14,9 @@ if (process.argv.includes('--json')) {
   console.log('  MOBILE      2 distinct Class-A handshakes: VERIFIED');
   console.log(`  COSA        ${proof.acknowledgment.status.toUpperCase()} (reference adapter)`);
   console.log(`  POWER MW    ${proof.meter_statement.baseline_mw} -> ${samples}`);
-  console.log(`  DELIVERY    ${(proof.compliance.compliance_ratio * 100).toFixed(1)}%`);
-  console.log(`  ACTIONSTATE ${proof.action_state.statement_digest} (signed, unregistered)`);
-  console.log(`  SETTLEMENT  ${proof.settlement.settled ? 'CONSUMED ONCE' : 'NOT SETTLED'}`);
+  console.log(`  DELIVERY    ${(/** @type {{ compliance_ratio: number }} */ (proof.compliance).compliance_ratio * 100).toFixed(1)}%`);
+  console.log(`  ACTIONSTATE ${/** @type {{ statement_digest: string }} */ (proof.action_state).statement_digest} (signed, unregistered)`);
+  console.log(`  SETTLEMENT  ${/** @type {{ settled: boolean }} */ (proof.settlement).settled ? 'CONSUMED ONCE' : 'NOT SETTLED'}`);
   console.log('');
   for (const [name, attack] of Object.entries(result.attacks)) {
     console.log(`  ATTACK      ${name.padEnd(21)} ${attack.refused ? 'REFUSED' : 'FAILED'} (${attack.verdict})`);

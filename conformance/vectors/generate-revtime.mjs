@@ -38,6 +38,16 @@ const TARGET = { target_type: 'receipt', target_id: 'rcpt_x', action_hash: 'sha2
 const REVOKER = 'ep:revoker:ig_okafor';
 const REVOKED_AT = '2026-06-20T12:00:00.000Z';
 
+/**
+ * @param {{
+ *   signer: any,
+ *   target?: any,
+ *   actionHash?: string,
+ *   reason?: string,
+ *   revokedAt?: string|null,
+ *   revokerId?: any,
+ * }} opts
+ */
 function revStatement({
   signer,
   target = TARGET,

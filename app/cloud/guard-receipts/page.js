@@ -97,11 +97,17 @@ export default async function GuardReceiptsPage() {
     return <SignInRequired />;
   }
 
-  const { receipts, error } = await loadTenantGuardReceipts({
+  // loadTenantGuardReceipts's early-return branches (`{ receipts: [], ... }`)
+  // and its `replayGuardReceipts(...)` branch give TS an inferred
+  // `never[] | ReceiptRow[]` return union; overload-resolving `.filter()`
+  // against that union collapses the callback param to `never` below, even
+  // though every branch returns the same real shape at runtime. Assert the
+  // type the code already guarantees.
+  const { receipts, error } = /** @type {{ receipts: Array<{ receipt_id: string, action_type: string, status: string, enforcement_mode: string, adapter: string|null, created_at: string }>, error: string|null }} */ (await loadTenantGuardReceipts({
     supabase: getServiceClient(),
     tenantId: auth.tenantId,
     log: logger,
-  });
+  }));
 
   // Aggregate stats
   const total = receipts.length;

@@ -190,7 +190,10 @@ function pinnedKey(key) {
   };
 }
 
-/** Normalize the relying-party trust policy; presenter material is never used. */
+/**
+ * Normalize the relying-party trust policy; presenter material is never used.
+ * @returns {{ok:false, reason:string}|{ok:true, minimum_threshold:number, roster:Map<string,{kid:string, principal_id:string, publicKey:import('crypto').KeyObject, fingerprint:string}>}}
+ */
 function normalizePinnedPolicy(policy, issuerKeys) {
   if (!isPlainObject(policy)) return { ok: false, reason: 'missing_policy' };
   if (!Number.isSafeInteger(policy.minimum_threshold) || policy.minimum_threshold < 2
@@ -544,7 +547,7 @@ export async function runBreakGlass({
     };
   }
 
-  const consume = store.consume.bind(store);
+  const consume = /** @type {{ consume(key: string): Promise<boolean> }} */ (store).consume.bind(store);
   const record = evidence.record.bind(evidence);
   const consumption = await consumeBreakGlass(verification, { consume });
   if (!consumption.consumed) {

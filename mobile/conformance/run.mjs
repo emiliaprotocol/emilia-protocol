@@ -26,7 +26,7 @@ if (selectedPorts.length === 0 || new Set(selectedPorts).size !== selectedPorts.
 }
 const selected = new Set(selectedPorts);
 
-const env = { ...process.env, ANDROID_HOME: process.env.ANDROID_HOME || path.join(process.env.HOME, 'Library/Android/sdk') };
+const env = { ...process.env, ANDROID_HOME: process.env.ANDROID_HOME || path.join(/** @type {string} */ (process.env.HOME), 'Library/Android/sdk') };
 if (selected.has('javascript')) {
   for (const vector of vectors.canonicalization) {
     if (!isCanonicalizable(vector.value)) throw new Error(`${vector.id}: value is outside EP canonicalization`);

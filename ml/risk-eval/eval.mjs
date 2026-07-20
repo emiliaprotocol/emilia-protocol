@@ -39,6 +39,8 @@ const cases = fs.readFileSync(path.join(HERE, 'cases.jsonl'), 'utf8')
   .split('\n').map((l) => l.trim()).filter(Boolean).map((l) => JSON.parse(l));
 
 const GATE = new Set(['deny', 'allow_with_signoff']);
+/** @typedef {{ id: any, exp: any, got: any, note?: any }} MismatchEntry */
+/** @type {{ covered: number, coveredOk: number, dangerous: MismatchEntry[], safeMismatch: MismatchEntry[], perimeter: number, perimeterCaught: number, perimeterMissed: MismatchEntry[] }} */
 const out = {
   covered: 0, coveredOk: 0, dangerous: [], safeMismatch: [],
   perimeter: 0, perimeterCaught: 0, perimeterMissed: [],

@@ -10,9 +10,9 @@ export default function AppealPage() {
   const [mode, setMode] = useState('lookup'); // lookup | report | status | appeal
   const [entityId, setEntityId] = useState('');
   const [disputeId, setDisputeId] = useState('');
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(/** @type {{type: string, data: any} | null} */ (null));
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
 
   // Report form state
   const [reportType, setReportType] = useState('wrongly_downgraded');
@@ -106,7 +106,7 @@ export default function AppealPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to withdraw');
-      setResult({ type: 'dispute', data: { ...result.data, status: 'withdrawn' } });
+      setResult({ type: 'dispute', data: { ...(/** @type {{type: string, data: any}} */ (result)).data, status: 'withdrawn' } });
     } catch (e) { setError(e.message); }
     setLoading(false);
   };

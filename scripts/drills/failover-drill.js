@@ -39,7 +39,14 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 }
 
 function getClient() {
-  return createClient(SUPABASE_URL, SUPABASE_KEY);
+  // SUPABASE_URL/SUPABASE_KEY are validated non-null at module load (see the
+  // `if (!SUPABASE_URL || !SUPABASE_KEY)` guard above, which exits the
+  // process otherwise); the compiler can't see that guard from inside this
+  // function, so assert the already-guaranteed type.
+  return createClient(
+    /** @type {string} */ (SUPABASE_URL),
+    /** @type {string} */ (SUPABASE_KEY)
+  );
 }
 
 function uuid() {

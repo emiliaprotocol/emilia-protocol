@@ -89,7 +89,10 @@ export function createPlayIntegrityAttestationVerifier({
     throw new TypeError('maxTokenAgeMs must be a positive integer no greater than 600000');
   }
   if (typeof clock !== 'function') throw new TypeError('clock must be a function');
-  const pinnedCertificates = certificateDigests.map(certificateDigestBytes);
+  // certificateDigests was already validated above (every entry maps to a
+  // non-null Buffer via certificateDigestBytes, or the constructor throws),
+  // so this map can never contain null.
+  const pinnedCertificates = /** @type {Buffer[]} */ (certificateDigests.map(certificateDigestBytes));
   const pinnedVersions = new Set(allowedVersionCodes.map((version) => parsePositiveInteger(version)));
 
   /**
@@ -240,7 +243,11 @@ export function createAppleAppAttestVerifier({
       if (format !== 'apple-app-attest' || platform !== 'ios'
           || expectedAppId !== appId || expectedAttestationKeyId !== attestationKeyId) return { valid: false };
       const assertionObject = unwrapOpaqueToken(token);
-      const clientDataHash = Buffer.from(expectedRequestHash, 'base64url');
+      // expected_request_hash is optional on the input type, but a missing/
+      // non-string value here throws inside Buffer.from and is caught below,
+      // returning the same { valid: false } as any other malformed hash —
+      // this cast only tells the compiler about that existing fail-closed path.
+      const clientDataHash = Buffer.from(/** @type {string} */ (expectedRequestHash), 'base64url');
       if (clientDataHash.length !== 32) return { valid: false };
       const result = await verifyAssertion({
         assertionObject,

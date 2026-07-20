@@ -94,6 +94,10 @@ async function expectRefusal(id, title, subject, invoke) {
   throw new Error(`${id}: expected refusal, but the mutation ran`);
 }
 
+/**
+ * @param {{ '@version': string, payload: object, signature: { algorithm: string, value: string } } | null} [receipt]
+ *   evidence minted by harness.mint() (see createEg1Harness in packages/gate/eg1-conformance.js), or null/omitted for "no evidence".
+ */
 async function callMcpTool(subject, action = EXACT_ACTION, receipt = null) {
   const result = await subject.tool({
     ...paramsFor(action),

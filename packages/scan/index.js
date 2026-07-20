@@ -150,7 +150,13 @@ export function scanActions(actions, { source = 'list', blindSpots = [] } = {}) 
     execution_binding: { required_fields: classification.required_fields || ['action_type'] },
   }));
 
-  const manifest = createDefaultActionRiskManifest({ includePassThrough: false, extraActions });
+  // createDefaultActionRiskManifest's `extraActions` param has no JSDoc type in
+  // risk-packs.js, so TS infers it from the `= []` default as `never[]` (an
+  // inference artifact, not a real constraint — the function spreads it
+  // unchanged into the manifest's `actions` array alongside entries of this
+  // exact shape). Cast here rather than in the vendored risk-packs.js, which
+  // this file does not own.
+  const manifest = createDefaultActionRiskManifest({ includePassThrough: false, extraActions: /** @type {any} */ (extraActions) });
 
   return {
     source,

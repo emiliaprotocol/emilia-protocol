@@ -400,7 +400,7 @@ export function buildActionEscrowEvidencePackage({
   if (typeof agreementId !== 'string' || agreementId.length === 0) {
     throw new TypeError('action-escrow evidence: agreementId is required');
   }
-  if (!ACTION_ESCROW_EVIDENCE_STAGES.includes(stage)) {
+  if (!ACTION_ESCROW_EVIDENCE_STAGES.includes(/** @type {string} */ (stage))) {
     throw new TypeError('action-escrow evidence: stage is not in the closed set');
   }
   if (!Number.isSafeInteger(maxDocumentBytes) || maxDocumentBytes <= 0) {
@@ -423,7 +423,7 @@ export function buildActionEscrowEvidencePackage({
     if (typeof projectRecordProvider !== 'string'
       || projectRecordProvider.length === 0
       || projectRecordProvider.length > 128
-      || !HASH.test(projectRecordSnapshotDigest)) {
+      || !HASH.test(/** @type {string} */ (projectRecordSnapshotDigest))) {
       throw new TypeError(
         'action-escrow evidence: project-record provider and snapshot digest are required',
       );
@@ -453,7 +453,7 @@ export function buildActionEscrowEvidencePackage({
         project_record: {
           media_type: 'application/json',
           digest: sha256(projectBytes),
-          byte_length: projectBytes.length,
+          byte_length: /** @type {Buffer} */ (projectBytes).length,
           ...(projectRecordFileName === null
             ? {}
             : { file_name: projectRecordFileName }),
@@ -769,7 +769,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
     }
 
     const requiredAgreementByIdentity = new Map(
-      requiredParties.map((entry) => [`${entry.role ?? ''}\u0000${entry.party_id}`, entry]),
+      /** @type {NonNullable<typeof requiredParties>} */ (requiredParties).map((entry) => [`${entry.role ?? ''}\u0000${entry.party_id}`, entry]),
     );
     const seenAgreementParties = new Set();
     const seenAgreementKeys = new Set();
@@ -940,7 +940,7 @@ export async function verifyActionEscrowEvidencePackage(pkg, {
     if (!checks.milestones) return resultFailure('milestone_verification_failed', checks);
 
     const requiredReleaseByIdentity = new Map(
-      requiredReleaseParties.map(
+      /** @type {NonNullable<typeof requiredReleaseParties>} */ (requiredReleaseParties).map(
         (entry) => [`${entry.role ?? ''}\u0000${entry.party_id}`, entry],
       ),
     );

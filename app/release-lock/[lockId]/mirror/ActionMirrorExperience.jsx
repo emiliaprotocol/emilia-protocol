@@ -44,15 +44,15 @@ export default function ActionMirrorExperience({
 }) {
   const [lock, setLock] = useState(initialLock);
   const [answers, setAnswers] = useState({});
-  const [mismatches, setMismatches] = useState([]);
-  const [bindings, setBindings] = useState(null);
+  const [mismatches, setMismatches] = /** @type {[string[], (v: any) => void]} */ (useState([]));
+  const [bindings, setBindings] = /** @type {[{ceremony?: any, action_digest?: any, prompt_set_digest?: any, answer_digest?: any, submitted_answers?: any} | null, (v: any) => void]} */ (useState(null));
   const [stage, setStage] = useState(demo ? 'questions' : 'prepare');
-  const [approval, setApproval] = useState(null);
+  const [approval, setApproval] = /** @type {[{credential_id?: string} | null, (v: any) => void]} */ (useState(null));
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState('');
   const [participantRole, setParticipantRole] = useState('customer');
   const [credentialEnrolled, setCredentialEnrolled] = useState(false);
-  const [liveResolution, setLiveResolution] = useState(null);
+  const [liveResolution, setLiveResolution] = /** @type {[{action_hash?: any, prompt_set_digest?: any, prompt_set: {version?: any, round?: any, role?: any, questions?: any[]}} | null, (v: any) => void]} */ (useState(null));
   const questions = useMemo(() => {
     if (!lock) return [];
     if (demo) return selectMaterialQuestions(lock, ceremony, 3);
@@ -168,6 +168,10 @@ export default function ActionMirrorExperience({
         question_id: question.id,
         option_id: answers[question.id],
       }));
+      // Reaching the !demo "questions"/"binding" stages requires beginLiveReview()
+      // to have already set liveResolution (it throws and reverts stage otherwise),
+      // so it is guaranteed non-null here even though the type is nullable.
+      const resolution = /** @type {NonNullable<typeof liveResolution>} */ (liveResolution);
       const nextBindings = demo
         ? await buildActionMirrorBindings({
           lock,
@@ -177,14 +181,14 @@ export default function ActionMirrorExperience({
         })
         : {
           ceremony,
-          action_digest: liveResolution.action_hash,
-          prompt_set_digest: liveResolution.prompt_set_digest,
+          action_digest: resolution.action_hash,
+          prompt_set_digest: resolution.prompt_set_digest,
           answer_digest: await sha256Digest({
             '@version': 'EP-RELEASE-LOCK-ACTION-CHECK-v1-ANSWERS',
             lock_id: lockId,
-            version: liveResolution.prompt_set.version,
-            round: liveResolution.prompt_set.round,
-            role: liveResolution.prompt_set.role,
+            version: resolution.prompt_set.version,
+            round: resolution.prompt_set.round,
+            role: resolution.prompt_set.role,
             answers: submittedAnswers,
           }),
           submitted_answers: submittedAnswers,

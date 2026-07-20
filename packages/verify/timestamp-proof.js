@@ -273,7 +273,12 @@ export function verifyTimestampProof(timestampProof, expectedDigest, pinnedTsaKe
   }
   if (parsed.error) return refuse(parsed.error);
 
-  const { tstInfo, signerInfo, eContentRaw } = parsed;
+  // `parsed.error` was just checked above (fail-closed refuse if set), which
+  // means this is the success shape returned at the bottom of
+  // parseTimeStampToken: { tstInfo, signerInfo, eContentRaw } with no `error`.
+  // TS can't correlate the two branches (they're separate optional props in
+  // the inferred union), so assert the already-guaranteed shape here.
+  const { tstInfo, signerInfo, eContentRaw } = /** @type {{tstInfo: {messageImprintHex: string, imprintAlgOid: (string|null), genTime: (string|null)}, signerInfo: *, eContentRaw: Buffer}} */ (parsed);
 
   // ── messageImprint must equal the digest the caller expected ─────────────
   // (bind BEFORE trusting the signature result: a wrong-digest token is refused
@@ -290,7 +295,11 @@ export function verifyTimestampProof(timestampProof, expectedDigest, pinnedTsaKe
 
   return {
     verified: true,
-    tsa_key_id: sigResult.tsaKeyId,
+    // sigResult.ok was just checked truthy above; verifySignerInfo only sets
+    // tsaKeyId on its `{ ok: true, tsaKeyId }` return (line 490), so it's
+    // guaranteed present here even though TS can't correlate the two
+    // optional props across the inferred union.
+    tsa_key_id: /** @type {string} */ (sigResult.tsaKeyId),
     gen_time: tstInfo.genTime,
   };
 }

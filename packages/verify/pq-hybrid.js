@@ -296,6 +296,7 @@ export async function signHybrid(message, keys, options = {}) {
  * @returns {Promise<{verified:boolean, reason:string|null, checks:object}>}
  */
 export async function verifyHybrid(message, envelope, keys, options = {}) {
+  /** @type {{envelope: boolean, algo_set: boolean, classical_signature: boolean|null, pq_signature: boolean|null}} */
   const checks = { envelope: false, algo_set: false, classical_signature: null, pq_signature: null };
   const refuse = (reason) => ({ verified: false, reason, checks });
 

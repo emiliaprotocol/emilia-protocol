@@ -29,7 +29,9 @@ export async function GET(request) {
 
   const origin = spOrigin(request);
   const sp = buildSamlSp({
-    idpEntryPoint: entryPoint.url,
+    // entryPoint.valid was checked above (line 28) and guarantees entryPoint.url
+    // is a string; the compiler can't see that discriminated-union guarantee.
+    idpEntryPoint: /** @type {string} */ (entryPoint.url),
     idpCert: connection.saml_idp_cert,
     spEntityId: `${origin}/api/sso/saml/metadata`,
     acsUrl: `${origin}/api/sso/saml/acs`,

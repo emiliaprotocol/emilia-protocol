@@ -152,7 +152,9 @@ function boundedJson(value) {
   let nodes = 0;
   let stringBytes = 0;
   while (stack.length) {
-    const current = stack.pop();
+    // `stack.length` in the loop guard guarantees a non-empty array, so
+    // `.pop()` always returns an element here — the compiler can't see that.
+    const current = /** @type {{ value: any, depth: number }} */ (stack.pop());
     nodes++;
     if (nodes > MAX_JSON_NODES || current.depth > MAX_JSON_DEPTH) return false;
     const v = current.value;
@@ -466,7 +468,7 @@ function verifyAuthorizationChainInternal(aec, opts = {}) {
   const components = aec.components.map((c, idx) => {
     if (!isRecord(c)) return { type: null, label: `#${idx}`, valid: false, bound: false, reason: 'component is not an object' };
     const label = typeof c.label === 'string' && c.label ? c.label : (c.type || `#${idx}`);
-    const row = { type: c.type, label, valid: false, bound: false, reason: null };
+    const row = { type: c.type, label, valid: false, bound: false, reason: /** @type {string|null} */ (null) };
     if (typeof c.type !== 'string' || !IDENT.test(c.type) || c.type.length > 128 || !isRecord(c.evidence)) {
       row.reason = 'component type or evidence is malformed';
       return row;

@@ -72,9 +72,13 @@ export function strictJsonGate(raw) {
       const value = readString();
       if (reason) return { ok: false, reason };
       if (isKey) {
-        if (top.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
-        top.keys.add(value);
-        top.expectsKey = false;
+        // isKey is only true when top?.object && top.expectsKey was truthy above,
+        // which guarantees top is the object-frame variant here; TS can't
+        // correlate that through the intermediate `isKey` boolean.
+        const frame = /** @type {{ object: boolean, keys: Set<any>, expectsKey: boolean }} */ (top);
+        if (frame.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
+        frame.keys.add(value);
+        frame.expectsKey = false;
       }
     } else {
       index += 1;

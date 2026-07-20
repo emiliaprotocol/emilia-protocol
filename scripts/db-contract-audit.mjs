@@ -67,7 +67,10 @@ export function evaluateContract(snap, schemaContract = defaultContract) {
   }
 
   // 2. Known-gap tables (non-fatal, but tracked + must be reported)
-  for (const gap of schemaContract.knownGapTables) {
+  for (const gapEntry of schemaContract.knownGapTables) {
+    // knownGapTables is currently [] in the manifest, so TS infers `never[]`;
+    // populated entries are always { name, why } (see db-contract.manifest.mjs).
+    const gap = /** @type {{name: string, why: string}} */ (gapEntry);
     if (tables.has(gap.name)) {
       gaps.push(`KNOWN GAP NOW PRESENT (promote to requiredTables): ${gap.name}`);
     } else {

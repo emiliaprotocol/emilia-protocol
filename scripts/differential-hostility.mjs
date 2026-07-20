@@ -203,7 +203,8 @@ if (externalPath) {
       cwd: path.resolve(ROOT, runner.cwd || '.'),
       artifactSha256: crypto.createHash('sha256').update(fs.readFileSync(commandReal)).digest('hex'),
     });
-    if (!['mixed', 'suite'].includes(implementations.at(-1).dispatch)) {
+    const lastImplementation = /** @type {{ dispatch: string }} */ (/** @type {unknown} */ (implementations.at(-1)));
+    if (!['mixed', 'suite'].includes(lastImplementation.dispatch)) {
       throw new Error(`external runner ${runner.name} has unsupported dispatch mode`);
     }
   }
@@ -320,7 +321,7 @@ try {
             try {
               parsed.push(...executeCorpus(implementation, singlePath, 1, `hostile ${suite} case ${hostile.id}`));
             } catch (error) {
-              executionFailures.get(implementation.name).add(hostile.id);
+              /** @type {Set<string>} */ (executionFailures.get(implementation.name)).add(hostile.id);
               const detail = String(error.message)
                 .replace(/\(\d+\) panicked at/g, '(process) panicked at')
                 .split('\n').map((line) => line.trim()).filter(Boolean).slice(0, 2).join(' | ');
@@ -347,7 +348,7 @@ try {
   }
 
   for (const hostile of cases) {
-    if (implementations.some((implementation) => executionFailures.get(implementation.name).has(hostile.id))) continue;
+    if (implementations.some((implementation) => /** @type {Set<string>} */ (executionFailures.get(implementation.name)).has(hostile.id))) continue;
     const values = implementations.map((implementation) => outputs.get(implementation.name).get(hostile.id));
     if (values.some((value) => typeof value !== 'boolean')) {
       divergences.push({ id: hostile.id, reason: 'missing_result', values });

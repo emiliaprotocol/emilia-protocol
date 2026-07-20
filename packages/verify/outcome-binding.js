@@ -257,7 +257,7 @@ export function verifyOutcomeAttestation(attestation, opts = {}) {
   if (checks.executor_key_pinned) {
     try {
       const key = crypto.createPublicKey({
-        key: Buffer.from(pin.public_key, 'base64url'), format: 'der', type: 'spki',
+        key: Buffer.from(/** @type {string} */ (pin.public_key), 'base64url'), format: 'der', type: 'spki',
       });
       checks.signature = key.asymmetricKeyType === 'ed25519'
         && crypto.verify(

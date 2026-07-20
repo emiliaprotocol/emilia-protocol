@@ -163,6 +163,25 @@ export function mappingProfileHash(profile) {
 }
 
 /**
+ * @typedef {Object} MapActionFailure
+ * @property {false} ok
+ * @property {string[]} reasons
+ * @property {string|null} profile_hash
+ * @property {string|null} source_digest
+ */
+
+/**
+ * @typedef {Object} MapActionSuccess
+ * @property {true} ok
+ * @property {any} action
+ * @property {string} caid
+ * @property {string} digest
+ * @property {string} suite
+ * @property {string|null} profile_hash
+ * @property {string|null} source_digest
+ */
+
+/**
  * @param {any} source
  * @param {Object} [params]
  * @param {object} [params.profile]
@@ -171,6 +190,7 @@ export function mappingProfileHash(profile) {
  * @param {boolean} [params.nativeVerified]
  * @param {any[]} [params.definitions]
  * @param {string} [params.suite]
+ * @returns {MapActionFailure|MapActionSuccess}
  */
 export function mapAction(source, {
   profile,

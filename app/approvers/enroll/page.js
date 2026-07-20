@@ -21,7 +21,7 @@ export default function EnrollApproverPage() {
   const [approverId, setApproverId] = useState('');
   const [approverName, setApproverName] = useState('');
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = /** @type {[{approver_id?: string, credential_id?: string, attested_by?: string} | null, (v: any) => void]} */ (useState(null));
   const [error, setError] = useState(null);
 
   async function enroll() {

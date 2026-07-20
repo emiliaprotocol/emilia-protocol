@@ -38,11 +38,11 @@ const INITIAL = {
 
 export default function UploadPage() {
   const [form, setForm] = useState(INITIAL);
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState(/** @type {File | null} */ (null));
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [engagementId, setEngagementId] = useState(null);
-  const [error, setError] = useState(null);
+  const [engagementId, setEngagementId] = useState(/** @type {string | null} */ (null));
+  const [error, setError] = useState(/** @type {string | null} */ (null));
 
   function update(k, v) { setForm((f) => ({ ...f, [k]: v })); }
 

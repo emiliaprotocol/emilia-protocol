@@ -102,6 +102,8 @@ function schemaRequiresReceipt(schema) {
 /**
  * Detect a structural declaration that receipt evidence is required.
  * This does NOT detect or certify runtime enforcement.
+ * @param {object} [op]
+ * @param {any} [raw] the original MCP tool / OpenAPI operation object, shape unknown until narrowed below
  */
 export function detectReceiptGate(op = {}, raw = null) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false;

@@ -388,6 +388,17 @@ export function applyEvent(projections, event) {
  * Returns a report object with totals and lists of failures.
  */
 export function verifyEvents(events) {
+  /**
+   * @type {{
+   *   totalEvents: number,
+   *   validHashes: number,
+   *   invalidHashes: Array<{ event_id: any, expected?: string, actual?: any, error?: string }>,
+   *   validChains: number,
+   *   brokenChains: Array<{ event_id: any, parent_event_hash: any }>,
+   *   signedEvents: number,
+   *   signatureErrors: any[],
+   * }}
+   */
   const report = {
     totalEvents: events.length,
     validHashes: 0,
@@ -505,6 +516,14 @@ export function rebuildProjections(events, aggregateTypeFilter) {
  * Returns { matching, drifted, orphanedInCurrent, orphanedInReplay }
  */
 export function diffProjections(replayedState, currentState) {
+  /**
+   * @type {{
+   *   matching: Array<{ aggregate_type: string, aggregate_id: string }>,
+   *   drifted: Array<{ aggregate_type: string, aggregate_id: string, diffs: Array<{ field: string, replayed: any, current: any }> }>,
+   *   orphanedInCurrent: Array<{ aggregate_type: string, aggregate_id: string }>,
+   *   orphanedInReplay: Array<{ aggregate_type: string, aggregate_id: string }>,
+   * }}
+   */
   const result = {
     matching: [],
     drifted: [],
@@ -607,6 +626,15 @@ const PROJECTION_ID_COLUMN = {
  * @returns {{ totalCommits: number, validSignatures: number, invalidSignatures: object[], duplicateNonces: object[], invalidAuthorities: object[] }}
  */
 export function verifyCommitChainIntegrity(commitProjections) {
+  /**
+   * @type {{
+   *   totalCommits: number,
+   *   validSignatures: number,
+   *   invalidSignatures: Array<{ commit_id: any, reason: string }>,
+   *   duplicateNonces: Array<{ commit_id: any, nonce: any, conflicting_commit_id: any }>,
+   *   invalidAuthorities: Array<{ commit_id: any, reason: string }>,
+   * }}
+   */
   const report = {
     totalCommits: commitProjections.length,
     validSignatures: 0,

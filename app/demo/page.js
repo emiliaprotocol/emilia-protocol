@@ -28,10 +28,15 @@ const fmtUsd = (n) => (typeof n === 'number' ? `$${n.toLocaleString()}` : null);
 export default function DemoPage() {
   const [activeId, setActiveId] = useState(CRASH_SCENARIOS[0].id);
   const [phase, setPhase] = useState('idle'); // idle | blocked | committed
+  /** @type {[any, (v: any) => void]} */
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const s = CRASH_SCENARIOS.find((x) => x.id === activeId);
+  // activeId is always seeded from CRASH_SCENARIOS (initial state + selectScenario,
+  // which only ever receives an id from CRASH_SCENARIOS.map), so this lookup always hits.
+  const s = /** @type {typeof CRASH_SCENARIOS[number]} */ (
+    CRASH_SCENARIOS.find((x) => x.id === activeId)
+  );
 
   function selectScenario(id) {
     setActiveId(id);

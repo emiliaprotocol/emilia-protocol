@@ -63,12 +63,42 @@ function samplesFor(vertical, orgId) {
   ];
 }
 
+/**
+ * @typedef {Object} SandboxCreds
+ * @property {string} api_key
+ * @property {string} organization_id
+ */
+
+/**
+ * @typedef {Object} RanEntry
+ * @property {string} label
+ * @property {string} decision
+ * @property {string} [tier]
+ */
+
+/**
+ * @typedef {Object} ReportSample
+ * @property {string} action_type
+ * @property {number} [amount]
+ * @property {string} would_have
+ * @property {string} [signoff_tier]
+ */
+
+/**
+ * @typedef {Object} SandboxReport
+ * @property {string} headline
+ * @property {{ total_actions: number, would_require_signoff: number, would_deny: number, would_allow: number }} summary
+ * @property {ReportSample[]} [samples]
+ * @property {{ gg1: { badge: string }, verification: { offline_command: string } }} [evidence_packet]
+ * @property {string} next_step
+ */
+
 export default function SandboxPage() {
   const [vertical, setVertical] = useState('gov');
-  const [creds, setCreds] = useState(null); // { api_key, organization_id, ... }
+  const [creds, setCreds] = useState(/** @type {SandboxCreds | null} */ (null)); // { api_key, organization_id, ... }
   const [busy, setBusy] = useState('');
-  const [ran, setRan] = useState([]); // [{ label, decision }]
-  const [report, setReport] = useState(null);
+  const [ran, setRan] = useState(/** @type {RanEntry[]} */ ([])); // [{ label, decision }]
+  const [report, setReport] = useState(/** @type {SandboxReport | null} */ (null));
   const [error, setError] = useState('');
 
   const provision = useCallback(async () => {
@@ -88,9 +118,12 @@ export default function SandboxPage() {
   const runSample = useCallback(async (label, path, body) => {
     setBusy(label); setError('');
     try {
+      // Only invoked from the Step-2 sample buttons, which render exclusively
+      // inside the `{creds && (...)}` block — creds is guaranteed non-null here.
+      const c = /** @type {SandboxCreds} */ (creds);
       const res = await fetch(path, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', Authorization: `Bearer ${creds.api_key}` },
+        headers: { 'content-type': 'application/json', Authorization: `Bearer ${c.api_key}` },
         body: JSON.stringify(body),
       });
       const data = await res.json();
@@ -103,7 +136,10 @@ export default function SandboxPage() {
   const pullReport = useCallback(async () => {
     setBusy('report'); setError('');
     try {
-      const res = await fetch('/api/pilot/sandbox/report', { headers: { Authorization: `Bearer ${creds.api_key}` } });
+      // Only invoked from the Step-3 button, which renders exclusively inside
+      // the `{creds && (...)}` block — creds is guaranteed non-null here.
+      const c = /** @type {SandboxCreds} */ (creds);
+      const res = await fetch('/api/pilot/sandbox/report', { headers: { Authorization: `Bearer ${c.api_key}` } });
       const data = await res.json();
       if (!res.ok) setError(data.detail || 'Could not load report.');
       else setReport(data);
@@ -200,7 +236,7 @@ export default function SandboxPage() {
                   <Stat n={report.summary.would_deny} label="would be denied" accent={color.red} />
                   <Stat n={report.summary.would_allow} label="would allow" accent={color.green} />
                 </div>
-                {report.samples?.length > 0 && (
+                {report.samples && report.samples.length > 0 && (
                   <div style={{ marginTop: 16, border: `1px solid ${color.border}`, borderRadius: radius.base, overflow: 'hidden' }}>
                     {report.samples.map((s, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 16px', borderTop: i ? `1px solid ${color.border}` : 'none', fontSize: 13 }}>

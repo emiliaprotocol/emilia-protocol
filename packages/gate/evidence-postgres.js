@@ -245,13 +245,20 @@ export function createPostgresEvidenceBackend({ query, tenantId, gateId } = {}) 
   if (typeof query !== 'function') {
     throw new Error('createPostgresEvidenceBackend: query must be an async pg-style function that throws on failure');
   }
+  // Narrowed alias: `query` is a destructured parameter, so TypeScript's
+  // control-flow narrowing from the guard above does not carry into the
+  // closures declared below (readHead, getById, appendIfHead, readAll,
+  // readSnapshot). The guard already proves this is a function; this is a
+  // type-only alias with no behavioral difference from calling `query`.
+  /** @type {(text: string, params: any[]) => Promise<{ rowCount: number, rows?: any[] }>} */
+  const runQuery = query;
   const tenant = assertScopedId(tenantId, 'tenantId');
   const gate = assertScopedId(gateId, 'gateId');
   const scope = Object.freeze({ tenantId: tenant, gateId: gate });
   const scopeParams = (streamId) => [tenant, gate, assertScopedId(streamId, 'streamId')];
 
   async function readHead(streamId) {
-    const rows = queryRows(await query(EVIDENCE_SQL.readHead, scopeParams(streamId)), 'readHead');
+    const rows = queryRows(await runQuery(EVIDENCE_SQL.readHead, scopeParams(streamId)), 'readHead');
     if (rows.length > 1) throw new Error('readHead: Postgres returned multiple scoped heads');
     return rows.length === 0 ? null : normalizeHead(rows[0], 'readHead');
   }
@@ -259,7 +266,7 @@ export function createPostgresEvidenceBackend({ query, tenantId, gateId } = {}) 
   async function getById(streamId, recordId) {
     assertScopedId(recordId, 'recordId', { minLength: 16 });
     const rows = queryRows(
-      await query(EVIDENCE_SQL.getById, [...scopeParams(streamId), recordId]),
+      await runQuery(EVIDENCE_SQL.getById, [...scopeParams(streamId), recordId]),
       'getById',
     );
     if (rows.length > 1) throw new Error('getById: Postgres returned duplicate scoped record IDs');
@@ -270,7 +277,7 @@ export function createPostgresEvidenceBackend({ query, tenantId, gateId } = {}) 
     const params = scopeParams(streamId);
     const { canonicalBody, persisted } = canonicalAppendPayload(record, expectedHeadHash);
     const rows = queryRows(
-      await query(EVIDENCE_SQL.appendIfHead, [
+      await runQuery(EVIDENCE_SQL.appendIfHead, [
         ...params,
         expectedHeadHash,
         persisted,
@@ -285,12 +292,12 @@ export function createPostgresEvidenceBackend({ query, tenantId, gateId } = {}) 
   }
 
   async function readAll(streamId) {
-    const rows = queryRows(await query(EVIDENCE_SQL.readAll, scopeParams(streamId)), 'readAll');
+    const rows = queryRows(await runQuery(EVIDENCE_SQL.readAll, scopeParams(streamId)), 'readAll');
     return rows.map((row) => normalizeRecordRow(row, 'readAll'));
   }
 
   async function readSnapshot(streamId) {
-    const rows = queryRows(await query(EVIDENCE_SQL.snapshot, scopeParams(streamId)), 'verify');
+    const rows = queryRows(await runQuery(EVIDENCE_SQL.snapshot, scopeParams(streamId)), 'verify');
     if (rows.length !== 1) throw new Error('verify: Postgres did not return one scoped snapshot');
     const recordRows = parseJson(rows[0].record_rows, 'verify');
     if (!Array.isArray(recordRows)) throw new Error('verify: Postgres returned malformed evidence history');

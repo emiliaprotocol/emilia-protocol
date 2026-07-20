@@ -37,7 +37,11 @@ export async function POST(request, { params }) {
     // ── Schema validation (early gate) ────────────────────────────────
     const { valid, data, errors } = validateSignoffAttest(body);
     if (!valid) {
-      return epError(EP_ERROR_CODES.INVALID_INPUT, errors.join('; '));
+      // validateBody's { valid: false, errors } branch always populates
+      // errors; the inferred union just doesn't discriminate on the
+      // widened `valid: boolean`, so narrow it explicitly here.
+      const validationErrors = /** @type {string[]} */ (errors);
+      return epError(EP_ERROR_CODES.INVALID_INPUT, validationErrors.join('; '));
     }
 
     // ── Manual validation (belt-and-suspenders fallback) ──────────────

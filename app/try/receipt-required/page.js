@@ -114,14 +114,27 @@ function sceneFrom(strikes, busy, evidence) {
   return { label: 'ACTUATOR LOCKED', tone: 'idle', sub: 'No receipt, no execution' };
 }
 
+/**
+ * @typedef {{
+ *   payload: {
+ *     receipt_id: string,
+ *     claim: { action_type: string, [key: string]: any },
+ *     [key: string]: any,
+ *   },
+ *   [key: string]: any,
+ * }} DemoReceipt
+ */
+/** @typedef {{ receipt_id: string, [key: string]: any }} DemoEvidence */
+/** @typedef {{ required?: { action?: string, [key: string]: any }, [key: string]: any }} DemoChallenge */
+
 export default function ReceiptRequiredTryPage() {
   const [actions, setActions] = useState(FALLBACK_ACTIONS);
   const [selectedId, setSelectedId] = useState('release_funds');
   const [strikes, setStrikes] = useState(initialStrikes);
-  const [busy, setBusy] = useState(null);
-  const [receipt, setReceipt] = useState(null);
-  const [evidence, setEvidence] = useState(null);
-  const [challenge, setChallenge] = useState(null);
+  const [busy, setBusy] = useState(/** @type {'missing'|'sign'|'run'|'replay'|'forge'|null} */ (null));
+  const [receipt, setReceipt] = useState(/** @type {DemoReceipt|null} */ (null));
+  const [evidence, setEvidence] = useState(/** @type {DemoEvidence|null} */ (null));
+  const [challenge, setChallenge] = useState(/** @type {DemoChallenge|null} */ (null));
   const [copied, setCopied] = useState(false);
   const [feed, setFeed] = useState([
     { at: now(), kind: 'idle', text: 'actuator armed; waiting for agent command' },

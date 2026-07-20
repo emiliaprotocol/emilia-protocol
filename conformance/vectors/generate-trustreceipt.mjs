@@ -153,6 +153,7 @@ add('accept_valid_receipt', true, valid.receipt, valid.verification);
   // leaf hash. Must refuse: "empty inclusion_path requires checkpoint tree_size 1".
   const m = await mint({ amount: 82000, currency: 'USD' });
   if (m.receipt.log_proof.inclusion_path.length !== 0) throw new Error('expected single-leaf receipt (empty inclusion_path)');
+  /** @type {{ tree_size: number, root_hash: string, log_key_id: string, log_signature?: string }} */
   const cp = { ...m.receipt.log_proof.checkpoint };
   delete cp.log_signature;
   cp.tree_size = 4;
@@ -186,7 +187,7 @@ add('accept_valid_receipt', true, valid.receipt, valid.verification);
   // while the presenter declares A and supplies a WebAuthn-shaped assertion.
   // Unclassified means Class B; a document can never classify its own key.
   const m = await mint({ amount: 82000, currency: 'USD' });
-  delete m.verification.approver_keys['ep:key:dir#1'].key_class;
+  delete (/** @type {{ key_class?: string }} */ (m.verification.approver_keys['ep:key:dir#1'])).key_class;
   if (m.receipt.signoffs[0].key_class !== 'A') throw new Error('expected presenter-declared Class-A signoff');
   add('reject_presenter_class_a_escalation_when_pin_unclassified', false, m.receipt, m.verification);
 }

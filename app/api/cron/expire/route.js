@@ -34,6 +34,7 @@ export async function GET(request) {
 
   const supabase = getGuardedClient();
   const now = new Date().toISOString();
+  /** @type {{ bilateral_expired: number, disputes_escalated: number, continuity_expired: number, errors: Array<{ step: string, error: any }> }} */
   const results = { bilateral_expired: 0, disputes_escalated: 0, continuity_expired: 0, errors: [] };
 
   // 1. Expire stale bilateral confirmations (48h window)

@@ -90,11 +90,11 @@ export async function GET(request) {
     const capability = searchParams.get('capability');
     // LEGACY: min_score filters by compat_score sort key, not trust decision.
     // New consumers should use min_confidence or rank_by=confidence instead.
-    const minScore = parseFloat(searchParams.get('min_score')) || 0;
+    const minScore = parseFloat(/** @type {string} */ (searchParams.get('min_score'))) || 0;
     const minConfidence = searchParams.get('min_confidence') || null;
     // Default to confidence ordering — results are not ranked by a reputation score.
     const rankBy = searchParams.get('rank_by') || 'confidence';
-    const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
+    const limit = Math.min(parseInt(/** @type {string} */ (searchParams.get('limit'))) || 20, 50);
 
     const supabase = getGuardedClient();
 

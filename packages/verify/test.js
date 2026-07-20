@@ -274,6 +274,14 @@ test('verifyCommitmentProof: rejects expired claim', () => {
 
 // Build a real assertion over a context with a local P-256 key — same shape
 // a platform authenticator produces.
+/**
+ * @param {{
+ *   tamperContext?: Record<string, string> | null,
+ *   flags?: number,
+ *   type?: string,
+ *   rpId?: string,
+ * }} [opts]
+ */
 function makeSignoff({ tamperContext = null, flags = 0x05, type = 'webauthn.get', rpId = 'emiliaprotocol.ai' } = {}) {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const context = {

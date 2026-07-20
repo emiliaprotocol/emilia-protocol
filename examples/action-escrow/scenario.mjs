@@ -1965,8 +1965,8 @@ export async function runActionEscrowScenario() {
   const stateStatement = signActionEscrowStateStatement({
     statementId: 'state:AGR-KITCHEN-2048:released',
     agreementId: AGREEMENT_ID,
-    bindingDigest: kernelBindings.document_action_binding_digest,
-    actionDigest: kernelBindings.release_action_digest,
+    bindingDigest: /** @type {string} */ (kernelBindings.document_action_binding_digest),
+    actionDigest: /** @type {string} */ (kernelBindings.release_action_digest),
     profileDigest: releaseResult.record.profile_digest,
     state: 'released',
     revision: releaseResult.record.revision,

@@ -2,6 +2,19 @@
 
 import { useState, useEffect } from 'react';
 
+/**
+ * @typedef {Object} Alert
+ * @property {string} id
+ * @property {string} title
+ * @property {string} severity
+ * @property {string} status
+ * @property {string|null} tenant
+ * @property {string|null} handshake
+ * @property {string|null} policy
+ * @property {string} message
+ * @property {string} triggered
+ */
+
 const s = {
   page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },
@@ -47,8 +60,8 @@ const statusBadge = (st) => {
 
 export default function AlertsPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [alerts, setAlerts] = useState([]);
+  const [error, setError] = useState(/** @type {string|null} */ (null));
+  const [alerts, setAlerts] = useState(/** @type {Alert[]} */ ([]));
   const [activeTab, setActiveTab] = useState('active');
 
   useEffect(() => {

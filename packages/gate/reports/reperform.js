@@ -190,7 +190,7 @@ function reverifyMaterial(m, {
  *   by the AUDITOR out of band — never from the entries themselves
  * @param {number|function} [o.now=Date.now]  clock for generated_at (pin for determinism)
  * @param {object} [o.approverKeys={}] auditor-pinned identity-bound approver keys
- * @param {string} [o.rpId] bind carried WebAuthn assertions to this relying-party id
+ * @param {string|null} [o.rpId] bind carried WebAuthn assertions to this relying-party id
  * @param {string[]} [o.allowedOrigins=[]] exact accepted WebAuthn origins
  * @param {object} [o.quorumPolicy] auditor-pinned global organizational quorum rule
  * @param {object} [o.quorumPolicies] action_type -> auditor-pinned quorum rule
@@ -244,6 +244,7 @@ export async function reperformEvidence(entries = [], {
   };
 
   /* ------------------- receipts + counts (from scratch) ------------------ */
+  /** @type {{reverified: number, failed: Array<{hash: string|null, reason: string}>, not_reverifiable: number, no_receipt_presented: number}} */
   const receipts = { reverified: 0, failed: [], not_reverifiable: 0, no_receipt_presented: 0 };
   const warnings = [];
   const byAction = Object.create(null);

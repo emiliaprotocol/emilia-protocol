@@ -87,6 +87,11 @@ export function deploymentProfileDigest(profile) {
   return `sha256:${hashCanonical(profile)}`;
 }
 
+/**
+ * @param {string} verdict
+ * @param {string|null} [profileHash]
+ * @param {Record<string, boolean>} [extra]
+ */
 function fail(verdict, profileHash = null, extra = {}) {
   return {
     accepted: false,

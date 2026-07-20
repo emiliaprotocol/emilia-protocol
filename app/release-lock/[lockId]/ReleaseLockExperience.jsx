@@ -641,8 +641,8 @@ export default function ReleaseLockExperience({
             <div>
               <strong>Both ceremonies invalidated by amendment.</strong>
               <p>
-                Version {state.amendment.prior_version} approvals no longer apply. Version
-                {' '}{state.amendment.new_version} requires new CO_ACCEPTED and DRAW_RELEASE rounds.
+                Version {/** @type {{prior_version: number, new_version: number}} */ (state.amendment).prior_version} approvals no longer apply. Version
+                {' '}{/** @type {{prior_version: number, new_version: number}} */ (state.amendment).new_version} requires new CO_ACCEPTED and DRAW_RELEASE rounds.
               </p>
             </div>
           </section>

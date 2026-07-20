@@ -74,7 +74,7 @@ export async function reconcileIndeterminateEffect({
     throw new Error('expected action required to reconcile against the committed spend');
   }
 
-  const operation = capabilityStore.getOperation(operationId);
+  const operation = capabilityStore.getOperation(/** @type {string} */ (operationId));
   if (!operation
       || operation.capability_id !== capabilityId
       || operation.status !== 'committed'
@@ -114,17 +114,24 @@ export async function reconcileIndeterminateEffect({
     },
   });
   if (!durableReconciliation.ok) throw new Error(`capability reconciliation refused: ${durableReconciliation.reason}`);
+  // durableReconciliation.ok is only reachable if verifyEvidence returned
+  // normally above, which only happens after `verified` was assigned a real
+  // VerifiedProviderEvidence (verifySignedProviderEvidence never returns a
+  // falsy value; it either throws or returns one). TS's control-flow
+  // analysis can't see that closure-captured narrowing across the awaited
+  // call, so it still types `verified` as its declaration-site type here.
+  const verifiedEvidence = /** @type {VerifiedProviderEvidence} */ (/** @type {unknown} */ (verified));
   const recordBody = {
     '@version': RECONCILIATION_RECORD_VERSION,
     operation_id: operationId,
     capability_id: capabilityId,
     capability_outcome: 'indeterminate',
     outcome: 'executed',
-    action_digest: /** @type {VerifiedProviderEvidence} */ (verified).action_digest,
+    action_digest: verifiedEvidence.action_digest,
     provider_id: expectedProviderId,
-    provider_effect_id: /** @type {VerifiedProviderEvidence} */ (verified).effect_id,
-    provider_committed_at: /** @type {VerifiedProviderEvidence} */ (verified).committed_at,
-    provider_evidence_digest: /** @type {VerifiedProviderEvidence} */ (verified).evidence_digest,
+    provider_effect_id: verifiedEvidence.effect_id,
+    provider_committed_at: verifiedEvidence.committed_at,
+    provider_evidence_digest: verifiedEvidence.evidence_digest,
     authenticated_provider_evidence: true,
     reexecuted: false,
     capability_reconciliation_idempotent: durableReconciliation.idempotent,

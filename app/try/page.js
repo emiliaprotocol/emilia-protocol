@@ -210,19 +210,27 @@ const CHECK_ORDER = [
   ['rp_id_hash', 'Scoped to this exact site (relying party)'],
 ];
 
+/**
+ * @typedef {{ kind: string, spkiB64u: string, rawId: ArrayBuffer } | { kind: string, spkiB64u: string, privateKey: CryptoKey }} Cred
+ * @typedef {{ action: string, amount: string, currency: string, beneficiary: string, beneficiary_account_last4: string, memo: string, initiated_by: string, approver: string, rp_id: string, nonce: string, proposed_at: string }} ActionContext
+ * @typedef {{ context: ActionContext, webauthn: { authenticator_data: string, client_data_json: string, signature: string } }} Signoff
+ * @typedef {{ valid: boolean, checks: object, error?: string }} VerifyResult
+ * @typedef {{ signoff: Signoff, result: VerifyResult }} Forged
+ */
+
 export default function TryPage() {
   const [approver, setApprover] = useState('');
   const [phase, setPhase] = useState('intro'); // intro · ready · signed · forged
-  const [mode, setMode] = useState(null); // 'real' | 'sim'
+  const [mode, setMode] = useState(/** @type {string|null} */ (null)); // 'real' | 'sim'
   const [platformAvail, setPlatformAvail] = useState(false);
-  const [cred, setCred] = useState(null);
-  const [context, setContext] = useState(null);
-  const [signoff, setSignoff] = useState(null);
-  const [result, setResult] = useState(null); // valid signoff verify
-  const [forged, setForged] = useState(null); // { signoff, result }
+  const [cred, setCred] = useState(/** @type {Cred|null} */ (null));
+  const [context, setContext] = useState(/** @type {ActionContext|null} */ (null));
+  const [signoff, setSignoff] = useState(/** @type {Signoff|null} */ (null));
+  const [result, setResult] = useState(/** @type {VerifyResult|null} */ (null)); // valid signoff verify
+  const [forged, setForged] = useState(/** @type {Forged|null} */ (null)); // { signoff, result }
   const [busy, setBusy] = useState(false);
-  const [signMs, setSignMs] = useState(null);
-  const [error, setError] = useState(null);
+  const [signMs, setSignMs] = useState(/** @type {number|null} */ (null));
+  const [error, setError] = useState(/** @type {string|null} */ (null));
   const host = useRef('').current;
 
   useEffect(() => {
@@ -267,7 +275,9 @@ export default function TryPage() {
         ? await signSim(context, cred, h)
         : await signReal(context, cred, h);
       setSignMs(Math.round(performance.now() - t0));
-      const res = await verifyWebAuthnSignoff(so, cred.spkiB64u, { rpId: h });
+      // cred was set by begin() before phase became 'ready', which gates this button.
+      const c = /** @type {Cred} */ (cred);
+      const res = await verifyWebAuthnSignoff(so, c.spkiB64u, { rpId: h });
       setSignoff(so);
       setResult(res);
       setPhase('signed');
@@ -284,10 +294,14 @@ export default function TryPage() {
     setBusy(true);
     try {
       const h = getHost();
+      // signoff/cred were set by approve()/begin() before phase became 'signed',
+      // which gates this button.
+      const so = /** @type {Signoff} */ (signoff);
+      const c = /** @type {Cred} */ (cred);
       // An attacker who intercepts the signed approval tries to inflate the amount,
       // reusing the exact same device signature. The challenge no longer matches.
-      const tampered = { ...signoff, context: { ...signoff.context, amount: '820000.00' } };
-      const res = await verifyWebAuthnSignoff(tampered, cred.spkiB64u, { rpId: h });
+      const tampered = { ...so, context: { ...so.context, amount: '820000.00' } };
+      const res = await verifyWebAuthnSignoff(tampered, c.spkiB64u, { rpId: h });
       setForged({ signoff: tampered, result: res });
       setPhase('forged');
     } catch (e) {
@@ -302,7 +316,10 @@ export default function TryPage() {
   };
 
   const downloadSignoff = () => {
-    const packet = { ...signoff, approver_public_key: cred.spkiB64u, rp_id: getHost() };
+    // signoff/cred were set before phase became 'forged', which gates this button.
+    const so = /** @type {Signoff} */ (signoff);
+    const c = /** @type {Cred} */ (cred);
+    const packet = { ...so, approver_public_key: c.spkiB64u, rp_id: getHost() };
     const blob = new Blob([JSON.stringify(packet, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

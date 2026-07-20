@@ -119,8 +119,13 @@ export async function POST(request, { params }) {
       signoffId,
       issuedAt: issuedAt.toISOString(),
       expiresAt: ctxExpiry.toISOString(),
-      decision: signedDecision,
-      displayHash,
+      // buildAuthorizationContext (lib/webauthn.js) accepts these as
+      // `'approved' | 'denied' | null` / `string | null` at runtime (see its
+      // internal validation), but has no JSDoc so TS infers the destructured
+      // param type purely from the `= null` defaults. Casts below express the
+      // real, already-guarded types; zero runtime effect.
+      decision: /** @type {any} */ (signedDecision),
+      displayHash: /** @type {any} */ (displayHash),
     });
     const challenge = contextHashBytes(context).toString('base64url');
 

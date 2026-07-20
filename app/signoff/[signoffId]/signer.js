@@ -10,7 +10,7 @@ const mono = { fontFamily: "'JetBrains Mono', ui-monospace, monospace" };
 export default function SignoffSigner({ signoffId, initialApproverId, status }) {
   const [approverId, setApproverId] = useState(initialApproverId || '');
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = /** @type {[{decision?: string, receipt_id?: string, context_hash?: string} | null, (v: any) => void]} */ (useState(null));
   const [error, setError] = useState(null);
 
   if (status !== 'pending' && !result) {

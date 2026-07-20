@@ -33,7 +33,9 @@ export async function GET(request) {
 
   let doc;
   try {
-    doc = await discover(issuer.url);
+    // `issuer.valid` was checked above; the validator only returns valid:true
+    // together with a populated `url`, so this is guaranteed to be a string.
+    doc = await discover(/** @type {string} */ (issuer.url));
   } catch (err) {
     logger.error('[sso/oidc/login] discovery failed:', err);
     return epProblem(502, 'oidc_discovery_failed', 'Could not reach the OIDC provider');

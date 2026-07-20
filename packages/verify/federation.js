@@ -159,6 +159,16 @@ export function resolveOperatorKeys(discoveryDoc, signerId) {
  * }}
  */
 export function verifyFederatedReceiptOffline(receipt, discoveryDoc, opts = {}) {
+  /** @type {{
+   *   accepted: boolean,
+   *   verified: boolean,
+   *   revoked: boolean,
+   *   trusted: boolean,
+   *   signer: string|null,
+   *   keyMatched: 'current'|'historical'|null,
+   *   checks: { version: boolean, signer_present: boolean, signature: boolean, not_revoked: boolean, issuer_pinned: boolean },
+   *   error?: string,
+   * }} */
   const result = {
     accepted: false,
     verified: false,
@@ -452,6 +462,7 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
     );
   }
 
+  /** @type {{ keyDiscoveryUrl: string, discovery: { ok: boolean }|null, revocation: { ok: boolean, revoked?: boolean, blocked?: boolean }|null }} */
   const fetched = { keyDiscoveryUrl, discovery: null, revocation: null };
   let discoveryDoc;
   try {

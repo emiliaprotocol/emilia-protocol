@@ -124,7 +124,12 @@ export async function POST(request, { params }) {
 
     // Parse body
     const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
-    if (!parsed.ok) return parsed.response;
+    // readEpJson's ok:false branch always sets `response` to the NextResponse
+    // built from epProblem(...); TS's inference of the underlying multi-branch
+    // union (across readLimitedJson's many return shapes) just can't see that
+    // as a guaranteed discriminant, so it widens `response` to include
+    // `undefined`. Assert the type the code already guarantees.
+    if (!parsed.ok) return /** @type {NextResponse} */ (parsed.response);
     const body = parsed.value;
     const { enabled, redact_fields, privacy_mode } = body;
 

@@ -33,7 +33,7 @@ let sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
 if (!/^\d+$/.test(sourceDateEpoch || '')) {
   sourceDateEpoch = execFileSync('git', ['log', '-1', '--format=%ct'], { cwd: ROOT, encoding: 'utf8' }).trim();
 }
-if (!/^\d+$/.test(sourceDateEpoch)) throw new Error('SOURCE_DATE_EPOCH must be a non-negative integer');
+if (!/^\d+$/.test(/** @type {string} */ (sourceDateEpoch))) throw new Error('SOURCE_DATE_EPOCH must be a non-negative integer');
 
 function build(packageDir, destination) {
   execFileSync(python, [

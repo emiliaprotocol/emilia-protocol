@@ -240,7 +240,6 @@ export function refusal(action, reason, extra = {}) {
   const challenge = receiptChallenge(action, reason);
   return {
     ep_refused: true,
-    status: 402,
     code: 'emilia_receipt_required',
     ...challenge,
     // Tool-call-flavored guidance (require-receipt's `how` is HTTP-flavored).
@@ -524,7 +523,7 @@ export function withMcpGuard(handler, options = {}) {
             tool: name,
             action,
             actionDigest,
-            receiptRef: { receipt_id: verified.receiptId, receipt_hash: receiptHashOf(doc) },
+            receiptRef: { receipt_id: verified.receiptId, receipt_hash: /** @type {string} */ (receiptHashOf(doc)) },
             verified: {
               outcome: verified.outcome,
               subject: verified.subject,
@@ -623,7 +622,7 @@ export function withMcpGuard(handler, options = {}) {
         actionDigest,
         receiptRef: {
           receipt_id: issued.receipt_id || verified.receiptId,
-          receipt_hash: receiptHashOf(doc),
+          receipt_hash: /** @type {string} */ (receiptHashOf(doc)),
         },
         verified: {
           outcome: verified.outcome,

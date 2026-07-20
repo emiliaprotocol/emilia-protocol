@@ -64,7 +64,7 @@ export function createAdapter({ system, ops }) {
    */
   async function guard(gate, client, { op, params = {}, receipt = null } = {}) {
     if (!gate || typeof gate.run !== 'function') throw new Error(`${system} adapter requires an EMILIA Gate (with .run)`);
-    const spec = ops[op];
+    const spec = ops[/** @type {string} */ (op)];
     if (!spec) throw new Error(`${system} adapter: unknown op "${op}" (expected one of: ${OPS.join(', ')})`);
     if (!receipt) {
       const refused = await gate.run(

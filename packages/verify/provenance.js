@@ -283,7 +283,7 @@ export function verifyProvenanceOffline(doc, opts = {}) {
 
   let prevDelegatee = null;
   for (const link of chain) {
-    const linkReport = { sequence: link.sequence, delegation_id: link.delegation_id, ok: true, issues: [] };
+    const linkReport = { sequence: link.sequence, delegation_id: link.delegation_id, ok: true, issues: /** @type {string[]} */ ([]) };
     if (prevDelegatee !== null) {
       if (link.parent_ref !== prevDelegatee || link.delegator !== prevDelegatee) {
         checks.chain_links_bound = false; linkReport.ok = false; linkReport.issues.push('inter_hop_link_broken');
@@ -347,7 +347,7 @@ export function verifyProvenanceOffline(doc, opts = {}) {
 
   {
     const commit = approval?.receipt ? committedAtMs(approval.receipt) : null;
-    const leafExp = Date.parse(parent.expires_at);
+    const leafExp = Date.parse(parent.expires_at ?? '');
     if (commit !== null && !Number.isNaN(leafExp) && commit > leafExp) {
       checks.temporal_containment = false;
       errors.push('per-action approval committed_at is after the leaf delegation expires_at');

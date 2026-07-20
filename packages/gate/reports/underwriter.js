@@ -72,7 +72,7 @@ function actionFamily(action) {
  * @param {Array<object>} entries  evidence.all() (or a durable export of it)
  * @param {object} [o]
  * @param {string} [o.insured]           named insured (required)
- * @param {string} [o.policyRef]       carrier policy/submission reference (null until bound)
+ * @param {string|null} [o.policyRef]  carrier policy/submission reference (null until bound)
  * @param {string|number} [o.periodStart]  inclusive period start (ISO or epoch ms)
  * @param {string|number} [o.periodEnd]    inclusive period end (ISO or epoch ms)
  * @param {number|Function} [o.now]    clock for generated_at (pin for determinism)

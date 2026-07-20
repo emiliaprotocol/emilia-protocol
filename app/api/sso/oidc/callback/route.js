@@ -41,7 +41,10 @@ export async function GET(request) {
 
   let doc;
   try {
-    doc = await discover(issuer.url);
+    // `issuer.valid` was checked above (return on !valid), which guarantees
+    // `issuer.url` is set — TS widens the literal `valid` flag to `boolean`
+    // across validateSsoProviderUrl's branches, so it can't see that guard.
+    doc = await discover(/** @type {string} */ (issuer.url));
   } catch {
     return epProblem(502, 'oidc_discovery_failed', 'Could not reach the OIDC provider');
   }
@@ -88,7 +91,10 @@ export async function GET(request) {
   // passkey ceremony per action.
   const token = await mintSession({
     tenant,
-    subject: verdict.subject,
+    // `verdict.valid` was checked above (return on !valid), and validateIdToken
+    // only sets `valid: true` after confirming `payload.sub` is present, so
+    // `subject` is guaranteed here — same `boolean`-widening gap as above.
+    subject: /** @type {string} */ (verdict.subject),
     email: verdict.email,
     protocol: 'oidc',
     directory,

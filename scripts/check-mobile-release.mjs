@@ -105,7 +105,7 @@ assert.equal(
 
 const signingCheck = resolve(root, 'scripts/check-mobile-signing-identity.mjs');
 const certificateHex = '05'.repeat(32);
-const certificateFingerprint = certificateHex.toUpperCase().match(/../g).join(':');
+const certificateFingerprint = /** @type {RegExpMatchArray} */ (certificateHex.toUpperCase().match(/../g)).join(':');
 execFileSync(process.execPath, [signingCheck, certificateHex, certificateFingerprint, 'fixture'], { stdio: 'pipe' });
 assert.throws(
   () => execFileSync(process.execPath, [signingCheck, certificateHex, '06'.repeat(32), 'fixture'], { stdio: 'pipe' }),

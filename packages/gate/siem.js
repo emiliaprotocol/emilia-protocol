@@ -208,6 +208,14 @@ export function createSiemForwarder({ format = 'ocsf', sink } = {}) {
   if (typeof sink !== 'function') {
     throw new Error('EMILIA Gate SIEM: a sink function is required');
   }
+  // Rebind to a locally-scoped const: `sink` the parameter is typed
+  // `function|undefined` (it's optional in the JSDoc signature above), and
+  // that widened type is what closures below would otherwise capture even
+  // though the throw guard just proved it's a function for the lifetime of
+  // this forwarder. No behavior change, just handing the closure the type
+  // the guard already guarantees.
+  /** @type {function} */
+  const sinkFn = sink;
   const counts = { forwarded: 0, dropped: 0, malformed: 0 };
 
   async function forward(entry) {
@@ -215,7 +223,7 @@ export function createSiemForwarder({ format = 'ocsf', sink } = {}) {
     try {
       if (!classifyEntry(entry).valid) counts.malformed += 1;
       event = format === 'cef' ? toCEF(entry) : toOCSF(entry);
-      await sink(event);
+      await sinkFn(event);
       counts.forwarded += 1;
       return { delivered: true, event };
     } catch {

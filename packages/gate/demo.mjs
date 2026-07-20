@@ -54,7 +54,7 @@ line(`  2. release_payment, no receipt          -> ${r(await gate.check({ select
 line(`  3. release_payment, software receipt    -> ${r(await gate.check({ selector: PAY, receipt: receipt('allow'), observedAction: action }))}   (needs class_a)`);
 const good = receipt('allow_with_signoff');
 line(`  4. release_payment, observed drift      -> ${r(await gate.check({ selector: PAY, receipt: good, observedAction: { ...action, amount_usd: 999999 } }))}`);
-const run = await gate.run({ selector: PAY, receipt: good, observedAction: action }, async () => ({ released: true, id: 'wire_123' }));
+const run = await gate.run({ selector: PAY, receipt: /** @type {any} */ (good), observedAction: /** @type {any} */ (action) }, async () => ({ released: true, id: 'wire_123' }));
 const a4 = run.authorization;
 line(`  5. release_payment, class_a + bound      -> ${r(a4)}`);
 const exec = run.execution;

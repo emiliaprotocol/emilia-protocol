@@ -81,6 +81,16 @@ async function evidenceStatus(evidence) {
   }
 }
 
+/**
+ * Generic check-result builder. `detail` is an opaque payload — sometimes a
+ * plain string reason, sometimes a structured object — carried through
+ * verbatim for the auditor. Its real type varies per call site; annotate it
+ * as `*` rather than over-constraining it to the `null` the default value
+ * would otherwise narrow it to.
+ * @param {string} id
+ * @param {boolean|null} ok
+ * @param {*} [detail]
+ */
 function check(id, ok, detail = null) {
   return { id, ok, ...(detail ? { detail } : {}) };
 }

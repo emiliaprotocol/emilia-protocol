@@ -168,7 +168,10 @@ export function neutralizeStatement(statement) {
   let hasConfusableScript = false;
 
   const out = bounded.map((ch) => {
-    const cp = ch.codePointAt(0);
+    // ch is always a single non-empty codepoint string (bounded is built via
+    // Array.from(raw), which splits by codepoint), so codePointAt(0) is
+    // always defined; TS's lib signature just can't express that guarantee.
+    const cp = /** @type {number} */ (ch.codePointAt(0));
 
     // Script/confusable tracking for the homoglyph flag.
     if (ASCII_LETTER_RE.test(ch)) hasAsciiLetter = true;

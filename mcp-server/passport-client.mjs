@@ -16,7 +16,7 @@ const transport = new StdioClientTransport({ command: 'node', args: ['--no-warni
 const agent = new Client({ name: 'demo-agent', version: '1.0.0' }, { capabilities: {} });
 await agent.connect(transport);
 
-const call = async (name, args) => JSON.parse((await agent.callTool({ name, arguments: args })).content[0].text);
+const call = async (name, args) => JSON.parse((/** @type {{ content: { text: string }[] }} */ (/** @type {unknown} */ (await agent.callTool({ name, arguments: args })))).content[0].text);
 const log = (s) => process.stdout.write(s + '\n');
 const step = (n, s) => log(`\n${n}  ${s}`);
 

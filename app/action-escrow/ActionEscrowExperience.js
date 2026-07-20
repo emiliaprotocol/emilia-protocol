@@ -90,7 +90,7 @@ export default function ActionEscrowExperience({ data }) {
   const [activeOutcome, setActiveOutcome] = useState('approve');
   const [phase, setPhase] = useState(data.integration_rows.length - 1);
   const [running, setRunning] = useState(false);
-  const timers = useRef([]);
+  const timers = useRef(/** @type {number[]} */ ([]));
 
   const clearTimers = useCallback(() => {
     timers.current.forEach((timer) => window.clearTimeout(timer));

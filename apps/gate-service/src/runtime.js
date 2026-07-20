@@ -53,6 +53,9 @@ function response(status, body, headers = {}) {
   return { status, body, headers };
 }
 
+/**
+ * @param {string | null} [id]
+ */
 function closedError(status, code, id = null, state = status >= 500 ? 'failed' : 'refused') {
   return response(status, {
     ...(id ? { id } : {}),
@@ -519,6 +522,9 @@ export function createGateRuntime(inputConfig) {
     if (updated !== true) throw new Error('action_store_update_failed');
   }
 
+  /**
+   * @param {{actionRecord: any, principal: any, receiptCarrier?: unknown}} args
+   */
   async function continueDelete({ actionRecord, principal, receiptCarrier = null }) {
     const { id } = actionRecord;
     const locator = validateLocator(actionRecord.target);
@@ -552,7 +558,7 @@ export function createGateRuntime(inputConfig) {
       result = await gate.run({
         selector: { ...GITHUB_REPOSITORY_DELETE_SELECTOR, action_id: id },
         receipt,
-        observedAction,
+        observedAction: /** @type {any} */ (observedAction),
       }, async (authorization) => {
         await updateAction(id, principal.id, { status: 'executing' });
         deleteAttempted = true;

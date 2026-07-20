@@ -189,7 +189,7 @@ export function createActionEscrowPostgresStore({
 
   async function loadHistory(key) {
     const result = assertResult(
-      await query(ACTION_ESCROW_STATE_SQL.history, [key]),
+      await (/** @type {(text:string, params:any[]) => Promise<{rowCount:number,rows?:any[]}>} */ (query))(ACTION_ESCROW_STATE_SQL.history, [key]),
       'action-escrow history',
     );
     if (!Array.isArray(result.rows) || result.rows.length !== result.rowCount) {
@@ -229,7 +229,7 @@ export function createActionEscrowPostgresStore({
     assertKey(key);
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const result = assertResult(
-        await query(ACTION_ESCROW_STATE_SQL.read, [key]),
+        await (/** @type {(text:string, params:any[]) => Promise<{rowCount:number,rows?:any[]}>} */ (query))(ACTION_ESCROW_STATE_SQL.read, [key]),
         'action-escrow read',
       );
       if (result.rowCount > 1

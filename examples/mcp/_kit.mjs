@@ -235,6 +235,11 @@ export function makeGuardedServer({ tool }) {
     return gate;
   };
 
+  /**
+   * @param {string} name
+   * @param {Record<string, any>} [args]
+   * @param {ReturnType<typeof signAction>|null} [receipt]
+   */
   return async function callTool(name, args = {}, receipt = null) {
     const req = findActionRequirement(MANIFEST, { protocol: 'mcp', tool: name });
     if (!req || !req.receipt_required) {

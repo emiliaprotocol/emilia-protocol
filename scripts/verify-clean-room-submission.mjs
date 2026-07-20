@@ -100,7 +100,10 @@ function verifyRunnerBinding(manifest) {
   }
   const index = manifest.runner.artifact_argument_index;
   if (index >= commandArgs.length) throw new Error('runner binding refused: artifact_argument_index is out of range');
-  const candidate = index === -1 ? command : commandArgs[index];
+  // `command` is validated non-null at startup (line ~29: `if (!manifestPath || !command) { ...; process.exit(2); }`)
+  // before this function is ever invoked (line ~164); the closure boundary just hides that from tsc.
+  const executable = /** @type {string} */ (command);
+  const candidate = index === -1 ? executable : commandArgs[index];
   const artifact = path.isAbsolute(candidate) ? candidate : path.resolve(ROOT, candidate);
   if (!fs.existsSync(artifact) || !fs.statSync(artifact).isFile()) {
     throw new Error('runner binding refused: signed runner artifact is not a file');

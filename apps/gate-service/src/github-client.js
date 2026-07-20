@@ -78,6 +78,10 @@ async function readBoundedJson(response, maxBytes) {
   }
 }
 
+/**
+ * @param {ReadableStream<Uint8Array> | null | undefined} body
+ * @param {ReadableStreamDefaultReader<Uint8Array> | null} [reader]
+ */
 function cancelBody(body, reader = null) {
   try {
     const result = reader?.cancel?.() ?? body?.cancel?.();
@@ -88,6 +92,10 @@ function cancelBody(body, reader = null) {
 }
 
 export class GithubConnectorError extends Error {
+  /**
+   * @param {string} code
+   * @param {{status?: number|null, ambiguous?: boolean, timeout?: boolean}} [options]
+   */
   constructor(code, { status = null, ambiguous = false, timeout = false } = {}) {
     super(code);
     this.name = 'GithubConnectorError';

@@ -69,12 +69,19 @@ export function strictJsonGate(raw) {
     } else if (character === '"') {
       const top = stack.at(-1);
       const isKey = Boolean(top?.object && top.expectsKey);
-      const value = readString();
+      const rawValue = readString();
       if (reason) return { ok: false, reason };
+      // readString() sets `reason` on every null-returning path and leaves it
+      // unset on the string-returning path, so a falsy `reason` here proves
+      // rawValue is a string.
+      const value = /** @type {string} */ (rawValue);
       if (isKey) {
-        if (top.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
-        top.keys.add(value);
-        top.expectsKey = false;
+        // isKey is only true when top?.object was truthy, so top is defined
+        // here and is the object-frame shape pushed for '{'.
+        const objectFrame = /** @type {{ object: true, keys: Set<string>, expectsKey: boolean }} */ (top);
+        if (objectFrame.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
+        objectFrame.keys.add(value);
+        objectFrame.expectsKey = false;
       }
     } else {
       index += 1;

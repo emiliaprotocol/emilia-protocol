@@ -44,14 +44,24 @@ export async function POST(request, { params }) {
       // body.signoffId disambiguates explicitly and is validated to belong
       // to this challenge.
       result = await revokeAttestation({
-        actor: authEntityActor(auth),
+        // authEntityActor's return type includes null for the case where
+        // auth.entity is absent, but that case cannot occur here: the
+        // `auth.error` check above already returned UNAUTHORIZED for any
+        // failed authentication, and authenticateRequest only omits `error`
+        // when it also sets `entity` from the resolved actor. If entity_id
+        // were ever missing, revokeAttestation's own `!actor?.entity_id`
+        // guard throws MISSING_ACTOR, so this cast changes no behavior.
+        actor: /** @type {{ id: string, entity_id: string }} */ (authEntityActor(auth)),
         challengeId,
         signoffId: typeof body.signoffId === 'string' ? body.signoffId : undefined,
         reason: body.reason || null,
       });
     } else {
       result = await revokeChallenge({
-        actor: authEntityActor(auth),
+        // See the matching cast above: authEntityActor's `| null` case is
+        // unreachable past the `auth.error` guard, and revokeChallenge's own
+        // `!actor?.entity_id` check throws MISSING_ACTOR if it were ever wrong.
+        actor: /** @type {{ id: string, entity_id: string }} */ (authEntityActor(auth)),
         challengeId,
         reason: body.reason || null,
       });

@@ -53,6 +53,8 @@ function copyEvent(event) {
  * Create a process-local monitor. Operators should export divergence events to
  * durable SIEM/evidence storage through onDivergence; the monitor itself keeps
  * only a bounded diagnostic buffer.
+ *
+ * @param {{ now?: (() => number) | number, onDivergence?: ((event: object) => any) | null, authorizeRecovery?: ((input: object) => boolean) | null }} [options]
  */
 export function createRuntimeMonitor({ now = Date.now, onDivergence = null, authorizeRecovery = null } = {}) {
   /** @type {string} */

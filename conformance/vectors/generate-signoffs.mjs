@@ -25,6 +25,20 @@ function baseContext() {
 }
 
 // Build a real assertion. opts let us bend exactly one thing per vector.
+/**
+ * @param {{
+ *   tamperContextAfterSign?: Record<string, string>|null,
+ *   flags?: number,
+ *   type?: string,
+ *   rpId?: string,
+ *   origin?: string,
+ *   duplicateChallenge?: boolean,
+ *   invalidUtf8?: boolean,
+ *   paddedClientData?: boolean,
+ *   wrongKey?: boolean,
+ *   malformSig?: boolean,
+ * }} [opts]
+ */
 function makeSignoff({ tamperContextAfterSign = null, flags = 0x05, type = 'webauthn.get', rpId = 'emiliaprotocol.ai', origin = 'https://www.emiliaprotocol.ai', duplicateChallenge = false, invalidUtf8 = false, paddedClientData = false, wrongKey = false, malformSig = false } = {}) {
   const signer = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const verifierKey = wrongKey ? crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }).publicKey : signer.publicKey;

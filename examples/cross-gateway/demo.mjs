@@ -247,7 +247,7 @@ export async function runCrossGatewayLab() {
   //    second execution.
   const beforeReplay = executorCalls.length;
   const replay = await gatewayB.gate.run(
-    { selector: { ...SELECTOR }, receipt: artifact, observedAction: EXACT_ACTION },
+    { selector: { ...SELECTOR }, receipt: /** @type {any} */ (artifact), observedAction: /** @type {any} */ (EXACT_ACTION) },
     executor,
   );
   cases.push({

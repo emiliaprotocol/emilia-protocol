@@ -28,6 +28,12 @@ const ZK_RANGE_BACKEND_MODULE = '@aptos-labs/confidential-asset-bindings';
 const ORDER = ristretto255.Point.Fn.ORDER;
 const TEXT_ENCODER = new TextEncoder();
 
+/**
+ * @param {Uint8Array|string} value
+ * @param {string} label
+ * @param {number|null} [length]
+ * @returns {Uint8Array}
+ */
 function bytes(value, label, length = null) {
   const out = value instanceof Uint8Array ? new Uint8Array(value) : Buffer.from(value, 'base64url');
   if (length !== null && out.length !== length) throw new TypeError(`${label} must be ${length} bytes`);

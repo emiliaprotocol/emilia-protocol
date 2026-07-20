@@ -68,11 +68,21 @@ function Status({ pass, children }) {
 
 export default function GateLiveConsole() {
   const [profile, setProfile] = useState('treasury');
-  const [data, setData] = useState(null);
+  const [data, setData] = /** @type {[{
+    challenge: {status: string, reason: string},
+    ceremony: {threshold: number, participants: {approver: string, role: string}[], origin: string},
+    authorization: {required_tier: string, decision_hash: string},
+    execution: {bound: boolean, execution_hash: string},
+    reliance: {verdict: string, checks: {ok: boolean|null}[]},
+    evidence: {ok: boolean, head_short: string},
+    profile: {headline: string, consequence: string, policy: string, tier: string, material: [string, string][]},
+    action_hash: string,
+    attacks: {id: string, refused: boolean, label: string, status: string, reason: string}[],
+  } | null, (v: any) => void]} */ (useState(null));
   const [stage, setStage] = useState(-1);
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
-  const timers = useRef([]);
+  const timers = useRef(/** @type {number[]} */ ([]));
 
   const clearTimers = useCallback(() => {
     for (const timer of timers.current) window.clearTimeout(timer);

@@ -35,6 +35,10 @@ export function classifyRetention(entries = [], {
   hotDays = 365, coldDays = 2190, now = Date.now(), legalHold,
 } = {}) {
   const held = legalHold instanceof Set ? legalHold : new Set(legalHold || []);
+  /**
+   * @typedef {{hash: string|null, at: string|null, kind: string|null}} TaggedEntry
+   * @type {{hot: TaggedEntry[], cold: TaggedEntry[], expired: TaggedEntry[], legal_hold: TaggedEntry[], unknown: TaggedEntry[]}}
+   */
   const buckets = { hot: [], cold: [], expired: [], legal_hold: [], unknown: [] };
   for (const e of entries) {
     const tagged = { hash: e.hash ?? null, at: e.at ?? null, kind: e.kind ?? null };

@@ -482,7 +482,8 @@ function normalizeFieldName(value) {
 function assertNoSecrets(value, label) {
   const stack = [{ value, path: label }];
   while (stack.length > 0) {
-    const current = stack.pop();
+    // stack.length > 0 guarantees pop() returns an entry; TS can't see that.
+    const current = /** @type {{ value: any, path: string }} */ (stack.pop());
     if (typeof current.value === 'string') {
       if (/-----BEGIN (?:ENCRYPTED )?PRIVATE KEY-----/.test(current.value)
         || /^\s*Bearer\s+\S+/i.test(current.value)
@@ -691,6 +692,17 @@ function validateHistory(record) {
   }
 }
 
+/**
+ * @param {any} container
+ * @param {any} record
+ * @param {{
+ *   bindingDigest?: any,
+ *   actionDigest?: any,
+ *   supersedesDigest?: string|null,
+ *   documentDigest?: string|null,
+ *   documentLength?: number|null,
+ * }} [options]
+ */
 function validateBindingContainer(container, record, {
   bindingDigest = record.document_action_binding_digest,
   actionDigest = record.release_action_digest,

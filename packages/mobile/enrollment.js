@@ -45,6 +45,11 @@ function randomId(prefix, bytes = 16) {
   return `${prefix}${crypto.randomBytes(bytes).toString('base64url')}`;
 }
 
+/**
+ * @param {unknown} value
+ * @param {number} maxBytes
+ * @returns {value is string}
+ */
 function boundedBase64url(value, maxBytes) {
   if (typeof value !== 'string' || !B64U.test(value)) return false;
   try {
@@ -71,7 +76,7 @@ function isP256Spki(value) {
   try {
     const key = crypto.createPublicKey({ key: Buffer.from(value, 'base64url'), format: 'der', type: 'spki' });
     return key.asymmetricKeyType === 'ec'
-      && ['prime256v1', 'P-256'].includes(key.asymmetricKeyDetails?.namedCurve);
+      && ['prime256v1', 'P-256'].includes(key.asymmetricKeyDetails?.namedCurve ?? '');
   } catch {
     return false;
   }
@@ -206,7 +211,7 @@ export function createMobileEnrollmentService({
      * @param {{ approverId?: string, platform?: string, appId?: string, rpId?: string, origin?: string, userName?: string, displayName?: string, caller?: any }} [params]
      */
     async issue({ approverId, platform, appId, rpId, origin, userName, displayName, caller = null } = {}) {
-      if (!ID.test(approverId || '') || !['ios', 'android'].includes(platform)
+      if (!ID.test(approverId || '') || !['ios', 'android'].includes(platform || '')
           || !ID.test(appId || '') || typeof rpId !== 'string' || !rpId
           || !validEnrollmentOrigin(origin)
           || typeof userName !== 'string' || !userName
@@ -235,7 +240,7 @@ export function createMobileEnrollmentService({
         '@version': 'AE-CHALLENGE-v1',
         challenge_profile: MOBILE_ENROLLMENT_CHALLENGE_VERSION,
         challenge_id: randomId('enr_'),
-        enrollment_id: null,
+        enrollment_id: /** @type {string | null} */ (null),
         nonce: randomId('reg_', 32),
         challenge: randomId('reg_', 32),
         approver_id: approverId,
@@ -244,7 +249,7 @@ export function createMobileEnrollmentService({
         rp_id: rpId,
         origin,
         user: {
-          id: Buffer.from(approverId, 'utf8').toString('base64url'),
+          id: Buffer.from(/** @type {string} */ (approverId), 'utf8').toString('base64url'),
           name: userName,
           display_name: displayName,
         },
@@ -320,7 +325,7 @@ export function createMobileEnrollmentService({
         return failure('refuse_unauthorized', 'caller is not authorized to complete this enrollment');
       }
       const now = instant(clock());
-      if (now === null || now < instant(challenge.issued_at) || now > instant(challenge.expires_at)) {
+      if (now === null || now < (instant(challenge.issued_at) ?? 0) || now > (instant(challenge.expires_at) ?? 0)) {
         return failure('refuse_challenge_expired', 'enrollment challenge is not fresh');
       }
       if (hash(buildMobileEnrollmentBinding(challenge)) !== challenge.platform_request_hash) {
@@ -377,7 +382,7 @@ export function createMobileEnrollmentService({
               || !platform.platform_public_key.includes('BEGIN PUBLIC KEY')))
           || (challenge.platform === 'android'
             && platform.platform_public_key != null
-            && platform.platform_public_key !== androidKey.publicKeySpki)) {
+            && platform.platform_public_key !== /** @type {NonNullable<typeof androidKey>} */ (androidKey).publicKeySpki)) {
         return failure('refuse_attestation', 'platform enrollment did not satisfy the pinned profile');
       }
 
@@ -403,11 +408,11 @@ export function createMobileEnrollmentService({
         sign_count: passkey.sign_count,
         attestation_format: passkey.attestation_format || null,
         platform_public_key: challenge.platform === 'android'
-          ? androidKey.publicKeySpki
+          ? /** @type {NonNullable<typeof androidKey>} */ (androidKey).publicKeySpki
           : platform.platform_public_key,
       };
       if (instant(enrollment.valid_from) === null || instant(enrollment.valid_to) === null
-          || instant(enrollment.valid_to) <= instant(enrollment.valid_from)) {
+          || (instant(enrollment.valid_to) ?? 0) <= (instant(enrollment.valid_from) ?? 0)) {
         return failure('refuse_malformed', 'enrollment validity interval is malformed');
       }
       try {

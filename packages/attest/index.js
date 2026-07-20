@@ -56,7 +56,7 @@ function hexEqual(a, b) {
 /**
  * Verify an agent identity against a known-good SHA-256.
  * @param {{ identity?: Buffer|Uint8Array|string, knownGoodHash?: string }} args
- * @returns {{ verified: boolean, computedHash: string }}
+ * @returns {{ verified: boolean, computedHash: string | null }}
  */
 export function verifyIdentity({ identity, knownGoodHash } = {}) {
   let computedHash = null;
@@ -78,7 +78,7 @@ export function verifyIdentity({ identity, knownGoodHash } = {}) {
  * @param {crypto.KeyObject|string} [args.signerPrivateKey] Ed25519 key (KeyObject or b64u PKCS#8)
  * @param {string} [args.subject]                           identity id (e.g. ep:approver:cfo)
  * @param {string} [args.issuedAt]                          ISO-8601 (caller-supplied — no Date.now lock-in)
- * @param {string} [args.workName]
+ * @param {string|null} [args.workName]
  * @param {string} [args.receiptId]
  * @param {boolean} [args.anchor=false]                   attach an EP-MERKLE-v2 anchor
  * @param {string[]} [args.priorLeaves]                   existing v2 leaves for a real inclusion proof

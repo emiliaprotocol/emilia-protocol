@@ -45,7 +45,11 @@ export async function POST(request, { params }) {
       return epProblem(403, 'not_party', 'Only parties to the handshake may revoke it');
     }
 
-    const result = await revokeHandshake(handshakeId, validation.sanitized.reason, entityId);
+    // validation.valid === true here guarantees `sanitized` is populated
+    // (see lib/handshake/schema.js#validateRevokeBody); TS can't see that
+    // cross-module invariant, so assert the type it already has at runtime.
+    const sanitized = /** @type {{ reason: string }} */ (validation.sanitized);
+    const result = await revokeHandshake(handshakeId, sanitized.reason, entityId);
 
     if (result.error) {
       // The writer/DB error can carry internal detail; epDbError logs it

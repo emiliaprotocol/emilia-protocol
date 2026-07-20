@@ -14,6 +14,7 @@ const DEFAULT_OUTPUT = path.join(ROOT, 'docs/strategy-private/observatory/recon-
 const CATALOG = path.join(ROOT, 'standards/observatory/catalog.source.v1.json');
 
 function parseArgs(argv) {
+  /** @type {{ inputs: string[], output: string, declared: number|null, asOf: string|null }} */
   const parsed = { inputs: [], output: DEFAULT_OUTPUT, declared: null, asOf: null };
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];

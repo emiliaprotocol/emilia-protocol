@@ -148,7 +148,7 @@ function assertLogEntry(entry) {
   let nodes = 0;
   let stringBytes = 0;
   while (stack.length) {
-    const { value, depth } = stack.pop();
+    const { value, depth } = /** @type {{ value: any, depth: number }} */ (stack.pop());
     if (++nodes > 50000 || depth > 64) throw new Error('atomic evidence entry exceeds resource limits');
     if (value === null || typeof value === 'boolean') continue;
     if (typeof value === 'number') {

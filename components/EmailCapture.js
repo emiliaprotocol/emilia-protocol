@@ -20,7 +20,7 @@ export default function EmailCapture({
 }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
-  const [result, setResult] = useState(null);
+  const [result, setResult] = /** @type {[{already_registered?: boolean, id?: (string|number)} | null, (v: any) => void]} */ (useState(null));
   const [message, setMessage] = useState('');
 
   async function onSubmit(e) {

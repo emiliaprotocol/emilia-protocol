@@ -51,7 +51,7 @@ export async function POST(request) {
   }
 
   const requiredTier = requiredAssuranceForAction(action);
-  const ready = assertGovVerifierReady(undefined, { action, requiredTier });
+  const ready = assertGovVerifierReady(undefined, { action: /** @type {any} */ (action), requiredTier });
   if (!ready.ok) {
     return NextResponse.json({
       ...receiptChallenge(action, 'Receipt verifier is not configured with pinned issuer keys. To try the self-signed flow, use POST /api/demo/require-receipt.'),

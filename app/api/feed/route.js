@@ -39,9 +39,9 @@ export async function GET(request) {
   const minConfidence = searchParams.get('min_confidence');
   // LEGACY: min_score filters by compat_score sort key, not trust decision.
   // New consumers should use trust_policy or min_confidence params instead.
-  const rawMinScore = parseFloat(searchParams.get('min_score'));
+  const rawMinScore = parseFloat(searchParams.get('min_score') ?? '');
   const minScore = Number.isFinite(rawMinScore) ? Math.max(0, Math.min(1, rawMinScore)) : 0;
-  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit'), 10) || 20), 50);
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') ?? '', 10) || 20), 50);
 
   const lastEventId = request.headers.get('Last-Event-ID');
 

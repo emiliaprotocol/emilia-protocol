@@ -54,7 +54,7 @@ function Toggle({ value, onToggle }) {
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
   const [saved, setSaved] = useState(false);
 
   const [config, setConfig] = useState({

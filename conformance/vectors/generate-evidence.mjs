@@ -34,6 +34,10 @@ const t = (m) => `2026-06-2${m}T12:00:00.000Z`; // distinct increasing days
 
 // Build a 2-link record: ts0 covers protected_hash (sha256); ts1 re-timestamps
 // ts0 under sha384. Optionally bend one thing for a negative.
+/**
+ * @param {{ privateKey: crypto.KeyObject, pub: string }} signer
+ * @param {{ renewalHashed?: string|null, t0?: string, t1?: string }} [options]
+ */
 function record(signer, { renewalHashed = null, t0 = t(0), t1 = t(1) } = {}) {
   const PROTECTED = 'sha256:' + 'ab'.repeat(32);
   const ts0 = timeAtt(signer, PROTECTED, t0);

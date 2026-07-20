@@ -11,6 +11,7 @@ import { createEvidenceLog, verifyEvidenceRecord } from './evidence.js';
 import { MemoryConsumptionStore } from './store.js';
 import { verifyAuthorizationChain } from '@emilia-protocol/verify/evidence-chain';
 
+/** @type {Set<string|undefined>} */
 const HUMAN_FLOORS = new Set(['class_a', 'quorum', 'class_a_or_quorum']);
 const HEX_256 = /^[0-9a-f]{64}$/;
 const COMPONENT_TYPE = /^[A-Za-z0-9_.:-]+$/;
@@ -173,6 +174,11 @@ export function createAECExecutionGate({
     ? consumption.release.bind(consumption) : null;
   const recordEvidence = evidence.record.bind(evidence);
 
+  /**
+   * @param {string} reason
+   * @param {ReturnType<typeof verifyAuthorizationChain>|null} [result]
+   * @param {object} [extra]
+   */
   async function deny(reason, result = null, extra = {}) {
     let decision = null;
     try {

@@ -36,7 +36,10 @@ export async function POST(request) {
     if (orgResolution.error) {
       return epProblem(orgResolution.error.status, orgResolution.error.code, orgResolution.error.detail);
     }
-    const organizationId = orgResolution.organizationId;
+    // resolveAuthorizedOrg always sets organizationId when error is absent
+    // (see lib/tenant-binding.js); the compiler can't see that invariant
+    // across the non-discriminated return shape.
+    const organizationId = /** @type {string} */ (orgResolution.organizationId);
     if (!hasApproverEnrollmentPermission(auth)) {
       return epProblem(403, 'insufficient_permissions', 'Approver enrollment requires approver.enroll or admin permission');
     }
@@ -47,8 +50,13 @@ export async function POST(request) {
     // operator-attested path (prod has 0 SCIM rows today). Fail fast here before
     // the WebAuthn ceremony; register-verify re-checks as the authoritative gate.
     const supabase = getGuardedClient();
+    // approver_id was validated non-empty and pattern-matched above (lines
+    // 31-33); the narrowing doesn't survive the intervening calls for the
+    // compiler, but the guarantee holds at runtime.
+    /** @type {string} */
+    const approverId = body.approver_id;
     /** @type {{ error?: {status:number, code:string, detail:string}, hasDirectory?: boolean, basis?: 'directory'|'operator_attested', directoryUserId?: string|null, storedApproverId?: string }} */
-    const basisResolution = await resolveEnrollmentBasis(supabase, organizationId, body.approver_id);
+    const basisResolution = await resolveEnrollmentBasis(supabase, organizationId, approverId);
     if (basisResolution.error) {
       return epProblem(basisResolution.error.status, basisResolution.error.code, basisResolution.error.detail);
     }

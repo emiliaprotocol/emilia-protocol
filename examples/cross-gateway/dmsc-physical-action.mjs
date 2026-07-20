@@ -245,19 +245,23 @@ export async function issueHumanAuthorization({
   policy = DEMO_POLICY,
   receiptId = 'urn:example:ep-receipt:dmsc-cross-gateway:1',
 } = {}) {
+  // Every call site in this module passes `authority`; the param is only
+  // optional in the destructuring shorthand because the whole `params`
+  // object itself defaults to `{}`.
+  const pinnedAuthority = /** @type {ApprovalAuthority} */ (authority);
   return issueAuthorizationReceipt({
     receiptId,
     action,
     policyHash: policyHash(policy),
-    approvers: [authority.approver.approverId],
+    approvers: [pinnedAuthority.approver.approverId],
     requiredApprovals: 1,
     issuedAt: TIMES.approved,
     expiresAt: TIMES.authorizationExpires,
     committedAt: TIMES.approved,
-    signers: [authority.approver.signer],
+    signers: [pinnedAuthority.approver.signer],
     log: {
-      privateKeyB64u: authority.log.private_key,
-      logKeyId: authority.log.key_id,
+      privateKeyB64u: pinnedAuthority.log.private_key,
+      logKeyId: pinnedAuthority.log.key_id,
     },
   });
 }
@@ -300,6 +304,10 @@ function authorizationVerifier({ action, policy, verification, revokedEvidenceDi
   };
 }
 
+/**
+ * @param {string} reason
+ * @param {(Awaited<ReturnType<typeof evaluateRegisteredPresentation>>|null)} [base]
+ */
 function refusal(reason, base = null) {
   return {
     allow: false,
@@ -571,6 +579,7 @@ export async function runCrossGatewayDemo({ print = false } = {}) {
   };
 
   if (print) {
+    /** @type {(status: string, label: string, detail?: string | null) => void} */
     const line = (status, label, detail = '') => console.log(`${status.padEnd(8)} ${label}${detail ? ` - ${detail}` : ''}`);
     console.log('DMSC cross-gateway action authorization');
     console.log('Gateway A carries evidence; Gateway B computes the action, pins trust, decides, and consumes.');

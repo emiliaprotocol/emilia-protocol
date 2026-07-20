@@ -271,7 +271,12 @@ function evaluateEntry(entry, matches) {
   }
   if (p.op === 'count_lte') {
     const count = String(matches.length);
-    return compareDecimalStrings(count, p.value) <= 0
+    // count is always a valid non-negative integer decimal string, and
+    // p.value was already structurally validated as a decimal string for
+    // count_lte in validatePredictedEffects (which ran before this entry
+    // was ever reached) — the comparison cannot be null here.
+    const cmp = /** @type {number} */ (compareDecimalStrings(count, p.value));
+    return cmp <= 0
       ? inBounds
       : divergent(`predicted count <= ${p.value} for ${at}, observed ${count}`);
   }
@@ -303,19 +308,28 @@ function evaluateEntry(entry, matches) {
   }
   // Ordered ops: the observed value must itself be an exact decimal string.
   if (!isDecimalString(obs.value)) return incomparable(`observed value "${obs.value}" for ${at} is not a decimal string`);
+  // obs.value was just confirmed a decimal string above (isDecimalString
+  // check), and p.value / p.min / p.max were structurally validated as
+  // decimal strings for their respective ops in validatePredictedEffects
+  // (which ran before this entry was ever reached) — none of these
+  // comparisons can be null here.
   if (p.op === 'lte') {
-    return compareDecimalStrings(obs.value, p.value) <= 0
+    const cmp = /** @type {number} */ (compareDecimalStrings(obs.value, p.value));
+    return cmp <= 0
       ? inBounds
       : divergent(`predicted <= ${p.value} for ${at}, observed ${obs.value}`);
   }
   if (p.op === 'gte') {
-    return compareDecimalStrings(obs.value, p.value) >= 0
+    const cmp = /** @type {number} */ (compareDecimalStrings(obs.value, p.value));
+    return cmp >= 0
       ? inBounds
       : divergent(`predicted >= ${p.value} for ${at}, observed ${obs.value}`);
   }
   // range
-  if (compareDecimalStrings(obs.value, p.min) < 0) return divergent(`predicted range [${p.min}, ${p.max}] for ${at}, observed ${obs.value} (below min)`);
-  if (compareDecimalStrings(obs.value, p.max) > 0) return divergent(`predicted range [${p.min}, ${p.max}] for ${at}, observed ${obs.value} (above max)`);
+  const cmpMin = /** @type {number} */ (compareDecimalStrings(obs.value, p.min));
+  if (cmpMin < 0) return divergent(`predicted range [${p.min}, ${p.max}] for ${at}, observed ${obs.value} (below min)`);
+  const cmpMax = /** @type {number} */ (compareDecimalStrings(obs.value, p.max));
+  if (cmpMax > 0) return divergent(`predicted range [${p.min}, ${p.max}] for ${at}, observed ${obs.value} (above max)`);
   return inBounds;
 }
 

@@ -95,8 +95,13 @@ export function strictParseGate(raw) {
       const s = readString();
       if (reason) return { ok: false, reason };
       if (isKey) {
-        if (top.keys.has(s)) return { ok: false, reason: 'duplicate object member name' };
-        top.keys.add(s);
+        // isKey is only true when top?.obj was truthy, i.e. top was pushed via
+        // the `{ obj: true, keys: new Set(), ... }` branch, which always sets
+        // `keys`. TS can't correlate that through the isKey flag, so assert
+        // the type the invariant already guarantees (no runtime effect).
+        const keys = /** @type {Set<unknown>} */ (top.keys);
+        if (keys.has(s)) return { ok: false, reason: 'duplicate object member name' };
+        keys.add(s);
         top.expectKey = false;
       }
     } else {

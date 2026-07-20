@@ -151,7 +151,13 @@ export async function POST(request) {
     // -----------------------------------------------------------------
     const parsed = await readEpJson(request, MAX_BODY_BYTES);
     if (!parsed.ok) {
-      if (parsed.error?.code !== 'invalid_json') return parsed.response;
+      // parsed.response is only set on the !parsed.ok branch of readEpJson,
+      // which is exactly the branch we're in here — it's always defined.
+      // TS can't see that because readEpJson's return type isn't a
+      // discriminated union (the `ok` literal widens to boolean), so it
+      // treats the `response` field as `NextResponse | undefined` even
+      // after the `!parsed.ok` narrowing above.
+      if (parsed.error?.code !== 'invalid_json') return /** @type {Response} */ (parsed.response);
       return epProblem(400, 'bad_request', 'Invalid JSON body');
     }
     const body = parsed.value;

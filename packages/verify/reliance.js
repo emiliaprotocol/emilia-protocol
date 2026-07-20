@@ -247,6 +247,23 @@ export function evaluateReliance(input = {}, opts = {}) {
   const presentedAction = rawAction && typeof rawAction === 'object' && !Array.isArray(rawAction) ? rawAction : {};
   const now = toMs(input.now);
   const reasons = [];
+  /**
+   * The real shape `checks` takes on across this function. Written as a plain
+   * `{ ...: null }` literal below (so every leg starts unset); each field's
+   * true type is documented here so later reassignments type-check against
+   * what the code actually stores, not the narrower `null` TS would otherwise
+   * infer from the initializer alone.
+   * @type {{
+   *   receipt: boolean,
+   *   issuer: boolean | null,
+   *   assurance: 'signed' | 'class_a' | 'quorum' | false | null,
+   *   authority: { accepted: true, authority_id: any, subject: any, bound_to: string }
+   *     | { accepted: false, reason: string } | 'not_required' | null,
+   *   policy: boolean | 'not_pinned' | null,
+   *   revocation: 'fresh' | 'stale' | 'not_required' | null,
+   *   consumption: 'consumed' | 'unconsumed' | 'not_required' | null,
+   * }}
+   */
   const checks = {
     receipt: false, issuer: null, assurance: null, authority: null,
     policy: null, revocation: null, consumption: null,
@@ -455,11 +472,18 @@ export function evaluateReliance(input = {}, opts = {}) {
     });
     if (!ap.accepted) {
       const registryReasons = new Set(['registry_key_not_pinned', 'pin_mismatched_issuer', 'stale_registry', 'registry_head_mismatch']);
-      checks.authority = { accepted: false, reason: ap.reason };
-      if (registryReasons.has(ap.reason)) {
-        return deny('do_not_rely_registry_unavailable', `authority registry could not be relied on: ${ap.reason}`);
+      // verifyAuthorityProof's `reason` is declared optional (`reason?:string`)
+      // because the shared return type also covers the accepted:true path,
+      // which omits it. Every accepted:false branch in authority-proof.js
+      // (all via its internal `fail()` helper, whose `reason` param is
+      // mandatory) sets a real string, so within this `!ap.accepted` branch
+      // it is never actually undefined.
+      const reason = /** @type {string} */ (ap.reason);
+      checks.authority = { accepted: false, reason };
+      if (registryReasons.has(reason)) {
+        return deny('do_not_rely_registry_unavailable', `authority registry could not be relied on: ${reason}`);
       }
-      return deny('do_not_rely_authority_missing', `authority proof did not verify: ${ap.reason}`);
+      return deny('do_not_rely_authority_missing', `authority proof did not verify: ${reason}`);
     }
     // Accepted: now judge the SNAPSHOT against the action, offline.
     const p = authorityProof;

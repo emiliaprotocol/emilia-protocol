@@ -39,7 +39,9 @@ function assertCanonicalJson(value) {
   let stringBytes = 0;
 
   while (stack.length) {
-    const current = stack.pop();
+    // stack.length > 0 here guarantees pop() returns an element, but
+    // Array#pop()'s type is always T | undefined.
+    const current = /** @type {{ value: any, depth: number }} */ (stack.pop());
     if (++nodes > MAX_JSON_NODES || current.depth > MAX_JSON_DEPTH) {
       throw new TypeError('value exceeds the EP canonical JSON resource profile');
     }

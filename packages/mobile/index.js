@@ -286,7 +286,7 @@ function normalizeEnrollment(enrollment) {
       || !['active', 'revoked'].includes(normalized.status)
       || parseInstant(normalized.valid_from) === null
       || parseInstant(normalized.valid_to) === null
-      || parseInstant(normalized.valid_from) >= parseInstant(normalized.valid_to)
+      || /** @type {number} */ (parseInstant(normalized.valid_from)) >= /** @type {number} */ (parseInstant(normalized.valid_to))
       || !Number.isSafeInteger(normalized.sign_count) || normalized.sign_count < 0) {
     throw new TypeError('mobile enrollment is malformed');
   }
@@ -326,11 +326,12 @@ export function createMobileRelianceProfile({
       || allowedOrigins.some((origin) => !validOrigin(origin))) {
     throw new TypeError('allowedOrigins must contain HTTPS or pinned Android APK origins');
   }
+  const acceptedAppsRecord = /** @type {{ios: string[], android: string[]}} */ (acceptedApps);
   if (!isRecord(acceptedApps)
-      || !Array.isArray(acceptedApps.ios)
-      || !Array.isArray(acceptedApps.android)
-      || [...acceptedApps.ios, ...acceptedApps.android].length === 0
-      || [...acceptedApps.ios, ...acceptedApps.android].some((appId) => !validId(appId))) {
+      || !Array.isArray(acceptedAppsRecord.ios)
+      || !Array.isArray(acceptedAppsRecord.android)
+      || [...acceptedAppsRecord.ios, ...acceptedAppsRecord.android].length === 0
+      || [...acceptedAppsRecord.ios, ...acceptedAppsRecord.android].some((appId) => !validId(appId))) {
     throw new TypeError('acceptedApps must contain ios and android arrays');
   }
   if (!Array.isArray(enrollments) || enrollments.length === 0) {
@@ -353,8 +354,8 @@ export function createMobileRelianceProfile({
     rp_id: rpId,
     allowed_origins: [...new Set(allowedOrigins)].sort(),
     accepted_apps: {
-      ios: [...new Set(acceptedApps.ios)].sort(),
-      android: [...new Set(acceptedApps.android)].sort(),
+      ios: [...new Set(acceptedAppsRecord.ios)].sort(),
+      android: [...new Set(acceptedAppsRecord.android)].sort(),
     },
     requirements: {
       attestation_required: attestationRequired === true,
@@ -460,9 +461,9 @@ export function buildMobileAuthorizationContext({
       || !Number.isSafeInteger(requiredApprovals) || requiredApprovals < 1 || requiredApprovals > 1024
       || !validId(nonce)
       || parseInstant(issuedAt) === null || parseInstant(expiresAt) === null
-      || parseInstant(issuedAt) >= parseInstant(expiresAt)
-      || !['approved', 'denied'].includes(decision) || !validHash(displayHash)
-      || !validHash(profileHash) || !['ios', 'android'].includes(platform)
+      || /** @type {number} */ (parseInstant(issuedAt)) >= /** @type {number} */ (parseInstant(expiresAt))
+      || !['approved', 'denied'].includes(/** @type {string} */ (decision)) || !validHash(displayHash)
+      || !validHash(profileHash) || !['ios', 'android'].includes(/** @type {string} */ (platform))
       || !validId(appId) || !validId(deviceKeyId) || !validB64u(credentialId, 2048)
       || !validAttestationKeyId(attestationKeyId)) {
     throw new TypeError('mobile authorization context input is malformed');
@@ -559,7 +560,7 @@ export function createMobileChallenge({
       || enrollment.approver_id !== approverId) {
     throw new TypeError('active enrollment does not match the requested approver, platform, or app');
   }
-  if (!profile.accepted_apps[platform]?.includes(appId)) throw new TypeError('app is not accepted by the profile');
+  if (!profile.accepted_apps[/** @type {'ios'|'android'} */ (platform)]?.includes(appId)) throw new TypeError('app is not accepted by the profile');
   const issued = parseInstant(issuedAt);
   const expires = parseInstant(expiresAt);
   if (issued === null || expires === null || expires <= issued
@@ -618,7 +619,7 @@ export function createMobileChallenge({
     ...base,
     attestation: {
       required: profile.requirements.attestation_required,
-      format: PLATFORM_ATTESTATION_FORMAT[platform],
+      format: PLATFORM_ATTESTATION_FORMAT[/** @type {'ios'|'android'} */ (platform)],
       binding,
       request_hash: hashCanonicalBytes(binding).toString('base64url'),
     },
@@ -693,8 +694,8 @@ function profileEnrollmentValidAt(enrollment, instant) {
   const at = parseInstant(instant);
   return enrollment.status === 'active'
     && at !== null
-    && at >= parseInstant(enrollment.valid_from)
-    && at <= parseInstant(enrollment.valid_to);
+    && at >= /** @type {number} */ (parseInstant(enrollment.valid_from))
+    && at <= /** @type {number} */ (parseInstant(enrollment.valid_to));
 }
 
 /**
@@ -807,7 +808,7 @@ export async function verifyMobileCeremony({
       && requestCredentialIds[0] === enrollment.credential_id
       && challenge.webauthn?.user_verification === 'required'
       && Number.isSafeInteger(challenge.webauthn?.timeout_ms)
-      && challenge.webauthn.timeout_ms === expires - issued;
+      && challenge.webauthn.timeout_ms === /** @type {number} */ (expires) - /** @type {number} */ (issued);
     if (!requestMetadataValid) {
       return refused('refuse_webauthn', 'WebAuthn request metadata diverges from the signed context or pinned profile', checks);
     }
@@ -850,7 +851,7 @@ export async function verifyMobileCeremony({
     if (profile.requirements.attestation_required) {
       let attested;
       try {
-        attested = await attestationVerifier({
+        attested = await /** @type {MobileCallback} */ (attestationVerifier)({
           format: challenge.attestation.format,
           token: response.attestation.token,
           expected_request_hash: expectedRequestHash,
@@ -949,8 +950,8 @@ function decisionRecord(challenge, result) {
  * @param {MobileChallengeStore} [params.challengeStore]
  * @param {MobileAuditLog} [params.auditLog]
  * @param {MobileCallback} [params.attestationVerifier]
- * @param {MobileCounterStore} [params.counterStore]
- * @param {MobileCallback} [params.commitDecision]
+ * @param {(MobileCounterStore|null)} [params.counterStore]
+ * @param {(MobileCallback|null)} [params.commitDecision]
  * @param {() => string} [params.clock]
  * @param {boolean} [params.allowEphemeral]
  * @returns {Object}
@@ -979,7 +980,7 @@ export function createMobileCeremonyService({
 
   async function recordOrRefuse(challenge, result) {
     try {
-      const record = await auditLog.record(decisionRecord(challenge, result));
+      const record = await /** @type {MobileAuditLog} */ (auditLog).record(decisionRecord(challenge, result));
       return { ...result, audit_record: record };
     } catch {
       return {

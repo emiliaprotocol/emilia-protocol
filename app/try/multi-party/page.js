@@ -58,9 +58,9 @@ const ROSTER = [
 const ACTION_FIELDS = { action: 'program_funds.release', amount: '40000000.00', currency: 'USD', program: 'program/aegis-1', memo: 'FY26 milestone disbursement' };
 
 export default function MultiPartyDemo() {
-  const [actionHash, setActionHash] = useState(null);
-  const [members, setMembers] = useState([]); // signed, in order
-  const [result, setResult] = useState(null);
+  const [actionHash, setActionHash] = useState(/** @type {string|null} */ (null));
+  const [members, setMembers] = useState(/** @type {{role: string, approver_public_key: string, signoff: any}[]} */ ([])); // signed, in order
+  const [result, setResult] = useState(/** @type {{valid: boolean, checks: Record<string, boolean>, members: any[]}|null} */ (null));
   const [busy, setBusy] = useState(false);
   const [cheated, setCheated] = useState(false);
 

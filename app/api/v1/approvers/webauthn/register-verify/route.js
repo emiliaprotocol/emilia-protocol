@@ -51,7 +51,11 @@ export async function POST(request) {
     if (orgResolution.error) {
       return epProblem(orgResolution.error.status, orgResolution.error.code, orgResolution.error.detail);
     }
-    const organizationId = orgResolution.organizationId;
+    // resolveAuthorizedOrg's return type is a non-discriminated union (all
+    // fields optional), so the `if (orgResolution.error) return` above does
+    // not narrow this for the type checker even though the contract
+    // guarantees organizationId is set whenever error isn't.
+    const organizationId = /** @type {string} */ (orgResolution.organizationId);
     if (!hasApproverEnrollmentPermission(auth)) {
       return epProblem(403, 'insufficient_permissions', 'Approver enrollment requires approver.enroll or admin permission');
     }

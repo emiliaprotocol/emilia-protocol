@@ -151,7 +151,8 @@
      * @param {string} text
      */
     _renderMessage(className, text) {
-      var root = this.shadowRoot;
+      // Non-null: constructor always calls attachShadow() before any instance method can run.
+      var root = /** @type {ShadowRoot} */ (this.shadowRoot);
       resetRoot(root);
 
       var badge = document.createElement('span');
@@ -187,7 +188,8 @@
      * @param {string} entityId
      */
     _render(capability, entityId) {
-      var root = this.shadowRoot;
+      // Non-null: constructor always calls attachShadow() before any instance method can run.
+      var root = /** @type {ShadowRoot} */ (this.shadowRoot);
       resetRoot(root);
 
       var capabilityOn = capability && capability.capability_on === true;

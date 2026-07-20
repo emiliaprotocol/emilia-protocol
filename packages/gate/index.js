@@ -294,7 +294,7 @@ function bindExecutionProof({ authorization, observedAction, binding }) {
  * @param {{id?:string, profile_hash:string}} pinned  the profile the relying party requires
  * @param {object|null} presented  a reliance packet, or its `.admissibility` block,
  *   as produced by buildReliancePacket / the relying party's evaluator
- * @returns {{ok:boolean, reason:string|null, pinned_hash:string, presented_hash:string|null, verdict:string|null}}
+ * @returns {{ok:boolean, reason:string|null, pinned_hash:string|null, presented_hash:string|null, verdict:string|null}}
  *   ok:true ONLY when the presented profile_hash equals the pinned hash AND the
  *   verdict is exactly 'admissible'. Every other case fails closed with a distinct reason.
  */
@@ -377,14 +377,19 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
  * @param {boolean} [opts.allowEmbeddedApproverKeys=false] explicit opt-in where
  *   one unpinned embedded key may earn Class-A integrity. It never earns quorum.
  * @param {object} [opts.quorumPolicy] relying-party-pinned organizational rule
- * @param {function} [opts.verifyAssurance] custom assurance verifier for path (a)
- * @param {string} [opts.rpId]  bind embedded device assertions to this WebAuthn RP id (path b)
+ * @param {function|null} [opts.verifyAssurance] custom assurance verifier for path (a)
+ * @param {string|null} [opts.rpId]  bind embedded device assertions to this WebAuthn RP id (path b)
  * @param {string[]} [opts.allowedOrigins] exact WebAuthn origins accepted for embedded-evidence verification (path b)
  * @param {object} [opts.quorum_policy] legacy snake_case alias for opts.quorumPolicy
  * @param {boolean} [opts.detail] return a {tier, quorum, signoff} object instead of the string
  * @returns {'software'|'class_a'|'quorum'|object} the highest tier proven
  */
 export function receiptAssuranceTier(doc, opts = {}) {
+  /** @type {{
+   *   tier: string,
+   *   quorum: {valid:boolean, checks:object, policy_pinned:boolean, embedded_keys_trusted:boolean, approvers:string[], roles:{subject:string|null, role:string|null}[], refusal:string|null}|null,
+   *   signoff: {valid:boolean, checks:object, embedded_key_trusted:boolean, approver:string|null}|null,
+   * }} */
   const detail = { tier: 'software', quorum: null, signoff: null };
 
   // --- Path (a): pinned assurance proof / caller-supplied verifier. ---
@@ -654,6 +659,7 @@ function verifiedApproverSubjects(assurance, tierResult) {
  * Verify signed business-policy and tenant fields plus the cryptographically
  * credited human approvers against one action's relying-party pins.
  * @param {{requirement?: any, receipt?: any, assurance?: any, tierResult?: any}} [arg]
+ * @returns {{required:boolean, ok:boolean, reason:string|null, expected:object, evaluated:{policy_id:string|null, policy_hash:string|null, tenant_id:string|null, approvers:{subject:string, roles:string[]}[]}}}
  */
 export function verifyBusinessAuthorization({ requirement, receipt, assurance, tierResult } = {}) {
   const expected = businessAuthorizationRequirement(requirement);
@@ -713,7 +719,7 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  *   capability run reserves here before the effect and commits after it.
  * @param {string[]} [opts.capabilityTrustedIssuerKeys] pinned capability
  *   envelope issuer keys. Required when capabilityStore is configured.
- * @param {function} [opts.capabilityCaidResolver] relying-party-pinned resolver
+ * @param {function|null} [opts.capabilityCaidResolver] relying-party-pinned resolver
  *   for `urn:emilia:scope:caid-set-v1`. Missing resolver fails CAID scope closed.
  * @param {boolean} [opts.allowEphemeralStore=false] explicit test/demo opt-in for in-memory state
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
@@ -728,17 +734,17 @@ export function verifyBusinessAuthorization({ requirement, receipt, assurance, t
  *   to earn Class-A integrity in demos. Embedded keys never establish quorum.
  * @param {object} [opts.quorumPolicy] global relying-party-pinned quorum rule
  * @param {object} [opts.quorumPolicies] action_type -> pinned quorum rule
- * @param {string} [opts.rpId] WebAuthn relying-party identifier. Required for
+ * @param {string|null} [opts.rpId] WebAuthn relying-party identifier. Required for
  *   built-in Class-A or quorum assurance verification.
  * @param {string[]} [opts.allowedOrigins] exact WebAuthn origins accepted by the
  *   relying party. Required for built-in Class-A or quorum verification.
- * @param {function} [opts.verifyAdmissibilityPacket] trusted relying-party hook.
+ * @param {function|null} [opts.verifyAdmissibilityPacket] trusted relying-party hook.
  *   Required whenever an admissibility profile is pinned. It must authenticate
  *   the presented packet or recompute the verdict and return the trusted block.
  * @param {boolean} [opts.strictEvidence=true] make the evidence log strict (fail on record errors)
  * @param {() => number} [opts.now] clock source (defaults to Date.now)
  * @param {object|null} [opts.approver_keys] legacy snake_case alias for opts.approverKeys
- * @param {function} [opts.verifyAssurance] caller-supplied assurance verifier (assurance-proof path a)
+ * @param {function|null} [opts.verifyAssurance] caller-supplied assurance verifier (assurance-proof path a)
  * @param {object} [opts.requiredAdmissibilityProfile] gate-level pinned admissibility profile {id, profile_hash}
  * @param {object} [opts.runtimeMonitor] runtime invariant monitor (defaults to createRuntimeMonitor)
  */
@@ -824,6 +830,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       || quorumPolicy;
     const observed = observedAction || selector.observedAction || selector.actionDetails || null;
     const businessExpected = businessAuthorizationRequirement(requirement);
+    /** @type {{required:boolean, ok:boolean, reason:string|null, expected:object, evaluated:{policy_id:string|null, policy_hash:string|null, tenant_id:string|null, approvers:{subject:string, roles:string[]}[]}}} */
     let businessEvaluation = {
       required: businessExpected.configured,
       ok: !businessExpected.configured,
@@ -1314,6 +1321,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
    * then reserves the exact observed monetary amount before the effect. A
    * successful effect commits the reservation, while an exception commits it
    * as indeterminate so the budget can never silently reopen.
+   * @param {{selector?: object, receipt?: any, observedAction?: any, admissibilityProfile?: any, reliancePacket?: any, admissibility?: any, capability?: any}} arg
+   * @param {function} fn
+   * @param {object} [opts]
    */
   async function runCapability({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null, capability = null } = {}, fn, opts = {}) {
     if (!capabilityStore) return capabilityRefusal({ capability, reason: 'capability_store_required', status: 500 });

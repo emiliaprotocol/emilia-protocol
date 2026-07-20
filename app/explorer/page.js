@@ -25,8 +25,8 @@ export default function ExplorerPage() {
   const [activeTab, setActiveTab] = useState('receipt');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  const [result, setResult] = useState(/** @type {any} */ (null));
+  const [error, setError] = useState(/** @type {string | null} */ (null));
 
   async function runLookup(rawQuery, tab) {
     const q = (rawQuery ?? '').trim();
@@ -71,12 +71,12 @@ export default function ExplorerPage() {
     const params = new URLSearchParams(window.location.search);
     const q = params.get('q');
     const t = params.get('tab');
-    const tab = TABS.includes(t) ? t : 'receipt';
+    const tab = TABS.includes(/** @type {string} */ (t)) ? /** @type {string} */ (t) : 'receipt';
     /* eslint-disable react-hooks/set-state-in-effect --
        Syncing client-only URL params into state on mount is a legitimate
        external-state read (per React docs). Doing it here rather than via a
        lazy useState initializer avoids a server/client hydration mismatch. */
-    if (TABS.includes(t)) setActiveTab(tab);
+    if (TABS.includes(/** @type {string} */ (t))) setActiveTab(tab);
     if (q) {
       setQuery(q);
       runLookup(q, tab);

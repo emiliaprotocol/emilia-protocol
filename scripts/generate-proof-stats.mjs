@@ -115,7 +115,9 @@ const stats = {
 
 if (check) {
   const current = JSON.parse(readFileSync('lib/proof-stats.json', 'utf8'));
+  /** @type {Record<string, unknown>} */
   const measured = { ...stats };
+  /** @type {Record<string, unknown>} */
   const recorded = { ...current };
   delete measured.generatedAt;
   delete recorded.generatedAt;

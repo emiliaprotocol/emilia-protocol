@@ -23,6 +23,12 @@ const chainHash = (ctx) => crypto.createHash('sha256').update(canon(ctx), 'utf8'
 // Mint one real member assertion. Bend exactly one thing per negative vector.
 // prevContextHash !== null  -> bind this signoff to its predecessor (ordered chain).
 // sharedSigner provided      -> reuse a device key across slots (distinct-keys negative).
+/**
+ * @param {{ role: string, approver: string, issuedAt: string, actionHash?: string,
+ *   wrongKey?: boolean, malformSig?: boolean, prevContextHash?: string|null,
+ *   sharedSigner?: { publicKey: import('node:crypto').KeyObject, privateKey: import('node:crypto').KeyObject }|null,
+ *   initiator?: string, crossOrigin?: boolean }} params
+ */
 function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = false, malformSig = false, prevContextHash = null, sharedSigner = null, initiator = 'ent_agent_7', crossOrigin = false }) {
   const signer = sharedSigner || crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const verifierKey = wrongKey ? crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }).publicKey : signer.publicKey;

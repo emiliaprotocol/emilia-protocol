@@ -227,7 +227,11 @@ async function cmdDemo() {
   // PIP-007 advisory: the attestation the approver signed, reported back by the
   // verifier (does not affect signature validity).
   if (result.attestation?.present) {
-    const att = receipt.contexts[0].initiator_attestation;
+    // cmdDemo issues a single-context receipt and always supplies
+    // initiatorAttestation; buildContexts() copies that identical object into
+    // every context, so whenever the verifier reports attestation.present,
+    // contexts[0].initiator_attestation is provably defined here.
+    const att = /** @type {import('./index.js').InitiatorAttestation} */ (receipt.contexts[0].initiator_attestation);
     console.log(`\nInitiator attestation (PIP-007), covered by the approver's signature:`);
     console.log(`  present: ${result.attestation.present}, consistent across contexts: ${result.attestation.consistent}`);
     console.log(`  escalation_trigger: ${att.escalation_trigger}`);

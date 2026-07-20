@@ -527,7 +527,7 @@ export async function buildSyntheticRegulatoryDemo() {
   const controller = createGovernmentMobileController({
     service,
     profiles: new Map([[profile.profile_id, profile]]),
-    resolveRequest: (input) => systemOfRecord.resolve(input),
+    resolveRequest: (input) => /** @type {Promise<Record<string, unknown>>} */ (systemOfRecord.resolve(input)),
     /**
      * @param {{
      *   caller?: { subject?: unknown },
@@ -553,7 +553,10 @@ export async function buildSyntheticRegulatoryDemo() {
   }, caller);
   if (!issued.ok) throw new Error(`mobile challenge refused: ${issued.verdict}`);
 
-  const challenge = issued.challenge;
+  // controller.issue() never returns { ok: true, challenge: null } (see
+  // packages/mobile/index.js createMobileCeremonyService#issue and government.js#issue,
+  // which both pair ok:true with a non-null challenge); the throw above rules out ok:false.
+  const challenge = /** @type {import('../../packages/mobile/index.js').MobileChallenge} */ (issued.challenge);
   const response = makeMobileResponse({
     challenge,
     passkey,
@@ -561,16 +564,20 @@ export async function buildSyntheticRegulatoryDemo() {
   });
   const result = await controller.verify({ challenge, response }, caller);
   if (!result.valid) throw new Error(`mobile ceremony refused: ${result.verdict}`);
+  // result.class_a is only populated when verified with decision === 'approved'
+  // (packages/mobile/index.js, verifyMobileCeremony); this demo always issues and
+  // signs an 'approved' decision, so a valid result always carries it.
+  const classA = /** @type {import('../../packages/mobile/index.js').MobileDecisionEvidence} */ (result.class_a);
 
   const receiptId = 'ep:receipt:synthetic-regulatory-mobile-0001';
   const receipt = assembleAuthorizationReceipt({
     receiptId,
     action: challenge.action,
     contexts: /** @type {import('../../packages/issue/index.js').AuthorizationContext[]} */ (
-      /** @type {unknown} */ ([result.class_a.context])
+      /** @type {unknown} */ ([classA.context])
     ),
     signoffs: /** @type {import('../../packages/issue/index.js').Signoff[]} */ (
-      [result.class_a.signoff]
+      [classA.signoff]
     ),
     committedAt: VERIFIED_AT,
     log: {

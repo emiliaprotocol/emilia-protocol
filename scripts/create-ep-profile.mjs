@@ -20,7 +20,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, t, i, arr) => {
   if (t.startsWith('--')) a.push([t.slice(2), arr[i + 1]]);
   return a;
-}, []));
+}, /** @type {[string, string | undefined][]} */ ([])));
 
 const vendor = (args.vendor || '').toLowerCase();
 const name = (args.name || '').toLowerCase();

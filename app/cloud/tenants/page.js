@@ -36,6 +36,20 @@ const s = {
   error: { background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', color: '#f87171', fontSize: 13, marginBottom: 24 },
 };
 
+/**
+ * @typedef {Object} Tenant
+ * @property {string} id
+ * @property {string} name
+ * @property {string} slug
+ * @property {string} plan
+ * @property {string} status
+ * @property {string} region
+ * @property {number} handshakes
+ * @property {number} policies
+ * @property {number} members
+ * @property {string} created
+ */
+
 const MOCK_TENANTS = [
   { id: 'ten_demo_alpha', name: 'Demo Agency Alpha', slug: 'demo-agency-alpha', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 6234, policies: 12, members: 24, created: '2025-08-15T00:00:00Z' },
   { id: 'ten_demo_beta', name: 'Demo Finance Beta', slug: 'demo-finance-beta', plan: 'enterprise', status: 'active', region: 'eu-west-1', handshakes: 4102, policies: 8, members: 18, created: '2025-10-01T00:00:00Z' },
@@ -53,8 +67,8 @@ const planBadge = (plan) => {
 
 export default function TenantsPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [tenants, setTenants] = useState([]);
+  const [error, setError] = useState(/** @type {string|null} */ (null));
+  const [tenants, setTenants] = useState(/** @type {Tenant[]} */ ([]));
   const [search, setSearch] = useState('');
 
   useEffect(() => {

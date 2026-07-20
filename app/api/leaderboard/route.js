@@ -33,8 +33,8 @@ export async function GET(request) {
     const rawRankBy = searchParams.get('rank_by') || 'confidence';
     const rankBy = rawRankBy === 'evidence' ? 'evidence' : 'confidence';
     const minConfidence = searchParams.get('min_confidence') || null;
-    const limit = Math.min(Math.max(0, parseInt(searchParams.get('limit'), 10) || 50), 100);
-    const rawOffset = parseInt(searchParams.get('offset'), 10);
+    const limit = Math.min(Math.max(0, parseInt(searchParams.get('limit') ?? '', 10) || 50), 100);
+    const rawOffset = parseInt(searchParams.get('offset') ?? '', 10);
     const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
     const supabase = getGuardedClient();

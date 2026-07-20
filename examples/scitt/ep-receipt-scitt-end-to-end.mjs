@@ -80,13 +80,17 @@ async function runEndToEnd({ scittUrl = process.env.SCITT_URL || process.env.SCI
   if (!targetUrl) throw new Error('SCITT_URL is required when mock fallback is disabled');
 
   const registration = target === 'mock'
-    ? { ...mock.register(artifacts.coseSign1), bodySha256: '' }
+    ? { ...(/** @type {NonNullable<typeof mock>} */ (mock)).register(artifacts.coseSign1), bodySha256: '' }
     : await postSignedStatement(targetUrl, artifacts.coseSign1);
   registration.bodySha256 ||= sha256Hex(registration.body);
 
   const receipt = parseJsonBody(registration.body);
   const transparencyChecks = target === 'mock' && receipt
-    ? verifyMockTransparencyReceipt(receipt, artifacts.coseSign1, mock.publicKey)
+    ? verifyMockTransparencyReceipt(
+      receipt,
+      artifacts.coseSign1,
+      /** @type {any} */ ((/** @type {NonNullable<typeof mock>} */ (mock)).publicKey),
+    )
     : [
       check(
         'external_registration',

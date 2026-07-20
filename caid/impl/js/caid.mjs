@@ -106,6 +106,9 @@ function resolveDefinition(actionType, definitions) {
  *                        function, symbol, bigint). Cannot arise from
  *                        JSON.parse input; exists so junk JS input fails
  *                        closed instead of being silently dropped.
+ *
+ * @param {*} value
+ * @returns {{ok: true, canonical: string} | {ok: false, refusals: string[]}}
  */
 export function canonicalize(value) {
   const refusals = [];
@@ -275,7 +278,11 @@ export function computeCaid(actionObject, options) {
   }
 
   // Step 7: canonicalize, digest, emit.
-  const digestBytes = sha256(canon.canonical);
+  // canon.ok is guaranteed true here: canonicalize() only returns
+  // ok:false with a non-empty refusals array, which was just pushed
+  // into `refusals` above and would have triggered the early return.
+  const okCanon = /** @type {{ok: true, canonical: string}} */ (canon);
+  const digestBytes = sha256(okCanon.canonical);
   const b64 = digestBytes.toString("base64url");
   return {
     caid: `caid:${CAID_VERSION}:${actionType}:${suite}:${b64}`,

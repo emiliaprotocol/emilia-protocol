@@ -56,6 +56,18 @@ const successorMoment = {
   },
 };
 
+/**
+ * @param {Record<string, any>} resolution
+ * @param {{
+ *   contextOverrides?: Record<string, any>,
+ *   sourceBindingMoment?: Record<string, any>,
+ *   signedRpId?: string,
+ *   signedOrigin?: string,
+ *   crossOrigin?: boolean,
+ *   flags?: number,
+ *   tamperAfterSign?: Record<string, any> | null,
+ * }} [options]
+ */
 function makeReceipt(resolution, {
   contextOverrides = {},
   sourceBindingMoment = bindingMoment,
@@ -191,7 +203,10 @@ add('reject_initiator_mismatch', 'The artifact is replayed under a different ini
   { expected_initiator: 'spiffe://operator.example/agent/other' });
 
 const malformedMoment = structuredClone(bindingMoment);
-delete malformedMoment.question.hatches.dialogue;
+const malformedHatches = /** @type {{ free_text: boolean, dialogue?: boolean }} */ (
+  malformedMoment.question.hatches
+);
+delete malformedHatches.dialogue;
 add('reject_malformed_binding_moment', 'A source envelope that violates the binding-moment grammar cannot gain authority through a valid signature.', 'envelope-grammar', false,
   makeReceipt({ outcome: 'rejected' }, { sourceBindingMoment: malformedMoment }),
   { binding_moment: malformedMoment });

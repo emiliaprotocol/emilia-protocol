@@ -110,6 +110,16 @@ function buildProof(docs, privateKey = issuer, overrides = {}) {
 function fixture(mutation) {
   let docs = buildDocs();
   let proof = buildProof(docs);
+  /** @type {{
+   *   expectedDocumentHead?: string,
+   *   expectedBootstrapDigest?: string,
+   *   expectedOrganizationId?: string,
+   *   expectedOrganizationDomain?: string,
+   *   expectedRegistryIssuerId?: string,
+   *   expectedProofIssuedAt?: string,
+   *   expectRegistryHead?: string,
+   *   expectMinEpoch?: number,
+   * }} */
   const opts = {
     expectedDocumentHead: docCoreDigest(docs.at(-1)),
     expectedBootstrapDigest: docCoreDigest(docs[0]),
@@ -244,21 +254,32 @@ function fixture(mutation) {
       opts.expectedDocumentHead = docCoreDigest(docs.at(-1));
       opts.expectedBootstrapDigest = docCoreDigest(docs[0]);
       break;
-    case 'document_head_registry_head_confusion':
+    case 'document_head_registry_head_confusion': {
+      // buildProof() always sets authority_document with all three fields;
+      // the compiler only sees it as optional because signAuthorityProof's
+      // return type spreads it conditionally.
+      const authorityDocument = /** @type {{head_digest:string,head_seq:number,issuer_kid:string}} */ (
+        proof.authority_document
+      );
       proof = {
         ...proof,
-        authority_document: { ...proof.authority_document, head_digest: proof.registry_head },
+        authority_document: { ...authorityDocument, head_digest: proof.registry_head },
       };
       break;
-    case 'full_issuer_kid_mismatch':
+    }
+    case 'full_issuer_kid_mismatch': {
+      const authorityDocument = /** @type {{head_digest:string,head_seq:number,issuer_kid:string}} */ (
+        proof.authority_document
+      );
       proof = {
         ...proof,
         authority_document: {
-          ...proof.authority_document,
+          ...authorityDocument,
           issuer_kid: `ep:authority-issuer-key:sha256:${'ff'.repeat(32)}`,
         },
       };
       break;
+    }
     default: throw new Error(`unknown mutation ${mutation}`);
   }
   return { proof, docs, opts };

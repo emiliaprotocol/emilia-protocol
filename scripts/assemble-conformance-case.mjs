@@ -13,6 +13,7 @@ const GIT_OID = /^[0-9a-f]{40}$/;
 
 export const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
+/** @returns {never} */
 function fail(message) {
   throw new Error(`conformance case refused: ${message}`);
 }

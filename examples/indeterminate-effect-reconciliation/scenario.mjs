@@ -143,7 +143,11 @@ export function createIndeterminateEffectHarness() {
   const reconciliationLedger = createReconciliationLedger();
   const execute = () => executeWithCapability({
     capabilityReceipt: minted.capabilityReceipt,
-    secret: minted.secret,
+    // mintCapabilityReceipt() above is called without `threshold`, so it defaults to
+    // {m:1,n:1}; capability-receipt.js's `shares` is therefore always null and
+    // `secret` always takes the `Buffer.from(...)` branch, never the null branch
+    // reserved for m-of-n>1 secret splitting — cast only, no behavior change.
+    secret: /** @type {Buffer} */ (minted.secret),
     action: ACTION,
     store: capabilityStore,
     gate,

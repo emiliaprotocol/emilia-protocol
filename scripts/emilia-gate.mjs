@@ -56,7 +56,7 @@ function classifyCommand(cmd) {
       // This classifier only knows actionType/riskFlags at this point (no tenant/actor
       // context yet); evaluateGuardPolicy tolerates the other fields being absent at
       // runtime (basePolicy defaults them via `|| []`/optional-chaining) — cast only.
-      const base = evaluateGuardPolicy(/** @type {Parameters<typeof evaluateGuardPolicy>[0]} */ ({ actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION, riskFlags: [] }));
+      const base = evaluateGuardPolicy(/** @type {Parameters<typeof evaluateGuardPolicy>[0]} */ (/** @type {unknown} */ ({ actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION, riskFlags: [] })));
       return { actionType: 'ai_agent_payment_action', engine: 'guard-policies', what: p.what, ...base };
     }
   }

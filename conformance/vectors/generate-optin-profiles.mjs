@@ -81,10 +81,10 @@ addInit('accept_minimal', true, validAtt());
 addInit('accept_bare_uppercase_digest', true, { ...validAtt(), tool_chain_digest: crypto.createHash('sha256').update('ctx').digest('hex').toUpperCase() });
 addInit('accept_hostile_statement_neutralized', true, { ...validAtt(), statement: `send ${cp(0x202e)}${cp(0x0000)}000 pay${cp(0x0085)} now` });
 addInit('accept_homoglyph_statement', true, { ...validAtt(), statement: `p${cp(0x0430)}y now` });
-addInit('reject_missing_model_id', false, (() => { const a = validAtt(); delete a.model_id; return a; })());
+addInit('reject_missing_model_id', false, (() => { const a = /** @type {any} */ (validAtt()); delete a.model_id; return a; })());
 addInit('reject_empty_model_version', false, { ...validAtt(), model_version: '' });
 addInit('reject_malformed_digest', false, { ...validAtt(), tool_chain_digest: 'sha256:' + 'a'.repeat(63) });
-addInit('reject_missing_digest', false, (() => { const a = validAtt(); delete a.tool_chain_digest; return a; })());
+addInit('reject_missing_digest', false, (() => { const a = /** @type {any} */ (validAtt()); delete a.tool_chain_digest; return a; })());
 addInit('reject_unknown_member', false, { ...validAtt(), evil: 'x' });
 addInit('reject_wrong_version', false, { ...validAtt(), '@version': 'EP-OTHER-v9' });
 addInit('reject_statement_over_cap', false, { ...validAtt(), statement: 'a'.repeat(281) });
@@ -146,7 +146,8 @@ addConsume('accept_larger_tree', true, makeBundle({ otherNonces: ['n1', 'n2', 'n
 const checkpoint = { tree_size: 42, root_hash: `sha256:${'a1'.repeat(32)}`, log_key_id: 'ep:log:test#1', merkle_alg: 'EP-MERKLE-v2' };
 const wA = keyFromSeed('11'.repeat(32)), wB = keyFromSeed('22'.repeat(32)), wC = keyFromSeed('33'.repeat(32));
 function cosign(cpt, id, k) {
-  return { alg: WITNESS_VERSION, witness_id: id, tree_size: cpt.tree_size, root_hash: cpt.root_hash, log_key_id: cpt.log_key_id, signature: crypto.sign(null, witnessSigningDigest(cpt), k.priv).toString('base64url') };
+  const digest = /** @type {Buffer} */ (witnessSigningDigest(cpt));
+  return { alg: WITNESS_VERSION, witness_id: id, tree_size: cpt.tree_size, root_hash: cpt.root_hash, log_key_id: cpt.log_key_id, signature: crypto.sign(null, digest, k.priv).toString('base64url') };
 }
 const pinned = [{ witness_id: 'a', public_key: wA.pub }, { witness_id: 'b', public_key: wB.pub }, { witness_id: 'c', public_key: wC.pub }];
 const csA = cosign(checkpoint, 'a', wA), csB = cosign(checkpoint, 'b', wB), csC = cosign(checkpoint, 'c', wC);

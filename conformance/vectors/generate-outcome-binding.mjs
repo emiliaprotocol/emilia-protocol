@@ -212,7 +212,7 @@ const vectors = [
     id: 'reject_post_signature_observation_tamper',
     attestation: (() => {
       const value = attestation(inBounds);
-      value.observed_effects[0].value = '0.01';
+      /** @type {Array<{ value?: string }>} */ (value.observed_effects)[0].value = '0.01';
       return value;
     })(),
     expect: { outcome: 'incomparable' },

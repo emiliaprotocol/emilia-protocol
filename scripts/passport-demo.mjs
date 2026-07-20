@@ -52,7 +52,10 @@ function callService(receiptDoc) {
     json(b) { out = { status: this._s, reason: b.rejected?.reason || (b.allowed ? 'ok' : 'challenge') }; return this; },
   };
   gate(req, res, () => { out = { status: 200, reason: 'ALLOWED' }; });
-  return out;
+  // `gate` always synchronously calls either res.json(...) or this next()
+  // callback (see requireEmiliaReceipt in packages/require-receipt/index.js),
+  // so `out` is guaranteed non-null here; TS can't see across the closure.
+  return /** @type {{status: number, reason: string}} */ (/** @type {unknown} */ (out));
 }
 
 const tamper = (() => { const r = mint('payment.release', trusted); r.payload.claim.context.reasons = ['(silently changed after signing)']; return r; })();

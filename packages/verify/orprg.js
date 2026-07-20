@@ -149,7 +149,9 @@ function canonicalJsonSafety(value) {
   let stringBytes = 0;
 
   while (stack.length > 0) {
-    const current = stack.pop();
+    // stack.length > 0 guarantees pop() is non-empty here; TS can't see the
+    // loop invariant, so this asserts the type the loop already ensures.
+    const current = /** @type {{value: any, depth: number}} */ (stack.pop());
     nodes += 1;
     if (nodes > MAX_JSON_NODES || current.depth > MAX_JSON_DEPTH) return false;
     const item = current.value;
@@ -419,6 +421,29 @@ function newChecks() {
   };
 }
 
+/**
+ * The nullable fields below are placeholders filled in as verification
+ * progresses; this annotation documents the real (post-fill) types so the
+ * checker doesn't lock them to the literal `null` of the initializer.
+ * @returns {{
+ *   profile: string,
+ *   decision: string,
+ *   denial_reason_code: string|null,
+ *   reason: string|null,
+ *   checks: ReturnType<typeof newChecks>,
+ *   evidence_digests: {
+ *     action_digest: string|null,
+ *     receipt_digest: string|null,
+ *     policy_digest: any,
+ *     epoch_id: any,
+ *     status_evidence_digest: string|null,
+ *   },
+ *   recency_observations: {
+ *     receipt_age_seconds: number|null,
+ *     status_age_seconds: number|null,
+ *   },
+ * }}
+ */
 function baseDetail(checks) {
   return {
     profile: ORPRG_JSON_JCS_PROFILE,

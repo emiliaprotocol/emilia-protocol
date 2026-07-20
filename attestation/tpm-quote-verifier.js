@@ -69,6 +69,11 @@ function strictBase64(value, field, maxBytes) {
   return decoded;
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} field
+ * @param {number|null} [bytes]
+ */
 function strictHex(value, field, bytes = null) {
   const pattern = bytes === null
     ? /^(?:[0-9a-f]{2})+$/

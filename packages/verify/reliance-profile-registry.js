@@ -113,7 +113,7 @@ export function verifyRelianceProfileEntry(entry, opts = {}) {
     checks.profile_id = false;
     return { verified: false, accepted: false, profile: null, checks, reason: 'profile_id_mismatch', entry_digest: digest };
   }
-  if (Number.isSafeInteger(opts.expectMinEpoch) && !(Number.isSafeInteger(entry.registry_epoch) && entry.registry_epoch >= opts.expectMinEpoch)) {
+  if (Number.isSafeInteger(opts.expectMinEpoch) && !(Number.isSafeInteger(entry.registry_epoch) && entry.registry_epoch >= /** @type {number} */ (opts.expectMinEpoch))) {
     checks.epoch_fresh = false;
     return { verified: false, accepted: false, profile: null, checks, reason: 'stale_registry', entry_digest: digest };
   }

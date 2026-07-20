@@ -142,7 +142,7 @@ export async function POST(request) {
     const embeddingText = [
       displayName,
       description,
-      ...capabilities.values,
+      .../** @type {string[]} */ (capabilities.values),
       typeof body.category === 'string' ? body.category.slice(0, 100) : null,
     ].filter(Boolean).join('. ');
 

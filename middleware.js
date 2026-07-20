@@ -310,7 +310,7 @@ const _compiledPolicies = Object.entries(ROUTE_POLICIES).map(([pattern, policy])
  *
  * @param {string} method - HTTP method (GET, POST, etc.)
  * @param {string} pathname - URL pathname (e.g. /api/receipts/submit)
- * @returns {{ rateCategory: string, useAuth: boolean }}
+ * @returns {{ rateCategory: string|null, useAuth: boolean }}
  */
 function classifyRoute(method, pathname) {
   const upperMethod = method.toUpperCase();

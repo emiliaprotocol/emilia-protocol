@@ -101,12 +101,12 @@ add('accept_valid_chain', true, await buildBundle());
 { const b = await buildBundle(); b.doc.delegation_chain[0].scope = ['treasury.wire']; add('reject_scope_violation', false, b); }
 { const b = await buildBundle(); b.doc.delegation_chain[0].max_value_usd = 999999; add('reject_tampered_proof', false, b); }
 { const b = await buildBundle(); b.delegation_keys = /** @type {*} */ ({}); add('reject_unpinned_delegator', false, b); }
-{ const b = await buildBundle(); b.root_verification = null; b.action_verification = null; add('reject_presenter_supplied_trust_roots', false, b); }
-{ const b = await buildBundle(); delete b.root_verification.rp_id; add('reject_root_profile_without_rp_id', false, b); }
-{ const b = await buildBundle(); delete b.root_verification.allowed_origins; add('reject_root_profile_without_allowed_origins', false, b); }
+{ const b = await buildBundle(); b.root_verification = /** @type {*} */ (null); b.action_verification = /** @type {*} */ (null); add('reject_presenter_supplied_trust_roots', false, b); }
+{ const b = await buildBundle(); delete /** @type {*} */ (b.root_verification).rp_id; add('reject_root_profile_without_rp_id', false, b); }
+{ const b = await buildBundle(); delete /** @type {*} */ (b.root_verification).allowed_origins; add('reject_root_profile_without_allowed_origins', false, b); }
 { const b = await buildBundle(); b.root_verification.rp_id = 'attacker.example'; add('reject_root_profile_wrong_rp_id', false, b); }
 { const b = await buildBundle(); b.root_verification.allowed_origins = ['https://attacker.example']; add('reject_root_profile_wrong_origin', false, b); }
-{ const b = await buildBundle(); delete b.action_verification.rp_id; add('reject_action_profile_without_rp_id', false, b); }
+{ const b = await buildBundle(); delete /** @type {*} */ (b.action_verification).rp_id; add('reject_action_profile_without_rp_id', false, b); }
 { const b = await buildBundle(); b.action_verification.allowed_origins = ['https://attacker.example']; add('reject_action_profile_wrong_origin', false, b); }
 add('accept_two_hop_constraints_narrowed', true, await buildTwoHop(3));
 add('reject_constraints_relaxed', false, await buildTwoHop(50));

@@ -43,11 +43,14 @@ function CopyRow({ label, value }) {
   );
 }
 
+/** @typedef {{ id: string, entity_id: string, display_name: string, entity_type: string, confidence: string, status: string, created_at: string }} RegisteredEntity */
+/** @typedef {{ entity: RegisteredEntity, api_key: string, owner_id: string, message: string, _note: string }} RegisterResult */
+
 export default function SignupPage() {
   const [form, setForm] = useState({ display_name: '', description: '', entity_type: 'agent' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(/** @type {RegisterResult | null} */ (null));
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   async function register(entityId) {

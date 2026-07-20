@@ -269,7 +269,11 @@ export function loadResults(resultsPath) {
     }
     const resultObject = { ...entry };
     delete resultObject.id;
-    const kind = ['valid', 'outcome', 'verdict', 'accepted'].find((name) => kinds.includes(name));
+    // kinds.length === 0 already refused above, and kinds is always a subset of this
+    // same list (see resultKinds), so find() is guaranteed to match here.
+    const kind = /** @type {string} */ (
+      ['valid', 'outcome', 'verdict', 'accepted'].find((name) => kinds.includes(name))
+    );
     const value = entry[kind];
     const normalized = kind === 'valid' ? value
       : kind === 'outcome' ? value === 'in_bounds'

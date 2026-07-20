@@ -43,8 +43,8 @@ const MOCK_EVENTS = [
 
 export default function EventsPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [events, setEvents] = useState([]);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [events, setEvents] = useState(/** @type {typeof MOCK_EVENTS} */ ([]));
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All Types');
 

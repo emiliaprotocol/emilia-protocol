@@ -50,8 +50,8 @@ const enforcementBadge = (mode) => {
 
 export default function PoliciesPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [policies, setPolicies] = useState([]);
+  const [error, setError] = useState(/** @type {string | null} */ (null));
+  const [policies, setPolicies] = useState(/** @type {typeof MOCK_POLICIES} */ ([]));
   const [search, setSearch] = useState('');
 
   useEffect(() => {

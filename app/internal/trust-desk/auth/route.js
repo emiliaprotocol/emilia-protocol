@@ -45,7 +45,10 @@ export async function GET(request) {
     return NextResponse.json({ error: 'trust desk bootstrap store unavailable' }, { status: 503 });
   }
 
-  const session = issueTrustDeskSession();
+  // TRUST_DESK_INTERNAL_TOKEN is confirmed present by the `expected` guard
+  // above, so issueTrustDeskSession()'s internal secret() cannot return null
+  // on this path and the session string is always produced.
+  const session = /** @type {string} */ (issueTrustDeskSession());
   const res = NextResponse.redirect(new URL('/internal/trust-desk', request.url));
   res.headers.set('Referrer-Policy', 'no-referrer');
   res.cookies.set(TRUST_DESK_SESSION_COOKIE, session, {

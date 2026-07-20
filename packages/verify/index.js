@@ -288,6 +288,7 @@ function hashPairV2(left, right) {
  * @returns {{ valid: boolean, checks: { version: boolean, signature: boolean, anchor: boolean|null }, error?: string }}
  */
 export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
+  /** @type {{ version: boolean, signature: boolean, anchor: boolean|null }} */
   const checks = { version: false, signature: false, anchor: null };
 
   if (!doc?.['@version'] || !SUPPORTED_VERSIONS.includes(doc['@version'])) {
@@ -418,6 +419,7 @@ const FLAG_UV = 0x04;
  * @returns {{ valid: boolean, checks: object, error?: string }}
  */
 export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts = {}) {
+  /** @type {{ challenge_binding: boolean, client_data_type: boolean, user_present: boolean, user_verified: boolean, rp_id_hash: boolean|null, signature: boolean }} */
   const checks = {
     challenge_binding: false,
     client_data_type: false,
@@ -1591,6 +1593,9 @@ export function evaluateAgentBinding(context, opts = {}) {
     return { present: false, fresh: null, age_seconds: null, reason: 'no_agent_binding' };
   }
   const d = (binding.delegation && typeof binding.delegation === 'object') ? binding.delegation : null;
+  /** @type {{present: boolean, agent_id?: string, delegation?: object|null,
+   *   evidence_hash?: string|null, observed_at?: string|null,
+   *   fresh: boolean|null, age_seconds: number|null, reason: string}} */
   const out = {
     present: true,
     agent_id: binding.agent_id,

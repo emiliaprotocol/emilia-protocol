@@ -207,7 +207,13 @@ const presentations = await Promise.all([0, 1].map(() => executor.evaluate({
   challenge,
   graph,
 })));
-const cleared = presentations.find((result) => result.verdict === 'clear_to_execute');
+// Exactly one of the two concurrent presentations against this single-use
+// challenge is guaranteed to clear (see evaluateRegisteredModelToMatterPresentation's
+// atomic challenge/action consumption); the other is refused. The type-checker
+// can't see that store-level invariant, so narrow explicitly.
+const cleared = /** @type {typeof presentations[number]} */ (
+  presentations.find((result) => result.verdict === 'clear_to_execute')
+);
 const refused = presentations.find((result) => result.verdict === 'do_not_execute_refused');
 rows.push(['first concurrent presentation', cleared?.verdict, 'clear_to_execute']);
 rows.push(['duplicate concurrent presentation', refused?.verdict, 'do_not_execute_refused']);

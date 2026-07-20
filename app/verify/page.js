@@ -125,12 +125,14 @@ async function verifyAny(doc) {
   return { kind: null };
 }
 
+/** @typedef {{ kind?: string|null, result?: any, error?: string, needKey?: boolean }} VerifyState */
+
 export default function VerifyPage() {
   const [input, setInput] = useState('');
-  const [state, setState] = useState(null); // { kind, result } | { error }
+  const [state, setState] = useState(/** @type {VerifyState|null} */(null)); // { kind, result } | { error }
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const fileRef = useRef(null);
+  const fileRef = useRef(/** @type {HTMLInputElement|null} */(null));
 
   const supported = typeof window === 'undefined' ? true : isSupported();
 

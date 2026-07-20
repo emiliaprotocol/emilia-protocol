@@ -516,6 +516,16 @@ function normalizedInput(operation, input, extraAllowed = [], extraRequired = ex
   }
 }
 
+/**
+ * @param {{
+ *   ok?: boolean,
+ *   type?: string,
+ *   code?: string,
+ *   operation?: string|null,
+ *   record?: Record<string, any>|null,
+ *   details?: any,
+ * }} params
+ */
 function outcome({
   ok = false,
   type = 'refused',
@@ -1115,6 +1125,9 @@ export function createActionEscrowKernel(options = {}) {
     }
   }
 
+  /**
+   * @param {Record<string, any>|null} record
+   */
   function operationInstant(record = null) {
     const at = instant();
     if (!at) return { error: 'invalid_clock' };
@@ -1494,20 +1507,24 @@ export function createActionEscrowKernel(options = {}) {
           });
         }
 
+        // normalizedInput() only omits `context` on its early `{ error }`
+        // returns, all of which are handled above via the `normalized.error`
+        // checks; once past those, `context` is always populated.
+        const normalizedContext = /** @type {Record<string, any>} */ (normalized.context);
         const record = {
           '@version': ACTION_ESCROW_STATE_VERSION,
           escrow_key: normalized.escrowKey,
           revision: 0,
           state: 'draft',
-          agreement_digest: normalized.context.agreement_digest,
+          agreement_digest: normalizedContext.agreement_digest,
           document_action_binding_digest:
-            normalized.context.document_action_binding_digest,
-          milestone_id: normalized.context.milestone_id,
-          release_action_digest: normalized.context.release_action_digest,
-          parties: normalized.context.parties,
-          parties_digest: normalized.context.parties_digest,
+            normalizedContext.document_action_binding_digest,
+          milestone_id: normalizedContext.milestone_id,
+          release_action_digest: normalizedContext.release_action_digest,
+          parties: normalizedContext.parties,
+          parties_digest: normalizedContext.parties_digest,
           profile: pinned.profile,
-          profile_digest: normalized.context.profile_digest,
+          profile_digest: normalizedContext.profile_digest,
           document_action_binding: {
             artifact: verification.artifact,
             verification: boundVerificationSummary(
@@ -1562,6 +1579,16 @@ export function createActionEscrowKernel(options = {}) {
     });
   }
 
+  /**
+   * @param {string} operation
+   * @param {Record<string, any>} input
+   * @param {{
+   *   extraAllowed?: string[],
+   *   extraRequired?: string[],
+   *   bindingMode?: string,
+   *   transform: (draft: Record<string, any>, normalized: Record<string, any>, at: string) => any,
+   * }} options
+   */
   async function mutate(
     operation,
     input,
@@ -1601,7 +1628,9 @@ export function createActionEscrowKernel(options = {}) {
         if (operationTime.error) {
           return outcome({ code: operationTime.error, operation, record });
         }
-        const { at } = operationTime;
+        // operationInstant() only omits `at` on its `{ error }` return,
+        // already handled above, so `at` is guaranteed present here.
+        const { at } = /** @type {{ at: string }} */ (operationTime);
 
         const draft = canonicalSnapshot(record);
         const decision = await transform(draft, normalized, at);
@@ -2116,6 +2145,9 @@ export function createActionEscrowKernel(options = {}) {
     }
   }
 
+  /**
+   * @param {{ artifact: any, verification: any } | null} providerResult
+   */
   function internalReleaseTransition(record, targetState, code, at, providerResult = null) {
     const next = canonicalSnapshot(record);
     const from = next.state;
@@ -2475,7 +2507,10 @@ export function createActionEscrowKernel(options = {}) {
           });
         }
         const { at } = operationTime;
-        const status = providerResult.verification.status;
+        const providerVerification = /** @type {{ status: string }} */ (
+          providerResult.verification
+        );
+        const status = providerVerification.status;
         const targetState = status === 'released'
           ? 'released'
           : status === 'not_released'
@@ -2491,7 +2526,7 @@ export function createActionEscrowKernel(options = {}) {
         draft.release.status = status === 'pending' ? 'indeterminate' : status;
         draft.release.reconciled_at = at;
         draft.release.provider_statement = providerResult.artifact;
-        draft.release.provider_verification = providerResult.verification;
+        draft.release.provider_verification = providerVerification;
         if (status === 'not_released' && draft.pending_amendment) {
           draft.funding = null;
           draft.milestone_evidence = null;

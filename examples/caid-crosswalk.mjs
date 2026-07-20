@@ -203,7 +203,9 @@ export function splicedChain() {
 /** (b) A binding record whose signature does not verify (one flipped char). */
 export function forgedBindingChain() {
   const chain = genuineChain();
-  const binding = chain.components.find((c) => c.type === 'scitt-statement').evidence.binding;
+  const binding = /** @type {{ evidence: { binding: { signature: string } } }} */ (
+    chain.components.find((c) => c.type === 'scitt-statement')
+  ).evidence.binding;
   binding.signature = (binding.signature[0] === 'A' ? 'B' : 'A') + binding.signature.slice(1);
   return chain;
 }
@@ -227,9 +229,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(`${C.b}CAID crosswalk${C.x} ${C.d}(one action, three native digests, one join point)${C.x}`);
   const legA = mintEpLeg(ACTION), legB = mintAp2Leg(ACTION), legC = mintScittLeg(ACTION);
   console.log(`  ${C.d}CAID (JCS action digest)         ${C.x} ${CAID.slice(0, 32)}…`);
-  console.log(`  ${C.d}Leg A native digest (EP)         ${C.x} ${hexOf(legA.binding.leg_digest).slice(0, 32)}… ${C.d}== CAID${C.x}`);
-  console.log(`  ${C.d}Leg B native digest (AP2-shaped) ${C.x} ${hexOf(legB.binding.leg_digest).slice(0, 32)}… ${C.d}(its own cart form)${C.x}`);
-  console.log(`  ${C.d}Leg C native digest (SCITT-style)${C.x} ${hexOf(legC.binding.leg_digest).slice(0, 32)}… ${C.d}(statement digest)${C.x}`);
+  console.log(`  ${C.d}Leg A native digest (EP)         ${C.x} ${/** @type {string} */ (hexOf(legA.binding.leg_digest)).slice(0, 32)}… ${C.d}== CAID${C.x}`);
+  console.log(`  ${C.d}Leg B native digest (AP2-shaped) ${C.x} ${/** @type {string} */ (hexOf(legB.binding.leg_digest)).slice(0, 32)}… ${C.d}(its own cart form)${C.x}`);
+  console.log(`  ${C.d}Leg C native digest (SCITT-style)${C.x} ${/** @type {string} */ (hexOf(legC.binding.leg_digest)).slice(0, 32)}… ${C.d}(statement digest)${C.x}`);
   show('1. Genuine crosswalk (all three legs bind the same CAID)', verifyCrosswalk(genuineChain()), true);
   show('2. Cross-binding splice (AP2 leg minted for a different purchase)', verifyCrosswalk(splicedChain()), false);
   show('3. Forged binding record (binding signature does not verify)', verifyCrosswalk(forgedBindingChain()), false);

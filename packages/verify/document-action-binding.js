@@ -113,6 +113,12 @@ function isRecord(value) {
     && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 }
 
+/**
+ * @param {unknown} value
+ * @param {Set<string>} allowed
+ * @param {Set<string>} [required]
+ * @returns {value is Record<string, any>}
+ */
 function exactKeys(value, allowed, required = allowed) {
   if (!isRecord(value)) return false;
   const keys = Object.keys(value);
@@ -299,6 +305,10 @@ function validateTerm(term) {
   return typeof term.value === 'string' && term.value.length > 0;
 }
 
+/**
+ * @param {unknown} terms
+ * @returns {{ok:true}|{ok:false,reason:string}}
+ */
 function validateMaterialTerms(terms) {
   if (!Array.isArray(terms) || terms.length === 0 || terms.length > MAX_TERMS) {
     return { ok: false, reason: 'invalid_material_terms' };
@@ -327,6 +337,10 @@ function amountFieldsValid(value) {
   return true;
 }
 
+/**
+ * @param {unknown} releaseAction
+ * @returns {{ok:true,digest:string}|{ok:false,reason:string}}
+ */
 function validateReleaseAction(releaseAction) {
   if (!exactKeys(releaseAction, new Set(['digest', 'template']))) {
     return { ok: false, reason: 'invalid_release_action' };
@@ -345,6 +359,11 @@ function validateReleaseAction(releaseAction) {
   return { ok: true, digest: computed };
 }
 
+/**
+ * @param {unknown} parties
+ * @param {string} label
+ * @returns {{ok:true}|{ok:false,reason:string}}
+ */
 function validatePartyArray(parties, label) {
   if (!Array.isArray(parties) || parties.length === 0 || parties.length > MAX_PARTIES) {
     return { ok: false, reason: `invalid_${label}` };
@@ -370,6 +389,11 @@ function validatePartyArray(parties, label) {
   return { ok: true };
 }
 
+/**
+ * @param {unknown} validity
+ * @param {number} now
+ * @returns {{ok:true}|{ok:false,reason:string}}
+ */
 function validateValidity(validity, now) {
   if (!exactKeys(validity, new Set(['not_before', 'not_after']))) {
     return { ok: false, reason: 'invalid_validity_window' };
@@ -385,6 +409,10 @@ function validateValidity(validity, now) {
   return { ok: true };
 }
 
+/**
+ * @param {unknown} binding
+ * @returns {Record<string, any>|null}
+ */
 function bindingCore(binding) {
   if (!isRecord(binding)) return null;
   const core = {};
@@ -398,6 +426,11 @@ function signingBytes(core) {
   return Buffer.from(DOCUMENT_ACTION_BINDING_DOMAIN + canonicalize(core), 'utf8');
 }
 
+/**
+ * @param {Record<string, any>|null} core
+ * @param {number} now
+ * @returns {{ok:true}|{ok:false,reason:string}}
+ */
 function validateCore(core, now) {
   if (!exactKeys(core, CORE_KEYS, CORE_REQUIRED)) return { ok: false, reason: 'malformed_binding' };
   if (core.profile !== DOCUMENT_ACTION_BINDING_VERSION) {
@@ -608,9 +641,13 @@ export function verifyDocumentActionBinding(binding, opts = {}) {
     if (issue) return { ...result, reason: 'noncanonical_binding' };
 
     const now = normalizeNow(isRecord(opts) ? opts.now : undefined);
-    const core = bindingCore(binding);
-    const coreCheck = validateCore(core, now);
+    const rawCore = bindingCore(binding);
+    const coreCheck = validateCore(rawCore, now);
     if (!coreCheck.ok) return { ...result, reason: coreCheck.reason };
+    // validateCore(ok:true) only returns true when rawCore passed exactKeys(),
+    // which requires rawCore to be a non-null record; the compiler can't see
+    // that cross-function invariant, so make it explicit here.
+    const core = /** @type {Record<string, any>} */ (rawCore);
 
     const mediaTypes = normalizedStringSet(opts.allowedMediaTypes);
     const partyRoles = normalizedStringSet(opts.allowedPartyRoles);
@@ -705,7 +742,9 @@ export function verifyDocumentActionBinding(binding, opts = {}) {
       if (expectedDigest !== core.document.digest) {
         return { ...result, reason: 'document_digest_mismatch' };
       }
-      if (expectedBytes.byteLength !== core.document.byte_length) {
+      // expectedDigest is only non-null when expectedBytes is non-null (see the
+      // ternary above); the compiler can't correlate the two variables.
+      if (/** @type {Buffer} */ (expectedBytes).byteLength !== core.document.byte_length) {
         return { ...result, reason: 'document_byte_length_mismatch' };
       }
     }

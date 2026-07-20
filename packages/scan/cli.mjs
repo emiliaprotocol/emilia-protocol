@@ -62,7 +62,14 @@ if (args.includes('--sample')) {
   input = ingest(raw.toString('utf8'));
 }
 
-const rep = scanActions(input.actions, { source: input.source, blindSpots: input.blindSpots });
+// scanActions' destructured `blindSpots = []` default (packages/scan/index.js) has no JSDoc,
+// so TS infers its type as `never[]` from the empty-array default alone; the real, already-true
+// type of this options object is `{ source: string, blindSpots: string[] }`. Cast at this call
+// boundary only — no runtime effect, no change to what gets passed or what scanActions does.
+const rep = scanActions(
+  input.actions,
+  /** @type {any} */ ({ source: input.source, blindSpots: input.blindSpots }),
+);
 const C = { gate: '\x1b[31m', fail: '\x1b[33m', pass: '\x1b[32m', dim: '\x1b[2m', b: '\x1b[1m', r: '\x1b[0m' };
 const badge = (d) => ({ gate: `${C.gate}REQUIRE RECEIPT${C.r}`, review_fail_closed: `${C.fail}REVIEW (fail-closed)${C.r}`, pass_through: `${C.pass}pass-through${C.r}`, review: `${C.dim}review${C.r}` }[d] || d);
 

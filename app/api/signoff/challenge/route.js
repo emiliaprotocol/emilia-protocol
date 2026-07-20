@@ -36,7 +36,9 @@ export async function POST(request) {
     // ── Schema validation (early gate) ────────────────────────────────
     const { valid, data, errors } = validateSignoffChallenge(body);
     if (!valid) {
-      return epError(EP_ERROR_CODES.INVALID_INPUT, errors.join('; '));
+      // validateSignoffChallenge returns { valid:false, errors } | { valid:true, data };
+      // errors is always populated here, TS just can't see it across the destructure.
+      return epError(EP_ERROR_CODES.INVALID_INPUT, /** @type {string[]} */ (errors).join('; '));
     }
 
     // ── Manual validation (belt-and-suspenders fallback) ──────────────

@@ -44,7 +44,11 @@ export async function GET(_request, { params }) {
   const actionHash = hashCanonicalAction(action);
 
   // ── The verdict: real engine for enforced verbs, labeled illustration otherwise ──
-  const verdict =
+  // Every 'illustrative'-mode scenario in lib/crash-scenarios.js defines
+  // illustrativeVerdict (only 'enforced' scenarios omit it, and those take the
+  // evaluateGuardPolicy() branch instead), so this is never actually undefined —
+  // the compiler just can't see that cross-object invariant in CRASH_SCENARIOS.
+  const verdict = /** @type {{ decision: string, reasons: string[], signoffRequired: boolean, aml_signals?: string[], requiredAssurance?: string }} */ (
     s.mode === 'enforced'
       ? evaluateGuardPolicy({
           organizationId: 'demo_org',
@@ -56,7 +60,8 @@ export async function GET(_request, { params }) {
           riskFlags: s.riskFlags,
           authStrength: 'service_account',
         })
-      : s.illustrativeVerdict;
+      : s.illustrativeVerdict
+  );
 
   const blocked = Boolean(verdict.signoffRequired) || verdict.decision === 'deny';
 

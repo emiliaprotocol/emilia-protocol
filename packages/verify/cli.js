@@ -119,13 +119,17 @@ if (args[0] === 'reliance-gap') {
         now: nowStr ?? undefined, packet_path: packetPath, profile_path: profilePath,
       });
     } else {
-      const names = readdirSync(profilesDir).filter((f) => f.endsWith('.json')).sort();
+      // Guarded above: the usage check rejects both-null and both-set, so in
+      // this branch (profilePath falsy) profilesDir is guaranteed a string.
+      const names = readdirSync(/** @type {string} */ (profilesDir)).filter((f) => f.endsWith('.json')).sort();
       if (names.length === 0) {
         console.error(`error: no .json profiles found in ${profilesDir}`);
         process.exit(1);
       }
       const profiles = names.map((name) => ({
-        label: name, profile: load(join(profilesDir, name)), path: join(profilesDir, name),
+        label: name,
+        profile: load(join(/** @type {string} */ (profilesDir), name)),
+        path: join(/** @type {string} */ (profilesDir), name),
       }));
       report = buildMultiPartyRelianceGapReport(packet, profiles, {
         now: nowStr ?? undefined, packet_path: packetPath, profiles_path: profilesDir,
@@ -278,7 +282,10 @@ for (const file of files) {
    * Heterogeneous verification result; the branches below assign one of several
    * verify-function shapes and the reporting code duck-types the fields it reads
    * (guarded by Array.isArray / typeof checks). Typed as an open map accordingly.
-   * @type {Record<string, any>}
+   * Starts null as a per-branch "not yet assigned" sentinel; every branch below
+   * (other than the final unrecognized-document `continue`) assigns a non-null
+   * value before it is read at `result.valid` and beyond.
+   * @type {Record<string, any> | null}
    */
   let result = null;
 

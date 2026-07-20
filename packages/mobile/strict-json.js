@@ -71,9 +71,17 @@ export function strictJsonGate(raw) {
       const value = readString();
       if (reason) return { ok: false, reason };
       if (isKey) {
-        if (top.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
-        top.keys.add(value);
-        top.expectsKey = false;
+        // isKey is only true when top is defined and is an object frame
+        // (isKey = Boolean(top?.object && top.expectsKey) above), so this
+        // narrows the type the compiler can't infer through the boolean.
+        const objectFrame = /** @type {{ object: true, keys: Set<string>, expectsKey: boolean }} */ (top);
+        // readString() returns null only on a failure path that also sets
+        // `reason`, and we already returned above when `reason` is truthy,
+        // so `value` is guaranteed to be a string here.
+        const key = /** @type {string} */ (value);
+        if (objectFrame.keys.has(key)) return { ok: false, reason: 'duplicate object member name' };
+        objectFrame.keys.add(key);
+        objectFrame.expectsKey = false;
       }
     } else {
       index += 1;

@@ -77,6 +77,10 @@ const CAID_RE = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{
  * @property {number|(() => number)} [now]
  */
 
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, any>}
+ */
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -210,6 +214,13 @@ function valueAtPath(action, path) {
   return value;
 }
 
+/**
+ * @param {object} capability
+ * @param {object} action
+ * @param {string} operationId
+ * @param {object} [options]
+ * @param {Function|null} [options.resolveCaid]
+ */
 export function verifyCapabilityScope(capability, action, operationId, { resolveCaid = null } = {}) {
   try {
     const scope = normalizeCapabilityScope(capability?.scope);
@@ -450,7 +461,13 @@ export function mintCapabilityReceipt(baseReceipt, {
   });
 }
 
-/** Verify the issuer signature and immutable capability metadata. */
+/**
+ * Verify the issuer signature and immutable capability metadata.
+ * @param {object} capabilityReceipt
+ * @param {object} [options]
+ * @param {string[]} [options.trustedIssuerKeys]
+ * @param {boolean} [options.allowUntrustedIssuer]
+ */
 export function verifyCapabilityReceipt(capabilityReceipt, {
   trustedIssuerKeys = [],
   allowUntrustedIssuer = false,
@@ -761,12 +778,12 @@ export function createPostgresCapabilityStore({ transaction } = {}) {
         if (at >= Date.parse(state.expires_at)) return { ok: false, reason: 'capability_expired' };
         if (currency !== state.currency) return { ok: false, reason: 'currency_mismatch' };
         const available = Number(state.budget_amount) - Number(state.consumed_amount) - Number(state.reserved_amount);
-        if (!Number.isSafeInteger(available) || available < amount) return { ok: false, reason: 'budget_exceeded' };
+        if (!Number.isSafeInteger(available) || available < /** @type {number} */ (amount)) return { ok: false, reason: 'budget_exceeded' };
         const token = randomUUID();
         const reserved = await query(CAPABILITY_SQL.reserveState, [capabilityId, amount]);
         if (reserved?.rowCount !== 1) return { ok: false, reason: 'budget_reservation_conflict' };
         await query(CAPABILITY_SQL.insertOperation, [operationId, capabilityId, actionDigest, amount, currency, token, new Date(at).toISOString()]);
-        return { ok: true, operation_id: operationId, reservation_token: token, remaining: available - amount };
+        return { ok: true, operation_id: operationId, reservation_token: token, remaining: available - /** @type {number} */ (amount) };
       });
     },
     /** @param {CommitSpendOptions} [options] */
@@ -862,7 +879,7 @@ function capabilityAmount(action, capability, verifiedAction = action) {
  * @param {string[]} [options.trustedIssuerKeys]
  * @param {Function|null} [options.verifyBaseReceipt]
  * @param {Function|null} [options.resolveCaid]
- * @param {string} [options.operationId]
+ * @param {string|null} [options.operationId]
  * @param {number|(() => number)} [options.now]
  * @param {boolean} [options.thresholdSecretVerified]
  */
@@ -897,7 +914,7 @@ export async function executeWithCapability({
   let scope;
   try {
     immutableAction = deepFreeze(structuredClone(observedAction ?? action));
-    scope = verifyCapabilityScope(verified.capability, immutableAction, operationId, { resolveCaid });
+    scope = verifyCapabilityScope(verified.capability, immutableAction, /** @type {string} */ (operationId), { resolveCaid });
   } catch {
     return { ok: false, reason: 'capability_action_invalid' };
   }

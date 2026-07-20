@@ -16,6 +16,7 @@ const receiptPath = process.env.EP_RECEIPT;
 const explicitKey = (process.env.EP_PUBLIC_KEY || '').trim();
 const keysUrl = process.env.EP_KEYS_URL || 'https://www.emiliaprotocol.ai/.well-known/ep-keys.json';
 
+/** @returns {never} */
 function fail(code, msg) {
   console.error(`::error::${msg}`);
   process.exit(code);

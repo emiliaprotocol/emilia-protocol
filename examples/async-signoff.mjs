@@ -40,13 +40,13 @@ function decide(call) {
     // This demo classifier doesn't carry tenant/actor/auth-strength context yet;
     // evaluateGuardPolicy tolerates the other fields being absent at runtime
     // (basePolicy defaults them via `|| []`/optional-chaining) — cast only.
-    return evaluateGuardPolicy(/** @type {Parameters<typeof evaluateGuardPolicy>[0]} */ ({
+    return evaluateGuardPolicy(/** @type {Parameters<typeof evaluateGuardPolicy>[0]} */ (/** @type {unknown} */ ({
       actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
       amount: call.args.amount,
       actorRole: 'ai_agent',
       targetChangedFields: [],
       riskFlags: [],
-    }));
+    })));
   }
   return { decision: 'allow', signoffRequired: false }; // lookups, reads, low-risk
 }

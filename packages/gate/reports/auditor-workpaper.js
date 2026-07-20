@@ -220,7 +220,7 @@ export function buildAuditWorkpaper(entries = [], {
     throw new Error('audit workpaper: periodStart and periodEnd must be ISO timestamps or epoch ms');
   }
   if (endMs <= startMs) throw new Error('audit workpaper: empty or inverted period (periodEnd must be after periodStart)');
-  if (!Number.isInteger(sampleSize) || sampleSize < 1) {
+  if (!Number.isInteger(sampleSize) || /** @type {number} */ (sampleSize) < 1) {
     throw new Error('audit workpaper: sampleSize must be a positive integer');
   }
   if (!nonEmptyString(sampleSeed)) {
@@ -260,7 +260,7 @@ export function buildAuditWorkpaper(entries = [], {
   const keyed = population
     .map((e) => ({ e, key: sha256hex(sampleSeed + e.hash) }))
     .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : (a.e.hash < b.e.hash ? -1 : 1)));
-  const fullPopulation = sampleSize >= population.length;
+  const fullPopulation = /** @type {number} */ (sampleSize) >= population.length;
   const selected = fullPopulation ? keyed : keyed.slice(0, sampleSize);
 
   const testedItems = selected.map(({ e }) => testItem(e));

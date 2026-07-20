@@ -138,6 +138,7 @@ export function requireReceiptForLangChainTool(tool, opts = {}) {
 
   const gatedInvoke = async (input, config, ...rest) => {
     const receipt = getReceipt(input, config);
+    /** @type {string | null | undefined} */
     let boundAction = action;
     if (actionFor) {
       try {

@@ -150,7 +150,7 @@ export function verifySignedProviderEvidence(evidence, {
       null,
       Buffer.from(canonicalize(evidence.body), 'utf8'),
       createPublicKey({
-        key: Buffer.from(pinnedProviderKey, 'base64url'),
+        key: Buffer.from(/** @type {string} */ (pinnedProviderKey), 'base64url'),
         format: 'der',
         type: 'spki',
       }),

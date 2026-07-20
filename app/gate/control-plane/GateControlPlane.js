@@ -26,9 +26,24 @@ function State({ good, children }) {
   return <span className={good ? styles.good : styles.bad}><Icon size={13} aria-hidden="true" />{children}</span>;
 }
 
+/**
+ * Shape returned by GET /api/v1/gate/control-plane-scenario, per
+ * lib/gate/control-plane-reference.js `runGateControlPlaneReference`.
+ * @typedef {{
+ *   action?: { action_type?: string, site_id?: string, target_kw?: number, duration_seconds?: number, action_nonce?: string },
+ *   action_digest?: string,
+ *   planes?: {
+ *     enforcement?: { state?: string, reason?: string, deployment_attested?: boolean, refusal_probe_verified?: boolean, bypass_probe_verified?: boolean },
+ *     witness?: { verified?: boolean, witness_id?: string, capture_point_id?: string, sequence?: number, payload_captured?: boolean, statement_digest?: string|null },
+ *     control?: { coverage_complete?: boolean, coverage_bps?: number, settlement_verdict?: string, settlement_eligible?: boolean, usage_complete?: boolean, protected_actions?: number },
+ *   },
+ *   hashes?: Record<string, string>,
+ * }} ControlPlaneScenario
+ */
+
 export default function GateControlPlane() {
   const [mode, setMode] = useState('complete');
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(/** @type {ControlPlaneScenario | null} */ (null));
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
 

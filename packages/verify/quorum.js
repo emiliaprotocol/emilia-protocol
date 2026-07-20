@@ -181,7 +181,12 @@ export function verifyQuorum(quorum, opts = {}) {
       const seqRolesOk = eligible.every((e, idx) => members[idx]?.role === e.role
         && members[idx]?.signoff?.context?.approver === e.approver);
       const times = issuedAts.slice(0, eligible.length);
-      const timesOk = times.every((t, idx) => t !== null && (idx === 0 || t > times[idx - 1]));
+      // Array.prototype.every only invokes this callback for `idx` once every
+      // prior callback (0..idx-1) returned truthy — so for idx > 0, the
+      // `t !== null` check at idx-1 already guaranteed times[idx - 1] is a
+      // number. The compiler can't see across that sequential guarantee.
+      const timesOk = times.every((t, idx) => t !== null
+        && (idx === 0 || t > /** @type {number} */ (times[idx - 1])));
       checks.order_satisfied = members.length >= eligible.length && seqRolesOk && timesOk;
     } else {
       checks.order_satisfied = true; // not applicable in threshold mode

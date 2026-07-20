@@ -18,6 +18,9 @@ import fs from 'node:fs';
 import { parseArgs } from 'node:util';
 import { verifyExternalVerificationStatement } from '../../packages/gate/reports/external-verification.js';
 
+/**
+ * @returns {never} always exits the process; never returns to the caller.
+ */
 function refuse(reason, detail) {
   process.stderr.write(`REFUSED (${reason})${detail ? `: ${detail}` : ''}\n`);
   process.exit(1);

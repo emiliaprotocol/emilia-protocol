@@ -324,7 +324,7 @@ export function verifyActionEscrowStateStatement(statement, {
     const signatureBytes = strictBase64url(statement.signature.signature_b64u, 64);
     let publicKey = null;
     try {
-      publicKey = crypto.createPublicKey({ key: publicBytes, format: 'der', type: 'spki' });
+      publicKey = crypto.createPublicKey({ key: /** @type {Buffer} */ (publicBytes), format: 'der', type: 'spki' });
     } catch {
       publicKey = null;
     }

@@ -22,6 +22,7 @@
 import { readFileSync } from 'node:fs';
 import { buildAssurancePackage, reperformAssurancePackage, renderAssuranceWorkpaper } from './reports/assurance-package.js';
 
+/** @returns {never} */
 function fail(msg) { process.stderr.write(`ep-assure: ${msg}\n`); process.exit(2); }
 
 const args = process.argv.slice(2);

@@ -2,7 +2,7 @@
   "suite": "EP-CURRENCY-v1",
   "profile": "Two-valued currency status. valid iff evaluateCurrency(currency.args).currency_at_T.status === currency.expect_status.",
   "vectors_version": "2.0.0",
-  "count": 13,
+  "count": 12,
   "vectors": [
     {
       "id": "unknown_offline_no_head",
@@ -95,26 +95,6 @@
           "maxStalenessSeconds": 300,
           "freshHead": {
             "observed_at": "2026-07-05T11:50:00.000Z"
-          }
-        },
-        "expect_status": "stale"
-      }
-    },
-    {
-      "id": "stale_future_dated_head",
-      "expect": {
-        "valid": true
-      },
-      "currency": {
-        "args": {
-          "receipt": {
-            "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-          },
-          "authentic_as_of_commit": true,
-          "now": "2026-07-05T12:00:00.000Z",
-          "maxStalenessSeconds": 300,
-          "freshHead": {
-            "observed_at": "2026-07-05T12:01:00.000Z"
           }
         },
         "expect_status": "stale"

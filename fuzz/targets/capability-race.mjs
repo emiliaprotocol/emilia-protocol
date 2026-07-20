@@ -102,6 +102,7 @@ export default {
       const operationId = `op-${iteration}-${i}`;
       const amount = rng.int(1, maxBid);
       const kind = rng.pick(['normal', 'normal', 'normal', 'double-commit', 'wrong-token']);
+      /** @type {{ reserved: boolean, token: string | null }} */
       const state = { reserved: false, token: null };
 
       const reserveStep = async () => {
@@ -116,7 +117,9 @@ export default {
         });
         if (r.ok) {
           state.reserved = true;
-          state.token = r.reservation_token;
+          // r.ok===true here, so the store always populated reservation_token;
+          // the union return type just doesn't let TS see that.
+          state.token = /** @type {string} */ (r.reservation_token);
           invariant(typeof r.reservation_token === 'string' && r.reservation_token.length >= 16,
             'reservation-token-shape', `token=${r.reservation_token}`);
         } else {
@@ -133,7 +136,8 @@ export default {
         const c = await store.commitSpend({
           capabilityId,
           operationId,
-          reservationToken: state.token,
+          // state.reserved guards this: token is set alongside it, never null here.
+          reservationToken: /** @type {string} */ (state.token),
           now: clock,
         });
         invariant(c.ok, 'commit-owner', `owner commit refused: ${c.reason}`);
@@ -151,7 +155,8 @@ export default {
           const again = await store.commitSpend({
             capabilityId,
             operationId,
-            reservationToken: state.token,
+            // state.reserved guards this: token is set alongside it, never null here.
+            reservationToken: /** @type {string} */ (state.token),
             now: clock,
           });
           invariant(!again.ok && again.reason === 'capability_operation_already_finalized',

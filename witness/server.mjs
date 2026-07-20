@@ -137,7 +137,10 @@ function cosignCheckpoint(checkpoint, identity) {
 
 export function createServer(identity) {
   return http.createServer((req, res) => {
-    const url = new URL(req.url, 'http://witness.local');
+    // req.url is typed string | undefined by Node (IncomingMessage is shared
+    // with client-response use), but for a server 'request' callback it is
+    // always populated by the time this handler runs.
+    const url = new URL(/** @type {string} */ (req.url), 'http://witness.local');
 
     if (req.method === 'GET' && url.pathname === '/healthz') {
       return sendJson(res, 200, { ok: true });

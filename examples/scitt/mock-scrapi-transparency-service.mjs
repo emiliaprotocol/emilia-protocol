@@ -176,7 +176,7 @@ async function createMockScrapiTransparencyService({ port = 0 } = {}) {
   const entries = [];
   const serviceKeys = crypto.generateKeyPairSync('ed25519');
   const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://127.0.0.1');
+    const url = new URL(/** @type {string} */ (req.url), 'http://127.0.0.1');
     if (req.method === 'POST' && url.pathname === '/entries') {
       const statement = await readBody(req);
       if (!/^application\/cose\b/i.test(req.headers['content-type'] || '')) {
@@ -207,7 +207,10 @@ async function createMockScrapiTransparencyService({ port = 0 } = {}) {
   return {
     url: `http://127.0.0.1:${address.port}`,
     publicKey: serviceKeys.publicKey,
-    close: () => new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve()))),
+    close: () =>
+      /** @type {Promise<void>} */ (
+        new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())))
+      ),
   };
 }
 

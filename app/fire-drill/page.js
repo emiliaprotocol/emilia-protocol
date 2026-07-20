@@ -42,8 +42,8 @@ const EXAMPLE_SAFE = JSON.stringify({
 
 export default function FireDrillPage() {
   const [text, setText] = useState(EXAMPLE_VULNERABLE);
-  const [report, setReport] = useState(null);
-  const [error, setError] = useState(null);
+  const [report, setReport] = useState(/** @type {ReturnType<typeof scan> | null} */ (null));
+  const [error, setError] = useState(/** @type {string | null} */ (null));
   const [busy, setBusy] = useState(false);
 
   function run() {

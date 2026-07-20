@@ -96,7 +96,10 @@ for (const c of cases) {
 
   const aloneExec = dangerous.length; // agent alone: each irreversible call executes
   const emiliaExec = dangerous.filter((d) => {
-    const decision = evaluateGuardPolicy(toGuardInput(d.name, d.args));
+    // dangerous only contains entries where toGuardInput(x.name, x.args) was truthy (see filter above);
+    // toGuardInput is a pure function of name/args, so this repeat call is provably non-null.
+    const guardInput = /** @type {NonNullable<ReturnType<typeof toGuardInput>>} */ (toGuardInput(d.name, d.args));
+    const decision = evaluateGuardPolicy(guardInput);
     return !(decision.signoffRequired || decision.decision === 'deny'); // executes only if NOT gated
   }).length;
 

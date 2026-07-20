@@ -29,7 +29,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:45a07e13aa3765f2
+//   source: @emilia-protocol/require-receipt@0.6.1  ·  content-sha256:fa0eba0951ca8b89
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -123,9 +123,17 @@ function strictJsonGate(raw) {
       const value = readString();
       if (reason) return { ok: false, reason };
       if (isKey) {
-        if (top.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
-        top.keys.add(value);
-        top.expectsKey = false;
+        // `isKey` is only true when `top?.object && top.expectsKey` held above,
+        // which guarantees `top` is a defined object-frame here; narrow the
+        // type for the compiler without altering the runtime reference.
+        const frame = /** @type {{ object: true, keys: Set<string>, expectsKey: boolean }} */ (top);
+        // `readString()` only ever returns null on a path that also sets
+        // `reason`, and the `if (reason) return` above already exited in
+        // that case, so `value` is guaranteed to be a string here.
+        const key = /** @type {string} */ (value);
+        if (frame.keys.has(key)) return { ok: false, reason: 'duplicate object member name' };
+        frame.keys.add(key);
+        frame.expectsKey = false;
       }
     } else {
       index += 1;

@@ -347,7 +347,10 @@ function webauthnMember({ role, approver, key, nonce }) {
   const context = {
     ep_version: '1.0',
     context_type: 'ep.signoff.v1',
-    action_hash: computed.digest.slice('sha256:'.length),
+    // computed.digest is guaranteed set by the module-level `if (!computed.caid) throw`
+    // guard above (both fields are populated together on the success branch of
+    // computeCaid); the compiler can't see that guard across this closure.
+    action_hash: /** @type {string} */ (computed.digest).slice('sha256:'.length),
     policy: 'policy_cross_standard_quorum',
     nonce,
     approver,
@@ -407,7 +410,9 @@ function buildEpQuorum() {
   return {
     quorum: {
       '@type': 'ep.quorum',
-      action_hash: computed.digest.slice('sha256:'.length),
+      // See the guard note in webauthnMember(): computed.digest is always
+      // set once computed.caid is truthy.
+      action_hash: /** @type {string} */ (computed.digest).slice('sha256:'.length),
       policy,
       members,
     },
@@ -439,11 +444,15 @@ function baseVector(id, description) {
     description,
     expected_action: clone(MATERIAL_ACTION),
     expected_caid: { value: computed.caid, digest: computed.digest },
-    relying_party_requirement: REQUIREMENT,
+    // Widened to the true type: individual vectors below deliberately null this
+    // out to exercise the "relying party supplied no requirement" refusal path.
+    relying_party_requirement: /** @type {string | null} */ (REQUIREMENT),
     presentations: 1,
     agentroa,
     orprg,
-    ep: buildEpQuorum(),
+    // Widened to the true type: the approval_state_only vector below deliberately
+    // nulls out `quorum` to exercise the "human evidence missing" refusal path.
+    ep: /** @type {{ quorum: any, profile: any }} */ (buildEpQuorum()),
     mapping: {
       agentroa: {
         profile: clone(AGENTROA_PROFILE),
@@ -456,7 +465,9 @@ function baseVector(id, description) {
         expected_profile_hash: mappingProfileHash(ORPRG_PROFILE),
       },
     },
-    expect: { valid: true, first_valid: true, reason: null },
+    // reason is widened to its true type: individual vectors below set a
+    // specific refusal-reason string when they override `expect`.
+    expect: { valid: true, first_valid: true, reason: /** @type {string | null} */ (null) },
   };
 }
 
@@ -533,6 +544,10 @@ const output = {
   vectors,
 };
 
+/**
+ * @param {*} value
+ * @param {string | null} [parentKey]
+ */
 function normalizeP256Signatures(value, parentKey = null) {
   if (Array.isArray(value)) {
     return value.map((item) => normalizeP256Signatures(item));

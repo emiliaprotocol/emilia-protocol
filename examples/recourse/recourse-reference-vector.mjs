@@ -108,7 +108,10 @@ export function verifyRecourse(ref, { presentedSubjectDigest, presentedReceiptPa
     // 3. bound to a GENUINE authorization (the presented receipt's payload digest)
     checks.authorization_binding = ref.authorization.receipt_payload_digest === presentedReceiptPayloadDigest;
     // 4. action time within the coverage window
-    const t = Date.parse(atTime);
+    // atTime is optional (@param {string} [opts.atTime]); Date.parse tolerates
+    // undefined at runtime (coerces to "undefined" -> NaN), which the
+    // !Number.isNaN(t) check below already handles as fail-closed.
+    const t = Date.parse(/** @type {string} */ (atTime));
     checks.within_window = !Number.isNaN(t)
       && t >= Date.parse(ref.coverage.window.not_before)
       && t <= Date.parse(ref.coverage.window.not_after);

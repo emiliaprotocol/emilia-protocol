@@ -37,7 +37,10 @@ export function createGovernmentMobileController({
 
   async function isAuthorized(input) {
     try {
-      return (await authorize(input)) === true;
+      // `authorize` is validated as a function above (throws otherwise) before this
+      // closure can ever be invoked; TS can't see that guarantee across the closure.
+      const authorizeFn = /** @type {(input: *) => *} */ (authorize);
+      return (await authorizeFn(input)) === true;
     } catch {
       return false;
     }

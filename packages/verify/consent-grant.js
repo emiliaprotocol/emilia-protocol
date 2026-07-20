@@ -174,7 +174,7 @@ function refuseGrant(reason, checks) {
  * EP status.
  *
  * @param {object} grant  the EP-CONSENT-GRANT-v1 object.
- * @param {string} pinnedPrincipalKey  the principal's Ed25519 public key,
+ * @param {string|undefined} pinnedPrincipalKey  the principal's Ed25519 public key,
  *   base64url SPKI DER. REQUIRED — absent => refuse (unpinned).
  * @param {object} [opts]
  * @param {number|string|Date} [opts.now]  reference time for the validity window;

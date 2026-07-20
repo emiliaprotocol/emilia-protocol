@@ -22,6 +22,10 @@ export function assertArtifactBytesMatch(expected, observed) {
   return crypto.createHash('sha256').update(left).digest('hex');
 }
 
+/**
+ * @param {string} [packagePath]
+ * @param {{ outDir?: string | null }} [options]
+ */
 export function verifyReproduciblePackage(packagePath = 'packages/verify', { outDir = null } = {}) {
   const packageDir = path.resolve(ROOT, packagePath);
   const packageJsonPath = path.join(packageDir, 'package.json');
