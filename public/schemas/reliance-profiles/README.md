@@ -24,6 +24,7 @@ pinned by the relying party). Both are separate fields on the verifier result.
 |---|---|---|---|
 | `ncpdp.specialty-pa.v1` | NCPDP specialty medication prior auth | class_a | 3600s |
 | `cms.prior-auth.v1` | CMS prior authorization (medical) | class_a | 900s |
+| `medi-cal.hospice-integrity.v1` | Synthetic Medi-Cal hospice authorization and claim-payment integrity | class_a | 900s |
 
 These are seed profiles. They are individual, versioned artifacts, not a
 regulatory endorsement of any kind.

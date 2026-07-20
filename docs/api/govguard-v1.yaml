@@ -172,6 +172,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/TrustReceipt'
 
+  /api/v1/adapters/health/hospice-claim/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a PHI-free hospice authorization and claim-payment action
+      description: |
+        Binds the exact provider, pseudonymous member reference, service period,
+        authorization digest, amount, payment-destination digest, named reviewer,
+        authority proof, and policy under
+        `health.medi-cal.hospice-claim-payment.1`. Requires authenticated tenant
+        context and deployment-configured durable state and trust adapters.
+      operationId: precheckHealthHospiceClaim
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, action, authorization]
+              properties:
+                organization_id: { type: string }
+                action: { type: object }
+                authorization: { type: object }
+      responses:
+        '201': { description: Exact action prepared as one bounded operation }
+        '409': { description: Action mismatch, conflict, or replay refused }
+        '422': { description: Authorization or authority requirement unsatisfied }
+        '503': { description: Durable state or verifier dependency unavailable }
+
+  /api/v1/adapters/health/hospice-claim/reconcile:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Reconcile an indeterminate hospice claim operation
+      description: |
+        Authenticates provider evidence for the same operation, CAID, and
+        idempotency key. This endpoint never retries the claim.
+      operationId: reconcileHealthHospiceClaim
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id, operation_id, evidence]
+              properties:
+                organization_id: { type: string }
+                operation_id: { type: string }
+                evidence: { type: object }
+      responses:
+        '200': { description: Authenticated terminal reconciliation recorded }
+        '400': { description: Malformed or unauthenticated evidence }
+        '409': { description: Reconciliation conflict or replay refused }
+        '503': { description: Durable state or verifier dependency unavailable }
+
   /api/v1/adapters/gov/eligibility-override/precheck:
     post:
       tags: [Adapter Prechecks]

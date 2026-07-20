@@ -445,6 +445,130 @@ paths:
         '503':
           description: Evidence write failed in enforce or strict-evidence mode.
 
+  /api/v1/adapters/health/hospice-claim/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck one synthetic hospice authorization and claim-payment action
+      description: |
+        Authenticated, tenant-bound Program Integrity Gate adapter. It binds a
+        PHI-free exact action under
+        `health.medi-cal.hospice-claim-payment.1`, verifies the supplied
+        action-bound authorization through the configured engine, and either
+        prepares one single-use operation or refuses fail-closed. A deployment
+        must configure durable state, reviewer-authority resolution, provider
+        trust pins, and its executor adapter; the public reference page uses
+        deterministic synthetic fixtures and does not call this endpoint.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [organization_id, action, authorization]
+              properties:
+                organization_id:
+                  type: string
+                action:
+                  type: object
+                  description: PHI-free exact action. Raw patient, clinical, authorization-form, and destination data are refused.
+                  required:
+                    - '@version'
+                    - profile_id
+                    - action_type
+                    - organization_id
+                    - provider_npi
+                    - member_ref
+                    - service_period_start
+                    - service_period_end
+                    - authorization_form_digest
+                    - amount
+                    - currency
+                    - payment_destination_digest
+                    - reviewer_id
+                    - authority_proof_digest
+                    - policy_id
+                    - policy_version
+                    - policy_hash
+                  properties:
+                    '@version': { type: string, enum: [EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1] }
+                    profile_id: { type: string, enum: [medi-cal.hospice-integrity.v1] }
+                    action_type: { type: string, enum: [health.medi-cal.hospice-claim-payment.1] }
+                    organization_id: { type: string }
+                    provider_npi: { type: string, pattern: '^[0-9]{10}$' }
+                    member_ref: { type: string, description: Pairwise pseudonymous SHA-256 member reference. }
+                    service_period_start: { type: string, format: date }
+                    service_period_end: { type: string, format: date }
+                    authorization_form_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                    amount: { type: string, pattern: '^(0|[1-9][0-9]*)\.[0-9]{2}$' }
+                    currency: { type: string, enum: [USD] }
+                    payment_destination_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                    reviewer_id: { type: string }
+                    authority_proof_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                    policy_id: { type: string }
+                    policy_version: { type: integer, minimum: 1 }
+                    policy_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+                authorization:
+                  type: object
+                  description: Action-bound, expiring authorization evidence; raw authorization documents are refused.
+      responses:
+        '201':
+          description: Exact action is ready as one bounded operation.
+        '400':
+          description: Malformed, unsupported, or prohibited-PHI input.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant binding failed.
+        '409':
+          description: Exact-action mismatch, conflict, or replay.
+        '422':
+          description: Authorization, authority, or policy requirement was not satisfied.
+        '503':
+          description: Durable state or a required verifier dependency is unavailable.
+
+  /api/v1/adapters/health/hospice-claim/reconcile:
+    post:
+      tags: [GovGuard]
+      summary: Reconcile an indeterminate hospice claim operation
+      description: |
+        Accepts only deployment-authenticated provider evidence for an existing
+        indeterminate operation. It is not a retry endpoint: mismatched,
+        unauthenticated, conflicting, or replayed evidence is refused.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [organization_id, operation_id, evidence]
+              properties:
+                organization_id: { type: string }
+                operation_id: { type: string }
+                evidence:
+                  type: object
+                  description: Provider-signed, exact-operation and exact-CAID outcome evidence with no raw PHI.
+      responses:
+        '200':
+          description: Authenticated reconciliation reached a terminal executed or not-executed state.
+        '400':
+          description: Malformed, mismatched, unauthenticated, or prohibited-PHI evidence.
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant binding failed.
+        '409':
+          description: Reconciliation conflict or replay.
+        '422':
+          description: Operation is not eligible for reconciliation.
+        '503':
+          description: Durable state or a required verifier dependency is unavailable.
+
   /api/v1/adapters/gov/eligibility-override/precheck:
     post:
       tags: [GovGuard]
