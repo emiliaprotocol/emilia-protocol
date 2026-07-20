@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// EP Class A signoff — the approval surface. /signoff/[signoffId]?approver=...
+// EP Class A signoff — the approval surface. /signoff/[signoffId]
 //
 // WYSIWYS (draft §11.3 control 1): every field below renders from the
 // canonical action object persisted at mint — the exact bytes the action
@@ -42,10 +42,8 @@ function Row({ k, v, monoVal }) {
   );
 }
 
-export default async function SignoffPage({ params, searchParams }) {
+export default async function SignoffPage({ params }) {
   const { signoffId } = await params;
-  const sp = await searchParams;
-  const approverId = typeof sp?.approver === 'string' ? sp.approver : '';
 
   if (!SIGNOFF_ID_PATTERN.test(signoffId || '')) {
     return (
@@ -102,11 +100,10 @@ export default async function SignoffPage({ params, searchParams }) {
     : null;
   const base = created?.after_state || {};
   const action = base.canonical_action || null;
-  const rolloutLines = action
-    ? renderAction(action).lines.filter(
-        ({ label: lineLabel }) => lineLabel === 'Executing key ID' || lineLabel.startsWith('Rollout '),
-      )
-    : [];
+  const rendered = action ? renderAction(action) : null;
+  const intendedApproverId = requestEvent.after_state.approver_id
+    || requestEvent.after_state.quorum?.approver_id
+    || '';
   const expired = new Date(requestEvent.after_state.expires_at) < new Date();
   const status = decided
     ? (decided.event_type === 'guard.signoff.approved' ? 'approved' : 'rejected')
@@ -121,7 +118,8 @@ export default async function SignoffPage({ params, searchParams }) {
     );
   }
 
-  const amount = typeof base.amount === 'number' ? base.amount : null;
+  const amount = typeof action?.amount === 'number' ? action.amount : null;
+  const currency = typeof action?.currency === 'string' ? action.currency : null;
 
   return (
     <div style={wrap}>
@@ -132,7 +130,7 @@ export default async function SignoffPage({ params, searchParams }) {
         </h1>
         {amount !== null && (
           <div style={{ ...mono, fontSize: 40, fontWeight: 700, margin: '12px 0 4px' }}>
-            {amount.toLocaleString(undefined, { style: 'currency', currency: base.currency || 'USD' })}
+            {currency || 'Amount'} {amount}
           </div>
         )}
         <p style={{ color: '#8A857C', fontSize: 13, marginTop: 4 }}>
@@ -140,21 +138,19 @@ export default async function SignoffPage({ params, searchParams }) {
         </p>
 
         <div style={{ margin: '20px 0 8px' }}>
-          {action ? (
+          {rendered ? (
             <>
-              <Row k="Target" v={action.target_resource_id} monoVal />
-              <Row k="Organization" v={action.organization_id} monoVal />
-              <Row k="Initiator (agent)" v={action.actor_id} monoVal />
-              <Row k="Policy" v={action.policy_id} monoVal />
-              <Row k="Requested" v={action.requested_at} monoVal />
-              {rolloutLines.map(({ label: lineLabel, value }) => (
+              {rendered.lines.map(({ label: lineLabel, value }) => (
                 <Row key={lineLabel} k={lineLabel} v={value} monoVal />
               ))}
-              <Row k="Expires" v={requestEvent.after_state.expires_at} monoVal />
-              {(base.risk_flags || []).length > 0 && (
-                <Row k="Risk signals" v={(base.risk_flags || []).join(' · ')} />
+              {action.action_caid && (
+                <Row k="Canonical action identifier" v={action.action_caid} monoVal />
               )}
-              <Row k="Action hash" v={`${(base.action_hash || '').slice(0, 16)}…`} monoVal />
+              <Row k="Intended approver" v={intendedApproverId || '∅'} monoVal />
+              <Row k="Expires" v={requestEvent.after_state.expires_at} monoVal />
+              <Row k="Action hash" v={base.action_hash || rendered.action_hash} monoVal />
+              <Row k="Display hash" v={rendered.display_hash} monoVal />
+              <Row k="Render profile" v={rendered.render_profile} monoVal />
             </>
           ) : (
             <p style={{ color: '#C97954', fontSize: 13 }}>
@@ -166,17 +162,24 @@ export default async function SignoffPage({ params, searchParams }) {
         </div>
 
         {action && (
-          <details style={{ margin: '8px 0 20px' }}>
-            <summary style={{ color: '#8A857C', fontSize: 12, cursor: 'pointer' }}>
-              Exact canonical object (what the hash commits to)
-            </summary>
+          <section style={{ margin: '8px 0 20px' }} aria-label="Complete signed action">
+            <div style={{ color: '#8A857C', fontSize: 12, marginBottom: 8 }}>
+              Complete signed action — every extension field the action hash commits to
+            </div>
             <pre style={{ ...mono, fontSize: 11, background: '#16140F', padding: 12, borderRadius: 8, overflowX: 'auto' }}>
               {JSON.stringify(action, null, 2)}
             </pre>
-          </details>
+          </section>
         )}
 
-        <SignoffSigner signoffId={signoffId} initialApproverId={approverId} status={status} />
+        <SignoffSigner
+          signoffId={signoffId}
+          intendedApproverId={intendedApproverId}
+          status={status}
+          expectedActionHash={base.action_hash || ''}
+          expectedDisplayHash={rendered?.display_hash || ''}
+          expectedRenderProfile={rendered?.render_profile || ''}
+        />
 
         <p style={{ color: '#56524B', fontSize: 11, marginTop: 28, lineHeight: 1.6 }}>
           Signing uses a passkey on this device (Face ID / Touch ID / security

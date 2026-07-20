@@ -163,6 +163,7 @@ const s = {
 
 export default function CloudLayout({ children }) {
   const pathname = usePathname();
+  const isConnectedApprovalPrototype = pathname.startsWith('/cloud/signoffs');
 
   const isActive = (href) => {
     if (href === '/cloud') return pathname === '/cloud';
@@ -212,10 +213,14 @@ export default function CloudLayout({ children }) {
           <span style={s.breadcrumb}>
             EMILIA Gate Cloud {pathname !== '/cloud' ? ` / ${pathname.replace('/cloud/', '').split('/')[0]}` : ''}
           </span>
-          <span style={s.envBadge}>demo data</span>
+          <span style={s.envBadge}>{isConnectedApprovalPrototype ? 'prototype' : 'demo data'}</span>
         </header>
         <div style={s.content}>
-          <div style={s.demoBanner}>Synthetic dashboard preview. Live tenant data is served only from authenticated Cloud APIs.</div>
+          <div style={s.demoBanner}>
+            {isConnectedApprovalPrototype
+              ? 'Connected implementation prototype. Tenant data loads only after an in-memory Cloud key is authenticated; this is not a production-service claim.'
+              : 'Synthetic dashboard preview. Live tenant data is served only from authenticated Cloud APIs.'}
+          </div>
           {children}
         </div>
       </div>

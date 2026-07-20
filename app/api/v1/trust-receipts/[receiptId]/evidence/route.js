@@ -12,7 +12,8 @@
 // shape is the canonical evidence; PDF is a rendering of it).
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateGuardRequest, isCloudGuardPrincipal } from '@/lib/guard-auth.js';
+import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -23,8 +24,8 @@ import { canReadReceipt } from '@/lib/tenant-binding';
 
 export async function GET(request, { params }) {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+    const auth = await authenticateGuardRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
 
     const { receiptId } = await params;
     const supabase = getGuardedClient();
@@ -49,6 +50,16 @@ export async function GET(request, { params }) {
       return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
     }
     const base = created.after_state;
+    if (isCloudGuardPrincipal(auth)) {
+      const permissions = Array.isArray(auth.permissions) ? auth.permissions : [];
+      const mayReadApproval = permissions.includes('admin')
+        || permissions.includes('approval_request');
+      if (!mayReadApproval
+          || base.action_type !== 'large_payment_release'
+          || created.actor_id !== authEntityId(auth)) {
+        return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+      }
+    }
 
     // Tenant scoping (IDOR): the evidence packet exposes approver identity,
     // amounts, policy, and the full timeline — scope it to the receipt's org

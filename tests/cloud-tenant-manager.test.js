@@ -527,7 +527,9 @@ describe('generateApiKey', () => {
     );
 
     expect(result).toMatchObject({ status: 400 });
-    expect(result.error).toMatch(/read, write, admin, or policy_rollout/);
+    expect(result.error).toMatch(
+      /read, write, admin, policy_rollout, or approval_request/,
+    );
     expect(getServiceClient).not.toHaveBeenCalled();
   });
 
@@ -578,6 +580,37 @@ describe('generateApiKey', () => {
       p_permissions: ['policy_rollout'],
       p_expires_at: '2026-10-17T00:00:00.000Z',
       p_issued_by: 'entity:user-1',
+    }));
+  });
+
+  it('accepts approval_request as a bounded audited capability', async () => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        key_id: 'k-approval',
+        tenant_id: 'tenant-1',
+        environment: 'production',
+        key_prefix: 'ept_live',
+        permissions: ['approval_request'],
+        expires_at: '2026-10-17T00:00:00.000Z',
+      },
+      error: null,
+    }));
+    getServiceClient.mockReturnValue({ rpc });
+
+    const result = await generateApiKey(
+      'tenant-1',
+      'production',
+      'approval requester',
+      ['approval_request'],
+      {
+        expiresAt: '2026-10-17T00:00:00.000Z',
+        issuedBy: 'entity:user-1',
+      },
+    );
+
+    expect(result.api_key.permissions).toEqual(['approval_request']);
+    expect(rpc).toHaveBeenCalledWith('issue_tenant_api_key_audited', expect.objectContaining({
+      p_permissions: ['approval_request'],
     }));
   });
 

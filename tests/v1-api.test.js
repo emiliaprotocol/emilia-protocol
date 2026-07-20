@@ -422,6 +422,74 @@ describe('POST /api/v1/trust-receipts', () => {
     expect((await wrongAction.json()).type).toContain('cloud_guard_action_forbidden');
   });
 
+  it('lets an approval_request tenant key mint only an enforced, bounded payment approval', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: '33333333-3333-4333-8333-333333333333',
+      environment: 'production',
+      permissions: ['approval_request'],
+      keyId: 'key-approval',
+    });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: null, error: null } },
+    }));
+
+    const body = {
+      organization_id: '33333333-3333-4333-8333-333333333333',
+      action_type: 'large_payment_release',
+      target_resource_id: 'payment:1842',
+      amount: 82000,
+      currency: 'USD',
+      counterparty_name: 'Acme Medical Supply',
+      payment_destination_hash: `sha256:${'d'.repeat(64)}`,
+      expires_in_sec: 3600,
+      enforcement_mode: 'enforce',
+      action_caid: 'caid:attacker-supplied',
+    };
+    const issued = await createReceipt(req(body, 'ept_live_approval'));
+    expect(issued.status).toBe(201);
+    const issuedApproval = await issued.json();
+    expect(issuedApproval).toMatchObject({
+      signoff_required: true,
+      required_assurance: 'A',
+      receipt_status: 'pending_signoff',
+      canonical_action: {
+        action_caid: 'caid:1:payment.release.1:jcs-sha256:OB6MmOy-3-mT6RZAXQ3q4BwuEzPa8ZRUvZiFCRxyPUM',
+        caid_digest: 'sha256:381e8c98ecbedfe993e916405d0deae01c2e1333daf19454bd9885091c723d43',
+        caid_action: {
+          action_type: 'payment.release.1',
+          amount: '82000',
+          currency: 'USD',
+          beneficiary_account: `sha256:${'d'.repeat(64)}`,
+          payment_instruction_id: 'payment:1842',
+          memo: 'Acme Medical Supply',
+        },
+        payment_destination_hash: `sha256:${'d'.repeat(64)}`,
+      },
+    });
+    expect(issuedApproval.canonical_action.action_caid).not.toBe('caid:attacker-supplied');
+
+    const observe = await createReceipt(req({
+      ...body,
+      enforcement_mode: 'observe',
+    }, 'ept_live_approval'));
+    expect(observe.status).toBe(403);
+    expect((await observe.json()).type).toContain('cloud_approval_enforcement_required');
+
+    const rollout = await createReceipt(req({
+      ...body,
+      action_type: 'policy_rollout',
+    }, 'ept_live_approval'));
+    expect(rollout.status).toBe(403);
+    expect((await rollout.json()).type).toContain('cloud_guard_action_forbidden');
+
+    const missingDestination = await createReceipt(req({
+      ...body,
+      payment_destination_hash: undefined,
+    }, 'ept_live_approval'));
+    expect(missingDestination.status).toBe(400);
+    expect((await missingDestination.json()).type).toContain('invalid_payment_destination_hash');
+  });
+
   it('issues a pending_signoff receipt for money-destination changes', async () => {
     authedAs('user_1');
     mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
@@ -824,6 +892,34 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
 
     expect(selectAuditEvents).toHaveBeenCalledWith('event_type, actor_id, after_state, created_at');
     expect(res.status).toBe(200);
+  });
+
+  it('hides another Cloud key payment receipt from approval consumption', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: 'org_1',
+      environment: 'production',
+      permissions: ['approval_request'],
+      keyId: 'key-attacker',
+    });
+    setupConsume([{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'ep:cloud-key:key-owner',
+      after_state: {
+        organization_id: 'org_1',
+        action_type: 'large_payment_release',
+        action_hash: 'a',
+        expires_at: new Date(Date.now() + 1e6).toISOString(),
+        signoff_required: false,
+      },
+    }]);
+
+    const res = await consumeReceipt(
+      req({ action_hash: 'a', executing_system: 'sys' }, 'ept_live_attacker'),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).type).toContain('receipt_not_found');
   });
 
   it('returns 400 when action_hash missing', async () => {
@@ -1254,6 +1350,45 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
     expect(body.schema_version).toBe('ep-guard-evidence-v1');
   });
 
+  it('hides another Cloud key payment receipt from evidence export', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: 'org_1',
+      environment: 'production',
+      permissions: ['approval_request'],
+      keyId: 'key-attacker',
+    });
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: {
+        resolve: {
+          data: [{
+            event_type: 'guard.trust_receipt.created',
+            actor_id: 'ep:cloud-key:key-owner',
+            actor_type: 'principal',
+            action: 'create',
+            before_state: null,
+            after_state: {
+              organization_id: 'org_1',
+              action_type: 'large_payment_release',
+              action_hash: 'a',
+              expires_at: new Date(Date.now() + 1e6).toISOString(),
+              signoff_required: true,
+            },
+            created_at: '2026-07-19T20:00:00.000Z',
+          }],
+          error: null,
+        },
+      },
+    }));
+
+    const res = await readEvidence(
+      req({}, 'ept_live_attacker'),
+      { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) },
+    );
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).type).toContain('receipt_not_found');
+  });
+
   it('exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence', async () => {
     authedAs('user_1');
     const context = {
@@ -1469,6 +1604,44 @@ describe('POST /api/v1/signoffs/request', () => {
     expect(await res.json()).toMatchObject({
       receipt_id: VALID_RECEIPT_ID,
       initiator_id: 'ep:cloud-key:key-abc123',
+      approver_id: 'approver_1',
+      status: 'pending',
+    });
+  });
+
+  it('continues a payment approval only for the same approval_request key', async () => {
+    mockAuthenticateCloudRequest.mockResolvedValue({
+      tenantId: '33333333-3333-4333-8333-333333333333',
+      environment: 'production',
+      permissions: ['approval_request'],
+      keyId: 'key-approval',
+    });
+    const events = [{
+      event_type: 'guard.trust_receipt.created',
+      actor_id: 'ep:cloud-key:key-approval',
+      after_state: {
+        organization_id: '33333333-3333-4333-8333-333333333333',
+        action_type: 'large_payment_release',
+        signoff_required: true,
+        required_assurance: 'A',
+        action_hash: 'a',
+        expires_at: '2999-01-01T00:00:00.000Z',
+      },
+      created_at: '2026-07-19T20:00:00.000Z',
+    }];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+
+    const res = await requestSignoff(req({
+      receipt_id: VALID_RECEIPT_ID,
+      approver_id: 'approver_1',
+    }, 'ept_live_approval'));
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({
+      receipt_id: VALID_RECEIPT_ID,
+      initiator_id: 'ep:cloud-key:key-approval',
       approver_id: 'approver_1',
       status: 'pending',
     });

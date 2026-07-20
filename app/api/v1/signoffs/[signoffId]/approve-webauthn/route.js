@@ -165,7 +165,7 @@ export async function POST(request, { params }) {
     // ── Credential: the assertion's credential must belong to this approver.
     const { data: creds, error: credErr } = await supabase
       .from('approver_credentials')
-      .select('credential_id, public_key_cose, public_key_spki, sign_count, transports, approver_id, approver_name, organization_id')
+      .select('credential_id, public_key_cose, public_key_spki, sign_count, transports, approver_id, approver_name, enrollment_basis, valid_from, valid_to, organization_id')
       .eq('credential_id', body.assertion.id)
       .eq('organization_id', loaded.organizationId)
       .is('revoked_at', null)
@@ -175,14 +175,20 @@ export async function POST(request, { params }) {
       return epProblem(500, 'internal_error', 'Failed to load credential');
     }
     const credential = (creds || [])[0];
-    // A directory-anchored credential is stored under the normalized approver_id;
-    // accept either the exact stored id or a normalization-equal one so a
-    // directory approver's credential is not silently unfindable. Additive: the
-    // exact-match branch preserves the prior raw comparison.
+    // Match loadApproverCredentials semantics: directory-backed credentials are
+    // stored under a normalized id and may use that alias; operator-attested
+    // ids are opaque and must match exactly.
+    const normalizedApproverId = normalizeUserName(body.approver_id);
     const approverMatches = !!credential
       && (credential.approver_id === body.approver_id
-        || normalizeUserName(credential.approver_id) === normalizeUserName(body.approver_id));
-    if (!approverMatches) {
+        || (credential.enrollment_basis === 'directory'
+          && credential.approver_id === normalizedApproverId));
+    const decisionTime = new Date();
+    const validFrom = credential?.valid_from ? new Date(credential.valid_from) : null;
+    const validTo = credential?.valid_to ? new Date(credential.valid_to) : null;
+    const activeAtDecision = (!validFrom || validFrom <= decisionTime)
+      && (!validTo || validTo > decisionTime);
+    if (!approverMatches || !activeAtDecision) {
       return epProblem(403, 'credential_not_enrolled', 'Assertion credential is not an active enrollment for this approver');
     }
 

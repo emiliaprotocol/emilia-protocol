@@ -61,6 +61,29 @@ describe('requirePermission', () => {
     expect(() => requirePermission(makeAuth(['read', 'admin']), 'admin')).not.toThrow();
   });
 
+  it.each(['policy_rollout', 'approval_request'])(
+    'accepts the exact named %s capability',
+    (permission) => {
+      expect(() => requirePermission(makeAuth([permission]), permission)).not.toThrow();
+    },
+  );
+
+  it.each(['policy_rollout', 'approval_request'])(
+    'allows admin as the super-capability for %s',
+    (permission) => {
+      expect(() => requirePermission(makeAuth(['admin']), permission)).not.toThrow();
+    },
+  );
+
+  it('keeps named capabilities least-privilege and distinct', () => {
+    expect(() => requirePermission(makeAuth(['approval_request']), 'policy_rollout'))
+      .toThrow(CloudAuthorizationError);
+    expect(() => requirePermission(makeAuth(['policy_rollout']), 'approval_request'))
+      .toThrow(CloudAuthorizationError);
+    expect(() => requirePermission(makeAuth(['write']), 'approval_request'))
+      .toThrow(CloudAuthorizationError);
+  });
+
   // Empty / missing permissions
   it('throws when permissions array is empty', () => {
     expect(() => requirePermission(makeAuth([]), 'read')).toThrow(CloudAuthorizationError);
