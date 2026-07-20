@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createEscrowComAdapter,
   escrowReferenceForEffect,
-} from '../lib/integrations/action-escrow/escrow-com.js';
+} from '../lib/integrations/action-escrow/escrow-com.ts';
 
 const ACCOUNT_EMAIL = 'buyer@example.com';
 const API_KEY = 'sandbox-key-value';

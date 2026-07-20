@@ -1,6 +1,6 @@
 {
   "@version": "EP-MOBILE-CONFORMANCE-v1",
-  "scope": "Cross-platform byte parity for the EP safe-integer canonical JSON profile, plus the closed hostile-case contract exercised by each platform's executable tests.",
+  "scope": "Cross-platform byte parity for the EP safe-integer canonical JSON profile, CAID Action Lock parity, and the closed hostile-case contract exercised by each platform's executable tests.",
   "canonicalization": [
     {
       "id": "nested_unicode_controls",
@@ -35,6 +35,23 @@
       },
       "canonical": "{\"max\":9007199254740991,\"min\":-9007199254740991,\"zero\":0}",
       "sha256": "b7b2401ddca2165824e98c61890c0aaec470258d3119dd265d02be9438bf47e6"
+    }
+  ],
+  "action_identity": [
+    {
+      "id": "government_destination_change_action_lock",
+      "action_reference": "case-9482",
+      "action": {
+        "action_type": "benefit.payment_destination_change",
+        "case_id": "case-9482",
+        "destination_last4": "4401"
+      },
+      "expect": {
+        "action_caid": "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM",
+        "action_digest": "sha256:f6a151156b476ece29dab84266ab4a94abd81bd683a222942681d2850cb26f4e",
+        "caid_digest": "sha256:5eea519817c2ebbf957acc5713f12c3fc1089697191c0ca925e3c68f14586173",
+        "fingerprint": "5EEA-5198-17C2-EBBF"
+      }
     }
   ],
   "presentation_mapping": [
@@ -200,6 +217,10 @@
       "expect": "refuse_action_mismatch"
     },
     {
+      "id": "action_lock_caid_or_digest_substitution",
+      "expect": "refuse_action_mismatch"
+    },
+    {
       "id": "display_substitution",
       "expect": "refuse_display_mismatch"
     },
@@ -270,6 +291,14 @@
     {
       "id": "nested_mobile_action_without_mapping_profile",
       "expect": "refuse_malformed"
+    },
+    {
+      "id": "provider_timeout_blind_retry",
+      "expect": "indeterminate_no_retry"
+    },
+    {
+      "id": "unverified_provider_reconciliation",
+      "expect": "refuse_unpinned_provider_evidence"
     }
   ],
   "vectors": [
@@ -298,6 +327,33 @@
         "runner": "node-test",
         "file": "packages/mobile/index.test.js",
         "title": "verifies iOS and Android ceremonies as the same Class-A evidence shape"
+      }
+    },
+    {
+      "id": "accept_caid_action_lock_parity",
+      "expect": { "valid": true },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/mobile-action-continuity.test.js",
+        "title": "computes one stable CAID from the exact authoritative action bytes"
+      }
+    },
+    {
+      "id": "accept_pinned_provider_reconciliation",
+      "expect": { "valid": true },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/mobile-action-continuity.test.js",
+        "title": "reconciles only an exact signed provider outcome and preserves terminal refusals"
+      }
+    },
+    {
+      "id": "refuse_blind_retry_and_unpinned_provider_outcome",
+      "expect": { "valid": false },
+      "execution": {
+        "runner": "vitest",
+        "file": "tests/mobile-action-continuity.test.js",
+        "title": "accepts terminal execution only under a pinned provider key and exact operation binding"
       }
     },
     {

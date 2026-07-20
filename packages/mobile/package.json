@@ -12,6 +12,7 @@
     "dist/",
     "src/",
     "tsconfig.json",
+    "action-identity.js",
     "attestation.js",
     "enrollment.js",
     "government.js",

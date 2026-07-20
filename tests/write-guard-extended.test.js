@@ -101,6 +101,12 @@ describe('TRUST_TABLES list', () => {
       'mobile_evidence_records',
       'mobile_actions',
       'mobile_action_challenges',
+      'mobile_action_groups',
+      'mobile_action_revisions',
+      'mobile_action_events',
+      'mobile_action_operations',
+      'mobile_executor_keys',
+      'mobile_action_alignments',
     ]) {
       expect(_internals.TRUST_TABLES).toContain(table);
     }
@@ -225,6 +231,10 @@ describe('write guard — blocks mutations on trust tables', () => {
     expect(() => guarded.from('mobile_sessions').update({ revoked_at: null }))
       .toThrow('WRITE_DISCIPLINE_VIOLATION');
     expect(() => guarded.from('mobile_actions').insert({ status: 'approved' }))
+      .toThrow('WRITE_DISCIPLINE_VIOLATION');
+    expect(() => guarded.from('mobile_action_operations').insert({ status: 'executed' }))
+      .toThrow('WRITE_DISCIPLINE_VIOLATION');
+    expect(() => guarded.from('mobile_executor_keys').upsert({ executor_id: 'attacker' }))
       .toThrow('WRITE_DISCIPLINE_VIOLATION');
   });
 });

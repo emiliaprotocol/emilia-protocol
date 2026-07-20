@@ -396,7 +396,10 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          node-version: 20
+          # check:proof-stats executes the full suite, including scripts whose
+          # .js specifiers resolve to migrated .ts sources. The repo loader
+          # requires Node's built-in TypeScript stripping (Node >=22.6).
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Check language governance

@@ -1,4 +1,4 @@
-# EP Mobile Ceremony v1
+# EP Mobile Ceremony v1 with Action Lock
 
 Status: Implemented reference profile. This document is not an RFC and does not
 claim adoption or endorsement by any government entity.
@@ -13,7 +13,7 @@ integrity evidence.
 The profile has five artifacts:
 
 - `EP-MOBILE-RELIANCE-PROFILE-v1`: relying-party pins and requirements;
-- `AE-CHALLENGE-v1` with `challenge_profile=EP-MOBILE-CHALLENGE-v1`;
+- `AE-CHALLENGE-v1` with `challenge_profile=EP-MOBILE-CHALLENGE-v2`;
 - `EP-MOBILE-CEREMONY-v1`: passkey assertion plus platform attestation; and
 - optional `EP-MOBILE-ACK-v1`: a signed acknowledgement of a valid ceremony
   result; it does not by itself establish durable consumption or recording; and
@@ -57,6 +57,10 @@ shown to the approver. An agent or requester MUST NOT choose those bytes.
 
 The challenge binds:
 
+- the server-resolved action reference;
+- the CAID `emilia.mobile.authorized-action.1` computed from the exact
+  authoritative action digest;
+- that complete authoritative action digest;
 - canonical action hash;
 - canonical presentation hash;
 - policy identifier and optional policy hash;
@@ -67,15 +71,19 @@ The challenge binds:
 - platform, application, device key, credential, and attestation key; and
 - the WebAuthn RP ID.
 
-The WebAuthn challenge is the base64url SHA-256 digest of the canonical signed
-authorization context. The platform-attestation request hash is the base64url
+The action reference, CAID, action digest, action hash, and display hash form the
+Action Lock. The WebAuthn challenge is the base64url SHA-256 digest of the
+canonical signed authorization context, so the native signature covers the
+entire Action Lock. The platform-attestation request hash is the base64url
 SHA-256 digest of `EP-MOBILE-ATTESTATION-BINDING-v1`.
 
 ## 4. Native ceremony
 
-The native client MUST first recompute the action, presentation, context, and
-attestation-binding digests. It MUST refuse a mismatch before invoking a
-passkey or integrity provider.
+The native client MUST first recompute the CAID, authoritative action digest,
+action hash, presentation hash, signed context hash, and attestation-binding
+digest. It MUST compare the signed action reference, CAID, and action digest to
+the selected inbox item and refuse a mismatch before invoking a passkey or
+integrity provider.
 
 The native ceremony API MUST require the local requested decision as a typed
 input. Before invoking a passkey or integrity provider, the client MUST compare
@@ -156,7 +164,37 @@ platform verification, challenge consumption, or downstream physical effect.
 `denied` is a signed terminal outcome over the same action context. It MUST NOT
 be relabeled as approval. It does not authorize execution.
 
-## 7. Boundaries
+## 7. Durable consequence lifecycle
+
+Authorization and effect are separate states. The reference lifecycle is:
+
+`AWAITING_DECISION`, `QUORUM_PENDING`, `AUTHORIZED`, `DENIED`, `WITHDRAWN`,
+`CONSUMED`, `INDETERMINATE`, `EXECUTED`, `REFUSED`, `EXPIRED`, or `CANCELLED`.
+
+An operator MUST atomically consume an authorized action before invoking the
+provider. Consumption creates a server-selected nonce and makes blind retry
+unsafe. A timeout after invocation MUST transition to `INDETERMINATE`; it MUST
+NOT be presented as refusal, success, or permission to retry.
+
+`EXECUTED` or `REFUSED` after an indeterminate result requires an
+`EP-MOBILE-PROVIDER-OUTCOME-v1` statement signed by an Ed25519 executor key
+pinned by the relying party. The verifier MUST bind the statement to the exact
+operation ID, action CAID, action digest, consumption nonce, executor, outcome,
+observation time, and provider reference.
+
+An approved decision MAY be withdrawn only before consumption. Supersession
+creates an immutable new revision with a complete material-field diff and a new
+CAID. Old approvals do not carry across revisions.
+
+`EP-MOBILE-DECISION-PASSPORT-v1` is a bounded export of identity, decision,
+quorum, and effect state. It carries digests of decision and provider evidence,
+not raw WebAuthn assertions or provider evidence.
+
+Cross-system equivalence is never inferred from matching labels. A positive
+alignment requires native verification, a pinned mapping-profile hash, and an
+evidence digest; otherwise the normalized verdict is `INDETERMINATE`.
+
+## 8. Boundaries
 
 This profile does not prove:
 
@@ -178,7 +216,7 @@ Platform integrity can reduce the risk of a modified client, but it does not
 attest the pixels shown to the approver and does not eliminate PIP-010's
 dishonest-display residual.
 
-## 8. Executable evidence
+## 9. Executable evidence
 
 - Server kernel: `packages/mobile/`
 - Strict Fetch transport: `packages/mobile/http.js`
@@ -187,5 +225,10 @@ dishonest-display residual.
 - Shared vectors: `mobile/conformance/mobile-core.v1.json`
 - Schemas: `mobile/spec/ep-mobile-v1.schema.json` and
   `mobile/spec/ep-mobile-enrollment-v1.schema.json`
+- Durable continuity migration:
+  `supabase/migrations/20260720181619_mobile_action_continuity.sql`
+- Lifecycle and provider-evidence kernel: `lib/mobile/action-continuity.js`
+- Mobile history, passport, withdrawal, consumption, reconciliation,
+  supersession, and alignment routes: `app/api/v1/mobile/`
 - Full gate: `npm run mobile:conformance`
 - Regulator export: `examples/regulatory-mobile-oversight/`

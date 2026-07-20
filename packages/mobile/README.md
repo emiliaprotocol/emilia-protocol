@@ -10,6 +10,24 @@ approval ceremonies. It joins three independently checked facts:
 The result is the existing EP Class-A signoff shape. The mobile layer does not
 invent another receipt format or another signature algorithm.
 
+## CAID-bound Action Lock
+
+`EP-MOBILE-CHALLENGE-v2` adds three closed members to the signed authorization
+context:
+
+- `action_reference`: the tenant-scoped lookup reference selected by the
+  relying party;
+- `action_caid`: the server-computed CAID for the authoritative exact-action
+  wrapper; and
+- `action_digest`: the SHA-256 digest of the authoritative source action.
+
+The WebAuthn challenge is derived from the complete authorization context, so
+all three values are signed along with the action hash, display hash, policy,
+approver, quorum position, decision, expiry, app, and enrolled device. The
+verifier recomputes the CAID and digest from the challenge action and refuses a
+reference, CAID, or digest substitution. A CAID is an exact-action join key; it
+does not by itself establish authority, approval, execution, or equivalence.
+
 For regulator-facing exports, `createMobileExecutionRecord()` signs a closed
 operator statement that joins a verified ceremony to the exact challenge,
 receipt, profile, and atomic audit record. It requires the result returned by
@@ -75,6 +93,40 @@ used by the native reference apps. It requires HTTPS and agency authentication,
 bounds request bodies, rejects duplicate JSON members, and takes enrollment
 display identity from the agency directory rather than the mobile request.
 
+## Hosted continuity contract
+
+The repository's hosted `/api/v1/mobile` adapter persists action groups and
+revisions around the ceremony kernel. Inbox and history views expose:
+
+- the CAID, action digest, and stable display fingerprint;
+- revision and predecessor CAID, with deterministic material-field changes;
+- aggregate approved, required, denied, and withdrawn quorum counts;
+- lifecycle state and an explicit `retry_safe` value;
+- evidence-backed cross-system alignment records; and
+- bounded event summaries and a decision passport.
+
+The lifecycle is:
+
+```text
+AWAITING_DECISION -> QUORUM_PENDING -> AUTHORIZED -> CONSUMED
+                                                   |-> EXECUTED
+                                                   |-> REFUSED
+                                                   `-> INDETERMINATE
+```
+
+Denial, withdrawal, expiry, cancellation, and supersession close their own
+pre-consumption paths. Withdrawal is allowed only for the paired approver's own
+approval and only before consumption. Once consumption succeeds, the generated
+operation ID and server-random nonce make replay detectable.
+
+`INDETERMINATE` means the provider may have executed even though the caller did
+not receive a conclusive response. It is never retry-safe. The only supported
+terminal reconciliation is a closed `EP-MOBILE-PROVIDER-OUTCOME-v1` statement
+whose operation ID, CAID, action digest, and consumption nonce all match and
+whose Ed25519 key is pinned for the organization. The decision passport carries
+only evidence digests; raw WebAuthn, platform, and provider evidence remains in
+the protected evidence stores.
+
 ## Required production dependencies
 
 - a durable atomic challenge store;
@@ -87,6 +139,12 @@ display identity from the agency directory rather than the mobile request.
 
 The included memory backends and simulated attestation callbacks are test tools,
 not production configurations.
+
+The continuity code and forward PostgreSQL migration are reference
+implementation artifacts. Merging the code, applying the migration, deploying
+the API, signing native builds, and publishing native apps are separate gates.
+This repository state does not claim that the migration is applied to a
+particular environment or that either reference app is in an app store.
 
 On Android, the production attestation adapter must load the enrolled P-256
 Android Keystore public key, derive and match its

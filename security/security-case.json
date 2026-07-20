@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8",
-  "claim_count": 28,
-  "evidence_file_count": 140,
+  "evidence_bundle_sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12",
+  "claim_count": 29,
+  "evidence_file_count": 156,
   "execution": {
     "required": true,
     "status": "passed",
@@ -463,6 +463,24 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/mobile-action-continuity-routes.test.js",
+        "titles": [
+          "atomically consumes once, marks timeout indeterminate, and refuses blind replay semantics"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/mobile-action-continuity.test.js",
+        "titles": [
+          "accepts terminal execution only under a pinned provider key and exact operation binding",
+          "keeps authorization, consumption, uncertainty, and execution separate",
+          "reconciles only an exact signed provider outcome and preserves terminal refusals"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/model-to-matter.test.js",
         "titles": [
           "admits at most one clearance across distinct challenges for the same action",
@@ -612,7 +630,7 @@
       "package": "@emilia-protocol/gate",
       "version": "0.12.0",
       "filename": "emilia-protocol-gate-0.12.0.tgz",
-      "sha256": "2d220d426b2b5b8f9c9c78e26c12cab970f42499cbab5d42952f5b3f5c0ff605",
+      "sha256": "5bc5cd61f6a3b02cd1771b49a2d724b8bc8a2c476e9de6dded3dec15d34ea084",
       "file_count": 107
     },
     "mobile-sdk": {
@@ -620,22 +638,22 @@
       "package": "@emilia-protocol/mobile",
       "version": "0.1.1",
       "filename": "emilia-protocol-mobile-0.1.1.tgz",
-      "sha256": "609085d2812d4aebf5091caaf960f83191fa0a0e1070c0b27c9553b36eaeed3c",
-      "file_count": 11
+      "sha256": "492cb61f8818883c72e6f7ed7d9f896b2def3fba7e08df823cda732e7c9b07cc",
+      "file_count": 53
     },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8",
-      "file_count": 140
+      "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12",
+      "file_count": 156
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.11.0",
       "filename": "emilia-protocol-verify-3.11.0.tgz",
-      "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3",
-      "file_count": 36
+      "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0",
+      "file_count": 191
     }
   },
   "claims": [
@@ -673,13 +691,13 @@
         },
         {
           "language": "javascript",
-          "file": "lib/signoff/decision-evidence.js",
+          "file": "lib/signoff/decision-evidence.ts",
           "symbol": "buildPortableSignoffDecision",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyWebAuthnSignoff",
           "exported": true
         }
@@ -687,7 +705,7 @@
       "implementations": [
         {
           "language": "javascript",
-          "file": "lib/signoff/decision-evidence.js",
+          "file": "lib/signoff/decision-evidence.ts",
           "export": "buildPortableSignoffDecision"
         },
         {
@@ -786,11 +804,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -806,7 +824,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/resolution.js",
+          "file": "packages/verify/src/resolution.ts",
           "symbol": "verifyResolutionReceipt",
           "exported": true
         },
@@ -1049,11 +1067,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -1066,7 +1084,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyTrustReceipt",
           "exported": true
         }
@@ -1157,11 +1175,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -1174,7 +1192,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyTrustReceipt",
           "exported": true
         },
@@ -1276,11 +1294,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -1294,7 +1312,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/quorum.js",
+          "file": "packages/verify/src/quorum.ts",
           "symbol": "verifyQuorum",
           "exported": true
         }
@@ -1398,11 +1416,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -1546,7 +1564,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -1559,25 +1577,25 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/reliance.js",
+          "file": "packages/verify/src/reliance.ts",
           "symbol": "evaluateReliance",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyTrustReceipt",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/authority-proof.js",
+          "file": "packages/verify/src/authority-proof.ts",
           "symbol": "verifyAuthorityProof",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/revocation.js",
+          "file": "packages/verify/src/revocation.ts",
           "symbol": "verifyRevocation",
           "exported": true
         }
@@ -1688,11 +1706,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -1706,7 +1724,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/revocation.js",
+          "file": "packages/verify/src/revocation.ts",
           "symbol": "verifyRevocation",
           "exported": true
         }
@@ -1847,11 +1865,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -1866,19 +1884,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/index.js",
+          "file": "packages/verify/src/index.ts",
           "symbol": "verifyOutcomeBinding",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/outcome-binding.js",
+          "file": "packages/verify/src/outcome-binding.ts",
           "symbol": "verifyOutcomeBindingCore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/verify/outcome-binding.js",
+          "file": "packages/verify/src/outcome-binding.ts",
           "symbol": "verifyOutcomeAttestation",
           "exported": true
         }
@@ -2028,11 +2046,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -2245,7 +2263,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -2258,7 +2276,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/timestamp-proof.js",
+          "file": "packages/verify/src/timestamp-proof.ts",
           "symbol": "verifyTimestampProof",
           "exported": true
         }
@@ -2350,11 +2368,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -2482,11 +2500,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "2d220d426b2b5b8f9c9c78e26c12cab970f42499cbab5d42952f5b3f5c0ff605"
+          "sha256": "5bc5cd61f6a3b02cd1771b49a2d724b8bc8a2c476e9de6dded3dec15d34ea084"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -2589,11 +2607,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "2d220d426b2b5b8f9c9c78e26c12cab970f42499cbab5d42952f5b3f5c0ff605"
+          "sha256": "5bc5cd61f6a3b02cd1771b49a2d724b8bc8a2c476e9de6dded3dec15d34ea084"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -2713,11 +2731,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "2d220d426b2b5b8f9c9c78e26c12cab970f42499cbab5d42952f5b3f5c0ff605"
+          "sha256": "5bc5cd61f6a3b02cd1771b49a2d724b8bc8a2c476e9de6dded3dec15d34ea084"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -2842,11 +2860,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "2d220d426b2b5b8f9c9c78e26c12cab970f42499cbab5d42952f5b3f5c0ff605"
+          "sha256": "5bc5cd61f6a3b02cd1771b49a2d724b8bc8a2c476e9de6dded3dec15d34ea084"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -3016,11 +3034,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "2d220d426b2b5b8f9c9c78e26c12cab970f42499cbab5d42952f5b3f5c0ff605"
+          "sha256": "5bc5cd61f6a3b02cd1771b49a2d724b8bc8a2c476e9de6dded3dec15d34ea084"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -3154,7 +3172,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -3266,11 +3284,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -3404,7 +3422,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -3621,7 +3639,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -3831,7 +3849,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -4022,7 +4040,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -4037,7 +4055,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/verify/evidence-chain.js",
+          "file": "packages/verify/src/evidence-chain.ts",
           "symbol": "verifyAuthorizationChain",
           "exported": true
         }
@@ -4306,7 +4324,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -4322,25 +4340,25 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "verifyMobileCeremony",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "createMobileCeremonyService",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/government.js",
+          "file": "packages/mobile/src/government.ts",
           "symbol": "createGovernmentMobileController",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/http.js",
+          "file": "packages/mobile/src/http.ts",
           "symbol": "createMobileHttpHandler",
           "exported": true
         }
@@ -4477,15 +4495,165 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "609085d2812d4aebf5091caaf960f83191fa0a0e1070c0b27c9553b36eaeed3c"
+          "sha256": "492cb61f8818883c72e6f7ed7d9f896b2def3fba7e08df823cda732e7c9b07cc"
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
+        }
+      ]
+    },
+    {
+      "claim_id": "mobile-action-continuity-is-tenant-and-executor-bound",
+      "statement": "A CAID-bound mobile action becomes executable only after its approval threshold is met; consequence authority is consumed once under a tenant-scoped operation identifier, server-random nonce, and frozen executor key. A provider timeout becomes durable INDETERMINATE and is not retry-safe. A terminal outcome is accepted only from an exact signed provider statement bound to the same operation, CAID, action digest, nonce, executor, and still-active frozen key; the database rechecks that key in the commit transaction and retains the signed statement while bounded mobile exports expose only its digest.",
+      "acceptance_roots": [
+        "the relying party computes the exact action CAID and immutable revision from its system of record",
+        "distinct authenticated approver decisions project one threshold under the active action revision",
+        "the protected executor key is registered by an organization administrator and remains uncompromised",
+        "PostgreSQL serializes action consumption, executor-key rotation, timeout, and reconciliation transitions"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/mobile/action-continuity.js",
+          "symbol": "deriveMobileActionContinuity",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/action-continuity.js",
+          "symbol": "verifyMobileProviderOutcome",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/store.js",
+          "symbol": "consumeMobileAction",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/store.js",
+          "symbol": "reconcileMobileActionOperation",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/mobile/action-continuity.js",
+          "export": "deriveMobileActionContinuity"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/action-continuity.js",
+          "export": "verifyMobileProviderOutcome"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/store.js",
+          "export": "consumeMobileAction"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/mobile/store.js",
+          "export": "reconcileMobileActionOperation"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "mobile/conformance/mobile-core.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "The durable mobile consequence state machine and PostgreSQL transition boundary have no Python implementation."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "The durable mobile consequence state machine and PostgreSQL transition boundary have no Go implementation."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "accept_pinned_provider_reconciliation",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "mobile/conformance/mobile-core.v1.json",
+          "case_id": "refuse_blind_retry_and_unpinned_provider_outcome",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/mobile-action-continuity.test.js",
+          "title": "keeps authorization, consumption, uncertainty, and execution separate",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/mobile-action-continuity.test.js",
+          "title": "reconciles only an exact signed provider outcome and preserves terminal refusals",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/mobile-action-continuity-routes.test.js",
+          "title": "atomically consumes once, marks timeout indeterminate, and refuses blind replay semantics",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
+          "contains": [
+            "primary key (entity_ref, operation_id)",
+            "executor_key_not_active",
+            "provider_evidence = p_provider_evidence",
+            "where entity_ref = p_entity_ref and operation_id = p_operation_id"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The mixed-decision quorum projection, tenant-scoped operation key, executor-key rotation lock, retained evidence, and indeterminate reconciliation state machine are executable contracts but are not represented together in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "all consequential provider calls are mediated by the consumption endpoint and no bypass can mutate the protected system",
+        "the executor's Ed25519 private key and the organization's administrative key-registration path remain protected",
+        "the provider's signed statement is truthful about the bound provider-side effect",
+        "the production database preserves transaction isolation, row locking, constraints, RLS, and function grants"
+      ],
+      "exclusions": [
+        "a verified provider statement authenticates the pinned executor's assertion but is not an independent physical-world sensor",
+        "INDETERMINATE does not claim success or failure and may require provider-specific investigation",
+        "same-team Swift, Kotlin, and JavaScript behavior is conformance evidence, not an independent implementation",
+        "the guarantee does not cover any protected-system path that bypasses the integrated executor"
+      ],
+      "release_artifacts": [
+        "mobile-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "mobile-sdk",
+          "sha256": "492cb61f8818883c72e6f7ed7d9f896b2def3fba7e08df823cda732e7c9b07cc"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -4500,13 +4668,13 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "createMobileExecutionRecord",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/index.js",
+          "file": "packages/mobile/src/index.ts",
           "symbol": "verifyMobileExecutionRecord",
           "exported": true
         },
@@ -4627,15 +4795,15 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "609085d2812d4aebf5091caaf960f83191fa0a0e1070c0b27c9553b36eaeed3c"
+          "sha256": "492cb61f8818883c72e6f7ed7d9f896b2def3fba7e08df823cda732e7c9b07cc"
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "b1c284017a6a9373e8375d4e239d9a55e648303d9c36297511c250604a8b5ee3"
+          "sha256": "73777402e44e013d6f9ae4cb63f88c5ba355fc416060a55df81e2353b4f1a4e0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -4650,13 +4818,13 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/mobile/enrollment.js",
+          "file": "packages/mobile/src/enrollment.ts",
           "symbol": "buildMobileEnrollmentBinding",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/mobile/enrollment.js",
+          "file": "packages/mobile/src/enrollment.ts",
           "symbol": "createMobileEnrollmentService",
           "exported": true
         }
@@ -4750,11 +4918,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "mobile-sdk",
-          "sha256": "609085d2812d4aebf5091caaf960f83191fa0a0e1070c0b27c9553b36eaeed3c"
+          "sha256": "492cb61f8818883c72e6f7ed7d9f896b2def3fba7e08df823cda732e7c9b07cc"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -4925,7 +5093,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     },
@@ -4977,19 +5145,19 @@
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/escrow-com.js",
+          "file": "lib/integrations/action-escrow/escrow-com.ts",
           "symbol": "createEscrowComAdapter",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "file": "lib/integrations/action-escrow/procore-change-order.ts",
           "symbol": "createProcoreChangeOrderAdapter",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "file": "lib/integrations/action-escrow/procore-change-order.ts",
           "symbol": "verifyProcoreChangeOrderEvidence",
           "exported": true
         }
@@ -5027,17 +5195,17 @@
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/escrow-com.js",
+          "file": "lib/integrations/action-escrow/escrow-com.ts",
           "export": "createEscrowComAdapter"
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "file": "lib/integrations/action-escrow/procore-change-order.ts",
           "export": "createProcoreChangeOrderAdapter"
         },
         {
           "language": "javascript",
-          "file": "lib/integrations/action-escrow/procore-change-order.js",
+          "file": "lib/integrations/action-escrow/procore-change-order.ts",
           "export": "verifyProcoreChangeOrderEvidence"
         }
       ],
@@ -5313,11 +5481,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "2d220d426b2b5b8f9c9c78e26c12cab970f42499cbab5d42952f5b3f5c0ff605"
+          "sha256": "5bc5cd61f6a3b02cd1771b49a2d724b8bc8a2c476e9de6dded3dec15d34ea084"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "677a558e8c9586860787300bf93b531e5c606fb27b4d708fe5d27e91f8e05cc8"
+          "sha256": "2731447e20c82a842acc4e139cb264864cfa3b10f8f31b4ea89f46c9f209ca12"
         }
       ]
     }
@@ -5485,19 +5653,27 @@
     },
     {
       "path": "lib/grace/mobile-grid.js",
-      "sha256": "a9359ca46b32fc6e076a3e1e1ac1a0b6cc6b8ec393725647749a4499b5993ad2"
+      "sha256": "f6eb5437d4e59dc05cc3ad49bc2bea49ee488f9215783e3f345100c34c508061"
     },
     {
       "path": "lib/guard-signoff.js",
       "sha256": "5dda2d40d15baec9a93e7133906ac910ac9428b7664150f31c967c5c6ef960e2"
     },
     {
-      "path": "lib/integrations/action-escrow/escrow-com.js",
-      "sha256": "f0d0b7826583cc5a0b5026ade4e003ac6a3645dd9060afd2f303f09c01559dc3"
+      "path": "lib/integrations/action-escrow/escrow-com.ts",
+      "sha256": "25836605a772becb56f93e664ca31f7e057a2b5ebb56399cf8c1ef12790b8858"
     },
     {
-      "path": "lib/integrations/action-escrow/procore-change-order.js",
-      "sha256": "c3b98443ffa2c75d3a2918417c68c8438c4c19def0b35eb62392a829e5a6272d"
+      "path": "lib/integrations/action-escrow/procore-change-order.ts",
+      "sha256": "60d91169b9b8c45b7b810191c7d18dc27cf7ba0cba652639ed3a4d60e6e62eb7"
+    },
+    {
+      "path": "lib/mobile/action-continuity.js",
+      "sha256": "af3a6b5efe6e99c307272c3a00d209deb6e81b53a97e375e19c270ff71ac2384"
+    },
+    {
+      "path": "lib/mobile/store.js",
+      "sha256": "fd19fc60736f808cfb1d20ded3c6257b3ee229de81fd5cdb4990629bb08ec331"
     },
     {
       "path": "lib/ncpdp/privacy.js",
@@ -5508,7 +5684,7 @@
       "sha256": "9a75d8e071c5c3890a303de91c5570bb5f33f655a45e20b91ec1d0cb4264e96f"
     },
     {
-      "path": "lib/signoff/decision-evidence.js",
+      "path": "lib/signoff/decision-evidence.ts",
       "sha256": "9e42206c9e2f46c22b0ae27d72cd16793cd00817ed2bc200d6dac40c4bee0abb"
     },
     {
@@ -5517,7 +5693,7 @@
     },
     {
       "path": "mobile/conformance/mobile-core.v1.json",
-      "sha256": "a2e4ba80e8f7f49b574fc7965288574c9f7f49f4ebcd8aa0281982a498f24e18"
+      "sha256": "30d4e147c2ccc982dce5ce4088171fa7255960a5ebfababf96bb047aef8dc3e4"
     },
     {
       "path": "packages/gate/action-escrow-custodian.js",
@@ -5593,7 +5769,7 @@
     },
     {
       "path": "packages/gate/index.js",
-      "sha256": "892873c202ccc7313242d0f6dc0555cbe114cb070ec49f3846f71cf4abf62f1e"
+      "sha256": "4b1b423b8e91d1da4c9e372ac047834985b32554b08b5e2496edc0113d93a6e7"
     },
     {
       "path": "packages/gate/network-witness.js",
@@ -5661,7 +5837,7 @@
     },
     {
       "path": "packages/mobile/enrollment.js",
-      "sha256": "e676c395d84cf0eb4f03d14aaebaab6a89d6c583a8e1a77042c530b69b2bcf70"
+      "sha256": "8e8b8440ec7dd25943fc7c3549c116544736b9aef6dee2ab8b5134feebe652f2"
     },
     {
       "path": "packages/mobile/enrollment.test.js",
@@ -5669,7 +5845,7 @@
     },
     {
       "path": "packages/mobile/government.js",
-      "sha256": "5db069f7535f940702f0b19a69c857dae886ba6ef292e08dc29de88be9fdb672"
+      "sha256": "211009a1b4707ef7447539b1aeb620ff04ba99ccb9c1ec81f9da8201790b9f41"
     },
     {
       "path": "packages/mobile/government.test.js",
@@ -5677,7 +5853,7 @@
     },
     {
       "path": "packages/mobile/http.js",
-      "sha256": "80b9d60ae698608ad9bbc034cfb396abda04d1db2cb27be6bfbb25b32a6fed1d"
+      "sha256": "688e5c1bc4792735c6b8b06dc6581930e9b54e04809891316ac389e16cf3718c"
     },
     {
       "path": "packages/mobile/http.test.js",
@@ -5685,11 +5861,27 @@
     },
     {
       "path": "packages/mobile/index.js",
-      "sha256": "39873c4b99fd970f88984858c8d08af31a776f8263c0d886370cdb0b94068420"
+      "sha256": "6c1059b1cc14d3f80dfad9154c63d5d1bbfe1186e9f893b801e0f55357154b3c"
     },
     {
       "path": "packages/mobile/index.test.js",
-      "sha256": "1acff3a2ecd9585ef16ef59b03601cfda6d52a83d5414bf6eb134c284060b991"
+      "sha256": "35bc5f9472eb47c997da14e061e9f73bb2a53c3193911b4e831335b58a93fe80"
+    },
+    {
+      "path": "packages/mobile/src/enrollment.ts",
+      "sha256": "4ffa7fa2fa2eaba45ec4025c9e0b03b7b24dd4ab1ddbe25a09b05507b079076e"
+    },
+    {
+      "path": "packages/mobile/src/government.ts",
+      "sha256": "a61aba0b10c6fd2cee98c6864ce22298fe0a404303819c67c362995e4935ea9c"
+    },
+    {
+      "path": "packages/mobile/src/http.ts",
+      "sha256": "dc3f93f46e1fbad0b6df181e1636063c3117d38a897b43207fef848077fda41a"
+    },
+    {
+      "path": "packages/mobile/src/index.ts",
+      "sha256": "70492491247f62b8655184f4666850a58a01e88bef714b0c4f11ea8513909d32"
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
@@ -5704,20 +5896,12 @@
       "sha256": "680b5286b8c289d8f46f97bbcf4bb6532a5bf6c2b76f5987c418961ceacb1654"
     },
     {
-      "path": "packages/verify/authority-proof.js",
-      "sha256": "d437ac50efb4ff85a813ff387e6ee7fedd100dff1c7dacfb61dac5bb20b8bb31"
-    },
-    {
       "path": "packages/verify/evidence-chain.js",
-      "sha256": "0549c9b21758fa34385e10c3bbf1ed8e5c566497277d6f7d043d1baa5c20c54c"
+      "sha256": "754e43ca6f6e57c5d86f607d751d000086fe4e8e3124037bfc3fbed96166d0ce"
     },
     {
       "path": "packages/verify/index.js",
-      "sha256": "e087634762904c199e03da0c70a36334cfb5e3501c0a75566aa241006bdae496"
-    },
-    {
-      "path": "packages/verify/outcome-binding.js",
-      "sha256": "92dfc717e196e40d414c44ff2ee47c3bfaeca95adf2d82b2ff8b6bba1bfb9edb"
+      "sha256": "f386e365a9998f08ea4947ffd415ca353c0a82766677a8e0cf3117909cccee24"
     },
     {
       "path": "packages/verify/outcome-binding.test.js",
@@ -5725,7 +5909,7 @@
     },
     {
       "path": "packages/verify/quorum.js",
-      "sha256": "b63ede6670301c254a7ee9e09bca6630a9848bf40748276c541cd53409c39aab"
+      "sha256": "b53cd3e57f41f286e1620e26035d37d592928f0b895f93dabd3dc990093ce492"
     },
     {
       "path": "packages/verify/quorum.test.js",
@@ -5733,11 +5917,11 @@
     },
     {
       "path": "packages/verify/reliance.js",
-      "sha256": "13b582819caf331872f82cd355b252b12f4933efa438f2dcc95272f5b192ee3b"
+      "sha256": "c2135d50ad7493424691c5b4e7fe21600297548f303f597f7a979194d424d19e"
     },
     {
       "path": "packages/verify/resolution.js",
-      "sha256": "517176437e86e5fc3743924379686de257f3c78a93bfb40c089e97b64defbbcf"
+      "sha256": "e3fed7cdd39b8c16499bb0887a7b66350da4d240f9dd5457f950ea1435257bbd"
     },
     {
       "path": "packages/verify/resolution.test.js",
@@ -5745,15 +5929,51 @@
     },
     {
       "path": "packages/verify/revocation.js",
-      "sha256": "08fc685a13a52c6ee1c7080d34b6c1772d3b1045beaa0b971aa9db4624d389f7"
+      "sha256": "3e65eda6188378bdb3e76690ef7200741035cdfdc872b5276e3c0dde8a168c54"
     },
     {
       "path": "packages/verify/revocation.test.js",
       "sha256": "4cdd1e61b70266023c3995648dca76592da852c4485e813abcde1e8a34afb697"
     },
     {
+      "path": "packages/verify/src/authority-proof.ts",
+      "sha256": "fd6ef8611427fba7810c72f71227f03abd9387c6829d1111f96c9bdb1ddc9bfe"
+    },
+    {
+      "path": "packages/verify/src/evidence-chain.ts",
+      "sha256": "b655b8a12bc907e8ab39165d856e4cf0fa8fccfa333913b425b384c5cb245310"
+    },
+    {
+      "path": "packages/verify/src/index.ts",
+      "sha256": "c8c2ff3956d54dcd11ad6e9ac97b481c6badd7f47bfb68633a203326a52c5390"
+    },
+    {
+      "path": "packages/verify/src/outcome-binding.ts",
+      "sha256": "c797cdb260279260610c2081cb607c7343eae1fc1b09d18c186118be8c6f6826"
+    },
+    {
+      "path": "packages/verify/src/quorum.ts",
+      "sha256": "248329e139462ae723a086a4c16cd1659a20988ba8d0bdf166245dba4c09c56c"
+    },
+    {
+      "path": "packages/verify/src/reliance.ts",
+      "sha256": "6400da91fb8a5947e7ecb00b119be6619df7d43c3c427c2e7789d8f9775cd6ad"
+    },
+    {
+      "path": "packages/verify/src/resolution.ts",
+      "sha256": "03ccec33c9eefebb59b2b9a72d2ba958d6a14be2f3ab201376b4af113f9e205c"
+    },
+    {
+      "path": "packages/verify/src/revocation.ts",
+      "sha256": "8aff5734b07e781347861e842b742dce483be9ac7e270020a695459a16d7b1c8"
+    },
+    {
+      "path": "packages/verify/src/timestamp-proof.ts",
+      "sha256": "383c3e611a246b9fa3e6450a4c8c2f7728cddf28b216aa8982b85c4098a2b74f"
+    },
+    {
       "path": "packages/verify/timestamp-proof.js",
-      "sha256": "66f14fd1187e873318661ee8088a45dc2eadccb973b7b0e3d60c15aa212eb1cd"
+      "sha256": "cd6075795cde6ed1686fa45e497ee32bd448e28ad23bfa3d493d399f11da03e5"
     },
     {
       "path": "packages/verify/timestamp-proof.test.js",
@@ -5793,19 +6013,23 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "afc098b6cbc6bd754f201c92a26de5d936a86bb58e6306bf07626460bb5c27d7"
+      "sha256": "dc6ec7ea062c836a3159f7a27eadbc77b040ad8d48ed9bb5e69a1df134f075c1"
     },
     {
       "path": "security/vectors.v1.json",
       "sha256": "2c04142fb159e5ceca7cbf7d7cdd358da1c42d084767ff76a6782742a70555c0"
     },
     {
+      "path": "supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql",
+      "sha256": "9ba1880c03dd97a1ee1c207c80986ba7d1e7db05d380f82262e3999e436cfef0"
+    },
+    {
       "path": "tests/action-escrow-escrow-com.test.js",
-      "sha256": "d1f7c408136b2dc025c0e4a7a5007c1e01cb97d6ceeb091a26cc421129cfe12a"
+      "sha256": "210b28d019ae8d7ed7226d5157fdc0731df5479505c77a7816671a26de1537de"
     },
     {
       "path": "tests/action-escrow-procore.test.js",
-      "sha256": "f183ea0bf761a89815bb248446fbc827a10037b936801900bb91cc3b03a530ea"
+      "sha256": "9e7f489c8703b0161d2c01945e84893b316934131a9ff73e5b8590cd14b313d0"
     },
     {
       "path": "tests/aec-execution-gate.test.js",
@@ -5833,7 +6057,15 @@
     },
     {
       "path": "tests/grace-mobile-grid.test.js",
-      "sha256": "9f8a689884e6b89f39b448a803489ab3cedff870274f34de13ca3721e9701c41"
+      "sha256": "8d81c870c9c77240c821acd8e176fa753c363b90237169f6bdec78723804b832"
+    },
+    {
+      "path": "tests/mobile-action-continuity-routes.test.js",
+      "sha256": "89405130f4e8d3ebeae1687e410f5ba0818e73db5968a2003d6b6e1500f5337a"
+    },
+    {
+      "path": "tests/mobile-action-continuity.test.js",
+      "sha256": "70f37b8da2ab60fddda4a85a6b9ef6a07eeb213d7ca1d6ba9f4d96f3965a2626"
     },
     {
       "path": "tests/model-to-matter.test.js",
@@ -5857,7 +6089,7 @@
     },
     {
       "path": "tests/release-reproducibility.test.js",
-      "sha256": "ff6562c2ff4b044740a40062ab6014935d2221e2879a8ef5eca7e2f2cce84c46"
+      "sha256": "037094e75ae8178f4acb98f59248cde2af3ef844ab693cad2f5caf696b0fe392"
     },
     {
       "path": "tests/reliance-kernel.test.js",
@@ -5869,7 +6101,7 @@
     },
     {
       "path": "tests/signoff-decision-evidence.test.js",
-      "sha256": "eb24f08dfc28313c38b6840b5335d68469ebcffecf477702559bbfd4b533a008"
+      "sha256": "e71fbc74e10b51e1bbe65674a26013a94dba8d80b1ff024050f91e9515e08895"
     },
     {
       "path": "tests/v1-api.test.js",

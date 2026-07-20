@@ -23,6 +23,45 @@ import org.junit.Test
 
 class MobileApiRecoveryTest {
     @Test
+    fun directSuccessRequiresTheFullVerifiedTuple() = runBlocking {
+        val fixture = fixture()
+        val connections = StubConnections(
+            StubResponse(200, ceremonyResult(fixture.decision, fixture.contextHash)),
+        )
+
+        val result = api(connections).verify(fixture.challenge, fixture.response)
+
+        assertTrue(result.valid)
+        assertEquals("verified", result.verdict)
+        assertEquals(fixture.decision, result.decision)
+        assertEquals(fixture.contextHash, result.contextHash)
+        assertEquals(1, connections.opened.size)
+    }
+
+    @Test
+    fun directTwoHundredMismatchesAreIndeterminateNotRefused() = runBlocking {
+        val fixture = fixture()
+        val invalidResults = listOf(
+            ceremonyResult(fixture.decision, fixture.contextHash, valid = false),
+            ceremonyResult(fixture.decision, fixture.contextHash, verdict = "refused"),
+            ceremonyResult("denied", fixture.contextHash),
+            ceremonyResult(fixture.decision, fixture.contextHash, reason = "verification_failed"),
+            ceremonyResult(fixture.decision, "sha256:" + "f".repeat(64)),
+        )
+
+        invalidResults.forEach { body ->
+            val connections = StubConnections(StubResponse(200, body))
+            try {
+                api(connections).verify(fixture.challenge, fixture.response)
+                fail("An unverified direct outcome must not be accepted")
+            } catch (error: MobileApiException) {
+                assertTrue(error is MobileApiException.OutcomeUnknown)
+                assertEquals(1, connections.opened.size)
+            }
+        }
+    }
+
+    @Test
     fun everyServerErrorRecoversCommittedOutcomeWithAuthentication() = runBlocking {
         val fixture = fixture()
         for (status in listOf(500, 502, 503, 599)) {
@@ -100,6 +139,79 @@ class MobileApiRecoveryTest {
         }
     }
 
+    @Test
+    fun continuityEndpointsUseEncodedReferencesAndEmptyWithdrawalBody() = runBlocking {
+        val actionReference = "mobact:finance@revision.2"
+        val historyConnections = StubConnections(
+            StubResponse(
+                200,
+                """
+                {
+                  "approver_id": "ep:approver:finance",
+                  "actions": [{
+                    "action_reference": "$actionReference",
+                    "title": "Release payment",
+                    "summary": "Release payment",
+                    "risk": "high",
+                    "material_fields": {"amount": "10"},
+                    "expires_at": "2026-07-21T00:00:00.000Z",
+                    "created_at": "2026-07-20T20:00:00.000Z",
+                    "continuity": {"state": "CONSUMED", "retry_safe": false}
+                  }]
+                }
+                """.trimIndent(),
+            ),
+        )
+        assertEquals(
+            "CONSUMED",
+            api(historyConnections).history().single().continuity?.state,
+        )
+        assertEquals("/api/v1/mobile/history", historyConnections.opened.single().url.path)
+
+        val passportConnections = StubConnections(
+            StubResponse(
+                200,
+                """{"passport":{"@version":"EP-MOBILE-DECISION-PASSPORT-v1"}}""",
+            ),
+        )
+        assertEquals(
+            "EP-MOBILE-DECISION-PASSPORT-v1",
+            api(passportConnections).passport(actionReference)["@version"]
+                ?.toString()?.trim('"'),
+        )
+        assertEquals(
+            "/api/v1/mobile/actions/mobact%3Afinance%40revision.2/passport",
+            passportConnections.opened.single().url.path,
+        )
+
+        val withdrawalConnections = StubConnections(
+            StubResponse(200, """{"withdrawn":true,"state":"withdrawn"}"""),
+        )
+        val withdrawal = api(withdrawalConnections).withdraw(actionReference)
+        assertTrue(withdrawal.withdrawn)
+        assertEquals("POST", withdrawalConnections.opened.single().requestMethod)
+        assertEquals(
+            "/api/v1/mobile/actions/mobact%3Afinance%40revision.2/withdraw",
+            withdrawalConnections.opened.single().url.path,
+        )
+        assertEquals("{}", withdrawalConnections.opened.single().writtenBody())
+    }
+
+    @Test
+    fun withdrawalConflictMeansAuthorityWasAlreadyConsumed() = runBlocking {
+        val connections = StubConnections(
+            StubResponse(409, """{"reason":"already_consumed"}"""),
+        )
+
+        try {
+            api(connections).withdraw("mobact:finance@revision.2")
+            fail("A consumed approval must not be reported as withdrawn")
+        } catch (error: MobileApiException) {
+            assertTrue(error is MobileApiException.AlreadyConsumed)
+        }
+        assertEquals(1, connections.opened.size)
+    }
+
     private fun api(connections: StubConnections): MobileApi = MobileApi(
         rawBaseUrl = "https://www.emiliaprotocol.ai/api/",
         accessToken = "mobile-access-token",
@@ -119,16 +231,38 @@ class MobileApiRecoveryTest {
         }
     """.trimIndent()
 
+    private fun ceremonyResult(
+        decision: String,
+        contextHash: String,
+        valid: Boolean = true,
+        verdict: String = "verified",
+        reason: String? = null,
+    ): String = """
+        {
+          "valid": $valid,
+          "verdict": "$verdict",
+          "decision": "$decision",
+          "reason": ${reason?.let { "\"$it\"" } ?: "null"},
+          "context_hash": "$contextHash"
+        }
+    """.trimIndent()
+
     private fun fixture(): Fixture {
         val decision = "approved"
         val context = buildJsonObject {
+            put("action_reference", "mobact_0123456789abcdef0123456789abcdef")
+            put(
+                "action_caid",
+                "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"A".repeat(43)}",
+            )
+            put("action_digest", "sha256:" + "a".repeat(64))
             put("action_hash", "sha256:" + "a".repeat(64))
             put("decision", decision)
             put("nonce", "sig_0123456789abcdef0123456789abcdef")
         }
         val challenge = EmiliaMobileChallenge(
             version = "AE-CHALLENGE-v1",
-            challengeProfile = "EP-MOBILE-CHALLENGE-v1",
+            challengeProfile = EmiliaMobileChallenge.PROFILE,
             challengeId = "mob_0123456789abcdef",
             nonce = "sig_0123456789abcdef0123456789abcdef",
             action = buildJsonObject { put("amount", 10) },
@@ -211,4 +345,6 @@ private class StubHttpsURLConnection(
     override fun getErrorStream(): InputStream? =
         if (stub.status in 200..299) null else ByteArrayInputStream(responseBytes)
     override fun getOutputStream(): OutputStream = requestBody
+
+    fun writtenBody(): String = requestBody.toString(Charsets.UTF_8)
 }

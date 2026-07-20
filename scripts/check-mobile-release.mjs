@@ -45,7 +45,7 @@ contains('sdks/kotlin-mobile/src/main/kotlin/ai/emiliaprotocol/mobile/AndroidPro
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/SecureSessionStore.kt', /AndroidKeyStore/, 'session secret is not Android Keystore protected');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /PRODUCTION_BASE_URL = "https:\/\/www\.emiliaprotocol\.ai\/api\/"/, 'Android production API identity is not pinned');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /challenge\.authorizationContext\.decision[\s\S]*result\.decision != expectedDecision/, 'Android ceremony recovery is not bound to the reviewed decision');
-contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /catch \(_:\s*MobileApiException\.Transport\)[\s\S]{0,400}recoverCeremonyResult\(challenge\.challengeId,[\s\S]{0,80}challenge\.authorizationContext\.decision/, 'Android does not recover a possibly committed ceremony after a lost POST response');
+contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /catch \(_:\s*MobileApiException\.Transport\)[\s\S]{0,400}recoverCeremonyResult\([\s\S]{0,120}challenge\.challengeId,[\s\S]{0,80}expectedDecision/, 'Android does not recover a possibly committed ceremony after a lost POST response');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*OutcomeUnknown/, 'Android does not close an unresolved recovery lookup as outcome unknown');
 assert.doesNotMatch(read('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt'), /Nothing was authorized/, 'Android makes an unsafe non-commit claim after transport failure');
 
@@ -63,8 +63,27 @@ contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /r
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /mobile_presentation_is_valid[\s\S]*EP-MOBILE-PRESENTATION-v1[\s\S]*jsonb_typeof\(field\.value\) <> 'string'/, 'database presentation schema is not closed against unseen nested fields');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /insert into mobile_counters\(counter_key, counter_value\)[\s\S]*p_enrollment ->> 'sign_count'/, 'registration counter baseline is not seeded in the enrollment transaction');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /session_id uuid not null references mobile_sessions[\s\S]*p_record ->> 'session_id' is distinct from p_session_id::text[\s\S]*reason', 'session_inactive'/, 'terminal decisions are not transactionally bound to an active mobile session');
+contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function mobile_action_decision_identity_guard\([\s\S]*action_caid[\s\S]*action_digest/, 'terminal decisions are not bound to the exact CAID revision');
+contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function consume_mobile_action\([\s\S]*consumption_nonce[\s\S]*already_consumed/, 'single-consumption and replay refusal are missing');
+contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function consume_mobile_action\([\s\S]*target\.expires_at <= p_now[\s\S]*reason', 'expired'/, 'expired authorization can still be consumed');
+contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function mark_mobile_action_indeterminate\([\s\S]*retry_safe', false/, 'provider timeout does not burn blind retry');
+contains('supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql', /primary key \(entity_ref, operation_id\)/, 'operation identifiers remain globally squattable across tenants');
+contains('supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql', /create or replace function consume_mobile_action\([\s\S]*insert into mobile_action_operations\([\s\S]*executor_key\.key_id/, 'consumption does not freeze the intended executor key');
+contains('supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql', /create or replace function reconcile_mobile_action_operation\([\s\S]*for share[\s\S]*executor_key_not_active[\s\S]*provider_evidence = p_provider_evidence/, 'authenticated reconciliation is not transactionally key-bound with retained evidence');
+contains('supabase/migrations/20260720193917_mobile_action_continuity_hardening.sql', /where entity_ref = p_entity_ref and operation_id = p_operation_id/, 'operation transitions are not tenant scoped');
+contains('supabase/migrations/20260720181619_mobile_action_continuity.sql', /create or replace function list_mobile_action_continuity\([\s\S]*left join mobile_action_groups[\s\S]*action\.group_id is null/, 'continuity snapshot hides legacy mobile actions');
+contains('supabase/migrations/20260720182147_mobile_pgcrypto_schema_pin.sql', /alter function append_mobile_audit_event\(text, jsonb\)[\s\S]*set search_path = extensions, public, pg_temp/, 'mobile audit hashing cannot resolve Supabase pgcrypto safely');
+contains('supabase/migrations/20260720182147_mobile_pgcrypto_schema_pin.sql', /alter function append_mobile_evidence_record\(text, text, jsonb, text\)[\s\S]*set search_path = extensions, public, pg_temp/, 'mobile evidence hashing cannot resolve Supabase pgcrypto safely');
+contains('supabase/migrations/20260720182147_mobile_pgcrypto_schema_pin.sql', /alter function commit_mobile_action_decision\([\s\S]*set search_path = extensions, public, pg_temp/, 'atomic mobile decision hashing cannot resolve Supabase pgcrypto safely');
+contains('supabase/migrations/20260720182519_mobile_action_advisor_hardening.sql', /revoke all on function mobile_action_challenge_identity\(\)[\s\S]*from public, anon, authenticated/, 'challenge identity trigger is exposed as a public RPC');
+contains('supabase/migrations/20260720182519_mobile_action_advisor_hardening.sql', /revoke all on function mobile_action_decision_identity_guard\(\)[\s\S]*from public, anon, authenticated/, 'decision identity trigger is exposed as a public RPC');
+contains('supabase/migrations/20260720182519_mobile_action_advisor_hardening.sql', /revoke all on function mobile_action_decision_projection\(\)[\s\S]*from public, anon, authenticated/, 'decision projection trigger is exposed as a public RPC');
+contains('supabase/migrations/20260720182519_mobile_action_advisor_hardening.sql', /create index if not exists mobile_action_challenges_group_revision_idx[\s\S]*entity_ref, group_id, revision/, 'challenge continuity foreign key lacks a covering index');
+contains('mobile/spec/ep-mobile-v1.schema.json', /EP-MOBILE-CHALLENGE-v2[\s\S]*action_reference[\s\S]*action_caid[\s\S]*action_digest/, 'mobile schema does not require the signed Action Lock');
+contains('packages/mobile/package.json', /"action-identity\.js"/, 'published mobile package omits its CAID Action Lock implementation');
 contains('scripts/check-mobile-production.mjs', /service role cannot mutate mobile trust tables directly[\s\S]*p_session_id: nonexistentSessionId/, 'production readiness does not test the read-only service role and session-bound terminal RPC');
 contains('scripts/check-mobile-production.mjs', /mobile_presentation_is_valid[\s\S]*p_decision_evidence:/, 'production readiness is stale relative to the current mobile RPC and presentation schema');
+contains('scripts/check-mobile-production.mjs', /create_mobile_demo_action_v2[\s\S]*mark_mobile_action_indeterminate[\s\S]*reconcile_mobile_action_operation[\s\S]*list_mobile_action_continuity/, 'production readiness omits the durable continuity RPCs');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on mobile_kv_state,[\s\S]*from anon, authenticated/, 'public database grants were not revoked');
 for (const rpc of [
   'mobile_state_add_if_absent',
@@ -84,6 +103,14 @@ for (const path of [
   'app/api/v1/mobile/session/route.js',
   'app/api/v1/mobile/ceremonies/[challengeId]/route.js',
   'app/api/v1/mobile/demo/actions/route.js',
+  'app/api/v1/mobile/history/route.js',
+  'app/api/v1/mobile/actions/[actionReference]/passport/route.js',
+  'app/api/v1/mobile/actions/[actionReference]/withdraw/route.js',
+  'app/api/v1/mobile/actions/[actionReference]/consume/route.js',
+  'app/api/v1/mobile/actions/[actionReference]/outcomes/route.js',
+  'app/api/v1/mobile/actions/[actionReference]/alignments/route.js',
+  'app/api/v1/mobile/actions/[actionReference]/supersede/route.js',
+  'app/api/v1/mobile/executors/route.js',
   'lib/mobile/runtime.js',
 ]) {
   contains(path, /getGuardedClient/, 'mobile runtime bypasses the guarded database client');

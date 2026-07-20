@@ -234,7 +234,7 @@ export default function GatePage() {
             </h2>
             <div style={{ marginTop: 32, borderTop: `1px solid ${color.border}` }}>
               {[
-                ['/product/accountable-signoff', 'Approver Apps', 'Show the exact material action and capture the device-bound human decision.'],
+                ['/product/accountable-signoff', 'Approver Apps', 'Lock the human decision to the exact CAID, show material revisions, and track the consequence without blind replay.'],
                 ['/action-escrow', 'Action Escrow', 'Keep document execution, exact release approval, custodian state, and one-time consequence control as separate verifiable rows.'],
                 ['/protocol', 'EMILIA Protocol', 'Define the portable evidence and open verification rules beneath Gate.'],
                 ['/assurance', 'Assurance Plane', 'Re-perform exact-action evidence, conformance results, and stated formal-model scope; record drift and prepare the technical handoff.'],

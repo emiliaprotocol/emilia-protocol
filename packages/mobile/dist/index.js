@@ -15,15 +15,16 @@ import { createMobileHttpHandler } from './http.js';
 import { strictJsonGate } from './strict-json.js';
 import { MOBILE_PRESENTATION_VERSION, normalizeControlledMobilePresentation, normalizeMobilePresentation, projectMobileAction, validControlledMobilePresentation, validMobilePresentation, } from './presentation.js';
 import { buildMobileAndroidKeyBinding, buildMobileEnrollmentBinding, createMobileEnrollmentService, MOBILE_ANDROID_KEY_BINDING_VERSION, MOBILE_ENROLLMENT_CHALLENGE_VERSION, MOBILE_ENROLLMENT_VERSION, } from './enrollment.js';
+import { MOBILE_ACTION_CAID_TYPE, MOBILE_ACTION_CAID_PATTERN, buildMobileActionIdentity, mobileActionFingerprint, verifyMobileActionIdentity, } from './action-identity.js';
 const verifier = await import('../../verify/index.js');
 const { canonicalize, isCanonicalizable, verifyWebAuthnSignoff } = verifier;
-export const MOBILE_CHALLENGE_VERSION = 'EP-MOBILE-CHALLENGE-v1';
+export const MOBILE_CHALLENGE_VERSION = 'EP-MOBILE-CHALLENGE-v2';
 export const MOBILE_CEREMONY_VERSION = 'EP-MOBILE-CEREMONY-v1';
 export const MOBILE_PROFILE_VERSION = 'EP-MOBILE-RELIANCE-PROFILE-v1';
 export const MOBILE_ATTESTATION_BINDING_VERSION = 'EP-MOBILE-ATTESTATION-BINDING-v1';
 export const MOBILE_ACK_VERSION = 'EP-MOBILE-ACK-v1';
 export const MOBILE_EXECUTION_RECORD_VERSION = 'EP-MOBILE-EXECUTION-RECORD-v1';
-export { MOBILE_PRESENTATION_VERSION, normalizeControlledMobilePresentation, normalizeMobilePresentation, projectMobileAction, validControlledMobilePresentation, validMobilePresentation, };
+export { MOBILE_ACTION_CAID_TYPE, MOBILE_ACTION_CAID_PATTERN, buildMobileActionIdentity, mobileActionFingerprint, verifyMobileActionIdentity, MOBILE_PRESENTATION_VERSION, normalizeControlledMobilePresentation, normalizeMobilePresentation, projectMobileAction, validControlledMobilePresentation, validMobilePresentation, };
 const MOBILE_CHECK_NAMES = Object.freeze([
     'profile',
     'freshness',
@@ -73,7 +74,8 @@ const ATTESTATION_KEY_ID = /^[A-Za-z0-9:._+/=-]{3,512}$/;
 const ANDROID_APK_ORIGIN = /^android:apk-key-hash:[A-Za-z0-9_-]{43}$/;
 const CANONICAL_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const CONTEXT_MEMBERS = new Set([
-    'ep_version', 'context_type', 'action_hash', 'policy_id', 'policy_hash',
+    'ep_version', 'context_type', 'action_reference', 'action_caid', 'action_digest',
+    'action_hash', 'policy_id', 'policy_hash',
     'initiator', 'approver', 'approver_index', 'required_approvals', 'nonce',
     'issued_at', 'expires_at', 'decision', 'display_hash', 'mobile_binding',
 ]);
@@ -356,6 +358,9 @@ function contextHash(context) {
 /**
  * @param {Object} [params]
  * @param {string} [params.actionHash]
+ * @param {string} [params.actionReference]
+ * @param {string} [params.actionCaid]
+ * @param {string} [params.actionDigest]
  * @param {(string|null)} [params.policyId]
  * @param {(string|null)} [params.policyHash]
  * @param {string} [params.initiatorId]
@@ -375,8 +380,10 @@ function contextHash(context) {
  * @param {string} [params.attestationKeyId]
  * @returns {Object}
  */
-export function buildMobileAuthorizationContext({ actionHash, policyId = null, policyHash = null, initiatorId, approverId, approverIndex = 1, requiredApprovals = 1, nonce, issuedAt, expiresAt, decision, displayHash, profileHash, platform, appId, deviceKeyId, credentialId, attestationKeyId, } = {}) {
-    if (!validHash(actionHash) || (policyHash !== null && !validHash(policyHash))
+export function buildMobileAuthorizationContext({ actionHash, actionReference, actionCaid, actionDigest, policyId = null, policyHash = null, initiatorId, approverId, approverIndex = 1, requiredApprovals = 1, nonce, issuedAt, expiresAt, decision, displayHash, profileHash, platform, appId, deviceKeyId, credentialId, attestationKeyId, } = {}) {
+    if (!validHash(actionHash) || !validId(actionReference)
+        || !MOBILE_ACTION_CAID_PATTERN.test(actionCaid || '') || !validHash(actionDigest)
+        || (policyHash !== null && !validHash(policyHash))
         || !validId(initiatorId) || !validId(approverId)
         || !Number.isSafeInteger(approverIndex) || approverIndex < 1 || approverIndex > 1024
         || !Number.isSafeInteger(requiredApprovals) || requiredApprovals < 1 || requiredApprovals > 1024
@@ -392,6 +399,9 @@ export function buildMobileAuthorizationContext({ actionHash, policyId = null, p
     return {
         ep_version: '1.0',
         context_type: 'ep.signoff.v1',
+        action_reference: actionReference,
+        action_caid: actionCaid,
+        action_digest: actionDigest,
         action_hash: actionHash,
         policy_id: policyId,
         policy_hash: policyHash,
@@ -436,6 +446,7 @@ export function buildMobileAttestationBinding(challenge) {
 /**
  * @param {Object} [params]
  * @param {*} [params.action]
+ * @param {string} [params.actionReference]
  * @param {*} [params.policy]
  * @param {(string|null)} [params.policyId]
  * @param {string} [params.initiatorId]
@@ -454,7 +465,7 @@ export function buildMobileAttestationBinding(challenge) {
  * @param {string} [params.nonce]
  * @returns {Object}
  */
-export function createMobileChallenge({ action, policy = null, policyId = null, initiatorId, approverId, approverIndex = 1, requiredApprovals = 1, decision, presentation, platform, appId, deviceKeyId, profile, issuedAt, expiresAt, challengeId = randomId('mob_'), nonce = randomId('sig_'), } = {}) {
+export function createMobileChallenge({ action, actionReference, policy = null, policyId = null, initiatorId, approverId, approverIndex = 1, requiredApprovals = 1, decision, presentation, platform, appId, deviceKeyId, profile, issuedAt, expiresAt, challengeId = randomId('mob_'), nonce = randomId('sig_'), } = {}) {
     assertProfile(profile);
     const enrollment = enrollmentFor(profile, deviceKeyId);
     if (!enrollment || enrollment.status !== 'active'
@@ -472,12 +483,16 @@ export function createMobileChallenge({ action, policy = null, policyId = null, 
     }
     if (!validId(challengeId) || !validId(nonce))
         throw new TypeError('challengeId and nonce are malformed');
+    const identity = buildMobileActionIdentity({ actionReference, action });
     const computedActionHash = actionHash(action);
     const normalizedPresentation = normalizeControlledMobilePresentation(action, presentation);
     const computedDisplayHash = displayHash(normalizedPresentation);
     const computedPolicyHash = policy === null ? null : hashCanonical(policy);
     const authorizationContext = buildMobileAuthorizationContext({
         actionHash: computedActionHash,
+        actionReference,
+        actionCaid: identity.action_caid,
+        actionDigest: identity.action_digest,
         policyId,
         policyHash: computedPolicyHash,
         initiatorId,
@@ -564,6 +579,9 @@ function validContextShape(context) {
         && Object.keys(context).every((key) => CONTEXT_MEMBERS.has(key))
         && context.ep_version === '1.0'
         && context.context_type === 'ep.signoff.v1'
+        && validId(context.action_reference)
+        && MOBILE_ACTION_CAID_PATTERN.test(context.action_caid || '')
+        && validHash(context.action_digest)
         && Number.isSafeInteger(context.approver_index)
         && Number.isSafeInteger(context.required_approvals)
         && context.approver_index >= 1
@@ -652,8 +670,14 @@ export async function verifyMobileCeremony({ challenge, response, profile, now, 
         if (normalizeHash(context.mobile_binding?.profile_hash) !== normalizeHash(profile.profile_hash)) {
             return refused('refuse_profile_mismatch', 'signed context does not name the pinned profile', checks);
         }
+        const identity = buildMobileActionIdentity({
+            actionReference: context.action_reference,
+            action: challenge.action,
+        });
         checks.action = isRecord(challenge.action)
             && normalizeHash(actionHash(challenge.action)) === normalizeHash(challenge.action_hash)
+            && identity.action_caid === context.action_caid
+            && normalizeHash(identity.action_digest) === normalizeHash(context.action_digest)
             && normalizeHash(context.action_hash) === normalizeHash(challenge.action_hash);
         if (!checks.action)
             return refused('refuse_action_mismatch', 'action bytes do not match the signed action hash', checks);
@@ -1143,7 +1167,12 @@ export default {
     MOBILE_EXECUTION_RECORD_VERSION,
     MOBILE_PRESENTATION_VERSION,
     MOBILE_VERDICTS,
+    MOBILE_ACTION_CAID_TYPE,
+    MOBILE_ACTION_CAID_PATTERN,
     hashCanonical,
+    buildMobileActionIdentity,
+    mobileActionFingerprint,
+    verifyMobileActionIdentity,
     mobileProfileHash,
     createMobileRelianceProfile,
     projectMobileAction,

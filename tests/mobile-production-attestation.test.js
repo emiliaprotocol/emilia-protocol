@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
-import cbor from 'cbor';
 import { Encoder } from 'cbor-x';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { encodeCborSync } from '../lib/cbor-encode.js';
 
 const mocks = vi.hoisted(() => ({
   verifyRegistrationResponse: vi.fn(),
@@ -35,7 +35,7 @@ function appleAuthenticatorData({ category = 4, bundleVersion = '1', includeSign
   const header = Buffer.alloc(37);
   header[32] = includeSignals ? 0x80 : 0x00;
   if (!includeSignals) return header;
-  return Buffer.concat([header, cbor.encode({
+  return Buffer.concat([header, encodeCborSync({
     apple_validation_category_01: category,
     apple_bundle_version_01: bundleVersion,
   })]);
@@ -80,6 +80,10 @@ function playPayload(requestHash, certificate = PLAY_CERTIFICATE) {
 
 describe('mobile production attestation adapters', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('fails closed when the Node 26-safe CBOR encoder receives an unsupported value', () => {
+    expect(() => encodeCborSync(Symbol('unsupported'))).toThrow(/Unknown symbol/);
+  });
 
   it('turns a verified P-256 passkey registration into the pinned SPKI record', async () => {
     mocks.verifyRegistrationResponse.mockResolvedValue({
@@ -324,7 +328,7 @@ describe('mobile production attestation adapters', () => {
 
   it('enforces Apple certificate validity and signed runtime distribution signals', () => {
     const authData = appleAuthenticatorData();
-    const encoded = cbor.encode({
+    const encoded = encodeCborSync({
       fmt: 'apple-appattest',
       authData,
       attStmt: { x5c: [Buffer.from('leaf'), Buffer.from('intermediate')] },
@@ -385,8 +389,8 @@ describe('mobile production attestation adapters', () => {
     expect(() => decodeAppleAuthenticatorExtensions(missingCredentialKey)).toThrow('truncated');
 
     const credentialId = Buffer.from([1, 2]);
-    const credentialKey = cbor.encode(new Map([[1, 2], [3, -7]]));
-    const extensions = cbor.encode(new Map([
+    const credentialKey = encodeCborSync(new Map([[1, 2], [3, -7]]));
+    const extensions = encodeCborSync(new Map([
       ['apple_validation_category_01', 4],
       ['apple_bundle_version_01', '1'],
     ]));
@@ -432,23 +436,23 @@ describe('mobile production attestation adapters', () => {
       { fmt: 'apple-appattest', authData, attStmt: { x5c: [Buffer.from('a'), 'not-bytes'] } },
     ];
     for (const value of malformedAttestations) {
-      expect(() => inspectAppleAppAttestation(cbor.encode(value))).toThrow('malformed');
+      expect(() => inspectAppleAppAttestation(encodeCborSync(value))).toThrow('malformed');
     }
     expect(() => inspectAppleAppAttestation(Buffer.concat([
-      cbor.encode({ fmt: 'apple-appattest', authData, attStmt: { x5c: [Buffer.from('a'), Buffer.from('b')] } }),
+      encodeCborSync({ fmt: 'apple-appattest', authData, attStmt: { x5c: [Buffer.from('a'), Buffer.from('b')] } }),
       Buffer.from([0]),
     ]))).toThrow('trailing CBOR');
 
-    expect(() => inspectAppleAppAssertion(cbor.encode({ signature: 'bad', authenticatorData: authData }))).toThrow('malformed');
-    expect(() => inspectAppleAppAssertion(cbor.encode({ signature: Buffer.from('sig'), authenticatorData: 'bad' }))).toThrow('malformed');
-    expect(inspectAppleAppAssertion(cbor.encode({
+    expect(() => inspectAppleAppAssertion(encodeCborSync({ signature: 'bad', authenticatorData: authData }))).toThrow('malformed');
+    expect(() => inspectAppleAppAssertion(encodeCborSync({ signature: Buffer.from('sig'), authenticatorData: 'bad' }))).toThrow('malformed');
+    expect(inspectAppleAppAssertion(encodeCborSync({
       signature: Buffer.from('sig'),
       authenticatorData: authData,
     })).authenticatorData).toEqual(authData);
   });
 
   it('rejects expired and mis-profiled Apple certificate chains one condition at a time', () => {
-    const encoded = cbor.encode({
+    const encoded = encodeCborSync({
       fmt: 'apple-appattest',
       authData: appleAuthenticatorData(),
       attStmt: { x5c: [Buffer.from('leaf'), Buffer.from('intermediate')] },

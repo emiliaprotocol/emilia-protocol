@@ -127,6 +127,12 @@ const ROUTE_POLICIES = {
   'POST /api/v1/mobile/enrollments':            { rateCategory: 'mobile_runtime_ip', useAuth: false },
   'DELETE /api/v1/mobile/session':              { rateCategory: 'mobile_runtime_ip', useAuth: false },
   'POST /api/v1/mobile/demo/actions':           { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/mobile/executors':              { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/mobile/actions/*/alignments':   { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/mobile/actions/*/consume':      { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/mobile/actions/*/outcomes':     { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/mobile/actions/*/supersede':    { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/v1/mobile/actions/*/withdraw':     { rateCategory: 'mobile_runtime_ip', useAuth: false },
   'POST /api/v1/grace/curtailment/actions':      { rateCategory: 'protocol_write', useAuth: true },
 
   // Release Lock. Organization mutations authenticate an EP API key in-route.

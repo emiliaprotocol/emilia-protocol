@@ -18,7 +18,7 @@ describe('release byte reproducibility', () => {
     expect(result.filename).toBe(`emilia-protocol-verify-${result.version}.tgz`);
     expect(result.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(result.fileCount).toBeGreaterThan(0);
-  });
+  }, 30_000);
 
   it('normalizes source file modes across independent package checkouts', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-modes-'));

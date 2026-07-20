@@ -40,6 +40,9 @@ const PRESENTATION = Object.freeze({
 
 function signedDecisionEvidence({
   decision = 'approved',
+  actionReference = 'mobile-action-reference-0001',
+  actionCaid = `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+  actionDigest = `sha256:${'c'.repeat(64)}`,
   actionHash = `sha256:${'a'.repeat(64)}`,
   profileHash = `sha256:${'b'.repeat(64)}`,
   approverId = 'approver-1',
@@ -48,6 +51,9 @@ function signedDecisionEvidence({
   const context = {
     ep_version: '1.0',
     context_type: 'ep.signoff.v1',
+    action_reference: actionReference,
+    action_caid: actionCaid,
+    action_digest: actionDigest,
     action_hash: actionHash,
     policy_id: 'policy-1',
     policy_hash: null,
@@ -61,7 +67,7 @@ function signedDecisionEvidence({
     decision,
     display_hash: `sha256:${'d'.repeat(64)}`,
     mobile_binding: {
-      profile: 'EP-MOBILE-CHALLENGE-v1',
+      profile: 'EP-MOBILE-CHALLENGE-v2',
       profile_hash: profileHash,
       platform: 'ios',
       app_id: 'ai.emiliaprotocol.approver',
@@ -324,7 +330,8 @@ describe('durable mobile storage adapters', () => {
     expect(await createMobileCounterStore({ rpc }).advance('device-1', 4)).toBe(true);
     expect(await createMobileCounterStore({ rpc }).advance('', -1)).toBe(false);
     const event = { event_type: 'mobile.test', nested: { stable: true } };
-    const record = await createMobileAuditLog({ rpc, from }, 'entity-1').record(event);
+    const auditLog = createMobileAuditLog({ rpc, from }, 'entity-1');
+    const record = await auditLog.record(event);
     expect(record.record_id).toMatch(/^mar_[0-9a-f]{32}$/);
     expect(record.seq).toBe(0);
     expect(record.prev_hash).toBe('genesis');
@@ -335,6 +342,19 @@ describe('durable mobile storage adapters', () => {
       p_record: record,
       p_canonical_body: expect.any(String),
     }));
+    from
+      .mockReturnValueOnce(chain({ data: [{ record }], error: null }))
+      .mockReturnValueOnce(chain({ data: [{ record }], error: null }))
+      .mockReturnValueOnce(chain({
+        data: { record, record_hash: record.hash },
+        error: null,
+      }));
+    await expect(auditLog.all()).resolves.toEqual([record]);
+    await expect(auditLog.verify()).resolves.toEqual({
+      ok: true,
+      length: 1,
+      head: record.hash,
+    });
 
     expect(() => createMobileCounterStore({})).toThrow(/Supabase client/);
     await expect(createMobileCounterStore({
@@ -362,6 +382,12 @@ describe('durable mobile storage adapters', () => {
       rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
     }, 'entity-1');
     await expect(appendUnavailable.record({ event_type: 'mobile.test' })).rejects.toThrow(/append_indeterminate/);
+
+    const historyUnavailable = createMobileAuditLog({
+      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+      rpc: vi.fn(),
+    }, 'entity-1');
+    await expect(historyUnavailable.all()).rejects.toThrow(/mobile evidence history lookup failed/);
   });
 
   it('loads only active enrollments and preserves each platform public key', async () => {
@@ -592,6 +618,23 @@ describe('durable mobile storage adapters', () => {
       auditEntry: decisionAuditEntry(decisionEvidence),
     });
     expect(result).toMatchObject({ committed: true, audit_record: persisted });
+
+    await expect(commitMobileActionDecision({
+      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: vi.fn().mockResolvedValue({
+        data: null,
+        error: { code: '08006', message: 'commit did not become visible' },
+      }),
+    }, {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      challengeId: 'challenge-0001',
+      actionHash: `sha256:${'a'.repeat(64)}`,
+      decision: 'approved',
+      verdict: 'verified',
+      decisionEvidence,
+      auditEntry: decisionAuditEntry(decisionEvidence),
+    })).rejects.toThrow(/mobile action decision commit failed/);
   });
 
   it('commits full signed denial evidence while refusing it for an approval', async () => {
@@ -631,6 +674,71 @@ describe('durable mobile storage adapters', () => {
       auditEntry: { ...auditEntry, decision: 'approved' },
     })).rejects.toThrow(/stored approved mobile decision evidence is malformed/);
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed on missing or mismatched terminal decision evidence inputs', async () => {
+    const decisionEvidence = signedDecisionEvidence();
+    const base = {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      challengeId: 'challenge-0001',
+      actionHash: `sha256:${'a'.repeat(64)}`,
+      decision: 'approved',
+      verdict: 'verified',
+      decisionEvidence,
+      auditEntry: decisionAuditEntry(decisionEvidence),
+    };
+    await expect(commitMobileActionDecision({}, {
+      ...base,
+      auditEntry: null,
+    })).rejects.toThrow(/audit entry is required/);
+    await expect(commitMobileActionDecision({}, {
+      ...base,
+      decisionEvidence: null,
+    })).rejects.toThrow(/decision evidence is required/);
+    await expect(commitMobileActionDecision({}, {
+      ...base,
+      auditEntry: { ...base.auditEntry, challenge_id: 'challenge-other' },
+    })).rejects.toThrow(/audit entry is malformed/);
+  });
+
+  it('refuses unknown database outcomes and exhausts bounded head contention', async () => {
+    const decisionEvidence = signedDecisionEvidence();
+    const input = {
+      entityRef: 'entity-1',
+      sessionId: 'session-1',
+      challengeId: 'challenge-0001',
+      actionHash: `sha256:${'a'.repeat(64)}`,
+      decision: 'approved',
+      verdict: 'verified',
+      decisionEvidence,
+      auditEntry: decisionAuditEntry(decisionEvidence),
+    };
+    await expect(commitMobileActionDecision({
+      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: vi.fn().mockResolvedValue({
+        data: { ok: false, reason: 'unexpected' },
+        error: null,
+      }),
+    }, input)).rejects.toThrow(/refused: unexpected/);
+
+    await expect(commitMobileActionDecision({
+      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: vi.fn().mockResolvedValue({
+        data: { ok: true },
+        error: null,
+      }),
+    }, input)).rejects.toThrow(/not observable after commit/);
+
+    const contendedRpc = vi.fn().mockResolvedValue({
+      data: { ok: false, reason: 'head_changed' },
+      error: null,
+    });
+    await expect(commitMobileActionDecision({
+      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: contendedRpc,
+    }, input)).rejects.toThrow(/contention limit/);
+    expect(contendedRpc).toHaveBeenCalledTimes(32);
   });
 
   it('distinguishes a terminal action conflict from evidence-head contention', async () => {
@@ -677,11 +785,33 @@ describe('durable mobile storage adapters', () => {
   });
 
   it('reads and creates only entity-scoped action inbox records', async () => {
-    const listed = chain({ data: [{ action_reference: 'action-1', presentation: PRESENTATION }], error: null });
-    const resolved = chain({ data: { action_reference: 'action-1', presentation: PRESENTATION, status: 'pending', expires_at: '2999-01-01T00:00:00.000Z' }, error: null });
-    const expired = chain({ data: { action_reference: 'action-1', presentation: PRESENTATION, status: 'approved', expires_at: '2999-01-01T00:00:00.000Z' }, error: null });
-    from.mockReturnValueOnce(listed).mockReturnValueOnce(resolved).mockReturnValueOnce(expired);
-    rpc.mockResolvedValueOnce({ data: true, error: null });
+    const continuityRow = {
+      action_reference: 'action-1',
+      action: { kind: 'release' },
+      presentation: PRESENTATION,
+      policy: { policy_id: 'policy-1' },
+      policy_id: 'policy-1',
+      status: 'pending',
+      expires_at: '2999-01-01T00:00:00.000Z',
+      created_at: '2026-07-20T00:00:00.000Z',
+      group_id: `mag_${'1'.repeat(32)}`,
+      revision: 1,
+      action_caid: `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+      action_digest: `sha256:${'a'.repeat(64)}`,
+      group_state: 'open',
+      required_approvals: 1,
+      approved_count: 0,
+      denied_count: 0,
+      withdrawn_count: 0,
+      events: [],
+      alignments: [],
+      operation: null,
+    };
+    rpc
+      .mockResolvedValueOnce({ data: [continuityRow], error: null })
+      .mockResolvedValueOnce({ data: [continuityRow], error: null })
+      .mockResolvedValueOnce({ data: [{ ...continuityRow, status: 'approved' }], error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
     const supabase = { from, rpc };
     expect(await listMobileActions(supabase, { entityRef: 'entity-1', approverId: 'approver-1' })).toHaveLength(1);
     expect(await resolveMobileAction(supabase, { entityRef: 'entity-1', approverId: 'approver-1', actionReference: 'action-1' })).toMatchObject({ status: 'pending' });
@@ -698,47 +828,49 @@ describe('durable mobile storage adapters', () => {
       expires_at: '2999-01-01T00:00:00.000Z',
     };
     expect(await createDemoAction(supabase, demo)).toBe(demo.action_reference);
-    expect(rpc).toHaveBeenCalledWith('create_mobile_demo_action', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('create_mobile_demo_action_v2', expect.objectContaining({
       p_entity_ref: 'entity-1',
       p_action_reference: demo.action_reference,
+      p_action_caid: expect.stringMatching(/^caid:1:/),
+      p_action_digest: expect.stringMatching(/^sha256:/),
     }));
 
     await expect(listMobileActions({
-      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
     }, {
       entityRef: 'entity-1',
       approverId: 'approver-1',
     })).rejects.toThrow(/action inbox unavailable/);
     expect(await listMobileActions({
-      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     }, {
       entityRef: 'entity-1',
       approverId: 'approver-1',
     })).toEqual([]);
     await expect(resolveMobileAction({
-      from: vi.fn(() => chain({ data: null, error: { code: '08006' } })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: { code: '08006' } }),
     }, {
       entityRef: 'entity-1',
       approverId: 'approver-1',
       actionReference: 'action-1',
     })).rejects.toThrow(/action lookup unavailable/);
     expect(await resolveMobileAction({
-      from: vi.fn(() => chain({ data: null, error: null })),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     }, {
       entityRef: 'entity-1',
       approverId: 'approver-1',
       actionReference: 'action-1',
     })).toBeNull();
     expect(await resolveMobileAction({
-      from: vi.fn(() => chain({
-        data: {
+      rpc: vi.fn().mockResolvedValue({
+        data: [{
+          ...continuityRow,
           action_reference: 'action-1',
-          presentation: PRESENTATION,
           status: 'pending',
           expires_at: '2000-01-01T00:00:00.000Z',
-        },
+        }],
         error: null,
-      })),
+      }),
     }, {
       entityRef: 'entity-1',
       approverId: 'approver-1',
@@ -779,8 +911,10 @@ describe('durable mobile storage adapters', () => {
     });
     assignments[0].approver_id = 'attacker';
     expect(result[0].approver_id).toBe('ep:approver:grid');
-    expect(rpc).toHaveBeenCalledWith('create_grace_mobile_action_group', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('create_grace_mobile_action_group_v2', expect.objectContaining({
       p_entity_ref: 'entity-1',
+      p_group_id: expect.stringMatching(/^mag_[0-9a-f]{32}$/),
+      p_action_caid: expect.stringMatching(/^caid:1:/),
       p_assignments: expect.arrayContaining([
         expect.objectContaining({ approver_id: 'ep:approver:grid' }),
       ]),

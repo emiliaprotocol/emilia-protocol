@@ -2,7 +2,7 @@
   "meta": {
     "registry": "caid-action-types",
     "registry_version": 1,
-    "updated": "2026-07-08",
+    "updated": "2026-07-20",
     "license": "CC0-1.0",
     "trust_note": "CAID carries no trust semantics. A registered type defines WHAT must be inside the digested content, never whether the action was authorized, executed, safe, or wise. See GOVERNANCE.md.",
     "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. 'values_ref' on an enum either names an external code set or is an inline pipe-separated list prefixed 'inline:'. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
@@ -976,6 +976,19 @@
       "optional_fields": [],
       "digest_notes": "All nested object members are material. The Model-to-Matter closed-shape validator runs before CAID computation.",
       "references": ["draft-schrock-model-to-matter-00"]
+    },
+    {
+      "action_type": "emilia.mobile.authorized-action.1",
+      "status": "active",
+      "risk_class": "external-communication",
+      "summary": "Exact authoritative action presented for a device-bound EMILIA decision.",
+      "required_fields": [
+        {"name": "source_action_type", "type": "string"},
+        {"name": "source_action_digest", "type": "digest"}
+      ],
+      "optional_fields": [],
+      "digest_notes": "The source digest commits the complete authoritative action object.",
+      "references": []
     }
   ]
 }

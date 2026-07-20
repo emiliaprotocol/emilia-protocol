@@ -169,6 +169,12 @@ describe('EP Conformance Suite -- Protocol Invariants', () => {
         'mobile_evidence_records',
         'mobile_actions',
         'mobile_action_challenges',
+        'mobile_action_groups',
+        'mobile_action_revisions',
+        'mobile_action_events',
+        'mobile_action_operations',
+        'mobile_executor_keys',
+        'mobile_action_alignments',
       ];
       for (const table of EXPECTED_TABLES) {
         expect(

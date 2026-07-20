@@ -23,6 +23,7 @@ data class MobileSession(
     val expiresAt: String,
     val deviceKeyId: String? = null,
     val attestationKeyId: String? = null,
+    val indeterminateActionReferences: Set<String> = emptySet(),
 )
 
 class SecureSessionStore(context: Context) {
