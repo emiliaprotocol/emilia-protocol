@@ -34,7 +34,7 @@ const POLICY_HASH = `sha256:${'7'.repeat(64)}`;
 const ACTION = Object.freeze({
   '@version': 'EP-HEALTH-PROGRAM-INTEGRITY-ACTION-v1',
   profile_id: 'medi-cal.hospice-integrity.v1',
-  action_type: 'health.medi_cal.hospice_claim_payment.1',
+  action_type: 'health.medi-cal.hospice-claim-payment.1',
   organization_id: 'org:ca-dhcs',
   provider_npi: '1234567890',
   member_ref: MEMBER_REF,
@@ -178,7 +178,7 @@ describe('Health Program Integrity hostile contract', () => {
     const otherProfile = {
       ...clone(ACTION),
       profile_id: 'medicare.hospice-integrity.v1',
-      action_type: 'health.medicare.hospice_claim_payment.1',
+      action_type: 'health.medicare.hospice-claim-payment.1',
     };
     const confused = await harness.engine.precheck({
       action: otherProfile,
@@ -191,7 +191,7 @@ describe('Health Program Integrity hostile contract', () => {
     const harness = makeHarness();
     const unversioned = {
       ...clone(ACTION),
-      action_type: 'health.medi_cal.hospice_claim_payment',
+      action_type: 'health.medi-cal.hospice-claim-payment',
     };
 
     const prepared = await harness.engine.prepare({ action: unversioned });

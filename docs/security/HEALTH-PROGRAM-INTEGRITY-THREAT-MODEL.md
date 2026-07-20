@@ -84,7 +84,7 @@ The engine must expose a small, explicit state machine:
    record prevents execution.
 
 The CAID action type is versioned as
-`health.medi_cal.hospice_claim_payment.1`. An unversioned action type, a
+`health.medi-cal.hospice-claim-payment.1`. An unversioned action type, a
 different terminal version, or a profile/action-type disagreement refuses
 before authorization. This is part of the action identity, not display
 metadata.

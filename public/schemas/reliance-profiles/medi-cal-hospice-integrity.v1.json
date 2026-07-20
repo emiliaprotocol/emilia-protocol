@@ -49,16 +49,16 @@
       },
       "actions": [
         {
-          "id": "health.medi_cal.hospice_claim_payment.1",
+          "id": "health.medi-cal.hospice-claim-payment.1",
           "label": "Authorize and commit a Medi-Cal hospice claim payment",
-          "action_type": "health.medi_cal.hospice_claim_payment.1",
+          "action_type": "health.medi-cal.hospice-claim-payment.1",
           "risk": "critical",
           "receipt_required": true,
           "assurance_class": "class_a",
           "max_age_sec": 300,
           "match": {
             "protocol": "emilia",
-            "operation": "health.medi_cal.hospice_claim_payment.1"
+            "operation": "health.medi-cal.hospice-claim-payment.1"
           },
           "why": "The payment consequence must be bound to the exact provider, member reference, service period, authorization evidence, amount, destination, reviewer authority, and policy the relying party accepted.",
           "control": {
@@ -127,7 +127,7 @@
     },
     "field_contract": {
       "caid": "Canonical Action Identifier for the exact action under the pinned profile and canonicalization rules.",
-      "action_type": "Exactly health.medi_cal.hospice_claim_payment.1.",
+      "action_type": "Exactly health.medi-cal.hospice-claim-payment.1.",
       "provider_npi": "Ten-digit National Provider Identifier represented as a string and resolved against deployment-pinned provider standing evidence.",
       "member_ref": "Relying-party-scoped pairwise pseudonymous reference; not a raw beneficiary identifier and not reusable across relying parties.",
       "service_period_start": "Inclusive service-period start as YYYY-MM-DD.",
