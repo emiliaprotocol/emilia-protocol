@@ -25,15 +25,14 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # See .github/workflows/ci.yml's env block for why: plain `node` needs this
-  # loader to resolve a .js import specifier to its renamed .ts sibling.
-  NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
 
 jobs:
   eval:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Resolve renamed .ts sources for plain `node` (TypeScript migration)
+        run: echo "NODE_OPTIONS=--import $GITHUB_WORKSPACE/scripts/ts-loader/register.mjs" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: '24'
