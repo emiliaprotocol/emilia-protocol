@@ -160,6 +160,7 @@ export default function GovGuardPage() {
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
             <a href="/pilot/sandbox?v=gov" style={cta.primary}>Run the GovGuard fire drill</a>
+            <a href="/health/program-integrity" style={cta.secondary}>Run the healthcare integrity scenario</a>
             <a href="/pilot?v=gov" style={cta.secondary}>Scope a 60-day pilot</a>
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 16, maxWidth: 740, lineHeight: 1.6 }}>

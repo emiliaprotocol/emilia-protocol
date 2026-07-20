@@ -70,12 +70,17 @@ describe('EP-RELIANCE-PROFILE-REGISTRY-v1 invariants', () => {
     expect(pinned.accepted_registry_keys.length).toBe(1);
   });
 
-  it('both seed profiles sign, verify, and are well-formed', () => {
-    for (const [id, file] of [['ncpdp.specialty-pa.v1', 'ncpdp-specialty-pa.v1.json'], ['cms.prior-auth.v1', 'cms-prior-auth.v1.json']]) {
+  it('all seed profiles sign, verify, and are well-formed', () => {
+    for (const [id, file] of [
+      ['ncpdp.specialty-pa.v1', 'ncpdp-specialty-pa.v1.json'],
+      ['cms.prior-auth.v1', 'cms-prior-auth.v1.json'],
+      ['medi-cal.hospice-integrity.v1', 'medi-cal-hospice-integrity.v1.json'],
+    ]) {
       const entry = signRelianceProfileEntry({ registry_id: 'emilia-registrar', profile_id: id, profile: seed(file), registry_epoch: 1 }, registrarKey);
       const r = verifyRelianceProfileEntry(entry, { pinnedRegistryKeys: [{ registry_id: 'emilia-registrar', public_key: registrarPub }] });
       expect(r.accepted).toBe(true);
       expect(r.entry_digest).toBe(profileRegistryEntryDigest(entry));
+      expect(validateRelianceProfile(r.profile).ok).toBe(true);
     }
   });
 

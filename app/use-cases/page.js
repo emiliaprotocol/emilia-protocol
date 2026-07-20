@@ -28,6 +28,13 @@ const USE_CASES = [
     tag: 'GovGuard profile',
   },
   {
+    title: 'Healthcare program integrity',
+    desc: 'Bind a synthetic hospice authorization and payment action to provider standing, verified authorization, named review, single-use execution, and authenticated outcome evidence.',
+    href: '/health/program-integrity',
+    accent: color.green,
+    tag: 'Interactive public-sector demo',
+  },
+  {
     title: 'Financial operations',
     desc: 'Bind beneficiary changes, payment release, and treasury actions to explicit policy and relying-party trust inputs.',
     href: '/finguard',

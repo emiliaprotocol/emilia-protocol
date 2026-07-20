@@ -5,7 +5,7 @@
 
 **Profile:** `public/schemas/reliance-profiles/medi-cal-hospice-integrity.v1.json`
 
-**Action type:** `health.medi_cal.hospice_claim_payment`
+**Action type:** `health.medi_cal.hospice_claim_payment.1`
 
 This profile shows how an executor can require exact-action, named-human
 authorization evidence before committing a synthetic Medi-Cal hospice claim
@@ -90,7 +90,7 @@ values and refuses any missing, malformed, or mismatched field.
 | Field | Bound meaning |
 |---|---|
 | `caid` | Canonical Action Identifier for this exact action and profile. |
-| `action_type` | Exactly `health.medi_cal.hospice_claim_payment`. |
+| `action_type` | Exactly `health.medi_cal.hospice_claim_payment.1`. |
 | `provider_npi` | Ten-digit provider NPI, represented as a string. |
 | `member_ref` | Pairwise pseudonymous member reference scoped to the relying party. |
 | `service_period_start` / `service_period_end` | Inclusive dates; end cannot precede start. |

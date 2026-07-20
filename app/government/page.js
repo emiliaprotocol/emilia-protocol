@@ -11,6 +11,7 @@ export default function GovernmentPage() {
   const cards = [
     ['Payment destination changes', 'Bind the beneficiary, approval policy, and accountable signer before disbursement changes take effect.'],
     ['Benefit redirect fraud', 'Enforce exact action binding and replay-resistant authorization before sensitive enrollment or benefit-routing changes execute.'],
+    ['Healthcare program integrity', 'Bind provider standing, verified authorization, named review, claim parameters, payment destination, and authenticated outcome evidence to one exact action.'],
     ['Operator overrides', 'Require Accountable Signoff when exceptions, overrides, or urgent case interventions cross policy thresholds.'],
     ['Delegated case actions', 'Ensure delegated staff and systems can only act within authority and only on the exact bound action.'],
   ];
@@ -26,6 +27,7 @@ export default function GovernmentPage() {
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
           <a href="mailto:team@emiliaprotocol.ai?subject=Government%20pilot%20request" className="ep-cta" style={cta.primaryBlue}>Request Government Pilot</a>
+          <a href="/health/program-integrity" className="ep-cta-secondary" style={cta.secondaryBlue}>Run Program Integrity Demo</a>
           <a href="/spec" className="ep-cta-secondary" style={cta.secondaryBlue}>Read the Protocol</a>
         </div>
       </section>
@@ -66,6 +68,7 @@ export default function GovernmentPage() {
             that path to enforcement after the policy and evidence requirements are validated.
           </p>
           <a href="/gate" style={{ fontFamily: font.mono, fontSize: 12, color: color.green, textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See EMILIA Gate &#8594;</a>
+          <a href="/health/program-integrity" style={{ fontFamily: font.mono, fontSize: 12, color: color.blue, textDecoration: 'none', marginTop: 12, marginLeft: 24, display: 'inline-block', letterSpacing: 1 }}>Run the healthcare scenario &#8594;</a>
         </div>
       </section>
 

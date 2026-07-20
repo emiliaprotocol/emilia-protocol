@@ -11,6 +11,7 @@ where fraud or abuse can happen inside valid sessions.
 - `benefit_bank_account_change` — benefit direct-deposit change
 - `benefit_address_change` — address/contact/identity routing changes that can redirect notices or credentials
 - `gov.provider_enrollment_change` — provider status, payment address, NPI, or enrollment file changes
+- `health.medi_cal.hospice_claim_payment.1` — synthetic hospice authorization and claim-payment integrity profile
 - `gov.eligibility_override` — regulated eligibility decision override
 - `caseworker_override` — operator override of an automated recommendation or control
 
@@ -23,6 +24,9 @@ where fraud or abuse can happen inside valid sessions.
 - observe / warn / enforce rollout modes
 - signoff patterns and two-person-rule escalation path
 - implementation notes for government environments
+- a PHI-free healthcare program-integrity reference scenario with exact-action
+  CAID binding, bounded single-use execution, indeterminate outcome handling,
+  authenticated reconciliation, and portable evidence
 
 ## First deployment motion
 
