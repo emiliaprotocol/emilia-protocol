@@ -36,6 +36,15 @@ const nextConfig = {
     // package's exports map instead of appending them to index.js.
     config.resolve.alias['@emilia-protocol/require-receipt$'] = path.resolve(__dirname, 'packages/require-receipt/index.js');
     config.resolve.alias['@emilia-protocol/verify$'] = path.resolve(__dirname, 'packages/verify/index.js');
+    // TypeScript migration: source files are .ts/.tsx but import specifiers keep
+    // the .js extension (the NodeNext/bundler convention). Teach webpack to try
+    // the TypeScript source for a .js specifier, falling back to real .js/.mjs.
+    // Single point that makes every `import './x.js'` resolve to `./x.ts`.
+    config.resolve.extensionAlias = {
+      '.js': ['.ts', '.tsx', '.js', '.jsx'],
+      '.mjs': ['.mts', '.mjs'],
+      ...(config.resolve.extensionAlias || {}),
+    };
     return config;
   },
   // instrumentation.js is loaded automatically since Next.js 15 — the
