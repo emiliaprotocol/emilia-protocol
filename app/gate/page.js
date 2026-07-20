@@ -100,6 +100,14 @@ const out = await gate.run({
 if (!out.ok) return out.body; // 428 Receipt Required
 return out.packet;            // auditor-ready reliance artifact`;
 
+const RECEIPT_PROGRAM_RUN = `npm run demo:receipt-program
+
+# Parent capability: 1000 USD -> delegated 100 USD
+# CAID: recomputed from the exact payment action
+# RECEIPT -> MATCH -> RESERVE -> EXECUTE -> COMMIT -> CERTIFY
+# Child capability remaining: 50 USD
+# Certificate: context-bound and present in the evidence log`;
+
 export default function GatePage() {
   return (
     <>
@@ -314,6 +322,49 @@ export default function GatePage() {
                   <div style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 6 }}>{body}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Receipt programs */}
+        <section style={{ ...styles.section, background: 'rgba(245,244,240,0.45)', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
+          <div style={styles.container}>
+            <div style={styles.eyebrow}>RECEIPT PROGRAMS</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 800 }}>
+              The instruction, delegated budget, effect, and terminal evidence stay bound.
+            </h2>
+            <p style={{ ...styles.body, maxWidth: 760, marginTop: 16 }}>
+              The receipt-program kernel freezes one CAID-bound action and stable operation ID,
+              executes it through Gate&apos;s real bounded-capability path, and signs and records a
+              content-addressed certificate over the bounded result and Gate evidence. It is a
+              developer surface behind the Consequence Firewall, not a second policy engine or
+              ledger.
+            </p>
+            <p style={{ ...styles.body, maxWidth: 760, marginTop: 12 }}>
+              Provider deadline expiry, response loss, or invalid output becomes <code>INDETERMINATE</code>.
+              The budget and operation remain closed to blind replay. Production requires durable
+              capability state, an atomic evidence log, KMS/HSM signing, a pinned certificate
+              context, and a pinned result projection. Signing or logging failure preserves the
+              Gate outcome without claiming complete proof.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 28, alignItems: 'start' }}>
+              <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{RECEIPT_PROGRAM_RUN}</pre>
+              <div style={{ ...styles.card, padding: 24 }}>
+                <div style={{ ...styles.h3, fontSize: 17 }}>What the certificate proves</div>
+                <p style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 10 }}>
+                  Integrity and exact internal binding under a relying-party-pinned operator key
+                  and context, including CAID re-performance, action and operation identity,
+                  result digest, opcode sequence, authorization-to-execution linkage, and the
+                  complete certificate evidence record.
+                </p>
+                <div style={{ ...styles.h3, fontSize: 17, marginTop: 22 }}>What it does not prove</div>
+                <p style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 10 }}>
+                  It is not a ZK proof, consensus result, provider attestation, or proof of legal,
+                  physical, or commercial correctness. Full re-performance still verifies the
+                  referenced authorization, capability, and evidence records under independent
+                  trust inputs.
+                </p>
+              </div>
             </div>
           </div>
         </section>

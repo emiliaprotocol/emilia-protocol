@@ -383,6 +383,33 @@ The reconciler MAY transition:
 Reconciliation does not resurrect the original authorization. Any subsequent
 effect requires the lifecycle and policy defined for a new action instance.
 
+### 6.11 Certify an optional receipt program
+
+A deployment MAY freeze one CAID-bound action, stable operation identifier,
+selector, and bounded capability into an `EP-RECEIPT-PROGRAM-v1` instruction.
+The receipt-program kernel MUST still invoke the ordinary Gate path; it MUST NOT
+replace native evidence verification, local authorization, durable reservation,
+or provider reconciliation.
+
+After Gate reaches `EXECUTED`, `INDETERMINATE`, or a pre-invocation refusal, the
+kernel MAY issue an operator-signed content-addressed certificate over the exact
+program, bounded result projection, opcode sequence, certificate context, and
+Gate evidence references. Production construction requires an external KMS/HSM
+signer, pinned issuer/tenant/environment/audience/key context, a pinned result
+projector, a finite provider deadline, durable capability state, and an atomic
+evidence log. Provider code receives frozen authorization and operation copies.
+
+The complete certificate SHOULD be appended to the evidence log before it is
+treated as durable proof. Signer, execution-evidence, and certificate-log
+failures MUST preserve Gate's terminal consequence state and MUST NOT mint a
+contradictory certificate. A certificate verifier MUST pin its own operator
+key-ID-to-public-key map, exact expected context, and CAID resolver, and SHOULD
+verify the complete certificate record through a relying-party-owned inclusion
+check against its pinned stream. A self-hashed record alone is not persistence
+evidence. Certificate validity, execution success, evidence completeness, and persistence are separate verdicts. The certificate is an
+integrity and binding statement, not independent evidence of provider truth or
+physical outcome.
+
 ## 7. External Composition Inputs
 
 AgentROA and ORPRG are external, work-in-progress protocol sources. EMILIA does
@@ -707,6 +734,7 @@ The current repository maps this profile to:
 | Constructor-pinned heterogeneous evidence requirement and action-keyed execution custody | `packages/verify/evidence-chain.js` and `packages/gate/aec-execution.js` |
 | Challenge, receipt verification, assurance, observed-action binding, one-time reservation, invocation, and execution evidence | `packages/gate/index.js` |
 | Atomic bounded-spend reserve and commit, extraction-bypass refusal, stable operation and observed-action binding, Postgres adapter, and indeterminate spend | `packages/gate/capability-receipt.js`, `packages/gate/index.js`, `packages/gate/capability-gate.test.js`, and `supabase/migrations/20260719043735_capability_operation_action_binding.sql` |
+| CAID-bound receipt-program execution, KMS/HSM-context binding, frozen provider inputs, bounded disclosure, atomic certificate recording, typed proof failures, recovery, and strict offline verification | `packages/gate/receipt-program.js`, `packages/gate/receipt-program.test.js`, and `examples/receipt-program/` |
 | Authenticated same-action reconciliation of an indeterminate capability spend without re-execution | `examples/indeterminate-effect-reconciliation/` |
 | Lifecycle divergence detection and fail-closed safe mode | `packages/gate/runtime-monitor.js` |
 | Shared-head durable evidence | `packages/gate/evidence.js` and `packages/gate/evidence-postgres.js` |
@@ -730,6 +758,7 @@ Repository evidence and external milestones are different closure states.
 | CAID interoperability | JavaScript, Python, and Go same-team ports exercise shared CAID and Action-Mapping vectors; the AgentROA + ORPRG + EP corpus uses genuine signatures and pinned mappings. | Same-team agreement is consistency evidence, not an independent implementation. The existing time-pinned external Rust result does not cover this current CAID/AgentROA/ORPRG/Gate composition. No CAID standard or IETF adoption is claimed here. |
 | Evidence satisfaction and Gate authorization | AEC verification and the Gate execution paths are implemented as separately configurable components with relying-party-owned requirements and trust. | The repository does not claim one pre-wired production constructor for the complete diagram. Integrators must wire, pin, deploy, and test the selected profile. |
 | Bounded capability enforcement | Exact-action or CAID scope, stable operation binding, atomic memory/PostgreSQL reserve and commit, overspend and replay refusal, indeterminate consumption, and authenticated reconciliation are implemented. | Bounded Capability is implemented architecture, not a posted standard. Production closure requires the migration, shared durable state, provider idempotency, and operational reconciliation. |
+| Receipt programs | The JavaScript kernel and offline certificate verifier compose CAID, bounded capability reserve-before-effect, terminal Gate evidence, and signed content addressing. The runnable demo proves delegated-budget execution with process-local test state. | Production closure requires the already-shipped durable capability and evidence stores plus deployment-controlled certificate-key custody. The certificate is not a ZK proof, consensus result, provider attestation, or independent implementation. |
 | Action Escrow | The JavaScript state machine, evidence package, PostgreSQL store, external-custodian interface, signed provider observations, and indeterminate reconciliation are executable. | EMILIA does not hold funds or establish escrow licensure. The repository does not establish a live licensed-custodian deployment, legal enforceability, physical completion, or production money movement. |
 | Complete mediation | The profile names placement, bypass inventory, active probes, dual enforcement, and fail-closed behavior. | Only a concrete deployment can prove that every protected mutation path is covered. A library, proxy, diagram, or successful reference test cannot establish production non-bypassability. |
 | Independent deployment evidence | Local witness, attestation, and failure-path tooling can support a deployment evidence package. | Independent witness operators, physical TPM deployment evidence, external hostile reruns, and customer production evidence remain separate milestones unless a current scoped artifact establishes them. |
