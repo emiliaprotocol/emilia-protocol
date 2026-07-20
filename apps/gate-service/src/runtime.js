@@ -175,7 +175,10 @@ function timeoutSignal(milliseconds) {
 }
 
 function timeoutLike(error) {
-  return error?.timeout === true || error?.name === 'TimeoutError' || error?.name === 'AbortError';
+  const candidate = error?.cause ?? error;
+  return candidate?.timeout === true
+    || candidate?.name === 'TimeoutError'
+    || candidate?.name === 'AbortError';
 }
 
 function challengeBinding(id, observedAction) {
