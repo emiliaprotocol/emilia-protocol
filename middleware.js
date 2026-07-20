@@ -349,6 +349,10 @@ function classifyRoute(method, pathname) {
 // Auth helper
 // =============================================================================
 
+/**
+ * @param {import('next/server').NextRequest} request
+ * @returns {string|null}
+ */
 function getApiKeyPrefix(request) {
   const auth = request.headers.get('authorization') || '';
   const token = auth.replace(/^Bearer\s+/i, '');
@@ -356,6 +360,10 @@ function getApiKeyPrefix(request) {
   return token ? token.slice(0, 16) : null;
 }
 
+/**
+ * @param {import('next/server').NextRequest} request
+ * @returns {number}
+ */
 function declaredApiBodyLimit(request) {
   const ctype = request.headers.get('content-type') || '';
   return ctype.includes('multipart/form-data')
@@ -363,6 +371,9 @@ function declaredApiBodyLimit(request) {
     : DEFAULT_API_BODY_LIMIT_BYTES;
 }
 
+/**
+ * @param {number} limit
+ */
 function payloadTooLarge(limit) {
   return NextResponse.json(
     { error: 'Request body too large', code: 'payload_too_large', max_bytes: limit },
@@ -370,11 +381,20 @@ function payloadTooLarge(limit) {
   );
 }
 
+/**
+ * @param {string} method
+ * @param {string} pathname
+ * @returns {boolean}
+ */
 function isReleaseLockBrowserMutation(method, pathname) {
   return method.toUpperCase() === 'POST'
     && RELEASE_LOCK_BROWSER_MUTATIONS.some((pattern) => pattern.test(pathname));
 }
 
+/**
+ * @param {import('next/server').NextRequest} request
+ * @returns {boolean}
+ */
 function releaseLockOriginAllowed(request) {
   const origin = request.headers.get('origin');
   const fetchSite = request.headers.get('sec-fetch-site');
@@ -401,6 +421,7 @@ function releaseLockOriginAllowed(request) {
  *      count exceeds the cap. The clone is independent of the original stream,
  *      so the downstream route handler still receives the intact request.
  *
+ * @param {import('next/server').NextRequest} request
  * @returns {Promise<NextResponse|null>} a 413/400 response, or null to proceed.
  */
 async function rejectOversizedApiBody(request) {
@@ -459,6 +480,9 @@ async function rejectOversizedApiBody(request) {
  * Build a per-request Content-Security-Policy header with a nonce.
  * The nonce replaces 'unsafe-inline' for script-src, satisfying the
  * HIGH-09 pentest finding while still supporting Next.js inline scripts.
+ *
+ * @param {string} nonce
+ * @returns {string}
  */
 function buildCSP(nonce) {
   // Development only: Next's dev runtime evaluates eval-source-maps, which a
@@ -489,6 +513,9 @@ function buildCSP(nonce) {
 // Middleware
 // =============================================================================
 
+/**
+ * @param {import('next/server').NextRequest} request
+ */
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
@@ -618,7 +645,7 @@ export async function middleware(request) {
       );
     }
 
-    const config = RATE_LIMITS[rateCategory];
+    const config = RATE_LIMITS[/** @type {keyof typeof RATE_LIMITS} */ (rateCategory)];
     // SIEM: rate limit exceeded — high severity for write categories
     siemEvent('RATE_LIMIT_EXCEEDED', {
       category: rateCategory,
@@ -643,7 +670,7 @@ export async function middleware(request) {
   }
 
   const response = NextResponse.next();
-  response.headers.set('X-RateLimit-Limit', String(RATE_LIMITS[rateCategory].max));
+  response.headers.set('X-RateLimit-Limit', String(RATE_LIMITS[/** @type {keyof typeof RATE_LIMITS} */ (rateCategory)].max));
   response.headers.set('X-RateLimit-Remaining', String(result.remaining));
   response.headers.set('X-RateLimit-Reset', String(result.reset));
   return response;

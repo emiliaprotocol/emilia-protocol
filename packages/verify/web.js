@@ -27,11 +27,19 @@ const subtle = globalThis.crypto?.subtle;
 const ENC = new TextEncoder();
 const DEC = new TextDecoder('utf-8', { fatal: true });
 
+/**
+ * @param {string} str
+ * @returns {Uint8Array<ArrayBuffer>}
+ */
 function utf8(str) {
   return ENC.encode(str);
 }
 
-// Canonical, unpadded base64url → Uint8Array.
+/**
+ * Canonical, unpadded base64url → Uint8Array.
+ * @param {string} b64u
+ * @returns {Uint8Array<ArrayBuffer>}
+ */
 function b64uToBytes(b64u) {
   if (typeof b64u !== 'string' || b64u.length === 0
       || !/^[A-Za-z0-9_-]+$/.test(b64u) || b64u.length % 4 === 1) {
@@ -46,20 +54,32 @@ function b64uToBytes(b64u) {
   return out;
 }
 
+/**
+ * @param {Uint8Array<ArrayBuffer>} bytes
+ * @returns {string}
+ */
 function bytesToB64u(bytes) {
   let bin = '';
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+/**
+ * @param {Uint8Array<ArrayBuffer>} bytes
+ * @returns {string}
+ */
 function bytesToHex(bytes) {
   let hex = '';
   for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
   return hex;
 }
 
-// Same recursive canonical JSON as index.js / lib/guard-policies.js — depth-first
-// key sort at every level. Signer and verifier MUST compute byte-identical bytes.
+/**
+ * Same recursive canonical JSON as index.js / lib/guard-policies.js — depth-first
+ * key sort at every level. Signer and verifier MUST compute byte-identical bytes.
+ * @param {unknown} value
+ * @returns {string}
+ */
 export function canonicalize(value) {
   if (value === null || value === undefined) return JSON.stringify(value);
   if (Array.isArray(value)) {
@@ -68,20 +88,33 @@ export function canonicalize(value) {
   if (typeof value === 'object') {
     return `{${Object.keys(value)
       .sort()
-      .map((k) => JSON.stringify(k) + ':' + canonicalize(value[k]))
+      .map((k) => JSON.stringify(k) + ':' + canonicalize(/** @type {Record<string, unknown>} */ (value)[k]))
       .join(',')}}`;
   }
   return JSON.stringify(value);
 }
 
+/**
+ * @param {Uint8Array<ArrayBuffer>} bytes
+ * @returns {Promise<Uint8Array<ArrayBuffer>>}
+ */
 async function sha256Bytes(bytes) {
   return new Uint8Array(await subtle.digest('SHA-256', bytes));
 }
 
+/**
+ * @param {string} str
+ * @returns {Promise<string>}
+ */
 async function sha256Hex(str) {
   return bytesToHex(await sha256Bytes(utf8(str)));
 }
 
+/**
+ * @param {string} a
+ * @param {string} b
+ * @returns {Promise<string>}
+ */
 async function hashPairHex(a, b) {
   const sorted = [a, b].sort();
   return sha256Hex(sorted[0] + sorted[1]);
@@ -89,13 +122,27 @@ async function hashPairHex(a, b) {
 
 // EP-MERKLE-v2: domain-separated + positional (matches index.js / Py / Go).
 export const MERKLE_V2_ALG = 'EP-MERKLE-v2';
+/**
+ * @param {string} canonicalPayload
+ * @returns {Promise<string>}
+ */
 async function leafHashV2(canonicalPayload) {
   return bytesToHex(await sha256Bytes(concatBytes(new Uint8Array([0x00]), utf8(canonicalPayload))));
 }
+/**
+ * @param {string} left
+ * @param {string} right
+ * @returns {Promise<string>}
+ */
 async function hashPairV2Hex(left, right) {
   return bytesToHex(await sha256Bytes(concatBytes(new Uint8Array([0x01]), utf8(left + right))));
 }
 
+/**
+ * @param {Uint8Array<ArrayBuffer>} a
+ * @param {Uint8Array<ArrayBuffer>} b
+ * @returns {Uint8Array<ArrayBuffer>}
+ */
 function concatBytes(a, b) {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
@@ -103,6 +150,11 @@ function concatBytes(a, b) {
   return out;
 }
 
+/**
+ * @param {Uint8Array<ArrayBuffer>} a
+ * @param {Uint8Array<ArrayBuffer>} b
+ * @returns {boolean}
+ */
 function bytesEqual(a, b) {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -115,6 +167,10 @@ function bytesEqual(a, b) {
 // Node's crypto.verify accepts DER directly, which is why index.js needs no
 // conversion — the browser does. Returns a 64-byte Uint8Array, or null if the
 // DER is malformed.
+/**
+ * @param {Uint8Array<ArrayBuffer>} der
+ * @returns {Uint8Array<ArrayBuffer>|null}
+ */
 function derEcdsaToRawP256(der) {
   let i = 0;
   // A P-256 ECDSA signature always fits in DER's short length form. Enforce
@@ -157,9 +213,31 @@ function derEcdsaToRawP256(der) {
 // =============================================================================
 
 /**
+ * @typedef {{hash: string, position: 'left'|'right'}} MerkleProofStep
+ */
+
+/**
+ * EP-RECEIPT-v1 document shape, as accessed by verifyReceipt below (every
+ * member is read defensively via optional chaining, so every member here is
+ * optional — this mirrors what the function body already assumes).
+ * @typedef {{
+ *   '@version'?: string,
+ *   payload?: unknown,
+ *   signature?: {value?: string, algorithm?: string},
+ *   anchor?: {
+ *     alg?: string,
+ *     merkle_proof?: MerkleProofStep[],
+ *     leaf_hash?: string,
+ *     merkle_root?: string,
+ *   },
+ * }} EPReceiptDoc
+ */
+
+/**
  * Verify an EP receipt document in the browser. Mirrors index.js verifyReceipt.
- * @param {object} doc
+ * @param {EPReceiptDoc} doc
  * @param {string} publicKeyBase64url - Ed25519 public key (SPKI DER, base64url)
+ * @param {{allowLegacyMerkle?: boolean}} [opts]
  * @returns {Promise<{valid:boolean, checks:{version:boolean,signature:boolean,anchor:boolean|null}, error?:string}>}
  */
 export async function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
@@ -210,7 +288,13 @@ export async function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
 // MERKLE ANCHOR VERIFICATION
 // =============================================================================
 
-/** @returns {Promise<boolean>} */
+/**
+ * @param {string} leafHash
+ * @param {MerkleProofStep[]} proof
+ * @param {string} expectedRoot
+ * @param {{v2?: boolean}} [opts]
+ * @returns {Promise<boolean>}
+ */
 export async function verifyMerkleAnchor(leafHash, proof, expectedRoot, opts = {}) {
   if (typeof leafHash !== 'string' || !leafHash) return false;
   if (typeof expectedRoot !== 'string' || !expectedRoot) return false;
@@ -239,6 +323,12 @@ const FLAG_UV = 0x04;
 /**
  * Verify a Class A (approver-held key) signoff fully offline, in the browser.
  * Mirrors index.js verifyWebAuthnSignoff.
+ * @param {{
+ *   context?: Record<string, unknown>,
+ *   webauthn?: {authenticator_data?: string, client_data_json?: string, signature?: string},
+ * }} signoff
+ * @param {string} approverPublicKeySpkiB64u
+ * @param {{rpId?: string, allowedOrigins?: string[]}} [opts]
  * @returns {Promise<{valid:boolean, checks:object, error?:string}>}
  */
 export async function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts = {}) {
@@ -332,13 +422,24 @@ export async function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, 
 // COMMITMENT PROOF VERIFICATION (Ed25519)
 // =============================================================================
 
-/** @returns {Promise<{valid:boolean, claim:object|null, error?:string}>} */
+/**
+ * @param {{
+ *   '@version'?: string,
+ *   expires_at?: string,
+ *   claim?: object|null,
+ *   signature?: {value?: string},
+ *   commitment?: unknown,
+ * }} proof
+ * @param {string} [publicKeyBase64url]
+ * @param {{allowUnsigned?: boolean}} [options]
+ * @returns {Promise<{valid:boolean, claim:object|null, error?:string}>}
+ */
 export async function verifyCommitmentProof(proof, publicKeyBase64url, options = {}) {
   if (!proof?.['@version'] || !SUPPORTED_PROOF_VERSIONS.includes(proof['@version'])) {
     return { valid: false, claim: null, error: `Unsupported version: ${proof?.['@version']}` };
   }
   if (proof.expires_at && new Date(proof.expires_at) < new Date()) {
-    return { valid: false, claim: proof.claim, error: 'Proof has expired' };
+    return { valid: false, claim: /** @type {object|null} */ (proof.claim), error: 'Proof has expired' };
   }
 
   const hasPublicKey = !!publicKeyBase64url;
@@ -346,14 +447,14 @@ export async function verifyCommitmentProof(proof, publicKeyBase64url, options =
 
   if (!hasPublicKey || !hasSignature) {
     if (options.allowUnsigned === true && !hasPublicKey && !hasSignature) {
-      return { valid: true, claim: proof.claim };
+      return { valid: true, claim: /** @type {object|null} */ (proof.claim) };
     }
     const error = !hasPublicKey && !hasSignature
       ? 'Signature and public key are required'
       : !hasPublicKey
         ? 'Public key is required to verify signature'
         : 'Signature is required';
-    return { valid: false, claim: proof.claim, error };
+    return { valid: false, claim: /** @type {object|null} */ (proof.claim), error };
   }
 
   try {
@@ -361,20 +462,26 @@ export async function verifyCommitmentProof(proof, publicKeyBase64url, options =
       'spki', b64uToBytes(publicKeyBase64url), { name: 'Ed25519' }, false, ['verify'],
     );
     const ok = await subtle.verify(
-      { name: 'Ed25519' }, key, b64uToBytes(proof.signature.value), utf8(canonicalize(proof.commitment)),
+      { name: 'Ed25519' }, key,
+      b64uToBytes(/** @type {{value: string}} */ (proof.signature).value),
+      utf8(canonicalize(proof.commitment)),
     );
-    if (!ok) return { valid: false, claim: proof.claim, error: 'Invalid signature' };
+    if (!ok) return { valid: false, claim: /** @type {object|null} */ (proof.claim), error: 'Invalid signature' };
   } catch (e) {
-    return { valid: false, claim: proof.claim, error: `Signature check failed: ${e.message}` };
+    return { valid: false, claim: /** @type {object|null} */ (proof.claim), error: `Signature check failed: ${e.message}` };
   }
-  return { valid: true, claim: proof.claim };
+  return { valid: true, claim: /** @type {object|null} */ (proof.claim) };
 }
 
 // =============================================================================
 // BUNDLE VERIFICATION
 // =============================================================================
 
-/** @returns {Promise<{valid:boolean, total:number, verified:number, failed:string[]}>} */
+/**
+ * @param {{'@version'?: string, documents: EPReceiptDoc[]}} bundle
+ * @param {string} publicKeyBase64url
+ * @returns {Promise<{valid:boolean, total:number, verified:number, failed:string[]}>}
+ */
 export async function verifyReceiptBundle(bundle, publicKeyBase64url) {
   if (bundle?.['@version'] !== 'EP-BUNDLE-v1') {
     return { valid: false, total: 0, verified: 0, failed: ['Invalid bundle version'] };

@@ -522,6 +522,7 @@ function workpaper(receipt, genuine, forged, S) {
   const det = (r) => r.verified
     ? 'AUTHORIZATION EVIDENCE: **PRESENT AND INDEPENDENTLY VERIFIED**'
     : 'AUTHORIZATION EVIDENCE: **ABSENT / UNVERIFIABLE — DO NOT RELY**';
+  /** @param {string} k @param {boolean} v */
   const checkRow = (k, v) => `| ${k} | ${v ? '✓ pass' : '✗ FAIL'} |`;
   const [exLabel, exVal] = S.extraRow(a);
   return `# Authorization Evidence — Workpaper
@@ -568,7 +569,7 @@ ${S.forgeNarrative}
 
 > ${det(forged)}
 
-Reasons: ${forged.reasons.map((r) => `_${r}_`).join('; ')}.
+Reasons: ${forged.reasons.map((/** @type {string} */ r) => `_${r}_`).join('; ')}.
 
 This is what an auditor, surveyor, lawyer, insurer, or board member sees when authorization evidence does not hold: a definite, reproducible **DO NOT RELY** — not a silent gap.
 
@@ -598,6 +599,10 @@ relying party supplies; the presented artifact cannot establish its own authorit
 }
 
 // `verify <file>` — the relying party's path: take only the receipt file, decide.
+/**
+ * @param {string} path
+ * @param {string | null} trustPath
+ */
 async function verifyFile(path, trustPath) {
   let receipt;
   let trustProfile;
@@ -623,7 +628,7 @@ if (si >= 0) {
   if (tok.includes('=')) { scenarioKey = tok.split('=')[1]; argv.splice(si, 1); }
   else { scenarioKey = argv[si + 1]; argv.splice(si, 2); }
 }
-if (!SCENARIOS[scenarioKey]) {
+if (!SCENARIOS[/** @type {keyof typeof SCENARIOS} */ (scenarioKey)]) {
   console.error(`unknown scenario "${scenarioKey}". valid: ${Object.keys(SCENARIOS).join(', ')}`);
   process.exit(2);
 }
@@ -633,5 +638,5 @@ if (cmd === 'verify' && arg) {
   const trustPath = trustIndex >= 0 ? argv[trustIndex + 1] : null;
   verifyFile(arg, trustPath).catch((e) => { console.error(e); process.exit(1); });
 } else {
-  main(SCENARIOS[scenarioKey]).catch((e) => { console.error(e); process.exit(1); });
+  main(SCENARIOS[/** @type {keyof typeof SCENARIOS} */ (scenarioKey)]).catch((e) => { console.error(e); process.exit(1); });
 }

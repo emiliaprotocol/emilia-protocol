@@ -12,15 +12,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getActiveCryptoProfile, assertProfileSatisfied, CRYPTO_PROFILE_IDS } from '../lib/crypto/profile.js';
+import { resolveSourcePath } from './ts-loader/resolve-source-path.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function read(rel) {
-  return fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  return fs.readFileSync(path.join(ROOT, resolveSourcePath(ROOT, rel)), 'utf8');
 }
 
 function exists(rel) {
-  return fs.existsSync(path.join(ROOT, rel));
+  return fs.existsSync(path.join(ROOT, resolveSourcePath(ROOT, rel)));
 }
 
 function collect(dir, pattern, acc = []) {

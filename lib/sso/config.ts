@@ -7,6 +7,10 @@
 import { getGuardedClient } from '@/lib/write-guard';
 import { open as openSecret } from '@/lib/crypto/secret-box';
 
+/**
+ * @param {string} tenantId
+ * @param {string} protocol
+ */
 export async function loadConnection(tenantId, protocol) {
   const supabase = getGuardedClient();
   const { data, error } = await supabase
@@ -24,6 +28,13 @@ export async function loadConnection(tenantId, protocol) {
   return { connection: data };
 }
 
+/**
+ * @param {string} tenantId
+ * @param {string} protocol
+ * @param {object} fields - protocol-specific connection fields to persist (e.g.
+ *   saml_idp_entry_point/saml_idp_cert/saml_audience/enabled, or
+ *   oidc_issuer/oidc_client_id/oidc_client_secret/oidc_redirect_uri/enabled)
+ */
 export async function upsertConnection(tenantId, protocol, fields) {
   const supabase = getGuardedClient();
   const { data, error } = await supabase
@@ -38,6 +49,7 @@ export async function upsertConnection(tenantId, protocol, fields) {
   return { connection: data };
 }
 
+/** @param {string} tenantId */
 export async function listConnections(tenantId) {
   const supabase = getGuardedClient();
   const { data, error } = await supabase
@@ -48,7 +60,10 @@ export async function listConnections(tenantId) {
   return { connections: data || [] };
 }
 
-/** The SP entityID / OIDC redirect base for this deployment. */
+/**
+ * The SP entityID / OIDC redirect base for this deployment.
+ * @param {Request} request
+ */
 export function spOrigin(request) {
   try {
     const u = new URL(request.url);

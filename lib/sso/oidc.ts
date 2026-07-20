@@ -25,7 +25,11 @@ export function randomUrlToken(bytes = 32) {
   return crypto.randomBytes(bytes).toString('base64url');
 }
 
-/** PKCE S256 challenge for a verifier (RFC 7636). */
+/**
+ * PKCE S256 challenge for a verifier (RFC 7636).
+ * @param {string} verifier
+ * @returns {string}
+ */
 export function pkceChallenge(verifier) {
   return crypto.createHash('sha256').update(verifier, 'utf8').digest('base64url');
 }
@@ -62,7 +66,7 @@ export async function discover(issuer, fetchImpl = safePinnedFetch) {
  * endpoints are NOT required to share the issuer's host — real IdPs (e.g.
  * Google) serve token/jwks from sibling domains.
  *
- * @param {object} doc - the discovery document
+ * @param {{ issuer?: string, authorization_endpoint?: string, token_endpoint?: string, jwks_uri?: string, [key: string]: * }} doc - the discovery document
  * @param {object} [opts]
  * @param {string[]} [opts.fields] - which endpoint fields to validate
  * @param {Function} [opts.lookup] - injectable DNS lookup (for tests)
@@ -90,6 +94,15 @@ export async function assertSafeDiscoveryEndpoints(
 
 /**
  * Build the authorization-request URL (Authorization Code + PKCE).
+ * @param {object} params
+ * @param {string} params.authorizationEndpoint
+ * @param {string} params.clientId
+ * @param {string} params.redirectUri
+ * @param {string} [params.scope]
+ * @param {string} [params.state]
+ * @param {string} [params.nonce]
+ * @param {string} [params.codeChallenge]
+ * @returns {string}
  */
 export function buildAuthorizeUrl({
   authorizationEndpoint, clientId, redirectUri, scope = 'openid email profile',
@@ -114,6 +127,17 @@ export function buildAuthorizeUrl({
 
 // ── Token exchange ───────────────────────────────────────────────────────────
 
+/**
+ * @param {object} params
+ * @param {string} params.tokenEndpoint
+ * @param {string} params.clientId
+ * @param {string|null} [params.clientSecret]
+ * @param {string} params.code
+ * @param {string} params.redirectUri
+ * @param {string} [params.codeVerifier]
+ * @param {Function} [params.fetchImpl]
+ * @returns {Promise<object>}
+ */
 export async function exchangeCode({
   tokenEndpoint, clientId, clientSecret, code, redirectUri, codeVerifier, fetchImpl = safePinnedFetch,
 }) {
@@ -149,7 +173,7 @@ export async function exchangeCode({
  * @param {object} [opts]
  * @param {string} [opts.issuer] - expected `iss` (required at runtime; validated below)
  * @param {string} [opts.clientId] - expected `aud` (required at runtime; validated below)
- * @param {object} [opts.jwks] - a JWKS object (local verification, for tests)
+ * @param {import('jose').JSONWebKeySet} [opts.jwks] - a JWKS object (local verification, for tests)
  * @param {string} [opts.jwksUri] - the provider JWKS URI (remote verification)
  * @param {string} [opts.nonce] - the nonce that MUST match the token's claim
  * @returns {Promise<{ valid:boolean, claims?:object, subject?:string, email?:string, error?:string }>}

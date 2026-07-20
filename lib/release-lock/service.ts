@@ -35,6 +35,12 @@ import {
   validateDrawReleaseInput,
 } from './validation.js';
 
+/**
+ * @param {unknown} value
+ * @param {Set<string>} allowed
+ * @param {Set<string>} [required]
+ * @returns {boolean}
+ */
 function exactObject(value, allowed, required = allowed) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const keys = Object.keys(value);
@@ -42,6 +48,11 @@ function exactObject(value, allowed, required = allowed) {
     && [...required].every((key) => Object.hasOwn(value, key));
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} [code]
+ * @returns {string}
+ */
 function requiredText(value, code = 'invalid_request') {
   if (typeof value !== 'string' || value.length === 0 || value.length > 2048) {
     throw releaseLockRefusal(400, code, 'Release Lock request is malformed.');
@@ -49,6 +60,10 @@ function requiredText(value, code = 'invalid_request') {
   return value;
 }
 
+/**
+ * @param {number|Function} now
+ * @returns {number}
+ */
 function currentMillis(now) {
   const value = typeof now === 'function' ? now() : now;
   if (!Number.isFinite(value)) throw new Error('Release Lock clock is invalid');
@@ -59,6 +74,11 @@ const PARTICIPANT_EVIDENCE_LIMITATION = 'Participant evidence proves the holder\
   + 'in full and records the counterparty\'s decision bindings by digest only. Verifying the '
   + 'counterparty\'s signature requires their credential key from the operator evidence export.';
 
+/**
+ * @param {Record<string, any>} stored
+ * @param {number|Function} now
+ * @param {string[]} [extraLimitations]
+ */
 function evidenceEnvelope(stored, now, extraLimitations = []) {
   const authenticityLimitation = 'The outer content digest detects transport corruption only. '
     + 'Authenticity comes only from re-verifying each signed evidence artifact under '
@@ -79,6 +99,10 @@ function evidenceEnvelope(stored, now, extraLimitations = []) {
   });
 }
 
+/**
+ * @param {Function} provider
+ * @returns {{ rpName: string, rpID: string, origin: string }}
+ */
 function rpPolicy(provider) {
   const policy = provider();
   if (!policy?.rpID || !policy?.origin) {
@@ -91,6 +115,10 @@ function rpPolicy(provider) {
   return policy;
 }
 
+/**
+ * @param {{ rp_id?: string, origin?: string, [key: string]: any }} credential
+ * @param {{ rpID: string, origin: string, [key: string]: any }} policy
+ */
 function assertCredentialPolicy(credential, policy) {
   if (credential?.rp_id !== policy.rpID || credential?.origin !== policy.origin) {
     throw releaseLockRefusal(
@@ -101,8 +129,11 @@ function assertCredentialPolicy(credential, policy) {
   }
 }
 
+/**
+ * @param {{ contacts: Record<'contractor'|'customer', { channel: string, identifier: string }> }} normalized
+ */
 function contactsForProvider(normalized) {
-  return Object.fromEntries(RELEASE_LOCK_ROLES.map((role) => [
+  return Object.fromEntries(RELEASE_LOCK_ROLES.map((/** @type {'contractor'|'customer'} */ role) => [
     role,
     {
       channel: normalized.contacts[role].channel,
@@ -112,10 +143,31 @@ function contactsForProvider(normalized) {
 }
 
 /**
+ * @typedef {Object} ReleaseLockCryptoSuite
+ * @property {() => { token: string, digest: string }} invitation
+ * @property {() => { token: string, digest: string }} pairing
+ * @property {() => { token: string, digest: string }} session
+ * @property {(token: string) => string} invitationDigest
+ * @property {(token: string) => string} pairingDigest
+ * @property {(token: string) => string} sessionDigest
+ * @property {(normalizedChannel: string, normalizedIdentifier: string) => string} contactDigest
+ * @property {(proofBody: any) => string} contactProofDigest
+ * @property {(assertion: any, signature: string) => boolean} verifyAuthorityAssertion
+ */
+
+/**
+ * @typedef {Object} ReleaseLockAdapters
+ * @property {(invitation: { lock_id: string, role: string, channel: string, identifier: string, token: string, expires_at: string }) => Promise<any>} deliverInvitation
+ * @property {(document: any, context: { contacts?: Record<string, any>, requireBoundParticipants?: boolean, requiredSubjects?: Array<{ party_id: string, role?: string }> }) => Promise<any>} fetchDocument
+ * @property {(effect: any, claimEffectBinding: (binding: any) => Promise<boolean>) => Promise<any>} executeEffect
+ * @property {(effect: any) => Promise<any>} reconcileEffect
+ */
+
+/**
  * @param {Object} [options]
  * @param {Function} [options.rpc]
- * @param {Object} [options.cryptoSuite]
- * @param {Object} [options.adapters]
+ * @param {ReleaseLockCryptoSuite} options.cryptoSuite
+ * @param {ReleaseLockAdapters} options.adapters
  * @param {number|Function} [options.now]
  * @param {Function} [options.randomUUID]
  * @param {Function} [options.rpConfigProvider]
@@ -138,12 +190,17 @@ export function createReleaseLockService({
   actionCheckBuilder = buildReleaseLockActionCheck,
   actionCheckVerifier = verifyReleaseLockActionCheck,
   authenticationOptions = generateAuthenticationOptions,
-} = {}) {
+} = /** @type {any} */ ({})) {
   if (typeof rpc !== 'function') throw new TypeError('Release Lock rpc adapter is required');
   if (!cryptoSuite) throw new TypeError('Release Lock crypto suite is required');
   if (!adapters) throw new TypeError('Release Lock provider adapters are required');
   if (typeof randomUUID !== 'function') throw new TypeError('randomUUID is required');
 
+  /**
+   * @param {string} name
+   * @param {Record<string, any>} args
+   * @returns {Promise<any>}
+   */
   async function call(name, args) {
     try {
       const result = await (/** @type {Function} */ (rpc))(name, args);
@@ -161,6 +218,9 @@ export function createReleaseLockService({
     }
   }
 
+  /**
+   * @param {{ organizationId: string, contractorEntityId: string, input: any }} params
+   */
   async function createLock({ organizationId, contractorEntityId, input }) {
     requiredText(organizationId);
     requiredText(contractorEntityId);
@@ -193,7 +253,7 @@ export function createReleaseLockService({
       documentEvidence,
       createdAt,
     });
-    const contacts = RELEASE_LOCK_ROLES.map((role) => ({
+    const contacts = RELEASE_LOCK_ROLES.map((/** @type {'contractor'|'customer'} */ role) => ({
       role,
       contact_binding_id: randomUUID(),
       channel: normalized.contacts[role].channel,
@@ -215,7 +275,7 @@ export function createReleaseLockService({
       authority_verified_at: normalized.contacts[role].authority.verified_at,
       authority_expires_at: normalized.contacts[role].authority.expires_at,
     }));
-    const rawInvitations = RELEASE_LOCK_ROLES.map((role) => ({
+    const rawInvitations = RELEASE_LOCK_ROLES.map((/** @type {'contractor'|'customer'} */ role) => ({
       role,
       ...cryptoSuite.invitation(),
     }));
@@ -294,6 +354,9 @@ export function createReleaseLockService({
     });
   }
 
+  /**
+   * @param {{ token: string, lock_id: string, role: string }} input
+   */
   async function exchangeInvitation(input) {
     const keys = new Set(['token', 'lock_id', 'role']);
     if (!exactObject(input, keys) || !RELEASE_LOCK_ROLES.includes(input.role)) {
@@ -313,6 +376,9 @@ export function createReleaseLockService({
     return Object.freeze({ ...stored, rawSessionToken: session.token });
   }
 
+  /**
+   * @param {{ rawSessionToken: string, lockId: string, round: string }} params
+   */
   async function createPairing({ rawSessionToken, lockId, round }) {
     if (!RELEASE_LOCK_ROUNDS.includes(round)) {
       throw releaseLockRefusal(400, 'invalid_release_lock_round', 'Release Lock round is invalid.');
@@ -332,6 +398,9 @@ export function createReleaseLockService({
     return Object.freeze({ ...stored, rawPairingToken: pairing.token });
   }
 
+  /**
+   * @param {{ token: string, lock_id: string, role: string, round: string }} input
+   */
   async function exchangePairing(input) {
     const keys = new Set(['token', 'lock_id', 'role', 'round']);
     if (!exactObject(input, keys)
@@ -354,6 +423,10 @@ export function createReleaseLockService({
     return Object.freeze({ ...stored, rawSessionToken: session.token });
   }
 
+  /**
+   * @param {string} rawSessionToken
+   * @param {string} lockId
+   */
   async function resolveSession(rawSessionToken, lockId) {
     return call('release_lock_resolve_session', {
       p_session_digest: cryptoSuite.sessionDigest(rawSessionToken),
@@ -361,6 +434,11 @@ export function createReleaseLockService({
     });
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.rawSessionToken
+   * @param {string} params.lockId
+   */
   async function participantView({ rawSessionToken, lockId }) {
     return call('release_lock_participant_view', {
       p_session_digest: cryptoSuite.sessionDigest(rawSessionToken),
@@ -368,6 +446,11 @@ export function createReleaseLockService({
     });
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.rawSessionToken
+   * @param {string} params.lockId
+   */
   async function beginRegistration({ rawSessionToken, lockId }) {
     const session = await resolveSession(rawSessionToken, lockId);
     const policy = rpPolicy(rpConfigProvider);
@@ -382,7 +465,7 @@ export function createReleaseLockService({
     }));
     const challengeId = randomUUID();
     await call('release_lock_begin_registration', {
-      p_session_digest: cryptoSuite.sessionDigest(rawSessionToken),
+      p_session_digest: /** @type {any} */ (cryptoSuite).sessionDigest(rawSessionToken),
       p_lock_id: lockId,
       p_challenge_id: challengeId,
       p_challenge: generated.challenge,
@@ -402,6 +485,12 @@ export function createReleaseLockService({
     });
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.rawSessionToken
+   * @param {string} params.lockId
+   * @param {Record<string, any>} params.input
+   */
   async function completeRegistration({
     rawSessionToken,
     lockId,
@@ -411,7 +500,7 @@ export function createReleaseLockService({
     if (!exactObject(input, keys)) {
       throw releaseLockRefusal(400, 'registration_invalid', 'Registration response is malformed.');
     }
-    const sessionDigest = cryptoSuite.sessionDigest(rawSessionToken);
+    const sessionDigest = /** @type {any} */ (cryptoSuite).sessionDigest(rawSessionToken);
     const challenge = await call('release_lock_load_registration', {
       p_session_digest: sessionDigest,
       p_lock_id: requiredText(lockId),
@@ -439,6 +528,13 @@ export function createReleaseLockService({
     });
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.organizationId
+   * @param {string} params.contractorEntityId
+   * @param {string} params.lockId
+   * @param {Record<string, any>} params.input
+   */
   async function stageDraw({
     organizationId,
     contractorEntityId,
@@ -455,11 +551,13 @@ export function createReleaseLockService({
       now,
       maxExpiresAt: context.lock_expires_at,
     }));
-    const requiredParties = context.co_action.parties.map((party) => ({
-      party_id: party.party_id,
-      role: party.role,
-    }));
-    const completion = await adapters.fetchDocument(
+    const requiredParties = context.co_action.parties.map(
+      (/** @type {{party_id: string, role: string}} */ party) => ({
+        party_id: party.party_id,
+        role: party.role,
+      }),
+    );
+    const completion = await (/** @type {any} */ (adapters)).fetchDocument(
       normalized.draw.completion_evidence,
       {
         requireBoundParticipants: false,
@@ -469,7 +567,7 @@ export function createReleaseLockService({
     const lienWaivers = await Promise.all(normalized.draw.lien_waivers.map(
       async (waiver) => ({
         payee_party_id: waiver.payee_party_id,
-        evidence: await adapters.fetchDocument(waiver.document, {
+        evidence: await (/** @type {any} */ (adapters)).fetchDocument(waiver.document, {
           requireBoundParticipants: false,
           requiredSubjects: [{
             party_id: waiver.payee_party_id,
@@ -478,7 +576,7 @@ export function createReleaseLockService({
       }),
     ));
     const drawDocuments = await Promise.all(normalized.draw.draw_documents.map(
-      (document) => adapters.fetchDocument(document, {
+      (document) => (/** @type {any} */ (adapters)).fetchDocument(document, {
         requireBoundParticipants: false,
         requiredSubjects: requiredParties,
       }),
@@ -510,6 +608,14 @@ export function createReleaseLockService({
     return Object.freeze({ ...stored, action: built.action });
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.organizationId
+   * @param {string} params.contractorEntityId
+   * @param {string} params.lockId
+   * @param {number} params.expectedVersion
+   * @param {Record<string, any>} params.input
+   */
   async function amendLock({
     organizationId,
     contractorEntityId,
@@ -534,10 +640,12 @@ export function createReleaseLockService({
       amendment: true,
     }));
     for (const role of RELEASE_LOCK_ROLES) {
-      const stored = context.contact_bindings.find((entry) => entry.role === role);
+      const stored = context.contact_bindings.find(
+        (/** @type {{role: string, identifier_digest: string}} */ entry) => entry.role === role,
+      );
       if (!stored || !timingSafeTextEqual(
         stored.identifier_digest,
-        normalized.contacts[role].identifier_digest,
+        normalized.contacts[/** @type {'contractor'|'customer'} */ (role)].identifier_digest,
       )) {
         throw releaseLockRefusal(
           409,
@@ -546,7 +654,7 @@ export function createReleaseLockService({
         );
       }
     }
-    const documentEvidence = await adapters.fetchDocument(
+    const documentEvidence = await (/** @type {any} */ (adapters)).fetchDocument(
       normalized.change_order.document,
       {
         contacts: contactsForProvider(normalized),
@@ -573,6 +681,12 @@ export function createReleaseLockService({
     return Object.freeze({ ...stored, action: built.action });
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.rawSessionToken
+   * @param {string} params.lockId
+   * @param {'CO_ACCEPTED'|'DRAW_RELEASE'} params.round
+   */
   async function actionCheckOptions({
     rawSessionToken,
     lockId,
@@ -581,7 +695,7 @@ export function createReleaseLockService({
     if (!RELEASE_LOCK_ROUNDS.includes(round)) {
       throw releaseLockRefusal(400, 'invalid_release_lock_round', 'Release Lock round is invalid.');
     }
-    const sessionDigest = cryptoSuite.sessionDigest(rawSessionToken);
+    const sessionDigest = /** @type {any} */ (cryptoSuite).sessionDigest(rawSessionToken);
     const context = await call('release_lock_action_check_context', {
       p_session_digest: sessionDigest,
       p_lock_id: requiredText(lockId),
@@ -643,6 +757,11 @@ export function createReleaseLockService({
     });
   }
 
+  /**
+   * @param {{provider: string, environment: string, effect_reference: string, transaction_id: string, milestone_id: string}} effect
+   * @param {'unknown_effect'|'no_effect'} status
+   * @param {{code?: string}} [error]
+   */
   function effectFailureResult(effect, status, error) {
     return {
       '@version': 'EP-RELEASE-LOCK-CUSTODIAN-RESULT-v1',
@@ -660,6 +779,10 @@ export function createReleaseLockService({
     };
   }
 
+  /**
+   * @param {{provider: string, environment: string, effect_reference: string, transaction_id: string, milestone_id: string}} effect
+   * @param {*} outcome
+   */
   async function recordEffectOutcome(effect, outcome) {
     if (!['no_effect', 'unknown_effect', 'applied'].includes(outcome?.status)
         || typeof outcome.retryable !== 'boolean'
@@ -676,12 +799,18 @@ export function createReleaseLockService({
     });
   }
 
+  /**
+   * @param {{provider: string, environment: string, effect_reference: string, transaction_id: string, milestone_id: string}} effect
+   */
   async function executeReservedEffect(effect) {
     let claimState = 'not_attempted';
     try {
-      const outcome = await adapters.executeEffect(
+      const outcome = await (/** @type {any} */ (adapters)).executeEffect(
         effect,
-        async (binding) => {
+        async (
+          /** @type {{effect_reference?: string, transaction_id?: string, milestone_id?: string, effect_contract?: unknown, effect_contract_digest?: string}} */
+          binding,
+        ) => {
           claimState = 'attempted';
           const claimed = await call('release_lock_claim_effect_binding', {
             p_effect_reference: binding?.effect_reference,
@@ -715,6 +844,13 @@ export function createReleaseLockService({
     }
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.rawSessionToken
+   * @param {string} params.lockId
+   * @param {'CO_ACCEPTED'|'DRAW_RELEASE'} params.round
+   * @param {Record<string, any>} params.input
+   */
   async function approve({
     rawSessionToken,
     lockId,
@@ -725,7 +861,7 @@ export function createReleaseLockService({
     if (!exactObject(input, keys) || !RELEASE_LOCK_ROUNDS.includes(round)) {
       throw releaseLockRefusal(400, 'invalid_request', 'Release Lock approval is malformed.');
     }
-    const sessionDigest = cryptoSuite.sessionDigest(rawSessionToken);
+    const sessionDigest = /** @type {any} */ (cryptoSuite).sessionDigest(rawSessionToken);
     const challenge = await call('release_lock_load_action_challenge', {
       p_session_digest: sessionDigest,
       p_lock_id: requiredText(lockId),
@@ -763,6 +899,11 @@ export function createReleaseLockService({
     return Object.freeze({ ...approval, effect: recorded });
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.organizationId
+   * @param {string} params.lockId
+   */
   async function evidence({ organizationId, lockId }) {
     const stored = await call('release_lock_evidence', {
       p_lock_id: requiredText(lockId),
@@ -771,9 +912,14 @@ export function createReleaseLockService({
     return evidenceEnvelope(stored, now);
   }
 
+  /**
+   * @param {object} params
+   * @param {string} params.rawSessionToken
+   * @param {string} params.lockId
+   */
   async function participantEvidence({ rawSessionToken, lockId }) {
     const stored = await call('release_lock_participant_evidence', {
-      p_session_digest: cryptoSuite.sessionDigest(rawSessionToken),
+      p_session_digest: /** @type {any} */ (cryptoSuite).sessionDigest(rawSessionToken),
       p_lock_id: requiredText(lockId),
     });
     return evidenceEnvelope(stored, now, [PARTICIPANT_EVIDENCE_LIMITATION]);

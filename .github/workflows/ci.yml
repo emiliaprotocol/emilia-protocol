@@ -6,6 +6,18 @@ name: CI
 # early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # TypeScript migration: source files are being renamed .js -> .ts while
+  # import specifiers keep the .js extension (the bundler/NodeNext convention
+  # already used across the repo; see next.config.js's webpack
+  # resolve.extensionAlias for the equivalent at build time). Plain `node`
+  # (scripts/, node --test, subprocess-spawned runners) does not remap that
+  # specifier on its own, so every node invocation in this workflow — including
+  # ones spawned as subprocesses with a different cwd, which inherit
+  # NODE_OPTIONS from the environment but resolve a RELATIVE --import path
+  # against their own cwd, not the repo root — gets the resolution hook in
+  # scripts/ts-loader/. github.workspace is absolute, so it resolves the same
+  # regardless of which subdirectory a spawned node process runs from.
+  NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
 
 # Least privilege for the default GITHUB_TOKEN (otherwise write-all). No job in
 # this workflow pushes commits, comments on PRs, or cuts releases — read is

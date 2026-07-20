@@ -20,6 +20,47 @@ import { getTemplate } from './templates-index.js';
 import { substitute } from './policy-mint.js';
 import { llmJSON, llmAvailable } from './llm.js';
 
+/**
+ * Shape produced by extractQuestions() + classifyQuestions() — a question
+ * that has already been bucketed by the classifier.
+ * @typedef {object} ClassifiedQuestion
+ * @property {string} id
+ * @property {string} text
+ * @property {string} section
+ * @property {boolean} [requires_freeform]
+ * @property {number} [extraction_confidence]
+ * @property {*} [locator]
+ * @property {string} bucket one of BUCKET.*
+ * @property {string|null} [matched_template]
+ * @property {number} [classify_confidence]
+ * @property {string} [classify_reason]
+ * @property {string} [classify_source]
+ */
+
+/**
+ * @typedef {object} AnswerContext
+ * @property {Record<string, any>} [intake] engagement intake fields
+ * @property {Record<string, string>} [policyVars] template substitution variables
+ */
+
+/**
+ * @typedef {object} TemplateSection
+ * @property {string} heading
+ * @property {string} body
+ */
+
+/**
+ * @typedef {object} PolicyTemplate
+ * @property {string} id
+ * @property {string} title
+ * @property {string} file
+ * @property {string} path
+ * @property {string} content
+ * @property {string|null} content_hash
+ * @property {string[]} keywords
+ * @property {TemplateSection[]} sections
+ */
+
 export const ANSWER_STATUS = Object.freeze({
   ANSWERED: 'answered',
   ESCALATED: 'escalated',
@@ -29,8 +70,8 @@ const MIN_LLM_CONFIDENCE = 0.75;
 
 /**
  * Answer one classified question.
- * @param {object} q classified question (from classifier)
- * @param {object} ctx { intake, policyVars }
+ * @param {ClassifiedQuestion} q classified question (from classifier)
+ * @param {AnswerContext} ctx { intake, policyVars }
  * @returns {Promise<object>} answer record
  */
 export async function answerQuestion(q, ctx) {
@@ -51,7 +92,10 @@ export async function answerQuestion(q, ctx) {
 
 /**
  * Answer every question with bounded concurrency.
- * @returns {Promise<Array>} answer records (same order as input)
+ * @param {ClassifiedQuestion[]} questions
+ * @param {AnswerContext} ctx
+ * @param {number} [concurrency=8]
+ * @returns {Promise<Array<object>>} answer records (same order as input)
  */
 export async function answerAll(questions, ctx, concurrency = 8) {
   const out = new Array(questions.length);
@@ -67,8 +111,14 @@ export async function answerAll(questions, ctx, concurrency = 8) {
 
 // ── Deterministic answerers ─────────────────────────────────────────────────
 
+/**
+ * @param {ClassifiedQuestion} q
+ * @param {AnswerContext} ctx
+ */
 function answerFromTemplate(q, ctx) {
-  const tpl = getTemplate(q.matched_template);
+  const tpl = /** @type {PolicyTemplate|null} */ (
+    getTemplate(/** @type {string} */ (q.matched_template))
+  );
   if (!tpl || !tpl.content) return escalate(q, 'template_missing');
 
   const section = selectSection(tpl, q.text);
@@ -92,9 +142,14 @@ function answerFromTemplate(q, ctx) {
   };
 }
 
+/**
+ * @param {ClassifiedQuestion} q
+ * @param {AnswerContext} ctx
+ */
 function answerFromSoc2(q, ctx) {
   const status = ctx.intake?.soc2_status || 'unspecified';
-  const phrasing = SOC2_PHRASING[status] || SOC2_PHRASING.default;
+  const phrasing =
+    SOC2_PHRASING[/** @type {keyof typeof SOC2_PHRASING} */ (status)] || SOC2_PHRASING.default;
   const answer =
     `${phrasing} Controls relevant to this question are covered under our SOC 2 program ` +
     `and apply to the AI product surface. Evidence (report, bridge letter) is available to the ` +
@@ -117,6 +172,8 @@ function answerFromSoc2(q, ctx) {
  * Customer-specific facts: answerable only from a field the customer actually
  * supplied. If the relevant field is empty, escalate — we never invent a
  * subprocessor, region, or model provider.
+ * @param {ClassifiedQuestion} q
+ * @param {AnswerContext} ctx
  */
 function answerFromIntakeFact(q, ctx) {
   const intake = ctx.intake || {};
@@ -158,10 +215,16 @@ function answerFromIntakeFact(q, ctx) {
 
 // ── LLM answerer (grounded, source-forced) ──────────────────────────────────
 
+/**
+ * @param {ClassifiedQuestion} q
+ * @param {AnswerContext} ctx
+ */
 async function answerWithLlm(q, ctx) {
   if (!llmAvailable()) return escalate(q, 'no_llm_provider');
 
-  const tpl = q.matched_template ? getTemplate(q.matched_template) : null;
+  const tpl = q.matched_template
+    ? /** @type {PolicyTemplate|null} */ (getTemplate(q.matched_template))
+    : null;
   const grounding = tpl
     ? tpl.sections.slice(0, 8).map((s) => `## ${s.heading}\n${s.body}`).join('\n\n').slice(0, 6000)
     : '';
@@ -184,7 +247,8 @@ async function answerWithLlm(q, ctx) {
 
   if (!res.ok) return escalate(q, `llm_${/** @type {{ok:false,reason:string,provider:string|null,raw?:string}} */ (res).reason}`);
 
-  const { answer, sources, confidence } = res.data;
+  const { answer, sources, confidence } =
+    /** @type {{answer: string, sources: string[], confidence: *}} */ (res.data);
   const conf = clamp01(confidence);
   if (!answer || answer.trim().length === 0 || sources.length === 0 || conf < MIN_LLM_CONFIDENCE) {
     return escalate(q, 'llm_low_confidence_or_no_source', { llm_confidence: conf });
@@ -216,10 +280,16 @@ const SOC2_PHRASING = {
   default: 'Our security program is aligned to SOC 2 control families.',
 };
 
+/** @param {ClassifiedQuestion} q */
 function base(q) {
   return { id: q.id, question: q.text, section: q.section, bucket: q.bucket };
 }
 
+/**
+ * @param {ClassifiedQuestion} q
+ * @param {string} reason
+ * @param {object} [extra]
+ */
 function escalate(q, reason, extra = {}) {
   return {
     ...base(q),
@@ -233,7 +303,12 @@ function escalate(q, reason, extra = {}) {
   };
 }
 
-/** Pick the template section whose heading/body best overlaps the question. */
+/**
+ * Pick the template section whose heading/body best overlaps the question.
+ * @param {PolicyTemplate} tpl
+ * @param {string} questionText
+ * @returns {TemplateSection|null}
+ */
 function selectSection(tpl, questionText) {
   const lower = (questionText || '').toLowerCase();
   const words = new Set(lower.split(/\W+/).filter((w) => w.length > 3));
@@ -251,6 +326,11 @@ function selectSection(tpl, questionText) {
   return bestScore > 0 ? best : tpl.sections[0] || null;
 }
 
+/**
+ * @param {string} text
+ * @param {number} n
+ * @returns {string}
+ */
 function firstParagraphs(text, n) {
   const paras = String(text)
     .split(/\n\s*\n/)
@@ -259,6 +339,11 @@ function firstParagraphs(text, n) {
   return paras.slice(0, n).join('\n\n');
 }
 
+/**
+ * @param {*} n value to coerce and clamp into [0,1]; LLM-returned confidence
+ *   is unvalidated so this is intentionally untyped input.
+ * @returns {number}
+ */
 function clamp01(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return 0;

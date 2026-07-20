@@ -38,14 +38,20 @@ export async function runMonitor() {
       result.current++;
       continue;
     }
-    result[status]++; // expiring | stale
+    result[/** @type {'expiring'|'stale'} */ (status)]++; // expiring | stale
 
     // Idempotency: only notify on a *new* status.
     const marker = await getPageMonitor(slug);
     if (marker.last_notified_status === status) continue;
 
-    const email = page.customer.contact?.email;
-    const ok = await sendRefreshEmail({ email, company: page.customer.company, slug, status });
+    const customer = /** @type {{contact?: {email?: string}, company?: string}} */ (page.customer);
+    const email = customer.contact?.email;
+    const ok = await sendRefreshEmail({
+      email,
+      company: customer.company,
+      slug,
+      status: /** @type {'expiring'|'stale'} */ (status),
+    });
     await setPageMonitor(slug, { last_notified_status: status, at: new Date().toISOString() });
     if (ok) result.notified.push(`${slug}:${status}`);
   }
@@ -61,6 +67,9 @@ export async function runMonitor() {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * @param {{email: string|undefined, company: string|undefined, slug: string, status: 'expiring'|'stale'}} params
+ */
 async function sendRefreshEmail({ email, company, slug, status }) {
   if (!email) return false;
   const apiKey = process.env.RESEND_API_KEY;

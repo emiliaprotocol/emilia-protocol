@@ -31,6 +31,7 @@ import {
 
 export const ATTEST_VERSION = 'EP-ATTEST-v2';
 
+/** @param {Buffer|Uint8Array|string|undefined} input */
 function toBuf(input) {
   if (Buffer.isBuffer(input)) return input;
   if (input instanceof Uint8Array) return Buffer.from(input);
@@ -38,12 +39,21 @@ function toBuf(input) {
   throw new TypeError('attest: input must be a Buffer, Uint8Array, or string');
 }
 
-/** SHA-256 of arbitrary bytes (Buffer | Uint8Array | string) -> hex. */
+/**
+ * SHA-256 of arbitrary bytes (Buffer | Uint8Array | string) -> hex.
+ * @param {Buffer|Uint8Array|string|undefined} input
+ * @returns {string}
+ */
 export function sha256Hex(input) {
   return crypto.createHash('sha256').update(toBuf(input)).digest('hex');
 }
 
-/** Constant-time hex-string comparison. */
+/**
+ * Constant-time hex-string comparison.
+ * @param {string} a
+ * @param {string} b
+ * @returns {boolean}
+ */
 function hexEqual(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
   try {

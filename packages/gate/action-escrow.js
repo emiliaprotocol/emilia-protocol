@@ -927,6 +927,15 @@ function foundOperationOk(entry) {
   return entry.ok === undefined ? true : entry.ok === true;
 }
 
+/**
+ * @param {Record<string, any>} next
+ * @param {Record<string, any>} record
+ * @param {Record<string, any>} normalized
+ * @param {string} operation
+ * @param {string} code
+ * @param {string} at
+ * @param {Record<string, any>} [result]
+ */
 function appendOperation(next, record, normalized, operation, code, at, result = {}) {
   if (record.operations.length >= MAX_OPERATIONS) {
     return 'operation_history_limit_reached';
@@ -944,6 +953,15 @@ function appendOperation(next, record, normalized, operation, code, at, result =
   return null;
 }
 
+/**
+ * @param {Record<string, any>} record
+ * @param {Record<string, any>} normalized
+ * @param {string} operation
+ * @param {string} code
+ * @param {string} at
+ * @param {(next: Record<string, any>) => void} mutate
+ * @param {Record<string, any>} [result]
+ */
 function finalizeMutation(record, normalized, operation, code, at, mutate, result = {}) {
   const next = canonicalSnapshot(record);
   const fromState = next.state;
@@ -973,6 +991,9 @@ function finalizeMutation(record, normalized, operation, code, at, mutate, resul
   return { next };
 }
 
+  /**
+   * @param {Record<string, any>} record
+   */
   function providerExpected(record) {
     const template = record.document_action_binding.verification.release_action_template;
     return {
@@ -1002,22 +1023,38 @@ function finalizeMutation(record, normalized, operation, code, at, mutate, resul
  *   read(key) -> null | { revision, value: canonicalJsonText }
  *   compareAndSwap(key, expectedRevision|null, nextValue)
  *     -> { applied, revision }
+ *
+ * @param {Record<string, any>} [options]
  */
 export function createActionEscrowKernel(options = {}) {
+  /** @type {string|null} */
   let configurationError = null;
-  let readStore = null;
-  let compareAndSwap = null;
-  let releaseProvider = null;
-  let getProviderRelease = null;
-  let verifyDocumentActionBinding = null;
-  let verifyAgreementAcceptance = null;
-  let verifyMilestoneEvidence = null;
-  let verifyResolutionReceipt = null;
-  let verifyProviderStatement = null;
-  let verifyStateCommand = null;
-  let resolveProfile = null;
+  /** @type {(key: string) => Promise<{revision: number, value: string} | null>} */
+  let readStore = /** @type {any} */ (null);
+  /** @type {(key: string, expectedRevision: number|null, nextValue: string) => Promise<{applied: boolean, revision: number|null}>} */
+  let compareAndSwap = /** @type {any} */ (null);
+  /** @type {(request: Record<string, any>) => any} */
+  let releaseProvider = /** @type {any} */ (null);
+  /** @type {(request: Record<string, any>) => any} */
+  let getProviderRelease = /** @type {any} */ (null);
+  /** @type {(artifact: any, expected: any) => any} */
+  let verifyDocumentActionBinding = /** @type {any} */ (null);
+  /** @type {(artifact: any, expected: any) => any} */
+  let verifyAgreementAcceptance = /** @type {any} */ (null);
+  /** @type {(artifact: any, expected: any) => any} */
+  let verifyMilestoneEvidence = /** @type {any} */ (null);
+  /** @type {(artifact: any, expected: any) => any} */
+  let verifyResolutionReceipt = /** @type {any} */ (null);
+  /** @type {(artifact: any, expected: any) => any} */
+  let verifyProviderStatement = /** @type {any} */ (null);
+  /** @type {(artifact: any, expected: any) => any} */
+  let verifyStateCommand = /** @type {any} */ (null);
+  /** @type {(profileId: string, context: Record<string, any>) => any} */
+  let resolveProfile = /** @type {any} */ (null);
+  /** @type {Record<string, any>|null} */
   let pinnedProfiles = null;
-  let now = null;
+  /** @type {() => (Date|number|string)} */
+  let now = /** @type {any} */ (null);
   let providerTimeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS;
 
   try {
@@ -1098,6 +1135,10 @@ export function createActionEscrowKernel(options = {}) {
     configurationError ??= 'invalid_kernel_configuration';
   }
 
+  /**
+   * @param {string} operation
+   * @param {() => Promise<any>} task
+   */
   async function safe(operation, task) {
     try {
       return await task();
@@ -1109,6 +1150,9 @@ export function createActionEscrowKernel(options = {}) {
     }
   }
 
+  /**
+   * @param {string} operation
+   */
   function configurationRefusal(operation) {
     return configurationError
       ? outcome({ code: configurationError, operation })
@@ -2146,6 +2190,10 @@ export function createActionEscrowKernel(options = {}) {
   }
 
   /**
+   * @param {Record<string, any>} record
+   * @param {string} targetState
+   * @param {string} code
+   * @param {string} at
    * @param {{ artifact: any, verification: any } | null} providerResult
    */
   function internalReleaseTransition(record, targetState, code, at, providerResult = null) {
@@ -2183,11 +2231,20 @@ export function createActionEscrowKernel(options = {}) {
     return { next };
   }
 
+  /**
+   * @param {Record<string, any>} record
+   */
   async function readLatestRelease(record) {
     const loaded = await readRecord(record.escrow_key);
     return loaded.error ? { error: loaded.error } : { record: loaded.record };
   }
 
+  /**
+   * @param {Record<string, any>} record
+   * @param {string} operation
+   * @param {string} code
+   * @param {{ artifact: any, verification: any } | null} providerResult
+   */
   async function freezeIndeterminate(record, operation, code, providerResult = null) {
     let current = record;
     for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
@@ -2273,6 +2330,11 @@ export function createActionEscrowKernel(options = {}) {
     });
   }
 
+  /**
+   * @param {Record<string, any>} record
+   * @param {{ artifact: any, verification: any }} providerResult
+   * @param {string} operation
+   */
   async function commitReleaseResult(record, providerResult, operation) {
     const status = providerResult.verification.status;
     const operationTime = operationInstant(record);
@@ -2597,7 +2659,10 @@ export function createActionEscrowKernel(options = {}) {
           return { refusal: 'invalid_state_transition' };
         }
         const partyId = normalized.snapshot.party_id;
-        if (!draft.parties.some((party) => party.party_id === partyId)
+        if (!draft.parties.some(
+          /** @param {{ party_id: string, role: string }} party */
+          (party) => party.party_id === partyId,
+        )
           || !validString(normalized.snapshot.reason, 2048)) {
           return { refusal: 'dispute_input_invalid' };
         }

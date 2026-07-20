@@ -24,12 +24,72 @@ const PHONE = /^\+[1-9][0-9]{7,14}$/;
 const SENSITIVE_KEY = /(authorization|cookie|secret|passw(or)?d|token|bearer|api[-_]?key|private[-_]?key)/i;
 const AUTHORITY_SIGNATURE = /^[A-Za-z0-9_-]{86}$/;
 
+/**
+ * The raw, not-yet-validated provider-document object as received on the
+ * wire (change_order.document, draw.completion_evidence,
+ * draw.lien_waivers[].document, draw.draw_documents[]).
+ * @typedef {{provider: unknown, reference: unknown, verification: unknown}} ReleaseLockRawProviderDocument
+ */
+
+/**
+ * The raw, not-yet-validated party object as received on the wire
+ * (contractor_party / customer_party on a change-order Release Lock input).
+ * @typedef {{
+ *   party_id: unknown,
+ *   display_name: unknown,
+ *   contact: unknown,
+ *   authority: unknown,
+ * }} ReleaseLockRawParty
+ */
+
+/**
+ * A party object as constructed internally by normalizedParty(): party_id /
+ * display_name have already been validated, but contact/authority are still
+ * raw, not-yet-verified request data at this point.
+ * @typedef {{
+ *   party_id: string,
+ *   display_name: string,
+ *   role: string,
+ *   contact: any,
+ *   authority: any,
+ * }} ReleaseLockPartyDraft
+ */
+
+/**
+ * The raw, not-yet-validated request body for validateChangeOrderInput().
+ * @typedef {{
+ *   organization_id?: unknown,
+ *   change_order: {
+ *     document: ReleaseLockRawProviderDocument,
+ *     scope: unknown,
+ *     price_delta: unknown,
+ *     currency: unknown,
+ *     progress_schedule_effect: unknown,
+ *     expires_at: unknown,
+ *   },
+ *   lock_expires_at: string,
+ *   contractor_party: ReleaseLockRawParty,
+ *   customer_party: ReleaseLockRawParty,
+ *   invitation_expires_at?: unknown,
+ * }} ReleaseLockChangeOrderInput
+ */
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
 function isRecord(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {unknown} value
+ * @param {Set<string>} allowed
+ * @param {Set<string>} [required]
+ * @returns {boolean}
+ */
 function exactKeys(value, allowed, required = allowed) {
   if (!isRecord(value)) return false;
   const keys = Object.keys(value);
@@ -54,15 +114,26 @@ function text(value, field, { min = 1, max = 512, pattern = null } = {}) {
   return value;
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} field
+ * @returns {number}
+ */
 function instant(value, field) {
   text(value, field, { max: 64 });
-  const parsed = Date.parse(value);
+  const parsed = Date.parse(/** @type {string} */ (value));
   if (!Number.isFinite(parsed) || new Date(parsed).toISOString() !== value) {
     throw releaseLockRefusal(400, 'invalid_request', `${field} must be a canonical UTC instant.`);
   }
   return parsed;
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} field
+ * @param {number} maxBytes
+ * @returns {any}
+ */
 function canonicalCopy(value, field, maxBytes) {
   if (!isCanonicalizable(value)) {
     throw releaseLockRefusal(400, 'invalid_request', `${field} is outside the canonical JSON profile.`);
@@ -74,6 +145,11 @@ function canonicalCopy(value, field, maxBytes) {
   return JSON.parse(encoded);
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} field
+ * @param {number} [depth]
+ */
 function assertNoSensitiveKeys(value, field, depth = 0) {
   if (depth > 16) {
     throw releaseLockRefusal(400, 'invalid_request', `${field} is nested too deeply.`);
@@ -91,6 +167,11 @@ function assertNoSensitiveKeys(value, field, depth = 0) {
   }
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} field
+ * @returns {Record<string, unknown>}
+ */
 function materialObject(value, field) {
   const copy = canonicalCopy(value, field, RELEASE_LOCK_MAX_MATERIAL_FIELDS_BYTES);
   if (!isRecord(copy) || Object.keys(copy).length === 0) {
@@ -123,6 +204,11 @@ function boundedExpiry(value, field, nowMs, maxExpiresAt = null) {
   return expiresAtMs;
 }
 
+/**
+ * @param {unknown} channel
+ * @param {unknown} identifier
+ * @returns {string}
+ */
 export function normalizeContactIdentifier(channel, identifier) {
   if (channel === 'email') {
     return text(identifier, 'contact.identifier', { max: 254, pattern: EMAIL }).toLowerCase();
@@ -133,6 +219,12 @@ export function normalizeContactIdentifier(channel, identifier) {
   throw releaseLockRefusal(400, 'invalid_contact_channel', 'contact.channel must be email or sms.');
 }
 
+/**
+ * @param {ReleaseLockPartyDraft} party
+ * @param {string} role
+ * @param {number} nowMs
+ * @param {*} cryptoSuite
+ */
 function verifiedContact(party, role, nowMs, cryptoSuite) {
   const contactKeys = new Set(['channel', 'identifier', 'verification']);
   if (!exactKeys(party.contact, contactKeys)) {
@@ -203,6 +295,13 @@ function verifiedContact(party, role, nowMs, cryptoSuite) {
   };
 }
 
+/**
+ * @param {ReleaseLockPartyDraft} party
+ * @param {string} role
+ * @param {{identifier_digest: unknown}} contact
+ * @param {number} nowMs
+ * @param {*} cryptoSuite
+ */
 function verifiedAuthority(party, role, contact, nowMs, cryptoSuite) {
   const authorityKeys = new Set(['assertion', 'signature']);
   if (!exactKeys(party.authority, authorityKeys)) {
@@ -288,6 +387,12 @@ function verifiedAuthority(party, role, contact, nowMs, cryptoSuite) {
   };
 }
 
+/**
+ * @param {ReleaseLockRawParty} value
+ * @param {string} role
+ * @param {number} nowMs
+ * @param {*} cryptoSuite
+ */
 function normalizedParty(value, role, nowMs, cryptoSuite) {
   const keys = new Set(['party_id', 'display_name', 'contact', 'authority']);
   if (!exactKeys(value, keys)) {
@@ -328,6 +433,10 @@ function normalizedParty(value, role, nowMs, cryptoSuite) {
   };
 }
 
+/**
+ * @param {ReleaseLockRawProviderDocument} value
+ * @param {string} [field]
+ */
 export function normalizeProviderDocument(value, field = 'document') {
   const keys = new Set(['provider', 'reference', 'verification']);
   if (!exactKeys(value, keys)) {
@@ -342,6 +451,9 @@ export function normalizeProviderDocument(value, field = 'document') {
   };
 }
 
+/**
+ * @param {{id: unknown, label: unknown}} value
+ */
 function normalizedMilestone(value) {
   const keys = new Set(['id', 'label']);
   if (!exactKeys(value, keys)) {
@@ -353,6 +465,15 @@ function normalizedMilestone(value) {
   };
 }
 
+/**
+ * @param {{
+ *   provider: unknown,
+ *   environment: unknown,
+ *   transaction_id: unknown,
+ *   milestone_id: unknown,
+ *   instruction: unknown,
+ * }} value
+ */
 function normalizedCustodian(value) {
   const keys = new Set([
     'provider',
@@ -384,6 +505,11 @@ function normalizedCustodian(value) {
   };
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} amount
+ * @param {string} currency
+ */
 function normalizedPayees(value, amount, currency) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 20) {
     throw releaseLockRefusal(400, 'invalid_payees', 'draw.payees must contain 1-20 exact payees.');
@@ -428,6 +554,11 @@ function normalizedPayees(value, amount, currency) {
   return payees;
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} field
+ * @param {{min?: number, max?: number}} [opts]
+ */
 function normalizedDocumentList(value, field, { min = 0, max = 20 } = {}) {
   if (!Array.isArray(value) || value.length < min || value.length > max) {
     throw releaseLockRefusal(400, 'invalid_request', `${field} must contain ${min}-${max} documents.`);
@@ -444,6 +575,10 @@ function normalizedDocumentList(value, field, { min = 0, max = 20 } = {}) {
   });
 }
 
+/**
+ * @param {unknown} value
+ * @param {{party_id: string}[]} payees
+ */
 function normalizedLienWaivers(value, payees) {
   if (!Array.isArray(value) || value.length < payees.length || value.length > 40) {
     throw releaseLockRefusal(
@@ -504,6 +639,13 @@ function normalizedLienWaivers(value, payees) {
   return waivers;
 }
 
+/**
+ * @param {{
+ *   completionEvidence: {provider: unknown, reference: unknown},
+ *   lienWaivers: {payee_party_id: string, document: {provider: unknown, reference: unknown}}[],
+ *   drawDocuments: {provider: unknown, reference: unknown}[],
+ * }} params
+ */
 function assertDisjointEvidenceReferences({
   completionEvidence,
   lienWaivers,
@@ -539,7 +681,12 @@ function assertDisjointEvidenceReferences({
 }
 
 /**
- * @param {object} input
+ * input is accepted as Record<string, any> (matching how every caller in
+ * this codebase declares it, e.g. service.js's amendLock()); once exactKeys()
+ * has confirmed its shape at runtime, it is treated internally as the more
+ * specific ReleaseLockChangeOrderInput via the typedInput alias below so
+ * that its fields are concretely typed rather than `any`.
+ * @param {Record<string, any>} input
  * @param {object} [opts]
  * @param {number|(() => number)} [opts.now]
  * @param {*} [opts.cryptoSuite]
@@ -566,9 +713,11 @@ export function validateChangeOrderInput(input, {
   if (!exactKeys(input, keys, required) || !cryptoSuite) {
     throw releaseLockRefusal(400, 'invalid_request', 'Change-order Release Lock is malformed.');
   }
+  /** @type {ReleaseLockChangeOrderInput} */
+  const typedInput = /** @type {any} */ (input);
   const nowMs = typeof now === 'function' ? now() : now;
   if (!Number.isFinite(nowMs)) throw new Error('Release Lock clock is invalid');
-  if (maxExpiresAt !== null && input.lock_expires_at !== maxExpiresAt) {
+  if (maxExpiresAt !== null && typedInput.lock_expires_at !== maxExpiresAt) {
     throw releaseLockRefusal(
       400,
       'lock_expiry_immutable',
@@ -583,24 +732,24 @@ export function validateChangeOrderInput(input, {
     'progress_schedule_effect',
     'expires_at',
   ]);
-  if (!exactKeys(input.change_order, coKeys)) {
+  if (!exactKeys(typedInput.change_order, coKeys)) {
     throw releaseLockRefusal(400, 'invalid_request', 'change_order is malformed.');
   }
   const lockExpiresAtMs = boundedExpiry(
-    input.lock_expires_at,
+    typedInput.lock_expires_at,
     'lock_expires_at',
     nowMs,
     maxExpiresAt,
   );
   const expiresAtMs = boundedExpiry(
-    input.change_order.expires_at,
+    typedInput.change_order.expires_at,
     'change_order.expires_at',
     nowMs,
-    input.lock_expires_at,
+    typedInput.lock_expires_at,
   );
   const invitationExpiresAtMs = amendment
     ? null
-    : instant(input.invitation_expires_at, 'invitation_expires_at');
+    : instant(typedInput.invitation_expires_at, 'invitation_expires_at');
   if (!amendment && (
     /** @type {number} */ (invitationExpiresAtMs) <= nowMs
       || /** @type {number} */ (invitationExpiresAtMs) > lockExpiresAtMs
@@ -612,13 +761,13 @@ export function validateChangeOrderInput(input, {
     );
   }
   const contractor = normalizedParty(
-    input.contractor_party,
+    typedInput.contractor_party,
     RELEASE_LOCK_ROLES[0],
     nowMs,
     cryptoSuite,
   );
   const customer = normalizedParty(
-    input.customer_party,
+    typedInput.customer_party,
     RELEASE_LOCK_ROLES[1],
     nowMs,
     cryptoSuite,
@@ -681,24 +830,24 @@ export function validateChangeOrderInput(input, {
   }
   const normalized = {
     change_order: {
-      document: normalizeProviderDocument(input.change_order.document, 'change_order.document'),
-      scope: materialObject(input.change_order.scope, 'change_order.scope'),
-      price_delta: text(input.change_order.price_delta, 'change_order.price_delta', {
+      document: normalizeProviderDocument(typedInput.change_order.document, 'change_order.document'),
+      scope: materialObject(typedInput.change_order.scope, 'change_order.scope'),
+      price_delta: text(typedInput.change_order.price_delta, 'change_order.price_delta', {
         max: 33,
         pattern: SIGNED_MONEY,
       }),
-      currency: text(input.change_order.currency, 'change_order.currency', {
+      currency: text(typedInput.change_order.currency, 'change_order.currency', {
         max: 3,
         pattern: CURRENCY,
       }),
       progress_schedule_effect: materialObject(
-        input.change_order.progress_schedule_effect,
+        typedInput.change_order.progress_schedule_effect,
         'change_order.progress_schedule_effect',
       ),
-      expires_at: input.change_order.expires_at,
+      expires_at: typedInput.change_order.expires_at,
     },
-    ...(amendment ? {} : { invitation_expires_at: input.invitation_expires_at }),
-    lock_expires_at: input.lock_expires_at,
+    ...(amendment ? {} : { invitation_expires_at: typedInput.invitation_expires_at }),
+    lock_expires_at: typedInput.lock_expires_at,
     parties: [contractor.party, customer.party],
     contacts: {
       contractor: {
@@ -728,7 +877,7 @@ export function validateDrawReleaseInput(input, {
   const keys = new Set(['organization_id', 'expected_version', 'draw']);
   const required = new Set(['expected_version', 'draw']);
   if (!exactKeys(input, keys, required)
-      || !Number.isSafeInteger(input.expected_version)
+      || !Number.isSafeInteger(/** @type {{expected_version: unknown}} */ (input).expected_version)
       || input.expected_version < 1) {
     throw releaseLockRefusal(400, 'invalid_request', 'DRAW_RELEASE request is malformed.');
   }

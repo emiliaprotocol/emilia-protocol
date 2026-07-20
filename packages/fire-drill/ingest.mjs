@@ -27,6 +27,7 @@ const outFile = outIdx >= 0 ? args[outIdx + 1] : null;
 let cursor = '';
 let total = 0;
 let highRisk = 0;
+/** @type {Record<string, number>} */
 const byFamily = {};
 const examples = [];
 let pages = 0;
@@ -51,7 +52,7 @@ while (total < cap) {
     const c = classifyOperation({ name: s.name || '', description: s.description || '' });
     if (c.dangerous) {
       highRisk += 1;
-      byFamily[c.family] = (byFamily[c.family] || 0) + 1;
+      byFamily[/** @type {string} */ (c.family)] = (byFamily[/** @type {string} */ (c.family)] || 0) + 1;
       if (examples.length < 25) examples.push({ name: s.name, family: c.family });
     }
   }

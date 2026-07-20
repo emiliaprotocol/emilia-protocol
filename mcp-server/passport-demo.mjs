@@ -26,12 +26,22 @@ import { verifyEmiliaReceipt } from '../packages/require-receipt/index.js';
 const { privateKey } = crypto.generateKeyPairSync('ed25519');
 const SERVER_PUB = crypto.createPublicKey(/** @type {any} */ (privateKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
 
+/**
+ * @param {*} v
+ * @returns {string}
+ */
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
   if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
   if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
   return JSON.stringify(v);
 }
+/**
+ * @param {string} action
+ * @param {string} outcome
+ * @param {{subject?: string, [key: string]: *}} context
+ * @param {string} [approver]
+ */
 function mint(action, outcome, context, approver) {
   const payload = {
     receipt_id: `mcp_${crypto.randomUUID()}`,
@@ -44,6 +54,7 @@ function mint(action, outcome, context, approver) {
   const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', signer: 'ep_mcp_passport_demo', value }, public_key: SERVER_PUB };
 }
+/** @param {*} obj */
 const out = (obj) => ({ content: [{ type: 'text', text: JSON.stringify(obj) }] });
 
 const TOOLS = [
@@ -119,12 +130,12 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     if (base.signoffRequired && !args.approver) {
       return out({ status: 401, authorized: false, decision: base.decision, signoff_required: true, reasons: base.reasons, next: 'Re-call emilia_authorize with "approver" set to the id of the named human who approves. Nothing irreversible without a signed human yes.' });
     }
-    const receipt = mint(action, base.decision, context, args.approver);
+    const receipt = mint(action, base.decision, context, /** @type {string|undefined} */ (args.approver));
     return out({ status: 200, authorized: true, decision: base.decision, approver: args.approver || null, emilia_receipt: receipt });
   }
 
   if (name === 'verify_receipt') {
-    const v = verifyEmiliaReceipt(args.emilia_receipt, { trustedKeys: [SERVER_PUB], action: /** @type {string|null} */ (args.action) || null, maxAgeSec: 900 });
+    const v = verifyEmiliaReceipt(/** @type {object} */ (args.emilia_receipt), { trustedKeys: [SERVER_PUB], action: /** @type {string|null} */ (args.action) || null, maxAgeSec: 900 });
     return out(v);
   }
 

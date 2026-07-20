@@ -63,6 +63,74 @@ export const SCIM_LIMITS = Object.freeze({
   extensionTotalString: 64 * 1024,
 });
 
+/**
+ * Shared JSDoc shapes for this file (checkJs / noImplicitAny — no .d.ts here).
+ * @typedef {{ maxDepth: number, maxNodes: number, maxArrayItems: number, maxObjectKeys: number, maxKey: number, maxString: number, maxTotalString: number }} JsonBounds
+ * @typedef {{ status: number, detail: string, scimType: string }} ScimErrorDetail
+ * @typedef {{ ok: true }} ScimOk
+ * @typedef {{ ok: false, error: ScimErrorDetail }} ScimFail
+ * @typedef {ScimOk | ScimFail} ScimValidationResult
+ * @typedef {{
+ *   id: string,
+ *   user_name?: string,
+ *   active?: boolean,
+ *   external_id?: string | null,
+ *   formatted_name?: string | null,
+ *   given_name?: string | null,
+ *   family_name?: string | null,
+ *   display_name?: string | null,
+ *   title?: string | null,
+ *   emails?: any[],
+ *   phone_numbers?: any[],
+ *   created_at?: string | number | Date | null,
+ *   updated_at?: string | number | Date | null,
+ *   version?: number,
+ * }} ScimUserRow
+ * @typedef {{
+ *   id: string,
+ *   display_name?: string,
+ *   members?: any[],
+ *   external_id?: string | null,
+ *   created_at?: string | number | Date | null,
+ *   updated_at?: string | number | Date | null,
+ *   version?: number,
+ * }} ScimGroupRow
+ * @typedef {{
+ *   schemas: string[],
+ *   id: any,
+ *   userName: any,
+ *   active: boolean,
+ *   meta: { resourceType: string, created: string | undefined, lastModified: string | undefined, location: string, version: string },
+ *   externalId?: string,
+ *   name?: { formatted?: string, givenName?: string, familyName?: string },
+ *   displayName?: string,
+ *   title?: string,
+ *   emails?: any[],
+ *   phoneNumbers?: any[],
+ * }} ScimUserResource
+ * @typedef {{
+ *   schemas: string[],
+ *   id: any,
+ *   displayName: any,
+ *   members: any[],
+ *   meta: { resourceType: string, created: string | undefined, lastModified: string | undefined, location: string, version: string },
+ *   externalId?: string,
+ * }} ScimGroupResource
+ * @typedef {{
+ *   active?: boolean,
+ *   userName?: any,
+ *   externalId?: any,
+ *   displayName?: any,
+ *   title?: any,
+ *   emails?: any[],
+ *   phoneNumbers?: any[],
+ *   members?: Array<{ value?: any, [key: string]: any }>,
+ *   name?: Record<string, any>,
+ *   [key: string]: any,
+ * }} ScimPatchResource
+ */
+
+/** @param {number} max */
 const optionalString = (max) => z.string().max(max).nullable().optional();
 const schemasSchema = z.array(z.string().min(1).max(SCIM_LIMITS.schemaUrn))
   .max(SCIM_LIMITS.schemas)
@@ -145,10 +213,20 @@ const NAME_SUB_ATTRIBUTES = new Set([
   'honorificPrefix', 'honorificSuffix',
 ]);
 
+/**
+ * @param {string} detail
+ * @param {string} [scimType]
+ * @returns {ScimFail}
+ */
 function validationFailure(detail, scimType = 'invalidValue') {
   return { ok: false, error: { status: 400, detail, scimType } };
 }
 
+/**
+ * @param {string} label
+ * @param {z.ZodError} error
+ * @returns {ScimFail}
+ */
 function schemaFailure(label, error) {
   const issue = error.issues?.[0];
   const path = issue?.path?.length ? issue.path.join('.') : label;
@@ -156,13 +234,18 @@ function schemaFailure(label, error) {
   return validationFailure(`${path} is malformed or exceeds the supported limit`, scimType);
 }
 
+/** @param {unknown} value */
 function isPlainObject(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
 
-/** Iterative JSON-shape validation avoids recursive traversal on hostile depth. */
+/**
+ * Iterative JSON-shape validation avoids recursive traversal on hostile depth.
+ * @param {unknown} root
+ * @param {JsonBounds} limits
+ */
 function validateJsonBounds(root, limits) {
   const seen = new WeakSet();
   const stack = [{ value: root, depth: 0 }];
@@ -213,6 +296,11 @@ function validateJsonBounds(root, limits) {
   return null;
 }
 
+/**
+ * @param {any} body
+ * @param {string} label
+ * @returns {ScimValidationResult}
+ */
 function validateResourceEnvelope(body, label) {
   if (!isPlainObject(body)) return validationFailure(`${label} body must be a JSON object`, 'invalidSyntax');
   const boundsError = validateJsonBounds(body, RAW_BOUNDS);
@@ -220,6 +308,11 @@ function validateResourceEnvelope(body, label) {
   return { ok: true };
 }
 
+/**
+ * @param {any} body
+ * @param {string} label
+ * @returns {ScimValidationResult}
+ */
 function validateRawExtensions(body, label) {
   const extensions = Object.entries(body).filter(([key]) => key.startsWith('urn:'));
   if (extensions.length > SCIM_LIMITS.extensionCount) {
@@ -231,6 +324,7 @@ function validateRawExtensions(body, label) {
   return { ok: true };
 }
 
+/** @param {any} value */
 function isBooleanPatchValue(value) {
   if (typeof value === 'boolean') return true;
   if (typeof value === 'string') return /^(true|false)$/i.test(value);
@@ -243,6 +337,11 @@ function isBooleanPatchValue(value) {
     || (typeof nested === 'string' && /^(true|false)$/i.test(nested));
 }
 
+/**
+ * @param {string} path
+ * @param {any} value
+ * @param {number} index
+ */
 function validatePatchTargetValue(path, value, index) {
   const normalized = normalizePath(path);
   if (normalized === 'active' && !isBooleanPatchValue(value)) {
@@ -266,6 +365,11 @@ function validatePatchTargetValue(path, value, index) {
   return null;
 }
 
+/**
+ * @param {any} body
+ * @param {{ requireUserName?: boolean }} [options]
+ * @returns {ScimValidationResult}
+ */
 export function validateScimUser(body, { requireUserName = true } = {}) {
   const envelope = validateResourceEnvelope(body, 'User');
   if (!envelope.ok) return envelope;
@@ -277,6 +381,11 @@ export function validateScimUser(body, { requireUserName = true } = {}) {
   return validateRawExtensions(body, 'User');
 }
 
+/**
+ * @param {any} body
+ * @param {{ requireDisplayName?: boolean }} [options]
+ * @returns {ScimValidationResult}
+ */
 export function validateScimGroup(body, { requireDisplayName = true } = {}) {
   const envelope = validateResourceEnvelope(body, 'Group');
   if (!envelope.ok) return envelope;
@@ -288,6 +397,10 @@ export function validateScimGroup(body, { requireDisplayName = true } = {}) {
   return validateRawExtensions(body, 'Group');
 }
 
+/**
+ * @param {any} body
+ * @returns {ScimValidationResult}
+ */
 export function validateScimPatch(body) {
   const envelope = validateResourceEnvelope(body, 'PATCH');
   if (!envelope.ok) return envelope;
@@ -342,24 +455,36 @@ export function validateScimPatch(body) {
 
 // ── Errors ───────────────────────────────────────────────────────────────────
 
-/** SCIM error envelope (RFC 7644 §3.12). */
+/**
+ * SCIM error envelope (RFC 7644 §3.12).
+ * @param {number} status
+ * @param {string} detail
+ * @param {string} [scimType]
+ */
 export function scimError(status, detail, scimType) {
-  const body = { schemas: [SCIM.ERROR], status: String(status), detail };
+  const body = /** @type {{ schemas: string[], status: string, detail: string, scimType?: string }} */ ({
+    schemas: [SCIM.ERROR], status: String(status), detail,
+  });
   if (scimType) body.scimType = scimType;
   return body;
 }
 
 // ── ETag ─────────────────────────────────────────────────────────────────────
 
+/** @param {number} version */
 export function etag(version) {
   return `W/"${version}"`;
 }
 
 // ── User mapping ─────────────────────────────────────────────────────────────
 
-/** EP row → SCIM User resource. */
+/**
+ * EP row → SCIM User resource.
+ * @param {ScimUserRow} row
+ * @param {string} [baseUrl]
+ */
 export function toScimUser(row, baseUrl = '') {
-  const resource = {
+  const resource = /** @type {ScimUserResource} */ ({
     schemas: [SCIM.USER],
     id: row.id,
     userName: row.user_name,
@@ -371,7 +496,7 @@ export function toScimUser(row, baseUrl = '') {
       location: `${baseUrl}/Users/${row.id}`,
       version: etag(row.version ?? 1),
     },
-  };
+  });
   if (row.external_id) resource.externalId = row.external_id;
 
   const name = {};
@@ -387,7 +512,10 @@ export function toScimUser(row, baseUrl = '') {
   return resource;
 }
 
-/** SCIM User resource (create/replace body, or patched resource) → EP row fields. */
+/**
+ * SCIM User resource (create/replace body, or patched resource) → EP row fields.
+ * @param {any} body
+ */
 export function fromScimUser(body) {
   const name = body.name || {};
   const emails = Array.isArray(body.emails) ? body.emails : [];
@@ -409,8 +537,12 @@ export function fromScimUser(body) {
 
 // ── Group mapping ────────────────────────────────────────────────────────────
 
+/**
+ * @param {ScimGroupRow} row
+ * @param {string} [baseUrl]
+ */
 export function toScimGroup(row, baseUrl = '') {
-  const resource = {
+  const resource = /** @type {ScimGroupResource} */ ({
     schemas: [SCIM.GROUP],
     id: row.id,
     displayName: row.display_name,
@@ -422,11 +554,12 @@ export function toScimGroup(row, baseUrl = '') {
       location: `${baseUrl}/Groups/${row.id}`,
       version: etag(row.version ?? 1),
     },
-  };
+  });
   if (row.external_id) resource.externalId = row.external_id;
   return resource;
 }
 
+/** @param {any} body */
 export function fromScimGroup(body) {
   return {
     display_name: str(body.displayName),
@@ -460,7 +593,8 @@ const FILTERABLE = new Set(['userName', 'externalId', 'active', 'displayName', '
  * Parse a SCIM filter. Supports the single-term equality filters Okta/Azure/Ping
  * use for provisioning lookups: `attr eq "value"` (and `active eq true`).
  *
- * @returns {null | {attribute, operator:'eq', value} | {unsupported:true, raw}}
+ * @param {string | null | undefined} filter
+ * @returns {null | {attribute: string, operator: 'eq', value: string | boolean} | {unsupported: true, raw: string}}
  *   null when no filter is present; an `unsupported` marker the route turns into
  *   a precise 400 for anything outside the supported subset.
  */
@@ -494,7 +628,9 @@ export function parseFilter(filter) {
  * Unknown paths are ignored (a SCIM server may ignore attributes it does not
  * model) rather than failing the whole request.
  *
- * @returns {{ resource: object } | { error: {status, detail, scimType} }}
+ * @param {object} resource
+ * @param {any} body
+ * @returns {{ resource: object } | { error: ScimErrorDetail }}
  */
 export function applyPatch(resource, body) {
   const validation = validateScimPatch(body);
@@ -519,9 +655,15 @@ export function applyPatch(resource, body) {
   return { resource: next };
 }
 
-// Map a SCIM path to our resource shape. Handles dotted sub-attributes
-// (name.givenName) and the common top-level attributes. `verb` distinguishes
-// add (append to multi-valued attrs) from replace (overwrite).
+/**
+ * Map a SCIM path to our resource shape. Handles dotted sub-attributes
+ * (name.givenName) and the common top-level attributes. `verb` distinguishes
+ * add (append to multi-valued attrs) from replace (overwrite).
+ * @param {ScimPatchResource} resource
+ * @param {string} path
+ * @param {any} value
+ * @param {string} [verb]
+ */
 function setAttr(resource, path, value, verb = 'replace') {
   const p = normalizePath(path);
   if (p === 'active') { resource.active = coerceBool(value); return; }
@@ -540,6 +682,10 @@ function setAttr(resource, path, value, verb = 'replace') {
   // Unknown attribute — ignore (lenient server behavior).
 }
 
+/**
+ * @param {ScimPatchResource} resource
+ * @param {string} path
+ */
 function removeAttr(resource, path) {
   const p = normalizePath(path);
   // members[value eq "x"] — remove a single group member (Azure).
@@ -601,13 +747,19 @@ export function resourceTypes(baseUrl = '') {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+/** @param {string} path */
 function normalizePath(path) {
   // Strip a schema-URN prefix if present (e.g. "urn:...:User:active" → "active").
   const idx = path.lastIndexOf(':');
   return idx >= 0 && path.slice(0, idx).startsWith('urn:') ? path.slice(idx + 1) : path;
 }
-// Multi-valued attribute merge. `add` appends new entries (deduped by `value`);
-// `replace` overwrites the whole set. RFC 7644 §3.5.2.1/.3.
+/**
+ * Multi-valued attribute merge. `add` appends new entries (deduped by `value`);
+ * `replace` overwrites the whole set. RFC 7644 §3.5.2.1/.3.
+ * @param {any[] | undefined} existing
+ * @param {any} value
+ * @param {string} verb
+ */
 function mergeMultiValued(existing, value, verb) {
   const incoming = Array.isArray(value) ? value : [value];
   if (verb !== 'add') return incoming;
@@ -616,12 +768,14 @@ function mergeMultiValued(existing, value, verb) {
   const appended = incoming.filter((e) => !seen.has(String(e?.value ?? e)));
   return [...current, ...appended];
 }
+/** @param {any} v */
 function coerceBool(v) {
   if (typeof v === 'boolean') return v;
   if (typeof v === 'string') return v.toLowerCase() === 'true';
   if (Array.isArray(v) && v.length) return coerceBool(v[0].value ?? v[0]);
   return Boolean(v);
 }
+/** @param {any} v */
 function str(v) { return typeof v === 'string' ? v.trim() : (v == null ? '' : String(v)); }
 
 /**
@@ -629,20 +783,24 @@ function str(v) { return typeof v === 'string' ? v.trim() : (v == null ? '' : St
  * (provisioning) and the SSO READ side (SAML/OIDC directory lookup) so an IdP
  * that asserts `Alice@Example.COM` resolves to a `alice@example.com` provisioned
  * row. Lower-case + trim; both sides MUST use this exact function.
+ * @param {any} v
  */
 export function normalizeUserName(v) {
   return str(v).toLowerCase();
 }
+/** @param {string | number | Date | null | undefined} t */
 function iso(t) {
   if (!t) return undefined;
   try { return new Date(t).toISOString(); } catch { return undefined; }
 }
+/** @param {any} body */
 function stripServerFields(body) {
   const clone = structuredCloneSafe(body || {});
   delete clone.id;
   delete clone.meta;
   return clone;
 }
+/** @param {any} obj */
 function structuredCloneSafe(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj);
   return JSON.parse(JSON.stringify(obj));

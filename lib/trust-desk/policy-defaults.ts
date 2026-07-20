@@ -139,9 +139,30 @@ export const DEFAULTS = Object.freeze({
 });
 
 /**
+ * Engagement intake fields consumed by policy variable derivation. The
+ * intake record carries many more buyer-supplied fields; only the ones
+ * read in this module are declared here.
+ * @typedef {object} PolicyIntake
+ * @property {string} [company]
+ * @property {string} [product_name]
+ * @property {string} [product_description]
+ * @property {string} [contact_name]
+ * @property {string} [contact_email]
+ * @property {string} [website]
+ * @property {string} [cloud_provider]
+ * @property {string} [model_providers]
+ */
+
+/**
+ * @typedef {object} PolicyVarOpts
+ * @property {string} [slug]
+ * @property {string} [effectiveDate]
+ */
+
+/**
  * Build the full variable map for a given engagement.
- * @param {object} intake engagement intake fields
- * @param {object} opts { slug, effectiveDate }
+ * @param {PolicyIntake} intake engagement intake fields
+ * @param {PolicyVarOpts} opts { slug, effectiveDate }
  * @returns {Record<string,string>}
  */
 export function buildPolicyVars(intake = {}, opts = {}) {
@@ -257,6 +278,9 @@ export function buildPolicyVars(intake = {}, opts = {}) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * @param {PolicyIntake} intake
+ */
 function deriveProductName(intake) {
   if (intake.product_name) return intake.product_name;
   const desc = intake.product_description || '';
@@ -266,6 +290,9 @@ function deriveProductName(intake) {
   return intake.company ? `${intake.company} AI` : 'the Product';
 }
 
+/**
+ * @param {PolicyIntake} intake
+ */
 function domainFrom(intake) {
   const email = intake.contact_email || '';
   const at = email.split('@')[1];
@@ -274,6 +301,10 @@ function domainFrom(intake) {
   return site || 'example.com';
 }
 
+/**
+ * @param {string} [cloud]
+ * @returns {{primary: string, country: string}}
+ */
 function regionFromCloud(cloud) {
   const c = String(cloud || '').toLowerCase();
   if (/eu|frankfurt|ireland|europe/.test(c)) return { primary: 'eu-central-1', country: 'European Union' };
@@ -282,6 +313,12 @@ function regionFromCloud(cloud) {
   return { primary: m ? m[1] : 'us-east-1', country: 'United States' };
 }
 
+/**
+ * @param {string} csv
+ * @param {number} n
+ * @param {string} fallback
+ * @returns {string}
+ */
 function splitNth(csv, n, fallback) {
   const parts = String(csv || '')
     .split(/[,;]/)
@@ -290,6 +327,11 @@ function splitNth(csv, n, fallback) {
   return parts[n] || fallback;
 }
 
+/**
+ * @param {string} isoDate
+ * @param {number} years
+ * @returns {string}
+ */
 function addYears(isoDate, years) {
   const d = new Date(isoDate + 'T00:00:00Z');
   d.setUTCFullYear(d.getUTCFullYear() + years);

@@ -54,9 +54,27 @@ import { canonicalize, actionHash } from '../../packages/issue/index.js';
 export const DISPLAY_ATTESTATION_VERSION = 'EP-DISPLAY-ATTESTATION-v1';
 export const RENDER_PROFILE = 'EP-WYSIWYS-RENDER-v1';
 
+/**
+ * @typedef {Object} DisplayProof
+ * @property {string} algorithm
+ * @property {string} signer_key_id
+ * @property {string} signed_payload_b64u
+ * @property {string} signature_b64u
+ * @property {string} [public_key] - optional: signer.publicKeyB64u is optional at build time.
+ */
+
+/**
+ * @typedef {{ '@version'?: string, render_profile?: string, action_hash?: string,
+ *   display_hash?: string, proof?: DisplayProof }} DisplayAttestation
+ */
+
 // ── small helpers ────────────────────────────────────────────────────────
 
+/** @param {string} s */
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+/**
+ * @param {*} h - deliberately untyped: malformed/non-string input is tolerated by design.
+ */
 const hexOf = (h) => String(h || '').replace(/^sha256:/, '').toLowerCase();
 
 /**
@@ -99,6 +117,12 @@ const POLICY_ROLLOUT_RENDER_FIELDS = Object.freeze([
   ['rollout_after_state', 'Rollout after state'],
 ]);
 
+/**
+ * @param {string} key
+ * @param {*} value - deliberately untyped: the action field values this
+ *   renders are heterogeneous by design (string, number, array, object, null).
+ * @returns {string}
+ */
 function renderValue(key, value) {
   if (value === null || value === undefined) return '∅';
   if (key === 'risk_flags') {
@@ -128,7 +152,7 @@ function renderValue(key, value) {
  * returned `display_hash` is sha256(canonicalize({...})) over a small,
  * key-sorted object — the JCS-style canonical bytes a verifier re-derives.
  *
- * @param {object} action - the canonical Action Object (I-D §3), i.e. the exact
+ * @param {import('../../packages/issue/index.js').ActionObject} action - the canonical Action Object (I-D §3), i.e. the exact
  *   bytes that action_hash commits to.
  * @returns {{
  *   render_profile: string,
@@ -177,13 +201,14 @@ export function renderAction(action) {
  * claim that a verifier reports but never trusts as signed.
  *
  * @param {object} args
- * @param {object} args.action - the canonical Action Object that was rendered.
+ * @param {import('../../packages/issue/index.js').ActionObject} args.action - the canonical Action Object that was rendered.
  * @param {{ signer_key_id: string, privateKey: import('crypto').KeyObject,
  *           publicKeyB64u?: string, algorithm?: string }} [args.signer] - optional signer.
- * @returns {object} an EP-DISPLAY-ATTESTATION-v1 object.
+ * @returns {DisplayAttestation} an EP-DISPLAY-ATTESTATION-v1 object.
  */
 export function buildDisplayAttestation({ action, signer } = /** @type {any} */ ({})) {
   const rendered = renderAction(action);
+  /** @type {DisplayAttestation} */
   const att = {
     '@version': DISPLAY_ATTESTATION_VERSION,
     render_profile: rendered.render_profile,
@@ -208,6 +233,11 @@ export function buildDisplayAttestation({ action, signer } = /** @type {any} */ 
   return att;
 }
 
+/**
+ * @param {DisplayProof|null|undefined} proof
+ * @param {string} expectedPayloadB64u
+ * @param {string|undefined} boundPublicKeyB64u
+ */
 function verifyDetachedEd25519(proof, expectedPayloadB64u, boundPublicKeyB64u) {
   // Reject unless the proof signs EXACTLY the bytes the verifier independently
   // recomputed (defeats sign-over-other-bytes), and the key is the one bound to
@@ -219,7 +249,10 @@ function verifyDetachedEd25519(proof, expectedPayloadB64u, boundPublicKeyB64u) {
   }
   try {
     const pub = crypto.createPublicKey({
-      key: Buffer.from(proof.public_key, 'base64url'),
+      // public_key is optional at the type level (an omitted signer key is a
+      // real, fail-closed case): cast documents that Buffer.from's runtime
+      // TypeError on undefined is caught below and reported as proof_signature.
+      key: Buffer.from(/** @type {string} */ (proof.public_key), 'base64url'),
       format: 'der',
       type: 'spki',
     });
@@ -247,8 +280,8 @@ function verifyDetachedEd25519(proof, expectedPayloadB64u, boundPublicKeyB64u) {
  *   - proof_*: a signed attestation whose proof does not verify under the
  *     pinned signer key, or whose key is unbound, or whose payload is forged.
  *
- * @param {object} action - the canonical Action Object the receipt committed to.
- * @param {object|null} attestation - an EP-DISPLAY-ATTESTATION-v1 object or null.
+ * @param {import('../../packages/issue/index.js').ActionObject} action - the canonical Action Object the receipt committed to.
+ * @param {DisplayAttestation|null} attestation - an EP-DISPLAY-ATTESTATION-v1 object or null.
  * @param {object} [opts]
  * @param {boolean} [opts.requireDisplayAttestation=false] - high-stakes gate.
  * @param {boolean} [opts.requireSignedAttestation=false] - reject unsigned.
@@ -265,7 +298,9 @@ export function verifyDisplayAttestation(action, attestation, opts = {}) {
     display_hash_match: false,      // attested hash == re-derived hash
     proof_signed: null,             // null = not required / not present
   };
+  /** @type {string[]} */
   const errors = [];
+  /** @param {string} msg */
   const fail = (msg) => { errors.push(msg); return { valid: false, checks, errors, display_hash: null }; };
 
   if (!action || typeof action !== 'object') return fail('Missing canonical action');

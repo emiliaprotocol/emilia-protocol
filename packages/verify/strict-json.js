@@ -4,12 +4,17 @@
 
 export const MAX_JSON_DEPTH = 64;
 
+/**
+ * @param {string} raw
+ * @returns {{ ok: boolean, reason?: string }}
+ */
 export function strictJsonGate(raw) {
   if (typeof raw !== 'string') return { ok: false, reason: 'JSON input must be text' };
   try { JSON.parse(raw); } catch { return { ok: false, reason: 'invalid JSON syntax' }; }
   let index = 0;
   const stack = [];
   let reason = null;
+  /** @type {Record<string, string>} */
   const escapes = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
 
   function readString() {

@@ -22,6 +22,11 @@ const MAX_CLOCK_SKEW_MS = 60 * 1000;
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 const DEVELOPMENT_STATE_SECRET = crypto.randomBytes(32).toString('base64url');
 
+/**
+ * @param {string|null|undefined} value
+ * @param {number} maxBytes
+ * @returns {Buffer|null}
+ */
 function decodeBase64url(value, maxBytes) {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) return null;
   try {
@@ -44,7 +49,10 @@ function stateSecret() {
   return DEVELOPMENT_STATE_SECRET;
 }
 
-/** Sign a state payload → a compact `<b64url(json)>.<hmac>` token. */
+/**
+ * Sign a state payload → a compact `<b64url(json)>.<hmac>` token.
+ * @param {Record<string, unknown>} payload
+ */
 export function signState(payload) {
   const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() }), 'utf8').toString('base64url');
   const mac = crypto.createHmac('sha256', stateSecret()).update(body).digest('base64url');
@@ -54,6 +62,9 @@ export function signState(payload) {
 /**
  * Verify + decode a state token. Returns the payload, or null if the signature
  * is invalid or the token is older than maxAgeMs.
+ * @param {string|null|undefined} token
+ * @param {number} [maxAgeMs]
+ * @returns {Record<string, unknown>|null}
  */
 export function verifyState(token, maxAgeMs = DEFAULT_MAX_AGE_MS) {
   if (!token || typeof token !== 'string' || token.length > MAX_STATE_TOKEN_CHARS

@@ -16,7 +16,23 @@ const DEFAULT_TIMEOUT_MS = 2_000;
 const MAX_TIMEOUT_MS = 60_000;
 const VALID_TIERS = new Set(Object.values(GUARD_DECISIONS));
 
+/**
+ * @typedef {{
+ *   decision: string,
+ *   reasons: string[],
+ *   signoffRequired: boolean,
+ *   aml_signals?: string[],
+ *   requiredAssurance?: string,
+ *   signoffTier?: string,
+ *   advisory?: object,
+ * }} GuardDecision
+ */
+
 class RemoteModelError extends Error {
+  /**
+   * @param {string} code
+   * @param {string} message
+   */
   constructor(code, message) {
     super(message);
     this.name = 'RemoteModelError';
@@ -24,6 +40,10 @@ class RemoteModelError extends Error {
   }
 }
 
+/**
+ * @param {string|undefined} value
+ * @returns {string}
+ */
 function configuredEndpoint(value) {
   if (!value) {
     throw new Error(
@@ -44,6 +64,10 @@ function configuredEndpoint(value) {
   return url.toString();
 }
 
+/**
+ * @param {number|string|undefined} value
+ * @returns {number}
+ */
 function configuredTimeout(value) {
   const timeout = value === undefined ? DEFAULT_TIMEOUT_MS : Number(value);
   if (!Number.isInteger(timeout) || timeout < 1 || timeout > MAX_TIMEOUT_MS) {
@@ -52,6 +76,11 @@ function configuredTimeout(value) {
   return timeout;
 }
 
+/**
+ * @param {*} value - parsed JSON body from the remote model; shape is
+ *   untrusted external input until validated here.
+ * @returns {{tier: string, injection_suspected: boolean}}
+ */
 function validateRemoteOutput(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new RemoteModelError('malformed_response', 'response body must be a JSON object');
@@ -71,6 +100,10 @@ function validateRemoteOutput(value) {
   };
 }
 
+/**
+ * @param {'ok'|'error'} status
+ * @param {object} [details]
+ */
 function remoteEvidence(status, details = {}) {
   return {
     source: 'remote_model',
@@ -79,6 +112,12 @@ function remoteEvidence(status, details = {}) {
   };
 }
 
+/**
+ * @param {GuardDecision} base
+ * @param {object} advisory
+ * @param {string} reason
+ * @returns {GuardDecision}
+ */
 function requireSignoff(base, advisory, reason) {
   if (base.decision === GUARD_DECISIONS.DENY) {
     return { ...base, advisory };
@@ -102,6 +141,11 @@ function requireSignoff(base, advisory, reason) {
   };
 }
 
+/**
+ * @param {GuardDecision} base
+ * @param {string} code
+ * @returns {GuardDecision}
+ */
 function failClosed(base, code) {
   return requireSignoff(
     base,
@@ -110,6 +154,11 @@ function failClosed(base, code) {
   );
 }
 
+/**
+ * @param {GuardDecision} base
+ * @param {{tier: string, injection_suspected: boolean}} output
+ * @returns {GuardDecision}
+ */
 function applyRemoteOutput(base, output) {
   const requestsEscalation = output.tier !== GUARD_DECISIONS.ALLOW
     || output.injection_suspected;
@@ -151,6 +200,8 @@ export function createRemoteClassifier(options = {}) {
     throw new Error('A Fetch API implementation is required for the remote classifier.');
   }
 
+  /** @param {*} input - the shape evaluateGuardPolicy accepts (callers may
+   *   supply a partial action object; evaluateGuardPolicy reads it defensively). */
   return async function classifyRemote(input) {
     const base = evaluateGuardPolicy(input);
     const controller = new AbortController();
@@ -185,6 +236,8 @@ export function createRemoteClassifier(options = {}) {
   };
 }
 
+/** @param {*} input - the shape evaluateGuardPolicy accepts (callers may
+ *   supply a partial action object; evaluateGuardPolicy reads it defensively). */
 export async function classify(input) {
   return createRemoteClassifier()(input);
 }

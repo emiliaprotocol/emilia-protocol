@@ -18,11 +18,50 @@ import { signClaim } from './hash.js';
 const CUSTOMER_DIR = path.join(process.cwd(), 'data', 'trust-desk', 'customers');
 
 /**
+ * Raw claim as stored in a customer fixture / Supabase doc. Pipeline-minted
+ * claims (see minter.js) carry the stored envelope fields (claim_id,
+ * payload_hash, signed_at, signer, signature); legacy fixtures leave them
+ * null and get a load-time envelope instead (see hydrateCustomerDoc).
+ *
+ * @typedef {object} TrustDeskRawClaim
+ * @property {string} id
+ * @property {string} [title]
+ * @property {string} [category]
+ * @property {string} [source_file]
+ * @property {string} [summary]
+ * @property {string[]} [bullets]
+ * @property {string} [policy_version]
+ * @property {string|null} [content_hash]
+ * @property {string|null} [claim_id]
+ * @property {string|null} [payload_hash]
+ * @property {string|null} [signed_at]
+ * @property {string|null} [signer]
+ * @property {string|null} [signature]
+ */
+
+/**
+ * Raw trust-page document, as stored on disk (data/trust-desk/customers/*.json)
+ * or in the Supabase trust_desk_pages row. Only the fields this module reads
+ * are declared; the doc also carries buyer-facing fields (company, website,
+ * contact, status, notes_for_buyer, ...) that pass through untouched via the
+ * `...raw` spread in hydrateCustomerDoc.
+ *
+ * @typedef {object} TrustDeskRawCustomerDoc
+ * @property {string} [slug]
+ * @property {TrustDeskRawClaim[]} [claims]
+ * @property {{expires_at?: string}} [engagement]
+ * @property {string} [expires_at]
+ */
+
+/**
  * Load a single customer fixture by slug. Returns null when missing.
  *
  * Slug validation: strict `[a-z0-9][a-z0-9-]{0,63}` to prevent path traversal.
  * Signing: each claim gets a fresh signed envelope (claim_id, payload_hash,
  * signed_at, signature) on every load.
+ *
+ * @param {string} slug
+ * @returns {object|null} hydrated customer (see hydrateCustomerDoc), or null
  */
 export function loadCustomer(slug) {
   if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {
@@ -42,8 +81,8 @@ export function loadCustomer(slug) {
  * Shared by loadCustomer (file) and the Supabase page loader so both backends
  * produce identical output.
  *
- * @param {object} raw the stored trust-page document
- * @returns {object} customer with hydrated claims
+ * @param {TrustDeskRawCustomerDoc} raw the stored trust-page document
+ * @returns {object|null} customer with hydrated claims, or null when raw is falsy
  */
 export function hydrateCustomerDoc(raw) {
   if (!raw) return null;
@@ -104,6 +143,9 @@ export function listCustomers() {
  *   - current:  now < expires_at - 30d
  *   - expiring: expires_at - 30d < now < expires_at
  *   - stale:    now > expires_at
+ *
+ * @param {TrustDeskRawCustomerDoc} [customer]
+ * @returns {'unknown'|'stale'|'expiring'|'current'}
  */
 export function trustPageStatus(customer) {
   const now = Date.now();

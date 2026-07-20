@@ -75,6 +75,12 @@ const AUTO_SUBMIT_PATH = '/api/receipts/auto-submit';
 const SUBMIT_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 
+/**
+ * Validate and normalize the configured EP API base URL.
+ *
+ * @param {string} value  Candidate base URL (e.g. config.epApiUrl).
+ * @returns {string}      Normalized URL with no trailing slash or hash.
+ */
 function secureApiUrl(value) {
   const parsed = new URL(value);
   const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
@@ -145,6 +151,7 @@ export class AutoReceiptMiddleware {
       throw new TypeError(`AutoReceiptMiddleware.wrap: handler for "${toolName}" must be a function`);
     }
 
+    /** @param {object} args  Tool call arguments, forwarded to `handler` unchanged. */
     return async (args) => {
       const start = Date.now();
       let result;
@@ -377,6 +384,7 @@ export class AutoReceiptMiddleware {
     }
 
     if (value !== null && typeof value === 'object') {
+      /** @type {Record<string, any>} */
       const out = {};
       for (const [k, v] of Object.entries(value)) {
         if (this._isSensitiveKey(k)) {

@@ -16,6 +16,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 const RAW = process.env.EMILIA_DEMO_SPEED;
 const SPEED = RAW !== undefined && Number.isFinite(Number(RAW)) ? Number(RAW) : 1;
+/** @param {number} ms */
 const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms * SPEED)));
 
 const A = {
@@ -23,18 +24,33 @@ const A = {
   red: '\x1b[31m', green: '\x1b[32m', yellow: '\x1b[33m',
   cyan: '\x1b[36m', gold: '\x1b[38;5;178m', gray: '\x1b[90m',
 };
+/** @param {string} s */
 const w = (s) => process.stdout.write(s);
 const log = (s = '') => w(s + '\n');
+/**
+ * @param {keyof typeof A} col
+ * @param {string} s
+ */
 const c = (col, s) => A[col] + s + A.reset;
+/** @param {keyof typeof A} [col] */
 const rule = (col = 'gray') => log(c(col, '  ' + '─'.repeat(70)));
 
+/** @param {string} s */
 async function agentSays(s) { w(c('cyan', '  agent ▸ ') + s + '\n'); await sleep(700); }
+/**
+ * @param {keyof typeof A} col
+ * @param {string} s
+ */
 async function server(col, s) { w(c(col, '       ← ') + s + '\n'); await sleep(950); }
 
 const here = dirname(fileURLToPath(import.meta.url));
 const transport = new StdioClientTransport({ command: 'node', args: ['--no-warnings', join(here, 'passport-demo.mjs')] });
 const agent = new Client({ name: 'demo-agent', version: '1.0.0' }, { capabilities: {} });
 await agent.connect(transport);
+/**
+ * @param {string} name
+ * @param {Record<string, unknown>} args
+ */
 const call = async (name, args) => JSON.parse((/** @type {{ content: Array<{ text: string }> }} */ (await agent.callTool({ name, arguments: args }))).content[0].text);
 
 // ── Title card ───────────────────────────────────────────────────────────

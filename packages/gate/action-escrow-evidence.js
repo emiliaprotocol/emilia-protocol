@@ -83,10 +83,19 @@ const DEFAULT_MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 const DEFAULT_MAX_PROJECT_RECORD_BYTES = 4 * 1024 * 1024;
 const DEFAULT_MAX_PACKAGE_BYTES = 4 * 1024 * 1024;
 
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, any>}
+ */
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * @param {*} value
+ * @param {Set<string>} allowed
+ * @param {Set<string>} [required]
+ */
 function exactKeys(value, allowed, required = allowed) {
   if (!isRecord(value)) return false;
   const keys = Object.keys(value);
@@ -94,6 +103,9 @@ function exactKeys(value, allowed, required = allowed) {
     && [...required].every((key) => Object.hasOwn(value, key));
 }
 
+/**
+ * @param {number|string|Date|(() => (number|string|Date))} value
+ */
 function toIso(value) {
   const candidate = typeof value === 'function' ? value() : value;
   const date = candidate instanceof Date ? candidate : new Date(candidate ?? 0);
@@ -103,11 +115,19 @@ function toIso(value) {
   return date.toISOString();
 }
 
+/**
+ * @param {*} value
+ */
 function portableJsonCopy(value) {
   let nodes = 0;
   let stringBytes = 0;
   const active = new Set();
 
+  /**
+   * @param {*} current
+   * @param {number} depth
+   * @returns {*}
+   */
   function copy(current, depth) {
     nodes += 1;
     if (nodes > 50_000 || depth > 64) {
@@ -151,6 +171,9 @@ function portableJsonCopy(value) {
   return copy(value, 0);
 }
 
+/**
+ * @param {*} value
+ */
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   Object.freeze(value);
@@ -158,6 +181,10 @@ function deepFreeze(value) {
   return value;
 }
 
+/**
+ * @param {*} value
+ * @param {number} maxBytes
+ */
 function documentBytes(value, maxBytes) {
   if (!(Buffer.isBuffer(value) || value instanceof Uint8Array)) {
     throw new TypeError('action-escrow evidence: documentBytes must be bytes');
@@ -169,6 +196,10 @@ function documentBytes(value, maxBytes) {
   return bytes;
 }
 
+/**
+ * @param {*} value
+ * @param {number} maxBytes
+ */
 function projectRecordBytes(value, maxBytes) {
   if (!(Buffer.isBuffer(value) || value instanceof Uint8Array)) {
     throw new TypeError('action-escrow evidence: projectRecordBytes must be bytes');
@@ -182,6 +213,10 @@ function projectRecordBytes(value, maxBytes) {
   return bytes;
 }
 
+/**
+ * @param {*} value
+ * @param {string} fieldName
+ */
 function validFileName(value, fieldName) {
   if (value === null) return true;
   if (typeof value !== 'string'
@@ -193,26 +228,42 @@ function validFileName(value, fieldName) {
   return true;
 }
 
+/**
+ * @param {Buffer} bytes
+ */
 function sha256(bytes) {
   return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
 }
 
+/**
+ * @param {*} value
+ */
 function validInstant(value) {
   if (typeof value !== 'string') return false;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
 }
 
+/**
+ * @param {*} value
+ */
 function canonicalSha256(value) {
   return `sha256:${hashCanonical(value)}`;
 }
 
+/**
+ * @param {*} pkg
+ */
 function digestScope(pkg) {
   const { package_digest: _digest, ...scope } = pkg;
   return scope;
 }
 
-/** Strict raw parser for security-bearing package transport. */
+/**
+ * Strict raw parser for security-bearing package transport.
+ * @param {*} raw
+ * @param {{ maxBytes?: number }} [options]
+ */
 export function parseActionEscrowEvidencePackage(raw, {
   maxBytes = DEFAULT_MAX_PACKAGE_BYTES,
 } = {}) {
@@ -234,6 +285,9 @@ export function parseActionEscrowEvidencePackage(raw, {
   }
 }
 
+/**
+ * @param {*} value
+ */
 function normalizedRequiredParties(value) {
   if (!Array.isArray(value) || value.length === 0) return null;
   const result = [];
@@ -253,6 +307,9 @@ function normalizedRequiredParties(value) {
   return new Set(identities).size === identities.length ? result : null;
 }
 
+/**
+ * @param {string} stage
+ */
 function stageRequiresExecutedAgreement(stage) {
   return [
     'effective',
@@ -267,10 +324,16 @@ function stageRequiresExecutedAgreement(stage) {
   ].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageRequiresReleaseApprovals(stage) {
   return ['release_reserved', 'released', 'completed', 'release_indeterminate'].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageRequiresFunding(stage) {
   return [
     'funded',
@@ -283,6 +346,9 @@ function stageRequiresFunding(stage) {
   ].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageAllowsFunding(stage) {
   return [
     'funded',
@@ -295,6 +361,9 @@ function stageAllowsFunding(stage) {
   ].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageRequiresMilestone(stage) {
   return [
     'milestone_submitted',
@@ -306,6 +375,9 @@ function stageRequiresMilestone(stage) {
   ].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageAllowsMilestone(stage) {
   return [
     'milestone_submitted',
@@ -317,6 +389,9 @@ function stageAllowsMilestone(stage) {
   ].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageAllowsReleaseApprovals(stage) {
   return [
     'milestone_submitted',
@@ -328,10 +403,16 @@ function stageAllowsReleaseApprovals(stage) {
   ].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageRequiresRelease(stage) {
   return ['release_reserved', 'released', 'completed', 'release_indeterminate'].includes(stage);
 }
 
+/**
+ * @param {string} stage
+ */
 function stageAllowsRelease(stage) {
   return [
     'milestone_submitted',

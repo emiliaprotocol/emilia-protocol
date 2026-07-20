@@ -33,6 +33,7 @@ const PAYLOAD_KEYS = new Set([
 ]);
 const SIGNATURE_KEYS = new Set(['algorithm', 'signature_b64u']);
 
+/** @param {*} value */
 function isRecord(value) {
   return value !== null
     && typeof value === 'object'
@@ -41,12 +42,17 @@ function isRecord(value) {
       || Object.getPrototypeOf(value) === null);
 }
 
+/**
+ * @param {*} value
+ * @param {Set<string>} keys
+ */
 function exactKeys(value, keys) {
   return isRecord(value)
     && Object.keys(value).length === keys.size
     && Object.keys(value).every((key) => keys.has(key));
 }
 
+/** @param {*} value */
 function strictInstant(value) {
   if (typeof value !== 'string') return NaN;
   const match = value.match(
@@ -63,11 +69,17 @@ function strictInstant(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+/** @param {*} value */
 function boundedCanonicalCopy(value) {
   let nodes = 0;
   let bytes = 0;
   const seen = new WeakSet();
 
+  /**
+   * @param {*} current
+   * @param {number} depth
+   * @returns {*}
+   */
   function copy(current, depth) {
     nodes += 1;
     if (nodes > 50_000 || depth > 64) throw new TypeError('state statement exceeds resource limits');
@@ -97,10 +109,21 @@ function boundedCanonicalCopy(value) {
   return copy(value, 0);
 }
 
+/** @param {*} value */
 function canonicalHash(value) {
   return `sha256:${hashCanonical(value)}`;
 }
 
+/**
+ * @typedef {Object} StateStatementLike
+ * @property {string} [version]
+ * @property {*} [issuer]
+ * @property {*} [payload]
+ * @property {string} [statement_digest]
+ * @property {*} [signature]
+ */
+
+/** @param {StateStatementLike} statement */
 function signingBody(statement) {
   return {
     version: statement.version,
@@ -109,6 +132,7 @@ function signingBody(statement) {
   };
 }
 
+/** @param {StateStatementLike} statement */
 function stateSigningBytes(statement) {
   const body = boundedCanonicalCopy(signingBody(statement));
   return Buffer.from(
@@ -117,6 +141,7 @@ function stateSigningBytes(statement) {
   );
 }
 
+/** @param {*} value */
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   Object.freeze(value);
@@ -124,6 +149,10 @@ function deepFreeze(value) {
   return value;
 }
 
+/**
+ * @param {*} value
+ * @param {number} [length]
+ */
 function strictBase64url(value, length) {
   if (typeof value !== 'string' || !BASE64URL.test(value) || value.length % 4 === 1) return null;
   const bytes = Buffer.from(value, 'base64url');
@@ -131,6 +160,7 @@ function strictBase64url(value, length) {
   return bytes;
 }
 
+/** @param {*} value */
 function validDigestList(value) {
   return Array.isArray(value)
     && value.length <= 1024
@@ -138,6 +168,7 @@ function validDigestList(value) {
     && new Set(value).size === value.length;
 }
 
+/** @param {*} payload */
 function payloadValid(payload) {
   return exactKeys(payload, PAYLOAD_KEYS)
     && typeof payload.statement_id === 'string' && ID.test(payload.statement_id)
@@ -153,6 +184,22 @@ function payloadValid(payload) {
     && Number.isFinite(strictInstant(payload.occurred_at));
 }
 
+/**
+ * @typedef {Object} StateStatementChecks
+ * @property {boolean} structure
+ * @property {boolean} payload
+ * @property {boolean} issuer_pin
+ * @property {boolean} signature
+ * @property {boolean} statement_digest
+ * @property {boolean} state_record
+ * @property {boolean} expected_bindings
+ * @property {boolean} time
+ */
+
+/**
+ * @param {string} reason
+ * @param {StateStatementChecks} checks
+ */
 function refuse(reason, checks) {
   return {
     valid: false,
@@ -354,7 +401,13 @@ export function verifyActionEscrowStateStatement(statement, {
       && statement.payload.revision === expectedRevision
       && Array.isArray(amendments)
       && statement.payload.amendment_digests.length === amendments.length
-      && statement.payload.amendment_digests.every((entry, index) => entry === amendments[index])
+      && statement.payload.amendment_digests.every(
+        /**
+         * @param {string} entry
+         * @param {number} index
+         */
+        (entry, index) => entry === amendments[index],
+      )
       && statement.payload.previous_statement_digest === expectedPreviousStatementDigest;
     if (!checks.expected_bindings) return refuse('state_expected_binding_mismatch', checks);
 
@@ -399,6 +452,24 @@ export function createActionEscrowStatePackageVerifier({
     throw new TypeError('minimumRevision must be a non-negative safe integer');
   }
   const pinnedKeys = boundedCanonicalCopy(trustedKeys);
+  /**
+   * @typedef {Object} PackagedActionEscrowState
+   * @property {*} [snapshot]
+   * @property {*} [statement]
+   */
+  /**
+   * @typedef {Object} PackagedStateExpectations
+   * @property {string} [agreementId]
+   * @property {string} [bindingDigest]
+   * @property {string} [actionDigest]
+   * @property {string} [profileDigest]
+   * @property {string} [stage]
+   * @property {string[]} [amendmentDigests]
+   */
+  /**
+   * @param {PackagedActionEscrowState} packaged
+   * @param {PackagedStateExpectations} [expected]
+   */
   return async function verifyPackagedState(packaged, expected = {}) {
     if (!exactKeys(packaged, new Set(['snapshot', 'statement']))
       || !isRecord(packaged.statement?.payload)

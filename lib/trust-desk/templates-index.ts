@@ -80,11 +80,24 @@ const TEMPLATES = [
   },
 ];
 
+/**
+ * @typedef {Object} TemplateEntry
+ * @property {string} id
+ * @property {string} title
+ * @property {string} file
+ * @property {string} path
+ * @property {string} content
+ * @property {string|null} content_hash
+ * @property {string[]} keywords
+ * @property {Array<{heading:string,body:string}>} sections
+ */
+
+/** @type {TemplateEntry[]|null} */
 let _cache = null;
 
 /**
  * Load + hash all templates. Cached for the process lifetime.
- * @returns {Array<{id,title,file,path,content,content_hash,keywords,sections}>}
+ * @returns {TemplateEntry[]}
  */
 export function loadTemplates() {
   if (_cache) return _cache;
@@ -102,7 +115,11 @@ export function loadTemplates() {
   return _cache;
 }
 
-/** Look up a single template by id. */
+/**
+ * Look up a single template by id.
+ * @param {string} id
+ * @returns {TemplateEntry|null}
+ */
 export function getTemplate(id) {
   return loadTemplates().find((t) => t.id === id) || null;
 }
@@ -140,7 +157,11 @@ export function scoreTemplates(questionText) {
     .sort((a, b) => b.score - a.score);
 }
 
-/** Lowercase + collapse hyphens/underscores/whitespace to single spaces. */
+/**
+ * Lowercase + collapse hyphens/underscores/whitespace to single spaces.
+ * @param {string} s
+ * @returns {string}
+ */
 function normalizeMatch(s) {
   return String(s || '')
     .toLowerCase()

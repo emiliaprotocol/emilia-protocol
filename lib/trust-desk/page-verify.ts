@@ -22,8 +22,17 @@ import { getPublishedPage } from './page-store.js';
 const CUSTOMER_DIR = path.join(process.cwd(), 'data', 'trust-desk', 'customers');
 
 /**
+ * @typedef {import('./customers.js').TrustDeskRawClaim} TrustDeskRawClaim
+ * @typedef {import('./customers.js').TrustDeskRawCustomerDoc & {company?: string}} TrustDeskDoc
+ *   The doc also carries buyer-facing fields (company, ...) that pass through
+ *   untouched (see customers.js:TrustDeskRawCustomerDoc); `company` is the
+ *   only one this module reads directly.
+ */
+
+/**
  * Sync, file-backend verification (used by the CLI). For the server/API or the
  * Supabase backend, use verifyPublishedPageAsync.
+ * @param {string} slug
  */
 export function verifyPublishedPage(slug) {
   if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {
@@ -34,7 +43,7 @@ export function verifyPublishedPage(slug) {
     return { found: false, slug };
   }
   const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const getArtifact = (sourceFile) => {
+  const getArtifact = (/** @type {string} */ sourceFile) => {
     const p = path.join(CUSTOMER_DIR, sourceFile || '');
     if (!p.startsWith(CUSTOMER_DIR + path.sep) || !fs.existsSync(p)) return null;
     return fs.readFileSync(p, 'utf8');
@@ -44,6 +53,7 @@ export function verifyPublishedPage(slug) {
 
 /**
  * Backend-agnostic verification (file or Supabase). Used by the verify endpoint.
+ * @param {string} slug
  */
 export async function verifyPublishedPageAsync(slug) {
   const page = await getPublishedPage(slug);
@@ -53,6 +63,10 @@ export async function verifyPublishedPageAsync(slug) {
 
 // ── Core ────────────────────────────────────────────────────────────────────
 
+/**
+ * @param {TrustDeskDoc} doc
+ * @param {(sourceFile: string) => (string|null)} getArtifact
+ */
 function verifyDoc(doc, getArtifact) {
   let key = null;
   try {
@@ -61,7 +75,7 @@ function verifyDoc(doc, getArtifact) {
     /* signature check reported as unavailable */
   }
 
-  const claims = (doc.claims || []).map((claim) => {
+  const claims = (doc.claims || []).map((/** @type {TrustDeskRawClaim} */ claim) => {
     const checks = {};
 
     // 1. content integrity
@@ -123,12 +137,13 @@ function verifyDoc(doc, getArtifact) {
     found: true,
     slug: doc.slug,
     company: doc.company,
-    ok: claims.every((c) => c.passed),
+    ok: claims.every((/** @type {{passed: boolean}} */ c) => c.passed),
     claim_count: claims.length,
     claims,
   };
 }
 
+/** @param {string} raw */
 function safeJson(raw) {
   try {
     return JSON.parse(raw);

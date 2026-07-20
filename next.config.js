@@ -30,6 +30,7 @@ const nextConfig = {
   // fall back to monorepo source at runtime. Webpack must resolve both branches
   // before it can bundle a route, so point those package names at the exact
   // in-repo implementations for the website and reference control rooms.
+  /** @param {import('webpack').Configuration & { resolve: { alias: Record<string, string> } }} config */
   webpack(config) {
     // `$` keeps exported package subpaths (for example
     // @emilia-protocol/verify/document-action-binding) resolvable through the

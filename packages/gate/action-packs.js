@@ -108,6 +108,11 @@ export const DEFAULT_PASS_THROUGH_ACTIONS = Object.freeze([
   }),
 ]);
 
+/**
+ * @param {object} [o]
+ * @param {boolean} [o.includePassThrough]
+ * @param {Array<object>} [o.extraActions]
+ */
 export function createDefaultActionRiskManifest({ includePassThrough = true, extraActions = [] } = {}) {
   return {
     '@version': ACTION_RISK_MANIFEST_VERSION,

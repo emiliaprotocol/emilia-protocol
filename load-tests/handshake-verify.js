@@ -70,6 +70,9 @@ export function setup() {
 
 // ── Test function ────────────────────────────────────────────────────────────
 
+/**
+ * @param {{handshakeIds: string[]}} data - value returned by setup()
+ */
 export default function handshakeVerify(data) {
   const ids = data.handshakeIds;
   if (!ids || ids.length === 0) {
@@ -105,6 +108,9 @@ export default function handshakeVerify(data) {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 
+/**
+ * @param {{metrics: Object<string, {values?: Record<string, *>}>}} data - k6 run summary
+ */
 export function handleSummary(data) {
   const p50 = data.metrics.ep_handshake_verify_duration?.values?.['p(50)'] || 'N/A';
   const p95 = data.metrics.ep_handshake_verify_duration?.values?.['p(95)'] || 'N/A';

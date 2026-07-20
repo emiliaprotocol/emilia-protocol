@@ -5,12 +5,41 @@ import { RELEASE_LOCK_DIGEST_PATTERN } from './constants.js';
 import { bytesDigest, canonicalDigest } from './crypto.js';
 import { releaseLockRefusal } from './errors.js';
 
+/**
+ * @typedef {{
+ *   members?: Array<{
+ *     email?: string,
+ *     phone?: string,
+ *     identifier?: string,
+ *     party_id?: string,
+ *     partyId?: string,
+ *     subject_id?: string,
+ *     role?: string,
+ *   }>,
+ * }} ReleaseLockParticipantSet
+ *
+ * @typedef {{
+ *   provider: *,
+ *   reference: *,
+ *   verification: { status?: *, participant_sets?: * },
+ * }} ReleaseLockDocumentRef
+ */
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, any>}
+ */
 function isRecord(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
 }
 
+/**
+ * @param {unknown} value
+ * @param {number} [max]
+ * @returns {value is string}
+ */
 function text(value, max = 512) {
   return typeof value === 'string'
     && value.length > 0
@@ -18,6 +47,11 @@ function text(value, max = 512) {
     && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
+/**
+ * @param {*} resolver
+ * @param {object} request
+ * @param {string} type
+ */
 function configuredAdapter(resolver, request, type) {
   if (typeof resolver !== 'function') {
     throw releaseLockRefusal(
@@ -37,6 +71,10 @@ function configuredAdapter(resolver, request, type) {
   return adapter;
 }
 
+/**
+ * @param {*} result
+ * @param {ReleaseLockDocumentRef} document
+ */
 function normalizedAcrobatEvidence(result, document) {
   if (result?.kind !== 'evidence_ready'
       || result.provider !== document.provider
@@ -82,6 +120,10 @@ function normalizedAcrobatEvidence(result, document) {
   };
 }
 
+/**
+ * @param {ReleaseLockParticipantSet[]} participantSets
+ * @param {string} identifier
+ */
 function contactPresent(participantSets, identifier) {
   return participantSets.some((set) => Array.isArray(set?.members)
     && set.members.some((member) => (
@@ -91,6 +133,10 @@ function contactPresent(participantSets, identifier) {
     )));
 }
 
+/**
+ * @param {ReleaseLockParticipantSet[]} participantSets
+ * @param {*} subject
+ */
 function subjectPresent(participantSets, subject) {
   return participantSets.some((set) => Array.isArray(set?.members)
     && set.members.some((member) => {
@@ -100,10 +146,15 @@ function subjectPresent(participantSets, subject) {
     }));
 }
 
+/**
+ * @param {unknown} value
+ * @returns {value is string}
+ */
 function money(value) {
   return typeof value === 'string' && /^(?:0|[1-9][0-9]*)\.[0-9]{2}$/.test(value);
 }
 
+/** @param {unknown} value */
 function evidenceDocument(value) {
   if (!isRecord(value)
       || !text(value.provider, 128)
@@ -115,6 +166,7 @@ function evidenceDocument(value) {
   return JSON.parse(canonicalize(value));
 }
 
+/** @param {*} effect */
 function normalizedEffectContract(effect) {
   const action = effect?.action;
   const custodian = action?.custodian;
@@ -188,14 +240,14 @@ function normalizedEffectContract(effect) {
 
   const completion = evidenceDocument(action.completion_evidence);
   const drawDocuments = action.draw_documents.map(evidenceDocument);
-  const lienWaivers = action.lien_waivers.map((waiver) => {
+  const lienWaivers = /** @type {any[]} */ (action.lien_waivers.map((waiver) => {
     const document = evidenceDocument(waiver?.document);
     if (!text(waiver?.payee_party_id, 256) || !document) return null;
     return {
       payee_party_id: waiver.payee_party_id,
       document,
     };
-  });
+  }));
   const coveredPayees = new Set(lienWaivers.map((waiver) => waiver?.payee_party_id));
   const expectedPayees = new Set(payees.map((payee) => payee.party_id));
   const evidenceReferences = [
@@ -256,6 +308,11 @@ function normalizedEffectContract(effect) {
   });
 }
 
+/**
+ * @param {*} transaction
+ * @param {*} milestoneId
+ * @param {*} contract
+ */
 function exactProviderSchedule(transaction, milestoneId, contract) {
   if (!isRecord(transaction)
       || transaction.currency !== contract.currency
@@ -266,10 +323,10 @@ function exactProviderSchedule(transaction, milestoneId, contract) {
     (entry) => entry?.provider_item_id === milestoneId,
   );
   if (!milestone || !Array.isArray(milestone.schedules)) return false;
-  const expected = contract.payees.map(
+  const expected = (/** @type {any[]} */ (contract.payees)).map(
     (payee) => `${payee.destination_id}\0${payee.amount}`,
   ).sort();
-  const observed = milestone.schedules.map((schedule) => {
+  const observed = (/** @type {any[]} */ (milestone.schedules)).map((schedule) => {
     if (!text(schedule?.beneficiary_customer, 512) || !money(schedule?.amount)) {
       return null;
     }
@@ -285,6 +342,7 @@ export function createReleaseLockAdapterBoundary({
   resolveCustodianAdapter = null,
   resolveInvitationAdapter = null,
 } = {}) {
+  /** @param {*} invitation */
   async function deliverInvitation(invitation) {
     const adapter = configuredAdapter(
       resolveInvitationAdapter,
@@ -345,6 +403,10 @@ export function createReleaseLockAdapterBoundary({
     });
   }
 
+  /**
+   * @param {ReleaseLockDocumentRef} document
+   * @param {*} context
+   */
   async function fetchDocument(document, context) {
     const adapter = configuredAdapter(
       resolveDocumentAdapter,
@@ -427,6 +489,10 @@ export function createReleaseLockAdapterBoundary({
     return safe;
   }
 
+  /**
+   * @param {*} effect
+   * @param {*} claimEffectBinding
+   */
   function custodianFor(effect, claimEffectBinding) {
     const adapter = configuredAdapter(
       resolveCustodianAdapter,
@@ -451,10 +517,14 @@ export function createReleaseLockAdapterBoundary({
     return adapter;
   }
 
+  /**
+   * @param {*} effect
+   * @param {*} claimEffectBinding
+   */
   async function executeEffect(effect, claimEffectBinding) {
     const exact = normalizedEffectContract(effect);
     let effectClaimed = false;
-    const adapter = custodianFor(effect, async (binding) => (
+    const adapter = custodianFor(effect, async (/** @type {*} */ binding) => (
       effectClaimed
       && isRecord(binding)
       && binding.effect_reference === effect.effect_reference
@@ -577,6 +647,7 @@ export function createReleaseLockAdapterBoundary({
     };
   }
 
+  /** @param {*} effect */
   async function reconcileEffect(effect) {
     const exact = normalizedEffectContract(effect);
     const adapter = custodianFor(effect, async () => false);
@@ -617,7 +688,9 @@ export function createReleaseLockAdapterBoundary({
     const milestone = Array.isArray(transaction.milestones)
       ? transaction.milestones.find((entry) => entry?.provider_item_id === effect.milestone_id)
       : null;
-    const schedules = Array.isArray(milestone?.schedules) ? milestone.schedules : [];
+    const schedules = /** @type {any[]} */ (
+      Array.isArray(milestone?.schedules) ? milestone.schedules : []
+    );
     const disbursed = schedules.every(
       (schedule) => schedule.status?.disbursed_to_beneficiary === true,
     );

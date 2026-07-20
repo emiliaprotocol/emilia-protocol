@@ -157,8 +157,9 @@ export async function createAttestation({
   // achievedRank must be >= requiredRank to pass. Using ranks rather than
   // string comparison avoids ordered-string fragility and keeps the rule in
   // one place (invariants.js) for both this guard and the TLA+ model (T18).
-  const achievedRank = SIGNOFF_ASSURANCE_RANK[assuranceLevel];
-  const requiredRank = SIGNOFF_ASSURANCE_RANK[challenge.required_assurance];
+  const assuranceRankMap = /** @type {Record<string, number>} */ (SIGNOFF_ASSURANCE_RANK);
+  const achievedRank = assuranceRankMap[assuranceLevel];
+  const requiredRank = assuranceRankMap[challenge.required_assurance];
 
   if (achievedRank === undefined || requiredRank === undefined) {
     throw new SignoffError(

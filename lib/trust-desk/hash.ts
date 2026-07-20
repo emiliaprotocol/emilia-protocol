@@ -26,8 +26,17 @@ import { sha256 } from '../crypto.js';
 // ── Canonicalization ───────────────────────────────────────────────────────
 
 /**
+ * @typedef {string|number|boolean|null|CanonicalArray|CanonicalObject} CanonicalValue
+ * @typedef {CanonicalValue[]} CanonicalArray
+ * @typedef {{[key: string]: CanonicalValue}} CanonicalObject
+ */
+
+/**
  * Canonicalize a value for deterministic hashing.
  * Mirrors lib/handshake/binding.js:deepSortKeys exactly.
+ *
+ * @param {unknown} value
+ * @returns {CanonicalValue}
  */
 function canonicalize(value) {
   if (value === null) return null;
@@ -50,18 +59,25 @@ function canonicalize(value) {
     return value.map(canonicalize);
   }
   if (typeof value === 'object') {
-    const sortedKeys = Object.keys(value).sort();
+    const obj = /** @type {Record<string, unknown>} */ (value);
+    const sortedKeys = Object.keys(obj).sort();
+    /** @type {Record<string, CanonicalValue>} */
     const out = {};
-    for (const k of sortedKeys) out[k.normalize('NFC')] = canonicalize(value[k]);
+    for (const k of sortedKeys) out[k.normalize('NFC')] = canonicalize(obj[k]);
     return out;
   }
-  return value;
+  // Remaining typeof branches (boolean, symbol, bigint) pass through unchanged
+  // — booleans in particular are already-canonical JSON values.
+  return /** @type {CanonicalValue} */ (value);
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
 
 /**
  * Hash a JSON-serializable claim object. Returns hex.
+ *
+ * @param {object} claim
+ * @returns {string}
  */
 export function hashClaim(claim) {
   return sha256(JSON.stringify(canonicalize(claim)));
@@ -70,6 +86,9 @@ export function hashClaim(claim) {
 /**
  * Hash a plain-text policy document. Normalizes line endings and trailing
  * whitespace before hashing so CRLF vs LF doesn't produce different hashes.
+ *
+ * @param {string} text
+ * @returns {string}
  */
 export function hashText(text) {
   const normalized = String(text)
@@ -82,6 +101,9 @@ export function hashText(text) {
 /**
  * Generate a short, human-readable claim ID from a claim hash.
  * Format: `clm_<first-12-chars-hex>`. Deterministic, safe for URLs.
+ *
+ * @param {string} hashHex
+ * @returns {string}
  */
 export function claimId(hashHex) {
   if (!/^[0-9a-f]{64}$/.test(hashHex)) {

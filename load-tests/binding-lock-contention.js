@@ -163,6 +163,9 @@ export function setup() {
 
 // ── Scenario A: 100 VUs race to verify one binding ──────────────────────────
 
+/** @typedef {{ raceHsId: string, pool: string[], contentionId: string }} SetupData */
+
+/** @param {SetupData} data */
 export function scenarioA(data) {
   const res = verifyHandshake(data.raceHsId);
 
@@ -190,6 +193,7 @@ export function scenarioA(data) {
 
 let _poolIndex = 0;
 
+/** @param {SetupData} data */
 export function scenarioB(data) {
   // Each VU picks a binding from the pool — round-robin with modulo
   const idx = (__VU + __ITER) % data.pool.length;
@@ -213,6 +217,7 @@ export function scenarioB(data) {
 
 // ── Scenario C: 10 VUs × 10 races on same contention binding ────────────────
 
+/** @param {SetupData} data */
 export function scenarioC(data) {
   const res = verifyHandshake(data.contentionId);
   const duration = res.timings.duration;
@@ -232,6 +237,7 @@ export function scenarioC(data) {
 
 // ── Teardown ─────────────────────────────────────────────────────────────────
 
+/** @param {SetupData} data */
 export function teardown(data) {
   console.log('=== Binding Lock Contention Test Summary ===');
   console.log(`Scenario A — race binding: ${data.raceHsId}`);

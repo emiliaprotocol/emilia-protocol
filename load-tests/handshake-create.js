@@ -70,6 +70,9 @@ export default function handshakeCreate() {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 
+/**
+ * @param {{ metrics: Record<string, { values?: Record<string, number> }> }} data
+ */
 export function handleSummary(data) {
   const p50 = data.metrics.ep_handshake_create_duration?.values?.['p(50)'] || 'N/A';
   const p95 = data.metrics.ep_handshake_create_duration?.values?.['p(95)'] || 'N/A';

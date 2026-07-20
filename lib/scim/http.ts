@@ -18,24 +18,37 @@ const DEFAULT_SCIM_BODY_LIMIT_BYTES = 1024 * 1024;
  * @param {{ status?: number, etag?: string }} [options]
  */
 export function scimJson(body, { status = 200, etag } = {}) {
+  /** @type {{ 'Content-Type': string, ETag?: string }} */
   const headers = { 'Content-Type': SCIM_CONTENT_TYPE };
   if (etag) headers.ETag = etag;
   return NextResponse.json(body, { status, headers });
 }
 
-/** A SCIM error response (RFC 7644 §3.12). */
+/**
+ * A SCIM error response (RFC 7644 §3.12).
+ * @param {number} status
+ * @param {string} detail
+ * @param {string} [scimType]
+ */
 export function scimErrorResponse(status, detail, scimType) {
   return scimJson(scimError(status, detail, scimType), { status });
 }
 
+/**
+ * @param {Request} request
+ * @param {number} [maxBytes]
+ */
 export async function readScimJson(request, maxBytes = DEFAULT_SCIM_BODY_LIMIT_BYTES) {
   const parsed = await readLimitedJson(request, maxBytes);
   if (!parsed.ok) {
     return {
       ok: false,
       response: scimErrorResponse(
-        parsed.status,
-        parsed.detail,
+        // readLimitedJson's inferred return type loses the `ok` discriminant
+        // (no @returns JSDoc on it in lib/http/body-limit.js), so `status` widens to
+        // `number | undefined` here even though every `ok: false` branch there sets it.
+        /** @type {number} */ (parsed.status),
+        /** @type {string} */ (parsed.detail),
         parsed.code === 'invalid_json' ? 'invalidSyntax' : undefined,
       ),
     };
@@ -45,6 +58,7 @@ export async function readScimJson(request, maxBytes = DEFAULT_SCIM_BODY_LIMIT_B
 
 /**
  * Resolve SCIM auth or return a ready 401/503 response.
+ * @param {Request} request
  * @returns {Promise<{ tenantId: string, organizationId?: string, tokenId: string } | { response: NextResponse }>}
  */
 export async function requireScimAuth(request) {
@@ -57,7 +71,10 @@ export async function requireScimAuth(request) {
   return { tenantId: auth.tenantId, organizationId: auth.organizationId, tokenId: auth.tokenId };
 }
 
-/** Base URL for `meta.location` links. */
+/**
+ * Base URL for `meta.location` links.
+ * @param {Request} request
+ */
 export function scimBaseUrl(request) {
   try {
     const url = new URL(request.url);

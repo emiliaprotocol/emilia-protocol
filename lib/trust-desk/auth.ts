@@ -17,10 +17,16 @@ function secret() {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
+/**
+ * @param {{purpose: string, iat: number, exp: number, nonce: string}} value
+ */
 function encode(value) {
   return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
 }
 
+/**
+ * @param {string} value
+ */
 function decode(value) {
   try {
     const raw = Buffer.from(value, 'base64url');
@@ -49,6 +55,8 @@ export function issueTrustDeskSession() {
  * Consume the configured bootstrap bearer exactly once. The database stores
  * only a hash, and the atomic RPC makes replay fail across instances rather
  * than relying on a process-local memory map.
+ *
+ * @param {string} token
  */
 export async function consumeTrustDeskBootstrap(token) {
   const key = secret();
@@ -68,6 +76,9 @@ export async function consumeTrustDeskBootstrap(token) {
   }
 }
 
+/**
+ * @param {string} token
+ */
 export function verifyTrustDeskSession(token) {
   const key = secret();
   if (!key || typeof token !== 'string' || token.length > MAX_SESSION_CHARS) return false;

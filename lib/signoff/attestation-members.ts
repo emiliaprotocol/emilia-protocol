@@ -19,12 +19,56 @@
  */
 
 /**
+ * @typedef {object} SignoffContext  Canonical authorization context bytes (signed).
+ * @property {string} [approver]  approver id claimed inside the signed context
+ */
+
+/**
+ * @typedef {object} WebAuthnAssertion  { authenticator_data, client_data_json, signature } (base64url).
+ * @property {string} [credential_id]     WebAuthn credential id (present on raw audit payloads)
+ * @property {string} authenticator_data  base64url
+ * @property {string} client_data_json    base64url
+ * @property {string} signature           base64url
+ */
+
+/**
+ * @typedef {object} StoredClassADecision  One stored Class-A decision (already carries role + key).
+ * @property {string} [role]
+ * @property {string} [approver_public_key]
+ * @property {SignoffContext} [context]
+ * @property {WebAuthnAssertion} [webauthn]
+ */
+
+/**
+ * @typedef {object} QuorumPolicyApprover
+ * @property {string} approver
+ * @property {string} role
+ */
+
+/**
+ * @typedef {object} QuorumPolicyLike  EP-QUORUM-v1 policy (role roster only).
+ * @property {Array<QuorumPolicyApprover>} [approvers]
+ */
+
+/**
+ * @typedef {object} RawSignoffDecision  guard.signoff.approved after_state payload.
+ * @property {string} [approver_id]
+ * @property {SignoffContext} [context]
+ * @property {WebAuthnAssertion} [webauthn]
+ */
+
+/**
+ * @typedef {object} ApproverCredential
+ * @property {string} public_key_spki
+ */
+
+/**
  * One stored Class-A decision → one quorum member.
  * @param {object} d
  * @param {string} d.role               roster role (e.g. 'authorizing_official')
  * @param {string} d.approver_public_key approver SPKI (base64url) from approver_credentials
- * @param {object} d.context            canonical authorization context (incl. action_hash, approver, issued_at)
- * @param {object} d.webauthn           { authenticator_data, client_data_json, signature } (base64url)
+ * @param {SignoffContext} d.context            canonical authorization context (incl. action_hash, approver, issued_at)
+ * @param {WebAuthnAssertion} d.webauthn           { authenticator_data, client_data_json, signature } (base64url)
  * @returns {object} EP-QUORUM-v1 member
  */
 export function decisionToMember({ role, approver_public_key, context, webauthn }) {
@@ -47,7 +91,7 @@ export function decisionToMember({ role, approver_public_key, context, webauthn 
  * Map a list of stored Class-A decisions → quorum members. Skips any decision
  * missing its context or assertion (fail-safe: an incomplete record can never
  * count toward a quorum).
- * @param {Array<object>} decisions
+ * @param {Array<StoredClassADecision>} decisions
  * @returns {Array<object>}
  */
 export function attestationsToMembers(decisions) {
@@ -66,9 +110,9 @@ export function attestationsToMembers(decisions) {
  * decision we can't fully resolve (unknown approver, missing key, incomplete
  * assertion) is dropped — it cannot count toward the quorum.
  *
- * @param {object} policy                 EP-QUORUM-v1 policy (for the role roster)
- * @param {Array<object>} decisions        guard.signoff.approved after_state payloads
- * @param {Object<string,object>} credsByCredentialId  credential_id → { public_key_spki }
+ * @param {QuorumPolicyLike} policy                 EP-QUORUM-v1 policy (for the role roster)
+ * @param {Array<RawSignoffDecision>} decisions        guard.signoff.approved after_state payloads
+ * @param {Object<string,ApproverCredential>} [credsByCredentialId]  credential_id → { public_key_spki }
  * @returns {Array<object>} EP-QUORUM-v1 members
  */
 export function decisionsToMembers(policy, decisions, credsByCredentialId = {}) {
@@ -81,7 +125,10 @@ export function decisionsToMembers(policy, decisions, credsByCredentialId = {}) 
       const cred = credId ? credsByCredentialId[credId] : null;
       const approver = (d && d.approver_id) || (d && d.context && d.context.approver);
       return {
-        role: roleByApprover[approver] ?? null,
+        // approver may be absent (unresolved decision); JS coerces the missing key to
+        // 'undefined' on lookup and misses, same as an explicit string miss — the
+        // resulting null role is what the .filter() below drops.
+        role: roleByApprover[/** @type {string} */ (approver)] ?? null,
         approver_public_key: cred ? cred.public_key_spki : null,
         context: d && d.context,
         webauthn: d && d.webauthn,

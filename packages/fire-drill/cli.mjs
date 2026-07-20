@@ -60,8 +60,11 @@ if (flags.has('--pr')) {
   process.exit(report.static_result === 'complete' ? 0 : 1);
 }
 
+/** @param {string} s */
 const R = (s) => `\x1b[31m${s}\x1b[0m`;
+/** @param {string} s */
 const Y = (s) => `\x1b[33m${s}\x1b[0m`;
+/** @param {string} s */
 const B = (s) => `\x1b[1m${s}\x1b[0m`;
 const line = (s = '') => console.log(s);
 
@@ -92,6 +95,12 @@ line('  ' + B(TAGLINE));
 line('='.repeat(68));
 process.exit(report.static_result === 'complete' ? 0 : 1);
 
+/**
+ * @param {object} f  a buildReport() finding
+ * @param {string|null} f.family
+ * @param {string} f.fix
+ * @param {string} f.operation
+ */
 function fixSnippet(f) {
   if (f.family && f.fix.includes('adapters/')) {
     return `\n      ──────────────────────────────────────────────\n`

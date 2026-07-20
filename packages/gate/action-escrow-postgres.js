@@ -39,6 +39,9 @@ REVOKE ALL ON ${ACTION_ESCROW_STATE_TABLE} FROM PUBLIC;
 REVOKE ALL ON ${ACTION_ESCROW_EVENT_TABLE} FROM PUBLIC;
 REVOKE UPDATE, DELETE, TRUNCATE ON ${ACTION_ESCROW_EVENT_TABLE} FROM PUBLIC;`;
 
+/**
+ * @param {string} roleName
+ */
 export function actionEscrowRuntimeGrantDdl(roleName) {
   if (typeof roleName !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(roleName)) {
     throw new TypeError('action-escrow runtime role name is invalid');
@@ -109,6 +112,9 @@ RETURNING agreement_key, revision, record_json, updated_at
 SELECT revision FROM journaled`,
 });
 
+/**
+ * @param {*} value
+ */
 function validKey(value) {
   return typeof value === 'string'
     && value.length >= 1
@@ -116,6 +122,9 @@ function validKey(value) {
     && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
+/**
+ * @param {*} value
+ */
 function parsedState(value) {
   if (typeof value !== 'string'
     || Buffer.byteLength(value, 'utf8') > ACTION_ESCROW_MAX_STATE_BYTES
@@ -135,10 +144,17 @@ function parsedState(value) {
   }
 }
 
+/**
+ * @param {string} value
+ */
 function recordDigest(value) {
   return `sha256:${crypto.createHash('sha256').update(value, 'utf8').digest('hex')}`;
 }
 
+/**
+ * @param {*} result
+ * @param {string} operation
+ */
 function assertResult(result, operation) {
   if (!result || typeof result.rowCount !== 'number' || !Number.isSafeInteger(result.rowCount)
     || result.rowCount < 0) {
@@ -171,10 +187,17 @@ export function createActionEscrowPostgresStore({
     return value;
   }
 
+  /**
+   * @param {*} key
+   */
   function assertKey(key) {
     if (!validKey(key)) throw new TypeError('action-escrow agreement key is invalid');
   }
 
+  /**
+   * @param {*} value
+   * @param {number} revision
+   */
   function assertState(value, revision) {
     const parsed = parsedState(value);
     if (!parsed) {
@@ -187,6 +210,9 @@ export function createActionEscrowPostgresStore({
     }
   }
 
+  /**
+   * @param {string} key
+   */
   async function loadHistory(key) {
     const result = assertResult(
       await (/** @type {(text:string, params:any[]) => Promise<{rowCount:number,rows?:any[]}>} */ (query))(ACTION_ESCROW_STATE_SQL.history, [key]),
@@ -196,7 +222,7 @@ export function createActionEscrowPostgresStore({
       throw new Error('action-escrow history: malformed Postgres result');
     }
     let previousRecordedAt = Number.NEGATIVE_INFINITY;
-    const history = result.rows.map((row, index) => {
+    const history = result.rows.map(/** @param {*} row @param {number} index */ (row, index) => {
       const revision = Number(row?.revision);
       const previousRevision = row?.previous_revision === null
         ? null

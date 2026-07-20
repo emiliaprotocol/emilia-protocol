@@ -6,6 +6,13 @@
  */
 import { createAdapter, manifestFromPack } from './_kit.js';
 
+/**
+ * @typedef {object} CloudflareClient
+ * @property {(input: {zone: string, recordId: string}) => any} deleteDnsRecord
+ * @property {(input: {zone: string}) => any} deleteZone
+ * @property {(input: {zone: string, ruleId: string, enabled: boolean}) => any} setFirewallRule
+ */
+
 export const CLOUDFLARE_ACTION_PACK = Object.freeze([
   Object.freeze({
     id: 'cloudflare.dns.delete', label: 'Delete DNS record', action_type: 'cloudflare.dns.delete',
@@ -33,23 +40,44 @@ export const CLOUDFLARE_ACTION_PACK = Object.freeze([
 const OPS = {
   'dns.delete': {
     selector: { protocol: 'cloudflare', tool: 'delete_dns_record' },
+    /** @param {{zone: string, record_id: string}} p */
     observed: (p) => ({ action_type: 'cloudflare.dns.delete', zone: p.zone, record_id: p.record_id }),
+    /**
+     * @param {CloudflareClient} c
+     * @param {{zone: string, record_id: string}} p
+     */
     perform: (c, p) => c.deleteDnsRecord({ zone: p.zone, recordId: p.record_id }),
   },
   'zone.delete': {
     selector: { protocol: 'cloudflare', tool: 'delete_zone' },
+    /** @param {{zone: string}} p */
     observed: (p) => ({ action_type: 'cloudflare.zone.delete', zone: p.zone }),
+    /**
+     * @param {CloudflareClient} c
+     * @param {{zone: string}} p
+     */
     perform: (c, p) => c.deleteZone({ zone: p.zone }),
   },
   'firewall.disable': {
     selector: { protocol: 'cloudflare', tool: 'set_firewall_rule' },
+    /** @param {{zone: string, rule_id: string}} p */
     observed: (p) => ({ action_type: 'cloudflare.firewall.disable', zone: p.zone, rule_id: p.rule_id }),
+    /**
+     * @param {CloudflareClient} c
+     * @param {{zone: string, rule_id: string}} p
+     */
     perform: (c, p) => c.setFirewallRule({ zone: p.zone, ruleId: p.rule_id, enabled: false }),
   },
 };
 
 const adapter = createAdapter({ system: 'cloudflare', ops: OPS });
 export const CLOUDFLARE_OPS = adapter.OPS;
+/** @param {object[]} extra */
 export function createCloudflareManifest(extra = []) { return manifestFromPack(CLOUDFLARE_ACTION_PACK, extra); }
+/**
+ * @param {object} gate    a gate built with createCloudflareManifest()
+ * @param {CloudflareClient} client  { deleteDnsRecord, deleteZone, setFirewallRule }
+ * @param {{ op: string, params?: object, receipt?: any }} args    { op, params, receipt }
+ */
 export function guardCloudflareMutation(gate, client, args) { return adapter.guard(gate, client, args); }
 export default { CLOUDFLARE_ACTION_PACK, CLOUDFLARE_OPS, createCloudflareManifest, guardCloudflareMutation };

@@ -42,9 +42,19 @@ const CERT_CLAIMS = [
 ];
 
 /**
+ * One cited source, as produced by answerer.js (kind determines which of the
+ * other fields are populated — template/template_section cites carry
+ * template_id/template_hash/section, intake cites carry field/value,
+ * boilerplate cites carry id).
+ * @typedef {{kind:string, template_id?:string, template_hash?:string|null, field?:string, value?:*, id?:string, section?:string}} AnswerSource
+ * @typedef {import('./minter.js').TrustDeskAnswer & {sources?: Array<AnswerSource>}} TrustDeskAnswer
+ * @typedef {import('./answerer.js').AnswerContext} AnswerContext
+ */
+
+/**
  * Verify a single answer against the 6 gates.
- * @param {object} answer answerer output (status === 'answered')
- * @param {object} ctx { intake }
+ * @param {TrustDeskAnswer} answer answerer output (status === 'answered')
+ * @param {AnswerContext} ctx { intake }
  * @returns {{passed:boolean, failures:Array<{gate:string,detail:string}>}}
  */
 export function verifyAnswer(answer, ctx = {}) {
@@ -119,9 +129,9 @@ export function verifyAnswer(answer, ctx = {}) {
 
 /**
  * Verify a whole engagement's answers and decide the publish path.
- * @param {Array} answers answerer outputs (mixed answered/escalated)
- * @param {object} ctx { intake }
- * @returns {{decision:'auto'|'partial'|'full', passRate:number, perQuestion:Array, counts:object}}
+ * @param {Array<TrustDeskAnswer>} answers answerer outputs (mixed answered/escalated)
+ * @param {AnswerContext} ctx { intake }
+ * @returns {{decision:'auto'|'partial'|'full', passRate:number, perQuestion:Array<{id:string, status:string, passed:boolean, failures:Array<{gate:string,detail:string}>}>, counts:{total:number,passed:number,failed:number}}}
  */
 export function verifyEngagement(answers, ctx = {}) {
   const perQuestion = answers.map((a) => {
@@ -154,6 +164,9 @@ export function verifyEngagement(answers, ctx = {}) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * @param {Record<string, any>} intake
+ */
 function allowedContacts(intake) {
   const set = new Set();
   for (const v of [intake.contact_email, intake.data_officer_email, intake.security_lead_email]) {
@@ -163,6 +176,10 @@ function allowedContacts(intake) {
   return set;
 }
 
+/**
+ * @param {string} key one of CERT_CLAIMS[].key
+ * @param {Record<string, any>} intake
+ */
 function certSupported(key, intake) {
   const soc2 = intake.soc2_status;
   switch (key) {

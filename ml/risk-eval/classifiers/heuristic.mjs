@@ -77,7 +77,34 @@ const KNOWN_ACTION_TYPES = Object.freeze(new Set(Object.values(GUARD_ACTION_TYPE
 
 // ── Feature extraction ────────────────────────────────────────────────────
 
-/** Split any string into lowercase alphanumeric tokens. */
+/**
+ * The shape evaluateGuardPolicy accepts (lib/guard-policies.js), plus the
+ * optional free-form text fields (description, request, reason, context)
+ * this advisory layer reads for injected intent and prose money-movement.
+ * @typedef {Object} GuardActionInput
+ * @property {string} organizationId
+ * @property {string} actorId
+ * @property {string} actorRole
+ * @property {string} actionType
+ * @property {string[]} targetChangedFields
+ * @property {number} [amount]
+ * @property {string} [currency]
+ * @property {string[]} riskFlags
+ * @property {'password'|'mfa'|'phishing_resistant_mfa'|'service_account'} authStrength
+ * @property {string} [initiatorId]
+ * @property {string} [approverId]
+ * @property {object} [aml]
+ * @property {string} [description]
+ * @property {string} [request]
+ * @property {string} [reason]
+ * @property {Record<string, unknown>} [context]
+ */
+
+/**
+ * Split any string into lowercase alphanumeric tokens.
+ * @param {string} s
+ * @returns {string[]}
+ */
 function tokenize(s) {
   return String(s || '').toLowerCase().split(/[^a-z0-9$]+/i).filter(Boolean);
 }
@@ -86,9 +113,13 @@ function tokenize(s) {
  * Collect the free-form text an action carries: agent reasoning, description,
  * request text, and any string-valued context fields. This is where injected
  * intent and prose money-movement live — invisible to field/taxonomy rules.
+ * @param {GuardActionInput} input
+ * @returns {string}
  */
 function collectFreeText(input) {
+  /** @type {string[]} */
   const parts = [];
+  /** @param {unknown} v */
   const push = (v) => { if (typeof v === 'string' && v.trim()) parts.push(v); };
   push(input?.description);
   push(input?.request);
@@ -103,6 +134,7 @@ function collectFreeText(input) {
 /**
  * Deterministic advisory feature extractor. Pure — no I/O. Returns the fired
  * signals and a coarse injection flag. Exported for the self-test.
+ * @param {GuardActionInput} input
  */
 export function extractSignals(input) {
   const signals = [];
@@ -157,7 +189,7 @@ export function extractSignals(input) {
  * advisory layer as a RAISE-ONLY overlay. Async to match the classify()
  * contract the harness/other classifiers use.
  *
- * @param {object} input - the shape evaluateGuardPolicy accepts.
+ * @param {GuardActionInput} input - the shape evaluateGuardPolicy accepts.
  * @returns {Promise<{decision:string, signoffRequired:boolean, requiredAssurance?:string, reasons:string[],
  *   advisory:{signals:string[], injection_suspected:boolean, raised:boolean}}>}
  */

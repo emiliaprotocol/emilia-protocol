@@ -124,7 +124,7 @@ export async function revokeChallenge({ challengeId, reason, actor }) {
  * "your attestation is already consumed" into a 404, hiding a real 409 from
  * the caller. Status is judged by the guards, on the row this returns.
  *
- * @param {object} supabase - Service client
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase - Service client
  * @param {string} challengeId - The challenge whose attestation to resolve
  * @param {string} humanEntityRef - The caller's entity ref
  * @returns {Promise<string>} The resolved signoff_id

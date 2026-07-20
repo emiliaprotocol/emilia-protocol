@@ -107,6 +107,9 @@ export function setup() {
 
 // ── Test function ────────────────────────────────────────────────────────────
 
+/**
+ * @param {{signoffIds: string[]}} data - value returned by setup()
+ */
 export default function consume(data) {
   const ids = data.signoffIds;
   if (!ids || ids.length === 0) {
@@ -136,6 +139,9 @@ export default function consume(data) {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 
+/**
+ * @param {{metrics: Object<string, {values?: Record<string, any>}>}} data - k6 run summary
+ */
 export function handleSummary(data) {
   const p50 = data.metrics.ep_consume_duration?.values?.['p(50)'] || 'N/A';
   const p95 = data.metrics.ep_consume_duration?.values?.['p(95)'] || 'N/A';

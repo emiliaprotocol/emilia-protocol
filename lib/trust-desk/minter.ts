@@ -16,14 +16,60 @@ import { putPublishedPage } from './page-store.js';
 import { logger } from '../logger.js';
 
 /**
+ * Vendor-supplied intake fields. Every field is optional because older
+ * records may leave some unset.
+ * @typedef {object} TrustDeskIntake
+ * @property {string} [company]
+ * @property {string} [website]
+ * @property {string} [contact_name]
+ * @property {string} [contact_email]
+ * @property {string} [contact_role]
+ * @property {string} [product_description]
+ * @property {string} [tier_preference]
+ * @property {string} [tier]
+ * @property {string} [buyer_name]
+ */
+
+/**
+ * The engagement record. Intake fields may live nested under `.intake` or,
+ * in older records, directly on the engagement itself — see the
+ * `engagement.intake || engagement` fallback below.
+ * @typedef {TrustDeskIntake & { intake?: TrustDeskIntake, created_at?: string, engagement_id?: string }} TrustDeskEngagement
+ */
+
+/**
+ * One answerer output (see answerer.js).
+ * @typedef {object} TrustDeskAnswer
+ * @property {string} id
+ * @property {string} question
+ * @property {string} [section]
+ * @property {'answered'|'escalated'} status
+ * @property {string} [answer]
+ * @property {Array<object>} [sources]
+ * @property {number} [confidence]
+ * @property {string} [escalation_reason]
+ */
+
+/**
+ * One minted policy doc (see policy-mint.js mintPolicies()).
+ * @typedef {object} TrustDeskPolicyDoc
+ * @property {string} doc_id
+ * @property {string} title
+ * @property {string} filename
+ * @property {string} content
+ * @property {string} content_hash
+ * @property {number} bytes
+ */
+
+/**
  * @param {object} opts
- * @param {object} opts.engagement   the engagement record (intake + ids)
- * @param {Array}  opts.answers      answerer outputs
- * @param {object} opts.verification verifyEngagement() result
- * @param {Array}  opts.policies     mintPolicies() result (each has .content)
+ * @param {TrustDeskEngagement} opts.engagement   the engagement record (intake + ids)
+ * @param {Array<TrustDeskAnswer>} opts.answers      answerer outputs
+ * @param {{decision:'auto'|'partial'|'full', passRate:number, perQuestion:Array<object>, counts:{total:number,passed:number,failed:number}}} opts.verification verifyEngagement() result
+ * @param {Array<TrustDeskPolicyDoc>} opts.policies     mintPolicies() result (each has .content)
  * @param {string} opts.slug
  * @param {number} [opts.expiryMonths=6]
- * @returns {Promise<{ slug, claims, expires_at, published_at }>}
+ * @returns {Promise<{ slug: string, claims: Array<object>, expires_at: string, published_at: string }>}
  */
 export async function mintTrustPage({ engagement, answers, verification, policies, slug, expiryMonths = 6 }) {
   const intake = engagement.intake || engagement;
@@ -161,6 +207,9 @@ export async function mintTrustPage({ engagement, answers, verification, policie
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * @param {string} content
+ */
 function sectionHeadings(content) {
   return String(content || '')
     .split('\n')
@@ -169,11 +218,19 @@ function sectionHeadings(content) {
     .map((l) => l.replace(/^##\s+/, '').replace(/^[\d.]+\s*/, '').trim());
 }
 
+/**
+ * @param {string} s
+ * @param {number} n
+ */
 function truncate(s, n) {
   const str = String(s || '');
   return str.length > n ? `${str.slice(0, n - 1)}…` : str;
 }
 
+/**
+ * @param {Date} date
+ * @param {number} months
+ */
 function addMonths(date, months) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + months);

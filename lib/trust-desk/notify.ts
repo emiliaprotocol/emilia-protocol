@@ -16,7 +16,10 @@ const FROM = process.env.TRUST_DESK_FROM_EMAIL || 'AI Trust Desk <trust@emiliapr
 
 /**
  * Notify the customer their trust page is live.
- * @param {object} opts { engagement, slug, trustUrl }
+ * @param {object} opts
+ * @param {import('./minter.js').TrustDeskEngagement} opts.engagement engagement record { engagement_id, intake, ... }
+ * @param {string} opts.slug
+ * @param {string} opts.trustUrl
  * @returns {Promise<{channel:string, delivered:boolean, detail?:string}>}
  */
 export async function notifyPublished({ engagement, slug, trustUrl }) {
@@ -34,7 +37,10 @@ export async function notifyPublished({ engagement, slug, trustUrl }) {
 
 /**
  * Notify the customer their packet escalated to a human reviewer.
- * @param {object} opts { engagement, reason, etaHours }
+ * @param {object} opts
+ * @param {import('./minter.js').TrustDeskEngagement} opts.engagement engagement record { engagement_id, intake, ... }
+ * @param {string} opts.reason
+ * @param {number} [opts.etaHours=4]
  */
 export async function notifyEscalated({ engagement, reason, etaHours = 4 }) {
   const to = engagement?.intake?.contact_email || engagement?.contact_email;
@@ -50,13 +56,23 @@ export async function notifyEscalated({ engagement, reason, etaHours = 4 }) {
   return sendEmail({ to, subject, body });
 }
 
-/** Internal-only ping (no customer email). */
+/**
+ * Internal-only ping (no customer email).
+ * @param {string} message
+ */
 export async function notifyInternal(message) {
   return slackPing(message);
 }
 
 // ── Providers ───────────────────────────────────────────────────────────────
 
+/**
+ * @param {object} opts
+ * @param {string|undefined} opts.to
+ * @param {string} opts.subject
+ * @param {string} opts.body
+ * @returns {Promise<{channel:string, delivered:boolean, detail?:string}>}
+ */
 async function sendEmail({ to, subject, body }) {
   if (!to) {
     return { channel: 'email', delivered: false, detail: 'no recipient' };
@@ -87,6 +103,10 @@ async function sendEmail({ to, subject, body }) {
   }
 }
 
+/**
+ * @param {string} text
+ * @returns {Promise<{channel:string, delivered:boolean, detail?:string}>}
+ */
 async function slackPing(text) {
   const url = process.env.TRUST_DESK_SLACK_WEBHOOK;
   if (!url) {

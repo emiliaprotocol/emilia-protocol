@@ -64,6 +64,17 @@ export default function staircase() {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 
+/**
+ * @typedef {Object} K6Metric
+ * @property {Object.<string, *>} values
+ */
+
+/**
+ * @typedef {Object} K6SummaryData
+ * @property {Object.<string, K6Metric>} metrics
+ */
+
+/** @param {K6SummaryData} data */
 export function handleSummary(data) {
   const p50 = data.metrics.ep_create_duration?.values?.['p(50)'] || 'N/A';
   const p95 = data.metrics.ep_create_duration?.values?.['p(95)'] || 'N/A';

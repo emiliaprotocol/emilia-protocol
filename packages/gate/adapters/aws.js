@@ -21,6 +21,18 @@
  */
 import { createAdapter, manifestFromPack } from './_kit.js';
 
+/**
+ * @typedef {object} AwsIamClient
+ * @property {(input: {UserName: string, PolicyArn: string}) => any} attachUserPolicy
+ * @property {(input: {UserName: string}) => any} createAccessKey
+ * @property {(input: {UserName: string}) => any} deleteUser
+ */
+/**
+ * @typedef {object} AwsEc2Client
+ * @property {(input: {GroupId: string, CidrIp: string, FromPort: number, ToPort: number, IpProtocol: string}) => any} authorizeSecurityGroupIngress
+ */
+/** @typedef {{ iam: AwsIamClient, ec2: AwsEc2Client }} AwsClient */
+
 export const AWS_ACTION_PACK = Object.freeze([
   Object.freeze({
     id: 'aws.iam.attach_policy', label: 'IAM attach policy', action_type: 'aws.iam.attach_policy',
@@ -55,21 +67,37 @@ export const AWS_ACTION_PACK = Object.freeze([
 const OPS = {
   'iam.attach_policy': {
     selector: { protocol: 'aws', tool: 'attach_user_policy' },
+    /** @param {{user: string, policy_arn: string}} p */
     observed: (p) => ({ action_type: 'aws.iam.attach_policy', user: p.user, policy_arn: p.policy_arn }),
+    /**
+     * @param {AwsClient} client
+     * @param {{user: string, policy_arn: string}} p
+     */
     perform: (client, p) => client.iam.attachUserPolicy({ UserName: p.user, PolicyArn: p.policy_arn }),
   },
   'iam.create_access_key': {
     selector: { protocol: 'aws', tool: 'create_access_key' },
+    /** @param {{user: string}} p */
     observed: (p) => ({ action_type: 'aws.iam.create_access_key', user: p.user }),
+    /**
+     * @param {AwsClient} client
+     * @param {{user: string}} p
+     */
     perform: (client, p) => client.iam.createAccessKey({ UserName: p.user }),
   },
   'iam.delete_user': {
     selector: { protocol: 'aws', tool: 'delete_user' },
+    /** @param {{user: string}} p */
     observed: (p) => ({ action_type: 'aws.iam.delete_user', user: p.user }),
+    /**
+     * @param {AwsClient} client
+     * @param {{user: string}} p
+     */
     perform: (client, p) => client.iam.deleteUser({ UserName: p.user }),
   },
   'ec2.authorize_ingress': {
     selector: { protocol: 'aws', tool: 'authorize_security_group_ingress' },
+    /** @param {{group_id: string, cidr: string, protocol?: string, from_port: number, to_port?: number}} p */
     observed: (p) => ({
       action_type: 'aws.ec2.authorize_ingress',
       group_id: p.group_id,
@@ -78,6 +106,10 @@ const OPS = {
       from_port: p.from_port,
       to_port: p.to_port ?? p.from_port,
     }),
+    /**
+     * @param {AwsClient} client
+     * @param {{group_id: string, cidr: string, protocol: string, from_port: number, to_port: number}} p
+     */
     perform: (client, p) => client.ec2.authorizeSecurityGroupIngress({
       GroupId: p.group_id,
       CidrIp: p.cidr,
@@ -91,6 +123,7 @@ const OPS = {
 const adapter = createAdapter({ system: 'aws', ops: OPS });
 export const AWS_OPS = adapter.OPS;
 
+/** @param {object[]} extraActions */
 export function createAwsManifest(extraActions = []) {
   return manifestFromPack(AWS_ACTION_PACK, extraActions);
 }
@@ -98,12 +131,12 @@ export function createAwsManifest(extraActions = []) {
 /**
  * Guard a high-blast-radius AWS mutation behind the gate.
  * @param {object} gate    a gate built with createAwsManifest()
- * @param {object} client  { iam: {attachUserPolicy, createAccessKey, deleteUser}, ec2: {authorizeSecurityGroupIngress} }
- * @param {object} args    { op, params, receipt }
+ * @param {AwsClient} client  { iam: {attachUserPolicy, createAccessKey, deleteUser}, ec2: {authorizeSecurityGroupIngress} }
+ * @param {{ op: string, params?: object, receipt?: any }} args    { op, params, receipt }
  * @throws Error{code:'EMILIA_RECEIPT_REQUIRED'} if refused — the call never reaches AWS
  */
 export function guardAwsMutation(gate, client, args) {
-  return adapter.guard(gate, client, args);
+  return adapter.guard(gate, client, /** @type {{ op: any, params: any, receipt: any }} */ (args));
 }
 
 export default { AWS_ACTION_PACK, AWS_OPS, createAwsManifest, guardAwsMutation };

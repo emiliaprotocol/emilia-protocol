@@ -8,6 +8,50 @@ import {
 } from '@emilia-protocol/verify/document-action-binding';
 import { canonicalize, hashCanonical } from './execution-binding.js';
 
+/**
+ * @typedef {import('@emilia-protocol/verify/document-action-binding')
+ *   .DocumentActionMaterialTerm} DocumentActionMaterialTerm
+ */
+
+/**
+ * Validated, sorted shape of the caller-supplied expected-binding context
+ * returned by {@link exactExpected}.
+ * @typedef {Object} ExpectedActionBindingContext
+ * @property {string} agreement_digest
+ * @property {string} document_action_binding_digest
+ * @property {string} release_action_digest
+ * @property {string} milestone_id
+ * @property {Array<{party_id: string, role: string}>} parties
+ * @property {string} parties_digest
+ * @property {string} profile_digest
+ * @property {string|null} supersedes_document_action_binding_digest
+ */
+
+/**
+ * Validated release-action template shape produced by
+ * {@link validateActionEscrowReleaseTemplate}.
+ * @typedef {Object} ActionEscrowReleaseTemplate
+ * @property {string} action_type
+ * @property {string} action_escrow_profile_digest
+ * @property {string} agreement_id
+ * @property {string} agreement_digest
+ * @property {string} milestone_id
+ * @property {string} amount
+ * @property {string} currency
+ * @property {string} destination_id
+ * @property {string} payee_id
+ * @property {string} custodian_provider
+ * @property {'sandbox'|'production'} custodian_environment
+ * @property {string} custodian_transaction_id
+ * @property {string} custodian_milestone_id
+ * @property {string} document_sha256
+ * @property {string} material_terms_sha256
+ * @property {string} completion_evidence_sha256
+ * @property {number} amendment_version
+ * @property {string} [project_record_snapshot_digest]
+ * @property {string} [action_escrow_template_profile]
+ */
+
 export const ACTION_ESCROW_AGREEMENT_DIGEST_VERSION =
   'EP-ACTION-ESCROW-AGREEMENT-DIGEST-v1';
 export const ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION =
@@ -61,16 +105,19 @@ const CONTRACTOR_RELEASE_TEMPLATE_KEYS = new Set([
   'project_record_snapshot_digest',
 ]);
 
+/** @param {*} value */
 function isRecord(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
 }
 
+/** @param {*} value */
 function canonicalCopy(value) {
   return JSON.parse(canonicalize(value));
 }
 
+/** @param {*} value */
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   Object.freeze(value);
@@ -78,6 +125,7 @@ function deepFreeze(value) {
   return value;
 }
 
+/** @param {*} value */
 function validString(value, max = 256) {
   return typeof value === 'string'
     && value.length > 0
@@ -85,19 +133,27 @@ function validString(value, max = 256) {
     && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
+/** @param {*} parties */
 function sortedParties(parties) {
   if (!Array.isArray(parties)) return null;
   try {
-    return canonicalCopy(parties).sort((left, right) => {
-      const leftKey = `${left.role}\u0000${left.party_id}`;
-      const rightKey = `${right.role}\u0000${right.party_id}`;
-      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
-    });
+    return canonicalCopy(parties).sort(
+      /**
+       * @param {{party_id: string, role: string}} left
+       * @param {{party_id: string, role: string}} right
+       */
+      (left, right) => {
+        const leftKey = `${left.role}\u0000${left.party_id}`;
+        const rightKey = `${right.role}\u0000${right.party_id}`;
+        return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+      },
+    );
   } catch {
     return null;
   }
 }
 
+/** @param {*} value */
 function bytesCopy(value) {
   if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
     return Uint8Array.from(value);
@@ -106,6 +162,7 @@ function bytesCopy(value) {
   return null;
 }
 
+/** @param {string} reason */
 function refusal(reason) {
   return Object.freeze({
     valid: false,
@@ -125,6 +182,10 @@ export function computeActionEscrowAgreementDigest(agreementId) {
   }
 }
 
+/**
+ * @param {*} value
+ * @returns {ExpectedActionBindingContext|null}
+ */
 function exactExpected(value) {
   if (!isRecord(value)
     || !HASH.test(value.agreement_digest)

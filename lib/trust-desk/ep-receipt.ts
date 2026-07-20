@@ -26,6 +26,8 @@ function enabled() {
 
 /**
  * Idempotently ensure the desk + subject entities exist. Best-effort.
+ * @param {string} subjectId entity_id for the trust-page subject (`td-${slug}`)
+ * @param {string|null} company display name for the subject entity, if known
  * @returns {Promise<boolean>} true if both present/created
  */
 async function resolveDeskEntities(subjectId, company) {
@@ -56,8 +58,13 @@ async function resolveDeskEntities(subjectId, company) {
 
 /**
  * Emit a provenance_check receipt for a freshly published trust page.
- * @param {object} opts { engagement, slug, trustUrl, verification, minted }
- * @returns {Promise<{receipt_id:string, receipt_hash:string}|null>}
+ * @param {object} opts
+ * @param {{intake?: {company?: string}}} opts.engagement engagement record { engagement_id, intake, ... }; intake.company feeds the subject display name
+ * @param {string} opts.slug
+ * @param {string} opts.trustUrl
+ * @param {{decision?: string}} opts.verification
+ * @param {{claims?: Array<{content_hash?: string}>, published_at?: string}} opts.minted
+ * @returns {Promise<{receipt_id:string|null, receipt_hash:string|null}|null>}
  */
 export async function emitTrustPageReceipt({ engagement, slug, trustUrl, verification, minted }) {
   if (!enabled()) return null;
@@ -72,25 +79,31 @@ export async function emitTrustPageReceipt({ engagement, slug, trustUrl, verific
     const claimHashes = (minted?.claims || []).map((c) => c.content_hash).filter(Boolean);
     const onTarget = verification?.decision !== 'partial';
 
-    const result = await canonicalSubmitReceipt(
-      {
-        entity_id: subjectId,
-        transaction_ref: `td:${slug}:${minted?.published_at || new Date().toISOString()}`,
-        transaction_type: 'provenance_check',
-        claims: {
-          delivered: true,
-          on_time: true,
-          as_described: onTarget,
+    // canonicalSubmitReceipt's own JSDoc types this as Promise<Object> (via
+    // createReceipt's { receipt, entityScore, warnings } or { error, status }
+    // shape) — re-assert the shape actually produced/consumed here rather
+    // than widen to any, matching the pattern in lib/protocol-write.js.
+    const result = /** @type {{ error?: any, receipt?: { receipt_id?: string, receipt_hash?: string, canonical_hash?: string } }} */ (
+      await canonicalSubmitReceipt(
+        {
+          entity_id: subjectId,
+          transaction_ref: `td:${slug}:${minted?.published_at || new Date().toISOString()}`,
+          transaction_type: 'provenance_check',
+          claims: {
+            delivered: true,
+            on_time: true,
+            as_described: onTarget,
+          },
+          evidence: {
+            trust_page_url: trustUrl,
+            claim_hashes: claimHashes,
+            signing_key_fingerprint: safeFingerprint(signingKeyFingerprint),
+            verification_decision: verification?.decision || null,
+          },
+          provenance_tier: 'self_attested',
         },
-        evidence: {
-          trust_page_url: trustUrl,
-          claim_hashes: claimHashes,
-          signing_key_fingerprint: safeFingerprint(signingKeyFingerprint),
-          verification_decision: verification?.decision || null,
-        },
-        provenance_tier: 'self_attested',
-      },
-      { entity_id: SUBMITTER },
+        { entity_id: SUBMITTER },
+      )
     );
 
     if (result?.error) {
@@ -106,6 +119,10 @@ export async function emitTrustPageReceipt({ engagement, slug, trustUrl, verific
   }
 }
 
+/**
+ * @param {() => string} fn
+ * @returns {string|null}
+ */
 function safeFingerprint(fn) {
   try {
     return fn();

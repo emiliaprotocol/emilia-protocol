@@ -18,7 +18,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sha256 } from '../crypto.js';
 
+/**
+ * @typedef {{ text: string, section: string, locator: string }} RawQuestion
+ */
+
+/**
+ * @typedef {{ id: string, text: string, section: string, requires_freeform: boolean, extraction_confidence: number, locator: (string|null) }} NormalizedQuestion
+ */
+
 export class ExtractionUnsupportedError extends Error {
+  /**
+   * @param {string} format
+   * @param {string} detail
+   */
   constructor(format, detail) {
     super(`extraction unsupported for ${format}: ${detail}`);
     this.name = 'ExtractionUnsupportedError';
@@ -61,7 +73,7 @@ const MAX_DOCX_COMPRESSION_RATIO = 200;
  * @param {string} [opts.filePath] path to the questionnaire on disk
  * @param {Buffer|string} [opts.content] raw content (alternative to filePath)
  * @param {string} [opts.filename] original filename (drives format detection)
- * @returns {Promise<{source_format,total_questions,questions:Array,warnings:string[],source_sha256:string}>}
+ * @returns {Promise<{source_format: string, total_questions: number, questions: NormalizedQuestion[], warnings: string[], source_sha256: string}>}
  */
 export async function extractQuestions({ filePath, content, filename } = {}) {
   const name = filename || (filePath ? path.basename(filePath) : 'questionnaire.txt');
@@ -83,8 +95,10 @@ export async function extractQuestions({ filePath, content, filename } = {}) {
     );
   }
   const source_sha256 = sha256(buf.toString('utf8'));
+  /** @type {string[]} */
   const warnings = [];
 
+  /** @type {RawQuestion[]} */
   let questions;
   if (NATIVE_FORMATS.has(format)) {
     questions = extractNative(format, buf.toString('utf8'), warnings);
@@ -114,6 +128,10 @@ export async function extractQuestions({ filePath, content, filename } = {}) {
 
 // ── Format detection ──────────────────────────────────────────────────────
 
+/**
+ * @param {string} filename
+ * @returns {string}
+ */
 function detectFormat(filename) {
   const ext = path.extname(filename).toLowerCase().replace('.', '');
   return ext || 'txt';
@@ -121,6 +139,12 @@ function detectFormat(filename) {
 
 // ── Native parsers ─────────────────────────────────────────────────────────
 
+/**
+ * @param {string} format
+ * @param {string} text
+ * @param {string[]} warnings
+ * @returns {RawQuestion[]}
+ */
 function extractNative(format, text, warnings) {
   switch (format) {
     case 'csv':
@@ -142,6 +166,11 @@ function extractNative(format, text, warnings) {
  * Markdown / plain text: a question is a line ending in '?', a numbered/
  * bulleted list item, or a line under a "## Section" heading. Section headings
  * are tracked so each question carries its section.
+ */
+/**
+ * @param {string} text
+ * @param {string[]} warnings
+ * @returns {RawQuestion[]}
  */
 function extractText(text, warnings) {
   const lines = text.split(/\r?\n/);
@@ -180,6 +209,12 @@ function extractText(text, warnings) {
  * question|control|requirement|ask, else the column with the longest average
  * cell text). Each data row becomes one question.
  */
+/**
+ * @param {string} text
+ * @param {string} delim
+ * @param {string[]} warnings
+ * @returns {RawQuestion[]}
+ */
 function extractDelimited(text, delim, warnings) {
   const rows = parseDelimited(text, delim);
   if (rows.length === 0) {
@@ -207,6 +242,11 @@ function extractDelimited(text, delim, warnings) {
     }));
 }
 
+/**
+ * @param {string} text
+ * @param {string[]} warnings
+ * @returns {RawQuestion[]}
+ */
 function extractJson(text, warnings) {
   let parsed;
   try {
@@ -216,6 +256,7 @@ function extractJson(text, warnings) {
     return [];
   }
   // Accept: [{question}], [{text}], {questions:[...]}, ["string", ...]
+  /** @type {any[]} */
   let arr = [];
   if (Array.isArray(parsed)) arr = parsed;
   else if (Array.isArray(parsed.questions)) arr = parsed.questions;
@@ -236,6 +277,11 @@ function extractJson(text, warnings) {
 
 // ── Optional binary parsers (dynamic import, escalate if missing) ───────────
 
+/**
+ * @param {Buffer} buf
+ * @param {string[]} warnings
+ * @returns {Promise<RawQuestion[]>}
+ */
 async function extractXlsx(buf, warnings) {
   let xlsx;
   try {
@@ -290,6 +336,7 @@ async function extractXlsx(buf, warnings) {
     }
   }
 
+  /** @type {RawQuestion[]} */
   const out = [];
   for (const sheetName of sheetNames) {
     const rows = xlsx.utils.sheet_to_csv(wb.Sheets[sheetName]);
@@ -299,6 +346,11 @@ async function extractXlsx(buf, warnings) {
   return out;
 }
 
+/**
+ * @param {Buffer} buf
+ * @param {string[]} warnings
+ * @returns {Promise<RawQuestion[]>}
+ */
 async function extractPdf(buf, warnings) {
   let PDFParse;
   try {
@@ -319,6 +371,11 @@ async function extractPdf(buf, warnings) {
   }
 }
 
+/**
+ * @param {Buffer} buf
+ * @param {string[]} warnings
+ * @returns {Promise<RawQuestion[]>}
+ */
 async function extractDocx(buf, warnings) {
   preflightDocxZip(buf);
   let mammoth;
@@ -334,6 +391,9 @@ async function extractDocx(buf, warnings) {
   return extractText(value, warnings);
 }
 
+/**
+ * @param {Buffer} buf
+ */
 function preflightDocxZip(buf) {
   const EOCD_SIG = 0x06054b50;
   const CENTRAL_SIG = 0x02014b50;
@@ -387,6 +447,11 @@ function preflightDocxZip(buf) {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 /** RFC-4180-ish delimited parser: handles quoted fields + embedded delims. */
+/**
+ * @param {string} text
+ * @param {string} delim
+ * @returns {string[][]}
+ */
 function parseDelimited(text, delim) {
   const rows = [];
   let row = [];
@@ -427,7 +492,12 @@ function parseDelimited(text, delim) {
   return rows.filter((r) => r.some((cell) => cell.trim().length > 0));
 }
 
+/**
+ * @param {string[][]} rows
+ * @returns {number}
+ */
 function widestColumn(rows) {
+  /** @type {Record<number, number>} */
   const widths = {};
   for (const r of rows) {
     r.forEach((cell, i) => {
@@ -445,6 +515,11 @@ function widestColumn(rows) {
   return best;
 }
 
+/**
+ * @param {RawQuestion} q
+ * @param {number} index
+ * @returns {NormalizedQuestion}
+ */
 function normalizeQuestion(q, index) {
   const text = String(q.text || '').replace(/\s+/g, ' ').trim();
   return {

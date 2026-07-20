@@ -45,18 +45,79 @@ export const ACTION_CONTROL_CONFORMANCE_CHECKS = Object.freeze([
   'reliance_packet_rely',
 ]);
 
+/**
+ * Loosely-shaped input to {@link toActionControl}: either one of the frozen
+ * entries from action-packs.js or a caller-supplied `extraActions` item. Only
+ * `id` and `action_type` are relied on unconditionally (no fallback in the
+ * body); every other field has a fallback or default and is therefore optional.
+ * @typedef {object} ActionControlSourceAction
+ * @property {string} id
+ * @property {string} action_type
+ * @property {string} [label]
+ * @property {string} [description]
+ * @property {string} [risk]
+ * @property {boolean} [receipt_required]
+ * @property {string} [assurance_class]
+ * @property {number} [max_age_sec]
+ * @property {Record<string, any>} [match]
+ * @property {string} [why]
+ * @property {Record<string, any>} [control]
+ * @property {Record<string, any>} [conformance]
+ * @property {{ required_fields?: Array<string> }} [execution_binding]
+ * @property {Record<string, any>} [quorum]
+ * @property {Record<string, any>} [business_authorization]
+ * @property {Record<string, any>} [businessAuthorization]
+ */
+
+/**
+ * The normalized manifest entry produced by {@link toActionControl}.
+ * @typedef {object} ActionControlEntry
+ * @property {string} id
+ * @property {string} label
+ * @property {string} action_type
+ * @property {string} risk
+ * @property {boolean} receipt_required
+ * @property {string} assurance_class
+ * @property {number} max_age_sec
+ * @property {Record<string, any>} match
+ * @property {string|null} why
+ * @property {Record<string, any>} control
+ * @property {Record<string, any>} conformance
+ * @property {Record<string, any>} [quorum]
+ * @property {Record<string, any>} [business_authorization]
+ */
+
+/**
+ * @typedef {object} ActionControlManifestLike
+ * @property {Array<ActionControlEntry>} [actions]
+ */
+
+/**
+ * @template T
+ * @param {T} value
+ * @returns {T}
+ */
 function cloneJson(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
+/** @param {string} risk */
 function normalizeRisk(risk) {
   return RISK_LEVELS.has(risk) ? risk : 'high';
 }
 
+/**
+ * @param {string} [value]
+ * @returns {string}
+ */
 function normalizeAssurance(value) {
-  return ASSURANCE_CLASSES.has(value) ? value : 'software';
+  return ASSURANCE_CLASSES.has(/** @type {string} */ (value)) ? /** @type {string} */ (value) : 'software';
 }
 
+/**
+ * @param {ActionControlSourceAction} action
+ * @returns {Record<string, any>}
+ */
 function defaultControlForAction(action) {
   const requiredFields = action.execution_binding?.required_fields || [];
   if (!action.receipt_required) {
@@ -100,7 +161,9 @@ function defaultControlForAction(action) {
   };
 }
 
+/** @param {ActionControlSourceAction} action */
 export function toActionControl(action) {
+  /** @type {ActionControlEntry} */
   const out = {
     id: action.id,
     label: action.label || action.description || action.id,
@@ -109,7 +172,7 @@ export function toActionControl(action) {
     receipt_required: !!action.receipt_required,
     assurance_class: normalizeAssurance(action.assurance_class),
     max_age_sec: action.max_age_sec || 900,
-    match: cloneJson(action.match || {}),
+    match: cloneJson(action.match || /** @type {Record<string, any>} */ ({})),
     why: action.why || action.description || null,
     control: cloneJson(action.control || defaultControlForAction(action)),
     conformance: {
@@ -157,11 +220,20 @@ export function createDefaultActionControlManifest({
   };
 }
 
+/**
+ * @param {Record<string, any>} [match]
+ * @param {Record<string, any>} [selector]
+ */
 function selectorMatches(match = {}, selector = {}) {
   if (!match || typeof match !== 'object') return false;
   return Object.entries(match).every(([k, v]) => selector[k] === v);
 }
 
+/**
+ * @param {ActionControlManifestLike|null} [manifest]
+ * @param {Record<string, any>} [selector]
+ * @returns {ActionControlEntry|null}
+ */
 export function findActionControl(manifest, selector = {}) {
   if (!manifest || !Array.isArray(manifest.actions)) return null;
   return manifest.actions.find((action) => {
@@ -170,6 +242,12 @@ export function findActionControl(manifest, selector = {}) {
   }) || null;
 }
 
+/**
+ * `manifest` is validated, not assumed: it may be any shape (untrusted input,
+ * e.g. a JSON file loaded off disk), so it is deliberately typed `*` rather
+ * than narrowed to {@link ActionControlManifestLike}.
+ * @param {*} manifest
+ */
 export function validateActionControlManifest(manifest) {
   const errors = [];
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {

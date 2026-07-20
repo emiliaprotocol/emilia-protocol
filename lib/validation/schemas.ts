@@ -21,6 +21,7 @@ const VALID_ACTION_TYPES = new Set(['install', 'connect', 'delegate', 'transact'
 
 /**
  * Validate POST /api/handshake — initiate a new handshake.
+ * @param {Record<string, any>} body
  */
 export function validateHandshakeCreate(body) {
   if (!body || typeof body !== 'object') {
@@ -29,9 +30,9 @@ export function validateHandshakeCreate(body) {
 
   // Validate top-level fields via validateBody
   const result = validateBody(body, {
-    mode:       (v) => validate(v, 'mode').required().string().oneOf(VALID_MODES).result,
-    policy_id:  (v) => validate(v, 'policy_id').required().string().result,
-    parties:    (v) => validate(v, 'parties').required().isArray().result,
+    mode:       (/** @type {*} */ v) => validate(v, 'mode').required().string().oneOf(VALID_MODES).result,
+    policy_id:  (/** @type {*} */ v) => validate(v, 'policy_id').required().string().result,
+    parties:    (/** @type {*} */ v) => validate(v, 'parties').required().isArray().result,
   });
 
   if (!result.valid) return result;
@@ -96,12 +97,13 @@ export function validateHandshakeCreate(body) {
 
 /**
  * Validate POST /api/handshake/[id]/present — add identity presentation.
+ * @param {Record<string, any>} body
  */
 export function validatePresent(body) {
   const result = validateBody(body, {
-    party_role:        (v) => validate(v, 'party_role').required().string().oneOf(VALID_PARTY_ROLES).result,
-    presentation_type: (v) => validate(v, 'presentation_type').required().string().oneOf(VALID_PRESENTATION_TYPES).result,
-    claims:            (v) => validate(v, 'claims').required().isObject().result,
+    party_role:        (/** @type {*} */ v) => validate(v, 'party_role').required().string().oneOf(VALID_PARTY_ROLES).result,
+    presentation_type: (/** @type {*} */ v) => validate(v, 'presentation_type').required().string().oneOf(VALID_PRESENTATION_TYPES).result,
+    claims:            (/** @type {*} */ v) => validate(v, 'claims').required().isObject().result,
   });
 
   if (!result.valid) return result;
@@ -141,16 +143,17 @@ export function validatePresent(body) {
 
 /**
  * Validate POST /api/signoff/challenge — issue a signoff challenge.
+ * @param {Record<string, any>} body
  */
 export function validateSignoffChallenge(body) {
   return validateBody(body, {
-    handshakeId:         (v) => validate(v, 'handshakeId').required().string().result,
-    accountableActorRef: (v) => validate(v, 'accountableActorRef').required().string().result,
-    bindingHash:         (v) => validate(v, 'bindingHash').required().string().result,
-    signoffPolicyId:     (v) => validate(v, 'signoffPolicyId').required().string().result,
-    requiredAssurance:   (v) => validate(v, 'requiredAssurance').required().string().result,
-    allowedMethods:      (v) => validate(v, 'allowedMethods').required().result,
-    expiresAt:           (v) => validate(v, 'expiresAt').required().string().matches(/^\d{4}-\d{2}-\d{2}T/).result,
+    handshakeId:         (/** @type {*} */ v) => validate(v, 'handshakeId').required().string().result,
+    accountableActorRef: (/** @type {*} */ v) => validate(v, 'accountableActorRef').required().string().result,
+    bindingHash:         (/** @type {*} */ v) => validate(v, 'bindingHash').required().string().result,
+    signoffPolicyId:     (/** @type {*} */ v) => validate(v, 'signoffPolicyId').required().string().result,
+    requiredAssurance:   (/** @type {*} */ v) => validate(v, 'requiredAssurance').required().string().result,
+    allowedMethods:      (/** @type {*} */ v) => validate(v, 'allowedMethods').required().result,
+    expiresAt:           (/** @type {*} */ v) => validate(v, 'expiresAt').required().string().matches(/^\d{4}-\d{2}-\d{2}T/).result,
   });
 }
 
@@ -158,14 +161,15 @@ export function validateSignoffChallenge(body) {
 
 /**
  * Validate POST /api/signoff/[challengeId]/attest — create attestation.
+ * @param {Record<string, any>} body
  */
 export function validateSignoffAttest(body) {
   return validateBody(body, {
-    humanEntityRef:  (v) => validate(v, 'humanEntityRef').required().string().result,
-    authMethod:      (v) => validate(v, 'authMethod').required().string().result,
-    assuranceLevel:  (v) => validate(v, 'assuranceLevel').required().string().result,
-    channel:         (v) => validate(v, 'channel').required().string().result,
-    attestationHash: (v) => validate(v, 'attestationHash').required().string().result,
+    humanEntityRef:  (/** @type {*} */ v) => validate(v, 'humanEntityRef').required().string().result,
+    authMethod:      (/** @type {*} */ v) => validate(v, 'authMethod').required().string().result,
+    assuranceLevel:  (/** @type {*} */ v) => validate(v, 'assuranceLevel').required().string().result,
+    channel:         (/** @type {*} */ v) => validate(v, 'channel').required().string().result,
+    attestationHash: (/** @type {*} */ v) => validate(v, 'attestationHash').required().string().result,
   });
 }
 
@@ -173,15 +177,16 @@ export function validateSignoffAttest(body) {
 
 /**
  * Validate POST /api/policies — register a custom trust policy.
+ * @param {Record<string, any>} body
  */
 export function validatePolicyCreate(body) {
   const result = validateBody(body, {
-    name:            (v) => validate(v, 'name').required().string().minLength(1).maxLength(255).result,
-    description:     (v) => validate(v, 'description').required().string().maxLength(1000).result,
-    min_score:       (v) => validate(v, 'min_score').required().isNumber().result,
-    min_confidence:  (v) => validate(v, 'min_confidence').required().isNumber().result,
-    min_receipts:    (v) => validate(v, 'min_receipts').required().isNumber().result,
-    max_dispute_rate:(v) => validate(v, 'max_dispute_rate').required().isNumber().result,
+    name:            (/** @type {*} */ v) => validate(v, 'name').required().string().minLength(1).maxLength(255).result,
+    description:     (/** @type {*} */ v) => validate(v, 'description').required().string().maxLength(1000).result,
+    min_score:       (/** @type {*} */ v) => validate(v, 'min_score').required().isNumber().result,
+    min_confidence:  (/** @type {*} */ v) => validate(v, 'min_confidence').required().isNumber().result,
+    min_receipts:    (/** @type {*} */ v) => validate(v, 'min_receipts').required().isNumber().result,
+    max_dispute_rate:(/** @type {*} */ v) => validate(v, 'max_dispute_rate').required().isNumber().result,
   });
 
   if (!result.valid) return result;

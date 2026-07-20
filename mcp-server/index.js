@@ -67,6 +67,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { AutoReceiptMiddleware } from './auto-receipt.js';
 
+/** @type {(raw: string) => { ok: boolean, reason?: string }} */
 let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
 catch { ({ strictJsonGate } = await import('../packages/verify/strict-json.js')); }
@@ -76,11 +77,16 @@ catch { ({ strictJsonGate } = await import('../packages/verify/strict-json.js'))
 const MAX_API_RESPONSE_BYTES = 8 * 1024 * 1024;
 const API_TIMEOUT_MS = 15_000;
 
+/** @param {string} hostname */
 function isLoopbackHost(hostname) {
   const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   return normalized === 'localhost' || normalized === '::1' || /^127(?:\.\d{1,3}){3}$/.test(normalized);
 }
 
+/**
+ * @param {string} value
+ * @param {string} [label]
+ */
 export function normalizeSecureBaseUrl(value, label = 'EP_BASE_URL') {
   const parsed = new URL(value);
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && isLoopbackHost(parsed.hostname))) {
@@ -112,6 +118,11 @@ const autoReceipt = new AutoReceiptMiddleware({
   entityId: process.env.EP_AUTO_RECEIPT_ENTITY_ID || '',
 });
 
+/**
+ * @param {string} path
+ * @param {{ method?: string, auth?: boolean, body?: any }} [options]
+ * @returns {Promise<Record<string, any>>}
+ */
 async function epFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
   const headers = {
@@ -129,6 +140,7 @@ async function epFetch(path, options = {}) {
   if (Buffer.byteLength(raw, 'utf8') > MAX_API_RESPONSE_BYTES) {
     throw new Error(`EP API response exceeds ${MAX_API_RESPONSE_BYTES} bytes`);
   }
+  /** @type {Record<string, any>} */
   let data = {};
   if (raw) {
     const gate = strictJsonGate(raw);
@@ -868,6 +880,10 @@ const TOOLS = [
 // Tool handlers
 // =============================================================================
 
+/**
+ * @param {string} name
+ * @param {Record<string, any>} args
+ */
 async function handleTool(name, args) {
   switch (name) {
     // ─── HERO: the gate ──────────────────────────────────────────────────────
@@ -933,6 +949,7 @@ async function handleTool(name, args) {
     }
 
     case 'ep_trust_evaluate': {
+      /** @type {{ entity_id: any, policy: any, context?: any }} */
       const body = { entity_id: args.entity_id, policy: args.policy || 'standard' };
       if (args.context) body.context = args.context;
       const data = await epFetch('/api/trust/evaluate', { method: 'POST', body });
@@ -953,6 +970,7 @@ async function handleTool(name, args) {
       const params = new URLSearchParams({ q: args.query });
       if (args.entity_type) params.set('type', args.entity_type);
       const data = await epFetch(`/api/entities/search?${params}`);
+      /** @type {Array<Record<string, any>>} */
       const entities = data.entities || data.results || [];
       if (!entities.length) return 'No entities found.';
       return entities.map(e => {
@@ -977,6 +995,7 @@ async function handleTool(name, args) {
       if (args?.limit) params.set('limit', String(Math.min(args.limit, 50)));
       if (args?.entity_type) params.set('type', args.entity_type);
       const data = await epFetch(`/api/leaderboard?${params}`);
+      /** @type {Array<Record<string, any>>} */
       const lb = data.leaderboard || [];
       if (!lb.length) return 'No entities in leaderboard yet.';
       return lb.map(e => {
@@ -1043,6 +1062,7 @@ async function handleTool(name, args) {
     }
 
     case 'ep_install_preflight': {
+      /** @type {{ entity_id: any, policy: any, context?: any }} */
       const body = { entity_id: args.entity_id, policy: args.policy || 'standard' };
       if (args.context) body.context = args.context;
       const data = await epFetch('/api/trust/install-preflight', { method: 'POST', body });
@@ -1186,6 +1206,7 @@ async function handleTool(name, args) {
       const receipts = (args.receipts || []).slice(0, 50);
       if (!receipts.length) return 'Error: No receipts provided.';
       const data = await epFetch('/api/receipts/batch', { method: 'POST', auth: true, body: { receipts } });
+      /** @type {Array<{success: boolean, entity_id?: string, receipt_id?: string, error?: string}>} */
       const results = data.results || [];
       const succeeded = results.filter(r => r.success).length;
       const failed = results.filter(r => !r.success).length;
@@ -1327,7 +1348,7 @@ async function handleTool(name, args) {
       } else {
         out += `Reason: ${data.reason || 'unknown'}\n`;
         if (data.expired_at) out += `Expired: ${data.expired_at}\n`;
-        out += `\n${data._note || 'Proof could not be verified.'}`;
+        out += `\n${(/** @type {{ _note?: string }} */ (data))._note || 'Proof could not be verified.'}`;
       }
       return out;
     }
@@ -1422,7 +1443,7 @@ async function handleTool(name, args) {
       out += `Policy:       ${data.policy_id}\n`;
       out += `Status:       ${data.status}\n`;
       if (data.parties?.length) {
-        out += `Parties:      ${data.parties.map(p => `${p.entity_ref} (${p.role})`).join(', ')}\n`;
+        out += `Parties:      ${data.parties.map((/** @type {{ entity_ref: string, role: string }} */ p) => `${p.entity_ref} (${p.role})`).join(', ')}\n`;
       }
       out += `\nNext: each party calls ep_add_presentation to submit identity proofs.`;
       return out;
@@ -1514,6 +1535,7 @@ async function handleTool(name, args) {
 // Formatters
 // =============================================================================
 
+/** @param {Record<string, any>} data  Raw trust-profile JSON from the EP API. */
 function formatTrustProfile(data) {
   let out = `Trust Profile: ${data.display_name} (${data.entity_id})\n`;
   out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -1559,6 +1581,7 @@ function formatTrustProfile(data) {
   return out;
 }
 
+/** @param {Record<string, any>} data  Raw trust-evaluation JSON from the EP API. */
 function formatEvaluation(data) {
   let out = `Trust Evaluation: ${data.display_name} (${data.entity_id})\n`;
   out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -1657,11 +1680,12 @@ const TOOL_TITLES = {
   ep_verify_receipt: 'Verify Trust Receipt',
   ep_verify_zk_proof: 'Verify ZK Trust Proof',
 };
+/** @param {{ name: string, description?: string, inputSchema?: any }} tool */
 function withAnnotations(tool) {
   return {
     ...tool,
     annotations: {
-      title: TOOL_TITLES[tool.name] || tool.name,
+      title: /** @type {Record<string, string>} */ (TOOL_TITLES)[tool.name] || tool.name,
       readOnlyHint: READ_ONLY_TOOLS.has(tool.name),
       destructiveHint: DESTRUCTIVE_TOOLS.has(tool.name),
       openWorldHint: false, // every tool talks only to the configured EP API
@@ -1686,8 +1710,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     // a bootstrap loop where enabling the feature immediately records itself.
     const isMetaTool = name === 'ep_configure_auto_receipt';
     const invoker = isMetaTool
-      ? (a) => handleTool(name, a)
-      : autoReceipt.wrap(name, (a) => handleTool(name, a));
+      ? (/** @type {Record<string, any>} */ a) => handleTool(name, a)
+      : autoReceipt.wrap(name, (/** @type {Record<string, any>} */ a) => handleTool(name, a));
 
     const result = await invoker(args || {});
     return { content: [{ type: 'text', text: result }] };
@@ -1746,7 +1770,9 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     text = JSON.stringify(data, null, 2);
   } else if (uri.startsWith('score://')) {
     const id = uri.slice('score://'.length);
-    data = await epFetch(`/api/trust/profile/${encodeURIComponent(id)}`);
+    data = /** @type {{ entity_id: string, current_confidence?: number, effective_evidence_current?: number, historical_establishment?: boolean, compat_score?: number }} */ (
+      await epFetch(`/api/trust/profile/${encodeURIComponent(id)}`)
+    );
     text = JSON.stringify({
       entity_id: data.entity_id,
       confidence: data.current_confidence,

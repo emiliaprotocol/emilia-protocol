@@ -36,6 +36,9 @@ export function substitute(text, vars = {}) {
 /**
  * Readable fallback for an unresolved variable. Pattern-matched by suffix so a
  * brand-new template variable still renders sensibly.
+ * @param {string} name
+ * @param {Record<string,string>} vars
+ * @returns {string}
  */
 function fallbackFor(name, vars) {
   if (/_EMAIL$/.test(name)) return vars.SECURITY_LEAD_EMAIL || 'security@vendor.example';
@@ -71,7 +74,7 @@ export function unresolvedCount(text) {
  * @param {string} opts.slug
  * @param {string} [opts.outDir]  if set, also write policy markdown here
  * @param {string} [opts.effectiveDate]
- * @returns {Array<{doc_id,title,filename,path,content,content_hash,bytes}>}
+ * @returns {Array<{doc_id: string, title: string, filename: string, path: string|null, content: string, content_hash: string, bytes: number}>}
  */
 export function mintPolicies({ intake, slug, outDir, effectiveDate }) {
   const vars = buildPolicyVars(intake, { slug, effectiveDate });

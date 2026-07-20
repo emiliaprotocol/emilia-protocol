@@ -23,11 +23,50 @@
  */
 import { verifyQuorum, verifyWebAuthnSignoff } from '../../packages/verify/index.js';
 
-const ctxOf = (m) => m?.signoff?.context ?? {};
-const slotKey = (role, approver) => `${role} ${approver}`;
+/**
+ * @typedef {Object} QuorumRosterSlot
+ * @property {string} role
+ * @property {string} approver
+ */
+
+/**
+ * @typedef {Object} QuorumPolicy
+ * @property {string} [mode] - 'threshold' | 'ordered'
+ * @property {number} [required]
+ * @property {QuorumRosterSlot[]} approvers - eligible (role, approver) slots
+ * @property {boolean} [distinct_humans] - default true
+ * @property {number} [window_sec] - default 900
+ */
+
+/**
+ * The canonical Authorization Context signed by a member's device assertion
+ * (EP-SIGNOFF-v1) — only the fields this module reads out of it.
+ * @typedef {Object} SignoffContext
+ * @property {string} [action_hash]
+ * @property {string} [approver]
+ * @property {string} [issued_at]
+ */
+
+/**
+ * A single quorum member/attestation — the EP-SIGNOFF-v1 shape wrapped with
+ * its roster role and the approver's enrolled public key.
+ * @typedef {Object} QuorumMember
+ * @property {string} [role]
+ * @property {string} [approver_public_key]
+ * @property {{ context: Record<string, unknown> & SignoffContext, webauthn: { authenticator_data: string, client_data_json: string, signature: string } }} [signoff]
+ */
+
+/** @returns {SignoffContext} */
+const ctxOf = (/** @type {QuorumMember} */ m) => m?.signoff?.context ?? {};
+const slotKey = (/** @type {string|undefined} */ role, /** @type {string|undefined} */ approver) => `${role} ${approver}`;
 
 /**
  * Should an incoming attestation be admitted into the trail?
+ * @param {QuorumPolicy} policy
+ * @param {string} actionHash
+ * @param {QuorumMember[]} existing
+ * @param {QuorumMember} incoming
+ * @param {object} [opts]
  * @returns {{ ok: boolean, reason?: string }}
  */
 export function canAccept(policy, actionHash, existing, incoming, opts = {}) {
@@ -35,7 +74,7 @@ export function canAccept(policy, actionHash, existing, incoming, opts = {}) {
   const eligible = Array.isArray(policy.approvers) ? policy.approvers : [];
   if (eligible.length === 0) return { ok: false, reason: 'no_eligible_approvers' };
   const distinctHumans = policy.distinct_humans !== false;
-  const windowSec = Number.isFinite(policy.window_sec) ? policy.window_sec : 900;
+  const windowSec = /** @type {number} */ (Number.isFinite(policy.window_sec) ? policy.window_sec : 900);
   const ordered = policy.mode === 'ordered';
   const cx = ctxOf(incoming);
 
@@ -72,7 +111,12 @@ export function canAccept(policy, actionHash, existing, incoming, opts = {}) {
   }
 
   // 6. Signature — the device assertion must actually verify.
-  if (!verifyWebAuthnSignoff(incoming?.signoff, incoming?.approver_public_key, opts).valid) {
+  // verifyWebAuthnSignoff null/undefined-checks signoff defensively at runtime
+  // (see packages/verify/index.js) even though its .d.ts declares it required;
+  // the cast documents that gap without changing the optional-chaining call.
+  const incomingSignoff = /** @type {{ context: Record<string, unknown>, webauthn: { authenticator_data: string, client_data_json: string, signature: string } }} */ (incoming?.signoff);
+  const incomingKey = /** @type {string} */ (incoming?.approver_public_key);
+  if (!verifyWebAuthnSignoff(incomingSignoff, incomingKey, opts).valid) {
     return { ok: false, reason: 'invalid_signature' };
   }
 
@@ -83,7 +127,11 @@ export function canAccept(policy, actionHash, existing, incoming, opts = {}) {
  * Is the accumulated trail a satisfied quorum? Composes verifyQuorum (the
  * frozen, tri-language-verified predicate). An action may consume only when
  * satisfied === true.
- * @returns {{ satisfied: boolean, checks: object, members: Array }}
+ * @param {QuorumPolicy} policy
+ * @param {string} actionHash
+ * @param {QuorumMember[]} members
+ * @param {object} [opts]
+ * @returns {{ satisfied: boolean, checks: object, members: Array<object> }}
  */
 export function quorumGate(policy, actionHash, members, opts = {}) {
   const r = verifyQuorum({ '@type': 'ep.quorum', action_hash: actionHash, policy, members }, opts);
@@ -94,6 +142,10 @@ export function quorumGate(policy, actionHash, members, opts = {}) {
  * Convenience: fold a stream of candidate attestations through canAccept, then
  * gate. Returns the accepted trail, any rejections (with reasons), and whether
  * the quorum is satisfied. Pure — does no I/O.
+ * @param {QuorumPolicy} policy
+ * @param {string} actionHash
+ * @param {QuorumMember[]} candidates
+ * @param {object} [opts]
  */
 export function evaluateTrail(policy, actionHash, candidates, opts = {}) {
   const accepted = [];

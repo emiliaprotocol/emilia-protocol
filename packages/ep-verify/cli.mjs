@@ -35,22 +35,38 @@ const { strictJsonGate } = await import('@emilia-protocol/verify/strict-json')
 const USAGE = 'usage: ep-verify <receipt.json> [--keys keys.json]';
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 
+/**
+ * @param {string} path
+ * @returns {string}
+ */
 function readBounded(path) {
   const size = statSync(path).size;
   if (!Number.isSafeInteger(size) || size > MAX_INPUT_BYTES) throw new Error('input exceeds 8 MiB limit');
   return readFileSync(path, 'utf8');
 }
 
+/**
+ * @param {'VERIFIED'|'REFUSED'} result
+ * @param {Record<string, any>} detail
+ */
 function emit(result, detail) {
   process.stdout.write(`${result}\n${JSON.stringify({ result, ...detail })}\n`);
   process.exitCode = result === 'VERIFIED' ? 0 : 1;
 }
 
+/**
+ * @param {string} reason
+ * @param {Record<string, any>} [detail]
+ */
 function refuse(reason, detail = {}) {
   emit('REFUSED', { reason, ...detail });
 }
 
-/** Normalize a pinned-keys document to an array of base64url SPKI strings. */
+/**
+ * Normalize a pinned-keys document to an array of base64url SPKI strings.
+ * @param {*} k
+ * @returns {string[]}
+ */
 function normalizeKeys(k) {
   if (typeof k === 'string') return k.length > 0 ? [k] : [];
   if (Array.isArray(k)) {

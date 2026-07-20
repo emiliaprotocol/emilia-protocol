@@ -24,9 +24,13 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
+/** @type {(input: object) => { score: number, static_result: string, summary: { operations: number, dangerous: number, declared: number, missing_declaration: number } }} */
 let scan;
+/** @type {string} */
 let FIRE_DRILL_VERSION;
+/** @type {string} */
 let TAGLINE;
+/** @type {{ slug: string, name: string, repo: string, manifest: object }[]} */
 let REPRESENTATIVE_CORPUS;
 try {
   ({ scan, FIRE_DRILL_VERSION, TAGLINE } = await import('@emilia-protocol/fire-drill'));
@@ -36,6 +40,7 @@ try {
   ({ REPRESENTATIVE_CORPUS } = await import('../fire-drill/corpus.js'));
 }
 
+/** @type {(raw: string) => { ok: boolean, reason?: string }} */
 let strictJsonGate;
 try { ({ strictJsonGate } = await import('@emilia-protocol/verify/strict-json')); }
 catch { ({ strictJsonGate } = await import('../verify/strict-json.js')); }
@@ -75,13 +80,16 @@ export const TOOLS = [
   },
 ];
 
+/** @param {object} obj */
 function ok(obj) {
   return { content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] };
 }
+/** @param {string} message */
 function fail(message) {
   return { content: [{ type: 'text', text: JSON.stringify({ error: message }, null, 2) }], isError: true };
 }
 
+/** @param {{ params: { name: string, arguments?: { target?: object, target_json?: string } } }} request */
 export async function handleToolRequest(request) {
   const { name, arguments: args = {} } = request.params;
 

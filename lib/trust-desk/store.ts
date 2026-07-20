@@ -40,6 +40,17 @@ export function storeBackend() {
   return process.env.TRUST_DESK_STORE === 'supabase' ? 'supabase' : 'file';
 }
 
+/**
+ * The persisted engagement record. Extends the intake shape (see minter.js)
+ * with the pipeline-state fields this store manages.
+ * @typedef {import('./minter.js').TrustDeskEngagement & {
+ *   status?: string,
+ *   status_history?: Array<{status: string, at: string}>,
+ *   updated_at?: string,
+ * }} EngagementRecord
+ */
+
+/** @type {typeof import('./store-supabase.js')|null} */
 let _sb = null;
 async function sb() {
   if (!_sb) _sb = await import('./store-supabase.js');
@@ -48,17 +59,23 @@ async function sb() {
 
 // ── Public API (async; delegates to the active backend) ─────────────────────
 
+/** @param {EngagementRecord} record */
 export async function putEngagement(record) {
   if (!record?.engagement_id) throw new Error('putEngagement: engagement_id required');
   if (storeBackend() === 'supabase') return (await sb()).putEngagement(stamp(record));
   return filePut(stamp(record));
 }
 
+/** @param {string} engagementId */
 export async function getEngagement(engagementId) {
   if (storeBackend() === 'supabase') return (await sb()).getEngagement(engagementId);
   return fileGet(engagementId);
 }
 
+/**
+ * @param {string} engagementId
+ * @param {Partial<EngagementRecord>} patch
+ */
 export async function patchEngagement(engagementId, patch) {
   if (storeBackend() === 'supabase') return (await sb()).patchEngagement(engagementId, patch);
   const current = fileGet(engagementId);
@@ -68,6 +85,10 @@ export async function patchEngagement(engagementId, patch) {
   return next;
 }
 
+/**
+ * @param {string} engagementId
+ * @param {(typeof STATUS)[keyof typeof STATUS]} status
+ */
 export async function setStatus(engagementId, status, extra = {}) {
   if (storeBackend() === 'supabase') return (await sb()).setStatus(engagementId, status, extra);
   const current = fileGet(engagementId);
@@ -94,6 +115,7 @@ export async function listEngagements() {
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 }
 
+/** @param {(typeof STATUS)[keyof typeof STATUS]} status */
 export async function listByStatus(status) {
   return (await listEngagements()).filter((e) => e.status === status);
 }
@@ -104,6 +126,7 @@ function ensureDir() {
   if (!fs.existsSync(ENGAGEMENT_DIR)) fs.mkdirSync(ENGAGEMENT_DIR, { recursive: true });
 }
 
+/** @param {string} engagementId */
 function fileFor(engagementId) {
   if (!/^eng_[a-f0-9]{6,}$/.test(engagementId)) {
     throw new Error(`invalid engagement id: ${engagementId}`);
@@ -111,12 +134,14 @@ function fileFor(engagementId) {
   return path.join(ENGAGEMENT_DIR, `${engagementId}.json`);
 }
 
+/** @param {EngagementRecord} record */
 function filePut(record) {
   ensureDir();
   fs.writeFileSync(fileFor(record.engagement_id), JSON.stringify(record, null, 2));
   return record;
 }
 
+/** @param {string} engagementId */
 function fileGet(engagementId) {
   let file;
   try {
@@ -136,6 +161,7 @@ function fileGet(engagementId) {
   }
 }
 
+/** @param {EngagementRecord} record */
 function stamp(record) {
   return {
     ...record,

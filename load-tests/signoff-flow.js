@@ -156,6 +156,9 @@ export default function signoffFlow() {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 
+/**
+ * @param {{ metrics: Object<string, {values?: {rate?: number, 'p(50)'?: number, 'p(95)'?: number, 'p(99)'?: number}}> }} data - k6 run summary
+ */
 export function handleSummary(data) {
   const p50 = data.metrics.ep_signoff_flow_duration?.values?.['p(50)'] || 'N/A';
   const p95 = data.metrics.ep_signoff_flow_duration?.values?.['p(95)'] || 'N/A';

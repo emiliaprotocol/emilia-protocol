@@ -29,18 +29,39 @@ import { setStatus, getEngagement, STATUS } from './store.js';
 import { logger } from '../logger.js';
 
 /**
+ * Engagement record shape the pipeline reads directly. `intake` and the rest
+ * are a structural subset of minter.js's `TrustDeskEngagement` (see
+ * ./minter.js) so this same `engagement` value flows into mintTrustPage()
+ * unchanged, plus the questionnaire-source fields only this file reads.
+ * @typedef {object} TrustDeskPipelineEngagement
+ * @property {string} engagement_id
+ * @property {{company?: string}} [intake] engagement intake fields (company drives slug derivation)
+ * @property {string} [slug]
+ * @property {string} [questionnaire_path] path to the questionnaire file on disk
+ * @property {Buffer|string} [questionnaire_content] raw questionnaire content (alternative to questionnaire_path)
+ * @property {string} [questionnaire_filename] original questionnaire filename
+ */
+
+/**
  * @param {object} opts
- * @param {object} opts.engagement engagement record { engagement_id, intake, questionnaire_* }
+ * @param {TrustDeskPipelineEngagement} opts.engagement engagement record { engagement_id, intake, questionnaire_* }
  * @param {boolean} [opts.persist=true] write status transitions to the store
  * @returns {Promise<object>} pipeline result
  */
 export async function runPipeline({ engagement, persist = true }) {
   const t0 = Date.now();
   const id = engagement.engagement_id;
+  /** @type {{company?: string}} */
   const intake = engagement.intake || {};
-  const slug = engagement.slug || deriveSlug(intake.company, id);
+  // deriveSlug() coerces a missing company via `String(company || 'customer')`
+  // internally, so an absent company here is a handled case, not a bug.
+  const slug = engagement.slug || deriveSlug(/** @type {string} */ (intake.company), id);
   const log = logger.child ? logger.child({ engagement_id: id }) : logger;
 
+  /**
+   * @param {(typeof STATUS)[keyof typeof STATUS]} status
+   * @param {object} [extra]
+   */
   const persistStatus = async (status, extra) => {
     if (!persist || !id) return;
     if (await getEngagement(id)) await setStatus(id, status, extra);
@@ -84,11 +105,20 @@ export async function runPipeline({ engagement, persist = true }) {
     // ── 3. ANSWER ──
     await persistStatus(STATUS.ANSWERING);
     const policyVars = buildPolicyVars(intake, { slug });
-    const answers = await answerAll(classified, { intake, policyVars });
+    // Cast to the answer shape verifier.js/minter.js already declare (answerAll's
+    // own @returns still widens this to `Array<object>`).
+    const answers = /** @type {Array<import('./verifier.js').TrustDeskAnswer>} */ (
+      await answerAll(classified, { intake, policyVars })
+    );
 
     // ── 4. VERIFY ──
     await persistStatus(STATUS.VERIFYING);
-    const verification = verifyEngagement(answers, { intake });
+    // Cast to the concrete shape verifyEngagement() actually returns (see
+    // verifier.js) — its own @returns still widens `counts` to `object`,
+    // and minter.js's mintTrustPage() now requires the narrow shape below.
+    const verification = /** @type {{decision:'auto'|'partial'|'full', passRate:number, perQuestion:Array<object>, counts:{total:number,passed:number,failed:number}}} */ (
+      verifyEngagement(answers, { intake })
+    );
     log.info?.('trust-desk pipeline: verified', {
       decision: verification.decision,
       ...verification.counts,
@@ -107,7 +137,11 @@ export async function runPipeline({ engagement, persist = true }) {
     // Content-only mint (no outDir) — the page-store owns persistence so this
     // works identically on the file backend and on Vercel (Supabase backend).
     const policies = mintPolicies({ intake, slug });
-    const minted = await mintTrustPage({ engagement, answers, verification, policies, slug });
+    // Cast to the concrete claim shape mintTrustPage() actually builds (see
+    // minter.js) — its own @returns still widens `claims` to `Array<object>`.
+    const minted = /** @type {{slug:string, claims:Array<{id:string, claim_id:string, content_hash:string}>, expires_at:string, published_at:string}} */ (
+      await mintTrustPage({ engagement, answers, verification, policies, slug })
+    );
 
     // ── 6. NOTIFY + finalize ──
     const trustUrl = `https://www.emiliaprotocol.ai/trust-desk/c/${slug}`;

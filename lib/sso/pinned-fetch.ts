@@ -28,8 +28,8 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
  * @param {string|URL} input   the URL to fetch (tenant-influenced, re-validated here)
- * @param {object} [init]      fetch-like init: { method, headers, body, signal, timeoutMs }
- * @param {object} [opts]      { lookup } — injectable DNS lookup (tests only)
+ * @param {{ method?: string, headers?: Record<string, string>, body?: string, signal?: AbortSignal, timeoutMs?: number }} [init]      fetch-like init: { method, headers, body, signal, timeoutMs }
+ * @param {{ lookup?: typeof import('node:dns/promises').lookup }} [opts]      { lookup } — injectable DNS lookup (tests only)
  * @returns {Promise<{ ok:boolean, status:number, json():Promise<any>, text():Promise<string> }>}
  */
 export async function safePinnedFetch(input, init = {}, { lookup } = {}) {
@@ -61,6 +61,7 @@ export async function safePinnedFetch(input, init = {}, { lookup } = {}) {
       },
       (res) => {
         const status = res.statusCode || 0;
+        /** @type {Buffer[]} */
         const chunks = [];
         let total = 0;
         res.on('data', (c) => {

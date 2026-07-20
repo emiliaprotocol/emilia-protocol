@@ -22,6 +22,7 @@ import { storeBackend } from './store.js';
 
 const CUSTOMER_DIR = path.join(process.cwd(), 'data', 'trust-desk', 'customers');
 
+/** @type {typeof import('./store-supabase.js')|null} */
 let _sb = null;
 async function sb() {
   if (!_sb) _sb = await import('./store-supabase.js');
@@ -30,7 +31,11 @@ async function sb() {
 
 /**
  * Persist a published page.
- * @param {object} opts { slug, doc, policies:[{doc_id,filename,content,content_hash}], answers }
+ * @param {object} opts
+ * @param {string} opts.slug
+ * @param {object} opts.doc
+ * @param {Array<{doc_id?:string, filename:string, content:string, content_hash?:string}>} opts.policies
+ * @param {object} opts.answers
  */
 export async function putPublishedPage({ slug, doc, policies, answers }) {
   if (storeBackend() === 'supabase') {
@@ -50,7 +55,7 @@ export async function putPublishedPage({ slug, doc, policies, answers }) {
 /**
  * Load a published page + a sync artifact reader.
  * @param {string} slug
- * @returns {Promise<{raw,customer,status,getArtifact:(source_file:string)=>(string|null)}|null>}
+ * @returns {Promise<{raw:object,customer:(object|null),status:string,getArtifact:(source_file:string)=>(string|null)}|null>}
  */
 export async function getPublishedPage(slug) {
   if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) return null;
@@ -59,8 +64,10 @@ export async function getPublishedPage(slug) {
     const page = await (await sb()).getPage(slug);
     if (!page) return null;
     const { doc, policies = [], answers = {} } = page;
-    const byFilename = new Map(policies.map((p) => [p.filename, p.content]));
-    const getArtifact = (sourceFile) => {
+    const byFilename = new Map(
+      (/** @type {Array<{filename:string, content:string}>} */ (policies)).map((p) => [p.filename, p.content])
+    );
+    const getArtifact = (/** @type {string} */ sourceFile) => {
       if (!sourceFile) return null;
       if (sourceFile.endsWith('/answers.json')) return JSON.stringify(answers);
       return byFilename.get(path.basename(sourceFile)) ?? null;
@@ -72,7 +79,7 @@ export async function getPublishedPage(slug) {
   const file = path.join(CUSTOMER_DIR, `${slug}.json`);
   if (!file.startsWith(CUSTOMER_DIR + path.sep) || !fs.existsSync(file)) return null;
   const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const getArtifact = (sourceFile) => {
+  const getArtifact = (/** @type {string} */ sourceFile) => {
     const p = path.join(CUSTOMER_DIR, sourceFile || '');
     if (!p.startsWith(CUSTOMER_DIR + path.sep) || !fs.existsSync(p)) return null;
     return fs.readFileSync(p, 'utf8');
@@ -90,7 +97,10 @@ export async function listPublishedSlugs() {
     .map((f) => f.replace(/\.json$/, ''));
 }
 
-/** Read the monitor marker for a page ({} if none). */
+/**
+ * Read the monitor marker for a page ({} if none).
+ * @param {string} slug
+ */
 export async function getPageMonitor(slug) {
   if (storeBackend() === 'supabase') return (await sb()).getPageMonitor(slug);
   try {
@@ -100,7 +110,11 @@ export async function getPageMonitor(slug) {
   }
 }
 
-/** Persist the monitor marker for a page. */
+/**
+ * Persist the monitor marker for a page.
+ * @param {string} slug
+ * @param {object} monitor
+ */
 export async function setPageMonitor(slug, monitor) {
   if (storeBackend() === 'supabase') return (await sb()).setPageMonitor(slug, monitor);
   const dir = path.join(CUSTOMER_DIR, slug);

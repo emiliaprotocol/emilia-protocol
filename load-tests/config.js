@@ -117,7 +117,11 @@ export function makePresentationPayload(role = 'initiator') {
   };
 }
 
-/** Build signoff challenge payload. */
+/**
+ * Build signoff challenge payload.
+ * @param {string} handshakeId
+ * @param {string} [bindingHash]
+ */
 export function makeChallengePayload(handshakeId, bindingHash) {
   return {
     handshakeId,
@@ -152,14 +156,21 @@ export function makeConsumePayload() {
 
 import http from 'k6/http';
 
-/** POST JSON to an EP endpoint and return the response. */
+/**
+ * POST JSON to an EP endpoint and return the response.
+ * @param {string} path
+ * @param {Record<string, *>} body
+ */
 export function epPost(path, body) {
   return http.post(`${BASE_URL}${path}`, JSON.stringify(body), {
     headers: HEADERS,
   });
 }
 
-/** GET from an EP endpoint. */
+/**
+ * GET from an EP endpoint.
+ * @param {string} path
+ */
 export function epGet(path) {
   return http.get(`${BASE_URL}${path}`, { headers: HEADERS });
 }
@@ -179,6 +190,7 @@ export function createHandshake(overrides = {}) {
 
 /**
  * Present identity proofs for both parties using their respective API keys.
+ * @param {string} handshakeId
  */
 export function presentBothParties(handshakeId) {
   // Initiator presents with initiator key
@@ -191,6 +203,7 @@ export function presentBothParties(handshakeId) {
 
 /**
  * Verify a handshake and return the response.
+ * @param {string} handshakeId
  */
 export function verifyHandshake(handshakeId) {
   return epPost(`/api/handshake/${handshakeId}/verify`, {});
@@ -200,6 +213,7 @@ export function verifyHandshake(handshakeId) {
  * Run the full signoff flow on a handshake:
  * issue challenge -> attest -> consume signoff.
  * Returns { challengeId, signoffId, consumeRes }.
+ * @param {string} handshakeId
  */
 export function fullSignoffFlow(handshakeId) {
   // Issue challenge

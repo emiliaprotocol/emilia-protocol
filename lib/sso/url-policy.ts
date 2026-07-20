@@ -17,6 +17,11 @@ const BLOCKED_SUFFIXES = [
   '.localhost',
 ];
 
+/**
+ * @param {*} value - tenant-supplied URL; treated as hostile, coerced via String()
+ * @param {string} [field]
+ * @param {{ lookup?: typeof import('node:dns/promises').lookup }} [opts]
+ */
 export async function validateSsoProviderUrl(value, field = 'url', { lookup = dns.lookup } = {}) {
   let url;
   try {
@@ -60,6 +65,11 @@ export async function validateSsoProviderUrl(value, field = 'url', { lookup = dn
   return { valid: true, url: url.toString().replace(/\/$/, ''), address: pin.address, family: pin.family };
 }
 
+/**
+ * @param {*} value - tenant-supplied redirect URI (relative or absolute); treated as hostile
+ * @param {string} origin - trusted service origin to resolve/compare against
+ * @param {string} [field]
+ */
 export function validateOidcRedirectUri(value, origin, field = 'oidc_redirect_uri') {
   if (value === undefined || value === null || value === '') {
     return { valid: true, url: null };
@@ -90,6 +100,10 @@ export function validateOidcRedirectUri(value, origin, field = 'oidc_redirect_ur
   return { valid: true, url: url.toString() };
 }
 
+/**
+ * @param {string} hostname
+ * @param {typeof import('node:dns/promises').lookup} lookup
+ */
 async function resolveHostname(hostname, lookup) {
   const ipv = net.isIP(hostname);
   if (ipv) return { ok: true, addresses: [hostname], records: [{ address: hostname, family: ipv }] };
@@ -106,6 +120,7 @@ async function resolveHostname(hostname, lookup) {
   }
 }
 
+/** @param {string} hostname */
 function normalizeHostname(hostname) {
   return String(hostname || '')
     .trim()
@@ -114,11 +129,13 @@ function normalizeHostname(hostname) {
     .toLowerCase();
 }
 
+/** @param {string} hostname */
 function isBlockedHost(hostname) {
   if (BLOCKED_HOSTS.has(hostname)) return true;
   return BLOCKED_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 
+/** @param {string} hostname */
 function isPrivateAddress(hostname) {
   const ipVersion = net.isIP(hostname);
   if (ipVersion === 4) return isPrivateIPv4(hostname);
@@ -139,6 +156,7 @@ function isPrivateAddress(hostname) {
 // the URL parser and dns.lookup emit are handled, plus the fully-expanded
 // 0:0:0:0:0:ffff:… prefix. Anchoring on the ::ffff: prefix avoids misreading a
 // genuine public address that merely contains an ffff group (2001:db8::ffff:…).
+/** @param {string} hostname */
 function embeddedMappedIpv4(hostname) {
   const host = String(hostname).toLowerCase();
   if (net.isIP(host) !== 6) return null;
@@ -154,8 +172,9 @@ function embeddedMappedIpv4(hostname) {
   return [hi >> 8, hi & 0xff, lo >> 8, lo & 0xff].join('.');
 }
 
+/** @param {string} hostname */
 function isPrivateIPv4(hostname) {
-  const parts = hostname.split('.').map((p) => Number(p));
+  const parts = hostname.split('.').map((/** @type {string} */ p) => Number(p));
   if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) {
     return true;
   }
@@ -173,6 +192,7 @@ function isPrivateIPv4(hostname) {
   );
 }
 
+/** @param {string} hostname */
 function isPrivateIPv6(hostname) {
   const normalized = hostname.toLowerCase();
   return (

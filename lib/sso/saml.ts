@@ -49,13 +49,19 @@ export function buildSamlSp(cfg) {
   });
 }
 
-/** Build the IdP redirect URL for SP-initiated login (AuthnRequest). */
+/**
+ * Build the IdP redirect URL for SP-initiated login (AuthnRequest).
+ * @param {SAML} sp
+ * @param {{ relayState?: string, host?: string }} [options]
+ */
 export async function buildLoginUrl(sp, { relayState = '', host = '' } = {}) {
   return sp.getAuthorizeUrlAsync(relayState, host, {});
 }
 
 /**
  * Validate a base64 SAML Response from the ACS POST.
+ * @param {SAML} sp
+ * @param {string} samlResponseB64
  * @returns {Promise<{ valid:boolean, profile?:object, error?:string }>}
  */
 export async function validateSamlResponse(sp, samlResponseB64) {
@@ -82,7 +88,10 @@ export async function validateSamlResponse(sp, samlResponseB64) {
   }
 }
 
-/** SP metadata XML for the IdP administrator to consume. */
+/**
+ * SP metadata XML for the IdP administrator to consume.
+ * @param {SAML} sp
+ */
 export function spMetadata(sp) {
   // (decryptionCert, signingCert) — null for a basic SP that neither encrypts
   // nor signs requests.

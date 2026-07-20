@@ -16,8 +16,11 @@ const transport = new StdioClientTransport({ command: 'node', args: ['--no-warni
 const agent = new Client({ name: 'demo-agent', version: '1.0.0' }, { capabilities: {} });
 await agent.connect(transport);
 
+/** @param {string} name @param {Record<string, unknown>} args */
 const call = async (name, args) => JSON.parse((/** @type {{ content: { text: string }[] }} */ (/** @type {unknown} */ (await agent.callTool({ name, arguments: args })))).content[0].text);
+/** @param {string} s */
 const log = (s) => process.stdout.write(s + '\n');
+/** @param {string} n @param {string} s */
 const step = (n, s) => log(`\n${n}  ${s}`);
 
 log('\n  AI agent connected to the EMILIA Passport MCP server. It wants to release $50,000.\n  ' + '='.repeat(74));

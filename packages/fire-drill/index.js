@@ -64,7 +64,7 @@ const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
  * Classify one operation. Returns the strongest matching family (or {dangerous:false}).
- * @returns {{ dangerous: boolean, family?: string, label?: string, tier?: string, adapter?: string, why?: string }}
+ * @returns {{ dangerous: boolean, family?: string, label?: string, tier?: string, adapter?: string | null, why?: string }}
  */
 export function classifyOperation({ name = '', description = '', method = '', path = '' } = {}) {
   // Normalize separators to spaces: tool names like `release_payment` or
@@ -75,7 +75,8 @@ export function classifyOperation({ name = '', description = '', method = '', pa
   // An HTTP DELETE is destructive regardless of naming.
   if (m === 'DELETE') {
     const fam = FAMILIES.find((f) => f.family === 'data_destruction');
-    return { dangerous: true, ...famOut(fam) };
+    // fam is always found: 'data_destruction' is a literal FAMILIES entry above.
+    return { dangerous: true, ...famOut(/** @type {typeof FAMILIES[number]} */ (fam)) };
   }
   for (const f of FAMILIES) {
     if (f.name.test(text)) {
@@ -87,10 +88,14 @@ export function classifyOperation({ name = '', description = '', method = '', pa
   }
   return { dangerous: false };
 }
+/** @param {typeof FAMILIES[number]} f */
 const famOut = (f) => ({ family: f.family, label: f.label, tier: f.tier, adapter: f.adapter, why: f.why });
 
 const RECEIPT_NAME = /^[a-z0-9_-]{0,32}(?:receipt|emilia|signoff)[a-z0-9_-]{0,32}$/i;
 
+/**
+ * @param {any} [schema] original inputSchema/schema fragment, shape unknown until narrowed below
+ */
 function schemaRequiresReceipt(schema) {
   if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return false;
   const properties = schema.properties;
@@ -110,8 +115,11 @@ export function detectReceiptGate(op = {}, raw = null) {
   if (raw.x_emilia_receipt_required === true || raw.emilia_gate === true
       || raw['x-emilia']?.receipt_required === true) return true;
   if (schemaRequiresReceipt(raw.inputSchema) || schemaRequiresReceipt(raw.input_schema)) return true;
-  if (Array.isArray(raw.parameters) && raw.parameters.some((parameter) => parameter?.required === true
-      && typeof parameter.name === 'string' && RECEIPT_NAME.test(parameter.name))) return true;
+  if (Array.isArray(raw.parameters) && raw.parameters.some(
+    /** @param {{ required?: boolean, name?: string }} parameter */
+    (parameter) => parameter?.required === true
+      && typeof parameter.name === 'string' && RECEIPT_NAME.test(parameter.name),
+  )) return true;
   if (raw.requestBody?.required === true && raw.requestBody.content
       && typeof raw.requestBody.content === 'object') {
     return Object.values(raw.requestBody.content)
@@ -120,6 +128,10 @@ export function detectReceiptGate(op = {}, raw = null) {
   return false;
 }
 
+/**
+ * @param {{ name: string, description?: string, method?: string, path?: string }} op
+ * @param {any} raw the original MCP tool / OpenAPI operation object
+ */
 function operationFinding(op, raw) {
   const cls = classifyOperation(op);
   const receiptDeclared = cls.dangerous ? detectReceiptGate(op, raw) : true;
@@ -139,6 +151,7 @@ function operationFinding(op, raw) {
 
 // ── Input adapters ───────────────────────────────────────────────────────────
 
+/** @param {any} [manifest] */
 export function scanMcpManifest(manifest = {}) {
   const tools = manifest.tools || manifest.capabilities?.tools || [];
   if (!Array.isArray(tools) || tools.length > MAX_OPERATIONS) {
@@ -150,6 +163,7 @@ export function scanMcpManifest(manifest = {}) {
   return buildReport(ops, 'mcp');
 }
 
+/** @param {any} [spec] */
 export function scanOpenApi(spec = {}) {
   const ops = [];
   const paths = spec.paths || {};
@@ -170,6 +184,7 @@ export function scanOpenApi(spec = {}) {
   return buildReport(ops, 'openapi');
 }
 
+/** @param {any[]} [list] */
 export function scanToolList(list = []) {
   if (!Array.isArray(list) || list.length > MAX_OPERATIONS) {
     throw new Error(`fire-drill: tool list must contain at most ${MAX_OPERATIONS} entries`);
@@ -177,7 +192,10 @@ export function scanToolList(list = []) {
   return buildReport(list.map((t) => operationFinding({ name: t.name, description: t.description || '' }, t)), 'tools');
 }
 
-/** Auto-detect the input shape and scan. */
+/**
+ * Auto-detect the input shape and scan.
+ * @param {any} input
+ */
 export function scan(input) {
   if (Array.isArray(input)) return scanToolList(input);
   if (input && (input.openapi || input.swagger || input.paths)) return scanOpenApi(input);
@@ -187,6 +205,10 @@ export function scan(input) {
 
 // ── Report ───────────────────────────────────────────────────────────────────
 
+/**
+ * @param {ReturnType<typeof operationFinding>[]} operations
+ * @param {string} [targetType='unknown']
+ */
 export function buildReport(operations, targetType = 'unknown') {
   const dangerous = operations.filter((o) => o.dangerous);
   const missing = dangerous.filter((o) => !o.receipt_declared);
@@ -223,7 +245,10 @@ export const TAGLINE = 'Static declarations locate review targets; only runtime 
 
 // ── Shareable badge ──────────────────────────────────────────────────────────
 
-/** Approximate pixel width of a label segment (flat-badge sizing, no font metrics). */
+/**
+ * Approximate pixel width of a label segment (flat-badge sizing, no font metrics).
+ * @param {string} text
+ */
 function segWidth(text) {
   return Math.max(40, Math.round(String(text).length * 6.6) + 20);
 }
@@ -248,6 +273,7 @@ export function badgeSvg({ score, label = 'receipt declarations' } = {}) {
   // are interpolated into a double-quoted SVG attribute (aria-label). Missing the
   // quote escape allowed attribute breakout / event-handler injection when the SVG
   // is served as image/svg+xml from a public route.
+  /** @param {string} s */
   const esc = (s) => String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -267,7 +293,7 @@ export function badgeSvg({ score, label = 'receipt declarations' } = {}) {
 /**
  * Aggregate static declaration reports. The caller owns corpus selection and
  * this output makes no claim about runtime enforcement.
- * @param {object[]} reports  buildReport() results
+ * @param {ReturnType<typeof buildReport>[]} reports  buildReport() results
  */
 export function aggregate(reports = []) {
   const servers = reports.length;
@@ -275,13 +301,21 @@ export function aggregate(reports = []) {
   let missing = 0;
   let withMissing = 0;
   let scoreSum = 0;
+  /** @type {Record<string, number>} */
   const byFamily = {};
   for (const r of reports) {
     dangerous += r.summary.dangerous;
     missing += r.summary.missing_declaration;
     if (r.summary.missing_declaration > 0) withMissing += 1;
     scoreSum += r.score;
-    for (const f of (r.findings || [])) byFamily[f.family] = (byFamily[f.family] || 0) + 1;
+    // family is always a real string here: findings only ever come from
+    // "dangerous" operations, and classifyOperation always sets a family
+    // literal when dangerous is true (see famOut) — the `string | null`
+    // on the finding type is the general operation-level shape, not this case.
+    for (const f of (r.findings || [])) {
+      const family = /** @type {string} */ (f.family);
+      byFamily[family] = (byFamily[family] || 0) + 1;
+    }
   }
   return {
     '@version': FIRE_DRILL_VERSION,
@@ -300,7 +334,7 @@ export function aggregate(reports = []) {
 /**
  * Turn a report into a ready-to-open pull request (title + Markdown body) that
  * tells a maintainer which dangerous tools lack a required evidence declaration.
- * @param {object} report  a buildReport() result
+ * @param {ReturnType<typeof buildReport>} report  a buildReport() result
  * @param {object} [o]
  * @param {string} [o.project] project/repo name for the title
  */

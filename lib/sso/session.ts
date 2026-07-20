@@ -76,6 +76,7 @@ export async function mintSession(identity) {
  *     any token issued before the cutoff.
  * Revocation is mandatory. If the store is unavailable, verification fails
  * closed so a revoked or cutoff session never survives a control-plane outage.
+ * @param {string|null} token compact JWS from the session cookie (absent → null)
  */
 export async function verifySession(token) {
   if (!token) return null;
@@ -93,6 +94,9 @@ export async function verifySession(token) {
   return payload;
 }
 
+/**
+ * @param {{ jti?: string, sub?: string, iat?: number, tenant?: string }} payload
+ */
 async function isSessionRevoked(payload) {
   if (!payload?.jti && !payload?.sub) return false;
   const { getServiceClient } = await import('@/lib/supabase');
@@ -130,6 +134,7 @@ async function isSessionRevoked(payload) {
 /**
  * Revoke a single session by jti (logout / token compromise). Returns true on
  * success, false if the store is unavailable (best-effort, logged by caller).
+ * @param {string} jti session ID to revoke (mintSession's crypto.randomUUID() jti claim)
  */
 export async function revokeSession(jti, { subject = null, tenant = null, expiresAt = null } = {}) {
   if (!jti) return false;
@@ -155,6 +160,8 @@ export async function revokeSession(jti, { subject = null, tenant = null, expire
  * Revoke EVERY existing session for a subject (logout-all-devices / incident
  * containment) by stamping a not_before cutoff = now. Tokens minted after this
  * call (later iat) remain valid.
+ * @param {string} subject the session's `sub` claim
+ * @param {string} [tenant] the session's `tenant` claim (falls back to '' — cutoffs are per subject+tenant)
  */
 export async function revokeAllSessionsForSubject(subject, tenant) {
   if (!subject) return false;
@@ -171,7 +178,10 @@ export async function revokeAllSessionsForSubject(subject, tenant) {
   }
 }
 
-/** Read + verify the session from a Request's Cookie header. */
+/**
+ * Read + verify the session from a Request's Cookie header.
+ * @param {Request} request
+ */
 export async function readSessionFromRequest(request) {
   const cookieHeader = request.headers.get('cookie') || '';
   const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`));

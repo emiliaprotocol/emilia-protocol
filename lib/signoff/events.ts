@@ -32,6 +32,10 @@ const VALID_EVENT_TYPES = new Set(SIGNOFF_EVENT_TYPES);
 // ── Error Class ─────────────────────────────────────────────────────────────
 
 export class SignoffEventError extends Error {
+  /**
+   * @param {string} message
+   * @param {string} [code]
+   */
   constructor(message, code = 'SIGNOFF_EVENT_ERROR') {
     super(message);
     this.name = 'SignoffEventError';

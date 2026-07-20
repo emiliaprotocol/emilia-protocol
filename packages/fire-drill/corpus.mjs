@@ -25,6 +25,7 @@ const json = argv.includes('--json');
 const dir = argv.find((a) => !a.startsWith('--'));
 
 const reports = [];
+/** @type {string[]} */
 const labels = [];
 if (dir) {
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
@@ -55,7 +56,9 @@ if (json) {
   process.exit(0);
 }
 
+/** @param {string} s */
 const R = (s) => `\x1b[31m${s}\x1b[0m`;
+/** @param {string} s */
 const Y = (s) => `\x1b[33m${s}\x1b[0m`;
 console.log('='.repeat(66));
 console.log('  Static Receipt Declaration Index');

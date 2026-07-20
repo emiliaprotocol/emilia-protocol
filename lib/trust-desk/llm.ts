@@ -78,12 +78,22 @@ export async function llmJSON({ system, user, maxTokens = 900, temperature = 0, 
 
 // ── Providers ───────────────────────────────────────────────────────────────
 
+/**
+ * @param {object} opts
+ * @param {string} [opts.system]
+ * @param {string} [opts.user]
+ * @param {number} [opts.maxTokens]
+ * @param {number} [opts.temperature]
+ * @returns {Promise<{raw:string, usage?:object}>}
+ */
 async function callAnthropic({ system, user, maxTokens, temperature }) {
   const res = await fetchWithTimeout(ANTHROPIC_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      // Non-null: callAnthropic only runs when activeProvider() picked
+      // 'anthropic', which requires ANTHROPIC_API_KEY to be set (see above).
+      'x-api-key': /** @type {string} */ (process.env.ANTHROPIC_API_KEY),
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
@@ -97,11 +107,22 @@ async function callAnthropic({ system, user, maxTokens, temperature }) {
   if (!res.ok) throw new Error(`anthropic ${res.status}: ${await safeText(res)}`);
   const json = await res.json();
   const raw = Array.isArray(json.content)
-    ? json.content.filter((c) => c.type === 'text').map((c) => c.text).join('')
+    ? json.content
+        .filter((/** @type {{type:string,text?:string}} */ c) => c.type === 'text')
+        .map((/** @type {{type:string,text?:string}} */ c) => c.text)
+        .join('')
     : '';
   return { raw, usage: json.usage };
 }
 
+/**
+ * @param {object} opts
+ * @param {string} [opts.system]
+ * @param {string} [opts.user]
+ * @param {number} [opts.maxTokens]
+ * @param {number} [opts.temperature]
+ * @returns {Promise<{raw:string, usage?:object}>}
+ */
 async function callOpenAI({ system, user, maxTokens, temperature }) {
   const res = await fetchWithTimeout(OPENAI_URL, {
     method: 'POST',
@@ -128,6 +149,12 @@ async function callOpenAI({ system, user, maxTokens, temperature }) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * @param {string} url
+ * @param {RequestInit} init
+ * @param {number} [timeoutMs]
+ * @returns {Promise<Response>}
+ */
 async function fetchWithTimeout(url, init, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -138,6 +165,7 @@ async function fetchWithTimeout(url, init, timeoutMs = DEFAULT_TIMEOUT_MS) {
   }
 }
 
+/** @param {Response} res */
 async function safeText(res) {
   try {
     return (await res.text()).slice(0, 300);
@@ -146,6 +174,10 @@ async function safeText(res) {
   }
 }
 
+/**
+ * @param {(obj:any)=>boolean} fn
+ * @param {any} obj
+ */
 function safeValidate(fn, obj) {
   try {
     return Boolean(fn(obj));
@@ -157,6 +189,9 @@ function safeValidate(fn, obj) {
 /**
  * Parse the first JSON object found in a model reply. Tolerates code fences
  * and leading/trailing prose. Returns undefined when nothing parses.
+ *
+ * @param {*} text expected to be the raw provider reply string; non-strings
+ *   are rejected at runtime below rather than by the type.
  */
 export function parseJsonObject(text) {
   if (typeof text !== 'string') return undefined;

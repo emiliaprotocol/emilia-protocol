@@ -86,15 +86,36 @@ const PROOF_KEYS = new Set([
 const FULL_REVOKER_KEY_ID = /^ep:revoker-key:sha256:[0-9a-f]{64}$/;
 const LEGACY_REVOKER_KEY_ID = /^(?!ep:revoker-key:sha256:)[A-Za-z0-9._:#-]{1,128}$/;
 
+/**
+ * @typedef {Object} RevocationProof
+ * @property {string} [algorithm]
+ * @property {string} [revoker_key_id]
+ * @property {string} [signature_b64u]
+ * @property {string} [public_key]
+ */
+
+/**
+ * @typedef {{ '@version'?: string, target_type?: string, target_id?: string, action_hash?: string,
+ *   revoker_id?: string, revoked_at?: string, reason?: (string|null), proof?: RevocationProof }} RevocationStatement
+ */
+
 // ── small helpers ────────────────────────────────────────────────────────────
 
-/** Normalize a valid SHA-256 digest; malformed input becomes empty. */
+/**
+ * Normalize a valid SHA-256 digest; malformed input becomes empty.
+ * @param {*} h - deliberately untyped: malformed/non-string input is tolerated by design.
+ * @returns {string}
+ */
 const hexOf = (h) => {
   const value = String(h ?? '').replace(/^sha256:/, '').toLowerCase();
   return /^[0-9a-f]{64}$/.test(value) ? value : '';
 };
 
-/** Strict RFC 3339 instant => epoch ms, else NaN (never throws). */
+/**
+ * Strict RFC 3339 instant => epoch ms, else NaN (never throws).
+ * @param {*} value - deliberately untyped: non-string input yields NaN by design.
+ * @returns {number}
+ */
 function instantMs(value) {
   if (typeof value !== 'string') return NaN;
   const match = value.match(RFC3339_INSTANT);
@@ -108,6 +129,10 @@ function instantMs(value) {
   return Date.parse(value);
 }
 
+/**
+ * @param {number|string|Date} [value]
+ * @returns {number}
+ */
 function decisionTimeMs(value) {
   if (value === undefined) return Date.now();
   if (value instanceof Date) return value.getTime();
@@ -124,6 +149,10 @@ function decisionTimeMs(value) {
  *
  * Mirrors EP-REVOCATION-SPEC §3.3: canonicalize({ @version, target_type,
  * target_id, action_hash, revoker_id, revoked_at, reason }).
+ *
+ * @param {{ action_hash?:string, reason?:(string|null), revoked_at?:string,
+ *           revoker_id?:string, target_id?:string, target_type?:string }} stmt
+ * @returns {Buffer}
  */
 function revocationSignedPayload(stmt) {
   return Buffer.from(
@@ -145,6 +174,11 @@ function revocationSignedPayload(stmt) {
  * public key. Returns true/false; never throws. This is the ONLY signature
  * primitive added here, and it grants NO trust by itself — the caller gates on it
  * AND on the key being pinned (identified-but-not-trusted).
+ *
+ * @param {Buffer|null} bytes
+ * @param {string|null|undefined} publicKeyB64u
+ * @param {string|null|undefined} signatureB64u
+ * @returns {boolean}
  */
 function verifyEd25519(bytes, publicKeyB64u, signatureB64u) {
   try {
@@ -160,18 +194,32 @@ function verifyEd25519(bytes, publicKeyB64u, signatureB64u) {
   }
 }
 
-/** A base64url string that decodes to a plausible Ed25519 signature length (64 bytes). */
+/**
+ * A base64url string that decodes to a plausible Ed25519 signature length (64 bytes).
+ * @param {string|null|undefined} sigB64u
+ * @returns {boolean}
+ */
 function isWellFormedSignature(sigB64u) {
   try { return Buffer.from(String(sigB64u ?? ''), 'base64url').length === 64; }
   catch { return false; }
 }
 
+/**
+ * @param {*} value - deliberately untyped structural-check subject (checked against
+ *   both statement and proof shapes at different call sites).
+ * @param {Set<string>} allowed
+ * @returns {boolean}
+ */
 function exactKeys(value, allowed) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).length === allowed.size
     && Object.keys(value).every((key) => allowed.has(key));
 }
 
+/**
+ * @param {string|null} publicKeyB64u
+ * @returns {string}
+ */
 function revokerKeyId(publicKeyB64u) {
   try {
     if (typeof publicKeyB64u !== 'string' || publicKeyB64u.length === 0) return '';
@@ -186,6 +234,10 @@ function revokerKeyId(publicKeyB64u) {
   }
 }
 
+/**
+ * @param {string|undefined} value
+ * @returns {boolean}
+ */
 function isLegacyRevokerKeyId(value) {
   return typeof value === 'string' && LEGACY_REVOKER_KEY_ID.test(value);
 }
@@ -239,6 +291,11 @@ export function buildRevocation({
     throw new Error('buildRevocation supports Ed25519 only');
   }
 
+  /**
+   * @type {{ '@version': string, target_type: string, target_id: string, action_hash: string,
+   *   revoker_id: string, revoked_at: string, reason: (string|null),
+   *   proof?: { algorithm: string, revoker_key_id: string, signature_b64u: string, public_key: string } }}
+   */
   const stmt = {
     '@version': REVOCATION_VERSION,
     target_type: target.target_type,
@@ -291,7 +348,7 @@ export function buildRevocation({
  *
  * @param {{ target_type:string, target_id:string, action_hash:string }} target
  *   - the thing the relying party is reasoning about (NOT taken from the statement).
- * @param {object|null} statement - an EP-REVOCATION-v1 statement, or null/absent.
+ * @param {RevocationStatement|null} statement - an EP-REVOCATION-v1 statement, or null/absent.
  * @param {object} [opts]
  * @param {Record<string,{public_key:string,key_id?:string}>} [opts.revokerKeys] - pinned key per
  *   revoker_id. A revoker with no pin, or a proof whose key differs, is rejected.
@@ -315,7 +372,12 @@ export function verifyRevocation(target, statement, opts = {}) {
     revoker_signature_valid: true,  // signature verifies under the pinned key
     signature_binds_statement: true,// signature is over the recomputed presented bytes
   };
+  /** @type {string[]} */
   const errors = [];
+  /**
+   * @param {keyof typeof checks} key
+   * @param {string} msg
+   */
   const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
 
   // A missing statement confers nothing — fail closed (an absent statement is not
@@ -346,7 +408,7 @@ export function verifyRevocation(target, statement, opts = {}) {
       || !heldHash) {
       fail('target_bound', 'handed target is incomplete or malformed');
     }
-    if (!TARGET_TYPES.includes(statement.target_type)
+    if (!TARGET_TYPES.includes(/** @type {string} */ (statement.target_type))
       || typeof statement.target_id !== 'string' || statement.target_id.length === 0
       || !statementHash) {
       fail('target_bound', 'revocation statement target is incomplete or malformed');

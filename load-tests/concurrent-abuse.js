@@ -92,6 +92,9 @@ export function setup() {
 
 // ── Test function: all VUs race to consume the same signoff ──────────────────
 
+/**
+ * @param {{signoffId: string}} data - value returned by setup()
+ */
 export default function concurrentAbuse(data) {
   const { signoffId } = data;
 
@@ -115,6 +118,9 @@ export default function concurrentAbuse(data) {
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 
+/**
+ * @param {{metrics: Object<string, {values?: {count?: number}}>}} data - k6 run summary
+ */
 export function handleSummary(data) {
   const successes = data.metrics.ep_abuse_success_201?.values?.count || 0;
   const conflicts = data.metrics.ep_abuse_conflict_409?.values?.count || 0;

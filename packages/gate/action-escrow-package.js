@@ -1250,6 +1250,7 @@ function validateAncillaryState(record) {
   }
 }
 
+/** @param {any} record */
 function validateSupersessions(record) {
   if (!Array.isArray(record.superseded_bindings)) {
     fail('superseded binding history is malformed');
@@ -1285,6 +1286,7 @@ function validateSupersessions(record) {
   };
 }
 
+/** @param {any} record */
 function validatePendingAmendment(record) {
   const pendingAllowed = record.state === 'amendment_pending'
     || record.state === 'release_indeterminate'
@@ -1309,7 +1311,8 @@ function validatePendingAmendment(record) {
     || record.pending_amendment.document_action_binding_digest
       === record.document_action_binding_digest
     || !record.parties.some(
-      (party) => party.party_id === record.pending_amendment.proposer_party_id,
+      (/** @type {{party_id: string}} */ party) => party.party_id
+        === record.pending_amendment.proposer_party_id,
     )
     || !validInstant(record.pending_amendment.proposed_at)) {
     fail('pending amendment is malformed');
@@ -1360,6 +1363,7 @@ function validatePendingAmendment(record) {
   );
 }
 
+/** @param {any} record */
 function validateLifecycle(record) {
   const requiresExecutedAgreement = EXECUTED_AGREEMENT_STATES.has(record.state);
   const agreementAcceptances = validateAcceptances(
@@ -1432,9 +1436,16 @@ function validateLifecycle(record) {
   };
 }
 
+/** @param {any} record */
 function validateLifecycleOperationCoverage(record) {
+  /** @param {string} name */
   const count = (name) => record.operations
-    .filter((operation) => operation.operation === name).length;
+    .filter((/** @type {{operation: string}} */ operation) => operation.operation === name)
+      .length;
+  /**
+   * @param {string} name
+   * @param {number} expected
+   */
   const requireExact = (name, expected) => {
     if (count(name) !== expected) {
       fail(`kernel ${name} operation coverage does not match its artifacts`);
@@ -1453,12 +1464,14 @@ function validateLifecycleOperationCoverage(record) {
   requireExact('create', 1);
   requireExact(
     'begin_acceptance',
-    record.history.some((entry) => entry.to === 'awaiting_acceptance') ? 1 : 0,
+    record.history.some((/** @type {{to: string}} */ entry) => entry.to === 'awaiting_acceptance')
+      ? 1 : 0,
   );
   requireExact('accept_agreement', expectedInitialAcceptances);
   requireExact(
     'request_funding',
-    record.history.some((entry) => entry.to === 'awaiting_funding') ? 1 : 0,
+    record.history.some((/** @type {{to: string}} */ entry) => entry.to === 'awaiting_funding')
+      ? 1 : 0,
   );
   requireExact('record_funding', record.funding === null ? 0 : 1);
   requireExact('submit_milestone', record.milestone_evidence === null ? 0 : 1);
@@ -1479,6 +1492,7 @@ function validateLifecycleOperationCoverage(record) {
   }
 }
 
+/** @param {any} record */
 function validateKernelRecord(record) {
   if (!exactKeys(record, RECORD_KEYS)
     || record['@version'] !== ACTION_ESCROW_STATE_VERSION
@@ -1506,6 +1520,11 @@ function validateKernelRecord(record) {
   validateHistory(record);
 }
 
+/**
+ * @param {any} value
+ * @param {{agreementId: string, bindingDigest: string, documentDigest: string}} expected
+ * @param {boolean} required
+ */
 function validateDocumentExecution(value, expected, required) {
   if (value === null) {
     if (required) fail('required document-execution artifact is missing');
@@ -1522,6 +1541,10 @@ function validateDocumentExecution(value, expected, required) {
   return value;
 }
 
+/**
+ * @param {any} value
+ * @param {any} record
+ */
 function validateProfileReference(value, record) {
   if (!exactKeys(value, PROFILE_REFERENCE_KEYS)
     || value.id !== record.profile.profile_id
@@ -1530,6 +1553,7 @@ function validateProfileReference(value, record) {
   }
 }
 
+/** @param {any} statement */
 function stateStatementDigest(statement) {
   const body = {
     version: statement.version,
@@ -1543,6 +1567,13 @@ function stateStatementDigest(statement) {
   return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
 }
 
+/**
+ * @param {any} statement
+ * @param {any} record
+ * @param {string} agreementId
+ * @param {string[]} amendmentDigests
+ * @param {number} assembledAt
+ */
 function validateStateStatement(
   statement,
   record,
@@ -1566,7 +1597,8 @@ function validateStateStatement(
     || !Array.isArray(statement.payload.amendment_digests)
     || statement.payload.amendment_digests.length !== amendmentDigests.length
     || statement.payload.amendment_digests.some(
-      (digest, index) => digest !== amendmentDigests[index],
+      (/** @type {string} */ digest, /** @type {number} */ index) => digest
+        !== amendmentDigests[index],
     )
     || statement.payload.state_record_digest !== canonicalDigest(record)
     || (statement.payload.previous_statement_digest !== null
@@ -1584,6 +1616,10 @@ function validateStateStatement(
   }
 }
 
+/**
+ * @param {Buffer|Uint8Array} value
+ * @param {number} maxDocumentBytes
+ */
 function finalPdfBytes(value, maxDocumentBytes) {
   if (!(Buffer.isBuffer(value) || value instanceof Uint8Array)) {
     fail('finalPdfBytes must be bytes');
@@ -1599,6 +1635,7 @@ function finalPdfBytes(value, maxDocumentBytes) {
   return bytes;
 }
 
+/** @param {number|string|Date|(() => (number|string|Date))} value */
 function evaluationInstant(value) {
   const candidate = typeof value === 'function' ? value() : value;
   const parsed = candidate instanceof Date

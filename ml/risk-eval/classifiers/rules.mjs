@@ -5,6 +5,10 @@
 // replace it.
 import { evaluateGuardPolicy } from '../../../lib/guard-policies.js';
 
+/**
+ * @param {Parameters<typeof evaluateGuardPolicy>[0]} input - the shape evaluateGuardPolicy accepts.
+ * @returns {{decision:string, signoffRequired:boolean, reasons:string[]}}
+ */
 export function classify(input) {
   const r = evaluateGuardPolicy(input);
   return { decision: r.decision, signoffRequired: r.signoffRequired, reasons: r.reasons };

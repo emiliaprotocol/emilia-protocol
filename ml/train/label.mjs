@@ -24,6 +24,10 @@ const SUSPICIOUS = [
   /transfer|wire|withdraw|payout|exfiltrat|external wallet/i,
   /ignore (previous|prior) instructions|override|jailbreak/i,
 ];
+/**
+ * @param {object} input - the shape evaluateGuardPolicy accepts.
+ * @returns {boolean}
+ */
 const looksSuspicious = (input) => {
   const blob = JSON.stringify(input).toLowerCase();
   return SUSPICIOUS.some((re) => re.test(blob));

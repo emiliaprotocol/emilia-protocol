@@ -42,6 +42,7 @@ export const ENUM_ALLOWLISTS = {
 };
 
 export class ValidationError extends Error {
+  /** @param {string[]} errors */
   constructor(errors) {
     super(`Validation failed: ${errors.join('; ')}`);
     this.name = 'ValidationError';
@@ -56,9 +57,15 @@ export class ValidationError extends Error {
  *   validate(body.email, 'email').required().string().email().result
  */
 export class Validator {
+  /**
+   * @param {*} value - the raw field value being validated; genuinely
+   *   arbitrary since it comes straight from a parsed JSON request body.
+   * @param {string} fieldName
+   */
   constructor(value, fieldName) {
     this.value = value;
     this.fieldName = fieldName;
+    /** @type {string[]} */
     this.errors = [];
     this._optional = false;
   }
@@ -104,7 +111,10 @@ export class Validator {
     return this;
   }
 
-  /** Adds error if value is not one of the allowed values. */
+  /**
+   * Adds error if value is not one of the allowed values.
+   * @param {Set<string>|string[]} values
+   */
   oneOf(values) {
     if (this._isAbsent()) return this;
     const allowed = values instanceof Set ? values : new Set(values);
@@ -115,7 +125,10 @@ export class Validator {
     return this;
   }
 
-  /** Adds error if string length exceeds n. */
+  /**
+   * Adds error if string length exceeds n.
+   * @param {number} n
+   */
   maxLength(n) {
     if (this._isAbsent()) return this;
     if (typeof this.value === 'string' && this.value.length > n) {
@@ -124,7 +137,10 @@ export class Validator {
     return this;
   }
 
-  /** Adds error if string length is below n. */
+  /**
+   * Adds error if string length is below n.
+   * @param {number} n
+   */
   minLength(n) {
     if (this._isAbsent()) return this;
     if (typeof this.value === 'string' && this.value.length < n) {
@@ -169,7 +185,10 @@ export class Validator {
     return this;
   }
 
-  /** Adds error if value doesn't match the given regex. */
+  /**
+   * Adds error if value doesn't match the given regex.
+   * @param {RegExp} regex
+   */
   matches(regex) {
     if (this._isAbsent()) return this;
     if (typeof this.value !== 'string' || !regex.test(this.value)) {
@@ -202,6 +221,10 @@ export class Validator {
  *
  *   validate(body.name, 'name').required().string().maxLength(255).result
  */
+/**
+ * @param {*} value - arbitrary field value from a parsed JSON request body.
+ * @param {string} fieldName
+ */
 export function validate(value, fieldName) {
   return new Validator(value, fieldName);
 }
@@ -214,12 +237,17 @@ export function validate(value, fieldName) {
  *
  * Returns { valid: true, data } or { valid: false, errors: [...] }.
  */
+/**
+ * @param {Record<string, *>} body
+ * @param {Record<string, (value: *) => *>} schema
+ */
 export function validateBody(body, schema) {
   if (!body || typeof body !== 'object') {
     return { valid: false, errors: ['Request body must be a JSON object'] };
   }
 
   const errors = [];
+  /** @type {Record<string, *>} */
   const data = {};
 
   for (const [field, validator] of Object.entries(schema)) {

@@ -13,6 +13,10 @@ const EVENT_DECISIONS = Object.freeze({
   'guard.signoff.rejected': 'denied',
 });
 
+/**
+ * @param {*} value
+ * @returns {string|null}
+ */
 function normalizedSha256(value) {
   if (typeof value !== 'string') return null;
   const bare = value.toLowerCase().replace(/^sha256:/, '');
@@ -26,9 +30,32 @@ function normalizedSha256(value) {
  * independently pinned approver key. `record.decision` is copied only from the
  * signed context after the event type, actor, nonce, action, and context hash
  * all agree with that context.
+ *
+ * @param {object} event - audit_events row (event_type, actor_id, created_at, after_state)
+ * @param {string} [event.event_type]
+ * @param {string} [event.actor_id]
+ * @param {string} [event.created_at]
+ * @param {object} [event.after_state]
+ * @param {string} [event.after_state.key_class]
+ * @param {string} [event.after_state.signoff_id]
+ * @param {string} [event.after_state.approver_id]
+ * @param {string} [event.after_state.approved_action_hash]
+ * @param {string} [event.after_state.decided_at]
+ * @param {string} [event.after_state.context_hash]
+ * @param {object} [event.after_state.context]
+ * @param {string} [event.after_state.context.decision]
+ * @param {string} [event.after_state.context.nonce]
+ * @param {string} [event.after_state.context.approver]
+ * @param {string} [event.after_state.context.action_hash]
+ * @param {object} [event.after_state.webauthn]
+ * @param {string} [event.after_state.webauthn.credential_id]
+ * @param {string} [event.after_state.webauthn.authenticator_data]
+ * @param {string} [event.after_state.webauthn.client_data_json]
+ * @param {string} [event.after_state.webauthn.signature]
+ * @returns {object|null}
  */
 export function buildPortableSignoffDecision(event) {
-  const signedDecision = EVENT_DECISIONS[event?.event_type];
+  const signedDecision = EVENT_DECISIONS[/** @type {keyof typeof EVENT_DECISIONS} */ (event?.event_type)];
   const state = event?.after_state;
   const context = state?.context;
   const webauthn = state?.webauthn;

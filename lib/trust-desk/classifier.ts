@@ -34,6 +34,19 @@ export const BUCKET = Object.freeze({
  * @typedef {{ok:false, reason:string, provider:string|null, raw?:string}} LlmFailureResult
  */
 
+/**
+ * Shape produced by extractor.extractQuestions().questions.
+ * @typedef {{id:string, text:string, section:string, requires_freeform:boolean,
+ *   extraction_confidence:number, locator:string|null}} Question
+ */
+
+/**
+ * A Question annotated with classification results.
+ * @typedef {Question & {bucket:string, matched_template:string|null,
+ *   classify_confidence:number, classify_reason:string, classify_source?:string,
+ *   classify_note?:string}} ClassifiedQuestion
+ */
+
 // Top template score above which we trust a deterministic template match.
 // Scoring: multi-word keyword hit = 1.0, single-word = 0.4 (see scoreTemplates).
 // 1.0 → a single specific multi-word hit (or 3 single words) is enough.
@@ -58,9 +71,9 @@ const AI_HINT = /\b(ai|ml|model|llm|gpt|inference|embedding|agent|prompt|rag|fin
 
 /**
  * Classify a list of questions.
- * @param {Array} questions output of extractor.extractQuestions().questions
+ * @param {Array<Question>} questions output of extractor.extractQuestions().questions
  * @param {object} intake engagement intake fields
- * @returns {Promise<Array>} questions annotated with {bucket, matched_template, classify_confidence, classify_reason, classify_source}
+ * @returns {Promise<Array<ClassifiedQuestion>>} questions annotated with {bucket, matched_template, classify_confidence, classify_reason, classify_source}
  */
 export async function classifyQuestions(questions, intake = {}) {
   const heuristic = questions.map((q) => ({ ...q, ...heuristicClassify(q) }));
@@ -75,7 +88,11 @@ export async function classifyQuestions(questions, intake = {}) {
   return refined;
 }
 
-/** Deterministic single-question classification. */
+/**
+ * Deterministic single-question classification.
+ * @param {Question} q
+ * @returns {{bucket:string, matched_template:string|null, classify_confidence:number, classify_reason:string}}
+ */
 export function heuristicClassify(q) {
   const text = q.text || '';
   const lower = text.toLowerCase();
@@ -134,6 +151,11 @@ export function heuristicClassify(q) {
 
 // ── LLM refinement ──────────────────────────────────────────────────────────
 
+/**
+ * @param {Array<ClassifiedQuestion>} classified
+ * @param {object} intake
+ * @returns {Promise<Array<ClassifiedQuestion>>}
+ */
 async function refineAmbiguous(classified, intake) {
   const TEMPLATE_IDS = ['ai-data-handling', 'prompt-injection', 'ai-subprocessors',
     'agent-access-control', 'ai-incident-response'];
@@ -198,6 +220,7 @@ async function refineAmbiguous(classified, intake) {
   return out.map((q) => (q.classify_source ? q : { ...q, classify_source: 'heuristic' }));
 }
 
+/** @param {*} n untyped: sourced from LLM JSON output, coerced via Number(). */
 function clamp01(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return 0.5;
