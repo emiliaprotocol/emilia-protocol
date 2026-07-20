@@ -5,6 +5,6 @@
     "skipLibCheck": true, "noImplicitAny": true, "baseUrl": ".",
     "paths": { "@/*": ["./*"] }
   },
-  "include": ["lib/**/*.js", "lib/**/*.mjs"],
+  "include": ["lib/**/*.ts", "lib/**/*.mts"],
   "exclude": ["**/*.test.js", "**/*.test.mjs", "**/node_modules/**"]
 }
