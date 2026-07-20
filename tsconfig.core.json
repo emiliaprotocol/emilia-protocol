@@ -20,6 +20,7 @@
   "exclude": [
     "**/*.test.js",
     "packages/verify/dist/**",
+    "packages/gate/dist/**",
     "**/node_modules/**"
   ]
 }

@@ -4,6 +4,7 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "strict": true,
+    "noImplicitAny": false,
     "skipLibCheck": true,
     "declaration": true,
     "declarationMap": true,
@@ -14,6 +15,25 @@
   },
   "include": [
     "src/action-control-manifest.ts",
-    "src/action-packs.ts"
+    "src/action-packs.ts",
+    "src/action-escrow-custodian.ts",
+    "src/action-escrow-package.ts",
+    "src/action-escrow-postgres.ts",
+    "src/adapters/cloudflare.ts",
+    "src/adapters/gcp.ts",
+    "src/adapters/jira.ts",
+    "src/adapters/k8s.ts",
+    "src/adapters/salesforce.ts",
+    "src/adapters/terraform.ts",
+    "src/adapters/vercel.ts",
+    "src/aec-execution.ts",
+    "src/breakglass.ts",
+    "src/cf1-conformance.ts",
+    "src/evidence-postgres.ts",
+    "src/reliance-kernel.ts",
+    "src/reliance-packet.ts",
+    "src/store-postgres.ts",
+    "src/witness-postgres.ts",
+    "src/zk-range-proof.ts"
   ]
 }

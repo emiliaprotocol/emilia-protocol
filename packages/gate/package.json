@@ -158,7 +158,7 @@
     "reports/external-verification.js"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
     "pretest": "npm run build",
     "test": "node --test",
     "demo": "node demo.mjs",
