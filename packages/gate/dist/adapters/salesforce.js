@@ -4,7 +4,7 @@
  * Guards bulk record delete, data export, and permission-set assignment so they
  * never reach Salesforce without a receipt bound to THIS object. Client injected.
  */
-import { createAdapter, manifestFromPack, hashCanonical } from '../../adapters/_kit.js';
+import { createAdapter, manifestFromPack, hashCanonical } from './_kit.js';
 export const SALESFORCE_ACTION_PACK = Object.freeze([
     Object.freeze({
         id: 'salesforce.records.bulk_delete', label: 'Bulk delete records', action_type: 'salesforce.records.bulk_delete',

@@ -50,10 +50,17 @@ export declare const CLOUDFLARE_ACTION_PACK: readonly (Readonly<{
         required_fields: string[];
     };
 }>)[];
-export declare const CLOUDFLARE_OPS: any;
+export declare const CLOUDFLARE_OPS: readonly string[];
 /** @param {object[]} extra */
-export declare function createCloudflareManifest(extra?: never[]): any;
-export declare function guardCloudflareMutation(gate: any, client: any, args: any): any;
+export declare function createCloudflareManifest(extra?: never[]): {
+    '@version': string;
+    actions: any[];
+};
+export declare function guardCloudflareMutation(gate: any, client: any, args: any): Promise<{
+    result: any;
+    reliance: any;
+    execution: any;
+}>;
 declare const _default: {
     CLOUDFLARE_ACTION_PACK: readonly (Readonly<{
         id: "cloudflare.dns.delete";
@@ -101,7 +108,7 @@ declare const _default: {
             required_fields: string[];
         };
     }>)[];
-    CLOUDFLARE_OPS: any;
+    CLOUDFLARE_OPS: readonly string[];
     createCloudflareManifest: typeof createCloudflareManifest;
     guardCloudflareMutation: typeof guardCloudflareMutation;
 };

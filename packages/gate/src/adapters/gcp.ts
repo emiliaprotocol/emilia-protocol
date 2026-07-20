@@ -8,7 +8,7 @@
  * never reach GCP without a receipt bound to THIS resource/member/role. Client
  * is injected (the @google-cloud SDKs or a thin wrapper).
  */
-import { createAdapter, manifestFromPack } from '../../adapters/_kit.js';
+import { createAdapter, manifestFromPack } from './_kit.js';
 
 export const GCP_ACTION_PACK = Object.freeze([
   Object.freeze({

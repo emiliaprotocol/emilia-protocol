@@ -44,9 +44,16 @@ export declare const JIRA_ACTION_PACK: readonly (Readonly<{
         required_fields: string[];
     };
 }>)[];
-export declare const JIRA_OPS: any;
-export declare function createJiraManifest(extra?: never[]): any;
-export declare function guardJiraMutation(gate: any, client: any, args: any): any;
+export declare const JIRA_OPS: readonly string[];
+export declare function createJiraManifest(extra?: never[]): {
+    '@version': string;
+    actions: any[];
+};
+export declare function guardJiraMutation(gate: any, client: any, args: any): Promise<{
+    result: any;
+    reliance: any;
+    execution: any;
+}>;
 declare const _default: {
     JIRA_ACTION_PACK: readonly (Readonly<{
         id: "jira.issue.bulk_delete";
@@ -94,7 +101,7 @@ declare const _default: {
             required_fields: string[];
         };
     }>)[];
-    JIRA_OPS: any;
+    JIRA_OPS: readonly string[];
     createJiraManifest: typeof createJiraManifest;
     guardJiraMutation: typeof guardJiraMutation;
 };

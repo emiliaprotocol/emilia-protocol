@@ -59,9 +59,16 @@ export declare const GCP_ACTION_PACK: readonly (Readonly<{
         required_fields: string[];
     };
 }>)[];
-export declare const GCP_OPS: any;
-export declare function createGcpManifest(extraActions?: never[]): any;
-export declare function guardGcpMutation(gate: any, client: any, args: any): any;
+export declare const GCP_OPS: readonly string[];
+export declare function createGcpManifest(extraActions?: never[]): {
+    '@version': string;
+    actions: any[];
+};
+export declare function guardGcpMutation(gate: any, client: any, args: any): Promise<{
+    result: any;
+    reliance: any;
+    execution: any;
+}>;
 declare const _default: {
     GCP_ACTION_PACK: readonly (Readonly<{
         id: "gcp.iam.set_policy";
@@ -124,7 +131,7 @@ declare const _default: {
             required_fields: string[];
         };
     }>)[];
-    GCP_OPS: any;
+    GCP_OPS: readonly string[];
     createGcpManifest: typeof createGcpManifest;
     guardGcpMutation: typeof guardGcpMutation;
 };

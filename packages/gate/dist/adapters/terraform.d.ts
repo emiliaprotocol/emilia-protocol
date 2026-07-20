@@ -44,9 +44,16 @@ export declare const TERRAFORM_ACTION_PACK: readonly (Readonly<{
         required_fields: string[];
     };
 }>)[];
-export declare const TERRAFORM_OPS: any;
-export declare function createTerraformManifest(extraActions?: never[]): any;
-export declare function guardTerraformMutation(gate: any, runner: any, args: any): any;
+export declare const TERRAFORM_OPS: readonly string[];
+export declare function createTerraformManifest(extraActions?: never[]): {
+    '@version': string;
+    actions: any[];
+};
+export declare function guardTerraformMutation(gate: any, runner: any, args: any): Promise<{
+    result: any;
+    reliance: any;
+    execution: any;
+}>;
 declare const _default: {
     TERRAFORM_ACTION_PACK: readonly (Readonly<{
         id: "terraform.apply.destroy";
@@ -94,7 +101,7 @@ declare const _default: {
             required_fields: string[];
         };
     }>)[];
-    TERRAFORM_OPS: any;
+    TERRAFORM_OPS: readonly string[];
     createTerraformManifest: typeof createTerraformManifest;
     guardTerraformMutation: typeof guardTerraformMutation;
 };

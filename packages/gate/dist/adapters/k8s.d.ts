@@ -59,9 +59,16 @@ export declare const K8S_ACTION_PACK: readonly (Readonly<{
         required_fields: string[];
     };
 }>)[];
-export declare const K8S_OPS: any;
-export declare function createK8sManifest(extraActions?: never[]): any;
-export declare function guardK8sMutation(gate: any, client: any, args: any): any;
+export declare const K8S_OPS: readonly string[];
+export declare function createK8sManifest(extraActions?: never[]): {
+    '@version': string;
+    actions: any[];
+};
+export declare function guardK8sMutation(gate: any, client: any, args: any): Promise<{
+    result: any;
+    reliance: any;
+    execution: any;
+}>;
 declare const _default: {
     K8S_ACTION_PACK: readonly (Readonly<{
         id: "k8s.namespace.delete";
@@ -124,7 +131,7 @@ declare const _default: {
             required_fields: string[];
         };
     }>)[];
-    K8S_OPS: any;
+    K8S_OPS: readonly string[];
     createK8sManifest: typeof createK8sManifest;
     guardK8sMutation: typeof guardK8sMutation;
 };

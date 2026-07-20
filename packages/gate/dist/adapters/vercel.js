@@ -5,7 +5,7 @@
  * never reach Vercel without a receipt bound to THIS project. Client injected
  * (the Vercel REST client or a thin wrapper).
  */
-import { createAdapter, manifestFromPack, hashCanonical } from '../../adapters/_kit.js';
+import { createAdapter, manifestFromPack, hashCanonical } from './_kit.js';
 export const SECRET_VALUE_BINDING_VERSION = 'EP-VERCEL-SECRET-VALUE-v1';
 /** Digest an exact secret value for receipt binding; callers must never log it. */
 export function secretValueDigest(value) {

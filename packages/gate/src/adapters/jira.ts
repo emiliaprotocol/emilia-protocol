@@ -4,7 +4,7 @@
  * Guards bulk issue delete, project delete, and permission grants so they never
  * reach Jira without a receipt bound to THIS resource. Client injected.
  */
-import { createAdapter, manifestFromPack, hashCanonical } from '../../adapters/_kit.js';
+import { createAdapter, manifestFromPack, hashCanonical } from './_kit.js';
 
 export const JIRA_ACTION_PACK = Object.freeze([
   Object.freeze({

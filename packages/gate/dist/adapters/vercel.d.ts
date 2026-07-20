@@ -1,6 +1,6 @@
 export declare const SECRET_VALUE_BINDING_VERSION = "EP-VERCEL-SECRET-VALUE-v1";
 /** Digest an exact secret value for receipt binding; callers must never log it. */
-export declare function secretValueDigest(value: any): any;
+export declare function secretValueDigest(value: any): string;
 export declare const VERCEL_ACTION_PACK: readonly (Readonly<{
     id: "vercel.deploy.promote";
     label: "Promote to production";
@@ -47,9 +47,16 @@ export declare const VERCEL_ACTION_PACK: readonly (Readonly<{
         required_fields: string[];
     };
 }>)[];
-export declare const VERCEL_OPS: any;
-export declare function createVercelManifest(extra?: never[]): any;
-export declare function guardVercelMutation(gate: any, client: any, args: any): any;
+export declare const VERCEL_OPS: readonly string[];
+export declare function createVercelManifest(extra?: never[]): {
+    '@version': string;
+    actions: any[];
+};
+export declare function guardVercelMutation(gate: any, client: any, args: any): Promise<{
+    result: any;
+    reliance: any;
+    execution: any;
+}>;
 declare const _default: {
     VERCEL_ACTION_PACK: readonly (Readonly<{
         id: "vercel.deploy.promote";
@@ -97,7 +104,7 @@ declare const _default: {
             required_fields: string[];
         };
     }>)[];
-    VERCEL_OPS: any;
+    VERCEL_OPS: readonly string[];
     SECRET_VALUE_BINDING_VERSION: string;
     secretValueDigest: typeof secretValueDigest;
     createVercelManifest: typeof createVercelManifest;

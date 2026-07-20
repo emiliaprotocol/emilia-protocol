@@ -44,9 +44,16 @@ export declare const SALESFORCE_ACTION_PACK: readonly (Readonly<{
         required_fields: string[];
     };
 }>)[];
-export declare const SALESFORCE_OPS: any;
-export declare function createSalesforceManifest(extra?: never[]): any;
-export declare function guardSalesforceMutation(gate: any, client: any, args: any): any;
+export declare const SALESFORCE_OPS: readonly string[];
+export declare function createSalesforceManifest(extra?: never[]): {
+    '@version': string;
+    actions: any[];
+};
+export declare function guardSalesforceMutation(gate: any, client: any, args: any): Promise<{
+    result: any;
+    reliance: any;
+    execution: any;
+}>;
 declare const _default: {
     SALESFORCE_ACTION_PACK: readonly (Readonly<{
         id: "salesforce.records.bulk_delete";
@@ -94,7 +101,7 @@ declare const _default: {
             required_fields: string[];
         };
     }>)[];
-    SALESFORCE_OPS: any;
+    SALESFORCE_OPS: readonly string[];
     createSalesforceManifest: typeof createSalesforceManifest;
     guardSalesforceMutation: typeof guardSalesforceMutation;
 };

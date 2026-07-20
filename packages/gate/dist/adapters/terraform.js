@@ -9,7 +9,7 @@
  * full teardown. Runner is injected (a `terraform`/`tofu` CLI wrapper or Cloud
  * API client).
  */
-import { createAdapter, manifestFromPack } from '../../adapters/_kit.js';
+import { createAdapter, manifestFromPack } from './_kit.js';
 export const TERRAFORM_ACTION_PACK = Object.freeze([
     Object.freeze({
         id: 'terraform.apply.destroy', label: 'Terraform destroy', action_type: 'terraform.apply.destroy',

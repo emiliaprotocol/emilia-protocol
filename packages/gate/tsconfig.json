@@ -62,6 +62,12 @@
     "src/reports/auditor-workpaper.ts",
     "src/reports/underwriter.ts",
     "src/reports/assurance-package.ts",
-    "src/reports/reperform.ts"
+    "src/reports/reperform.ts",
+    "src/adapters/_kit.ts",
+    "src/adapters/linear.ts",
+    "src/adapters/aws.ts",
+    "src/adapters/supabase.ts",
+    "src/adapters/stripe.ts",
+    "src/adapters/github.ts"
   ]
 }

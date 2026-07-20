@@ -4,7 +4,7 @@
  * Guards DNS record delete, zone delete, and WAF/firewall disable so they never
  * reach Cloudflare without a receipt bound to THIS zone. Client injected.
  */
-import { createAdapter, manifestFromPack } from '../../adapters/_kit.js';
+import { createAdapter, manifestFromPack } from './_kit.js';
 
 /**
  * @typedef {object} CloudflareClient

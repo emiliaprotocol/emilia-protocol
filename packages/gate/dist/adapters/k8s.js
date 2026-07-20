@@ -8,7 +8,7 @@
  * receipt bound to THIS namespace/resource. Client is injected (a @kubernetes/
  * client-node wrapper or compatible).
  */
-import { createAdapter, manifestFromPack } from '../../adapters/_kit.js';
+import { createAdapter, manifestFromPack } from './_kit.js';
 export const K8S_ACTION_PACK = Object.freeze([
     Object.freeze({
         id: 'k8s.namespace.delete', label: 'Delete namespace', action_type: 'k8s.namespace.delete',
