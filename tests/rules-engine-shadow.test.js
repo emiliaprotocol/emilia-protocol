@@ -18,6 +18,10 @@ const mockAuthenticateRequest = vi.fn();
 vi.mock('@/lib/write-guard', () => ({
   getGuardedClient: (...args) => mockGetGuardedClient(...args),
 }));
+vi.mock('@/lib/guard-auth.js', () => ({
+  authenticateGuardRequest: (...args) => mockAuthenticateRequest(...args),
+  isCloudGuardPrincipal: () => false,
+}));
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticateRequest(...args),
   // Real implementation, not a stub: routes derive the actor's string id

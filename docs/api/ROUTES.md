@@ -1,8 +1,8 @@
 # EMILIA Protocol -- API Route Map
 
-> This document covers the 17 protocol-essential endpoints classified in
-> `docs/architecture/API_SURFACE_CLASSIFICATION.md`. These form the trust
-> substrate that any conforming EP implementation must provide.
+> This document covers the protocol-essential endpoints classified in
+> `docs/architecture/API_SURFACE_CLASSIFICATION.md` plus the implemented cloud
+> control-plane routes that operate them.
 
 ## Authentication
 
@@ -521,8 +521,90 @@ Create a principal-agent delegation.
 
 ## 6. Cloud Control Plane (authenticated)
 
-> All cloud routes require an EMILIA Gate Cloud API key:
-> `Authorization: Bearer ep_cloud_...`
+> Runtime cloud routes require an EMILIA Gate Cloud API key:
+> `Authorization: Bearer ept_live_...`
+>
+> The tenant-key bootstrap endpoint is the exception: it requires an
+> admin-capable EP entity key plus verified owner/admin membership in the
+> target tenant.
+
+### POST /api/cloud/tenants/{tenantId}/api-keys
+
+Issue a tenant-scoped `ept_live_...` or `ept_test_...` cloud key. The plaintext
+key is returned once and the response is `no-store`.
+
+**Auth**: Admin-capable EP entity API key; the authenticated entity must be an
+owner or admin of `{tenantId}`.
+
+**Request body**:
+
+```json
+{
+  "name": "production rollout operator",
+  "environment": "production",
+  "permissions": ["policy_rollout"]
+}
+```
+
+`environment` is `development`, `staging`, or `production`. Permissions are
+deduplicated members of `read`, `write`, `admin`, and `policy_rollout`; omitted
+permissions default to `["policy_rollout"]`. `admin` is a super-capability, but
+the named permission is the least-privilege rollout grant.
+
+**Response** (201): The one-time `api_key`, `tenant_id`, and storage warning.
+
+---
+
+### GET /api/cloud/authorities/policy-rollout
+
+Preflight the tenant's currently active, unexpired Class-A human authorities
+whose role is `policy_admin` or `control_plane_approver` and whose explicit
+scope includes `policy_rollout`.
+
+**Auth**: EMILIA Gate Cloud API key with `admin`.
+
+**Response** (200): `{ ready, count, authorities, tenant_id }`.
+
+---
+
+### POST /api/cloud/authorities/policy-rollout
+
+Grant an enrolled Class-A approver authority over only `policy_rollout`.
+The database verifies the active credential and writes the grant and its audit
+event atomically.
+
+**Auth**: EMILIA Gate Cloud API key with `admin`.
+
+**Request body**:
+
+```json
+{
+  "approver_id": "change-manager@example.com",
+  "role": "policy_admin",
+  "valid_to": "2027-01-01T00:00:00.000Z",
+  "reason": "Production change-control duty"
+}
+```
+
+Validity must be future-dated and no longer than 366 days. The role is
+`policy_admin` or `control_plane_approver`.
+
+**Response** (201): The tenant-bound authority grant.
+
+---
+
+### POST /api/cloud/authorities/policy-rollout/{authorityId}/revoke
+
+Irreversibly revoke one tenant-bound policy-rollout authority and append the
+actor and reason to the audit trail in the same transaction.
+
+**Auth**: EMILIA Gate Cloud API key with `admin`.
+
+**Request body**: `{ "reason": "Approver changed role" }`
+
+**Response** (200): The revoked authority ID and timestamp.
+
+---
 
 ### POST /api/cloud/signoff/escalate
 
@@ -646,13 +728,57 @@ Simulate a policy against historical or hypothetical data.
 
 ### POST /api/cloud/policies/{policyId}/rollout
 
-Initiate a staged rollout of a policy version.
+Activate a policy version. This is a Class-A operation and fails closed unless
+the request presents a one-time Accountable Signoff Trust Receipt bound to the
+exact rollout configuration.
 
-**Auth**: EMILIA Gate Cloud API key required.
+**Auth**: EMILIA Gate Cloud API key with `policy_rollout` (or the `admin`
+super-capability); an environment-scoped key may activate only that
+environment.
 
-**Request body**: Rollout configuration (percentage, target groups, schedule).
+**Authorization flow**:
 
-**Response** (200): Rollout plan with stages and rollback criteria.
+1. POST the desired rollout body without `authorization`. The route returns
+   HTTP 428 and an `authorization_request` containing the server-derived policy
+   rules, currently-active rollout state, requested after-state, executing key,
+   and a 15-minute expiry.
+2. Submit that object to `POST /api/v1/trust-receipts`, then complete its
+   Class-A WebAuthn Accountable Signoff using an authority explicitly scoped to
+   `policy_rollout` in role `policy_admin` or `control_plane_approver`.
+   If the tenant has made quorum mandatory, the 428 response contains the
+   concrete org-pinned roster and threshold. Every counted seat must be a
+   distinct active Class-A credential and a current explicitly scoped
+   authority; the application re-verifies WebAuthn evidence and the transaction
+   re-locks the credential, authority, and current quorum template.
+3. Re-submit the unchanged rollout body with only the approved, unconsumed
+   receipt ID. Do not call the generic receipt-consume endpoint: the rollout
+   function consumes the receipt and activates the rollout in one transaction.
+
+**Request body**:
+
+```json
+{
+  "version": 2,
+  "environment": "production",
+  "strategy": "immediate",
+  "metadata": { "change_ticket": "CAB-42" },
+  "authorization": {
+    "receipt_id": "tr_0123456789abcdef0123456789abcdef"
+  }
+}
+```
+
+For `strategy: "canary"`, `canary_pct` is required and must be an integer from
+1 through 99. The receipt binds the tenant, executing cloud key, immutable
+policy row and rules, environment, strategy, canary percentage, metadata,
+current quorum policy, and the complete before/after rollout state. Changing
+any of it after approval is refused.
+
+**Response** (200): The active rollout plus its
+`authorization_receipt_id`, `authorization_action_hash`, and
+`authorization_execution_reference_id`. Receipt replay and stale before-state
+are refused. Receipt consumption, superseding prior active rows, and inserting
+the new row occur in one database transaction.
 
 ---
 

@@ -14,6 +14,7 @@ function mockClient({ data = null, error = null, onSelect } = {}) {
       return chain;
     },
     eq: () => chain,
+    order: () => chain,
     limit: () => result,
   };
   return { from: () => chain };
@@ -37,6 +38,7 @@ describe('evaluateAuthority — fail closed unless a valid authority proves perm
     const r = evaluateAuthority(active, { role: 'controller', at: NOW, requiredAssurance: 'A' });
     expect(r.authorized).toBe(true);
     expect(r.assurance_class).toBe('A');
+    expect(r.role).toBe('controller');
   });
 
   it('fails closed when no authority record exists (e.g. wrong org → no row)', () => {
@@ -170,5 +172,30 @@ describe('resolveGuardAuthority — missing/empty/bad authority never resolves a
 
     expect(selectedColumns.split(',').map((column) => column.trim())).toContain('action_scopes');
     expect(r.authorized).toBe(true);
+  });
+
+  it('skips an obsolete grant and accepts a later qualifying authority row', async () => {
+    const r = await resolveGuardAuthority(mockClient({
+      data: [
+        { ...active, authority_id: 'old', action_scopes: ['other_action'] },
+        {
+          ...active,
+          authority_id: 'rollout',
+          role: 'policy_admin',
+          action_scopes: ['policy_rollout'],
+        },
+      ],
+    }), {
+      ...ctx,
+      actionType: 'policy_rollout',
+      requireExplicitScope: true,
+      allowedRoles: ['policy_admin', 'control_plane_approver'],
+    });
+
+    expect(r).toMatchObject({
+      authorized: true,
+      authority_id: 'rollout',
+      role: 'policy_admin',
+    });
   });
 });

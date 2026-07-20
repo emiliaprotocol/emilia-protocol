@@ -481,6 +481,7 @@ describe('generateApiKey', () => {
     expect(result.api_key).toBeDefined();
     expect(result.api_key.key).toMatch(/^ept_live_/);
     expect(result.api_key.key_id).toBe('k-1');
+    expect(chain.insert.mock.calls[0][0]).not.toHaveProperty('permissions');
   });
 
   it('uses test prefix for non-production environment', async () => {
@@ -493,6 +494,50 @@ describe('generateApiKey', () => {
     expect(result.api_key.key).toMatch(/^ept_test_/);
   });
 
+  it('stores an explicit validated permission grant', async () => {
+    const apiKeyRow = {
+      key_id: 'k-admin',
+      key_prefix: 'ept_live',
+      environment: 'production',
+      permissions: ['admin'],
+    };
+    const chain = makeChain({ data: apiKeyRow, error: null });
+    getServiceClient.mockReturnValue({ from: vi.fn(() => chain) });
+
+    const result = await generateApiKey(
+      'tenant-1',
+      'production',
+      'policy-rollout',
+      ['admin', 'admin'],
+    );
+
+    expect(result.api_key.permissions).toEqual(['admin']);
+    expect(chain.insert).toHaveBeenCalledWith(expect.objectContaining({
+      tenant_id: 'tenant-1',
+      permissions: ['admin'],
+    }));
+  });
+
+  it('rejects unknown permissions before initializing the service client', async () => {
+    const result = await generateApiKey(
+      'tenant-1',
+      'production',
+      'privilege-escalation',
+      ['read', 'superadmin'],
+    );
+
+    expect(result).toMatchObject({ status: 400 });
+    expect(result.error).toMatch(/read, write, admin, or policy_rollout/);
+    expect(getServiceClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty explicit permission grant', async () => {
+    const result = await generateApiKey('tenant-1', 'production', 'empty', []);
+
+    expect(result).toMatchObject({ status: 400 });
+    expect(getServiceClient).not.toHaveBeenCalled();
+  });
+
   it('returns 500 on DB error', async () => {
     const chain = makeChain({ data: null, error: { message: 'insert failed' } });
     const supabase = { from: vi.fn(() => chain) };
@@ -500,6 +545,40 @@ describe('generateApiKey', () => {
 
     const result = await generateApiKey('tenant-1', 'production', 'key');
     expect(result.status).toBe(500);
+  });
+
+  it('uses the audited RPC for bounded control-plane issuance', async () => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        key_id: 'k-rollout',
+        tenant_id: 'tenant-1',
+        environment: 'production',
+        key_prefix: 'ept_live',
+        permissions: ['policy_rollout'],
+        expires_at: '2026-10-17T00:00:00.000Z',
+      },
+      error: null,
+    }));
+    getServiceClient.mockReturnValue({ rpc });
+
+    const result = await generateApiKey(
+      'tenant-1',
+      'production',
+      'rollout',
+      ['policy_rollout'],
+      {
+        expiresAt: '2026-10-17T00:00:00.000Z',
+        issuedBy: 'entity:user-1',
+      },
+    );
+
+    expect(result.api_key.key).toMatch(/^ept_live_/);
+    expect(rpc).toHaveBeenCalledWith('issue_tenant_api_key_audited', expect.objectContaining({
+      p_tenant_id: 'tenant-1',
+      p_permissions: ['policy_rollout'],
+      p_expires_at: '2026-10-17T00:00:00.000Z',
+      p_issued_by: 'entity:user-1',
+    }));
   });
 
   it('generates unique keys on each call', async () => {

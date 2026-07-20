@@ -18,7 +18,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateGuardRequest, isCloudGuardPrincipal } from '@/lib/guard-auth.js';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { resolveVerifiedAuthStrength } from '@/lib/auth-strength.js';
 import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
@@ -61,16 +61,16 @@ const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
 const RECEIPT_TTL_MIN_MS = 60 * 1000;
 const MAX_TRUST_RECEIPT_CREATE_BYTES = 256 * 1024;
 
-function resolveReceiptTtlMs(expiresInSec) {
+function resolveReceiptTtlMs(expiresInSec, maxTtlMs = RECEIPT_TTL_MS) {
   const n = Number(expiresInSec);
-  if (!Number.isFinite(n) || n <= 0) return RECEIPT_TTL_MS;
-  return Math.min(RECEIPT_TTL_MS, Math.max(RECEIPT_TTL_MIN_MS, Math.floor(n) * 1000));
+  if (!Number.isFinite(n) || n <= 0) return maxTtlMs;
+  return Math.min(maxTtlMs, Math.max(RECEIPT_TTL_MIN_MS, Math.floor(n) * 1000));
 }
 
 export async function POST(request) {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+    const auth = await authenticateGuardRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
 
     const parsed = await readLimitedJson(request, MAX_TRUST_RECEIPT_CREATE_BYTES, { invalidValue: {} });
     if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
@@ -114,6 +114,30 @@ export async function POST(request) {
     // match the authenticated entity id (or be absent).
     const actor_id = authEntityId(auth);
     const authStrength = resolveVerifiedAuthStrength(auth);
+    if (body.action_type === GUARD_ACTION_TYPES.POLICY_ROLLOUT
+        && !isCloudGuardPrincipal(auth)) {
+      return epProblem(
+        403,
+        'policy_rollout_cloud_key_required',
+        'Policy rollout Trust Receipts may be created only by the authenticated tenant rollout key',
+      );
+    }
+    if (isCloudGuardPrincipal(auth)) {
+      if (body.action_type !== GUARD_ACTION_TYPES.POLICY_ROLLOUT) {
+        return epProblem(
+          403,
+          'cloud_guard_action_forbidden',
+          'Tenant control-plane keys may create Trust Receipts only for policy rollout authorization',
+        );
+      }
+      if (body.executing_key_id !== auth.guard_cloud.key_id) {
+        return epProblem(
+          403,
+          'executing_key_mismatch',
+          'Policy rollout executing_key_id must match the authenticated tenant API key',
+        );
+      }
+    }
     if (body.actor_id && body.actor_id !== actor_id) {
       return epProblem(
         403,
@@ -178,7 +202,12 @@ export async function POST(request) {
     }
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + resolveReceiptTtlMs(body.expires_in_sec));
+    const receiptMaxTtlMs = body.action_type === GUARD_ACTION_TYPES.POLICY_ROLLOUT
+      ? 15 * 60 * 1000
+      : RECEIPT_TTL_MS;
+    const expiresAt = new Date(
+      now.getTime() + resolveReceiptTtlMs(body.expires_in_sec, receiptMaxTtlMs),
+    );
     const nonce = `nonce_${crypto.randomBytes(12).toString('hex')}`;
     const receiptId = `tr_${crypto.randomBytes(16).toString('hex')}`;
 

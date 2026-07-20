@@ -73,6 +73,11 @@ describe('TRUST_TABLES list', () => {
     expect(_internals.TRUST_TABLES).toContain('protocol_events');
   });
 
+  it('contains authority and rollout mutation boundaries', () => {
+    expect(_internals.TRUST_TABLES).toContain('authorities');
+    expect(_internals.TRUST_TABLES).toContain('policy_rollouts');
+  });
+
   it('contains handshakes', () => {
     expect(_internals.TRUST_TABLES).toContain('handshakes');
   });

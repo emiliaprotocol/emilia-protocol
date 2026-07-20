@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateGuardRequest, isCloudGuardPrincipal } from '@/lib/guard-auth.js';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
@@ -27,8 +27,8 @@ const MAX_SIGNOFF_REQUEST_BYTES = 64 * 1024;
 
 export async function POST(request) {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+    const auth = await authenticateGuardRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
     // String identity, not the entity row — the stored initiator_id is what
     // the SoD check compares against at approve time.
     const initiatorEntityId = authEntityId(auth);
@@ -60,12 +60,28 @@ export async function POST(request) {
 
     const created = events.find((e) => e.event_type === 'guard.trust_receipt.created');
     if (!created) return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
+    if (isCloudGuardPrincipal(auth) && created.after_state?.action_type !== 'policy_rollout') {
+      return epProblem(
+        403,
+        'cloud_guard_action_forbidden',
+        'Tenant control-plane keys may request signoff only for policy rollout receipts',
+      );
+    }
     if (!created.actor_id || created.actor_id !== initiatorEntityId) {
       return epProblem(
         403,
         'receipt_actor_mismatch',
         'Only the entity that created this receipt can request signoff for it',
       );
+    }
+
+    const nowMs = Date.now();
+    const receiptExpiresAtMs = Date.parse(created.after_state?.expires_at);
+    if (!Number.isFinite(receiptExpiresAtMs)) {
+      return epProblem(500, 'corrupted_receipt', 'Receipt has invalid expiry');
+    }
+    if (receiptExpiresAtMs <= nowMs) {
+      return epProblem(410, 'receipt_expired', 'Receipt has expired');
     }
 
     // A quorum policy implies a signoff is required, even if the policy decision
@@ -83,7 +99,7 @@ export async function POST(request) {
     const ttl = Number.isFinite(body.expires_in_minutes)
       ? Math.max(1, Math.min(body.expires_in_minutes, 1440)) * 60 * 1000
       : DEFAULT_APPROVAL_TTL_MS;
-    const expiresAt = new Date(Date.now() + ttl).toISOString();
+    const expiresAt = new Date(Math.min(receiptExpiresAtMs, nowMs + ttl)).toISOString();
     const comment = typeof body.comment === 'string' ? body.comment.slice(0, 500) : null;
 
     // ── Quorum fan-out (EP-QUORUM-v1) ────────────────────────────────────────
@@ -118,6 +134,9 @@ export async function POST(request) {
       }));
       const { error: insertErr } = await supabase.from('audit_events').insert(rows);
       if (insertErr) {
+        if (insertErr.code === '23505') {
+          return epProblem(409, 'signoff_already_requested', 'Signoff already requested for this receipt');
+        }
         logger.error('[guard] signoff request (quorum): audit insert failed:', insertErr);
         return epProblem(500, 'internal_error', 'Failed to record quorum signoff requests');
       }
@@ -158,6 +177,9 @@ export async function POST(request) {
     });
 
     if (insertErr) {
+      if (insertErr.code === '23505') {
+        return epProblem(409, 'signoff_already_requested', 'Signoff already requested for this receipt');
+      }
       logger.error('[guard] signoff request: audit insert failed:', insertErr);
       return epProblem(500, 'internal_error', 'Failed to record signoff request');
     }

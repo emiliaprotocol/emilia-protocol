@@ -91,8 +91,8 @@
     },
     {
       "path": "conformance/vectors/currency.v2.json",
-      "sha256": "739ef1a2a5665e21e5c9db7b57eef05396c1c5dc0b2e649e9f35307ec52ca668",
-      "vectors": 13
+      "sha256": "226a9e01be6186b1abca7cdb5eda713b522c87c8c66e893ba203c9e05aa97dde",
+      "vectors": 12
     },
     {
       "path": "conformance/vectors/initiator-attestation.v1.json",
@@ -117,7 +117,7 @@
   ],
   "totals": {
     "suites": 21,
-    "vectors": 329,
+    "vectors": 328,
     "implementations": 3
   },
   "implementations": [
@@ -131,12 +131,12 @@
       },
       "source": {
         "files": 73,
-        "bytes": 1157866,
-        "tree_sha256": "69e73a6e1b14d7269f9624f225316d2d575cd8078c153ce7a849bb01f4e52a41"
+        "bytes": 1168353,
+        "tree_sha256": "cf47636306e8ed70777015eb42b962a43955797c6f12fab94280e67455de406c"
       },
       "suites": 21,
-      "vectors": 329,
-      "normalized_results_sha256": "5fc64ad7758b49815f2fb59871b65de92fd47e63cc5e514d3f6cee5642fa3e69",
+      "vectors": 328,
+      "normalized_results_sha256": "296510d547718bdc20800801382b6a2709f271c783ca89e921a289216a63050c",
       "status": "pass"
     },
     {
@@ -153,8 +153,8 @@
         "tree_sha256": "a6e4cce94bd170c87e668d80dd7ff1e8f93334b1d051e8fb21f36a62832f1a77"
       },
       "suites": 21,
-      "vectors": 329,
-      "normalized_results_sha256": "c68285946a1349b989c9c3cf58e996c061e6bc6c8cd963b49cb9d14de5155c94",
+      "vectors": 328,
+      "normalized_results_sha256": "3a33c8b0abebf27e3c16062ddc04e62e1e0674282a72a9febf4645b4522deea2",
       "status": "pass"
     },
     {
@@ -171,10 +171,10 @@
         "tree_sha256": "7878c2d98e5b5617c1261755199521b6855420c64ce5c6103cb700367b27a686"
       },
       "suites": 21,
-      "vectors": 329,
-      "normalized_results_sha256": "c68285946a1349b989c9c3cf58e996c061e6bc6c8cd963b49cb9d14de5155c94",
+      "vectors": 328,
+      "normalized_results_sha256": "3a33c8b0abebf27e3c16062ddc04e62e1e0674282a72a9febf4645b4522deea2",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "4746bccec44c2c942b3522b3872b6434bbff6eaf616363e01ea4d00f4d21077b"
+  "manifest_sha256": "1e9b401e2f3ad8f9b7eb542ac8571c0d7ce3f92c6975abba7fe57f9f1680bd93"
 }

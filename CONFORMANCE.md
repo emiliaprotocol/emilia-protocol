@@ -58,13 +58,13 @@ EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go
 EP-CANONICALIZATION-v1         — 35 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-BOUNDARY-v1                 —  5 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-AEC-ROLE-v1                 — 30 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-CURRENCY-v1                 — 13 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-CURRENCY-v1                 — 12 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-INITIATOR-ATTESTATION-v1    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 329 vectors · 21 suites — JavaScript, Python, and Go verifiers agree.
+✅ 328 vectors · 21 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations.)
 ```

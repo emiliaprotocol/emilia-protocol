@@ -144,6 +144,31 @@ Each threat is listed with its attack vector, mitigation mechanism, and the code
 
 ---
 
+## 11. Service-Role Trust Boundary
+
+**Boundary**: The production application process and its Supabase
+`service_role` credential are part of the trusted computing base. The service
+role can append protocol evidence and invoke security-definer transition
+functions. PostgreSQL independently enforces tenant, replay, state, credential,
+authority, and quorum facts, but it does not perform the P-256/WebAuthn
+signature verification that the application performs immediately before the
+transaction.
+
+**Consequence**: Compromise of the application process or service-role
+credential can fabricate audit input and invoke otherwise valid transitions.
+Append-only triggers prevent rewriting history after insertion; they do not
+make a malicious writer honest. Database constraints are therefore
+defense-in-depth against route bugs and races, not an independent verifier
+against a fully compromised service tier.
+
+**Mitigation**: Rotate and isolate service-role credentials, restrict table
+writes to narrowly granted RPCs where practical, monitor append events, and
+verify exported receipts, transparency roots, and witness views outside the
+service tier. A deployment must not claim that the database alone
+cryptographically verifies WebAuthn evidence.
+
+---
+
 ## Attack Vectors Identified in Penetration Testing
 
 The following attack vectors were identified during independent penetration testing (Shannon AI, 2026-03-23) and have been fully remediated.

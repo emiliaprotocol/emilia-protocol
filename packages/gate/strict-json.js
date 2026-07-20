@@ -89,13 +89,16 @@ export function strictJsonGate(raw) {
       const value = readString();
       if (reason) return { ok: false, reason };
       if (isKey) {
-        // isKey is only true when top exists, top.object is true, and
-        // top.expectsKey is true — that combination only occurs for the
-        // object-frame shape (which has `keys`/`expectsKey`), never the
-        // array-frame shape or undefined. Cast reflects that, no behavior change.
-        const frame = /** @type {{ object: boolean, keys: Set<any>, expectsKey: boolean }} */ (top);
-        if (frame.keys.has(value)) return { ok: false, reason: 'duplicate object member name' };
-        frame.keys.add(value);
+        // `isKey` is only true when `top?.object && top.expectsKey` held above,
+        // which guarantees `top` is a defined object-frame here; narrow the
+        // type for the compiler without altering the runtime reference.
+        const frame = /** @type {{ object: true, keys: Set<string>, expectsKey: boolean }} */ (top);
+        // `readString()` only ever returns null on a path that also sets
+        // `reason`, and the `if (reason) return` above already exited in
+        // that case, so `value` is guaranteed to be a string here.
+        const key = /** @type {string} */ (value);
+        if (frame.keys.has(key)) return { ok: false, reason: 'duplicate object member name' };
+        frame.keys.add(key);
         frame.expectsKey = false;
       }
     } else {

@@ -1,7 +1,7 @@
 # Government Pilot Brief
 
 ## What's new (June 2026)
-- **21 suites / 329 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
+- **21 suites / 328 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
 - **Composition (EP-AEC):** EP composes delegation, policy-permit, and human-authorization receipts into one offline SATISFIED/UNSATISFIED evidence verdict. The agency's executor makes the separate authorization decision.
 - **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (the mandated independent double-check, PHI-free receipts) extend the same primitive across oversight regimes.
 
@@ -36,7 +36,7 @@ Government fraud and unauthorized action often occur inside approved-looking wor
 - 329 complete chains executed with zero correctness violations
 - 11/11 post-load-test DB integrity checks passing
 - Atomic transactions: all endpoints use single-roundtrip atomic RPCs, no partial state; handshake p95 87ms at 500 concurrent users
-- 6,910 automated test cases across 365 files, with all platform-applicable cases required to pass; Stryker.js mutation gate ≥90%; property-based and linearizability testing included
+- 7,033 automated test cases across 372 files, with all platform-applicable cases required to pass; Stryker.js mutation gate ≥90%; property-based and linearizability testing included
 - 85 red team cases documented; repository security checks pass, while the live Strix retest and deployment validation remain open
 - 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 32 assertions across four models verified (Alloy 6.2.0, 0 counterexamples) — both enforced in CI on every change
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events

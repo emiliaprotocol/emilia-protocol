@@ -273,7 +273,11 @@ const ROUTE_POLICIES = {
   'POST /api/cloud/signoff/escalate': { rateCategory: 'cloud_write', useAuth: true },
   'POST /api/cloud/policies/*/simulate': { rateCategory: 'cloud_write', useAuth: true },
 
-  // Cloud — admin (policy rollouts)
+  // Cloud — admin (tenant credentials and policy rollouts)
+  'POST /api/cloud/tenants/*/api-keys': { rateCategory: 'cloud_admin', useAuth: true },
+  'GET /api/cloud/authorities/policy-rollout': { rateCategory: 'cloud_admin', useAuth: true },
+  'POST /api/cloud/authorities/policy-rollout': { rateCategory: 'cloud_admin', useAuth: true },
+  'POST /api/cloud/authorities/policy-rollout/*/revoke': { rateCategory: 'cloud_admin', useAuth: true },
   'POST /api/cloud/policies/*/rollout': { rateCategory: 'cloud_admin', useAuth: true },
 
   // Cloud — webhooks
