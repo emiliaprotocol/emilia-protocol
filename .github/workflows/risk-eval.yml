@@ -9,14 +9,14 @@ on:
     paths:
       - 'ml/risk-eval/**'
       - 'ml/train/**'
-      - 'lib/guard-policies.js'
+      - 'lib/guard-policies.ts'
       - 'package.json'
       - '.github/workflows/risk-eval.yml'
   pull_request:
     paths:
       - 'ml/risk-eval/**'
       - 'ml/train/**'
-      - 'lib/guard-policies.js'
+      - 'lib/guard-policies.ts'
       - 'package.json'
       - '.github/workflows/risk-eval.yml'
 
@@ -25,6 +25,9 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # See .github/workflows/ci.yml's env block for why: plain `node` needs this
+  # loader to resolve a .js import specifier to its renamed .ts sibling.
+  NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
 
 jobs:
   eval:
