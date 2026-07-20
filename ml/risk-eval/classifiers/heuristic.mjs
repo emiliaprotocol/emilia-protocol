@@ -72,6 +72,7 @@ const INJECTION_PHRASES = Object.freeze([
 
 // The action-type vocabulary the engine actually reasons about. An action type
 // OUTSIDE this set is "novel" — the taxonomy has no rule for it.
+/** @type {ReadonlySet<string>} */
 const KNOWN_ACTION_TYPES = Object.freeze(new Set(Object.values(GUARD_ACTION_TYPES)));
 
 // ── Feature extraction ────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ export function extractSignals(input) {
  * contract the harness/other classifiers use.
  *
  * @param {object} input - the shape evaluateGuardPolicy accepts.
- * @returns {Promise<{decision:string, signoffRequired:boolean, reasons:string[],
+ * @returns {Promise<{decision:string, signoffRequired:boolean, requiredAssurance?:string, reasons:string[],
  *   advisory:{signals:string[], injection_suspected:boolean, raised:boolean}}>}
  */
 export async function classify(input) {

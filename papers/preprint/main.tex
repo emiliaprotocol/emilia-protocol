@@ -5,12 +5,13 @@
 % endorsement required). Fallback: Zenodo (DOI). arXiv cs.CR is locked for this
 % topic for us; see papers/preprint/STAGING.md for the submission checklist.
 %
-% Content is a faithful carriage of papers/authorization-receipts-preprint.md
-% at repository HEAD. No claim in this .tex is stronger than that source.
+% Content is a faithful carriage of papers/authorization-receipts-preprint.md,
+% with evidence-backed claims and reference revisions synchronized to repo state.
+% Canonical Markdown SHA-256: ee1ae7e1cf794ea258a6482cf6e7703620466eb29a2ea4267e43684ed05ec5f4
 % Every quantitative claim is traceable to a repository artifact:
-%   - conformance 18 suites / 251 vectors -> conformance/conformance-manifest.json
-%     (totals.suites=18, totals.vectors=251; manifest_sha256
-%      1285c269b3d58e325c2432d59a95e598761abf3cf3c8f2933b82f21b59214888)
+%   - conformance 21 suites / 329 vectors -> conformance/conformance-manifest.json
+%     (totals.suites=21, totals.vectors=329)
+%     manifest_sha256=4746bccec44c2c942b3522b3872b6434bbff6eaf616363e01ea4d00f4d21077b
 %   - all Tamarin lemma output blocks -> formal/PROOF_STATUS.md (verbatim)
 %   - TLA+ 413,137 states / 45,342 distinct / 26 invariants -> formal/PROOF_STATUS.md
 %   - Alloy 15 + 7 + 6 + 4 = 32 assertions -> formal/PROOF_STATUS.md
@@ -64,7 +65,7 @@ EMILIA Protocol, Inc.\\
 
 \begin{center}
 \emph{The construction analyzed here is also specified, in engineering form, as a
-set of individual Internet-Drafts (\code{draft-schrock-ep-authorization-receipts-06}
+set of individual Internet-Drafts (\code{draft-schrock-ep-authorization-receipts-07}
 and companions). Those are individual submissions with no working-group status;
 this paper is self-contained and does not depend on them.}
 \end{center}
@@ -195,7 +196,7 @@ host-agnostic binding profile for carrying the evidence in other agent-action
 record formats without redefining it per host (Section 5), and a purpose-relative
 evidence-sufficiency layer with a closed verdict set and deterministic replay
 (Section 6).
-\item A cross-language conformance battery (18 suites, 251 vectors) whose
+\item A cross-language conformance battery (21 suites, 329 vectors) whose
 JavaScript, Python, and Go same-team ports agree, plus a separately authored Rust
 verifier evaluated from pinned public source, with the independence boundary
 stated precisely (Section 8).
@@ -1013,7 +1014,7 @@ deployment topologies or components it does not model.
 
 A reference implementation of the receipt, quorum, evidence-chain, binding, and
 evidence-graph layers is published under Apache-2.0, together with a conformance
-battery of 18 suites comprising 251 vectors. The receipt vectors are self-contained
+battery of 21 suites comprising 329 vectors. The receipt vectors are self-contained
 (each carries its own public key and document, requiring no server and no shared
 state), adversarial (reject vectors each pin one invariant: tampered bytes, wrong
 key, replay, malformed signature, broken Merkle anchor), and deterministic
@@ -1028,7 +1029,7 @@ over a checkpoint head, and an independent RFC 3161 timestamp-proof profile.
 
 The implementation status is stated precisely, because it is the most tempting
 place to overclaim. The JavaScript, Python, and Go reference verifiers live in
-\emph{one repository}: they are same-team ports whose agreement across all 251
+\emph{one repository}: they are same-team ports whose agreement across all 329
 current vectors is cross-language consistency evidence, not three independent
 implementations. A historical Ed25519-signed
 \code{EP-EXTERNAL-VERIFICATION-STATEMENT-v1} from COSA / J Diesel NY records
@@ -1252,7 +1253,7 @@ headers, verbatim tool output, falsification history, and re-run instructions; t
 TLA+ and Alloy models with checked configurations and a proof-status ledger that
 keeps \emph{specified} and \emph{verified} separate; the reference implementation
 (receipt, quorum, evidence-chain, host-record binding, and evidence-graph layers,
-with JavaScript, Python, and Go same-team ports); the 18-suite / 251-vector
+with JavaScript, Python, and Go same-team ports); the 21-suite / 329-vector
 conformance battery with deterministic regeneration scripts; the pinned external
 Rust source and evaluator; the 359-case hostility campaign; the aggregate
 conformance case; the historical third-party reproduction statement; and the worked
@@ -1263,16 +1264,16 @@ Internet-Drafts are working documents and should be cited as work in progress.
 
 \begin{thebibliography}{99}
 
-\bibitem{ar06} I. Schrock, ``Authorization Receipts for High-Risk Agent Actions,''
-Internet-Draft \code{draft-schrock-ep-authorization-receipts-06}, work in progress,
+\bibitem{ar07} I. Schrock, ``Authorization Receipts for High-Risk Agent Actions,''
+Internet-Draft \code{draft-schrock-ep-authorization-receipts-07}, work in progress,
 July 2026.
 
-\bibitem{quorum02} I. Schrock, ``Multi-Party Human Authorization (EP-QUORUM),''
-Internet-Draft \code{draft-schrock-ep-quorum-02}, work in progress, July 2026.
+\bibitem{quorum03} I. Schrock, ``Multi-Party Human Authorization (EP-QUORUM),''
+Internet-Draft \code{draft-schrock-ep-quorum-03}, work in progress, July 2026.
 
-\bibitem{aec02} I. Schrock, ``Authorization Evidence Chains: Composing Heterogeneous
+\bibitem{aec03} I. Schrock, ``Authorization Evidence Chains: Composing Heterogeneous
 Agent-Authorization Receipts (EP-AEC),'' Internet-Draft
-\code{draft-schrock-ep-authorization-evidence-chain-02}, work in progress, July
+\code{draft-schrock-ep-authorization-evidence-chain-03}, work in progress, July
 2026.
 
 \bibitem{er01} I. Schrock, ``Long-Term Evidence Records for Authorization Receipts

@@ -146,11 +146,14 @@ function isApprovalInterruption(interruption) {
  * @param {boolean} [opts.allowInlineKey=false] also accept a receipt's own inline
  *   key (proves integrity, NOT trust — leave OFF in production).
  * @param {number} [opts.maxAgeSec=900] reject receipts older than this.
- * @param {(toolName:string, args:any)=>string} opts.actionFor REQUIRED — maps a
+ * @param {(toolName:string, args:any)=>string} [opts.actionFor] REQUIRED — maps a
  *   tool call to the canonical EP action_type the receipt must be bound to.
+ * @param {{reserve:(id:string)=>Promise<boolean>|boolean,
+ *   commit:(id:string)=>Promise<boolean>|boolean,
+ *   release:(id:string)=>Promise<boolean>|boolean}} [opts.store]
  * @returns {{
- *   decide: (interruption:any, receipt:object|null|undefined) => {decision:'approve'|'reject', action:string|null, toolName:string|null, callId:string|null, reason:string, receipt_id?:string, subject?:string},
- *   resolve: (runResult:any, ctx:{receipts?:object|Map|Array, state?:any}) => Promise<{approved:Array, rejected:Array, decisions:Array}>
+ *   decide: (interruption:any, receipt:object|null|undefined) => Promise<{decision:'approve'|'reject', action:string|null, toolName:string|null, callId:string|null, reason:string, receipt_id?:string, subject?:string}>,
+ *   resolve: (runResult:any, ctx?:{receipts?:object|Map|Array, state?:any}) => Promise<{approved:Array, rejected:Array, decisions:Array}>
  * }}
  */
 export function requireReceiptForOpenAIAgent(opts = {}) {
@@ -197,6 +200,19 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
    * replayed or invalid receipt) never consumes anything, so a blocked approval
    * stays retryable with a fresh, valid receipt. Replay is still checked here,
    * before any approval, so a receipt can satisfy at most one interruption.
+   *
+   * @param {any} interruption
+   * @param {any} receipt
+   * @param {{reserveOnly?: boolean}} [options]
+   * @returns {Promise<{
+   *   decision: 'approve'|'reject',
+   *   action: string|null,
+   *   toolName: string|null,
+   *   callId: string|null,
+   *   reason: string,
+   *   receipt_id?: string,
+   *   subject?: string
+   * }>}
    */
   async function decide(interruption, receipt, { reserveOnly = false } = {}) {
     const toolName = interruptionToolName(interruption);

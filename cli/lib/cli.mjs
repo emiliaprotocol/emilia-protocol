@@ -3,10 +3,20 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { EPClient } from './client.mjs';
 
+/** @typedef {{ write: (value: string) => unknown }} OutputStream */
+
+/**
+ * @param {OutputStream} stream
+ * @param {string} [value]
+ */
 function line(stream, value = '') {
   stream.write(`${value}\n`);
 }
 
+/**
+ * @param {OutputStream} stream
+ * @param {unknown} value
+ */
 function json(stream, value) {
   line(stream, JSON.stringify(value, null, 2));
 }
@@ -62,7 +72,14 @@ export function resolveVerifierCli() {
   }
 }
 
-export function runOfflineVerifier(args, { stdout, stderr } = {}) {
+/**
+ * @param {string[]} args
+ * @param {{ stdout?: OutputStream, stderr?: OutputStream }} [options]
+ */
+export function runOfflineVerifier(
+  args,
+  { stdout = process.stdout, stderr = process.stderr } = {},
+) {
   const result = spawnSync(process.execPath, [resolveVerifierCli(), ...args], {
     encoding: 'utf8',
     maxBuffer: 16 * 1024 * 1024,
@@ -82,6 +99,15 @@ function requireApiKey(apiKey, stderr) {
   return false;
 }
 
+/**
+ * @param {string[]} args
+ * @param {{
+ *   env?: NodeJS.ProcessEnv,
+ *   stdout?: OutputStream,
+ *   stderr?: OutputStream,
+ *   client?: EPClient
+ * }} [options]
+ */
 export async function runCli(
   args,
   {

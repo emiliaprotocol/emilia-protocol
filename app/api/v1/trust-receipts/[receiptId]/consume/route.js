@@ -58,7 +58,7 @@ export async function POST(request, { params }) {
     // ── Load full timeline (source of truth) ──────────────────────────────
     const { data: events, error: eventsErr } = await supabase
       .from('audit_events')
-      .select('event_type, after_state, created_at')
+      .select('event_type, actor_id, after_state, created_at')
       .eq('target_type', 'trust_receipt')
       .eq('target_id', receiptId)
       .order('created_at', { ascending: true });

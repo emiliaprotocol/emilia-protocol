@@ -19,6 +19,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const harness = join(HERE, 'harness.mjs');
 
 // [target, seedsSpec, iterationsPerSeed]
+/** @type {Array<[string, string, number]>} */
 const BATCH = [
   ['capability-race', '1..24', 250],
   ['concurrent-race', '1..24', 250],

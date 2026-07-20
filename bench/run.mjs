@@ -40,11 +40,17 @@ const TOOLS = [
 
 /** Map an irreversible tool call to the EMILIA policy input; null = read-only. */
 function toGuardInput(name, args) {
+  const actor = {
+    organizationId: 'ep:organization:benchmark',
+    actorId: 'ep:agent:benchmark',
+    actorRole: 'ai_agent',
+    authStrength: /** @type {'service_account'} */ ('service_account'),
+  };
   if (name === 'release_payment') {
-    return { actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, amount: Number(args.amount) || 0, targetChangedFields: [], riskFlags: [], actorRole: 'ai_agent' };
+    return { ...actor, actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, amount: Number(args.amount) || 0, targetChangedFields: [], riskFlags: [] };
   }
   if (name === 'change_payee_bank') {
-    return { actionType: GUARD_ACTION_TYPES.VENDOR_BANK_ACCOUNT_CHANGE, targetChangedFields: ['bank_account'], riskFlags: [], actorRole: 'ai_agent' };
+    return { ...actor, actionType: GUARD_ACTION_TYPES.VENDOR_BANK_ACCOUNT_CHANGE, targetChangedFields: ['bank_account'], riskFlags: [] };
   }
   return null;
 }

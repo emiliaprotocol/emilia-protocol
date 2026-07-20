@@ -118,3 +118,25 @@ test('detector is fail-closed: a head that misses quorum cannot convict the log'
   assert.equal(det.equivocation, false, 'sub-quorum head does not trigger a false equivocation');
   assert.equal(det.quorum_backed_heads, 1);
 });
+
+test('detector preserves log ids containing control characters', async (t) => {
+  const identities = [makeIdentity(), makeIdentity()];
+  const servers = identities.map((id) => createServer(id));
+  const ports = [];
+  for (const s of servers) ports.push(await listen(s));
+  t.after(() => servers.forEach((s) => s.close()));
+  const pinned = identities.map((id) => ({ witness_id: id.witness_id, public_key: id.public_key }));
+  const logKeyId = 'ep:log:operator\u0000shard';
+  const headA = { tree_size: 7, root_hash: 'sha256:' + 'f'.repeat(64), log_key_id: logKeyId, merkle_alg: MERKLE_ALG };
+  const headB = { tree_size: 7, root_hash: 'sha256:' + '0'.repeat(64), log_key_id: logKeyId, merkle_alg: MERKLE_ALG };
+  const cosigsA = [await cosign(ports[0], headA), await cosign(ports[1], headA)];
+  const cosigsB = [await cosign(ports[0], headB), await cosign(ports[1], headB)];
+
+  const det = detectEquivocation(
+    [{ checkpoint: headA, cosignatures: cosigsA, label: 'A' },
+     { checkpoint: headB, cosignatures: cosigsB, label: 'B' }],
+    pinned, 2);
+  assert.equal(det.equivocation, true);
+  assert.equal(det.conflicts[0].log_key_id, logKeyId);
+  assert.equal(det.conflicts[0].tree_size, 7);
+});

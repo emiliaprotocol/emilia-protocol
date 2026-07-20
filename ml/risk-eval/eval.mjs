@@ -3,14 +3,36 @@
 // cases.jsonl. Covered cases are a regression gate (a dangerous miss exits 1);
 // perimeter cases are a coverage benchmark (the model's scoreboard).
 //
-//   node ml/risk-eval/eval.mjs            # baseline = the real rule engine
-//   node ml/risk-eval/eval.mjs tinker     # future self-hosted model
+//   node ml/risk-eval/eval.mjs
+//   node ml/risk-eval/eval.mjs heuristic --min-perimeter=100
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const which = process.argv[2] && !process.argv[2].startsWith('-') ? process.argv[2] : 'rules';
+const args = process.argv.slice(2);
+let which = 'rules';
+let classifierSet = false;
+let minPerimeter = null;
+
+for (const arg of args) {
+  if (arg.startsWith('--min-perimeter=')) {
+    const value = Number(arg.slice('--min-perimeter='.length));
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      throw new Error('--min-perimeter must be a number from 0 through 100');
+    }
+    minPerimeter = value;
+  } else if (!arg.startsWith('-') && !classifierSet) {
+    which = arg;
+    classifierSet = true;
+  } else {
+    throw new Error(`unknown eval argument: ${arg}`);
+  }
+}
+
+if (!/^[a-z0-9_-]+$/i.test(which)) {
+  throw new Error(`invalid classifier name: ${which}`);
+}
 const { classify } = await import(`./classifiers/${which}.mjs`);
 
 const cases = fs.readFileSync(path.join(HERE, 'cases.jsonl'), 'utf8')
@@ -50,10 +72,24 @@ log(`PERIMETER (model scoreboard)  ${out.perimeterCaught}/${out.perimeter} escal
 for (const m of out.perimeterMissed) log(`   · gap: ${m.id} — got ${m.got}, should be ${m.exp}  (${m.note})`);
 log('────────────────────────────────────────────');
 
-if (out.dangerous.length) {
-  log(`FAIL — ${out.dangerous.length} dangerous miss(es) on covered cases.\n`);
-  process.exit(1);
-}
 const pct = Math.round((100 * out.perimeterCaught) / (out.perimeter || 1));
-log(`PASS — no dangerous misses on covered cases.`);
-log(`Perimeter coverage ${pct}% — the rules are expected to miss these; closing the gap is the model's job.\n`);
+const missesCoverageGate = minPerimeter !== null && pct < minPerimeter;
+
+if (out.dangerous.length || missesCoverageGate) {
+  if (out.dangerous.length) {
+    log(`FAIL — ${out.dangerous.length} dangerous miss(es) on covered cases.`);
+  }
+  if (missesCoverageGate) {
+    log(`FAIL — perimeter coverage ${pct}% is below the required ${minPerimeter}%.`);
+  }
+  log();
+  process.exitCode = 1;
+} else {
+  log('PASS — no dangerous misses on covered cases.');
+  if (minPerimeter !== null) {
+    log(`PASS — perimeter coverage ${pct}% meets the required ${minPerimeter}%.`);
+  } else {
+    log(`Perimeter coverage ${pct}% — informational (no minimum requested).`);
+  }
+  log();
+}

@@ -53,9 +53,13 @@ test('oversight table aggregates principal x action_type x tier with counts', as
     decision(at(1)),
     decision(at(2)),
     decision(at(3), { subject: 'ep:user:bob', action: 'wire.transfer', have_tier: 'quorum', receipt_id: 'rcpt_9' }),
+    decision(at(4), { subject: 'a\u0000b', action: 'c', have_tier: 'class_a', receipt_id: 'rcpt_10' }),
+    decision(at(5), { subject: 'a', action: 'b\u0000c', have_tier: 'class_a', receipt_id: 'rcpt_11' }),
   ]);
   const pack = buildArt14EvidencePack(entries, OPTS);
   assert.deepEqual(pack.oversight_exercised, [
+    { principal: 'a', action_type: 'b\u0000c', assurance_tier: 'class_a', count: 1 },
+    { principal: 'a\u0000b', action_type: 'c', assurance_tier: 'class_a', count: 1 },
     { principal: 'ep:user:alice', action_type: 'payment.release', assurance_tier: 'class_a', count: 2 },
     { principal: 'ep:user:bob', action_type: 'wire.transfer', assurance_tier: 'quorum', count: 1 },
   ]);

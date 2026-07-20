@@ -1,50 +1,95 @@
-# EP Risk Classifier — training pipeline
+# EP Risk Classifier — data preparation
 
-Scaffolding for the **advisory** risk classifier in
-[`docs/ml/risk-classifier.md`](../../docs/ml/risk-classifier.md). The model never
-decides — it may only *raise* the tier the verified engine enforces.
+This directory contains the runnable, local part of the advisory classifier’s
+future training path. It validates labels and emits provider-neutral
+supervised-fine-tuning (SFT) JSONL. It does **not** train, download a model, call
+a service, or create weights.
 
-> **Don't train yet.** A classifier trained on synthetic data won't generalize.
-> Build the dataset from a real pilot's traffic. Until then, `label.mjs` (the
-> weak-labeler) and the eval harness are the useful, runnable half.
+The model remains advisory: its output can raise a deterministic `allow` to
+human signoff, but it cannot lower the result from `evaluateGuardPolicy` and
+cannot deny by itself.
 
-## The pipeline
+## Runnable pipeline
 
+```text
+real action JSONL
+  -> label.mjs (rule-oracle tier + deterministic injection weak label)
+  -> human review of every label=null row
+  -> prepare.py (schema validation, deduplication, SFT export + digest)
+  -> a future, separately pinned local training backend
 ```
-real agent traffic ──▶ label.mjs ──▶ train.jsonl ──▶ tinker_train.py ──▶ LoRA adapter
-   (JSONL of actions)   weak-label    (+ human review)   (Tinker)          │
-                                                                            ▼
-                                                  serve in customer VPC (EP_RISK_MODEL_URL)
-                                                                            │
-                                                                            ▼
-                                              node ml/risk-eval/eval.mjs tinker  (scoreboard)
-```
 
-### 1. `label.mjs` — bootstrap labels from the engine (runnable today)
+Create weak labels from the included demonstration actions:
 
 ```bash
-node ml/train/label.mjs ml/train/sample-actions.jsonl > train.jsonl
+node ml/train/label.mjs ml/train/sample-actions.jsonl > /tmp/ep-risk-labeled.jsonl
 ```
 
-For every action the rules already decide, `evaluateGuardPolicy` is ground truth
-→ auto-labeled (`source: rule_oracle`). Actions the rules default-allow but that
-look high-impact are flagged `label: null` (`source: human_review`) — that
-flagged set is the **perimeter** a human labels and the model then learns. On the
-sample corpus: 5 auto-labeled, 3 flagged for review.
-
-### 2. `tinker_train.py` — LoRA SFT (template)
-
-A skeleton for fine-tuning a small Qwen3/Llama-3 via Tinker. Needs Tinker access
-and `train.jsonl`. Adapt the calls to the current Tinker SDK / Cookbook.
-
-### 3. Serve + eval
-
-Serve the adapter **inside the customer's network** (zero data egress — the whole
-reason to use an open model), point `EP_RISK_MODEL_URL` at it, then:
+Validate them without writing any artifact:
 
 ```bash
-node ml/risk-eval/eval.mjs tinker
+python3 ml/train/prepare.py --train /tmp/ep-risk-labeled.jsonl
 ```
 
-Watch perimeter coverage climb from the baseline 0%. The covered-case regression
-gate must stay green the whole time.
+The sample produces five complete rows and three `label: null` rows held for
+human review. `prepare.py` omits pending rows from SFT output and reports them;
+it never guesses their tier.
+
+After a reviewer has completed every pending row, enforce training readiness and
+emit SFT JSONL plus a digest-bearing manifest:
+
+```bash
+python3 ml/train/prepare.py \
+  --train /path/to/reviewed-risk-labels.jsonl \
+  --require-no-pending \
+  --out /path/to/ep-risk-sft.jsonl \
+  --manifest /path/to/ep-risk-sft.manifest.json
+```
+
+## Input contract
+
+Each labeler/reviewer row is one JSON object:
+
+```json
+{
+  "input": {
+    "actionType": "vendor_bank_account_change",
+    "targetChangedFields": ["bank_account"],
+    "riskFlags": []
+  },
+  "label": "allow_with_signoff",
+  "injection_suspected": false,
+  "source": "rule_oracle"
+}
+```
+
+- `label` is `allow`, `allow_with_signoff`, `deny`, or `null`.
+- `null` is permitted only with `source: "human_review"` and is never exported.
+- `injection_suspected` must be boolean. `label.mjs` supplies an explicit weak
+  label and records its provenance in `injection_source`; a human reviewer owns
+  the final value for reviewed rows.
+- Duplicate actions with conflicting labels are rejected.
+- `--require-no-pending` makes any unfinished human review a hard failure.
+
+## Output and backend contract
+
+The SFT output uses a `messages` array with:
+
+1. a system instruction defining the advisory/raise-only boundary;
+2. the canonical action JSON as the user message; and
+3. an assistant JSON object containing exactly `tier` and
+   `injection_suspected`.
+
+No training SDK is claimed or vendored here. Before fitting a model, a separate
+change must choose a local backend, pin its package versions, document the base
+model license and hardware requirements, consume `ep-risk-sft-v1`, and prove its
+served output through `npm run ml:gate` plus the remote-adapter self-tests. That
+is intentionally future work; there is no fabricated adapter or weights path in
+this repository.
+
+## Tests
+
+```bash
+python3 ml/train/prepare.selftest.py
+npm run ml:gate
+```

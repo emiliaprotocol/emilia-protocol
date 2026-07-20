@@ -34,6 +34,6 @@
 
 ## Proof
 
-The protocol layer beneath has been exercised end-to-end: 6,872 automated test cases across 359 files with every platform-applicable case required to pass, 329 complete Accountable Signoff chains with zero correctness violations, all endpoints using single-roundtrip atomic RPCs, and 46 EP-only database tables with zero foreign artifacts.
+The protocol layer beneath has been exercised end-to-end: 6,894 automated test cases across 360 files with every platform-applicable case required to pass, 329 complete Accountable Signoff chains with zero correctness violations, all endpoints using single-roundtrip atomic RPCs, and 46 EP-only database tables with zero foreign artifacts.
 
 This is the business model: open protocol below, managed trust infrastructure above, vertical control systems on top.

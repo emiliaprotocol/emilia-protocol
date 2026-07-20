@@ -634,6 +634,9 @@ export function createGateRuntime(inputConfig) {
     });
   }
 
+  /**
+   * @param {{principal?: unknown, body?: unknown, receiptCarrier?: unknown}} [request]
+   */
   async function executeDelete({ principal: candidate, body, receiptCarrier = null } = {}) {
     const principal = normalizePrincipal(candidate);
     if (!principal) return closedError(401, 'authentication_required');
@@ -658,6 +661,9 @@ export function createGateRuntime(inputConfig) {
     return projected ? { record, projected } : null;
   }
 
+  /**
+   * @param {{id?: string, principal?: unknown, body?: unknown, receiptCarrier?: unknown}} [request]
+   */
   async function resumeDelete({ id, principal: candidate, body, receiptCarrier = null } = {}) {
     const principal = normalizePrincipal(candidate);
     if (!principal) return closedError(401, 'authentication_required');

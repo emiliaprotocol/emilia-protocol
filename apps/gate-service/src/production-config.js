@@ -71,6 +71,14 @@ function safePatch(patch) {
   return structuredClone(patch);
 }
 
+/**
+ * @param {{
+ *   query?: (text: string, values?: unknown[]) => Promise<{rowCount: number, rows: object[]}>,
+ *   tenantId?: string,
+ *   gateId?: string,
+ *   close?: (() => Promise<unknown>) | null
+ * }} [options]
+ */
 export function createPostgresActionStore({ query, tenantId, gateId, close = null } = {}) {
   if (typeof query !== 'function') throw new TypeError('Postgres action store requires query');
   if (close !== null && typeof close !== 'function') throw new TypeError('Postgres action store close must be a function');

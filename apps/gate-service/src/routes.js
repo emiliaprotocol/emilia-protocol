@@ -17,6 +17,7 @@ export const GATE_ROUTE_PATHS = Object.freeze({
 
 const JSON_CONTENT_TYPE = /^application\/json(?:\s*;|$)/i;
 const UTF8 = new TextDecoder('utf-8', { fatal: true });
+/** @type {Set<string>} */
 const EVIDENCE_PATHS = new Set([
   GATE_ROUTE_PATHS.evidenceHead,
   GATE_ROUTE_PATHS.evidenceHistory,

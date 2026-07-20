@@ -145,6 +145,7 @@ export const EG1_CHECKS = Object.freeze([
 /**
  * Create an EG-1 harness: a throwaway issuer key + a receipt minter for the
  * scenarios. Configure the subject's gate to trust `publicKey` for the run.
+ * @param {{now?: () => number, action?: Record<string, unknown>, idPrefix?: string}} [options]
  */
 export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, idPrefix = 'eg1' } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');

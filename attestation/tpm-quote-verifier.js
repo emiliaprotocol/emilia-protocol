@@ -275,12 +275,12 @@ function normalizeTrustedFingerprints(fingerprints) {
  *
  * @param {object} quote
  * @param {object} options
- * @param {string|Buffer} options.expectedNonce - verifier challenge, not quote-supplied state
- * @param {string[]} options.trustedAkFingerprints - SHA-256 SPKI pins
- * @param {{sha256:number[]}} options.expectedPcrSelection - exact PCR policy
- * @param {{sha256:Record<string,string>}} options.expectedPcrValues - known-good PCR values
+ * @param {string|Buffer} [options.expectedNonce] - verifier challenge, not quote-supplied state
+ * @param {string[]} [options.trustedAkFingerprints] - SHA-256 SPKI pins
+ * @param {{sha256:number[]}} [options.expectedPcrSelection] - exact PCR policy
+ * @param {{sha256:Record<string,string>}} [options.expectedPcrValues] - known-good PCR values
  * @param {boolean} [options.requireSafeClock=true]
- * @returns {{ok:boolean, reason:string, pcrDigest?:string, akFingerprint?:string, selection?:object}}
+ * @returns {{ok:boolean, reason:string, pcrDigest?:string, akFingerprint?:string, selection?:object, clockSafe?:boolean}}
  */
 export function verifyTpm2Quote(quote, options = {}) {
   try {

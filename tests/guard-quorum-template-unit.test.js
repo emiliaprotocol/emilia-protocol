@@ -104,6 +104,15 @@ describe('evaluateQuorumAgainstTemplate', () => {
     const tmpl = normalizeQuorumTemplate({ allowed_approvers: [{ role: 'cfo', approver: 'k1' }] });
     const r = evaluateQuorumAgainstTemplate({ required: 1, approvers: [{ role: 'intern', approver: 'k9' }] }, tmpl);
     expect(r.violations).toContain('approver_out_of_roster');
+
+    const collisionTemplate = normalizeQuorumTemplate({
+      allowed_approvers: [{ role: 'finance\u0000admin', approver: 'bob' }],
+    });
+    const collision = evaluateQuorumAgainstTemplate({
+      required: 1,
+      approvers: [{ role: 'finance', approver: 'admin\u0000bob' }],
+    }, collisionTemplate);
+    expect(collision.violations).toContain('approver_out_of_roster');
   });
   it('flags mode_not_allowed', () => {
     const r = evaluateQuorumAgainstTemplate({ required: 1, mode: 'threshold' }, normalizeQuorumTemplate({ allowed_modes: ['ordered'] }));

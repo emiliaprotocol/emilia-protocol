@@ -34,6 +34,8 @@ export interface BundleVerificationResult {
   failed: string[];
 }
 
+export const MERKLE_V2_ALG: 'EP-MERKLE-v2';
+
 /**
  * Verify an EP receipt document (EP-RECEIPT-v1).
  * Zero dependencies — uses only Node.js crypto.
@@ -49,7 +51,8 @@ export function verifyReceipt(
 export function verifyMerkleAnchor(
   leafHash: string,
   proof: Array<{ hash: string; position: 'left' | 'right' }>,
-  expectedRoot: string
+  expectedRoot: string,
+  options?: { v2?: boolean }
 ): boolean;
 
 /**
@@ -363,7 +366,7 @@ export interface TrustReceiptVerificationOptions {
  * signature validity or any member of `checks`.
  */
 export function verifyTrustReceipt(
-  receipt: Record<string, unknown>,
+  receipt: object,
   opts: TrustReceiptVerificationOptions
 ): TrustReceiptResult;
 

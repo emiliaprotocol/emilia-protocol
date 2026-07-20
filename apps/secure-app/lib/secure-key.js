@@ -31,7 +31,8 @@ export async function requireBiometric(promptMessage = 'Approve this action') {
     return { ok: false, reason: 'no_biometric_enrolled' };
   }
   const res = await LocalAuthentication.authenticateAsync({ promptMessage, disableDeviceFallback: false });
-  return { ok: res.success, reason: res.success ? undefined : res.error };
+  if (res.success) return { ok: true, reason: undefined };
+  return { ok: false, reason: 'error' in res ? res.error : 'denied' };
 }
 
 /** Get-or-create the demo software signing key (Expo Go / no-passkey path). */
