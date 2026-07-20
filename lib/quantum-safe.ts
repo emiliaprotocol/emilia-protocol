@@ -109,13 +109,14 @@ function verifyLength(bytes, expected, label) {
   if (bytes.length !== expected) throw new TypeError(`${label} must be ${expected} bytes`);
 }
 
-/**
- * Sign exact payload bytes with Ed25519 and ML-DSA-65.
- *
- * @param {string|Uint8Array} payload
- * @param {{ed25519PrivateKey?: import('node:crypto').KeyObject|string, mlDsaSecretKey?: Uint8Array|string, keyIds?: {ed25519?: string, mlDsa65?: string}}} [keys]
- */
-export function signHybrid(payload, keys = {}) {
+interface HybridSigningKeys {
+  ed25519PrivateKey?: crypto.KeyObject | string;
+  mlDsaSecretKey?: Uint8Array | string;
+  keyIds?: { ed25519?: string; mlDsa65?: string };
+}
+
+// Sign exact payload bytes with Ed25519 and ML-DSA-65.
+export function signHybrid(payload: string | Uint8Array, keys: HybridSigningKeys = {}) {
   const bytes = payloadBytes(payload);
   if (!keys.ed25519PrivateKey) throw new TypeError('ed25519PrivateKey is required');
   const edPrivateKey = signingEd25519Key(keys.ed25519PrivateKey);
@@ -147,7 +148,12 @@ export function signHybrid(payload, keys = {}) {
  * bind to the supplied payload. This function fails closed and never throws
  * for attacker-controlled envelope material.
  */
-export function verifyHybrid(payload, envelope, trustedKeys = {}) {
+interface HybridTrustedKeys {
+  ed25519?: crypto.KeyObject | string | Uint8Array;
+  mlDsa65?: Uint8Array | string;
+}
+
+export function verifyHybrid(payload: string | Uint8Array, envelope, trustedKeys: HybridTrustedKeys = {}) {
   try {
     const bytes = payloadBytes(payload);
     if (!envelope || envelope.type !== TYPE) return { valid: false, reason: 'unsupported hybrid signature type' };

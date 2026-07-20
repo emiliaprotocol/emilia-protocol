@@ -85,7 +85,7 @@ export function mapHandshakeToTrustDecision(handshakeResult) {
     : [`handshake: ${outcome}`];
 
   // Build warnings for non-blocking outcomes
-  const warnings = [];
+  const warnings: string[] = [];
   if (outcome === 'partial') {
     warnings.push('Handshake partially verified — some assurance checks did not pass');
   }

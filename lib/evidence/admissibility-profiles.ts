@@ -169,6 +169,19 @@ function findItem(bundle, evidenceType) {
   return items.find((it) => (it?.evidence ?? it?.type) === evidenceType) ?? null;
 }
 
+// Fact handed down to admissibility.js's evaluateAdmissibility (structurally
+// matches that module's `Component` shape: required type/verified, optional
+// action_digest/outcome/issued_at, boolean revoked).
+interface AdmissibilityFact {
+  type: string;
+  label: string;
+  verified: boolean;
+  action_digest: string | null;
+  outcome?: string;
+  revoked: boolean;
+  issued_at?: string;
+}
+
 // Resolve ONE requirement against the bundle into an admissibility fact plus a
 // human reason. `satisfied` here means "present and clears every per-item gate";
 // the OVERALL verdict is still computed by admissibility.js precedence, this
@@ -216,7 +229,7 @@ function resolveRequirement(req, item, nowMs) {
     issued_at: item.issued_at,
   };
 
-  const problems = [];
+  const problems: string[] = [];
   if (!signatureValid) problems.push('signature invalid');
   if (!assuranceOk) problems.push(`assurance below ${req.min_assurance}`);
   if (revocationFailed) problems.push(item.revoked === true ? 'revoked' : 'revocation state unknown');
@@ -230,20 +243,35 @@ function resolveRequirement(req, item, nowMs) {
   return { result, fact, freshness: { type, max: req.max_staleness_sec }, revocation: revocationRequired };
 }
 
+// Per-requirement outcome as returned to the caller (and fed into the replay
+// digest). `evidence` is always the requirement's type token here (never null
+// in this file's own construction — `refuse()` builds its own null-evidence
+// row separately).
+interface RequirementResult {
+  evidence: string;
+  satisfied: boolean;
+  reason: string;
+  consulted: string | null;
+}
+
 /**
  * Evaluate an evidence bundle against a PINNED admissibility profile.
  *
  * @param {AdmissibilityProfile} profile   the relying-party-authored, hash-pinned bar
  * @param {{items?:object[], components?:object[]}} evidenceBundle   presented evidence
- * @param {{ now?:string|number, expectedProfileHash?:string }} [ctx]
+ * @param ctx
  *        now                 evaluation time (ISO string or epoch ms). Not in the digest input as wall-clock; it enters only via each item's derived staleness which is a property of (now, issued_at, profile).
  *        expectedProfileHash if supplied, the profile MUST recompute to it or the call REFUSES ('unverifiable', 'profile_hash_mismatch').
  * @returns {{ verdict:string, profile_hash:string|null, replay_digest:string,
  *             requirement_results:{evidence:string|null,satisfied:boolean,reason:string}[],
  *             evaluated_at:string, refused?:boolean, reason?:string }}
  */
-export function evaluateAdmissibilityProfile(profile, evidenceBundle, ctx = {}) {
-  const nowMs = typeof ctx.now === 'number' ? ctx.now : Date.parse(/** @type {string} */ (ctx.now));
+export function evaluateAdmissibilityProfile(
+  profile,
+  evidenceBundle,
+  ctx: { now?: string | number; expectedProfileHash?: string } = {},
+) {
+  const nowMs = typeof ctx.now === 'number' ? ctx.now : Date.parse(ctx.now as string);
   const evaluated_at = new Date(Number.isFinite(nowMs) ? nowMs : Date.now()).toISOString();
 
   // Recompute the bar's hash. This is the ONLY thing allowed to define the bar.
@@ -270,12 +298,12 @@ export function evaluateAdmissibilityProfile(profile, evidenceBundle, ctx = {}) 
   }
 
   // Resolve every requirement into a fact + a per-requirement result.
-  const requirement_results = [];
-  const facts = [];
+  const requirement_results: RequirementResult[] = [];
+  const facts: AdmissibilityFact[] = [];
   /** @type {Object<string,number>} */
   const freshnessSec = {};
-  const revocationRequired = [];
-  const mandatoryTokens = [];
+  const revocationRequired: string[] = [];
+  const mandatoryTokens: string[] = [];
 
   for (const req of profile.requires) {
     const item = findItem(evidenceBundle, req.evidence);

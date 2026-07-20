@@ -18,7 +18,31 @@ import {
   buildGovGuardEvidencePacket,
 } from './govguard-evidence-packet.js';
 
-const BASE_ACTION = Object.freeze({
+// The natural (wide) shape of a GG-1 canonical action. Declaring BASE_ACTION
+// against this type (rather than leaving it to plain inference) keeps
+// Object.freeze() from narrowing every field down to its literal value —
+// without it, TS infers e.g. `bank_account: "hash:new-bank"` instead of
+// `bank_account: string`, and every test case below that spreads BASE_ACTION
+// with a different override value fails to type-check. It's a `type` alias
+// rather than an `interface` so it keeps the implicit index signature that
+// lets a plain object satisfy hashCanonicalAction's Record<string, unknown>
+// parameter — an `interface` reference doesn't get that same compatibility.
+type GuardActionRecord = {
+  organization_id: string;
+  actor_id: string;
+  action_type: string;
+  target_resource_id: string;
+  vendor_id: string;
+  amount: number;
+  currency: string;
+  bank_account: string;
+  routing_number: string;
+  target_changed_fields: string[];
+  policy_id: string;
+  policy_hash: string;
+};
+
+const BASE_ACTION: GuardActionRecord = Object.freeze({
   organization_id: 'org_gov',
   actor_id: 'caseworker_1',
   action_type: GUARD_ACTION_TYPES.GOV_VENDOR_PAYMENT_DESTINATION_CHANGE,
@@ -33,17 +57,35 @@ const BASE_ACTION = Object.freeze({
   policy_hash: 'sha256:policy',
 });
 
-/**
- * @param {{
- *   receipt_id?: string,
- *   organization_id?: string,
- *   initiator_id?: string,
- *   approver_id?: string,
- *   action?: Record<string, any>,
- *   signoff?: any,
- * }} [overrides]
- */
-function makeReceipt(overrides = {}) {
+interface MakeReceiptOverrides {
+  receipt_id?: string;
+  organization_id?: string;
+  initiator_id?: string;
+  approver_id?: string;
+  action?: Record<string, any>;
+  signoff?: any;
+}
+
+// evaluateGuardPolicy's real return shape, reused instead of re-declaring it
+// so the receipt type can never drift from what the policy engine returns.
+type GuardDecision = ReturnType<typeof evaluateGuardPolicy>;
+
+interface GuardReceipt {
+  receipt_id: string;
+  organization_id: string;
+  initiator_id: string;
+  approver_id: string;
+  action: GuardActionRecord;
+  action_hash: string;
+  decision: GuardDecision;
+  execution_binding: ReturnType<typeof buildExecutionBindingContract>;
+  // Left as `any`: the original JSDoc for this field was `signoff?: any`
+  // and callers (approve()) legitimately build ad hoc signoff shapes.
+  signoff: any;
+  consumed: boolean;
+}
+
+function makeReceipt(overrides: MakeReceiptOverrides = {}): GuardReceipt {
   const decision = evaluateGuardPolicy({
     organizationId: BASE_ACTION.organization_id,
     actorId: BASE_ACTION.actor_id,
@@ -70,16 +112,10 @@ function makeReceipt(overrides = {}) {
   };
 }
 
-/**
- * @param {{
- *   initiator_id?: string,
- *   approver_id?: string,
- *   decision: { requiredAssurance?: string, signoffRequired?: boolean },
- *   signoff?: any,
- * }} receipt
- * @param {{ authenticatedApproverId?: string, keyClass?: string }} [options]
- */
-function approve(receipt, { authenticatedApproverId, keyClass = 'A' } = {}) {
+function approve(
+  receipt: GuardReceipt,
+  { authenticatedApproverId, keyClass = 'A' }: { authenticatedApproverId?: string; keyClass?: string } = {},
+) {
   if (!receipt) return { ok: false, status: 404, reason: 'signoff_not_found' };
   if (authenticatedApproverId === receipt.initiator_id) {
     return { ok: false, status: 403, reason: 'self_approval_forbidden' };
@@ -94,26 +130,18 @@ function approve(receipt, { authenticatedApproverId, keyClass = 'A' } = {}) {
   return { ok: true, status: 200, reason: 'approved' };
 }
 
-/**
- * @param {{
- *   organization_id?: string,
- *   consumed?: boolean,
- *   decision: { signoffRequired?: boolean },
- *   signoff?: any,
- *   action_hash?: string,
- *   execution_binding?: any,
- * } | null} receipt
- * @param {{
- *   organizationId?: string,
- *   observedAction?: Record<string, any>,
- *   executedAction?: Record<string, any>,
- * }} [options]
- */
-function consume(receipt, {
-  organizationId = 'org_gov',
-  observedAction = BASE_ACTION,
-  executedAction = observedAction,
-} = {}) {
+function consume(
+  receipt: GuardReceipt | null,
+  {
+    organizationId = 'org_gov',
+    observedAction = BASE_ACTION,
+    executedAction = observedAction,
+  }: {
+    organizationId?: string;
+    observedAction?: Record<string, any>;
+    executedAction?: Record<string, any>;
+  } = {},
+) {
   if (!receipt) return { ok: false, status: 428, reason: 'missing_receipt' };
   if (receipt.organization_id !== organizationId) {
     return { ok: false, status: 403, reason: 'wrong_org' };
@@ -139,12 +167,18 @@ function consume(receipt, {
   return { ok: true, status: 200, reason: 'consumed' };
 }
 
-function pass(id, ok, observed) {
+interface GuardCheckResult {
+  id: string;
+  pass: boolean;
+  observed: unknown;
+}
+
+function pass(id: string, ok: boolean, observed: unknown): GuardCheckResult {
   return { id, pass: !!ok, observed };
 }
 
 export function runGovGuardGg1Reference() {
-  const checks = [];
+  const checks: GuardCheckResult[] = [];
 
   const missing = consume(null);
   checks.push(pass('missing_receipt_refused', !missing.ok && missing.status === 428, missing));

@@ -170,18 +170,58 @@ function inferKind(explicit, url) {
 // ── Redaction ─────────────────────────────────────────────────────────────────
 
 /**
+ * Minimal eye-advisory-v1 shape this module reads (docs/EMILIA-EYE-ADVISORY-SPEC.md
+ * §5). All fields optional here since notifyEyeAdvisory only guards `typeof
+ * advisory === 'object'` before use — malformed/partial advisories fail soft.
+ */
+interface EyeAdvisoryLike {
+  advisory_id?: string | null;
+  status?: string | null;
+  reason_codes?: string[];
+  recommended_policy_action?: string | null;
+  scope_binding_hash?: string | null;
+  advisory_hash?: string | null;
+  evidence_refs?: string[];
+  issued_at?: string | null;
+  expires_at?: string | null;
+  version?: string | null;
+  action_type?: string | null;
+  subject_ref?: string | null;
+  actor_ref?: string | null;
+  target_ref?: string | null;
+  issuer_ref?: string | null;
+}
+
+/** Redacted, privacy-safe view of an advisory (the shape sent on the wire). */
+interface AdvisoryView {
+  advisory_id: string | null;
+  status: string | null;
+  reason_codes: string[];
+  recommended_policy_action: string | null;
+  scope_binding_hash: string | null;
+  advisory_hash: string | null;
+  evidence_count: number;
+  issued_at: string | null;
+  expires_at: string | null;
+  version: string | null;
+  action_type: string | null;
+  refs?: {
+    subject: string | null;
+    actor: string | null;
+    target: string | null;
+    issuer: string | null;
+  };
+}
+
+/**
  * Build the privacy-safe view of an advisory. Raw scope identifiers and action
  * parameters never appear. Only re-derivable / non-attributable facts survive.
- *
- * @param {object} advisory
- * @param {{revealRefs:boolean}} opts
- * @returns {object} redacted advisory view
  */
-function redactAdvisory(advisory, opts) {
+function redactAdvisory(advisory: EyeAdvisoryLike, opts: { revealRefs: boolean }): AdvisoryView {
   const evidenceRefs = Array.isArray(advisory.evidence_refs) ? advisory.evidence_refs : [];
   const reasonCodes = Array.isArray(advisory.reason_codes) ? advisory.reason_codes : [];
 
-  const view = {
+  const view: AdvisoryView = {
     advisory_id: advisory.advisory_id ?? null,
     status: advisory.status ?? null,
     reason_codes: reasonCodes,
@@ -247,15 +287,15 @@ const ADVISORY_DISCLAIMER =
   'Eye advisory — informational only. This does not block or authorize the action; ' +
   'the Enforcement Point and signoff decide. Not a trust score.';
 
-function headline(view, isShadow) {
+function headline(view: AdvisoryView, isShadow: boolean): string {
   const meta = statusMeta(view.status);
   const mode = isShadow ? ' (shadow / observe-mode)' : '';
   const action = view.action_type ? ` on \`${view.action_type}\`` : '';
   return `${meta.emoji} Eye advisory: *${meta.label}*${mode}${action}`;
 }
 
-function detailLines(view) {
-  const lines = [];
+function detailLines(view: AdvisoryView): string[] {
+  const lines: string[] = [];
   if (view.reason_codes.length) lines.push(`*Reason codes:* ${view.reason_codes.join(', ')}`);
   if (view.recommended_policy_action) {
     lines.push(`*Recommended posture:* ${view.recommended_policy_action} (tighten-only; never a gate)`);
@@ -277,10 +317,8 @@ function detailLines(view) {
 
 /**
  * Slack incoming-webhook payload (Block Kit + attachment color rail).
- * @param {object} view  redacted advisory view
- * @param {boolean} isShadow
  */
-function formatSlack(view, isShadow) {
+function formatSlack(view: AdvisoryView, isShadow: boolean) {
   const meta = statusMeta(view.status);
   const body = detailLines(view).join('\n');
   return {
@@ -306,10 +344,8 @@ function formatSlack(view, isShadow) {
 /**
  * Discord webhook payload (rich embed). Discord mrkdwn differs slightly; we send
  * plain markdown which renders acceptably.
- * @param {object} view
- * @param {boolean} isShadow
  */
-function formatDiscord(view, isShadow) {
+function formatDiscord(view: AdvisoryView, isShadow: boolean) {
   const meta = statusMeta(view.status);
   const fields = detailLines(view).map((line) => {
     const idx = line.indexOf(':*');
@@ -344,10 +380,8 @@ function discordPlain(text) {
 /**
  * Microsoft Teams payload (MessageCard / connector card — broadly compatible
  * with both classic Office 365 connectors and Workflows incoming webhooks).
- * @param {object} view
- * @param {boolean} isShadow
  */
-function formatTeams(view, isShadow) {
+function formatTeams(view: AdvisoryView, isShadow: boolean) {
   const meta = statusMeta(view.status);
   const facts = detailLines(view).map((line) => {
     const idx = line.indexOf(':*');
@@ -389,12 +423,14 @@ const FORMATTERS = Object.freeze({
  * Exported for testing and for callers that want to deliver via their own
  * transport.
  *
- * @param {object} view  redacted advisory view (from redactAdvisory)
- * @param {'slack'|'discord'|'teams'} kind
- * @param {boolean} isShadow
- * @returns {object} platform payload
+ * @param view  redacted advisory view (from redactAdvisory)
+ * @returns platform payload
  */
-export function buildWebhookPayload(view, kind, isShadow = false) {
+export function buildWebhookPayload(
+  view: AdvisoryView,
+  kind: 'slack' | 'discord' | 'teams',
+  isShadow = false,
+) {
   const fmt = FORMATTERS[kind] || formatSlack;
   return fmt(view, isShadow);
 }
@@ -404,13 +440,13 @@ export function buildWebhookPayload(view, kind, isShadow = false) {
 /**
  * Decide whether an advisory should produce a notification under the given
  * config. Never fires on 'clear'. Shadow advisories fire only when opted in.
- * @param {object} advisory
- * @param {{minRank:number, shadow:boolean}} cfg
- * @param {{isShadow?:boolean}} meta
- * @returns {boolean}
  */
-function shouldNotify(advisory, cfg, meta) {
-  const rank = STATUS_RANK[advisory?.status] ?? 0;
+function shouldNotify(
+  advisory: EyeAdvisoryLike | null | undefined,
+  cfg: { minRank: number; shadow: boolean },
+  meta: { isShadow?: boolean } | null | undefined,
+): boolean {
+  const rank = STATUS_RANK[advisory?.status ?? ''] ?? 0;
   if (rank <= 0) return false; // 'clear' or unknown — never notify
   if (rank < cfg.minRank) return false;
   if (meta?.isShadow && !cfg.shadow) return false;
@@ -426,12 +462,14 @@ function shouldNotify(advisory, cfg, meta) {
  * delivery was attempted and its outcome. The caller (advisory-emit hook) should
  * NOT await-block the advisory path on this; fire-and-forget is fine.
  *
- * @param {object} advisory  The issued advisory (eye-advisory-v1 shape).
- * @param {object} [meta]    Optional metadata.
- * @param {boolean} [meta.isShadow=false]  Whether this is a shadow/observe-mode advisory.
+ * @param advisory  The issued advisory (eye-advisory-v1 shape).
+ * @param meta      Optional metadata. `isShadow` marks a shadow/observe-mode advisory.
  * @returns {Promise<{notified:boolean, skipped?:string, kind?:string, status?:number, detail?:string}>}
  */
-export async function notifyEyeAdvisory(advisory, meta = {}) {
+export async function notifyEyeAdvisory(
+  advisory: EyeAdvisoryLike | null | undefined,
+  meta: { isShadow?: boolean } = {},
+) {
   try {
     const cfg = readConfig();
 
