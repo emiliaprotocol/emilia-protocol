@@ -1,0 +1,188 @@
+{
+  "@type": "EP-RELIANCE-PROFILE-v1",
+  "required_assurance": "class_a",
+  "required_authority": true,
+  "max_revocation_staleness_sec": 900,
+  "accepted_registry_keys": [],
+  "accepted_issuer_keys": [],
+  "accepted_policy_hashes": [],
+  "required_evidence": [
+    "receipt",
+    "class_a_or_quorum",
+    "authority_proof",
+    "revocation_freshness",
+    "consumption_proof"
+  ],
+  "x_emilia_program_integrity": {
+    "profile_id": "medi-cal.hospice-integrity.v1",
+    "status": "candidate reference profile",
+    "flow": "Medi-Cal hospice authorization and claim-payment integrity",
+    "standards_and_endorsement": "Not a DHCS, CMS, Medi-Cal, or regulatory standard or endorsement.",
+    "privacy": {
+      "reference_artifact": "PHI-free and synthetic",
+      "member_identifier": "Pairwise pseudonymous member_ref only; never a name, date of birth, SSN, CIN, BIC, or raw Medi-Cal identifier.",
+      "source_records": "Authorization forms, clinical records, and payment instructions remain in the deploying organization's controlled systems. The action carries only commitments and minimum routing metadata.",
+      "deployment_warning": "Pseudonymous references and service dates can remain regulated data in a live deployment. This profile does not determine HIPAA, CMIA, or other legal status."
+    },
+    "action_control_manifest": {
+      "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
+      "$schema": "https://www.emiliaprotocol.ai/docs/schemas/agent-action-control-manifest-v0.2.schema.json",
+      "profile": "emilia.action-control",
+      "service": {
+        "name": "Medi-Cal hospice program-integrity reference control",
+        "issuer": "deployment-pinned",
+        "manifest_url": "deployment-pinned"
+      },
+      "defaults": {
+        "decision_point": "pre_effect_commit",
+        "missing_receipt": "refuse",
+        "invalid_receipt": "refuse",
+        "stale_receipt": "refuse",
+        "replay": "one_time_consumption",
+        "evidence_log": "strict"
+      },
+      "evidence_profiles": {
+        "authorization_receipt": "EP-RECEIPT-v1",
+        "execution_attestation": "EP-OUTCOME-ATTESTATION-v1",
+        "reliance_packet": "EP-RELIANCE-PACKET-v1",
+        "transparency": "SCITT-compatible Signed Statement"
+      },
+      "actions": [
+        {
+          "id": "health.medi_cal.hospice_claim_payment",
+          "label": "Authorize and commit a Medi-Cal hospice claim payment",
+          "action_type": "health.medi_cal.hospice_claim_payment",
+          "risk": "critical",
+          "receipt_required": true,
+          "assurance_class": "class_a",
+          "max_age_sec": 300,
+          "match": {
+            "protocol": "emilia",
+            "operation": "health.medi_cal.hospice_claim_payment"
+          },
+          "why": "The payment consequence must be bound to the exact provider, member reference, service period, authorization evidence, amount, destination, reviewer authority, and policy the relying party accepted.",
+          "control": {
+            "enforcement_point": "pre_effect_commit",
+            "status": 428,
+            "challenge_header": "Receipt-Required",
+            "proof_header": "X-EMILIA-Receipt",
+            "authorization_receipt": {
+              "required": true,
+              "profile": "EP-RECEIPT-v1",
+              "signature": "Ed25519 over RFC 8785 canonical JSON",
+              "verifier": "offline"
+            },
+            "replay": {
+              "mode": "one_time_consumption",
+              "receipt_id_required": true
+            },
+            "execution_binding": {
+              "required": true,
+              "source": "system_of_record",
+              "required_fields": [
+                "caid",
+                "action_type",
+                "provider_npi",
+                "member_ref",
+                "service_period_start",
+                "service_period_end",
+                "authorization_form_digest",
+                "amount",
+                "currency",
+                "payment_destination_digest",
+                "reviewer_id",
+                "authority_proof_digest",
+                "policy_id",
+                "policy_version",
+                "policy_hash"
+              ]
+            },
+            "transparency": {
+              "mode": "registerable",
+              "profile": "SCITT Signed Statement",
+              "required": false
+            },
+            "evidence_output": {
+              "audit_event": true,
+              "execution_attestation": true,
+              "reliance_packet": true,
+              "blocked_attempts": true
+            }
+          },
+          "conformance": {
+            "level": "EG-1",
+            "checks": [
+              "missing_receipt_refused",
+              "software_on_classA_refused",
+              "execution_drift_refused",
+              "valid_classA_runs",
+              "replay_refused",
+              "tampered_refused",
+              "execution_proof_binds",
+              "reliance_packet_rely"
+            ]
+          }
+        }
+      ]
+    },
+    "field_contract": {
+      "caid": "Canonical Action Identifier for the exact action under the pinned profile and canonicalization rules.",
+      "action_type": "Exactly health.medi_cal.hospice_claim_payment.",
+      "provider_npi": "Ten-digit National Provider Identifier represented as a string and resolved against deployment-pinned provider standing evidence.",
+      "member_ref": "Relying-party-scoped pairwise pseudonymous reference; not a raw beneficiary identifier and not reusable across relying parties.",
+      "service_period_start": "Inclusive service-period start as YYYY-MM-DD.",
+      "service_period_end": "Inclusive service-period end as YYYY-MM-DD; must not precede service_period_start.",
+      "authorization_form_digest": "sha256 commitment to the exact authorization-form artifact retained by the relying party.",
+      "amount": "Canonical non-negative decimal string for the claim-payment amount; no binary floating point.",
+      "currency": "Exactly USD for this reference profile.",
+      "payment_destination_digest": "Domain-separated keyed SHA-256 commitment to the destination resolved from the system of record; no account or routing number.",
+      "reviewer_id": "Directory-anchored identifier of the named reviewer who performed the Class-A ceremony.",
+      "authority_proof_digest": "sha256 commitment to the accepted EP-AUTHORITY-PROOF-v1 bound to reviewer_id, organization, scope, amount, policy, validity, and revocation state.",
+      "policy_id": "Deployment-pinned policy identifier.",
+      "policy_version": "Positive integer version of the policy evaluated for this action.",
+      "policy_hash": "sha256 digest of the exact policy body accepted by the relying party."
+    },
+    "capability_and_consumption": {
+      "scope_profile": "urn:emilia:scope:caid-set-v1",
+      "scope_member": "caid",
+      "single_use": true,
+      "maximum_uses": 1,
+      "budget_amount_field": "amount",
+      "budget_currency_field": "currency",
+      "expires_no_later_than": "The earliest of the receipt expiry, authority expiry, policy expiry, or five minutes after the Class-A decision.",
+      "reservation_rule": "Reserve the exact amount for this CAID before invoking the payment executor.",
+      "consumption_rule": "Commit the reservation once after the executor is invoked. A consumed or indeterminate operation is never automatically refunded or replayed."
+    },
+    "outcome_and_reconciliation": {
+      "required_after_executor_invocation": true,
+      "normal_evidence_profile": "EP-OUTCOME-ATTESTATION-v1",
+      "normal_evidence_binding": [
+        "receipt_id",
+        "receipt_digest",
+        "action_hash",
+        "consumption_nonce",
+        "execution_id",
+        "executor_id",
+        "executed_at",
+        "observed_effects_digest",
+        "proof"
+      ],
+      "timeout_or_lost_response": "Record the capability operation as committed with outcome indeterminate.",
+      "retry_after_indeterminate": "refuse",
+      "reconciliation_required_for_indeterminate": true,
+      "reconciliation_authentication": "Verify provider or payment-executor evidence under a relying-party-pinned key and require the same operation_id, CAID/action digest, amount, currency, destination commitment, and provider transaction reference commitment.",
+      "reconciliation_record": "Append a digest-bound reconciliation record. Never rewrite the original consumed indeterminate operation.",
+      "malformed_unpinned_mismatched_or_replayed_evidence": "refuse"
+    },
+    "failure_semantics": {
+      "missing_or_malformed_required_field": "refuse before execution",
+      "action_binding_mismatch": "refuse before execution",
+      "missing_invalid_untrusted_or_out_of_scope_authority": "refuse before execution",
+      "stale_or_revoked_authority": "refuse before execution",
+      "expired_receipt_capability_or_policy": "refuse before execution",
+      "already_consumed_or_reserved_for_another_operation": "refuse",
+      "executor_timeout_or_lost_response": "commit indeterminate; refuse blind replay; require authenticated reconciliation",
+      "unavailable_state_or_verifier_dependency": "refuse or remain indeterminate; never infer success"
+    }
+  }
+}
