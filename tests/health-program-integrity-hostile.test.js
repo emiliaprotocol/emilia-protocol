@@ -420,6 +420,48 @@ describe('Health Program Integrity hostile contract', () => {
     expectRefusal(result, 'prohibited_phi');
   });
 
+  it('refuses prohibited PHI carried in authorization before authority resolution', async () => {
+    const harness = makeHarness();
+    const prepared = await harness.engine.prepare({ action: clone(ACTION) });
+    const result = await harness.engine.precheck({
+      action: clone(ACTION),
+      authorization: makeAuthorization(prepared.action_caid, {
+        clinical_note: 'raw clinical narrative',
+      }),
+    });
+
+    expectRefusal(result, 'prohibited_phi');
+    expect(harness.resolveReviewerAuthority).not.toHaveBeenCalled();
+    expect(harness.submit).not.toHaveBeenCalled();
+  });
+
+  it('refuses prohibited PHI in provider evidence before signature verification', async () => {
+    const harness = makeHarness({
+      providerResult: {
+        status: 'indeterminate',
+        dispatch_confirmed: true,
+        provider_request_id: 'provider-request-phi',
+      },
+    });
+    const { ready } = await prepareReady(harness);
+    const unknown = await harness.engine.execute({
+      operation_id: ready.operation_id,
+      action: clone(ACTION),
+    });
+    harness.verifyProviderEvidence.mockClear();
+
+    const result = await harness.engine.reconcile({
+      operation_id: ready.operation_id,
+      evidence: makeProviderEvidence(unknown, {
+        authorization_form: 'raw authorization form',
+      }),
+    });
+
+    expectRefusal(result, 'prohibited_phi');
+    expect(result.previous_decision).toBe('INDETERMINATE');
+    expect(harness.verifyProviderEvidence).not.toHaveBeenCalled();
+  });
+
   it('exports a minimal unambiguous packet without raw PHI', async () => {
     const harness = makeHarness();
     const { ready } = await prepareReady(harness);

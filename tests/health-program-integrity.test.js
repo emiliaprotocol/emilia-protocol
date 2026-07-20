@@ -22,13 +22,27 @@ function expectBlockedFor(mutator) {
 }
 
 describe('synthetic Medi-Cal hospice program integrity', () => {
-  it('exports exactly the stable collaborator interfaces', async () => {
+  it('exports the stable collaborator and stateful engine interfaces', async () => {
     const module = await import('../lib/health/program-integrity.js');
-    expect(Object.keys(module).sort()).toEqual([
+    expect(Object.keys(module)).toEqual(expect.arrayContaining([
+      'createProgramIntegrityEngine',
       'createSyntheticHospiceScenario',
       'evaluateHospiceProgramIntegrity',
       'reconcileHospiceProgramIntegrity',
-    ]);
+      'verifyProgramIntegrityEvidencePacket',
+    ]));
+  });
+
+  it.each([
+    'health.medi_cal.hospice_claim_payment.1',
+    'health.medi-cal.hospice-claim-payment',
+  ])('rejects unsupported action type %s', (actionType) => {
+    const scenario = createSyntheticHospiceScenario({ action_type: actionType });
+    const result = evaluateHospiceProgramIntegrity(scenario);
+    expect(result).toMatchObject({
+      decision: 'blocked',
+      reason_codes: expect.arrayContaining(['unsupported_action_type']),
+    });
   });
 
   it('creates deterministic PHI-free input and approves the exact synthetic action', () => {
