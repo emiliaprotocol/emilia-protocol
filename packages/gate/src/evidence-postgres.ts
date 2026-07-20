@@ -16,7 +16,7 @@
 import {
   canonicalEvidenceJson,
   verifyEvidenceRecord,
-} from '../evidence.js';
+} from './evidence.js';
 
 export const PG_EVIDENCE_VERSION = 'EP-GATE-PG-EVIDENCE-v1';
 export const EVIDENCE_SCHEMA = 'emilia_gate_evidence';

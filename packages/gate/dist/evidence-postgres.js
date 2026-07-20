@@ -13,7 +13,7 @@
  * write path. A storage outage must never be mistaken for a successful append
  * or an ordinary contention retry.
  */
-import { canonicalEvidenceJson, verifyEvidenceRecord, } from '../evidence.js';
+import { canonicalEvidenceJson, verifyEvidenceRecord, } from './evidence.js';
 export const PG_EVIDENCE_VERSION = 'EP-GATE-PG-EVIDENCE-v1';
 export const EVIDENCE_SCHEMA = 'emilia_gate_evidence';
 export const EVIDENCE_RECORDS_TABLE = `${EVIDENCE_SCHEMA}.records`;

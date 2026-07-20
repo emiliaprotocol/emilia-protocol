@@ -36,7 +36,28 @@ export declare function createRelianceKernel({ profile, log, strictEvidence, }?:
         } | null;
         decision: any;
     }>;
-    evidence: any;
+    evidence: {
+        durable: boolean;
+        persisted: boolean;
+        strict: boolean;
+        forkAware: boolean;
+        atomicAppend: boolean;
+        record(entry: any): Promise<any>;
+        all(): Record<string, any>[];
+        verify(): {
+            ok: boolean;
+            at: any;
+            reason: string;
+            length?: undefined;
+            head?: undefined;
+        } | {
+            ok: boolean;
+            length: number;
+            head: string | null;
+            at?: undefined;
+            reason?: undefined;
+        };
+    } | Obj;
 };
 declare const relianceKernelApi: {
     createRelianceKernel: typeof createRelianceKernel;

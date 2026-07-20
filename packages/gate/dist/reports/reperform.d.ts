@@ -64,7 +64,7 @@ export declare function reperformEvidence(entries?: any[], { issuerKeys, approve
         reason?: string | undefined;
         ok: boolean;
         entries: number;
-        head: any;
+        head: string | null;
     };
     receipts: {
         reverified: number;

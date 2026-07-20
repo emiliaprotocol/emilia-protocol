@@ -14,7 +14,7 @@
  * or a strict evidence-log failure denies. The kernel never re-derives a verdict
  * of its own — it enforces the one the pure offline verifier computed.
  */
-import { createEvidenceLog } from '../evidence.js';
+import { createEvidenceLog } from './evidence.js';
 import {
   evaluateReliance,
   RELIANCE_PROFILE_VERSION,

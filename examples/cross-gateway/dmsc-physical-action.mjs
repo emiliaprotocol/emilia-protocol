@@ -513,10 +513,10 @@ export async function runCrossGatewayDemo({ print = false } = {}) {
   const memory = createMemoryBackend();
   const unavailableChallengeBackend = {
     durable: false,
-    addIfAbsent: (...args) => memory.addIfAbsent(...args),
+    addIfAbsent: (key, value) => memory.addIfAbsent(key, value),
     compareAndSet: async () => { throw new Error('simulated challenge-store outage'); },
-    deleteIfValue: (...args) => memory.deleteIfValue(...args),
-    has: (...args) => memory.has(...args),
+    deleteIfValue: (key, expected) => memory.deleteIfValue(key, expected),
+    has: (key) => memory.has(key),
   };
   const unavailableGateway = createReceivingGateway({
     verification: authority.verification,

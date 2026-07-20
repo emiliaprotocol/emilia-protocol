@@ -7,8 +7,8 @@
  * action bytes, a mandatory human-assurance floor, atomic one-time reservation,
  * tamper-evident decision records, and conservative crash semantics.
  */
-import { createEvidenceLog, verifyEvidenceRecord } from '../evidence.js';
-import { MemoryConsumptionStore } from '../store.js';
+import { createEvidenceLog, verifyEvidenceRecord } from './evidence.js';
+import { MemoryConsumptionStore } from './store.js';
 import { verifyAuthorizationChain } from '@emilia-protocol/verify/evidence-chain';
 
 type Obj = Record<string, any>;

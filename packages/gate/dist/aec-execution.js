@@ -8,8 +8,8 @@
  * action bytes, a mandatory human-assurance floor, atomic one-time reservation,
  * tamper-evident decision records, and conservative crash semantics.
  */
-import { createEvidenceLog, verifyEvidenceRecord } from '../evidence.js';
-import { MemoryConsumptionStore } from '../store.js';
+import { createEvidenceLog, verifyEvidenceRecord } from './evidence.js';
+import { MemoryConsumptionStore } from './store.js';
 import { verifyAuthorizationChain } from '@emilia-protocol/verify/evidence-chain';
 const HUMAN_FLOORS = new Set(['class_a', 'quorum', 'class_a_or_quorum']);
 const HEX_256 = /^[0-9a-f]{64}$/;

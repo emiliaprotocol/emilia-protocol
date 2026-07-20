@@ -43,8 +43,8 @@
 import crypto from 'node:crypto';
 import { strictJsonGate } from './strict-json.js';
 import { canonicalize as canonical } from './execution-binding.js';
-import { verifyEvidenceRecord } from '../evidence.js';
-import { isSecureConsumptionStore } from '../store.js';
+import { verifyEvidenceRecord } from './evidence.js';
+import { isSecureConsumptionStore } from './store.js';
 
 export const BREAKGLASS_VERSION = 'EP-GATE-BREAKGLASS-v1';
 export const BREAKGLASS_EVIDENCE_KIND = 'breakglass';

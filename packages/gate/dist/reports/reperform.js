@@ -38,7 +38,7 @@
  * injectable `now` (generated_at). No sampling, no randomness.
  */
 import crypto from 'node:crypto';
-import { createEvidenceLog } from '../../evidence.js';
+import { createEvidenceLog } from '../evidence.js';
 import { validatePinnedQuorumPolicy, verifyEmiliaReceipt } from '@emilia-protocol/require-receipt';
 import { verifyQuorum, verifyWebAuthnSignoff } from '@emilia-protocol/verify';
 export const REPERFORMANCE_VERSION = 'EP-GATE-REPERFORMANCE-v1';

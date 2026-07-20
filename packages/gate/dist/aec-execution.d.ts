@@ -1,3 +1,4 @@
+import { MemoryConsumptionStore } from './store.js';
 type Obj = Record<string, any>;
 type ConsumptionStore = {
     durable?: boolean;
@@ -15,7 +16,7 @@ type ExecutionEvidenceLog = {
     record?: (entry: Obj) => Promise<Obj> | Obj;
 };
 declare function deepFreeze(value: any): any;
-declare function validLogRecord(record: any, atomicRequired: any, expectedEntry: any): any;
+declare function validLogRecord(record: any, atomicRequired: any, expectedEntry: any): boolean;
 declare function validComponent(result: any, type: any): any;
 declare function humanFloorSatisfied(result: any, floor: any): any;
 declare function evidenceSatisfied(result: any): boolean;
@@ -66,8 +67,29 @@ export declare function createAECExecutionGate({ requirement, policiesByType, ve
         execution: any;
         reason?: undefined;
     }>;
-    evidence: any;
-    store: any;
+    evidence: {
+        durable: boolean;
+        persisted: boolean;
+        strict: boolean;
+        forkAware: boolean;
+        atomicAppend: boolean;
+        record(entry: any): Promise<any>;
+        all(): Record<string, any>[];
+        verify(): {
+            ok: boolean;
+            at: any;
+            reason: string;
+            length?: undefined;
+            head?: undefined;
+        } | {
+            ok: boolean;
+            length: number;
+            head: string | null;
+            at?: undefined;
+            reason?: undefined;
+        };
+    } | ExecutionEvidenceLog;
+    store: MemoryConsumptionStore | ConsumptionStore;
 };
 export declare const __aecExecutionSecurityInternals: Readonly<{
     deepFreeze: typeof deepFreeze;

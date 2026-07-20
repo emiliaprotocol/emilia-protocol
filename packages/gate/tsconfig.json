@@ -68,6 +68,10 @@
     "src/adapters/aws.ts",
     "src/adapters/supabase.ts",
     "src/adapters/stripe.ts",
-    "src/adapters/github.ts"
+    "src/adapters/github.ts",
+    "src/metrics.ts",
+    "src/evidence.ts",
+    "src/store.ts",
+    "src/mcp.ts"
   ]
 }
