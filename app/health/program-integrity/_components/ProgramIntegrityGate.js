@@ -458,6 +458,28 @@ export default function ProgramIntegrityGate() {
           independently reviewable before a consequential action executes.
         </p>
       </section>
+
+      <section className={styles.nextSteps} aria-labelledby="program-integrity-next-step">
+        <div>
+          <div className={styles.eyebrow}>Practical next step</div>
+          <h2 id="program-integrity-next-step">Test one protected workflow for 60 days.</h2>
+          <p>
+            Start in observe mode beside the existing program-integrity and payment stack.
+            Exercise valid, missing, mismatched, replayed, revoked, and indeterminate cases,
+            then give the portable packet to a separate authorized reviewer.
+          </p>
+          <a href="/pilot?v=gov" className={styles.pilotAction}>
+            Scope an observe-mode pilot
+            <ArrowRight aria-hidden="true" size={16} />
+          </a>
+        </div>
+        <nav className={styles.relatedLinks} aria-label="Related EMILIA control surfaces">
+          <a href="/gate"><span>Gate</span><small>Pre-effect enforcement</small></a>
+          <a href="/assurance"><span>Assurance</span><small>Independent re-performance</small></a>
+          <a href="/action-escrow"><span>Action Escrow</span><small>Irreversible payment consequence</small></a>
+          <a href="/grace"><span>GRACE</span><small>Physical-system outcome evidence</small></a>
+        </nav>
+      </section>
     </main>
   );
 }
