@@ -61,6 +61,15 @@ function directTableRevoke(statements, table, roles) {
     && containsRoles(statement, 'FROM', roles));
 }
 
+function directTableWriteRevoke(statements, table, roles) {
+  return statements.some((statement) => /^REVOKE\b/i.test(statement)
+    && /\bON\s+(?:TABLE\s+)?/i.test(statement)
+    && hasTableReference(statement, table)
+    && ['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']
+      .every((privilege) => new RegExp(`\\b${privilege}\\b`, 'i').test(statement))
+    && containsRoles(statement, 'FROM', roles));
+}
+
 function directSensitiveColumnRevoke(statements, table, column) {
   return statements.some((statement) => /^REVOKE\b/i.test(statement)
     && hasTableReference(statement, table)
@@ -192,6 +201,14 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
   for (const table of schemaContract.tableGrantsNoServiceRoleDirect || []) {
     check(`direct service_role table ACL revoked: ${table}`, () => directTableRevoke(
       invariantStatements, table, ['service_role'],
+    ));
+  }
+  for (const table of schemaContract.tableWriteGrantsNoServiceRole || []) {
+    check(`direct service_role table writes revoked: ${table}`, () => directTableWriteRevoke(
+      // RPC-only mutation boundaries may be introduced by a feature migration
+      // before the next fortress reconciliation. The revocation is still an
+      // auditable invariant even when it lives in that defining migration.
+      statements, table, ['service_role'],
     ));
   }
 

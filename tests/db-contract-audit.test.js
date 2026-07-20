@@ -62,6 +62,21 @@ describe('live schema-security contract evaluator', () => {
     expect(result.failures.some((failure) => failure.includes('PUBLIC TABLE GRANT on release_locks'))).toBe(true);
   });
 
+  it('rejects direct service-role writes on an RPC-only mutation table', () => {
+    const snapshot = cleanSnapshot();
+    snapshot.table_grants.push({
+      t: 'policy_rollouts',
+      grantee: 'service_role',
+      privilege: 'UPDATE',
+    });
+
+    const result = evaluateContract(snapshot);
+
+    expect(result.failures.some(
+      (failure) => failure.includes('DIRECT SERVICE-ROLE WRITE GRANT on policy_rollouts'),
+    )).toBe(true);
+  });
+
   it('rejects a public grant on a sensitive column', () => {
     const snapshot = cleanSnapshot();
     snapshot.column_grants.push({
