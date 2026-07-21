@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REGISTRY = path.join(ROOT, 'admissibility', 'registry.json');
 const VECTOR = path.join(ROOT, 'conformance', 'vectors', 'authority.v1.json');
-const TEST = path.join(ROOT, 'tests', 'authority-registry.test.js');
+const TEST = path.join(ROOT, 'tests', 'authority-registry.test.ts');
 const CLAIM_ID = 'scoped-human-authority-valid-at-authorization';
 // Phrases that assert authority is actually ENFORCED / scoped. Matched
 // case-insensitively as whole phrases. Deliberately narrow: these are the
@@ -99,7 +99,7 @@ function backingStatus() {
         problems.push('conformance/vectors/authority.v1.json has no refusal case (expect.valid === false)');
     // 3. Tests exist.
     if (!fs.existsSync(TEST))
-        problems.push('tests/authority-registry.test.js is missing');
+        problems.push('tests/authority-registry.test.ts is missing');
     return { ok: problems.length === 0, problems, refusals };
 }
 function scanClaims() {

@@ -51,7 +51,7 @@ let policyCount: number = 0;
 if (pm) { const b = scoringSrc.substring(scoringSrc.indexOf(pm[0]), scoringSrc.indexOf('};', scoringSrc.indexOf(pm[0])) + 2); policyCount = (b.match(/^  \w+:/gm) || []).length; }
 
 const pkg: Record<string, any> = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-const pvSrc: string = readFileSync(join(root, 'lib/protocol-version.js'), 'utf8');
+const pvSrc: string = readFileSync(join(root, 'lib/protocol-version.ts'), 'utf8');
 const sm: RegExpMatchArray | null = pvSrc.match(/spec_version:\s*'([^']+)'/);
 
 interface Metrics {

@@ -55,7 +55,7 @@ if (pm) {
     policyCount = (b.match(/^  \w+:/gm) || []).length;
 }
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-const pvSrc = readFileSync(join(root, 'lib/protocol-version.js'), 'utf8');
+const pvSrc = readFileSync(join(root, 'lib/protocol-version.ts'), 'utf8');
 const sm = pvSrc.match(/spec_version:\s*'([^']+)'/);
 const metrics = {
     automated_checks: totalChecks,
