@@ -45,7 +45,7 @@ node conformance/run.mjs
 EP-RECEIPT-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-SIGNOFF-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-RESOLUTION-v1                — 33 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-QUORUM-v1                    — 15 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-QUORUM-v1                    — 16 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-REVOCATION-v1               — 19 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-OUTCOME-BINDING-v1 semantic — 35 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-OUTCOME-BINDING-v1 real-crypto — 10 vectors JavaScript ✓   Python ✓   Go ✓
@@ -64,7 +64,7 @@ EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 328 vectors · 21 suites — JavaScript, Python, and Go verifiers agree.
+✅ 329 vectors · 21 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations.)
 ```

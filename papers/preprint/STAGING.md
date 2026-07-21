@@ -78,7 +78,7 @@ DOI. Other options if ever needed: TechRxiv (IEEE), HAL, OSF Preprints.
 
 ## Numbers all trace to repo artifacts (no invented figures)
 
-- Conformance 21 suites / 328 vectors → `conformance/conformance-manifest.json`.
+- Conformance 21 suites / 329 vectors → `conformance/conformance-manifest.json`.
 - Current cited drafts → `standards/STATUS.json`: Authorization Receipts -07,
   Quorum -03, Authorization Evidence Chain -03, Evidence Record -01.
 - Tamarin core/quorum/composed lemma blocks → `formal/PROOF_STATUS.md` (verbatim);

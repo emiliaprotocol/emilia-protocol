@@ -372,7 +372,7 @@ We now argue the five properties from Section 1. For each: the property as the
 handshake model provides it, why signature-unit schemes lose it, and the
 attack that exists when it is absent. Each property is pinned by named
 adversarial conformance vectors from the EP-QUORUM-v1 suite
-(`conformance/vectors/quorum.v1.json`, thirteen vectors), which the JavaScript,
+(`conformance/vectors/quorum.v1.json`, sixteen vectors), which the JavaScript,
 Python, and Go reference verifiers are required to agree on; those are
 cross-language reference verifiers, one team's ports serving as a consistency
 check, not clean-room independent implementations (Section 9).
@@ -731,7 +731,7 @@ Protocol repository (site: https://www.emiliaprotocol.ai).
 - **Composition predicate and admission rule:** `packages/verify/quorum.js`
   (`verifyQuorum`) and `lib/signoff/quorum-session.js` (`canAccept`,
   `quorumGate`).
-- **Conformance vectors:** `conformance/vectors/quorum.v1.json`, the thirteen
+- **Conformance vectors:** `conformance/vectors/quorum.v1.json`, the sixteen
   EP-QUORUM-v1 vectors named in Section 4, each carrying real ES256 WebAuthn
   assertions. The JavaScript, Python, and Go reference verifiers
   (`packages/verify`, `packages/python-verify`, `packages/go-verify`) are

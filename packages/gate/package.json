@@ -64,6 +64,9 @@
     "./formal-runtime-map": "./formal-runtime-map.js",
     "./capability-receipt": "./capability-receipt.js",
     "./receipt-program": "./receipt-program.js",
+    "./trust-program": "./trust-program.js",
+    "./trust-program-adapters": "./trust-program-adapters.js",
+    "./trust-program-postgres": "./trust-program-postgres.js",
     "./zk-range-proof": "./zk-range-proof.js"
   },
   "bin": {
@@ -97,6 +100,9 @@
     "formal-runtime-map.js",
     "capability-receipt.js",
     "receipt-program.js",
+    "trust-program.js",
+    "trust-program-adapters.js",
+    "trust-program-postgres.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",

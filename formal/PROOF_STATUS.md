@@ -157,6 +157,32 @@ for the composed claim and exact bounds.
 
 ---
 
+## TLA+ — `ep_trust_program.tla`
+
+**Model checker:** TLC, pinned CI toolchain in [`.github/workflows/tlc.yml`](../.github/workflows/tlc.yml)
+**Verified bounded parameters:** four-stage diamond DAG; seven requirement seats; six globally one-use evidence identifiers; two competing execution owners; `MaxRevision = 10`
+**Result:** 1,749,619 states generated, 117,314 distinct states, depth 10 — **no error found** across the configured invariants and temporal properties
+**Non-vacuity:** all 11 reachability witnesses in `ep_trust_program_witness.tla` produced the expected counterexample traces
+
+The model checks the orchestration boundary implemented by the Gate Trust Program
+Profile: exact predecessor gating, all/any/2-of-3 stage satisfaction, zero authority
+from a partial threshold, globally one-use evidence, compare-and-swap revisions, one
+execution owner, the indeterminate no-retry fence, authenticated reconciliation,
+invalidation of in-flight programs, and no resurrection of terminal authority.
+
+The proof is intentionally bounded. It does **not** prove WebAuthn, Ed25519, CAID,
+AEC, PostgreSQL, KMS/HSM, provider, escrow, or network correctness. Those are
+separate acceptance roots exercised by native verifiers, database contract tests,
+conformance vectors, and integration tests. The model abstracts a verifier-approved,
+exactly bound evidence item as an admissible transition input.
+
+CI reruns the safety model whenever a TLA+/CFG artifact or the TLC workflow changes.
+The witness module establishes that important success, partial-approval,
+indeterminate, reconciliation, and invalidation states are reachable rather than
+making the safety properties hold vacuously.
+
+---
+
 ## Alloy — `ep_relations.als`
 
 **Model checker:** Alloy 6.2.0 (SAT4J solver)

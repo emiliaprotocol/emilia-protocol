@@ -53,6 +53,14 @@ test('EP-QUORUM-v1: a happy quorum passes every individual check', () => {
   for (const [k, v] of Object.entries(checks)) assert.strictEqual(v, true, `check ${k} should be true`);
 });
 
+test('EP-QUORUM-v1: ordered required=2 admits the signed first two slots of a three-person roster', () => {
+  const { valid, checks } = verifyQuorum(byId.accept_ordered_2of3.quorum, OPTS);
+  assert.strictEqual(valid, true);
+  assert.strictEqual(checks.threshold_met, true);
+  assert.strictEqual(checks.order_satisfied, true);
+  assert.strictEqual(checks.chain_linked, true);
+});
+
 // Fail-closed on malformed input — never throws, always returns valid:false.
 test('EP-QUORUM-v1: malformed input fails closed without throwing', () => {
   for (const bad of [null, {}, { policy: {}, members: [] }, { action_hash: 'x', members: [{}], policy: { mode: 'ordered', approvers: [] } }]) {

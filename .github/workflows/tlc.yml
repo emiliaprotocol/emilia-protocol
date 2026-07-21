@@ -30,7 +30,7 @@ on:
 
 jobs:
   tlc:
-    name: Verify handshake + capability + receipt program
+    name: Verify handshake + capability + receipt + trust programs
     runs-on: ubuntu-latest
 
     steps:
@@ -125,6 +125,31 @@ jobs:
             grep -A 20 "Error:" tlc-receipt-program-output.txt
             exit 1
           fi
+
+      - name: Run TLC on ep_trust_program.tla
+        working-directory: formal
+        run: |
+          java -Xmx4G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_trust_program.cfg \
+            ep_trust_program.tla \
+            2>&1 | tee tlc-trust-program-output.txt
+
+      - name: Check ep_trust_program TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-trust-program-output.txt; then
+            echo "TLC found an error — one or more Trust Program invariants are violated."
+            grep -A 20 "Error:" tlc-trust-program-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-trust-program-output.txt; then
+            echo "TLC: all Trust Program invariants hold in the bounded model."
+          else
+            echo "TLC did not produce a clean Trust Program completion message."
+            cat tlc-trust-program-output.txt
+            exit 1
+          fi
           if grep -q "Model checking completed. No error has been found." tlc-receipt-program-output.txt; then
             echo "TLC: all receipt-program properties hold in the configured bounds."
           else
@@ -142,4 +167,5 @@ jobs:
             formal/tlc-output.txt
             formal/tlc-capability-output.txt
             formal/tlc-receipt-program-output.txt
+            formal/tlc-trust-program-output.txt
           retention-days: 90

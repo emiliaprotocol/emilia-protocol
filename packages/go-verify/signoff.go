@@ -197,15 +197,13 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 		eligible[i] = getMap(e)
 	}
 	var required int
-	if mode == "ordered" {
-		required = len(eligible)
-	} else if v, ok := toFloat(policy["required"]); ok && v == float64(int(v)) && int(v) > 0 {
+	if v, ok := toFloat(policy["required"]); ok && v == float64(int(v)) && int(v) > 0 {
 		// Integrality guard (mirrors trust_receipt.go and coerceRequiredApprovals):
 		// a fractional threshold like 2.5 must NOT be truncated to 2, and a bool
 		// (toFloat has no bool case, so ok=false) must NOT be read as 1.
 		required = int(v)
 	}
-	if required <= 0 || len(eligible) == 0 {
+	if required <= 0 || len(eligible) == 0 || required > len(eligible) {
 		return QuorumResult{false, checks}
 	}
 
@@ -299,28 +297,28 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 	checks["threshold_met"] = len(distinctElig) >= required
 
 	if mode == "ordered" {
-		seqOK := len(members) >= len(eligible)
-		for idx, e := range eligible {
-			if idx >= len(members) || getStr(members[idx], "role") != getStr(e, "role") ||
-				getStr(ctxOf(members[idx]), "approver") != getStr(e, "approver") {
+		seqOK := len(members) <= len(eligible)
+		for idx, member := range members {
+			if idx >= len(eligible) || getStr(member, "role") != getStr(eligible[idx], "role") ||
+				getStr(ctxOf(member), "approver") != getStr(eligible[idx], "approver") {
 				seqOK = false
 			}
 		}
 		timesOK := true
-		for idx := 0; idx < len(eligible) && idx < len(members); idx++ {
+		for idx := 0; idx < len(members); idx++ {
 			if !issuedOK[idx] || (idx > 0 && !(issued[idx] > issued[idx-1])) {
 				timesOK = false
 			}
 		}
-		checks["order_satisfied"] = seqOK && timesOK
+		checks["order_satisfied"] = len(members) >= required && seqOK && timesOK
 	} else {
 		checks["order_satisfied"] = true
 	}
 
 	orderedChain, _ := policy["ordered_chain"].(bool)
 	if mode == "ordered" && orderedChain {
-		linked := len(members) >= len(eligible)
-		for idx := 0; idx < len(eligible) && idx < len(members); idx++ {
+		linked := len(members) >= required && len(members) <= len(eligible)
+		for idx := 0; idx < len(members); idx++ {
 			prev := getStr(ctxOf(members[idx]), "prev_context_hash")
 			if idx == 0 {
 				if prev != "" {

@@ -75,6 +75,9 @@
     "src/mcp.ts",
     "src/index.ts",
     "src/protocol-state.ts",
-    "src/receipt-program.ts"
+    "src/receipt-program.ts",
+    "src/trust-program.ts",
+    "src/trust-program-adapters.ts",
+    "src/trust-program-postgres.ts"
   ]
 }

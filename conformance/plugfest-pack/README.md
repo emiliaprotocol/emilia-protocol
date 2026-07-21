@@ -30,7 +30,7 @@ list in [`../run.mjs`](../run.mjs) is authoritative if this table drifts):
 |---|---|---|
 | `receipts.v1.json` | EP-RECEIPT-v1 (Ed25519 receipts) | 13 |
 | `signoffs.v1.json` | EP-SIGNOFF-v1 (WebAuthn ECDSA P-256 device signoffs) | 9 |
-| `quorum.v1.json` | EP-QUORUM-v1 (M-of-N / ordered multi-party approval) | 13 |
+| `quorum.v1.json` | EP-QUORUM-v1 (M-of-N / ordered multi-party approval) | 16 |
 | `revocation.exec.v1.json` | EP-REVOCATION-v1 | 6 |
 | `time-attestation.v1.json` | EP-TIME-ATTESTATION-v1 | 6 |
 | `trust-receipt.exec.v1.json` | EP-TRUST-RECEIPT-v1 (§6.2) | 11 |

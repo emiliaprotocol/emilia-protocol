@@ -44,6 +44,7 @@ export { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONF
 export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
 export { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
 export { RECEIPT_PROGRAM_VERSION, RECEIPT_PROGRAM_CERTIFICATE_VERSION, RECEIPT_PROGRAM_SIGNATURE_ALGORITHM, createReceiptProgramKernel, verifyReceiptProgramCertificate, } from './receipt-program.js';
+export { TRUST_PROGRAM_VERSION, TRUST_STAGE_RECEIPT_VERSION, validateTrustProgram, trustProgramDigest, verifyTrustStageReceipt, createMemoryTrustProgramStore, createTrustProgramKernel, } from './trust-program.js';
 export declare const ASSURANCE_TIERS: string[];
 /**
  * Structurally compare a PRE-COMPUTED admissibility block with a profile hash.

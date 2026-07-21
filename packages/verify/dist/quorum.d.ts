@@ -45,7 +45,7 @@ interface MemberResult {
  *     action_hash: string,                  // the action the whole quorum authorizes
  *     policy: {
  *       mode: "threshold" | "ordered",
- *       required: number,                   // M (threshold mode); ordered requires all listed
+ *       required: number,                   // M; ordered mode admits the first M roster slots
  *       approvers: [{ role: string, approver: string }],  // N eligible (role -> named human)
  *       distinct_humans?: boolean,          // default true
  *       window_sec?: number,                // default 900; max span across signatures

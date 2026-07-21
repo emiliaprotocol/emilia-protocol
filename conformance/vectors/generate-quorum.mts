@@ -96,6 +96,7 @@ const orderedPolicy = { mode: 'ordered', required: 3, approvers: ROSTER, distinc
 // not by operator-asserted timestamps.
 const orderedChainPolicy = { ...orderedPolicy, ordered_chain: true };
 const thresholdPolicy = { mode: 'threshold', required: 2, approvers: ROSTER, distinct_humans: true, window_sec: 900 };
+const orderedTwoOfThreePolicy = { ...orderedPolicy, required: 2, ordered_chain: true };
 
 const V: any[] = [];
 const add = (id, description, failure_class, valid, quorum) =>
@@ -123,6 +124,17 @@ add('accept_ordered_3of3', 'Ordered quorum (strong chain): Program Officer -> Au
     { ...PO, issuedAt: t(1) },
     { ...AO, issuedAt: t(2) },
     { ...IG, issuedAt: t(3) },
+  ]),
+});
+
+// ACCEPT — ordered prefix 2-of-3. `required` is quorum size k in both
+// threshold and ordered modes; ordered mode constrains which first k slots may
+// satisfy it and proves their order with the predecessor chain.
+add('accept_ordered_2of3', 'Ordered prefix quorum: the first 2 of 3 roster slots approve in order with a signed predecessor chain', 'accept', true, {
+  '@type': 'ep.quorum', action_hash: ACTION, policy: orderedTwoOfThreePolicy,
+  members: chained([
+    { ...PO, issuedAt: t(1) },
+    { ...AO, issuedAt: t(2) },
   ]),
 });
 

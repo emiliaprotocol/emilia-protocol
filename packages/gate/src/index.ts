@@ -238,6 +238,15 @@ export {
   createReceiptProgramKernel,
   verifyReceiptProgramCertificate,
 } from './receipt-program.js';
+export {
+  TRUST_PROGRAM_VERSION,
+  TRUST_STAGE_RECEIPT_VERSION,
+  validateTrustProgram,
+  trustProgramDigest,
+  verifyTrustStageReceipt,
+  createMemoryTrustProgramStore,
+  createTrustProgramKernel,
+} from './trust-program.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;

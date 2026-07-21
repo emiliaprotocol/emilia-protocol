@@ -257,10 +257,12 @@ function builtinVerifiers() {
             if (mode !== 'threshold' && mode !== 'ordered') {
                 return { valid: false, action_digest: null, detail: { reason: 'quorum policy mode must be threshold or ordered' } };
             }
-            const required = mode === 'ordered'
-                ? (Array.isArray(profile.policy.approvers) ? profile.policy.approvers.length : 0)
-                : profile.policy.required;
-            if (!Number.isInteger(required) || required < 2 || profile.policy.distinct_humans !== true) {
+            const required = profile.policy.required;
+            const approverCount = Array.isArray(profile.policy.approvers)
+                ? profile.policy.approvers.length
+                : 0;
+            if (!Number.isInteger(required) || required < 2 || required > approverCount
+                || profile.policy.distinct_humans !== true) {
                 return { valid: false, action_digest: null, detail: { reason: 'ep-quorum requires at least two distinct humans' } };
             }
             if (mode === 'ordered' && profile.policy.ordered_chain !== true) {

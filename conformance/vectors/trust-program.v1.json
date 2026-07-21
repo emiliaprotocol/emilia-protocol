@@ -1,0 +1,1055 @@
+{
+  "suite": "EP-GATE-TRUST-PROGRAM-v1",
+  "machine_discriminator": "EP-GATE-TRUST-PROGRAM-PROFILE-v1",
+  "stage_receipt_discriminator": "EP-GATE-TRUST-STAGE-RECEIPT-v1",
+  "vectors_version": "1.0.0",
+  "artifact_classification": "closed_internal_operational_profile",
+  "standardization_status": {
+    "standard": false,
+    "ietf_draft": false,
+    "external_interoperability_claim": false
+  },
+  "description": "Executable internal conformance catalog for the private EMILIA Gate Trust Program reference API. The runner applies these program mutations and ordered operations to packages/gate/src/trust-program.ts through its JavaScript entry point, generates fresh Ed25519 stage-receipt keys, and compares exact fail-closed reasons and state revisions.",
+  "claim_limitations": [
+    "Passing this catalog demonstrates behavior of the in-repository reference implementation against these cases only.",
+    "The catalog is not a standard, is not an IETF Internet-Draft, and does not establish interoperability with an independent implementation.",
+    "Evidence verifiers are deterministic test doubles; the catalog does not validate upstream Handshake, Quorum, AEC, capability, revocation-service, or Action Escrow implementations.",
+    "The runner uses an ephemeral in-memory atomic store and live generated Ed25519 keys; it does not prove production durability, key custody, authenticated reconciliation, availability, or deployment configuration.",
+    "A passing result is not proof that a human understood or intended an action, that an external fact is true, or that an executed side effect matched the authorized action."
+  ],
+  "reference_time": "2026-07-21T16:00:00.000Z",
+  "vector_count": 21,
+  "required_coverage": [
+    "positive_dag_progression",
+    "receipt_program_owner",
+    "action_escrow_owner",
+    "missing_consequence_owner",
+    "nested_consequence_owners",
+    "cycle",
+    "disconnected_stage",
+    "partial_threshold",
+    "wrong_caid",
+    "wrong_action",
+    "wrong_policy",
+    "wrong_binding",
+    "cross_seat_replay",
+    "non_distinct_humans",
+    "non_distinct_keys",
+    "stale_evidence",
+    "revocation_failure",
+    "concurrent_revision",
+    "skipped_stage",
+    "indeterminate_no_retry",
+    "invalidation_preserves_inflight",
+    "tampered_predecessor_receipt"
+  ],
+  "program": {
+    "@version": "EP-GATE-TRUST-PROGRAM-PROFILE-v1",
+    "program_id": "tp_private_treasury_release_1",
+    "version": 1,
+    "root_caid": "caid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "valid_from": "2026-07-21T15:59:00.000Z",
+    "expires_at": "2026-07-21T17:00:00.000Z",
+    "stages": [
+      {
+        "stage_id": "heterogeneous_review",
+        "depends_on": [],
+        "rule": {
+          "mode": "threshold",
+          "required": 2,
+          "distinct_subjects": true,
+          "distinct_keys": true
+        },
+        "requirements": [
+          {
+            "requirement_id": "approver_a",
+            "evidence_type": "ep-quorum",
+            "verifier_profile": "ep-quorum",
+            "policy_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "max_age_sec": 900,
+            "revocation_required": true
+          },
+          {
+            "requirement_id": "approver_b",
+            "evidence_type": "ep-aec",
+            "verifier_profile": "ep-aec",
+            "policy_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            "max_age_sec": 900,
+            "revocation_required": true
+          },
+          {
+            "requirement_id": "approver_c",
+            "evidence_type": "external-permit",
+            "verifier_profile": "external-permit",
+            "policy_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+            "max_age_sec": 900,
+            "revocation_required": true
+          }
+        ]
+      },
+      {
+        "stage_id": "risk_review",
+        "depends_on": ["heterogeneous_review"],
+        "rule": {
+          "mode": "all",
+          "distinct_subjects": true,
+          "distinct_keys": true
+        },
+        "requirements": [
+          {
+            "requirement_id": "risk_officer",
+            "evidence_type": "ep-signoff",
+            "verifier_profile": "ep-signoff",
+            "policy_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+            "max_age_sec": 900,
+            "revocation_required": true
+          }
+        ]
+      }
+    ],
+    "execution": {
+      "depends_on": ["risk_review"],
+      "consequence_mode": "receipt-program",
+      "capability_template_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "escrow_profile_digest": null
+    }
+  },
+  "vectors": [
+    {
+      "id": "accept_positive_dag_progression",
+      "description": "A two-of-three heterogeneous evidence threshold (native Quorum, AEC, and external permit artifacts) unlocks the dependent risk stage; signed predecessor-bound receipts then authorize one execution claim and terminal execution.",
+      "mode": "kernel_flow",
+      "covers": ["positive_dag_progression", "receipt_program_owner"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_positive",
+          "expect": {
+            "ok": true,
+            "revision": 0,
+            "state_status": "active",
+            "execution_status": "locked",
+            "stage_statuses": {
+              "heterogeneous_review": "collecting",
+              "risk_review": "locked"
+            }
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_positive_alice",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"]
+          },
+          "expect": {
+            "ok": true,
+            "stage_completed": false,
+            "revision": 1,
+            "execution_status": "locked",
+            "stage_statuses": {
+              "heterogeneous_review": "collecting",
+              "risk_review": "locked"
+            }
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_b",
+          "artifact": {
+            "evidence_id": "ev_positive_bob",
+            "subjects": ["human:bob"],
+            "key_fingerprints": ["key:bob:1"]
+          },
+          "save_receipt_as": "quorum",
+          "expect": {
+            "ok": true,
+            "stage_completed": true,
+            "revision": 2,
+            "execution_status": "locked",
+            "stage_statuses": {
+              "heterogeneous_review": "satisfied",
+              "risk_review": "collecting"
+            }
+          }
+        },
+        {
+          "op": "verify_receipt",
+          "receipt_ref": "quorum",
+          "expected_payload": {
+            "instance_id": "tpi_positive",
+            "program_id": "tp_private_treasury_release_1",
+            "program_version": 1,
+            "root_caid": "caid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "stage_id": "heterogeneous_review",
+            "predecessor_receipt_digests": []
+          },
+          "expect": {
+            "valid": true,
+            "reason": null
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "risk_review",
+          "requirement_id": "risk_officer",
+          "artifact": {
+            "evidence_id": "ev_positive_risk",
+            "subjects": ["human:carol"],
+            "key_fingerprints": ["key:carol:1"]
+          },
+          "save_receipt_as": "risk",
+          "expect": {
+            "ok": true,
+            "stage_completed": true,
+            "revision": 3,
+            "execution_status": "ready",
+            "stage_statuses": {
+              "risk_review": "satisfied"
+            }
+          }
+        },
+        {
+          "op": "verify_receipt",
+          "receipt_ref": "risk",
+          "expected_payload": {
+            "instance_id": "tpi_positive",
+            "stage_id": "risk_review"
+          },
+          "expected_predecessor_receipt_refs": ["quorum"],
+          "expect": {
+            "valid": true,
+            "reason": null
+          }
+        },
+        {
+          "op": "claim",
+          "save_claim_as": "execution",
+          "expect": {
+            "ok": true,
+            "revision": 4,
+            "execution_status": "claimed",
+            "authorization_binding_fields": {
+              "instance_id": "tpi_positive",
+              "root_caid": "caid:1:payment.release.1:jcs-sha256:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+              "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "consequence_mode": "receipt-program",
+              "capability_template_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "escrow_profile_digest": null
+            },
+            "terminal_stage_receipt_refs": ["risk"]
+          }
+        },
+        {
+          "op": "finalize",
+          "claim_ref": "execution",
+          "outcome": "executed",
+          "evidence_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "expect": {
+            "ok": true,
+            "revision": 5,
+            "execution_status": "executed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_program_cycle",
+      "description": "A dependency edge from the root stage back to its descendant creates a cycle and invalidates the program before state creation.",
+      "mode": "program_validation",
+      "covers": ["cycle"],
+      "program_mutations": [
+        {
+          "op": "replace",
+          "path": "/stages/0/depends_on",
+          "value": ["risk_review"]
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "reason": "program_cycle"
+      }
+    },
+    {
+      "id": "reject_disconnected_stage",
+      "description": "A syntactically valid stage that does not contribute to an execution dependency is rejected as decorative authority.",
+      "mode": "program_validation",
+      "covers": ["disconnected_stage"],
+      "program_mutations": [
+        {
+          "op": "add",
+          "path": "/stages/-",
+          "value": {
+            "stage_id": "decorative_observer",
+            "depends_on": [],
+            "rule": {
+              "mode": "all",
+              "distinct_subjects": true,
+              "distinct_keys": true
+            },
+            "requirements": [
+              {
+                "requirement_id": "observer",
+                "evidence_type": "ep-signoff",
+                "verifier_profile": "ep-signoff",
+                "policy_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+                "max_age_sec": 900,
+                "revocation_required": true
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "reason": "stage_not_execution_relevant"
+      }
+    },
+    {
+      "id": "accept_action_escrow_consequence_owner",
+      "description": "The alternative valid ownership mode assigns the consequence to Action Escrow and nulls the receipt-program capability template.",
+      "mode": "program_validation",
+      "covers": ["action_escrow_owner"],
+      "program_mutations": [
+        {
+          "op": "replace",
+          "path": "/execution/consequence_mode",
+          "value": "action-escrow"
+        },
+        {
+          "op": "replace",
+          "path": "/execution/capability_template_digest",
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": "/execution/escrow_profile_digest",
+          "value": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      ],
+      "expect": {
+        "valid": true,
+        "reason": null
+      }
+    },
+    {
+      "id": "reject_missing_consequence_owner",
+      "description": "An execution block without an explicit consequence_mode is incomplete and fails closed.",
+      "mode": "program_validation",
+      "covers": ["missing_consequence_owner"],
+      "program_mutations": [
+        {
+          "op": "remove",
+          "path": "/execution/consequence_mode"
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "reason": "program_execution_invalid"
+      }
+    },
+    {
+      "id": "reject_nested_consequence_owners",
+      "description": "Receipt Program and Action Escrow cannot both own the same consequence; two non-null owner digests are rejected.",
+      "mode": "program_validation",
+      "covers": ["nested_consequence_owners"],
+      "program_mutations": [
+        {
+          "op": "replace",
+          "path": "/execution/escrow_profile_digest",
+          "value": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      ],
+      "expect": {
+        "valid": false,
+        "reason": "program_execution_invalid"
+      }
+    },
+    {
+      "id": "reject_partial_threshold",
+      "description": "One accepted seat in a two-of-three stage leaves execution locked and grants no claim token.",
+      "mode": "kernel_flow",
+      "covers": ["partial_threshold"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_partial_threshold",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_partial_alice",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"]
+          },
+          "expect": {
+            "ok": true,
+            "stage_completed": false,
+            "revision": 1,
+            "execution_status": "locked"
+          }
+        },
+        {
+          "op": "claim",
+          "expect": {
+            "ok": false,
+            "reason": "execution_locked",
+            "revision": 1,
+            "execution_status": "locked"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_wrong_caid_binding",
+      "description": "Evidence derived for a different CAID cannot satisfy the seat even when every other verifier output is acceptable.",
+      "mode": "kernel_flow",
+      "covers": ["wrong_caid"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_wrong_caid",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_wrong_caid",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"],
+            "binding_overrides": {
+              "root_caid": "caid:1:payment.release.1:jcs-sha256:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+            }
+          },
+          "expect": {
+            "ok": false,
+            "reason": "evidence_binding_mismatch",
+            "revision": 0,
+            "execution_status": "locked"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_wrong_action_binding",
+      "description": "Evidence bound to a different action digest cannot satisfy the seat.",
+      "mode": "kernel_flow",
+      "covers": ["wrong_action"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_wrong_action",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_wrong_action",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"],
+            "binding_overrides": {
+              "action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          },
+          "expect": {
+            "ok": false,
+            "reason": "evidence_binding_mismatch",
+            "revision": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_wrong_policy_binding",
+      "description": "Correct challenge binding with a different requirement policy digest is refused.",
+      "mode": "kernel_flow",
+      "covers": ["wrong_policy"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_wrong_policy",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_wrong_policy",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"],
+            "policy_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+          },
+          "expect": {
+            "ok": false,
+            "reason": "evidence_policy_mismatch",
+            "revision": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_wrong_challenge_binding",
+      "description": "A verifier-reported digest that is not the canonical current seat challenge is refused.",
+      "mode": "kernel_flow",
+      "covers": ["wrong_binding"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_wrong_binding",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_wrong_binding",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"],
+            "binding_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "expect": {
+            "ok": false,
+            "reason": "evidence_binding_mismatch",
+            "revision": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_cross_seat_replay",
+      "description": "An evidence identifier already consumed by one quorum seat cannot be replayed into another seat.",
+      "mode": "kernel_flow",
+      "covers": ["cross_seat_replay"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_cross_seat_replay",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_shared_seat",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"]
+          },
+          "save_artifact_as": "seat_a",
+          "expect": {
+            "ok": true,
+            "revision": 1
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_b",
+          "artifact_ref": "seat_a",
+          "expect": {
+            "ok": false,
+            "reason": "evidence_replayed",
+            "revision": 1,
+            "execution_status": "locked"
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_non_distinct_humans",
+      "description": "The same human subject cannot fill two seats in a stage that requires distinct subjects, even with separate keys.",
+      "mode": "kernel_flow",
+      "covers": ["non_distinct_humans"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_duplicate_human",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_human_a",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"]
+          },
+          "expect": {
+            "ok": true,
+            "revision": 1
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_b",
+          "artifact": {
+            "evidence_id": "ev_human_b",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:2"]
+          },
+          "expect": {
+            "ok": false,
+            "reason": "stage_subject_not_distinct",
+            "revision": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_non_distinct_keys",
+      "description": "A key already used in the stage cannot fill a second seat for a differently labeled human.",
+      "mode": "kernel_flow",
+      "covers": ["non_distinct_keys"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_duplicate_key",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_key_a",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:shared:1"]
+          },
+          "expect": {
+            "ok": true,
+            "revision": 1
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_b",
+          "artifact": {
+            "evidence_id": "ev_key_b",
+            "subjects": ["human:bob"],
+            "key_fingerprints": ["key:shared:1"]
+          },
+          "expect": {
+            "ok": false,
+            "reason": "stage_key_not_distinct",
+            "revision": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_stale_evidence",
+      "description": "Evidence older than the requirement's 900-second maximum age is refused without state advancement.",
+      "mode": "kernel_flow",
+      "covers": ["stale_evidence"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_stale",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_stale",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"],
+            "issued_at_offset_sec": -901
+          },
+          "expect": {
+            "ok": false,
+            "reason": "evidence_stale",
+            "revision": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_revocation_check_failure",
+      "description": "A revocation-required seat refuses evidence with no fresh revocation check.",
+      "mode": "kernel_flow",
+      "covers": ["revocation_failure"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_revocation_missing",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_revocation_missing",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"],
+            "revocation_checked_at": null
+          },
+          "expect": {
+            "ok": false,
+            "reason": "revocation_check_required",
+            "revision": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_concurrent_revision",
+      "description": "Two admissions built from revision zero race at compare-and-swap; exactly one commits and the stale transition fails closed.",
+      "mode": "kernel_flow",
+      "covers": ["concurrent_revision"],
+      "compare_and_swap_barrier_size": 2,
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_concurrent_revision",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "concurrent_admit",
+          "admissions": [
+            {
+              "stage_id": "heterogeneous_review",
+              "requirement_id": "approver_a",
+              "artifact": {
+                "evidence_id": "ev_concurrent_a",
+                "subjects": ["human:alice"],
+                "key_fingerprints": ["key:alice:1"]
+              }
+            },
+            {
+              "stage_id": "heterogeneous_review",
+              "requirement_id": "approver_b",
+              "artifact": {
+                "evidence_id": "ev_concurrent_b",
+                "subjects": ["human:bob"],
+                "key_fingerprints": ["key:bob:1"]
+              }
+            }
+          ],
+          "expect": {
+            "ok_count": 1,
+            "reasons": ["revision_conflict"],
+            "revision": 1,
+            "execution_status": "locked",
+            "stage_statuses": {
+              "heterogeneous_review": "collecting"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_skipped_stage",
+      "description": "A dependent stage cannot be challenged before its predecessor threshold is satisfied.",
+      "mode": "kernel_flow",
+      "covers": ["skipped_stage"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_skipped_stage",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "challenge",
+          "stage_id": "risk_review",
+          "requirement_id": "risk_officer",
+          "expect": {
+            "ok": false,
+            "reason": "stage_locked",
+            "revision": 0,
+            "execution_status": "locked",
+            "stage_statuses": {
+              "risk_review": "locked"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "reject_indeterminate_retry",
+      "description": "An indeterminate finalization freezes the claim lane; a second execution claim is refused until reconciliation.",
+      "mode": "kernel_flow",
+      "covers": ["indeterminate_no_retry"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_indeterminate",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_indeterminate_a",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"]
+          },
+          "expect": {
+            "ok": true,
+            "revision": 1
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_b",
+          "artifact": {
+            "evidence_id": "ev_indeterminate_b",
+            "subjects": ["human:bob"],
+            "key_fingerprints": ["key:bob:1"]
+          },
+          "expect": {
+            "ok": true,
+            "revision": 2
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "risk_review",
+          "requirement_id": "risk_officer",
+          "artifact": {
+            "evidence_id": "ev_indeterminate_risk",
+            "subjects": ["human:carol"],
+            "key_fingerprints": ["key:carol:1"]
+          },
+          "expect": {
+            "ok": true,
+            "revision": 3,
+            "execution_status": "ready"
+          }
+        },
+        {
+          "op": "claim",
+          "save_claim_as": "execution",
+          "expect": {
+            "ok": true,
+            "revision": 4,
+            "execution_status": "claimed"
+          }
+        },
+        {
+          "op": "finalize",
+          "claim_ref": "execution",
+          "outcome": "indeterminate",
+          "evidence_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "expect": {
+            "ok": true,
+            "revision": 5,
+            "execution_status": "indeterminate"
+          }
+        },
+        {
+          "op": "claim",
+          "expect": {
+            "ok": false,
+            "reason": "execution_indeterminate",
+            "revision": 5,
+            "execution_status": "indeterminate"
+          }
+        }
+      ]
+    },
+    {
+      "id": "accept_invalidation_preserves_inflight_reconciliation",
+      "description": "Invalidating a claimed consequence closes every approval stage without erasing the claim, and the indeterminate lane can still reconcile to proved no effect.",
+      "mode": "kernel_flow",
+      "covers": ["invalidation_preserves_inflight"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_invalidated_inflight",
+          "expect": { "ok": true, "revision": 0 }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_invalidated_a",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"]
+          },
+          "expect": { "ok": true, "revision": 1 }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_b",
+          "artifact": {
+            "evidence_id": "ev_invalidated_b",
+            "subjects": ["human:bob"],
+            "key_fingerprints": ["key:bob:1"]
+          },
+          "expect": { "ok": true, "revision": 2 }
+        },
+        {
+          "op": "admit",
+          "stage_id": "risk_review",
+          "requirement_id": "risk_officer",
+          "artifact": {
+            "evidence_id": "ev_invalidated_risk",
+            "subjects": ["human:carol"],
+            "key_fingerprints": ["key:carol:1"]
+          },
+          "expect": { "ok": true, "revision": 3, "execution_status": "ready" }
+        },
+        {
+          "op": "claim",
+          "save_claim_as": "execution",
+          "expect": { "ok": true, "revision": 4, "execution_status": "claimed" }
+        },
+        {
+          "op": "invalidate",
+          "expected_revision": 4,
+          "reason": "upstream authority revoked",
+          "expect": {
+            "ok": true,
+            "revision": 5,
+            "state_status": "invalidated",
+            "execution_status": "claimed",
+            "stage_statuses": {
+              "heterogeneous_review": "invalidated",
+              "risk_review": "invalidated"
+            }
+          }
+        },
+        {
+          "op": "finalize",
+          "claim_ref": "execution",
+          "outcome": "indeterminate",
+          "evidence_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "expect": { "ok": true, "revision": 6, "execution_status": "indeterminate" }
+        },
+        {
+          "op": "reconcile",
+          "outcome": "proved_no_effect",
+          "evidence_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "expect": { "ok": true, "revision": 7, "execution_status": "proved_no_effect" }
+        }
+      ]
+    },
+    {
+      "id": "reject_tampered_predecessor_receipt",
+      "description": "A quorum receipt that is the risk stage's predecessor fails independent verification after its signed payload is changed.",
+      "mode": "kernel_flow",
+      "covers": ["tampered_predecessor_receipt"],
+      "operations": [
+        {
+          "op": "start",
+          "instance_id": "tpi_tampered_predecessor",
+          "expect": {
+            "ok": true,
+            "revision": 0
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_a",
+          "artifact": {
+            "evidence_id": "ev_tamper_a",
+            "subjects": ["human:alice"],
+            "key_fingerprints": ["key:alice:1"]
+          },
+          "expect": {
+            "ok": true,
+            "revision": 1
+          }
+        },
+        {
+          "op": "admit",
+          "stage_id": "heterogeneous_review",
+          "requirement_id": "approver_b",
+          "artifact": {
+            "evidence_id": "ev_tamper_b",
+            "subjects": ["human:bob"],
+            "key_fingerprints": ["key:bob:1"]
+          },
+          "save_receipt_as": "quorum_predecessor",
+          "expect": {
+            "ok": true,
+            "revision": 2,
+            "stage_statuses": {
+              "risk_review": "collecting"
+            }
+          }
+        },
+        {
+          "op": "verify_receipt",
+          "receipt_ref": "quorum_predecessor",
+          "receipt_mutations": [
+            {
+              "op": "replace",
+              "path": "/payload/stage_id",
+              "value": "risk_review"
+            }
+          ],
+          "expect": {
+            "valid": false,
+            "reason": "receipt_digest_mismatch",
+            "revision": 2
+          }
+        }
+      ]
+    }
+  ]
+}
