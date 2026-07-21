@@ -31,7 +31,7 @@ export default defineConfig({
     // .claude/.serena are local agent scratch/worktree directories. They may
     // contain stale copies of this repo with their own tests and env assumptions;
     // collecting them would poison the canonical gate with non-source artifacts.
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**', 'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**'],
+    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**', 'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**', '.stryker-*-tmp/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

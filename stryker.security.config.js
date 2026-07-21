@@ -32,39 +32,45 @@ export default {
     // Include every helper that can change a security verdict or the bytes it
     // binds. Constants, exports, and the legacy in-memory demo store remain out
     // of scope; signed-material extraction and strict time parsing do not.
-    'packages/gate/store.js:58-66',
-    'packages/gate/store.js:67-152',
+    //
+    // These packages/gate and packages/verify files were converted from
+    // hand-written .js to compiled TypeScript (src/*.ts -> dist/*.js, with a
+    // re-export shim left at the old .js path for existing consumers). The
+    // ranges below were re-derived line-for-line against packages/gate/src/*.ts
+    // and packages/verify/src/reliance.ts so the tested surface is unchanged.
+    'packages/gate/src/store.ts:64-72',
+    'packages/gate/src/store.ts:73-164',
     // Resolve this range from semantic anchors. A fixed line range drifted into
     // an unrelated helper when Gate composition code was inserted above
     // createGate, producing untested mutants while the intended admission
     // kernel escaped mutation.
     mutationRange(
-      'packages/gate/index.js',
+      'packages/gate/src/index.ts',
       'if (capabilityStore &&',
       'const businessExpected = businessAuthorizationRequirement(requirement);',
     ),
-    'packages/gate/breakglass.js:193-195',
-    'packages/gate/breakglass.js:205-216',
-    'packages/gate/breakglass.js:288-288',
-    'packages/gate/breakglass.js:294-295',
-    'packages/gate/breakglass.js:299-299',
-    'packages/gate/breakglass.js:304-304',
-    'packages/gate/breakglass.js:308-317',
-    'packages/gate/breakglass.js:327-329',
-    'packages/gate/breakglass.js:509-510',
-    'packages/gate/breakglass.js:512-512',
-    'packages/gate/breakglass.js:521-521',
-    'packages/gate/breakglass.js:533-535',
-    'packages/gate/breakglass.js:545-550',
-    'packages/gate/breakglass.js:560-560',
-    'packages/gate/key-registry.js:40-46',
-    'packages/gate/key-registry.js:62-69',
-    'packages/gate/key-registry.js:75-88',
-    'packages/gate/execution-binding.js:54-61',
-    'packages/gate/execution-binding.js:112-123',
-    'packages/gate/execution-binding.js:159-174',
-    'packages/gate/execution-binding.js:179-202',
-    'packages/verify/reliance.js:69-572',
+    'packages/gate/src/breakglass.ts:223-225',
+    'packages/gate/src/breakglass.ts:237-248',
+    'packages/gate/src/breakglass.ts:327-327',
+    'packages/gate/src/breakglass.ts:333-334',
+    'packages/gate/src/breakglass.ts:338-338',
+    'packages/gate/src/breakglass.ts:343-343',
+    'packages/gate/src/breakglass.ts:347-356',
+    'packages/gate/src/breakglass.ts:366-368',
+    'packages/gate/src/breakglass.ts:548-549',
+    'packages/gate/src/breakglass.ts:551-551',
+    'packages/gate/src/breakglass.ts:568-568',
+    'packages/gate/src/breakglass.ts:580-582',
+    'packages/gate/src/breakglass.ts:592-599',
+    'packages/gate/src/breakglass.ts:609-609',
+    'packages/gate/src/key-registry.ts:55-61',
+    'packages/gate/src/key-registry.ts:77-84',
+    'packages/gate/src/key-registry.ts:90-103',
+    'packages/gate/src/execution-binding.ts:54-61',
+    'packages/gate/src/execution-binding.ts:112-123',
+    'packages/gate/src/execution-binding.ts:161-176',
+    'packages/gate/src/execution-binding.ts:181-204',
+    'packages/verify/src/reliance.ts:69-575',
     'lib/authority/resolver.js:57-378',
   ],
   testFiles: [

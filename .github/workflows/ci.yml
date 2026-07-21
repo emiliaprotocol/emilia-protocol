@@ -110,7 +110,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Gate the documented Action Escrow run on minimum Node
         run: |
-          npm run check:action-escrow-runtime
+          npm run check:standalone-runtimes
           node --test examples/action-escrow/scenario.test.mjs examples/action-escrow/standalone.test.mjs
       - name: Install the PostgreSQL client used by the live isolation test
         run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends postgresql-client

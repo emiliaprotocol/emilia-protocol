@@ -34,6 +34,7 @@ integrations/langchain-emilia/dist/
 coverage/
 test-results/
 reports/mutation/
+.stryker-*-tmp/
 /release-artifacts/
 /registry-copy/
 formal/tamarin/run-output/
