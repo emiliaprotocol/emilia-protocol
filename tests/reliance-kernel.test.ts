@@ -1391,3 +1391,423 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     });
   });
 });
+
+// ── Mutation oracles ────────────────────────────────────────────────────────
+// Each block below pins a behavior of evaluateReliance that a surviving mutant
+// would silently change: a guard that must fire (and must NOT fire on the
+// neighbouring input), an optional chain that must absorb a missing branch
+// instead of throwing, or a boundary value that must be compared as a value
+// rather than for truthiness. Verdict, reason, and `checks` are asserted
+// exactly, because a refusal with the wrong reason is a different refusal.
+describe('EP-RELIANCE-KERNEL-v1 fail-closed oracles', () => {
+  // A callable carries arbitrary own properties, so it is the sharpest probe
+  // for "only plain data is evidence": every slot below is handed a function
+  // whose properties would satisfy the check if the kernel ever read them.
+  const carrier = (fields: Record<string, any>) => Object.assign(() => {}, fields) as any;
+
+  function pinQuorumDoc(quorum: any, input: any, opts: any) {
+    input.relying_party_profile.quorum_policy = structuredClone(quorum.policy);
+    quorum.members.forEach((member: any, index: number) => {
+      opts.approverKeys[`ep:key:quorum#${index + 1}`] = {
+        approver_id: member.signoff.context.approver,
+        public_key: member.approver_public_key,
+        key_class: 'A',
+        valid_from: '2026-01-01T00:00:00Z',
+        valid_to: '2027-01-01T00:00:00Z',
+      };
+    });
+    return quorum;
+  }
+
+  it('never reads pins off a non-plain-object packet, options, action, or profile', () => {
+    const base = assemble('none');
+
+    // Whole packet: a callable carrying a complete, otherwise-relying packet.
+    const packet = evaluateReliance(carrier({ ...base.input }), base.opts);
+    expect(packet.verdict).toBe('do_not_rely_no_profile');
+    expect(packet.reasons).toEqual([
+      'no pinned EP-RELIANCE-PROFILE-v1 supplied; verification can pass but reliance cannot',
+    ]);
+
+    // Options: relying-party pins (RP ID, origins, keys, consumption state) may
+    // only come from a real options object.
+    const asOpts = assemble('none');
+    const optionResult = evaluateReliance(asOpts.input, carrier({ ...asOpts.opts }));
+    expect(optionResult.verdict).toBe('do_not_rely_no_class_a');
+    expect(optionResult.reasons.at(-1)).toBe(
+      'human ceremony reliance requires a relying-party-pinned WebAuthn RP ID and non-empty origin allowlist',
+    );
+
+    // Action: the action_hash join may not be sourced from a callable.
+    const asAction = assemble('none');
+    asAction.input.action = carrier({ ...asAction.input.action });
+    const actionResult = evaluateReliance(asAction.input, asAction.opts);
+    expect(actionResult.verdict).toBe('do_not_rely_unsigned');
+    expect(actionResult.reasons.at(-1)).toBe(
+      'receipt does not attest the action being relied on (action_hash mismatch)',
+    );
+
+    // Profile: a callable carrying '@type' is not a pinned profile.
+    const asProfile = assemble('none');
+    asProfile.input.relying_party_profile = carrier({ ...asProfile.input.relying_party_profile });
+    const profileResult = evaluateReliance(asProfile.input, asProfile.opts);
+    expect(profileResult.verdict).toBe('do_not_rely_no_profile');
+    expect(profileResult.reasons).toEqual([
+      'no pinned EP-RELIANCE-PROFILE-v1 supplied; verification can pass but reliance cannot',
+    ]);
+  });
+
+  it('returns the closed no-profile refusal for a null pinned profile instead of throwing', () => {
+    // `typeof null === 'object'`: the profile guard must test truthiness first,
+    // or a JSON-parsed null profile dereferences and throws out of the kernel.
+    const { input, opts } = assemble('none');
+    input.relying_party_profile = null as any;
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_no_profile');
+    expect(r.rely).toBe(false);
+    expect(r.reasons).toEqual([
+      'no pinned EP-RELIANCE-PROFILE-v1 supplied; verification can pass but reliance cannot',
+    ]);
+  });
+
+  it('treats an omitted or empty accepted_issuer_keys list as pinning no issuer at all', () => {
+    const omitted = assemble('none');
+    delete omitted.input.relying_party_profile.accepted_issuer_keys;
+    const omittedResult = evaluateReliance(omitted.input, omitted.opts);
+    expect(omittedResult).toMatchObject({
+      verdict: 'do_not_rely_untrusted_issuer', rely: false, checks: { issuer: false },
+    });
+    expect(omittedResult.reasons.at(-1)).toBe(
+      'receipt has a transparency checkpoint but the profile pins no accepted issuer key',
+    );
+
+    // An empty-string key entry is not a key: it must not survive into the
+    // pinned set and be reported as "checkpoint signed by an unpinned key".
+    const empty = assemble('none');
+    empty.input.relying_party_profile.accepted_issuer_keys = [''];
+    const emptyResult = evaluateReliance(empty.input, empty.opts);
+    expect(emptyResult.verdict).toBe('do_not_rely_untrusted_issuer');
+    expect(emptyResult.reasons.at(-1)).toBe(
+      'receipt has a transparency checkpoint but the profile pins no accepted issuer key',
+    );
+  });
+
+  it('requires scoped authority exactly when the profile pins it, and reports that pin', () => {
+    // required_authority:true alone requires the proof, even when the evidence
+    // list does not name authority_proof.
+    const required = assemble('none');
+    required.input.relying_party_profile.required_authority = true;
+    required.input.relying_party_profile.required_evidence = ['receipt', 'class_a_or_quorum'];
+    delete required.input.authority_proof;
+    const requiredResult = evaluateReliance(required.input, required.opts);
+    expect(requiredResult.verdict).toBe('do_not_rely_authority_missing');
+    expect(requiredResult.reasons.at(-1)).toBe(
+      'scoped authority is required but no EP-AUTHORITY-PROOF-v1 was supplied',
+    );
+
+    // required_authority:false with no authority evidence pinned must NOT
+    // require it, and the returned profile must report the pin as false.
+    const notRequired = assemble('none');
+    notRequired.input.relying_party_profile.required_authority = false;
+    notRequired.input.relying_party_profile.required_evidence = ['receipt', 'class_a_or_quorum'];
+    delete notRequired.input.authority_proof;
+    const notRequiredResult = evaluateReliance(notRequired.input, notRequired.opts);
+    expect(notRequiredResult.verdict).toBe('rely');
+    expect(notRequiredResult.checks.authority).toBe('not_required');
+    expect(notRequiredResult.profile).toEqual({
+      id: RELIANCE_PROFILE_VERSION, required_assurance: 'class_a', required_authority: false,
+    });
+  });
+
+  it('demands the pinned RP and origin scope from each human-ceremony trigger alone', () => {
+    // required_assurance:'class_a' is by itself a human ceremony, even when the
+    // evidence list does not also name class_a_or_quorum.
+    const classA = assemble('none');
+    classA.input.relying_party_profile.required_evidence = ['receipt', 'authority_proof'];
+    delete classA.opts.rpId;
+    const classAResult = evaluateReliance(classA.input, classA.opts);
+    expect(classAResult.verdict).toBe('do_not_rely_no_class_a');
+    expect(classAResult.reasons.at(-1)).toBe(
+      'human ceremony reliance requires a relying-party-pinned WebAuthn RP ID and non-empty origin allowlist',
+    );
+
+    // ...and so is required_assurance:'quorum', which refuses under its own verdict.
+    const quorum = assemble('none');
+    quorum.input.relying_party_profile.required_assurance = 'quorum';
+    quorum.input.relying_party_profile.required_evidence = ['receipt', 'authority_proof'];
+    delete quorum.opts.rpId;
+    const quorumResult = evaluateReliance(quorum.input, quorum.opts);
+    expect(quorumResult.verdict).toBe('do_not_rely_quorum_unsatisfied');
+    expect(quorumResult.reasons.at(-1)).toBe(
+      'human ceremony reliance requires a relying-party-pinned WebAuthn RP ID and non-empty origin allowlist',
+    );
+  });
+
+  it('refuses an origin allowlist in which ANY entry is malformed', () => {
+    const { input, opts } = assemble('none');
+    opts.allowedOrigins = ['https://www.emiliaprotocol.ai', ''];
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_no_class_a');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe(
+      'human ceremony reliance requires a relying-party-pinned WebAuthn RP ID and non-empty origin allowlist',
+    );
+  });
+
+  it('refuses an absent or non-object receipt at the receipt gate itself', () => {
+    for (const receipt of [undefined, null, false, 0, 42, 'receipt', Symbol('receipt')]) {
+      const { input, opts } = assemble('none');
+      input.receipt = receipt as any;
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_unsigned');
+      expect(r.rely).toBe(false);
+      expect(r.reasons.at(-1)).toBe('no receipt supplied');
+      expect(r.checks.receipt).toBe(false);
+    }
+  });
+
+  it('refuses a well-formed action hash that is not the one the receipt attests', () => {
+    // Distinct from a malformed hash: this one parses cleanly and simply names
+    // a different action. The join must compare values, not merely presence.
+    const { input, opts } = assemble('none');
+    input.action.action_hash = `sha256:${'a'.repeat(64)}`;
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_unsigned');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe(
+      'receipt does not attest the action being relied on (action_hash mismatch)',
+    );
+  });
+
+  it('refuses a caller organization_id that disagrees with the signed receipt', () => {
+    const { input, opts } = assemble('none');
+    input.action = { ...input.action, organization_id: 'attacker-org' };
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_unsigned');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe(
+      'caller action fields do not match the material fields covered by the receipt',
+    );
+  });
+
+  it('refuses an internally valid quorum that is bound to a DIFFERENT action', () => {
+    // Control: the same construction, bound to this receipt's action, relies.
+    const bound = assemble('none');
+    bound.input.quorum = pinQuorum(bound.input, bound.opts);
+    bound.input.relying_party_profile.required_assurance = 'quorum';
+    bound.input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(bound.input.receipt), subject: 'ep:approver:quorum-one',
+    }, registryKey);
+    expect(evaluateReliance(bound.input, bound.opts).verdict).toBe('rely');
+
+    // Same two devices, same policy, same pins — but the quorum authorizes
+    // another action. Replaying it here must never satisfy the assurance leg.
+    const { input, opts } = assemble('none');
+    const foreignHash = `sha256:${'a1'.repeat(32)}`;
+    input.quorum = pinQuorumDoc(buildQuorum(foreignHash), input, opts);
+    input.relying_party_profile.required_assurance = 'quorum';
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt), subject: 'ep:approver:quorum-one',
+    }, registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r).toMatchObject({
+      verdict: 'do_not_rely_quorum_unsatisfied', rely: false, checks: { assurance: false },
+    });
+    expect(r.reasons.at(-1)).toBe(
+      'a satisfied EP-QUORUM-v1 bound to this action is required',
+    );
+  });
+
+  it('discards malformed quorum members: they cannot crash the kernel or fill a seat', () => {
+    const { input, opts } = assemble('none');
+    input.quorum = pinQuorum(input, opts);
+    input.relying_party_profile.required_assurance = 'quorum';
+    input.quorum.members.pop();                             // one real member, threshold 2
+    input.quorum.members.push(null, { role: 'treasurer' }); // presenter-attached junk
+    const r = evaluateReliance(input, opts);
+    expect(r).toMatchObject({
+      verdict: 'do_not_rely_quorum_unsatisfied', rely: false, checks: { assurance: false },
+    });
+  });
+
+  it('will not anchor a quorum member to a pinned-key entry that is not a real object', () => {
+    const { input, opts } = assemble('none');
+    input.quorum = pinQuorum(input, opts);
+    input.relying_party_profile.required_assurance = 'quorum';
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt), subject: 'ep:approver:quorum-one',
+    }, registryKey);
+    // A callable carrying approver_id/key_class/public_key would anchor the
+    // member if the directory scan ever accepted a non-object entry.
+    opts.approverKeys['ep:key:quorum#1'] = carrier({ ...opts.approverKeys['ep:key:quorum#1'] });
+    const r = evaluateReliance(input, opts);
+    expect(r).toMatchObject({
+      verdict: 'do_not_rely_quorum_unsatisfied', rely: false, checks: { assurance: false },
+    });
+  });
+
+  it('refuses a non-object authority proof as a missing proof, not as evidence', () => {
+    for (const authority_proof of ['EP-AUTHORITY-PROOF-v1', 42, true]) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = authority_proof as any;
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_authority_missing');
+      expect(r.rely).toBe(false);
+      expect(r.reasons.at(-1)).toBe(
+        'scoped authority is required but no EP-AUTHORITY-PROOF-v1 was supplied',
+      );
+      expect(r.checks.authority).toBe(null);
+    }
+  });
+
+  it('refuses an EMPTY signed organization_id as an authority binding', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ actionOverrides: { organization_id: '' } });
+    input.receipt = receipt;
+    input.action = { ...input.action, organization_id: '', action_hash: receipt.action_hash };
+    input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(receipt), registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_authority_organization_mismatch');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe(
+      'signed action material carries no organization_id for authority binding',
+    );
+  });
+
+  it('refuses an authority proof with no signature envelope without throwing', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof = { '@type': 'EP-AUTHORITY-PROOF-v1', authority_id: 'auth_cfo' } as any;
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_authority_missing');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe(
+      'authority proof did not verify: signature_missing_or_malformed',
+    );
+    expect(r.checks.authority).toEqual({ accepted: false, reason: 'signature_missing_or_malformed' });
+  });
+
+  it('refuses a malformed validity.from as strictly as a malformed validity.to', () => {
+    for (const from of ['not-a-date', '2026-02-30T00:00:00.000Z']) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = signAuthorityProof({
+        ...baseAuthorityProofArgs(input.receipt),
+        validity: { from, to: '2027-01-01T00:00:00.000Z' },
+      }, registryKey);
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_authority_expired');
+      expect(r.rely).toBe(false);
+      expect(r.reasons.at(-1)).toBe('authority is outside its validity window at reliance time');
+    }
+  });
+
+  it('refuses an authority that is not yet valid at the reliance instant', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      validity: { from: '2026-08-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' },
+    }, registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_authority_expired');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe('authority is outside its validity window at reliance time');
+  });
+
+  it('compares window instants arithmetically, including before the Unix epoch', () => {
+    // A pre-epoch instant is a NEGATIVE number of milliseconds. An absent bound
+    // must stay absent rather than coercing to 0, or every pre-1970 reliance
+    // silently falls outside its own open-ended window.
+    const { input, opts } = assemble('none');
+    input.now = '1969-01-01T00:00:00Z';
+    input.relying_party_profile.required_evidence = ['receipt', 'class_a_or_quorum', 'authority_proof'];
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      validity: { to: '1969-06-01T00:00:00.000Z' },
+    }, registryKey);
+    const open = evaluateReliance(input, opts);
+    expect(open.verdict).toBe('rely');
+    expect(open.rely).toBe(true);
+
+    // The same open-ended window, evaluated after `to`, still expires.
+    input.now = '1969-12-01T00:00:00Z';
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_authority_expired');
+  });
+
+  it('treats an explicitly null max_amount_usd as unbounded, not as an unprovable ceiling', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt), limits: { currency: 'USD' },
+    }, registryKey);
+    expect(input.authority_proof.limits).toEqual({ max_amount_usd: null, currency: 'USD' });
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('rely');
+    expect(r.rely).toBe(true);
+  });
+
+  it('reads a ceiling that omits its denomination as USD', () => {
+    const { input, opts } = assemble('none');
+    // resign, not sign: signAuthorityProof would fill in the default itself.
+    input.authority_proof = resignAuthorityProof(input.authority_proof, {
+      limits: { max_amount_usd: 50000 },
+    });
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('rely');
+    expect(r.rely).toBe(true);
+  });
+
+  it('never lets a non-string currency satisfy the ceiling denomination', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ currency: 5 as any });
+    input.receipt = receipt;
+    input.action = { ...input.action, currency: 5, action_hash: receipt.action_hash };
+    input.authority_proof = resignAuthorityProof(
+      signAuthorityProof(baseAuthorityProofArgs(receipt), registryKey),
+      { limits: { max_amount_usd: 50000, currency: 5 } },
+    );
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_amount_exceeded');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe(
+      'the amount exceeds the authority ceiling (or is in an unprovable currency)',
+    );
+  });
+
+  it('refuses an action carrying no provable amount against a bounded authority', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ actionOverrides: { parameters: { currency: 'USD' } } });
+    input.receipt = receipt;
+    input.action = {
+      action_type: 'wire.release', currency: 'USD', organization_id: 'acme',
+      policy_hash: 'sha256:77ab1234', action_hash: receipt.action_hash,
+    };
+    input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(receipt), registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_amount_exceeded');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe(
+      'the amount exceeds the authority ceiling (or is in an unprovable currency)',
+    );
+  });
+
+  it('fails the freshness leg when the authority proof carries no revocation snapshot', () => {
+    // resign, not sign: signAuthorityProof always materializes a revocation
+    // object, so only a re-signed body can present the absent case.
+    const { input, opts } = assemble('none');
+    input.authority_proof = resignAuthorityProof(input.authority_proof, { revocation: null });
+    expect(input.authority_proof.revocation).toBe(null);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_stale_revocation');
+    expect(r.rely).toBe(false);
+    expect(r.checks.revocation).toBe('stale');
+    expect(r.reasons.at(-1)).toBe('the revocation check is older than the pinned freshness bound');
+  });
+
+  it('reads revocation evidence only from a plain object, never from a callable carrier', () => {
+    const { input, opts } = assemble('none');
+    input.revocation_state = carrier({ statement: {}, target: {} });
+    // Not a partial statement, not an incomplete artifact: simply not evidence.
+    // The authenticated freshness leg still decides the verdict.
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('rely');
+    expect(r.checks.revocation).toBe('fresh');
+  });
+});

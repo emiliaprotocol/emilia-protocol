@@ -10,6 +10,7 @@ import {
 import { canonicalize, createGate, hashCanonical } from '../packages/gate/index.js';
 import {
   __relianceSecurityInternals,
+  evaluateReliance,
   RELIANCE_PROFILE_VERSION,
   validateRelianceProfile,
 } from '../packages/verify/reliance.js';
@@ -709,6 +710,272 @@ describe('mutation oracles for reliance parsing and signed material', () => {
       expect(validateRelianceProfile({ ...minimal, accepted_registry_keys: [invalidPin] }).issues).toEqual([
         'accepted_registry_keys contains an invalid key entry',
       ]);
+    }
+  });
+});
+
+describe('mutation oracles for reliance helper internals', () => {
+  const {
+    toMs, pubKeyB64u, validateQuorumPolicy, parseNonNegativeDecimal,
+    exactMaterial, decimalMaterial, signedActionMaterial,
+  } = __relianceSecurityInternals;
+
+  it('parses instant STRINGS through the strict grammar, not numeric coercion', () => {
+    // `toMs` must reach strictInstantMs for strings. Coercing a string with
+    // Number.isFinite, or refusing every string, silently makes every
+    // string-valued evaluation time unparseable and fails the whole packet.
+    expect(toMs('2026-01-01T00:00:00Z')).toBe(Date.parse('2026-01-01T00:00:00Z'));
+    expect(toMs('2026-06-09T17:21:04+05:30')).toBe(Date.parse('2026-06-09T17:21:04+05:30'));
+    expect(toMs('2026-06-09T17:21:04.500Z')).toBe(Date.parse('2026-06-09T17:21:04.500Z'));
+    expect(Number.isNaN(toMs('2026-01-01'))).toBe(true);
+    expect(Number.isNaN(toMs('2026-01-01T00:00:00+24:00'))).toBe(true);
+    expect(Number.isNaN(toMs('1767225600000'))).toBe(true);
+  });
+
+  it('accepts a public key only from a string or a genuine object carrier', () => {
+    // typeof 'function' is not 'object'; a callable carrying a public_key
+    // property must not be mistaken for a pinned key record.
+    const callableCarrier = Object.assign(() => {}, { public_key: 'fn-key' });
+    expect(pubKeyB64u(callableCarrier)).toBeNull();
+    expect(pubKeyB64u({ public_key: 'object-key' })).toBe('object-key');
+    expect(pubKeyB64u('raw-key')).toBe('raw-key');
+  });
+
+  it('rejects a roster where only SOME approver entries are malformed', () => {
+    const partiallyMalformed = {
+      mode: 'threshold',
+      required: 2,
+      distinct_humans: true,
+      approvers: [
+        { role: 'controller', approver: 'alice' },
+        { role: 'treasurer', approver: '' },
+      ],
+    };
+    expect(validateQuorumPolicy(partiallyMalformed)).toContain(
+      'quorum_policy.approvers must name at least one role and approver',
+    );
+    expect(validateQuorumPolicy({
+      ...partiallyMalformed,
+      approvers: [{ role: '', approver: 'alice' }, { role: 'treasurer', approver: 'bob' }],
+    })).toContain('quorum_policy.approvers must name at least one role and approver');
+  });
+
+  it('refuses amounts carried by non-strings that merely stringify to a decimal', () => {
+    // Only a number or a string is decimal material. Anything else that happens
+    // to coerce to "100" must not become a signed amount.
+    expect(parseNonNegativeDecimal({ toString: () => '100' })).toBeNull();
+    expect(parseNonNegativeDecimal(['100'])).toBeNull();
+    expect(parseNonNegativeDecimal(true)).toBeNull();
+    expect(parseNonNegativeDecimal(undefined)).toBeNull();
+    expect(parseNonNegativeDecimal('100')).toEqual({ coefficient: 100n, scale: 0 });
+    expect(parseNonNegativeDecimal(100)).toEqual({ coefficient: 100n, scale: 0 });
+  });
+
+  it('drops absent candidates before choosing exact material', () => {
+    // A null/undefined slot is an ABSENT source, never a conflicting value.
+    expect(exactMaterial([null, 'x'])).toEqual({ value: 'x', ambiguous: false });
+    expect(exactMaterial([undefined, null, 'x', 'x'])).toEqual({ value: 'x', ambiguous: false });
+    expect(exactMaterial([null, 'x', 'y'])).toEqual({ value: 'x', ambiguous: true });
+  });
+
+  it('refuses decimal material when ANY present candidate is unparsable', () => {
+    expect(decimalMaterial(['1', 'bad'])).toEqual({ value: null, ambiguous: true });
+    expect(decimalMaterial(['bad', '1'])).toEqual({ value: null, ambiguous: true });
+    expect(decimalMaterial(['1', '1.00', 'bad'])).toEqual({ value: null, ambiguous: true });
+  });
+
+  it('tolerates absent approval contexts when reading signed material', () => {
+    // Contexts are attacker-shaped input; a null entry must contribute nothing
+    // rather than throwing out of the kernel.
+    expect(signedActionMaterial(
+      { action: { action_type: 'wire.release', policy_hash: 'sha256:p', organization_id: 'org' } },
+      [null, undefined],
+    )).toEqual({
+      action_type: 'wire.release', amount: null, currency: null,
+      organization_id: 'org', policy_hash: 'sha256:p', ambiguous: false,
+    });
+    expect(signedActionMaterial({ action: { action_type: 'wire.release' } }, [null]))
+      .toMatchObject({ organization_id: null, policy_hash: null, ambiguous: false });
+  });
+
+  it('reads organization material out of the approval contexts themselves', () => {
+    expect(signedActionMaterial({ action: { action_type: 'a' } }, [{ organization_id: 'from-context' }]))
+      .toMatchObject({ organization_id: 'from-context', ambiguous: false });
+    // An organization conflict alone — nothing else disagreeing — is ambiguous.
+    expect(signedActionMaterial(
+      { action: { action_type: 'a', organization_id: 'signed-org', policy_hash: 'sha256:p' } },
+      [{ organization_id: 'other-org', policy_hash: 'sha256:p' }],
+    )).toMatchObject({ organization_id: 'signed-org', ambiguous: true });
+  });
+});
+
+describe('mutation oracles for quorum approval-context admission', () => {
+  const sha256hex = (s: string) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+  const leafHashV2 = (p: string) => crypto.createHash('sha256')
+    .update(Buffer.concat([Buffer.from([0x00]), Buffer.from(p, 'utf8')])).digest('hex');
+  const hashPairV2 = (l: string, r: string) => crypto.createHash('sha256')
+    .update(Buffer.concat([Buffer.from([0x01]), Buffer.from(l, 'utf8'), Buffer.from(r, 'utf8')])).digest('hex');
+  const ed25519 = () => {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+    return { privateKey, pub: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
+  };
+  const p256 = () => {
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    return { privateKey, pub: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
+  };
+  const rpId = 'www.emiliaprotocol.ai';
+  function webauthnForDigest(privateKey, digestHex) {
+    const challenge = Buffer.from(digestHex, 'hex').toString('base64url');
+    const clientDataJSON = Buffer.from(JSON.stringify({
+      type: 'webauthn.get', challenge, origin: `https://${rpId}`,
+    }), 'utf8');
+    const authData = Buffer.concat([
+      crypto.createHash('sha256').update(rpId).digest(), Buffer.from([0x05]), Buffer.from([0, 0, 0, 0]),
+    ]);
+    const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataJSON).digest()]);
+    return {
+      authenticator_data: authData.toString('base64url'),
+      client_data_json: clientDataJSON.toString('base64url'),
+      signature: crypto.sign('sha256', signedData, privateKey).toString('base64url'),
+    };
+  }
+
+  // A genuinely satisfied two-device quorum, plus whatever extra members the
+  // caller wants to smuggle in.
+  function quorumPacket(extraMembers: any[]) {
+    const controllerKey = ed25519();
+    const cfoKey = ed25519();
+    const logKey = ed25519();
+    const action = {
+      ep_version: '1.0', action_type: 'wire.release', organization_id: 'acme',
+      target: { system: 'treasury.example', resource: 'wire/8841' },
+      parameters: { amount: '50000.00', currency: 'USD' },
+      initiator: 'ep:entity:agent-recon-7', policy_id: 'ep:policy:wires-over-100k@v12',
+      requested_at: '2026-06-09T17:21:04Z',
+    };
+    const actionHash = `sha256:${sha256hex(canonicalize(action))}`;
+    const baseCtx = {
+      ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: actionHash,
+      policy_id: 'ep:policy:wires-over-100k@v12', policy_hash: 'sha256:77ab1234',
+      initiator: action.initiator, required_approvals: 2,
+      issued_at: '2026-06-09T17:21:05Z', expires_at: '2026-06-09T17:36:05Z',
+    };
+    const ctx1 = { ...baseCtx, approver: 'ep:approver:jchen-controller', approver_index: 1, nonce: 'n-1' };
+    const ctx2 = { ...baseCtx, approver: 'ep:approver:mrios-cfo', approver_index: 2, nonce: 'n-2' };
+    const d1 = sha256hex(canonicalize(ctx1));
+    const d2 = sha256hex(canonicalize(ctx2));
+    const receipt: any = {
+      receipt_id: 'ep:receipt:01JQUORUM', action, action_hash: actionHash, contexts: [ctx1, ctx2],
+      signoffs: [
+        {
+          context_hash: `sha256:${d1}`, key_class: 'B', approver_key_id: 'ep:key:controller#1',
+          signature: crypto.sign(null, Buffer.from(d1, 'hex'), controllerKey.privateKey).toString('base64url'),
+          signed_at: '2026-06-09T17:24:40Z',
+        },
+        {
+          context_hash: `sha256:${d2}`, key_class: 'B', approver_key_id: 'ep:key:controller#2',
+          signature: crypto.sign(null, Buffer.from(d2, 'hex'), cfoKey.privateKey).toString('base64url'),
+          signed_at: '2026-06-09T17:25:01Z',
+        },
+      ],
+      consumption: { nonce: 'n-consume', state: 'COMMITTED', committed_at: '2026-06-09T17:25:02Z' },
+    };
+    const leaf = leafHashV2(canonicalize(receipt));
+    const sibling1 = sha256hex('other-leaf-1');
+    const sibling2 = sha256hex('other-subtree');
+    const checkpoint = {
+      tree_size: 4, root_hash: `sha256:${hashPairV2(hashPairV2(leaf, sibling1), sibling2)}`,
+      log_key_id: 'ep:log:test#1', merkle_alg: 'EP-MERKLE-v2',
+    };
+    receipt.log_proof = {
+      alg: 'EP-MERKLE-v2', leaf_hash: `sha256:${leaf}`, leaf_index: 0,
+      inclusion_path: [{ hash: sibling1, position: 'right' }, { hash: sibling2, position: 'right' }],
+      checkpoint: {
+        ...checkpoint,
+        log_signature: crypto.sign(
+          null, crypto.createHash('sha256').update(canonicalize(checkpoint), 'utf8').digest(), logKey.privateKey,
+        ).toString('base64url'),
+      },
+    };
+
+    const firstDevice = p256();
+    const secondDevice = p256();
+    const quorumCtx = (nonce: string, approver: string) => ({
+      ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: actionHash,
+      policy_hash: 'sha256:77ab1234', nonce, approver, initiator: 'ep:entity:agent-recon-7',
+      issued_at: '2026-06-09T17:24:00Z', expires_at: '2026-06-09T17:36:00Z',
+    });
+    const qc1 = quorumCtx('q-1', 'ep:approver:quorum-one');
+    const qc2 = quorumCtx('q-2', 'ep:approver:quorum-two');
+    const member = (role: string, context: any, key: any) => ({
+      role,
+      approver_public_key: key.pub,
+      signoff: {
+        '@type': 'ep.signoff.webauthn', context,
+        webauthn: webauthnForDigest(key.privateKey, sha256hex(canonicalize(context))),
+      },
+    });
+    const policy = {
+      mode: 'threshold', required: 2, distinct_humans: true, window_sec: 300,
+      approvers: [
+        { role: 'controller', approver: qc1.approver },
+        { role: 'treasurer', approver: qc2.approver },
+      ],
+    };
+    const pinnedKey = (approverId: string, publicKey: string) => ({
+      approver_id: approverId, public_key: publicKey, key_class: 'A',
+      valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z',
+    });
+    return {
+      input: {
+        action: { action_hash: actionHash },
+        receipt,
+        quorum: {
+          '@type': 'ep.quorum', action_hash: actionHash, policy,
+          members: [member('controller', qc1, firstDevice), member('treasurer', qc2, secondDevice), ...extraMembers],
+        },
+        now: '2026-06-09T17:30:00Z',
+        relying_party_profile: {
+          '@type': RELIANCE_PROFILE_VERSION, required_assurance: 'quorum',
+          accepted_issuer_keys: [logKey.pub], quorum_policy: structuredClone(policy),
+        },
+      },
+      opts: {
+        approverKeys: {
+          'ep:key:controller#1': { ...pinnedKey('ep:approver:jchen-controller', controllerKey.pub), key_class: 'B' },
+          'ep:key:controller#2': { ...pinnedKey('ep:approver:mrios-cfo', cfoKey.pub), key_class: 'B' },
+          'ep:key:quorum#1': pinnedKey(qc1.approver, firstDevice.pub),
+          'ep:key:quorum#2': pinnedKey(qc2.approver, secondDevice.pub),
+        },
+        logPublicKey: logKey.pub,
+        rpId,
+        allowedOrigins: [`https://${rpId}`],
+        isConsumed: () => false,
+      },
+    };
+  }
+
+  it('relies on a genuine two-device quorum', () => {
+    const { input, opts } = quorumPacket([]);
+    const result = evaluateReliance(input, opts);
+    expect(result.checks.assurance).toBe('quorum');
+    expect(result.verdict).toBe('rely');
+  });
+
+  it('ignores quorum members whose signoff context is not an object', () => {
+    // Only an OBJECT carrying an approval decision is an approval context. A
+    // truthy non-object (or a null) must be dropped before the counted set, not
+    // admitted into it — admitting one would drag an unanchored key into the
+    // key-anchoring check and sink an otherwise satisfied quorum, and a null
+    // one would throw straight out of the kernel.
+    for (const context of ['approved', 42, true, null, undefined]) {
+      const { input, opts } = quorumPacket([{
+        role: 'ghost', approver_public_key: 'not-a-real-spki',
+        signoff: { '@type': 'ep.signoff.webauthn', context },
+      }]);
+      const result = evaluateReliance(input, opts);
+      expect(result.checks.assurance).toBe('quorum');
+      expect(result.verdict).toBe('rely');
     }
   });
 });
