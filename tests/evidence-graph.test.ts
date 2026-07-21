@@ -605,3 +605,72 @@ describe('policy packs', () => {
     }
   });
 });
+
+// A graph presenter chooses node.type, while the artifact carries its own typ.
+// The verifier must bind those roles instead of trusting the presenter label.
+describe('node.type / artifact.typ consistency — verifier-level defense', () => {
+  const strictVerifiers = {
+    authorization_receipt: (artifact: any) => ({
+      valid: artifact.typ === 'authorization_receipt',
+      action_digest: artifact.action,
+    }),
+    policy_permit: (artifact: any) => ({
+      valid: artifact.typ === 'policy_permit',
+      action_digest: artifact.action,
+    }),
+    workload_identity: (artifact: any) => ({
+      valid: artifact.typ === 'workload_identity',
+      action_digest: artifact.action,
+    }),
+  };
+
+  it('rejects a relabeled artifact when the verifier checks artifact.typ', () => {
+    const auth = mk('authorization_receipt', { issued_at: '2026-07-02T00:00:00Z' });
+    const authId = artifactDigest(auth);
+    const wl = mk('workload_identity', { issued_at: '2026-07-02T00:00:00Z' });
+    const wlId = artifactDigest(wl);
+    const doc = {
+      '@version': EVIDENCE_GRAPH_VERSION,
+      action_digest: ACTION,
+      nodes: [
+        { id: authId, type: 'policy_permit', artifact: auth },
+        { id: wlId, type: 'workload_identity', artifact: wl },
+      ],
+      edges: [],
+    };
+
+    const result = evaluateEvidenceGraph(doc, wirePack, {
+      verifiers: strictVerifiers,
+      as_of: AS_OF,
+    });
+    expect(result.verdict).not.toBe('admissible');
+  });
+
+  it('accepts correctly typed artifacts when the verifier checks artifact.typ', () => {
+    const auth = mk('authorization_receipt', { issued_at: '2026-07-02T00:00:00Z' });
+    const authId = artifactDigest(auth);
+    const permit = mk('policy_permit', {
+      authorizes_receipt: authId,
+      issued_at: '2026-07-02T00:00:00Z',
+    });
+    const permitId = artifactDigest(permit);
+    const wl = mk('workload_identity', { issued_at: '2026-07-02T00:00:00Z' });
+    const wlId = artifactDigest(wl);
+    const doc = {
+      '@version': EVIDENCE_GRAPH_VERSION,
+      action_digest: ACTION,
+      nodes: [
+        { id: authId, type: 'authorization_receipt', artifact: auth },
+        { id: permitId, type: 'policy_permit', artifact: permit },
+        { id: wlId, type: 'workload_identity', artifact: wl },
+      ],
+      edges: [{ from: permitId, rel: 'permits', to: authId }],
+    };
+
+    const result = evaluateEvidenceGraph(doc, wirePack, {
+      verifiers: strictVerifiers,
+      as_of: AS_OF,
+    });
+    expect(result.verdict).toBe('admissible');
+  });
+});
