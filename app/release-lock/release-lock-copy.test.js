@@ -12,10 +12,10 @@ function readLocal(relativePath) {
 }
 
 const productCopy = [
-  readLocal('./new/ReleaseLockNew.jsx'),
-  readLocal('./ReleaseLockTerms.jsx'),
-  readLocal('./[lockId]/ReleaseLockExperience.jsx'),
-  readLocal('./[lockId]/mirror/ActionMirrorExperience.jsx'),
+  readLocal('./new/ReleaseLockNew.tsx'),
+  readLocal('./ReleaseLockTerms.tsx'),
+  readLocal('./[lockId]/ReleaseLockExperience.tsx'),
+  readLocal('./[lockId]/mirror/ActionMirrorExperience.tsx'),
 ].join('\n');
 
 const normalizedCopy = productCopy.replace(/\s+/g, ' ');

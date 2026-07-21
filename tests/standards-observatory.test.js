@@ -129,7 +129,7 @@ describe('standards observatory evidence contract', () => {
   it('gives both humans and language models the same discovery surfaces', () => {
     const llms = read('public/standards-observatory.llms.txt');
     const context = json('public/.well-known/emilia-context.json');
-    const page = read('app/observatory/ObservatoryClient.js');
+    const page = read('app/observatory/ObservatoryClient.tsx');
     expect(llms).toContain('/.well-known/standards-observatory.json');
     expect(llms).toContain('correlated discovery');
     expect(context.standards_observatory.snapshot_sha256).toBe(snapshot.snapshot_sha256);

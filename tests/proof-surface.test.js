@@ -36,7 +36,7 @@ describe('public engineering evidence surface', () => {
     expect(read('app/HomePageClient.js')).toContain('href="/proof"');
     expect(read('app/security/page.js')).toContain('href="/proof"');
     expect(read('components/SiteFooter.js')).toContain("['/proof', 'Engineering Evidence']");
-    expect(read('app/sitemap.js')).toContain("{ path: '/proof'");
+    expect(read('app/sitemap.ts')).toContain("{ path: '/proof'");
     expect(read('app/gate/layout.js')).toContain("url: 'https://www.emiliaprotocol.ai/proof'");
     expect(read('README.md')).toContain('www.emiliaprotocol.ai/proof');
   });

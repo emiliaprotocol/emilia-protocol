@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const page = readFileSync(resolve(ROOT, 'app/spec/page.js'), 'utf8');
+const page = readFileSync(resolve(ROOT, 'app/spec/page.tsx'), 'utf8');
 
 describe('/spec source contract', () => {
   it('renders the current posted authorization-receipts revision from an existing file', () => {

@@ -12,9 +12,9 @@ import {
   SafeAreaView, View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet, Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { challengeFromContext, buildAttestation } from './lib/ep-signoff.mjs';
+import { challengeFromContext, buildAttestation } from './lib/ep-signoff';
 import { signChallenge, getEnrolledPublicKeyHex } from './lib/secure-key';
-import { fetchPendingSignoffs, submitSignoff } from './lib/ep-client.mjs';
+import { fetchPendingSignoffs, submitSignoff } from './lib/ep-client';
 
 // Configure for your tenant. EXPO_PUBLIC_* vars are injected at build time.
 const BASE_URL = process.env.EXPO_PUBLIC_EP_BASE_URL || 'https://www.emiliaprotocol.ai';

@@ -272,9 +272,15 @@ export async function handleMobileRuntimeRequest(request: Request): Promise<Resp
       },
     });
   }
-  // handler and session are always set together by createMobileRuntime — the
-  // return type can't express that correlation, so narrow at this access point.
-  const sessionLimit = await checkRateLimit(`session:${(runtime.session as MobileSession).session_id}`, 'mobile_write');
+  // handler and session are always set together by createMobileRuntime; this
+  // guard is unreachable in practice but narrows the type and fails closed if
+  // that invariant ever breaks. The rate-limit key below must keep the exact
+  // `runtime.session.session_id` expression: scripts/check-mobile-release.mts
+  // pins it as a release invariant (paired ceremonies are session-rate-limited).
+  if (!runtime.session) {
+    return rateLimitResponse({ error: 'mobile session unavailable' });
+  }
+  const sessionLimit = await checkRateLimit(`session:${runtime.session.session_id}`, 'mobile_write');
   if (!sessionLimit.allowed) return rateLimitResponse(sessionLimit);
   return runtime.handler(request);
 }

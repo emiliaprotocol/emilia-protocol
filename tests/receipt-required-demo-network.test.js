@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it, vi } from 'vitest';
-import { postReceiptRequiredDemo } from '../app/try/receipt-required/post-demo.js';
+import { postReceiptRequiredDemo } from '../app/try/receipt-required/post-demo.ts';
 
 describe('receipt-required demo transport boundary', () => {
   it('preserves the normal structured response', async () => {

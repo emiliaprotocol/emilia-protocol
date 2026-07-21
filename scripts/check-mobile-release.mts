@@ -49,8 +49,8 @@ contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/M
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*OutcomeUnknown/, 'Android does not close an unresolved recovery lookup as outcome unknown');
 assert.doesNotMatch(read('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt'), /Nothing was authorized/, 'Android makes an unsafe non-commit claim after transport failure');
 
-contains('app/.well-known/apple-app-site-association/route.js', new RegExp(`5M2Z48UQQY\\.${identity.replaceAll('.', '\\.')}`), 'Apple association identity drifted');
-contains('app/.well-known/assetlinks.json/route.js', new RegExp(identity.replaceAll('.', '\\.')), 'Android association identity drifted');
+contains('app/.well-known/apple-app-site-association/route.ts', new RegExp(`5M2Z48UQQY\\.${identity.replaceAll('.', '\\.')}`), 'Apple association identity drifted');
+contains('app/.well-known/assetlinks.json/route.ts', new RegExp(identity.replaceAll('.', '\\.')), 'Android association identity drifted');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /create or replace function revoke_mobile_session/, 'atomic credential revocation is missing');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on function revoke_mobile_session\(text, uuid, timestamptz\) from anon, authenticated, public/, 'revocation RPC is publicly executable');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /alter table mobile_sessions enable row level security/, 'mobile session RLS is missing');

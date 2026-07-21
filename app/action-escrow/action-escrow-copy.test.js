@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const source = fs.readFileSync(
-  new URL('./ActionEscrowExperience.js', import.meta.url),
+  new URL('./ActionEscrowExperience.tsx', import.meta.url),
   'utf8',
 );
 const scenarioSource = fs.readFileSync(

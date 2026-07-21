@@ -9,7 +9,7 @@ const source = (path) => readFileSync(resolve(ROOT, path), 'utf8');
 
 describe('web Class-A presentation contract', () => {
   it('renders the complete deterministic WYSIWYS line set and the canonical action', () => {
-    const page = source('app/signoff/[signoffId]/page.js');
+    const page = source('app/signoff/[signoffId]/page.tsx');
 
     expect(page).toContain('renderAction(action)');
     expect(page).toMatch(/rendered\.lines\.map/);
@@ -19,7 +19,7 @@ describe('web Class-A presentation contract', () => {
   });
 
   it('uses the intended approver from the signed request, not the query string', () => {
-    const page = source('app/signoff/[signoffId]/page.js');
+    const page = source('app/signoff/[signoffId]/page.tsx');
 
     expect(page).toContain('requestEvent.after_state.approver_id');
     expect(page).not.toContain("sp?.approver");
@@ -27,7 +27,7 @@ describe('web Class-A presentation contract', () => {
   });
 
   it('validates returned challenge material before a separate passkey confirmation', () => {
-    const signer = source('app/signoff/[signoffId]/signer.js');
+    const signer = source('app/signoff/[signoffId]/signer.tsx');
 
     expect(signer).toContain('expectedActionHash');
     expect(signer).toContain('expectedDisplayHash');

@@ -1,7 +1,40 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import { COMPANION_RUNTIME_PATHS } from './scripts/standalone-runtime-targets.mjs';
+
+// Node-20 standalone-runtime companions are generated transpilations of .ts
+// sources (see scripts/build-standalone-runtimes.mjs). Tests must exercise the
+// SOURCES, not the generated twins -- a resolve-stage plugin redirects any
+// import that would land on a companion file to its .ts/.mts source (aliases
+// can't do this: they match import specifiers, and companions are reached via
+// './x.js' / '@/lib/x.js' specifiers that only identify the companion after
+// resolution). Companions also stay out of coverage below.
+const companionAbsolute = new Map(COMPANION_RUNTIME_PATHS.map((runtimePath) => [
+  path.resolve(__dirname, runtimePath),
+  path.resolve(__dirname, runtimePath.replace(/\.mjs$/, '.mts').replace(/\.js$/, '.ts')),
+]));
+const companionSourceRedirect = {
+  name: 'ep-companion-source-redirect',
+  enforce: 'pre',
+  async resolveId(source, importer, options) {
+    // No specifier-shape filter: '@/lib/supabase' (extensionless, used by
+    // vi.mock in tests) and '@/lib/supabase.js' (used by sources) must both
+    // land on the SAME redirected id, or module mocks silently miss.
+    const resolved = await this.resolve(source, importer, { skipSelf: true, ...options });
+    if (!resolved) return null;
+    const target = companionAbsolute.get(resolved.id);
+    return target ?? null;
+  },
+};
 
 export default defineConfig({
+  // The root tsconfig.json sets jsx: "preserve" for Next's compiler; the test
+  // transform must actually COMPILE the JSX in .tsx sources instead of
+  // preserving it, or importing a .tsx file from a test fails to parse.
+  // This vite is rolldown-vite (oxc transforms), so the esbuild-style option
+  // spelling does nothing -- configure oxc directly.
+  oxc: { jsx: { runtime: 'automatic' } },
+  plugins: [companionSourceRedirect],
   resolve: {
     alias: {
       '@': path.resolve(__dirname),
@@ -36,9 +69,13 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage',
-      include: ['lib/**/*.js'],
+      include: ['lib/**/*.ts', 'lib/**/*.js'],
       exclude: [
         '**/*.test.js',
+        '**/*.test.ts',
+        // Generated Node-20 standalone-runtime companions (untested transpiled
+        // twins of .ts sources; the aliases above route tests to the sources).
+        ...COMPANION_RUNTIME_PATHS,
         // ── Infrastructure adapters — exercised via integration, not units ──
         // These wrap external systems (DB, env, observability sinks, process
         // lifecycle) where unit tests would only verify the mock, not the
