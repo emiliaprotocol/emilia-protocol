@@ -7,12 +7,16 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { canonicalize, isCanonicalizable } from '../../packages/verify/index.js';
+import { buildMobileActionIdentity } from '../../packages/mobile/action-identity.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const vectors = JSON.parse(fs.readFileSync(path.join(ROOT, 'mobile/conformance/mobile-core.v1.json'), 'utf8'));
 if (vectors['@version'] !== 'EP-MOBILE-CONFORMANCE-v1') throw new Error('unsupported mobile vector version');
 if (!Array.isArray(vectors.presentation_mapping) || vectors.presentation_mapping.length === 0) {
   throw new Error('mobile presentation mapping vectors are required');
+}
+if (!Array.isArray(vectors.action_identity) || vectors.action_identity.length === 0) {
+  throw new Error('mobile CAID Action Lock vectors are required');
 }
 
 const supportedPorts = new Set(['javascript', 'swift', 'kotlin']);
@@ -34,6 +38,15 @@ if (selected.has('javascript')) {
     const digest = crypto.createHash('sha256').update(encoded, 'utf8').digest('hex');
     if (encoded !== vector.canonical || digest !== vector.sha256) throw new Error(`${vector.id}: JavaScript byte mismatch`);
   }
+  for (const vector of vectors.action_identity) {
+    const identity = buildMobileActionIdentity({
+      actionReference: vector.action_reference,
+      action: vector.action,
+    });
+    if (JSON.stringify(identity) !== JSON.stringify(vector.expect)) {
+      throw new Error(`${vector.id}: JavaScript CAID Action Lock mismatch`);
+    }
+  }
   execFileSync(process.execPath, [
     '--test',
     'packages/mobile/attestation.test.js',
@@ -54,4 +67,4 @@ if (selected.has('kotlin')) {
   });
 }
 
-console.log(`EP MOBILE CONFORMANCE: PASS (${vectors.canonicalization.length} byte vectors; ${vectors.presentation_mapping.length} presentation vectors; ${vectors.hostile_contract.length} hostile contracts; ${selectedPorts.join(' + ')})`);
+console.log(`EP MOBILE CONFORMANCE: PASS (${vectors.canonicalization.length} byte vectors; ${vectors.action_identity.length} Action Lock vectors; ${vectors.presentation_mapping.length} presentation vectors; ${vectors.hostile_contract.length} hostile contracts; ${selectedPorts.join(' + ')})`);

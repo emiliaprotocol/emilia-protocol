@@ -12,6 +12,7 @@ import {
 } from './index.js';
 import {
   evaluatePredictedEffects,
+  isDecimalString,
   predictedEffectsDigest,
   validatePredictedEffects,
 } from './effect-predicates.js';
@@ -116,6 +117,19 @@ const verify = (att, extra = {}) => verifyOutcomeBinding(receipt, att, {
   executorKeys,
   now: NOW,
   ...extra,
+});
+
+test('decimal parsing stays linear on a long zero run with a nonzero tail', () => {
+  const adversarialDecimal = `0.${'0'.repeat(100_000)}1`;
+  const startedAt = performance.now();
+
+  assert.equal(isDecimalString(adversarialDecimal), true);
+
+  const elapsedMs = performance.now() - startedAt;
+  assert.ok(
+    elapsedMs < 750,
+    `decimal parsing took ${elapsedMs.toFixed(1)}ms; expected linear-time handling below 750ms`,
+  );
 });
 
 test('accepts real signed receipt + pinned executor attestation + in-bounds outcome', () => {

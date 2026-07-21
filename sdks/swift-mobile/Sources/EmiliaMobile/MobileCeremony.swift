@@ -25,6 +25,20 @@ public struct EmiliaWebAuthnRequest: Sendable, Codable, Equatable {
     public let userVerification: String
     public let timeoutMS: Int64
 
+    public init(
+        rpID: String,
+        challenge: String,
+        credentialIDs: [String],
+        userVerification: String,
+        timeoutMS: Int64
+    ) {
+        self.rpID = rpID
+        self.challenge = challenge
+        self.credentialIDs = credentialIDs
+        self.userVerification = userVerification
+        self.timeoutMS = timeoutMS
+    }
+
     enum CodingKeys: String, CodingKey {
         case rpID = "rp_id"
         case challenge
@@ -40,6 +54,13 @@ public struct EmiliaAttestationRequest: Sendable, Codable, Equatable {
     public let binding: EmiliaJSONValue
     public let requestHash: String
 
+    public init(required: Bool, format: String, binding: EmiliaJSONValue, requestHash: String) {
+        self.required = required
+        self.format = format
+        self.binding = binding
+        self.requestHash = requestHash
+    }
+
     enum CodingKeys: String, CodingKey {
         case required, format, binding
         case requestHash = "request_hash"
@@ -47,6 +68,8 @@ public struct EmiliaAttestationRequest: Sendable, Codable, Equatable {
 }
 
 public struct EmiliaMobileChallenge: Sendable, Codable, Equatable {
+    public static let supportedProfile = "EP-MOBILE-CHALLENGE-v2"
+
     public let version: String
     public let challengeProfile: String
     public let challengeID: String
@@ -60,6 +83,36 @@ public struct EmiliaMobileChallenge: Sendable, Codable, Equatable {
     public let attestation: EmiliaAttestationRequest
     public let issuedAt: String
     public let expiresAt: String
+
+    public init(
+        version: String,
+        challengeProfile: String,
+        challengeID: String,
+        nonce: String,
+        action: EmiliaJSONValue,
+        actionHash: String,
+        profileHash: String,
+        authorizationContext: EmiliaJSONValue,
+        webauthn: EmiliaWebAuthnRequest,
+        presentation: EmiliaJSONValue,
+        attestation: EmiliaAttestationRequest,
+        issuedAt: String,
+        expiresAt: String
+    ) {
+        self.version = version
+        self.challengeProfile = challengeProfile
+        self.challengeID = challengeID
+        self.nonce = nonce
+        self.action = action
+        self.actionHash = actionHash
+        self.profileHash = profileHash
+        self.authorizationContext = authorizationContext
+        self.webauthn = webauthn
+        self.presentation = presentation
+        self.attestation = attestation
+        self.issuedAt = issuedAt
+        self.expiresAt = expiresAt
+    }
 
     enum CodingKeys: String, CodingKey {
         case version = "@version"
@@ -135,12 +188,23 @@ public struct EmiliaMobileCeremonyResponse: Sendable, Codable, Equatable {
     public struct Signoff: Sendable, Codable, Equatable {
         public let context: EmiliaJSONValue
         public let webauthn: WebAuthn
+
+        public init(context: EmiliaJSONValue, webauthn: WebAuthn) {
+            self.context = context
+            self.webauthn = webauthn
+        }
     }
 
     public struct WebAuthn: Sendable, Codable, Equatable {
         public let authenticatorData: String
         public let clientDataJSON: String
         public let signature: String
+
+        public init(authenticatorData: String, clientDataJSON: String, signature: String) {
+            self.authenticatorData = authenticatorData
+            self.clientDataJSON = clientDataJSON
+            self.signature = signature
+        }
 
         enum CodingKeys: String, CodingKey {
             case authenticatorData = "authenticator_data"
@@ -153,6 +217,12 @@ public struct EmiliaMobileCeremonyResponse: Sendable, Codable, Equatable {
         public let format: String
         public let token: String
         public let deviceKeySignature: String?
+
+        public init(format: String, token: String, deviceKeySignature: String? = nil) {
+            self.format = format
+            self.token = token
+            self.deviceKeySignature = deviceKeySignature
+        }
 
         enum CodingKeys: String, CodingKey {
             case format, token
@@ -172,6 +242,32 @@ public struct EmiliaMobileCeremonyResponse: Sendable, Codable, Equatable {
         case displayHash = "display_hash"
         case signoff, attestation
     }
+
+    public init(
+        challengeID: String,
+        nonce: String,
+        platform: String,
+        appID: String,
+        deviceKeyID: String,
+        credentialID: String,
+        attestationKeyID: String,
+        decision: String,
+        displayHash: String,
+        signoff: Signoff,
+        attestation: Attestation
+    ) {
+        self.challengeID = challengeID
+        self.nonce = nonce
+        self.platform = platform
+        self.appID = appID
+        self.deviceKeyID = deviceKeyID
+        self.credentialID = credentialID
+        self.attestationKeyID = attestationKeyID
+        self.decision = decision
+        self.displayHash = displayHash
+        self.signoff = signoff
+        self.attestation = attestation
+    }
 }
 
 public struct EmiliaValidatedChallenge: Sendable {
@@ -181,6 +277,8 @@ public struct EmiliaValidatedChallenge: Sendable {
     public let requestHash: Data
     public let presentation: EmiliaMobilePresentation
     public let decision: EmiliaMobileDecision
+    public let actionReference: String
+    public let actionIdentity: EmiliaActionIdentity
 }
 
 public enum EmiliaMobileChallengeValidator {
@@ -259,6 +357,8 @@ public enum EmiliaMobileChallengeValidator {
     public static func decodeAndValidate(
         _ data: Data,
         requestedDecision: EmiliaMobileDecision? = nil,
+        expectedActionReference: String? = nil,
+        expectedActionIdentity: EmiliaActionIdentity? = nil,
         now: Date = Date()
     ) throws -> EmiliaValidatedChallenge {
         let decoder = JSONDecoder()
@@ -267,7 +367,7 @@ public enum EmiliaMobileChallengeValidator {
         catch { throw EmiliaMobileError.malformedChallenge("challenge JSON could not be decoded") }
 
         guard challenge.version == "AE-CHALLENGE-v1",
-              challenge.challengeProfile == "EP-MOBILE-CHALLENGE-v1",
+              challenge.challengeProfile == EmiliaMobileChallenge.supportedProfile,
               challenge.webauthn.userVerification == "required",
               !challenge.webauthn.credentialIDs.isEmpty,
               challenge.webauthn.credentialIDs.allSatisfy({ Data(emiliaBase64URL: $0) != nil })
@@ -280,7 +380,13 @@ public enum EmiliaMobileChallengeValidator {
               issued <= now, now <= expires, expires > issued
         else { throw EmiliaMobileError.malformedChallenge("challenge is outside its validity window") }
 
-        guard try EmiliaCanonicalJSON.digest(challenge.action) == challenge.actionHash else {
+        let derivedActionIdentity: EmiliaActionIdentity
+        do {
+            derivedActionIdentity = try EmiliaActionIdentity.derive(from: challenge.action)
+        } catch {
+            throw EmiliaMobileError.actionMismatch
+        }
+        guard derivedActionIdentity.actionDigest == challenge.actionHash else {
             throw EmiliaMobileError.actionMismatch
         }
         let presentation = try validatePresentation(challenge.presentation, for: challenge.action)
@@ -289,9 +395,35 @@ public enum EmiliaMobileChallengeValidator {
               context["action_hash"]?.stringValue == challenge.actionHash,
               context["display_hash"]?.stringValue == presentationDigest,
               context["nonce"]?.stringValue == challenge.nonce,
+              let actionReference = context["action_reference"]?.stringValue,
+              actionReference.range(
+                  of: #"^[A-Za-z0-9:_.@-]{8,256}$"#,
+                  options: .regularExpression
+              ) != nil,
+              let actionCAID = context["action_caid"]?.stringValue,
+              let actionDigest = context["action_digest"]?.stringValue,
+              actionDigest == challenge.actionHash,
               let mobileBinding = context["mobile_binding"]?.objectValue,
               mobileBinding["profile_hash"]?.stringValue == challenge.profileHash
         else { throw EmiliaMobileError.contextMismatch }
+        let actionIdentity: EmiliaActionIdentity
+        do {
+            actionIdentity = try EmiliaActionIdentity(
+                actionCAID: actionCAID,
+                actionDigest: actionDigest
+            )
+        } catch {
+            throw EmiliaMobileError.contextMismatch
+        }
+        guard actionIdentity == derivedActionIdentity else {
+            throw EmiliaMobileError.actionMismatch
+        }
+        if let expectedActionReference, expectedActionReference != actionReference {
+            throw EmiliaMobileError.contextMismatch
+        }
+        if let expectedActionIdentity, expectedActionIdentity != actionIdentity {
+            throw EmiliaMobileError.contextMismatch
+        }
         guard let decisionValue = context["decision"]?.stringValue,
               let decision = EmiliaMobileDecision(rawValue: decisionValue)
         else { throw EmiliaMobileError.contextMismatch }
@@ -332,7 +464,9 @@ public enum EmiliaMobileChallengeValidator {
             mobileBinding: mobileBinding,
             requestHash: requestHash,
             presentation: presentation,
-            decision: decision
+            decision: decision,
+            actionReference: actionReference,
+            actionIdentity: actionIdentity
         )
     }
 }
@@ -361,11 +495,15 @@ public actor EmiliaMobileCeremonyCoordinator {
     public func perform(
         challengeData: Data,
         requestedDecision: EmiliaMobileDecision,
+        expectedActionReference: String,
+        expectedActionIdentity: EmiliaActionIdentity,
         now: Date = Date()
     ) async throws -> EmiliaMobileCeremonyResponse {
         let validated = try EmiliaMobileChallengeValidator.decodeAndValidate(
             challengeData,
             requestedDecision: requestedDecision,
+            expectedActionReference: expectedActionReference,
+            expectedActionIdentity: expectedActionIdentity,
             now: now
         )
         let challenge = validated.challenge

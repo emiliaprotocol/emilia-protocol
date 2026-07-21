@@ -3,11 +3,16 @@ package ai.emiliaprotocol.approver
 
 import ai.emiliaprotocol.mobile.EmiliaAndroidPasskeyProvider
 import ai.emiliaprotocol.mobile.EmiliaAndroidPasskeyRegistrationProvider
+import ai.emiliaprotocol.mobile.EmiliaMobileAction
 import ai.emiliaprotocol.mobile.EmiliaMobileCeremonyCoordinator
 import ai.emiliaprotocol.mobile.EmiliaMobileChallenge
 import ai.emiliaprotocol.mobile.EmiliaMobileChallengeValidator
+import ai.emiliaprotocol.mobile.EmiliaMobileContinuity
 import ai.emiliaprotocol.mobile.EmiliaMobileDecision
 import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentCoordinator
+import ai.emiliaprotocol.mobile.EmiliaMobileExpectedActionIdentity
+import ai.emiliaprotocol.mobile.EmiliaMobileLifecycleState
+import ai.emiliaprotocol.mobile.EmiliaMobileQuorum
 import ai.emiliaprotocol.mobile.EmiliaPlayIntegrityEnrollmentProvider
 import ai.emiliaprotocol.mobile.EmiliaPlayIntegrityProvider
 import android.app.Activity
@@ -54,15 +59,19 @@ internal val JsonElement.decision: String
 class MainActivity : Activity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = true }
+    private val passportJson = Json { prettyPrint = true; explicitNulls = true }
     private val sessionStore by lazy { SecureSessionStore(applicationContext) }
     private var session: MobileSession? = null
-    private var actions: List<InboxAction> = emptyList()
-    private var selectedAction: InboxAction? = null
+    private var actions: List<EmiliaMobileAction> = emptyList()
+    private var historyActions: List<EmiliaMobileAction> = emptyList()
+    private var selectedAction: EmiliaMobileAction? = null
+    private var showingHistory = false
     private var challenge: EmiliaMobileChallenge? = null
     private var pendingDecision: EmiliaMobileDecision? = null
+    private var pendingActionIdentity: EmiliaMobileExpectedActionIdentity? = null
     private var busyMessage: String? = null
     private var notice: String? = null
-    private var noticeIsError = false
+    private var noticeKind = NoticeKind.COMPLETE
     private var pairingCode = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,7 +116,7 @@ class MainActivity : Activity() {
         scroll.addView(root, matchWrap())
         root.addView(brandHeader(), matchWrap())
         busyMessage?.let { root.addView(progressCard(it), matchWrap(top = 18)) }
-        notice?.let { root.addView(noticeCard(it, noticeIsError), matchWrap(top = 18)) }
+        notice?.let { root.addView(noticeCard(it, noticeKind), matchWrap(top = 18)) }
 
         when {
             session == null -> root.addView(pairingPanel(), matchWrap(top = 22))
@@ -182,56 +191,202 @@ class MainActivity : Activity() {
 
     private fun inboxPanel(): View = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
+        val visibleActions = if (showingHistory) historyActions else actions
         val heading = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(label("Protected actions", 24f, INK, Typeface.BOLD), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(quietButton("Refresh") { refreshInbox() }, wrapWrap())
+            addView(label(
+                if (showingHistory) "Decision history" else "Protected actions",
+                24f,
+                INK,
+                Typeface.BOLD,
+            ), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(quietButton("Refresh") { refreshVisibleActions() }, wrapWrap())
         }
         addView(heading, matchWrap())
-        if (actions.isEmpty() && busyMessage == null) {
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(quietButton("Inbox (${actions.size})") {
+                showingHistory = false
+                selectedAction = null
+                notice = null
+                render()
+            }, wrapWrap())
+            addView(quietButton("History") { openHistory() }, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = dp(8) })
+        }, matchWrap(top = 6))
+        if (visibleActions.isEmpty() && busyMessage == null) {
             addView(panel().apply {
-                addView(label("Nothing is waiting", 19f, INK, Typeface.BOLD), matchWrap())
-                addView(label("New consequential actions will appear here.", 15f, MUTED), matchWrap(top = 6))
+                addView(label(
+                    if (showingHistory) "No decision records yet" else "Nothing is waiting",
+                    19f,
+                    INK,
+                    Typeface.BOLD,
+                ), matchWrap())
+                addView(label(
+                    if (showingHistory) {
+                        "Decisions and execution lifecycle records will appear here."
+                    } else {
+                        "New consequential actions will appear here."
+                    },
+                    15f,
+                    MUTED,
+                ), matchWrap(top = 6))
             }, matchWrap(top = 14))
         } else {
-            actions.forEach { action -> addView(actionCard(action), matchWrap(top = 12)) }
+            visibleActions.forEach { action -> addView(actionCard(action), matchWrap(top = 12)) }
         }
     }
 
-    private fun actionCard(action: InboxAction): View = panel().apply {
-        contentDescription = "${action.risk} risk action. ${action.title}. ${action.summary}"
-        addView(pill(action.risk.uppercase(Locale.US), riskColor(action.risk)), wrapWrap())
+    private fun actionCard(action: EmiliaMobileAction): View = panel().apply {
+        val state = action.lifecycleState
+        contentDescription =
+            "${state.wireValue} ${action.risk} risk action. ${action.title}. ${action.summary}"
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(pill(action.risk.uppercase(Locale.US), riskColor(action.risk)), wrapWrap())
+            addView(pill(state.wireValue, stateColor(state)), LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = dp(8) })
+        }, matchWrap())
         addView(label(action.title, 20f, INK, Typeface.BOLD), matchWrap(top = 12))
         addView(label(action.summary, 15f, MUTED), matchWrap(top = 6))
+        action.identity?.stableFingerprint()?.let { fingerprint ->
+            addView(label("ACTION LOCK  $fingerprint", 12f, TEAL, Typeface.BOLD), matchWrap(top = 10))
+        }
+        action.effectiveQuorum?.let { quorum ->
+            addView(label(quorumSummary(quorum), 13f, MUTED), matchWrap(top = 8))
+        }
         action.materialFields.entries.take(3).forEach { (name, value) ->
             addView(fieldRow(humanize(name), display(value)), matchWrap(top = 8))
         }
-        addView(primaryButton("Review exact action") {
+        addView(primaryButton(if (showingHistory) "View lifecycle record" else "Review exact action") {
             selectedAction = action
             notice = null
             render()
         }, matchWrap(top = 16))
     }
 
-    private fun actionPanel(action: InboxAction): View = panel().apply {
-        addView(quietButton("Back to inbox") {
+    private fun actionPanel(action: EmiliaMobileAction): View = panel().apply {
+        val state = action.lifecycleState
+        addView(quietButton(if (showingHistory) "Back to history" else "Back to inbox") {
             selectedAction = null
             challenge = null
             pendingDecision = null
+            pendingActionIdentity = null
             render()
         }, wrapWrap())
-        addView(pill(action.risk.uppercase(Locale.US), riskColor(action.risk)), wrapWrap(top = 18))
+        addView(LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(pill(action.risk.uppercase(Locale.US), riskColor(action.risk)), wrapWrap())
+            addView(pill(state.wireValue, stateColor(state)), LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { marginStart = dp(8) })
+        }, matchWrap(top = 18))
         addView(label(action.title, 26f, INK, Typeface.BOLD), matchWrap(top = 12))
         addView(label(action.summary, 16f, MUTED), matchWrap(top = 8))
+        addView(lifecycleBanner(action), matchWrap(top = 16))
+        action.identity?.takeIf { it.isValidActionLock() }?.let { identity ->
+            addView(divider(), matchWrap(top = 18, bottom = 10))
+            addView(label("ACTION LOCK", 11f, MUTED, Typeface.BOLD), matchWrap())
+            addView(label(requireNotNull(identity.stableFingerprint()), 22f, TEAL, Typeface.BOLD), matchWrap(top = 6))
+            addView(label(identity.actionCaid.orEmpty(), 12f, INK), matchWrap(top = 8))
+            addView(label("Action digest  ${identity.actionDigest}", 11f, MUTED), matchWrap(top = 4))
+        }
+        action.supersedesActionCaid?.let { prior ->
+            addView(label("Supersedes $prior", 12f, BRASS, Typeface.BOLD), matchWrap(top = 12))
+        }
+        action.effectiveQuorum?.let { quorum ->
+            addView(divider(), matchWrap(top = 18, bottom = 10))
+            addView(quorumProgress(quorum), matchWrap())
+        }
         addView(divider(), matchWrap(top = 18, bottom = 10))
         addView(label("MATERIAL FIELDS", 11f, MUTED, Typeface.BOLD), matchWrap())
         action.materialFields.entries.sortedBy { it.key }.forEach { (name, value) ->
             addView(fieldRow(humanize(name), display(value)), matchWrap(top = 10))
         }
+        if (action.changes.isNotEmpty()) {
+            addView(divider(), matchWrap(top = 18, bottom = 10))
+            addView(label("MATERIAL CHANGES", 11f, MUTED, Typeface.BOLD), matchWrap())
+            action.changes.forEach { change ->
+                val transition = when (change.change) {
+                    "added" -> "Added: ${change.after ?: "None"}"
+                    "removed" -> "Removed: ${change.before ?: "None"}"
+                    else -> "${change.before ?: "None"}  →  ${change.after ?: "None"}"
+                }
+                addView(fieldRow(humanize(change.field), transition), matchWrap(top = 10))
+            }
+        }
+        if (action.alignments.isNotEmpty()) {
+            addView(divider(), matchWrap(top = 18, bottom = 10))
+            addView(label("CROSS-SYSTEM ALIGNMENT", 11f, MUTED, Typeface.BOLD), matchWrap())
+            action.alignments.forEach { alignment ->
+                val detail = buildString {
+                    append(alignment.verdict)
+                    append(if (alignment.nativeVerified) "\nNative evidence verified" else "\nNative evidence not verified")
+                    alignment.profileId?.let { append("\nProfile: $it") }
+                    alignment.profileHash?.let { append("\nProfile hash: $it") }
+                    alignment.evidenceDigest?.let { append("\nEvidence: $it") }
+                    alignment.reason?.let { append("\n$it") }
+                }
+                addView(fieldRow(alignment.system, detail), matchWrap(top = 10))
+            }
+        }
+        if (action.events.isNotEmpty()) {
+            addView(divider(), matchWrap(top = 18, bottom = 10))
+            addView(label("EVIDENCE TIMELINE", 11f, MUTED, Typeface.BOLD), matchWrap())
+            action.events.forEach { event ->
+                addView(fieldRow(
+                    humanize(event.type),
+                    listOfNotNull(
+                        event.createdAt.takeIf { it.isNotBlank() }?.let(::shortTime),
+                        event.evidenceDigest,
+                    ).joinToString("\n"),
+                ), matchWrap(top = 10))
+            }
+        }
         addView(label("Expires ${shortTime(action.expiresAt)}", 13f, MUTED), matchWrap(top = 14))
-        addView(primaryButton("Approve with passkey") { beginDecision(EmiliaMobileDecision.APPROVED) }, matchWrap(top = 20))
-        addView(dangerButton("Deny and sign refusal") { beginDecision(EmiliaMobileDecision.DENIED) }, matchWrap(top = 10))
+        if (!showingHistory && action.canDecideSafely) {
+            addView(primaryButton("Approve with passkey") {
+                beginDecision(EmiliaMobileDecision.APPROVED)
+            }, matchWrap(top = 20))
+            addView(dangerButton("Deny and sign refusal") {
+                beginDecision(EmiliaMobileDecision.DENIED)
+            }, matchWrap(top = 10))
+        } else if (state == EmiliaMobileLifecycleState.INDETERMINATE) {
+            addView(label(
+                "DO NOT RETRY. Reconcile this action with the server or operator before taking another decision.",
+                14f,
+                DANGER,
+                Typeface.BOLD,
+            ), matchWrap(top = 18))
+        } else if (action.expectedChallengeIdentity() == null
+            && (state == EmiliaMobileLifecycleState.AWAITING_DECISION
+                || state == EmiliaMobileLifecycleState.QUORUM_PENDING)) {
+            addView(label(
+                "This inbox record has no valid CAID action lock. Decision controls are disabled.",
+                14f,
+                DANGER,
+                Typeface.BOLD,
+            ), matchWrap(top = 18))
+        }
+        if (action.canWithdrawSafely) {
+            addView(dangerButton("Withdraw approval before consumption") {
+                confirmWithdrawal(action)
+            }, matchWrap(top = 14))
+        }
+        if (action.passport != null) {
+            addView(quietButton("Share decision passport") {
+                shareDecisionPassport(action)
+            }, matchWrap(top = 10))
+        }
     }
 
     private fun progressCard(message: String): View = LinearLayout(this).apply {
@@ -245,11 +400,12 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun noticeCard(message: String, error: Boolean): View = LinearLayout(this).apply {
+    private fun noticeCard(message: String, kind: NoticeKind): View = LinearLayout(this).apply {
+        val color = noticeColor(kind)
         orientation = LinearLayout.VERTICAL
-        background = shape(if (error) ERROR_WASH else SUCCESS_WASH, if (error) DANGER else TEAL, 1)
+        background = shape(if (kind == NoticeKind.COMPLETE) SUCCESS_WASH else ERROR_WASH, color, 1)
         setPadding(dp(14), dp(12), dp(14), dp(12))
-        addView(label(if (error) "REFUSED" else "COMPLETE", 11f, if (error) DANGER else TEAL, Typeface.BOLD), matchWrap())
+        addView(label(kind.name, 11f, color, Typeface.BOLD), matchWrap())
         addView(label(message, 14f, INK), matchWrap(top = 4))
         contentDescription = message
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
@@ -266,7 +422,7 @@ class MainActivity : Activity() {
         sessionStore.save(connected)
         session = connected
         pairingCode = ""
-        actions = api().inbox()
+        actions = protectIndeterminateActions(api().inbox())
         showNotice("Device connected. Secure it before deciding.")
     }
 
@@ -303,13 +459,28 @@ class MainActivity : Activity() {
                 throw MobileApiException.Refused("secure_storage_unavailable")
             }
             session = updated
-            actions = api().inbox()
+            actions = protectIndeterminateActions(api().inbox())
             showNotice("Device secured. Passkey and platform integrity are active.")
         }
     }
 
     private fun refreshInbox() = runBusy("Checking protected actions") {
-        actions = api().inbox()
+        actions = protectIndeterminateActions(api().inbox())
+        notice = null
+    }
+
+    private fun refreshVisibleActions() {
+        if (showingHistory) {
+            openHistory()
+        } else {
+            refreshInbox()
+        }
+    }
+
+    private fun openHistory() = runBusy("Loading decision history") {
+        historyActions = protectIndeterminateActions(api().history())
+        showingHistory = true
+        selectedAction = null
         notice = null
     }
 
@@ -319,6 +490,9 @@ class MainActivity : Activity() {
     ) {
         val current = requireNotNull(session)
         val action = requireNotNull(selectedAction)
+        val expectedActionIdentity = action.expectedChallengeIdentity()
+            ?: throw MobileApiException.Refused("action_identity_missing")
+        if (!action.canDecideSafely) throw MobileApiException.OutcomeUnknown
         val deviceKey = current.deviceKeyId ?: throw MobileApiException.Refused("device_not_enrolled")
         val issued = api().issueChallenge(
             action.actionReference,
@@ -330,10 +504,12 @@ class MainActivity : Activity() {
         )
         EmiliaMobileChallengeValidator.decodeAndValidate(
             json.encodeToString(issued).toByteArray(Charsets.UTF_8),
+            expectedActionIdentity = expectedActionIdentity,
             requestedDecision = decision,
         )
         challenge = issued
         pendingDecision = decision
+        pendingActionIdentity = expectedActionIdentity
     }
 
     private fun showChallengeConfirmation(value: EmiliaMobileChallenge, decision: EmiliaMobileDecision) {
@@ -342,6 +518,7 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
             challenge = null
             pendingDecision = null
+            pendingActionIdentity = null
             showNotice("The signed presentation is not supported by this app. Nothing was authorized.", true)
             render()
             return
@@ -363,6 +540,7 @@ class MainActivity : Activity() {
             .setNegativeButton("Cancel") { _, _ ->
                 challenge = null
                 pendingDecision = null
+                pendingActionIdentity = null
             }
             .setPositiveButton(if (decision == EmiliaMobileDecision.APPROVED) "Approve" else "Deny") { _, _ ->
                 performCeremony(decision)
@@ -376,6 +554,7 @@ class MainActivity : Activity() {
         if (pendingDecision != decision) throw MobileApiException.Refused("decision_mismatch")
         val current = requireNotNull(session)
         val issued = requireNotNull(challenge)
+        val expectedActionIdentity = requireNotNull(pendingActionIdentity)
         val integrity = EmiliaPlayIntegrityProvider.prepare(
             applicationContext,
             BuildConfig.PLAY_CLOUD_PROJECT_NUMBER,
@@ -392,15 +571,85 @@ class MainActivity : Activity() {
         val response = coordinator.perform(
             json.encodeToString(issued).toByteArray(Charsets.UTF_8),
             decision,
+            expectedActionIdentity,
         )
-        val result = api().verify(issued, response)
-        if (!result.valid) throw MobileApiException.Refused(result.reason ?: result.verdict)
-        if (result.decision != decision.wireValue) throw MobileApiException.Refused("decision_mismatch")
+        api().verify(issued, response)
         selectedAction = null
         challenge = null
         pendingDecision = null
-        actions = api().inbox()
+        pendingActionIdentity = null
+        actions = protectIndeterminateActions(api().inbox())
+        historyActions = emptyList()
+        showingHistory = false
         showNotice(if (decision == EmiliaMobileDecision.APPROVED) "Approval sealed. The action is eligible for release." else "Denial sealed. The action remains refused.")
+    }
+
+    private fun confirmWithdrawal(action: EmiliaMobileAction) {
+        AlertDialog.Builder(this)
+            .setTitle("Withdraw this approval?")
+            .setMessage(
+                "Withdrawal is allowed only before execution authority is consumed. " +
+                    "It does not reverse an action that has already crossed that boundary.",
+            )
+            .setNegativeButton("Keep approval", null)
+            .setPositiveButton("Withdraw approval") { _, _ -> withdrawApproval(action) }
+            .show()
+    }
+
+    private fun withdrawApproval(action: EmiliaMobileAction) = runBusy("Withdrawing approval") {
+        try {
+            api().withdraw(action.actionReference)
+            actions = protectIndeterminateActions(api().inbox())
+            historyActions = protectIndeterminateActions(api().history())
+            selectedAction = historyActions.firstOrNull { it.actionReference == action.actionReference }
+            showingHistory = true
+            showNotice("Approval withdrawn before execution authority was consumed.")
+        } catch (_: MobileApiException.AlreadyConsumed) {
+            val consumed = action.copy(
+                continuity = EmiliaMobileContinuity(
+                    state = EmiliaMobileLifecycleState.CONSUMED.wireValue,
+                    retrySafe = false,
+                    quorum = action.effectiveQuorum,
+                ),
+                canWithdraw = false,
+            )
+            historyActions = historyActions.map {
+                if (it.actionReference == action.actionReference) consumed else it
+            }
+            selectedAction = consumed
+            val refreshed = try {
+                protectIndeterminateActions(api().history())
+            } catch (_: Exception) {
+                null
+            }
+            if (refreshed != null) {
+                historyActions = refreshed
+                selectedAction = refreshed.firstOrNull {
+                    it.actionReference == action.actionReference
+                } ?: consumed
+            }
+            showingHistory = true
+            showNotice(
+                "Execution authority was already consumed. The approval cannot be withdrawn.",
+                NoticeKind.CONSUMED,
+            )
+        }
+    }
+
+    private fun shareDecisionPassport(action: EmiliaMobileAction) = runBusy(
+        "Preparing decision passport",
+    ) {
+        val passport = api().passport(action.actionReference)
+        val encoded = passportJson.encodeToString(passport)
+        if (encoded.toByteArray(Charsets.UTF_8).size > MAX_SHARE_BYTES) {
+            throw MobileApiException.Refused("decision_passport_too_large")
+        }
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_SUBJECT, "EMILIA decision passport")
+            putExtra(Intent.EXTRA_TEXT, encoded)
+        }
+        startActivity(Intent.createChooser(share, "Share decision passport"))
     }
 
     private fun disconnect() {
@@ -433,6 +682,12 @@ class MainActivity : Activity() {
             try {
                 block()
                 succeeded = true
+            } catch (error: MobileApiException.OutcomeUnknown) {
+                markSelectedActionIndeterminate()
+                challenge = null
+                pendingDecision = null
+                pendingActionIdentity = null
+                showNotice(error.message.orEmpty(), NoticeKind.INDETERMINATE)
             } catch (_: MobileApiException.SessionExpired) {
                 clearSession()
                 showNotice("This device connection expired. Pair it again.", true)
@@ -455,9 +710,12 @@ class MainActivity : Activity() {
         sessionStore.clear()
         session = null
         actions = emptyList()
+        historyActions = emptyList()
         selectedAction = null
+        showingHistory = false
         challenge = null
         pendingDecision = null
+        pendingActionIdentity = null
     }
 
     private fun receivePairingIntent(value: Intent?) {
@@ -481,7 +739,51 @@ class MainActivity : Activity() {
 
     private fun showNotice(message: String, error: Boolean = false) {
         notice = message
-        noticeIsError = error
+        noticeKind = if (error) NoticeKind.REFUSED else NoticeKind.COMPLETE
+    }
+
+    private fun showNotice(message: String, kind: NoticeKind) {
+        notice = message
+        noticeKind = kind
+    }
+
+    private fun markSelectedActionIndeterminate() {
+        val current = selectedAction ?: return
+        val locked = current.withIndeterminateOutcome()
+        selectedAction = locked
+        actions = actions.map { if (it.actionReference == current.actionReference) locked else it }
+        historyActions = historyActions.map {
+            if (it.actionReference == current.actionReference) locked else it
+        }
+        val currentSession = session ?: return
+        val updated = currentSession.copy(
+            indeterminateActionReferences =
+                currentSession.indeterminateActionReferences + current.actionReference,
+        )
+        session = updated
+        try {
+            sessionStore.save(updated)
+        } catch (_: Exception) {
+            clearSession()
+            showNotice(
+                "The outcome is indeterminate and the local retry lock could not be stored. " +
+                    "This device was disconnected; do not repeat the action.",
+                NoticeKind.INDETERMINATE,
+            )
+        }
+    }
+
+    private fun protectIndeterminateActions(
+        values: List<EmiliaMobileAction>,
+    ): List<EmiliaMobileAction> {
+        val lockedReferences = session?.indeterminateActionReferences.orEmpty()
+        return values.map { action ->
+            if (action.actionReference in lockedReferences && action.canDecideSafely) {
+                action.withIndeterminateOutcome()
+            } else {
+                action
+            }
+        }
     }
 
     private fun panel() = LinearLayout(this).apply {
@@ -515,6 +817,63 @@ class MainActivity : Activity() {
         addView(label(value, 16f, INK, Typeface.BOLD), matchWrap(top = 2))
         contentDescription = "$name: $value"
     }
+
+    private fun lifecycleBanner(action: EmiliaMobileAction): View {
+        val state = action.lifecycleState
+        val description = when (state) {
+            EmiliaMobileLifecycleState.AWAITING_DECISION ->
+                "Waiting for this approver's signed decision."
+            EmiliaMobileLifecycleState.QUORUM_PENDING ->
+                "Some approvals are recorded; the required quorum is not complete."
+            EmiliaMobileLifecycleState.AUTHORIZED ->
+                "The approval threshold is satisfied. Execution has not been established."
+            EmiliaMobileLifecycleState.CONSUMED ->
+                "Execution authority has been consumed. This does not prove execution completed."
+            EmiliaMobileLifecycleState.INDETERMINATE ->
+                "The outcome is unknown. Do not retry or assume refusal."
+            EmiliaMobileLifecycleState.EXECUTED ->
+                "Execution is confirmed by a server-verified provider outcome."
+            EmiliaMobileLifecycleState.REFUSED ->
+                "The provider refused execution after authority was consumed."
+            EmiliaMobileLifecycleState.DENIED ->
+                "A signed denial prevents authorization."
+            EmiliaMobileLifecycleState.WITHDRAWN ->
+                "The approval was withdrawn before authority was consumed."
+            EmiliaMobileLifecycleState.EXPIRED ->
+                "The decision window expired."
+            EmiliaMobileLifecycleState.CANCELLED ->
+                "The action was cancelled."
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = shape(colorWithAlpha(stateColor(state), 18), stateColor(state), 1)
+            addView(label(state.wireValue, 12f, stateColor(state), Typeface.BOLD), matchWrap())
+            addView(label(description, 14f, INK), matchWrap(top = 4))
+            contentDescription = "${state.wireValue}. $description"
+        }
+    }
+
+    private fun quorumProgress(quorum: EmiliaMobileQuorum): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(label("QUORUM PROGRESS", 11f, MUTED, Typeface.BOLD), matchWrap())
+        addView(label(quorumSummary(quorum), 16f, INK, Typeface.BOLD), matchWrap(top = 5))
+        addView(ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = quorum.safeRequired
+            progress = quorum.safeApproved.coerceAtMost(quorum.safeRequired)
+            contentDescription = quorumSummary(quorum)
+        }, matchWrap(top = 8))
+        if (quorum.safeDenied > 0 || quorum.safeWithdrawn > 0) {
+            addView(label(
+                "${quorum.safeDenied} denied · ${quorum.safeWithdrawn} withdrawn",
+                13f,
+                MUTED,
+            ), matchWrap(top = 5))
+        }
+    }
+
+    private fun quorumSummary(quorum: EmiliaMobileQuorum): String =
+        "${quorum.safeApproved} of ${quorum.safeRequired} approvals"
 
     private fun primaryButton(value: String, action: () -> Unit) = styledButton(value, INK, Color.WHITE, INK, action)
     private fun dangerButton(value: String, action: () -> Unit) = styledButton(value, Color.TRANSPARENT, DANGER, DANGER, action)
@@ -574,6 +933,23 @@ class MainActivity : Activity() {
         else -> TEAL
     }
 
+    private fun stateColor(value: EmiliaMobileLifecycleState): Int = when (value) {
+        EmiliaMobileLifecycleState.INDETERMINATE,
+        EmiliaMobileLifecycleState.REFUSED,
+        EmiliaMobileLifecycleState.DENIED -> DANGER
+        EmiliaMobileLifecycleState.CONSUMED,
+        EmiliaMobileLifecycleState.QUORUM_PENDING,
+        EmiliaMobileLifecycleState.AUTHORIZED -> BRASS
+        else -> TEAL
+    }
+
+    private fun noticeColor(value: NoticeKind): Int = when (value) {
+        NoticeKind.COMPLETE -> TEAL
+        NoticeKind.CONSUMED -> BRASS
+        NoticeKind.INDETERMINATE,
+        NoticeKind.REFUSED -> DANGER
+    }
+
     private fun colorWithAlpha(color: Int, alpha: Int): Int = Color.argb(
         alpha,
         Color.red(color),
@@ -583,8 +959,16 @@ class MainActivity : Activity() {
 
     private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.content
 
+    private enum class NoticeKind {
+        COMPLETE,
+        REFUSED,
+        INDETERMINATE,
+        CONSUMED,
+    }
+
     private companion object {
         val PAIRING_CODE = Regex("^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$")
+        const val MAX_SHARE_BYTES = 262_144
         val INK = Color.rgb(23, 43, 47)
         val TEAL = Color.rgb(20, 105, 99)
         val BRASS = Color.rgb(145, 90, 20)

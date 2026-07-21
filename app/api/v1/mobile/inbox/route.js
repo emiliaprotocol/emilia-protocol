@@ -4,6 +4,7 @@ import { authenticateMobileToken, listMobileActions } from '@/lib/mobile/store.j
 import { mobileJson, mobileProblem } from '@/lib/mobile/response.js';
 import { logger } from '@/lib/logger.js';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit.js';
+import { mobileActionView } from '@/lib/mobile/action-view.js';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,15 +23,7 @@ export async function GET(request) {
     });
     return mobileJson({
       approver_id: session.approver_id,
-      actions: actions.map((item) => ({
-        action_reference: item.action_reference,
-        title: item.presentation?.title || 'Approval required',
-        summary: item.presentation?.summary || 'Review the exact action before deciding.',
-        risk: item.presentation?.risk || 'consequential',
-        material_fields: item.presentation?.material_fields || {},
-        expires_at: item.expires_at,
-        created_at: item.created_at,
-      })),
+      actions: actions.map((item) => mobileActionView(item)),
     }, { headers: { 'cache-control': 'no-store' } });
   } catch (error) {
     logger.error('[mobile] inbox failed', error);

@@ -49,7 +49,7 @@ export interface MobileRelianceProfile {
 
 export interface MobileChallenge {
   '@version': 'AE-CHALLENGE-v1';
-  challenge_profile: 'EP-MOBILE-CHALLENGE-v1';
+  challenge_profile: 'EP-MOBILE-CHALLENGE-v2';
   challenge_id: string;
   nonce: string;
   action: MobileControlledAction;
@@ -72,6 +72,13 @@ export interface MobileChallenge {
   };
   issued_at: string;
   expires_at: string;
+}
+
+export interface MobileActionIdentity {
+  action_caid: string;
+  action_digest: string;
+  caid_digest: string;
+  fingerprint: string;
 }
 
 export interface MobileCeremonyResponse {
@@ -156,7 +163,9 @@ export type MobileAttestationVerifier = (input: {
   platform: MobilePlatform;
 }) => Promise<MobileAttestationResult> | MobileAttestationResult;
 
-export const MOBILE_CHALLENGE_VERSION: 'EP-MOBILE-CHALLENGE-v1';
+export const MOBILE_CHALLENGE_VERSION: 'EP-MOBILE-CHALLENGE-v2';
+export const MOBILE_ACTION_CAID_TYPE: 'emilia.mobile.authorized-action.1';
+export const MOBILE_ACTION_CAID_PATTERN: RegExp;
 export const MOBILE_CEREMONY_VERSION: 'EP-MOBILE-CEREMONY-v1';
 export const MOBILE_PROFILE_VERSION: 'EP-MOBILE-RELIANCE-PROFILE-v1';
 export const MOBILE_ATTESTATION_BINDING_VERSION: 'EP-MOBILE-ATTESTATION-BINDING-v1';
@@ -169,6 +178,17 @@ export const MOBILE_ENROLLMENT_VERSION: 'EP-MOBILE-ENROLLMENT-v1';
 export const MOBILE_VERDICTS: readonly string[];
 
 export function hashCanonical(value: JsonValue): string;
+export function buildMobileActionIdentity(input: {
+  actionReference: string;
+  action: MobileControlledAction;
+}): MobileActionIdentity;
+export function mobileActionFingerprint(actionCaid: string): string | null;
+export function verifyMobileActionIdentity(input: {
+  actionReference: string;
+  action: MobileControlledAction;
+  actionCaid: string;
+  actionDigest: string;
+}): { valid: boolean; computed: MobileActionIdentity | null };
 export function mobileProfileHash(profile: MobileRelianceProfile | Omit<MobileRelianceProfile, 'profile_hash'>): string;
 export function createMobileRelianceProfile(input: {
   profileId: string;
@@ -185,6 +205,7 @@ export function createMobileRelianceProfile(input: {
 export function buildMobileAuthorizationContext(input: Record<string, unknown>): Record<string, JsonValue>;
 export function buildMobileAttestationBinding(challenge: MobileChallenge): Record<string, JsonValue>;
 export function createMobileChallenge(input: {
+  actionReference: string;
   action: MobileControlledAction;
   policy?: JsonValue;
   policyId?: string | null;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Tenant-scoped Postgres sequence store for EP-GATE-NETWORK-WITNESS-v1.

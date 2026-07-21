@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  buildMobileActionIdentity,
   buildMobileAuthorizationContext,
   hashCanonical,
 } from '../packages/mobile/index.js';
@@ -102,8 +103,16 @@ function mobileApprover({
 } = {}) {
   const credentialId = crypto.randomBytes(32).toString('base64url');
   const appId = 'ai.emiliaprotocol.approver';
+  const controlledAction = buildCurtailmentControlledAction(signedAction);
+  const actionIdentity = buildMobileActionIdentity({
+    actionReference: signedAction.action_id,
+    action: controlledAction,
+  });
   const context = buildMobileAuthorizationContext({
-    actionHash: graceDigest(buildCurtailmentControlledAction(signedAction)),
+    actionHash: graceDigest(controlledAction),
+    actionReference: signedAction.action_id,
+    actionCaid: actionIdentity.action_caid,
+    actionDigest: actionIdentity.action_digest,
     policyId: signedPolicy.policy_id,
     policyHash: graceDigest(signedPolicy),
     initiatorId: initiator,

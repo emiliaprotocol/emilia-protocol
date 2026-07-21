@@ -29,35 +29,8 @@ struct MobileAPI: Sendable {
         }
     }
 
-    struct InboxResponse: Decodable, Sendable {
-        let approverID: String
-        let actions: [InboxAction]
-
-        enum CodingKeys: String, CodingKey {
-            case approverID = "approver_id"
-            case actions
-        }
-    }
-
-    struct InboxAction: Decodable, Identifiable, Sendable, Equatable {
-        let actionReference: String
-        let title: String
-        let summary: String
-        let risk: String
-        let materialFields: [String: String]
-        let expiresAt: String
-        let createdAt: String
-
-        var id: String { actionReference }
-
-        enum CodingKeys: String, CodingKey {
-            case actionReference = "action_reference"
-            case title, summary, risk
-            case materialFields = "material_fields"
-            case expiresAt = "expires_at"
-            case createdAt = "created_at"
-        }
-    }
+    typealias InboxResponse = EmiliaMobileActionListResponse
+    typealias InboxAction = EmiliaMobileAction
 
     struct IssueResponse: Decodable {
         let ok: Bool
@@ -145,6 +118,35 @@ struct MobileAPI: Sendable {
         return response.actions
     }
 
+    func history() async throws -> [InboxAction] {
+        let response: EmiliaMobileActionListResponse = try await get("v1/mobile/history")
+        return response.actions
+    }
+
+    func passport(actionReference: String) async throws -> EmiliaDecisionPassport {
+        var request = URLRequest(url: try actionEndpoint(actionReference, resource: "passport"))
+        request.httpMethod = "GET"
+        authorize(&request)
+        let response: EmiliaDecisionPassportResponse = try await execute(request)
+        guard response.passport.hasValidDigest else {
+            throw APIError.refused("passport_digest_mismatch")
+        }
+        return response.passport
+    }
+
+    func withdraw(actionReference: String) async throws -> EmiliaActionWithdrawalResponse {
+        var request = URLRequest(url: try actionEndpoint(actionReference, resource: "withdraw"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data("{}".utf8)
+        authorize(&request)
+        let response: EmiliaActionWithdrawalResponse = try await execute(request)
+        guard response.withdrawn, response.state == .withdrawn else {
+            throw APIError.refused("withdrawal_not_confirmed")
+        }
+        return response
+    }
+
     func issueChallenge(
         requestID: String,
         approverID: String,
@@ -167,19 +169,48 @@ struct MobileAPI: Sendable {
         return challenge
     }
 
-    func verify(challenge: EmiliaMobileChallenge, response: EmiliaMobileCeremonyResponse) async throws -> VerificationResponse {
+    func verify(
+        challenge: EmiliaMobileChallenge,
+        response: EmiliaMobileCeremonyResponse,
+        expectedActionReference: String,
+        expectedActionIdentity: EmiliaActionIdentity
+    ) async throws -> VerificationResponse {
         struct Request: Encodable {
             let challenge: EmiliaMobileChallenge
             let response: EmiliaMobileCeremonyResponse
         }
-        guard let expectedDecision = challenge.authorizationContext.decision,
-              response.decision == expectedDecision
+        let derivedActionIdentity: EmiliaActionIdentity
+        do {
+            derivedActionIdentity = try EmiliaActionIdentity.derive(from: challenge.action)
+        } catch {
+            throw APIError.refused("action_identity_mismatch")
+        }
+        guard challenge.challengeProfile == EmiliaMobileChallenge.supportedProfile,
+              derivedActionIdentity == expectedActionIdentity,
+              challenge.actionHash == derivedActionIdentity.actionDigest,
+              let expectedDecision = challenge.authorizationContext.decision,
+              challenge.authorizationContext.actionReference == expectedActionReference,
+              challenge.authorizationContext.actionCAID == derivedActionIdentity.actionCAID,
+              challenge.authorizationContext.actionDigest == derivedActionIdentity.actionDigest,
+              response.challengeID == challenge.challengeID,
+              response.nonce == challenge.nonce,
+              response.decision == expectedDecision,
+              response.signoff.context == challenge.authorizationContext
         else {
-            throw APIError.refused("decision_mismatch")
+            throw APIError.refused("action_identity_mismatch")
         }
         let expectedContextHash = try EmiliaCanonicalJSON.digest(challenge.authorizationContext)
         do {
-            return try await post("v1/mobile/ceremonies", Request(challenge: challenge, response: response))
+            let result: VerificationResponse = try await post(
+                "v1/mobile/ceremonies",
+                Request(challenge: challenge, response: response)
+            )
+            return try validateCeremonyResult(
+                result,
+                expectedDecision: expectedDecision,
+                expectedContextHash: expectedContextHash,
+                mismatchError: .refused("unverified_ceremony_response")
+            )
         } catch APIError.transport {
             return try await recoverCeremonyResult(
                 challengeID: challenge.challengeID,
@@ -240,19 +271,34 @@ struct MobileAPI: Sendable {
             let recovery: CeremonyRecoveryResponse = try await get("v1/mobile/ceremonies/\(challengeID)")
             guard recovery.committed,
                   recovery.outcome == "committed",
-                  let result = recovery.result,
-                  result.valid,
-                  result.verdict == "verified",
-                  result.decision == expectedDecision,
-                  result.reason == nil,
-                  result.contextHash == expectedContextHash
+                  let result = recovery.result
             else { throw APIError.outcomeUnknown }
-            return result
+            return try validateCeremonyResult(
+                result,
+                expectedDecision: expectedDecision,
+                expectedContextHash: expectedContextHash,
+                mismatchError: .outcomeUnknown
+            )
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             throw APIError.outcomeUnknown
         }
+    }
+
+    private func validateCeremonyResult(
+        _ result: VerificationResponse,
+        expectedDecision: String,
+        expectedContextHash: String,
+        mismatchError: APIError
+    ) throws -> VerificationResponse {
+        guard result.valid,
+              result.verdict == "verified",
+              result.decision == expectedDecision,
+              result.reason == nil,
+              result.contextHash == expectedContextHash
+        else { throw mismatchError }
+        return result
     }
 
     private func post<Request: Encodable, Response: Decodable>(
@@ -272,6 +318,28 @@ struct MobileAPI: Sendable {
         path.split(separator: "/").reduce(baseURL) { partial, component in
             partial.appendingPathComponent(String(component))
         }
+    }
+
+    private func actionEndpoint(_ actionReference: String, resource: String) throws -> URL {
+        guard actionReference.range(
+            of: #"^[A-Za-z0-9:_.@-]{8,256}$"#,
+            options: .regularExpression
+        ) != nil,
+              ["passport", "withdraw"].contains(resource),
+              let encodedReference = actionReference.addingPercentEncoding(
+                  withAllowedCharacters: CharacterSet(
+                      charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+                  )
+              ),
+              var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+        else { throw APIError.refused("invalid_action_reference") }
+        let root = components.percentEncodedPath.hasSuffix("/")
+            ? components.percentEncodedPath
+            : components.percentEncodedPath + "/"
+        components.percentEncodedPath =
+            root + "v1/mobile/actions/" + encodedReference + "/" + resource
+        guard let url = components.url else { throw APIError.transport }
+        return url
     }
 
     private func authorize(_ request: inout URLRequest) {
@@ -315,6 +383,9 @@ struct MobileAPI: Sendable {
 
 private extension EmiliaJSONValue {
     var decision: String? { objectValue?["decision"]?.stringValue }
+    var actionReference: String? { objectValue?["action_reference"]?.stringValue }
+    var actionCAID: String? { objectValue?["action_caid"]?.stringValue }
+    var actionDigest: String? { objectValue?["action_digest"]?.stringValue }
 }
 
 private struct ProblemResponse: Decodable {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * EP Protocol-State — brand-typed handshake lifecycle (GAP-4).
  *

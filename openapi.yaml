@@ -4759,7 +4759,14 @@ paths:
   /api/v1/mobile/inbox:
     get:
       tags: [Mobile Approval]
-      summary: List pending exact-action approvals for the paired approver
+      operationId: listMobileApprovalInbox
+      summary: List pending CAID-bound action revisions for the paired approver
+      description: |
+        Returns the active approval assignments visible to the paired approver.
+        Each continuity-enabled action includes its server-computed CAID and
+        action digest, revision, aggregate quorum, lifecycle state, material
+        changes, cross-system alignment claims, event summaries, and whether
+        this approver can still withdraw an approval before consumption.
       security:
         - MobileSessionAuth: []
       responses:
@@ -4779,6 +4786,315 @@ paths:
         '401': { description: 'Invalid, expired, or revoked mobile session' }
         '429': { description: Mobile request rate exceeded }
         '503': { description: Approval inbox unavailable }
+
+  /api/v1/mobile/history:
+    get:
+      tags: [Mobile Approval]
+      operationId: listMobileActionHistory
+      summary: List the paired approver's mobile action history
+      description: |
+        Returns current and superseded revisions, terminal lifecycle states,
+        quorum progress, material changes, cross-system alignments, event
+        summaries, and a bounded decision passport when one is available.
+        Decision passports contain evidence digests, not raw WebAuthn or
+        provider evidence.
+      security:
+        - MobileSessionAuth: []
+      responses:
+        '200':
+          description: Mobile action history scoped to the paired tenant and approver
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [approver_id, actions]
+                properties:
+                  approver_id: { type: string }
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MobileHistoryAction'
+        '401': { description: 'Invalid, expired, or revoked mobile session' }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile action history unavailable }
+
+  /api/v1/mobile/actions/{actionReference}/passport:
+    get:
+      tags: [Mobile Approval]
+      operationId: getMobileDecisionPassport
+      summary: Get the paired approver's bounded decision passport
+      description: |
+        Returns the decision passport for the exact tenant, approver, action
+        reference, and revision. The passport carries CAID, digest, lifecycle,
+        quorum, and evidence digests only. Raw WebAuthn assertions, platform
+        tokens, provider signatures, and provider payloads remain server-side.
+      security:
+        - MobileSessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MobileActionReference'
+      responses:
+        '200':
+          description: Bounded decision passport
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [passport]
+                properties:
+                  passport:
+                    $ref: '#/components/schemas/MobileDecisionPassport'
+        '400': { description: Malformed action reference }
+        '401': { description: 'Invalid, expired, or revoked mobile session' }
+        '404': { description: Passport unavailable in this paired approver scope }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile decision passport unavailable }
+
+  /api/v1/mobile/actions/{actionReference}/withdraw:
+    post:
+      tags: [Mobile Approval]
+      operationId: withdrawMobileApproval
+      summary: Withdraw this paired approver's approval before consumption
+      description: |
+        Accepts exactly an empty JSON object. Withdrawal is scoped to the
+        authenticated paired session and is refused after execution authority
+        has been consumed. It does not undo or compensate an effect.
+      security:
+        - MobileSessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MobileActionReference'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              maxProperties: 0
+      responses:
+        '200':
+          description: Approval withdrawn before consumption
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [withdrawn, state]
+                properties:
+                  withdrawn: { type: boolean, enum: [true] }
+                  state: { type: string, enum: [withdrawn] }
+        '400': { description: Request body or action reference is malformed }
+        '401': { description: 'Invalid, expired, or revoked mobile session' }
+        '409': { description: Execution authority was already consumed }
+        '415': { description: Request is not application/json }
+        '422': { description: Approval is not withdrawable }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile approval withdrawal unavailable }
+
+  /api/v1/mobile/actions/{actionReference}/consume:
+    post:
+      tags: [Mobile Approval]
+      operationId: consumeMobileAction
+      summary: Atomically consume an authorized mobile action revision
+      description: |
+        Operator endpoint for the protected executor. Creates one tenant-scoped
+        operation and one server-random consumption nonce for an authorized
+        active revision. The operation freezes the intended executor and its
+        currently active key. Reusing the operation within the tenant, consuming
+        a superseded revision, or consuming authority twice is refused.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MobileActionReference'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [operation_id, executor_id]
+              properties:
+                operation_id:
+                  type: string
+                  pattern: '^[A-Za-z0-9:_.@/-]{8,256}$'
+                executor_id:
+                  type: string
+                  minLength: 3
+                  maxLength: 256
+      responses:
+        '201':
+          description: Execution authority atomically consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileConsumption'
+        '400': { description: Request body or action reference is malformed }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '409': { description: Action was superseded or execution authority was already consumed }
+        '415': { description: Request is not application/json }
+        '422': { description: Action is not authorized for consumption }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile action consumption unavailable }
+
+  /api/v1/mobile/actions/{actionReference}/outcomes:
+    post:
+      tags: [Mobile Approval]
+      operationId: recordMobileActionOutcome
+      summary: Mark an operation indeterminate or reconcile its terminal outcome
+      description: |
+        A provider timeout is recorded with `state=indeterminate` and no
+        evidence. INDETERMINATE is not retry-safe: the executor must not issue a
+        blind replay. A later `state=reconcile` request can resolve the operation
+        to EXECUTED or REFUSED only with an exact CAID-, digest-, operation-, and
+        consumption-nonce-bound `EP-MOBILE-PROVIDER-OUTCOME-v1` statement signed
+        by the exact Ed25519 executor key frozen at consumption and still active
+        for this organization. The signed provider statement is retained in the
+        protected server-side evidence store; bounded mobile exports carry only
+        its digest.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MobileActionReference'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/MobileIndeterminateOutcomeRequest'
+                - $ref: '#/components/schemas/MobileReconcileOutcomeRequest'
+      responses:
+        '200':
+          description: Indeterminate state recorded or terminal outcome reconciled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileOutcomeTransition'
+        '400': { description: 'Request, action reference, or provider evidence is malformed' }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '404': { description: Operation was not found in this tenant and action scope }
+        '409': { description: Operation is already terminal or cannot make this transition }
+        '415': { description: Request is not application/json }
+        '422': { description: 'Provider evidence failed exact binding, key pin, or signature verification' }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile action outcome service unavailable }
+
+  /api/v1/mobile/actions/{actionReference}/supersede:
+    post:
+      tags: [Mobile Approval]
+      operationId: supersedeMobileAction
+      summary: Replace an unconsumed action with a new CAID-bound revision
+      description: |
+        Operator endpoint that creates a successor revision and deterministic
+        added, changed, or removed material-field records. Supersession is
+        refused after execution authority has been consumed.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MobileActionReference'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileSupersessionRequest'
+      responses:
+        '201':
+          description: Successor action revision created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileSupersessionResult'
+        '400': { description: Request body or action reference is malformed }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '409': { description: 'Action is missing, conflicting, or already consumed' }
+        '415': { description: Request is not application/json }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile action supersession unavailable }
+
+  /api/v1/mobile/actions/{actionReference}/alignments:
+    post:
+      tags: [Mobile Approval]
+      operationId: recordMobileActionAlignment
+      summary: Record an evidence-backed cross-system action alignment
+      description: |
+        Stores a named system's comparison to this exact action revision.
+        `EQUIVALENT_UNDER_PROFILE` requires native verification, a pinned mapping
+        profile ID and SHA-256 hash, and an evidence digest. The service does not
+        infer equivalence from matching labels or action references.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MobileActionReference'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileAlignmentRequest'
+      responses:
+        '201':
+          description: Cross-system alignment recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [recorded]
+                properties:
+                  recorded: { type: boolean, enum: [true] }
+        '400': { description: Request body or action reference is malformed }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Write permission required }
+        '415': { description: Request is not application/json }
+        '422': { description: Alignment does not meet its claimed verification requirements }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile action alignment unavailable }
+
+  /api/v1/mobile/executors:
+    post:
+      tags: [Mobile Approval]
+      operationId: registerMobileExecutorKey
+      summary: Register or rotate an organization's pinned provider-outcome key
+      description: |
+        Admin-only endpoint. Registers a DER SPKI Ed25519 public key encoded as
+        base64url. `key_id` must equal the server-derived
+        `ep:executor-key:sha256:<hex>` identifier for the submitted key.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileExecutorKeyRegistration'
+      responses:
+        '201':
+          description: Executor key registered or rotated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [registered, executor_id, key_id]
+                properties:
+                  registered: { type: boolean, enum: [true] }
+                  executor_id: { type: string }
+                  key_id:
+                    type: string
+                    pattern: '^ep:executor-key:sha256:[0-9a-f]{64}$'
+        '400': { description: 'Executor identifier, key ID, or Ed25519 public key is invalid' }
+        '401': { description: Missing or invalid organization API key }
+        '403': { description: Organization admin permission required }
+        '409': { description: Executor key registration was refused }
+        '415': { description: Request is not application/json }
+        '429': { description: Mobile request rate exceeded }
+        '503': { description: Mobile executor registration unavailable }
 
   /api/v1/mobile/enrollments/challenges:
     post:
@@ -5595,6 +5911,14 @@ components:
         the session token is never returned in a JSON body.
 
   parameters:
+    MobileActionReference:
+      name: actionReference
+      in: path
+      required: true
+      description: Tenant-scoped mobile action assignment reference
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9:_.@-]{8,256}$'
     CloudApprovalReceiptId:
       name: receiptId
       in: path
@@ -6139,9 +6463,29 @@ components:
 
     MobileInboxAction:
       type: object
-      required: [action_reference, title, summary, risk, material_fields, expires_at, created_at]
+      additionalProperties: false
+      required:
+        - action_reference
+        - title
+        - summary
+        - risk
+        - material_fields
+        - expires_at
+        - created_at
+        - status
+        - revision
+        - identity
+        - supersedes_action_caid
+        - changes
+        - continuity
+        - quorum
+        - alignments
+        - events
+        - can_withdraw
       properties:
-        action_reference: { type: string }
+        action_reference:
+          type: string
+          pattern: '^[A-Za-z0-9:_.@-]{8,256}$'
         title: { type: string }
         summary: { type: string }
         risk: { type: string }
@@ -6150,6 +6494,532 @@ components:
           additionalProperties: { type: string }
         expires_at: { type: string, format: date-time }
         created_at: { type: string, format: date-time }
+        status:
+          type: string
+          enum: [pending, approved, denied, withdrawn, expired, cancelled]
+        revision:
+          type: integer
+          minimum: 1
+          nullable: true
+        identity:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/MobileActionIdentity'
+        supersedes_action_caid:
+          type: string
+          nullable: true
+          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MobileActionChange'
+        continuity:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/MobileActionContinuity'
+        quorum:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/MobileQuorum'
+        alignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/MobileActionAlignment'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/MobileActionEvent'
+        passport:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/MobileDecisionPassport'
+          description: Present on history responses and omitted from inbox responses.
+        can_withdraw: { type: boolean }
+
+    MobileHistoryAction:
+      allOf:
+        - $ref: '#/components/schemas/MobileInboxAction'
+        - type: object
+          required: [passport]
+          properties:
+            passport:
+              type: object
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/MobileDecisionPassport'
+
+    MobileActionIdentity:
+      type: object
+      additionalProperties: false
+      required: [action_caid, action_digest, fingerprint]
+      properties:
+        action_caid:
+          type: string
+          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          description: Server-computed CAID for the authoritative exact-action wrapper.
+        action_digest:
+          type: string
+          pattern: '^sha256:[0-9a-f]{64}$'
+        fingerprint:
+          type: string
+          pattern: '^[0-9A-F]{4}(?:-[0-9A-F]{4}){3}$'
+          description: Display aid derived from the CAID; never an authorization token.
+
+    MobileActionChange:
+      type: object
+      additionalProperties: false
+      required: [field, change, before, after]
+      properties:
+        field: { type: string }
+        change: { type: string, enum: [added, changed, removed] }
+        before: { type: string, nullable: true }
+        after: { type: string, nullable: true }
+
+    MobileQuorum:
+      type: object
+      additionalProperties: false
+      required: [approved, required, denied, withdrawn]
+      properties:
+        approved: { type: integer, minimum: 0 }
+        required: { type: integer, minimum: 1 }
+        denied: { type: integer, minimum: 0 }
+        withdrawn: { type: integer, minimum: 0 }
+
+    MobileActionContinuity:
+      type: object
+      additionalProperties: false
+      required: [state, retry_safe, quorum]
+      properties:
+        state:
+          type: string
+          enum:
+            - AWAITING_DECISION
+            - QUORUM_PENDING
+            - AUTHORIZED
+            - DENIED
+            - WITHDRAWN
+            - CONSUMED
+            - INDETERMINATE
+            - EXECUTED
+            - REFUSED
+            - EXPIRED
+            - CANCELLED
+        retry_safe:
+          type: boolean
+          description: |
+            False after consumption. INDETERMINATE specifically forbids blind
+            replay while the original provider outcome is unresolved.
+        quorum:
+          $ref: '#/components/schemas/MobileQuorum'
+
+    MobileActionAlignment:
+      type: object
+      additionalProperties: false
+      required: [system, verdict, profile_id, profile_hash, native_verified, reason]
+      properties:
+        system: { type: string, maxLength: 128 }
+        verdict:
+          type: string
+          enum: [EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT, INDETERMINATE]
+        profile_id: { type: string, maxLength: 256, nullable: true }
+        profile_hash:
+          type: string
+          pattern: '^sha256:[0-9a-f]{64}$'
+          nullable: true
+        native_verified: { type: boolean }
+        reason: { type: string, maxLength: 256, nullable: true }
+
+    MobileActionEvent:
+      type: object
+      additionalProperties: false
+      required: [event_id, type, details, evidence_digest, created_at]
+      properties:
+        event_id: { type: string }
+        type: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+        evidence_digest:
+          type: string
+          pattern: '^sha256:[0-9a-f]{64}$'
+          nullable: true
+        created_at: { type: string, format: date-time }
+
+    MobileDecisionPassport:
+      type: object
+      additionalProperties: false
+      description: |
+        Bounded portable summary. It contains evidence digests and lifecycle
+        bindings, never raw WebAuthn assertions or provider evidence.
+      required: ['@version', action, decision, lifecycle, created_at, passport_digest]
+      properties:
+        '@version': { type: string, enum: [EP-MOBILE-DECISION-PASSPORT-v1] }
+        action:
+          type: object
+          additionalProperties: false
+          required: [action_reference, action_caid, action_digest]
+          properties:
+            action_reference: { type: string }
+            action_caid:
+              type: string
+              pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+            action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        decision:
+          type: object
+          additionalProperties: false
+          required: [challenge_id, verdict, decided_at, evidence_digest]
+          properties:
+            challenge_id: { type: string, nullable: true }
+            verdict: { type: string, nullable: true }
+            decided_at: { type: string, format: date-time, nullable: true }
+            evidence_digest:
+              type: string
+              pattern: '^sha256:[0-9a-f]{64}$'
+              nullable: true
+        lifecycle:
+          type: object
+          additionalProperties: false
+          required: [state, retry_safe, quorum, consumption_nonce, outcome_digest]
+          properties:
+            state:
+              type: string
+              enum:
+                - AWAITING_DECISION
+                - QUORUM_PENDING
+                - AUTHORIZED
+                - DENIED
+                - WITHDRAWN
+                - CONSUMED
+                - INDETERMINATE
+                - EXECUTED
+                - REFUSED
+                - EXPIRED
+                - CANCELLED
+            retry_safe: { type: boolean }
+            quorum:
+              type: object
+              nullable: true
+              allOf:
+                - $ref: '#/components/schemas/MobileQuorum'
+            consumption_nonce: { type: string, nullable: true }
+            outcome_digest:
+              type: string
+              pattern: '^sha256:[0-9a-f]{64}$'
+              nullable: true
+        created_at: { type: string, format: date-time, nullable: true }
+        passport_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+
+    MobileAuthorizationContext:
+      type: object
+      additionalProperties: false
+      required:
+        - ep_version
+        - context_type
+        - action_reference
+        - action_caid
+        - action_digest
+        - action_hash
+        - policy_id
+        - policy_hash
+        - initiator
+        - approver
+        - approver_index
+        - required_approvals
+        - nonce
+        - issued_at
+        - expires_at
+        - decision
+        - display_hash
+        - mobile_binding
+      properties:
+        ep_version: { type: string, enum: ['1.0'] }
+        context_type: { type: string, enum: [ep.signoff.v1] }
+        action_reference:
+          type: string
+          pattern: '^[A-Za-z0-9:_.@-]{3,256}$'
+        action_caid:
+          type: string
+          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+        action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        action_hash: { type: string, pattern: '^(?:sha256:)?[0-9a-f]{64}$' }
+        policy_id: { type: string, nullable: true }
+        policy_hash:
+          type: string
+          pattern: '^(?:sha256:)?[0-9a-f]{64}$'
+          nullable: true
+        initiator: { type: string }
+        approver: { type: string }
+        approver_index: { type: integer, minimum: 1, maximum: 1024 }
+        required_approvals: { type: integer, minimum: 1, maximum: 1024 }
+        nonce: { type: string }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        decision: { type: string, enum: [approved, denied] }
+        display_hash: { type: string, pattern: '^(?:sha256:)?[0-9a-f]{64}$' }
+        mobile_binding:
+          type: object
+          additionalProperties: false
+          required:
+            - profile
+            - profile_hash
+            - platform
+            - app_id
+            - device_key_id
+            - credential_id
+            - attestation_key_id
+          properties:
+            profile: { type: string, enum: [EP-MOBILE-CHALLENGE-v2] }
+            profile_hash: { type: string, pattern: '^(?:sha256:)?[0-9a-f]{64}$' }
+            platform: { type: string, enum: [ios, android] }
+            app_id: { type: string }
+            device_key_id: { type: string }
+            credential_id: { type: string }
+            attestation_key_id: { type: string }
+
+    MobileChallenge:
+      type: object
+      additionalProperties: false
+      required:
+        - '@version'
+        - challenge_profile
+        - challenge_id
+        - nonce
+        - action
+        - action_hash
+        - profile_hash
+        - authorization_context
+        - webauthn
+        - presentation
+        - issued_at
+        - expires_at
+        - attestation
+      properties:
+        '@version': { type: string, enum: [AE-CHALLENGE-v1] }
+        challenge_profile: { type: string, enum: [EP-MOBILE-CHALLENGE-v2] }
+        challenge_id: { type: string }
+        nonce: { type: string }
+        action:
+          type: object
+          additionalProperties: true
+        action_hash: { type: string, pattern: '^(?:sha256:)?[0-9a-f]{64}$' }
+        profile_hash: { type: string, pattern: '^(?:sha256:)?[0-9a-f]{64}$' }
+        authorization_context:
+          $ref: '#/components/schemas/MobileAuthorizationContext'
+        webauthn:
+          type: object
+          additionalProperties: false
+          required: [rp_id, challenge, credential_ids, user_verification, timeout_ms]
+          properties:
+            rp_id: { type: string }
+            challenge: { type: string }
+            credential_ids:
+              type: array
+              items: { type: string }
+            user_verification: { type: string, enum: [required] }
+            timeout_ms: { type: integer, minimum: 1 }
+        presentation:
+          $ref: '#/components/schemas/MobileReviewPresentation'
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        attestation:
+          type: object
+          additionalProperties: false
+          required: [required, format, binding, request_hash]
+          properties:
+            required: { type: boolean }
+            format: { type: string, enum: [apple-app-attest, play-integrity-standard] }
+            binding:
+              type: object
+              additionalProperties: true
+            request_hash: { type: string, pattern: '^(?:sha256:)?[0-9a-f]{64}$' }
+
+    MobileConsumption:
+      type: object
+      additionalProperties: false
+      required:
+        [ok, operation_id, action_caid, consumption_nonce, executor_id, executor_key_id, state]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        operation_id: { type: string }
+        action_caid:
+          type: string
+          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+        consumption_nonce: { type: string }
+        executor_id: { type: string }
+        executor_key_id:
+          type: string
+          pattern: '^ep:executor-key:sha256:[0-9a-f]{64}$'
+        state: { type: string, enum: [consumed] }
+
+    MobileIndeterminateOutcomeRequest:
+      type: object
+      additionalProperties: false
+      required: [operation_id, state]
+      properties:
+        operation_id:
+          type: string
+          pattern: '^[A-Za-z0-9:_.@/-]{8,256}$'
+        state: { type: string, enum: [indeterminate] }
+
+    MobileProviderOutcome:
+      type: object
+      additionalProperties: false
+      required:
+        - '@version'
+        - operation_id
+        - action_caid
+        - action_digest
+        - consumption_nonce
+        - executor_id
+        - outcome
+        - observed_at
+        - provider_reference
+        - proof
+      properties:
+        '@version': { type: string, enum: [EP-MOBILE-PROVIDER-OUTCOME-v1] }
+        operation_id: { type: string }
+        action_caid:
+          type: string
+          pattern: '^caid:1:emilia\.mobile\.authorized-action\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+        action_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        consumption_nonce: { type: string }
+        executor_id: { type: string }
+        outcome: { type: string, enum: [executed, refused] }
+        observed_at: { type: string, format: date-time }
+        provider_reference: { type: string }
+        proof:
+          type: object
+          additionalProperties: false
+          required: [algorithm, key_id, public_key, signature_b64u]
+          properties:
+            algorithm: { type: string, enum: [Ed25519] }
+            key_id:
+              type: string
+              pattern: '^ep:executor-key:sha256:[0-9a-f]{64}$'
+            public_key:
+              type: string
+              pattern: '^[A-Za-z0-9_-]+$'
+              description: Base64url DER SPKI Ed25519 public key; it must match the tenant pin.
+            signature_b64u:
+              type: string
+              pattern: '^[A-Za-z0-9_-]+$'
+
+    MobileReconcileOutcomeRequest:
+      type: object
+      additionalProperties: false
+      required: [operation_id, state, evidence]
+      properties:
+        operation_id:
+          type: string
+          pattern: '^[A-Za-z0-9:_.@/-]{8,256}$'
+        state: { type: string, enum: [reconcile] }
+        evidence:
+          $ref: '#/components/schemas/MobileProviderOutcome'
+
+    MobileOutcomeTransition:
+      type: object
+      additionalProperties: false
+      required: [ok, state, retry_safe]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        state: { type: string, enum: [indeterminate, executed, refused] }
+        retry_safe: { type: boolean, enum: [false] }
+
+    MobileSupersessionRequest:
+      type: object
+      additionalProperties: false
+      required: [assignments, initiator_id, action, presentation, policy, policy_id, expires_at]
+      properties:
+        assignments:
+          type: array
+          minItems: 1
+          maxItems: 16
+          items:
+            type: object
+            additionalProperties: false
+            required: [action_reference, approver_id]
+            properties:
+              action_reference:
+                type: string
+                pattern: '^mobact_[0-9a-f]{32}$'
+              approver_id:
+                type: string
+                pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+        initiator_id: { type: string }
+        action:
+          type: object
+          additionalProperties: true
+        presentation:
+          $ref: '#/components/schemas/MobileReviewPresentation'
+        policy:
+          type: object
+          additionalProperties: true
+        policy_id: { type: string }
+        expires_at: { type: string, format: date-time }
+
+    MobileSupersessionResult:
+      type: object
+      additionalProperties: false
+      required: [superseded, group_id, revision, identity, changes]
+      properties:
+        superseded: { type: boolean, enum: [true] }
+        group_id:
+          type: string
+          pattern: '^mag_[0-9a-f]{32}$'
+        revision: { type: integer, minimum: 2 }
+        identity:
+          $ref: '#/components/schemas/MobileActionIdentity'
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MobileActionChange'
+
+    MobileAlignmentRequest:
+      type: object
+      additionalProperties: false
+      required: [system, verdict]
+      properties:
+        system: { type: string, minLength: 1, maxLength: 128 }
+        verdict:
+          type: string
+          enum: [EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT, INDETERMINATE]
+        profile_id: { type: string, maxLength: 256 }
+        profile_hash: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        native_verified: { type: boolean }
+        evidence_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+        reason: { type: string, maxLength: 256 }
+
+    MobileExecutorKeyRegistration:
+      type: object
+      additionalProperties: false
+      required: [executor_id, key_id, public_key]
+      properties:
+        executor_id: { type: string, minLength: 3, maxLength: 256 }
+        key_id:
+          type: string
+          pattern: '^ep:executor-key:sha256:[0-9a-f]{64}$'
+        public_key:
+          type: string
+          pattern: '^[A-Za-z0-9_-]+$'
+          description: Base64url DER SPKI Ed25519 public key.
+
+    MobileReviewPresentation:
+      type: object
+      additionalProperties: false
+      required: ['@version', title, summary, risk, consequence, material_fields]
+      properties:
+        '@version': { type: string, enum: [EP-MOBILE-PRESENTATION-v1] }
+        title: { type: string }
+        summary: { type: string }
+        risk: { type: string }
+        consequence: { type: string }
+        material_fields:
+          type: object
+          additionalProperties: { type: string }
 
     MobilePresentation:
       type: object
@@ -6157,8 +7027,9 @@ components:
       required: [challenge, response]
       properties:
         challenge:
-          type: object
-          description: Server-issued challenge returned without mutation
+          allOf:
+            - $ref: '#/components/schemas/MobileChallenge'
+          description: Server-issued challenge returned without mutation.
         response:
           type: object
           description: Passkey and platform-attestation response bound to the challenge
@@ -6174,7 +7045,11 @@ components:
           type: string
           pattern: '^(issued|accepted|refuse_[a-z0-9_]+)$'
         reason: { type: string }
-        challenge: { type: object, nullable: true }
+        challenge:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/MobileChallenge'
         decision: { type: string, nullable: true }
         audit_record: { type: object, nullable: true }
 

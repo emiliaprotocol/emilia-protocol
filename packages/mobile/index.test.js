@@ -48,6 +48,7 @@ function fixture({
   registrationSignCount = 0,
   challengeId = `mob_${crypto.randomBytes(8).toString('hex')}`,
   nonce = `sig_${crypto.randomBytes(16).toString('hex')}`,
+  actionReference = `mobile-action-${crypto.randomBytes(8).toString('hex')}`,
   approverIndex = 1,
   requiredApprovals = 1,
 } = {}) {
@@ -79,6 +80,7 @@ function fixture({
     }],
   });
   const challenge = createMobileChallenge({
+    actionReference,
     action: {
       action_type: 'benefit.payment_destination_change',
       case_id: 'case-9482',
@@ -362,6 +364,7 @@ test('roundtrips standard Base64 App Attest key IDs in the signed challenge cont
 test('challenge creation and verification refuse incomplete, changed, extra, or nested material fields', async () => {
   const item = fixture();
   const args = {
+    actionReference: item.challenge.authorization_context.action_reference,
     action: item.challenge.action,
     policy: { id: 'gov-benefits-high-risk-v1', human_approval: true },
     policyId: 'gov-benefits-high-risk-v1',
@@ -415,7 +418,7 @@ test('challenge creation and verification refuse incomplete, changed, extra, or 
   rebindAttestation(item.challenge);
   const result = await verifyMobileCeremony({ ...item, now: NOW });
   assert.equal(result.valid, false);
-  assert.equal(result.verdict, 'refuse_display_mismatch');
+  assert.equal(result.verdict, 'refuse_action_mismatch');
 });
 
 test('hostile malformed input never throws', async () => {
@@ -464,6 +467,7 @@ test('service registers exact bodies and only one concurrent presentation wins',
     clock: () => NOW,
   });
   assert.equal(await service.issue({
+    actionReference: item.challenge.authorization_context.action_reference,
     action: item.challenge.action,
     policy: { id: 'gov-benefits-high-risk-v1', human_approval: true },
     policyId: 'gov-benefits-high-risk-v1',
@@ -634,6 +638,7 @@ test('execution record requires a consumed, audited result and binds the runtime
     clock: () => NOW,
   });
   assert.equal((await service.issue({
+    actionReference: item.challenge.authorization_context.action_reference,
     action: item.challenge.action,
     policy: { id: 'gov-benefits-high-risk-v1', human_approval: true },
     policyId: 'gov-benefits-high-risk-v1',

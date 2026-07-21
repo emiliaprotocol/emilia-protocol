@@ -4,8 +4,10 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import crypto from 'node:crypto';
 import {
+  assertProductionKeyCustody,
   resolveIssuerSigner, registerCustodySigner, clearCustodySigner, getRegisteredCustodySigner,
-  createExternalCustodySigner,
+  createExternalCustodySigner, createLocalDevSigner, privateKeyFromSeedB64,
+  requireConfiguredCustody,
 } from '../lib/key-custody.js';
 
 const ED25519_SPKI_DER_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
@@ -41,6 +43,78 @@ describe('registerCustodySigner validation', () => {
   it('rejects a signer without keyId or sign', () => {
     expect(() => registerCustodySigner({})).toThrow(/keyId/);
     expect(() => registerCustodySigner({ keyId: 'k' })).toThrow(/sign/);
+  });
+});
+
+describe('key custody configuration and local development signer', () => {
+  it('classifies every production custody mode without falling through', () => {
+    expect(assertProductionKeyCustody({ mode: 'local-dev', govStrict: false }))
+      .toEqual({ ok: true, mode: 'local-dev' });
+    expect(assertProductionKeyCustody({ mode: 'env', isProduction: true }).reason)
+      .toBe('local_key_custody_forbidden');
+    expect(assertProductionKeyCustody({ mode: 'filesystem', govStrict: true }).reason)
+      .toBe('unknown_key_custody_mode');
+    expect(assertProductionKeyCustody({ mode: 'hsm', govStrict: true }).reason)
+      .toBe('missing_custody_key_id');
+    expect(requireConfiguredCustody({ mode: 'hsm', keyId: 'slot:7', govStrict: true }))
+      .toEqual({ ok: true, mode: 'hsm', keyId: 'slot:7' });
+    try {
+      requireConfiguredCustody({ mode: 'env', govStrict: true });
+      throw new Error('expected strict custody configuration to fail');
+    } catch (error) {
+      expect(error).toMatchObject({ code: 'local_key_custody_forbidden' });
+    }
+  });
+
+  it('builds a deterministic Ed25519 dev signer from an exact 32-byte seed', async () => {
+    const seed = Buffer.alloc(32, 7).toString('base64');
+    expect(() => privateKeyFromSeedB64(Buffer.alloc(31).toString('base64')))
+      .toThrow(/32-byte/);
+    const privateKey = privateKeyFromSeedB64(seed);
+    expect(privateKey.asymmetricKeyType).toBe('ed25519');
+
+    const signer = createLocalDevSigner({ keyId: 'dev#seed', seedB64: seed });
+    const payload = Buffer.from('exact-dev-signing-bytes');
+    const publicKey = crypto.createPublicKey({
+      key: Buffer.from(signer.publicKeySpkiB64u, 'base64url'),
+      format: 'der',
+      type: 'spki',
+    });
+    expect(crypto.verify(
+      null,
+      payload,
+      publicKey,
+      Buffer.from(await signer.sign(payload), 'base64url'),
+    )).toBe(true);
+
+    const explicit = createLocalDevSigner({ keyId: 'dev#explicit', privateKey });
+    expect(explicit.custody).toBe('local-dev');
+  });
+
+  it('validates external custody adapters and forwards immutable custody context', async () => {
+    expect(() => createExternalCustodySigner({ mode: 'env', keyId: 'k', sign() {} }))
+      .toThrow(/kms.*hsm/);
+    expect(() => createExternalCustodySigner({ mode: 'kms', keyId: '', sign() {} }))
+      .toThrow(/stable keyId/);
+    expect(() => createExternalCustodySigner({ mode: 'kms', keyId: 'k', sign: null }))
+      .toThrow(/sign\(bytes\)/);
+
+    const calls = [];
+    const signer = createExternalCustodySigner({
+      mode: 'hsm',
+      keyId: 'slot:9',
+      sign: async (bytes, context) => {
+        calls.push({ bytes: bytes.toString('hex'), context });
+        return 'signature';
+      },
+    });
+    await expect(signer.publicKeySpkiB64u()).resolves.toBe(null);
+    await expect(signer.sign(Buffer.from('ok'), { operation: 'receipt.issue' }))
+      .resolves.toBe('signature');
+    expect(calls).toEqual([{
+      bytes: '6f6b',
+      context: { keyId: 'slot:9', mode: 'hsm', operation: 'receipt.issue' },
+    }]);
   });
 });
 

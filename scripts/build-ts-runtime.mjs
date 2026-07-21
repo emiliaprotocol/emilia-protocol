@@ -3,6 +3,8 @@
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
+import { buildActionEscrowRuntime } from './build-action-escrow-runtime.mjs';
+
 const root = process.cwd();
 const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
 const builds = [
@@ -24,3 +26,5 @@ for (const [entry, rootDir, outDir] of builds) {
   ], { cwd: root, stdio: 'inherit' });
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
+
+await buildActionEscrowRuntime();

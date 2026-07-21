@@ -7,7 +7,9 @@
     { "$ref": "#/$defs/challenge" },
     { "$ref": "#/$defs/ceremony" },
     { "$ref": "#/$defs/acknowledgement" },
-    { "$ref": "#/$defs/executionRecord" }
+    { "$ref": "#/$defs/executionRecord" },
+    { "$ref": "#/$defs/decisionPassport" },
+    { "$ref": "#/$defs/providerOutcome" }
   ],
   "$defs": {
     "safeInteger": {
@@ -41,6 +43,18 @@
     "identifier": {
       "type": "string",
       "pattern": "^[A-Za-z0-9:_.@-]{3,256}$"
+    },
+    "actionReference": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9:_.@-]{8,256}$"
+    },
+    "actionCaid": {
+      "type": "string",
+      "pattern": "^caid:1:emilia\\.mobile\\.authorized-action\\.1:jcs-sha256:[A-Za-z0-9_-]{43}$"
+    },
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "attestationKeyId": {
       "type": "string",
@@ -94,7 +108,7 @@
         "attestation_key_id"
       ],
       "properties": {
-        "profile": { "const": "EP-MOBILE-CHALLENGE-v1" },
+        "profile": { "const": "EP-MOBILE-CHALLENGE-v2" },
         "profile_hash": { "$ref": "#/$defs/hash" },
         "platform": { "enum": ["ios", "android"] },
         "app_id": { "$ref": "#/$defs/identifier" },
@@ -109,6 +123,9 @@
       "required": [
         "ep_version",
         "context_type",
+        "action_reference",
+        "action_caid",
+        "action_digest",
         "action_hash",
         "policy_id",
         "policy_hash",
@@ -126,6 +143,9 @@
       "properties": {
         "ep_version": { "const": "1.0" },
         "context_type": { "const": "ep.signoff.v1" },
+        "action_reference": { "$ref": "#/$defs/actionReference" },
+        "action_caid": { "$ref": "#/$defs/actionCaid" },
+        "action_digest": { "$ref": "#/$defs/sha256Digest" },
         "action_hash": { "$ref": "#/$defs/hash" },
         "policy_id": { "type": ["string", "null"] },
         "policy_hash": {
@@ -136,8 +156,8 @@
         },
         "initiator": { "$ref": "#/$defs/identifier" },
         "approver": { "$ref": "#/$defs/identifier" },
-        "approver_index": { "const": 1 },
-        "required_approvals": { "const": 1 },
+        "approver_index": { "type": "integer", "minimum": 1, "maximum": 1024 },
+        "required_approvals": { "type": "integer", "minimum": 1, "maximum": 1024 },
         "nonce": { "$ref": "#/$defs/identifier" },
         "issued_at": { "$ref": "#/$defs/canonicalInstant" },
         "expires_at": { "$ref": "#/$defs/canonicalInstant" },
@@ -254,7 +274,7 @@
       ],
       "properties": {
         "@version": { "const": "AE-CHALLENGE-v1" },
-        "challenge_profile": { "const": "EP-MOBILE-CHALLENGE-v1" },
+        "challenge_profile": { "const": "EP-MOBILE-CHALLENGE-v2" },
         "challenge_id": { "$ref": "#/$defs/identifier" },
         "nonce": { "$ref": "#/$defs/identifier" },
         "action": { "$ref": "#/$defs/controlledAction" },
@@ -482,6 +502,99 @@
           "properties": {
             "algorithm": { "const": "Ed25519" },
             "value": { "$ref": "#/$defs/base64url" }
+          }
+        }
+      }
+    },
+    "decisionPassport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["@version", "action", "decision", "lifecycle", "created_at", "passport_digest"],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-DECISION-PASSPORT-v1" },
+        "action": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["action_reference", "action_caid", "action_digest"],
+          "properties": {
+            "action_reference": { "$ref": "#/$defs/actionReference" },
+            "action_caid": { "$ref": "#/$defs/actionCaid" },
+            "action_digest": { "$ref": "#/$defs/sha256Digest" }
+          }
+        },
+        "decision": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["challenge_id", "verdict", "decided_at", "evidence_digest"],
+          "properties": {
+            "challenge_id": { "type": ["string", "null"] },
+            "verdict": { "type": ["string", "null"] },
+            "decided_at": { "type": ["string", "null"] },
+            "evidence_digest": {
+              "oneOf": [
+                { "$ref": "#/$defs/sha256Digest" },
+                { "type": "null" }
+              ]
+            }
+          }
+        },
+        "lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "retry_safe", "quorum", "consumption_nonce", "outcome_digest"],
+          "properties": {
+            "state": {
+              "enum": [
+                "AWAITING_DECISION", "QUORUM_PENDING", "AUTHORIZED", "DENIED",
+                "WITHDRAWN", "CONSUMED", "INDETERMINATE", "EXECUTED",
+                "REFUSED", "EXPIRED", "CANCELLED"
+              ]
+            },
+            "retry_safe": { "type": "boolean" },
+            "quorum": { "type": ["object", "null"] },
+            "consumption_nonce": { "type": ["string", "null"] },
+            "outcome_digest": {
+              "oneOf": [
+                { "$ref": "#/$defs/sha256Digest" },
+                { "type": "null" }
+              ]
+            }
+          }
+        },
+        "created_at": { "type": ["string", "null"] },
+        "passport_digest": { "$ref": "#/$defs/sha256Digest" }
+      }
+    },
+    "providerOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version", "operation_id", "action_caid", "action_digest",
+        "consumption_nonce", "executor_id", "outcome", "observed_at",
+        "provider_reference", "proof"
+      ],
+      "properties": {
+        "@version": { "const": "EP-MOBILE-PROVIDER-OUTCOME-v1" },
+        "operation_id": { "type": "string", "minLength": 8, "maxLength": 256 },
+        "action_caid": { "$ref": "#/$defs/actionCaid" },
+        "action_digest": { "$ref": "#/$defs/sha256Digest" },
+        "consumption_nonce": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "executor_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "outcome": { "enum": ["executed", "refused"] },
+        "observed_at": { "$ref": "#/$defs/canonicalInstant" },
+        "provider_reference": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "proof": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "key_id", "public_key", "signature_b64u"],
+          "properties": {
+            "algorithm": { "const": "Ed25519" },
+            "key_id": {
+              "type": "string",
+              "pattern": "^ep:executor-key:sha256:[0-9a-f]{64}$"
+            },
+            "public_key": { "$ref": "#/$defs/base64url" },
+            "signature_b64u": { "$ref": "#/$defs/base64url" }
           }
         }
       }

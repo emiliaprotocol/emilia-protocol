@@ -23,36 +23,50 @@ class MobileCeremonyTest {
     private val now = Instant.parse("2026-07-14T19:02:00.000Z")
     private val credentialId = "credential-android-1".toByteArray()
     private val androidKeyId = "android-keystore:sha256:${"A".repeat(43)}"
+    private val case9482ActionCaid =
+        "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:" +
+            "XupRmBfC67-VesxXE_EsP8EIlpcZHAypJePGjxRYYXM"
+    private val substitutedActionCaid =
+        "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"A".repeat(43)}"
 
     private data class Fixture(
         val challenge: EmiliaMobileChallenge,
         val data: ByteArray,
+        val expectedActionIdentity: EmiliaMobileExpectedActionIdentity,
     )
 
-    private fun fixture(transform: (EmiliaMobileChallenge) -> EmiliaMobileChallenge = { it }): Fixture {
-        val action = buildJsonObject {
-            put("action_type", "benefit.payment_destination_change")
-            put("case_id", "case-9482")
-            put("destination_last4", "4401")
-        }
+    private fun case9482Action(
+        actionType: String = "benefit.payment_destination_change",
+        destinationLast4: String = "4401",
+    ): JsonObject = buildJsonObject {
+        put("action_type", actionType)
+        put("case_id", "case-9482")
+        put("destination_last4", destinationLast4)
+    }
+
+    private fun fixture(
+        action: JsonObject = case9482Action(),
+        actionCaid: String = case9482ActionCaid,
+        transform: (EmiliaMobileChallenge) -> EmiliaMobileChallenge = { it },
+    ): Fixture {
         val presentation = buildJsonObject {
             put("@version", EmiliaMobilePresentation.VERSION)
             put("title", "Payment destination change")
             put("summary", "Change benefit payment destination for case 9482")
             put("risk", "high")
             put("consequence", "Future benefit payments will be sent to the new destination.")
-            put("material_fields", buildJsonObject {
-                put("action_type", "benefit.payment_destination_change")
-                put("case_id", "case-9482")
-                put("destination_last4", "4401")
-            })
+            put("material_fields", action)
         }
         val actionHash = EmiliaCanonicalJson.digest(action)
+        val actionReference = "mobact_0123456789abcdef0123456789abcdef"
         val displayHash = EmiliaCanonicalJson.digest(presentation)
         val profileHash = "sha256:" + "a".repeat(64)
         val context = buildJsonObject {
             put("ep_version", "1.0")
             put("context_type", "ep.signoff.v1")
+            put("action_reference", actionReference)
+            put("action_caid", actionCaid)
+            put("action_digest", actionHash)
             put("action_hash", actionHash)
             put("policy_id", JsonNull)
             put("policy_hash", JsonNull)
@@ -66,7 +80,7 @@ class MobileCeremonyTest {
             put("decision", "approved")
             put("display_hash", displayHash)
             put("mobile_binding", buildJsonObject {
-                put("profile", "EP-MOBILE-CHALLENGE-v1")
+                put("profile", EmiliaMobileChallenge.PROFILE)
                 put("profile_hash", profileHash)
                 put("platform", "android")
                 put("app_id", "gov.example.android.approvals")
@@ -91,7 +105,7 @@ class MobileCeremonyTest {
         }
         val challenge = transform(EmiliaMobileChallenge(
             version = "AE-CHALLENGE-v1",
-            challengeProfile = "EP-MOBILE-CHALLENGE-v1",
+            challengeProfile = EmiliaMobileChallenge.PROFILE,
             challengeId = challengeId,
             nonce = "sig_0123456789abcdef0123456789abcdef",
             action = action,
@@ -115,7 +129,11 @@ class MobileCeremonyTest {
             issuedAt = "2026-07-14T19:00:00.000Z",
             expiresAt = "2026-07-14T19:05:00.000Z",
         ))
-        return Fixture(challenge, Json.encodeToString(challenge).toByteArray())
+        return Fixture(
+            challenge,
+            Json.encodeToString(challenge).toByteArray(),
+            EmiliaMobileExpectedActionIdentity(actionReference, actionCaid, actionHash),
+        )
     }
 
     private fun enrollmentChallenge(): ByteArray {
@@ -216,6 +234,95 @@ class MobileCeremonyTest {
     }
 
     @Test
+    fun validatesCase9482CaidDerivedFromAuthoritativeActionBytes() {
+        val item = fixture()
+
+        val validated = EmiliaMobileChallengeValidator.decodeAndValidate(
+            item.data,
+            item.expectedActionIdentity,
+            now,
+        )
+
+        assertEquals(
+            case9482ActionCaid,
+            validated.context.getValue("action_caid").jsonPrimitive.content,
+        )
+    }
+
+    @Test
+    fun refusesCoordinatedSignedAndInboxCaidSubstitution() {
+        val item = fixture(actionCaid = substitutedActionCaid)
+
+        assertThrows(EmiliaMobileException.ActionIdentityMismatch::class.java) {
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                item.data,
+                item.expectedActionIdentity,
+                now,
+            )
+        }
+    }
+
+    @Test
+    fun refusesAuthoritativeActionMutationsWithReboundDigestsAndBindings() {
+        val mutations = listOf(
+            case9482Action(destinationLast4 = "9999"),
+            case9482Action(actionType = "benefit.payment_destination.delete"),
+            JsonObject(case9482Action() + ("new_destination" to JsonPrimitive("9988"))),
+        )
+
+        mutations.forEach { action ->
+            val item = fixture(action = action)
+            assertThrows(EmiliaMobileException.ActionIdentityMismatch::class.java) {
+                EmiliaMobileChallengeValidator.decodeAndValidate(
+                    item.data,
+                    item.expectedActionIdentity,
+                    now,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun derivesSourceActionTypeByRequiredPriorityAndFallback() {
+        val prefix = "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:"
+        val vectors = listOf(
+            buildJsonObject {
+                put("action_type", "primary.action")
+                put("@type", "secondary.action")
+                put("type", "tertiary.action")
+                put("case_id", "case-9482")
+            } to "PK8GAzQ3Zjs58bxR17tW591FAlO-xMkDZQPG7PUGR4M",
+            buildJsonObject {
+                put("action_type", "")
+                put("@type", "secondary.action")
+                put("type", "tertiary.action")
+                put("case_id", "case-9482")
+            } to "eUMNskvK4TFc0no1iEND_Hur2AwOfj8OOOGhnEHrrG4",
+            buildJsonObject {
+                put("action_type", "x".repeat(257))
+                put("@type", "")
+                put("type", "tertiary.action")
+                put("case_id", "case-9482")
+            } to "y2LRjok1b6xWdi4Xg7u_4PH6DLq21gZIC93pXEkQnZ0",
+            buildJsonObject {
+                put("action_type", "")
+                put("@type", "")
+                put("type", "")
+                put("case_id", "case-9482")
+            } to "EdXBEKVAynVPUHOWAxXzlCqVnNvCX08R6aQIQI5RsvA",
+        )
+
+        vectors.forEach { (action, expectedSuffix) ->
+            val item = fixture(action = action, actionCaid = prefix + expectedSuffix)
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                item.data,
+                item.expectedActionIdentity,
+                now,
+            )
+        }
+    }
+
+    @Test
     fun validatesAndBuildsPortableCeremonyResponse() = runTest {
         val item = fixture()
         val passkeys = EmiliaPasskeyAssertionProvider { rpId, challenge, allowed ->
@@ -246,7 +353,12 @@ class MobileCeremonyTest {
             appId = "gov.example.android.approvals",
             deviceKeyId = "ep:key:mobile-android-1",
         )
-        val response = coordinator.perform(item.data, EmiliaMobileDecision.APPROVED, now)
+        val response = coordinator.perform(
+            item.data,
+            EmiliaMobileDecision.APPROVED,
+            item.expectedActionIdentity,
+            now,
+        )
         assertEquals("EP-MOBILE-CEREMONY-v1", response.version)
         assertEquals("approved", response.decision)
         assertEquals(credentialId.base64Url(), response.credentialId)
@@ -261,6 +373,7 @@ class MobileCeremonyTest {
         assertThrows(EmiliaMobileException.DecisionMismatch::class.java) {
             EmiliaMobileChallengeValidator.decodeAndValidate(
                 item.data,
+                item.expectedActionIdentity,
                 now,
                 EmiliaMobileDecision.DENIED,
             )
@@ -268,11 +381,63 @@ class MobileCeremonyTest {
     }
 
     @Test
-    fun sampleRequiresVerifiedDecisionMatchBeforeSealedStatus() {
+    fun requiresV2SignedActionIdentityToMatchSelectedInboxAction() {
+        val item = fixture()
+        for (missingField in listOf("action_reference", "action_caid", "action_digest")) {
+            val missingIdentity = fixture { original ->
+                original.copy(
+                    authorizationContext = JsonObject(
+                        original.authorizationContext.jsonObject - missingField,
+                    ),
+                )
+            }
+            assertThrows(EmiliaMobileException.ActionIdentityMismatch::class.java) {
+                EmiliaMobileChallengeValidator.decodeAndValidate(
+                    missingIdentity.data,
+                    missingIdentity.expectedActionIdentity,
+                    now,
+                )
+            }
+        }
+
+        val mismatches = listOf(
+            item.expectedActionIdentity.copy(
+                actionReference = "mobact_ffffffffffffffffffffffffffffffff",
+            ),
+            item.expectedActionIdentity.copy(
+                actionCaid =
+                    "caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${"B".repeat(43)}",
+            ),
+            item.expectedActionIdentity.copy(actionDigest = "sha256:" + "f".repeat(64)),
+        )
+        for (mismatch in mismatches) {
+            assertThrows(EmiliaMobileException.ActionIdentityMismatch::class.java) {
+                EmiliaMobileChallengeValidator.decodeAndValidate(
+                    item.data,
+                    mismatch,
+                    now,
+                )
+            }
+        }
+
+        val v1 = fixture { original ->
+            original.copy(challengeProfile = "EP-MOBILE-CHALLENGE-v1")
+        }
+        assertThrows(EmiliaMobileException.MalformedChallenge::class.java) {
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                v1.data,
+                v1.expectedActionIdentity,
+                now,
+            )
+        }
+    }
+
+    @Test
+    fun sampleRequiresStrictApiVerificationBeforeSealedStatus() {
         val source = File(requireNotNull(System.getProperty("user.dir")))
             .resolve("sample/src/main/kotlin/ai/emiliaprotocol/approver/MainActivity.kt")
             .readText()
-        assertEquals(true, source.contains("result.decision != decision.wireValue"))
+        assertEquals(true, source.contains("api().verify(issued, response)"))
     }
 
     @Test
@@ -285,7 +450,11 @@ class MobileCeremonyTest {
             })
         }
         assertThrows(EmiliaMobileException.ActionMismatch::class.java) {
-            EmiliaMobileChallengeValidator.decodeAndValidate(badAction.data, now)
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                badAction.data,
+                badAction.expectedActionIdentity,
+                now,
+            )
         }
 
         val badBinding = fixture { original ->
@@ -294,7 +463,11 @@ class MobileCeremonyTest {
             ))
         }
         assertThrows(EmiliaMobileException.ContextMismatch::class.java) {
-            EmiliaMobileChallengeValidator.decodeAndValidate(badBinding.data, now)
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                badBinding.data,
+                badBinding.expectedActionIdentity,
+                now,
+            )
         }
     }
 
@@ -306,7 +479,11 @@ class MobileCeremonyTest {
             ))
         }
         assertThrows(EmiliaMobileException.DisplayMismatch::class.java) {
-            EmiliaMobileChallengeValidator.decodeAndValidate(unknown.data, now)
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                unknown.data,
+                unknown.expectedActionIdentity,
+                now,
+            )
         }
 
         val nested = fixture { original ->
@@ -319,7 +496,11 @@ class MobileCeremonyTest {
             ))
         }
         assertThrows(EmiliaMobileException.DisplayMismatch::class.java) {
-            EmiliaMobileChallengeValidator.decodeAndValidate(nested.data, now)
+            EmiliaMobileChallengeValidator.decodeAndValidate(
+                nested.data,
+                nested.expectedActionIdentity,
+                now,
+            )
         }
     }
 

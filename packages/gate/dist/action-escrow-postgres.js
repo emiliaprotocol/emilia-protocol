@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Durable Postgres backend for the Action Escrow state-machine store contract.

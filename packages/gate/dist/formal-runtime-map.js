@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Machine-checked source map for the explicit formal-to-runtime bridge.

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EMILIA Gate — break-glass as EVIDENCE, never a bypass (EP-GATE-BREAKGLASS-v1).

@@ -27,6 +27,9 @@ function committedRows(decision = 'approved') {
   const context = {
     ep_version: '1.0',
     context_type: 'ep.signoff.v1',
+    action_reference: 'mobact_0123456789abcdef0123456789abcdef',
+    action_caid: `caid:1:emilia.mobile.authorized-action.1:jcs-sha256:${'A'.repeat(43)}`,
+    action_digest: `sha256:${'c'.repeat(64)}`,
     action_hash: ACTION_HASH,
     policy_id: 'policy-1',
     policy_hash: null,
@@ -40,7 +43,7 @@ function committedRows(decision = 'approved') {
     decision,
     display_hash: `sha256:${'c'.repeat(64)}`,
     mobile_binding: {
-      profile: 'EP-MOBILE-CHALLENGE-v1',
+      profile: 'EP-MOBILE-CHALLENGE-v2',
       profile_hash: PROFILE_HASH,
       platform: SESSION.platform,
       app_id: SESSION.appId,
@@ -119,7 +122,7 @@ function valueAt(row, field) {
   return jsonText ? row.record?.[jsonText[1]] : row[field];
 }
 
-function database(rows) {
+function database(rows, errors = {}) {
   const queries = [];
   const from = vi.fn((table) => {
     const filters = [];
@@ -130,6 +133,7 @@ function database(rows) {
         return query;
       }),
       maybeSingle: vi.fn(async () => {
+        if (errors[table]) return { data: null, error: errors[table] };
         const matches = (rows[table] || []).filter((row) => (
           filters.every(([field, value]) => valueAt(row, field) === value)
         ));
@@ -234,11 +238,44 @@ describe('mobile ceremony committed-result lookup', () => {
   });
 
   it('returns the same closed result for an unknown challenge ID', async () => {
-    const db = database(committedRows());
+    const rows = committedRows();
+    const db = database(rows);
     await expect(lookupMobileCeremonyResult(db, {
       ...SESSION,
       challengeId: 'mob_ffffffffffffffffffffffffffffffff',
     })).resolves.toBeNull();
     expect(db.from).toHaveBeenCalledTimes(1);
+
+    await expect(lookupMobileCeremonyResult(null, {
+      ...SESSION,
+      challengeId: CHALLENGE_ID,
+    })).resolves.toBeNull();
+
+    for (const table of [
+      'mobile_action_challenges',
+      'mobile_actions',
+      'mobile_evidence_records',
+    ]) {
+      await expect(lookupMobileCeremonyResult(database(rows, {
+        [table]: { code: '08006', message: 'unavailable' },
+      }), {
+        ...SESSION,
+        challengeId: CHALLENGE_ID,
+      })).rejects.toThrow(/mobile ceremony result lookup failed/);
+    }
+
+    const noAction = committedRows();
+    noAction.mobile_actions = [];
+    await expect(lookupMobileCeremonyResult(database(noAction), {
+      ...SESSION,
+      challengeId: CHALLENGE_ID,
+    })).resolves.toBeNull();
+
+    const noEvidence = committedRows();
+    noEvidence.mobile_evidence_records = [];
+    await expect(lookupMobileCeremonyResult(database(noEvidence), {
+      ...SESSION,
+      challengeId: CHALLENGE_ID,
+    })).resolves.toBeNull();
   });
 });

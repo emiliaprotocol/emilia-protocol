@@ -1,4 +1,3 @@
-// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EP-RELIANCE-KERNEL-v1 — runtime enforcement wrapper.

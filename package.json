@@ -32,6 +32,8 @@
     "typecheck:app": "tsc -p tsconfig.app.json",
     "typecheck:strict": "node scripts/typecheck-strict.mjs",
     "build:ts-runtime": "node scripts/build-ts-runtime.mjs",
+    "build:action-escrow-runtime": "node scripts/build-action-escrow-runtime.mjs",
+    "check:action-escrow-runtime": "node scripts/build-action-escrow-runtime.mjs --check",
     "typecheck:secure-app": "tsc -p tsconfig.secure-app.json",
     "typecheck:declarations": "tsc -p tsconfig.declarations.json",
     "typecheck:sdk": "tsc -p sdks/typescript/tsconfig.json --noEmit",

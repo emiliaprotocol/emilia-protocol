@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createProcoreChangeOrderAdapter,
   verifyProcoreChangeOrderEvidence,
-} from '../lib/integrations/action-escrow/procore-change-order.js';
+} from '../lib/integrations/action-escrow/procore-change-order.ts';
 
 const API_ORIGIN = 'https://api.procore.com';
 const TOKEN = 'procore-oauth-token';

@@ -2,7 +2,7 @@
 
 import crypto from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { buildPortableSignoffDecision } from '../lib/signoff/decision-evidence.js';
+import { buildPortableSignoffDecision } from '../lib/signoff/decision-evidence.ts';
 import {
   buildAuthorizationContext,
   contextHashBytes,
@@ -107,4 +107,3 @@ describe('portable Class-A signoff decision evidence', () => {
     }
   });
 });
-

@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
-import { buildMobileAuthorizationContext, hashCanonical } from '../../packages/mobile/index.js';
+import {
+  buildMobileActionIdentity,
+  buildMobileAuthorizationContext,
+  hashCanonical,
+} from '../../packages/mobile/index.js';
 import { FLEX_ENVELOPE_VERSION } from './curtailment.js';
 import {
   buildCurtailmentControlledAction,
@@ -41,8 +45,16 @@ function approval({ action, presentation, policy, approver, role, index }) {
   const key = p256();
   const credentialId = crypto.randomBytes(32).toString('base64url');
   const deviceKeyId = `ep:key:reference-${index}`;
+  const controlledAction = buildCurtailmentControlledAction(action);
+  const actionIdentity = buildMobileActionIdentity({
+    actionReference: action.action_id,
+    action: controlledAction,
+  });
   const context = buildMobileAuthorizationContext({
-    actionHash: graceDigest(buildCurtailmentControlledAction(action)),
+    actionHash: graceDigest(controlledAction),
+    actionReference: action.action_id,
+    actionCaid: actionIdentity.action_caid,
+    actionDigest: actionIdentity.action_digest,
     policyId: policy.policy_id,
     policyHash: graceDigest(policy),
     initiatorId: action.requested_by,

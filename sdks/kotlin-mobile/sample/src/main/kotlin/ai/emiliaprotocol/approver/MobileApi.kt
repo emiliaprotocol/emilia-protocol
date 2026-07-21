@@ -2,10 +2,15 @@
 package ai.emiliaprotocol.approver
 
 import ai.emiliaprotocol.mobile.EmiliaCanonicalJson
+import ai.emiliaprotocol.mobile.EmiliaMobileAction
 import ai.emiliaprotocol.mobile.EmiliaMobileCeremonyResponse
 import ai.emiliaprotocol.mobile.EmiliaMobileChallenge
 import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentChallenge
 import ai.emiliaprotocol.mobile.EmiliaMobileEnrollmentResponse
+import ai.emiliaprotocol.mobile.EmiliaMobileHistoryResponse
+import ai.emiliaprotocol.mobile.EmiliaMobileInboxResponse
+import ai.emiliaprotocol.mobile.EmiliaMobilePassportResponse
+import ai.emiliaprotocol.mobile.EmiliaMobileWithdrawalResponse
 import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.net.URLEncoder
@@ -29,23 +34,6 @@ data class PairingResponse(
     @SerialName("expires_at") val expiresAt: String,
     @SerialName("approver_id") val approverId: String,
     @SerialName("profile_id") val profileId: String,
-)
-
-@Serializable
-data class InboxResponse(
-    @SerialName("approver_id") val approverId: String,
-    val actions: List<InboxAction>,
-)
-
-@Serializable
-data class InboxAction(
-    @SerialName("action_reference") val actionReference: String,
-    val title: String,
-    val summary: String,
-    val risk: String,
-    @SerialName("material_fields") val materialFields: JsonObject,
-    @SerialName("expires_at") val expiresAt: String,
-    @SerialName("created_at") val createdAt: String,
 )
 
 @Serializable
@@ -127,7 +115,35 @@ class MobileApi internal constructor(
         authenticated = false,
     )
 
-    suspend fun inbox(): List<InboxAction> = get<InboxResponse>("v1/mobile/inbox").actions
+    suspend fun inbox(): List<EmiliaMobileAction> =
+        get<EmiliaMobileInboxResponse>("v1/mobile/inbox").actions
+
+    suspend fun history(): List<EmiliaMobileAction> =
+        get<EmiliaMobileHistoryResponse>("v1/mobile/history").actions
+
+    suspend fun passport(actionReference: String): JsonObject {
+        val encodedReference = encodePathSegment(actionReference)
+        return get<EmiliaMobilePassportResponse>(
+            "v1/mobile/actions/$encodedReference/passport",
+        ).passport
+    }
+
+    suspend fun withdraw(actionReference: String): EmiliaMobileWithdrawalResponse {
+        val encodedReference = encodePathSegment(actionReference)
+        val result = try {
+            post<EmiliaMobileWithdrawalResponse>(
+                "v1/mobile/actions/$encodedReference/withdraw",
+                buildJsonObject {},
+            )
+        } catch (error: MobileApiException.Refused) {
+            if (error.status == 409) throw MobileApiException.AlreadyConsumed
+            throw error
+        }
+        if (!result.withdrawn || result.state != "withdrawn") {
+            throw MobileApiException.Refused("invalid_withdrawal_response")
+        }
+        return result
+    }
 
     suspend fun issueEnrollment(approverId: String, appId: String): EmiliaMobileEnrollmentChallenge {
         val result = post<EnrollmentChallengeResponse>(
@@ -187,10 +203,15 @@ class MobileApi internal constructor(
             put("response", json.encodeToJsonElement(EmiliaMobileCeremonyResponse.serializer(), response))
         }
         return try {
-            post("v1/mobile/ceremonies", body)
+            verifiedCeremonyResult(
+                post("v1/mobile/ceremonies", body),
+                expectedDecision,
+                expectedContextHash,
+            )
         } catch (_: MobileApiException.Transport) {
-            recoverCeremonyResult(challenge.challengeId,
-                challenge.authorizationContext.decision,
+            recoverCeremonyResult(
+                challenge.challengeId,
+                expectedDecision,
                 expectedContextHash,
             )
         }
@@ -210,22 +231,36 @@ class MobileApi internal constructor(
         expectedContextHash: String,
     ): CeremonyResult {
         return try {
-            val encodedChallengeId = URLEncoder.encode(challengeId, StandardCharsets.UTF_8).replace("+", "%20")
+            val encodedChallengeId = encodePathSegment(challengeId)
             val recovery = get<CeremonyRecovery>("v1/mobile/ceremonies/$encodedChallengeId")
             val result = recovery.result
-            if (!recovery.committed || recovery.outcome != "committed" || result == null
-                || !result.valid || result.verdict != "verified"
-                || result.decision != expectedDecision
-                || result.reason != null
-                || result.contextHash != expectedContextHash
-            ) throw MobileApiException.OutcomeUnknown
-            result
+            if (!recovery.committed || recovery.outcome != "committed" || result == null) {
+                throw MobileApiException.OutcomeUnknown
+            }
+            verifiedCeremonyResult(result, expectedDecision, expectedContextHash)
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {
             throw MobileApiException.OutcomeUnknown
         }
     }
+
+    private fun verifiedCeremonyResult(
+        result: CeremonyResult,
+        expectedDecision: String,
+        expectedContextHash: String,
+    ): CeremonyResult {
+        if (!result.valid
+            || result.verdict != "verified"
+            || result.decision != expectedDecision
+            || result.reason != null
+            || result.contextHash != expectedContextHash
+        ) throw MobileApiException.OutcomeUnknown
+        return result
+    }
+
+    private fun encodePathSegment(value: String): String =
+        URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
 
     private suspend inline fun <reified T> post(
         path: String,
@@ -282,7 +317,10 @@ class MobileApi internal constructor(
             if (status !in 200..299) {
                 if (status in 500..599) throw MobileApiException.Transport
                 val problem = runCatching { json.decodeFromString<Problem>(bytes.toString(Charsets.UTF_8)) }.getOrNull()
-                throw MobileApiException.Refused(problem?.detail ?: problem?.reason ?: problem?.verdict ?: "HTTP $status")
+                throw MobileApiException.Refused(
+                    problem?.detail ?: problem?.reason ?: problem?.verdict ?: "HTTP $status",
+                    status,
+                )
             }
             json.decodeFromString<T>(bytes.toString(Charsets.UTF_8))
         } catch (error: MobileApiException) {
@@ -307,6 +345,12 @@ sealed class MobileApiException(message: String) : Exception(message) {
     data object OutcomeUnknown : MobileApiException(
         "The approval outcome is unknown. Do not retry or assume it was not authorized.",
     )
+    data object AlreadyConsumed : MobileApiException(
+        "Execution authority has already been consumed; this approval cannot be withdrawn.",
+    )
     data object SessionExpired : MobileApiException("This device connection has expired.")
-    data class Refused(val detail: String) : MobileApiException("The request was refused: $detail")
+    data class Refused(
+        val detail: String,
+        val status: Int? = null,
+    ) : MobileApiException("The request was refused: $detail")
 }
