@@ -283,7 +283,7 @@
       "purpose": "free adoption wedge: protect privileged MCP tool calls with the Gate enforcement contract"
     },
     {
-      "path": "lib/negotiate/evidence-challenge.js",
+      "path": "lib/negotiate/evidence-challenge.ts",
       "purpose": "action-bound evidence challenge registration and evaluation"
     },
     {

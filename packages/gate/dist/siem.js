@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EMILIA Gate — SIEM export of the evidence log (EP-GATE-SIEM-EXPORT-v1).

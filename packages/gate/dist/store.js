@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @emilia-protocol/gate — consumption store (replay defense).
  * @license Apache-2.0

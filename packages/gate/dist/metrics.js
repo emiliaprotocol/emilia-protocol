@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EMILIA Gate — Prometheus metrics exposition (EP-GATE-METRICS-v1).

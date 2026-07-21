@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @emilia-protocol/gate — EMILIA Gate: the Consequence Firewall.
  * @license Apache-2.0
@@ -60,9 +61,42 @@ export { createRuntimeMonitor, RUNTIME_MONITOR_VERSION, RUNTIME_MONITOR_MODES, R
 export { FORMAL_RUNTIME_BRIDGE_VERSION, FORMAL_RUNTIME_SPEC, FORMAL_RUNTIME_CONFIG, FORMAL_RUNTIME_INVARIANT_MAP, } from './formal-runtime-map.js';
 export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_VERSION, CAPABILITY_SCOPE_PROFILE, CAPABILITY_CAID_SCOPE_PROFILE, CAPABILITY_STATE_DDL, CAPABILITY_SQL, capabilityBaseReceiptDigest, capabilityActionDigest, verifyCapabilityScope, mintCapabilityReceipt, verifyCapabilityReceipt, splitCapabilitySecret, reconstructCapabilitySecret, createMemoryCapabilityStore, createPostgresCapabilityStore, executeWithCapability, executeWithThreshold, reconcileCapabilityOperation, delegateCapabilityReceipt, } from './capability-receipt.js';
 export { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
+export { RECEIPT_PROGRAM_VERSION, RECEIPT_PROGRAM_CERTIFICATE_VERSION, RECEIPT_PROGRAM_SIGNATURE_ALGORITHM, createReceiptProgramKernel, verifyReceiptProgramCertificate, } from './receipt-program.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;
+function gateOutcomeError(cause, { outcome, reason, authorization, execution, result = null }) {
+    const error = new Error(cause?.message ?? `EMILIA Gate terminal outcome: ${reason}`, { cause });
+    error.code = 'EMILIA_GATE_TERMINAL_OUTCOME';
+    let authorizationEvidence = null;
+    let executionEvidence = null;
+    let resultSnapshot = null;
+    try {
+        authorizationEvidence = structuredClone(authorization?.evidence ?? null);
+    }
+    catch { /* unavailable */ }
+    try {
+        executionEvidence = structuredClone(execution ?? null);
+    }
+    catch { /* unavailable */ }
+    try {
+        resultSnapshot = structuredClone(result);
+    }
+    catch { /* unavailable */ }
+    Object.defineProperty(error, 'emiliaGateOutcome', {
+        value: Object.freeze({
+            outcome,
+            reason,
+            authorizationEvidence,
+            execution: executionEvidence,
+            result: resultSnapshot,
+        }),
+        enumerable: false,
+        configurable: false,
+        writable: false,
+    });
+    return error;
+}
 function safeCanonicalHash(value) {
     try {
         return hashCanonical(value);
@@ -1175,34 +1209,65 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                 runtimeMonitor?.executionSkipped(runtimeCycleId);
                 return { ok: true, result: capabilityResult.result, authorization, execution: null, packet: null, capability: capabilityResult };
             }
-            const execution = await recordExecution({
-                authorization,
-                outcome: 'executed',
-                observedAction,
-                detail: { capability: { ...capabilitySummary(context, operationId), outcome: 'executed' } },
-            });
-            runtimeMonitor?.executionRecorded(runtimeCycleId);
-            const packet = await reliancePacket({ authorization, execution });
-            return { ok: true, result: capabilityResult.result, authorization, execution, packet, capability: capabilityResult };
+            let execution = null;
+            try {
+                execution = await recordExecution({
+                    authorization,
+                    outcome: 'executed',
+                    observedAction,
+                    detail: { capability: { ...capabilitySummary(context, operationId), outcome: 'executed' } },
+                });
+                runtimeMonitor?.executionRecorded(runtimeCycleId);
+                const packet = await reliancePacket({ authorization, execution });
+                return { ok: true, result: capabilityResult.result, authorization, execution, packet, capability: capabilityResult };
+            }
+            catch (error) {
+                throw gateOutcomeError(error, {
+                    outcome: 'executed',
+                    reason: execution ? 'reliance_packet_unavailable' : 'execution_evidence_unavailable',
+                    authorization,
+                    execution,
+                    result: capabilityResult.result,
+                });
+            }
         }
         if (effectStarted && (capabilityResult.reason === 'effect_indeterminate'
             || capabilityResult.reason === 'capability_commit_indeterminate')) {
             if (capabilityResult.reason === 'effect_indeterminate')
                 runtimeMonitor?.consumptionCommitted(runtimeCycleId);
-            const execution = opts.recordExecution === false ? null : await recordExecution({
-                authorization,
-                outcome: 'indeterminate',
-                observedAction,
-                detail: {
-                    code: 'effect_attempted_outcome_unknown',
-                    capability: { ...capabilitySummary(context, operationId), outcome: 'indeterminate' },
-                },
-            });
+            let execution = null;
+            if (opts.recordExecution !== false) {
+                try {
+                    execution = await recordExecution({
+                        authorization,
+                        outcome: 'indeterminate',
+                        observedAction,
+                        detail: {
+                            code: 'effect_attempted_outcome_unknown',
+                            capability: { ...capabilitySummary(context, operationId), outcome: 'indeterminate' },
+                        },
+                    });
+                }
+                catch (error) {
+                    throw gateOutcomeError(effectError ?? error, {
+                        outcome: 'indeterminate',
+                        reason: 'execution_evidence_unavailable',
+                        authorization,
+                        execution: null,
+                    });
+                }
+            }
             if (capabilityResult.reason === 'effect_indeterminate' && opts.recordExecution !== false) {
                 runtimeMonitor?.executionRecorded(runtimeCycleId);
             }
-            if (effectError)
-                throw effectError;
+            if (effectError) {
+                throw gateOutcomeError(effectError, {
+                    outcome: 'indeterminate',
+                    reason: capabilityResult.reason,
+                    authorization,
+                    execution,
+                });
+            }
             return capabilityRefusal({ authorization, capability: context, reason: capabilityResult.reason, event: execution });
         }
         if (authorization?.allow === true) {
@@ -1258,9 +1323,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         }
         let phase = 'reserved';
         let consumptionCommitted = false;
+        let result = null;
+        let execution = null;
         try {
             phase = 'effect_attempted';
-            const result = await fn(authorization);
+            result = await fn(authorization);
             phase = 'effect_returned';
             runtimeMonitor?.effectReturned(runtimeCycleId);
             if (typeof consumption.commit === 'function')
@@ -1273,12 +1340,23 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                 return { ok: true, result, authorization, execution: null, packet: null };
             }
             phase = 'recording_execution';
-            const execution = await recordExecution({ authorization, outcome: 'executed', observedAction });
+            execution = await recordExecution({ authorization, outcome: 'executed', observedAction });
             runtimeMonitor?.executionRecorded(runtimeCycleId);
+            phase = 'execution_recorded';
             const packet = await reliancePacket({ authorization, execution });
             return { ok: true, result, authorization, execution, packet };
         }
         catch (e) {
+            if (consumptionCommitted
+                && ['consumed', 'recording_execution', 'execution_recorded'].includes(phase)) {
+                throw gateOutcomeError(e, {
+                    outcome: 'executed',
+                    reason: execution ? 'reliance_packet_unavailable' : 'execution_evidence_unavailable',
+                    authorization,
+                    execution,
+                    result,
+                });
+            }
             if (runtimeMonitor && runtimeCycleId && (phase === 'effect_attempted' || phase === 'effect_returned')) {
                 runtimeMonitor.effectFailed(runtimeCycleId);
             }
@@ -1297,9 +1375,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                     consumptionError = commitError;
                 }
             }
+            let indeterminateExecution = null;
             if (opts.recordExecution !== false && phase !== 'recording_execution') {
                 try {
-                    await recordExecution({
+                    indeterminateExecution = await recordExecution({
                         authorization,
                         outcome: 'indeterminate',
                         // Exception text frequently contains provider payloads, record IDs,
@@ -1321,7 +1400,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             if (consumptionError && e && typeof e === 'object') {
                 e.consumption_error = String(consumptionError?.message ?? consumptionError);
             }
-            throw e;
+            throw gateOutcomeError(e, {
+                outcome: 'indeterminate',
+                reason: 'effect_attempted_outcome_unknown',
+                authorization,
+                execution: indeterminateExecution,
+            });
         }
     }
     /**

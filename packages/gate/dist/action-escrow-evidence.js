@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EP-ACTION-ESCROW-EVIDENCE-PACKAGE-v1

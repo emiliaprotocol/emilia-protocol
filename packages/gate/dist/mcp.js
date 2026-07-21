@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EMILIA Gate — MCP drop-in. The lowest-friction place to put the firewall:

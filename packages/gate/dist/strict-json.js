@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 // Duplicate-name and Unicode-scalar gate for signed nested JSON such as
 // WebAuthn clientDataJSON. JSON.parse remains the syntax gate.

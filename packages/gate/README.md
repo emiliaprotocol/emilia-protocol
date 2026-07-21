@@ -430,6 +430,94 @@ reconciliation; it never creates spendable budget out of thin air. A holder
 cannot edit `delegation_chain` or enlarge a child because the issuer signs the
 entire envelope.
 
+## Receipt programs
+
+`createReceiptProgramKernel()` composes CAID, the Gate capability path, and the
+evidence log into one bounded instruction surface. The instruction descriptor
+and certificate encoding are deterministic; external effects are not. It does not create a
+second ledger or bypass Gate. A successful run emits an Ed25519-signed
+certificate over the exact program, provider result projection, execution
+steps, and compact Gate evidence references.
+
+```js
+import {
+  createReceiptProgramKernel,
+  verifyReceiptProgramCertificate,
+} from '@emilia-protocol/gate/receipt-program';
+
+const certificateContext = {
+  issuer: 'emilia-operator',
+  tenant: 'acme',
+  environment: 'production',
+  audience: 'acme-audit',
+  key_id: 'kms://receipt-program-1',
+};
+
+const kernel = createReceiptProgramKernel({
+  gate,                              // already configured production Gate
+  resolveCaid,                       // relying-party-pinned synchronous resolver
+  operationIdField: 'payment_instruction_id',
+  certificateSigner: {
+    keyId: 'kms://receipt-program-1',
+    custody: 'kms',
+    publicKey: operatorPublicKey,
+    sign: (bytes) => signWithKms(bytes),
+  },
+  certificateContext,
+  projectResult: (raw) => ({
+    provider: raw.provider,
+    provider_operation_id: raw.provider_operation_id,
+    status: raw.status,
+  }),
+  effectTimeoutMs: 15_000,
+});
+
+const run = await kernel.run({
+  programId: 'delegated-payment-v1',
+  instructionId: 'release-milestone-1',
+  caid,
+  selector: { protocol: 'mcp', tool: 'release_payment' },
+  observedAction: actionFromTheSystemOfRecord,
+  capability: {
+    capabilityReceipt,
+    secret,
+    action: { amount: 50, currency: 'USD' },
+    operationId: actionFromTheSystemOfRecord.payment_instruction_id,
+  },
+}, async (_authorization, operation) => ({
+  provider: 'licensed-custodian',
+  provider_operation_id: operation.providerIdempotencyKey,
+  status: await releaseWithIdempotency(operation.providerIdempotencyKey),
+}));
+
+const checked = verifyReceiptProgramCertificate(run.certificate, {
+  trustedCertificateKeys: {
+    'kms://receipt-program-1': operatorPublicKey,
+  },
+  resolveCaid,
+  expectedContext: certificateContext,
+  certificateEvidence: run.certificate_evidence,
+  // Must check this exact record against the relying party's pinned stream,
+  // authenticated snapshot, or inclusion proof. Rehashing the object is not enough.
+  verifyCertificateInclusion: verifyInPinnedEvidenceStream,
+  requireAtomicCertificateEvidence: true,
+});
+```
+
+Production construction requires a durable atomic evidence log and durable
+capability store, external KMS/HSM signing custody, an exact certificate
+context, and a pinned disclosure projector. Provider code receives only frozen
+copies of authorization and operation data. A provider exception, real deadline
+expiry, or invalid result projection after invocation becomes `indeterminate`
+and leaves the operation closed to blind replay. A certificate is returned as
+durable proof only after signing and complete-certificate evidence append
+succeed; typed signer/persistence failures preserve Gate's terminal outcome.
+`checked.ok` means certificate validity, not provider success—inspect
+`checked.outcome` and `checked.execution_succeeded`. The certificate proves
+operator-signed integrity and binding; it is not a zero-knowledge proof or
+independent proof of provider truth. See the runnable `examples/receipt-program/` reference and the
+[architecture profile](../../docs/architecture/RECEIPT-PROGRAM-EXECUTION-KERNEL.md).
+
 ## Zero-knowledge range receipts
 
 `zk-range-proof.js` provides `EP-ZK-RANGE-RECEIPT-v1`. It uses Bulletproofs over

@@ -1,13 +1,13 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-20T21:40:23.941Z",
+  "evidence_snapshot_at": "2026-07-21T01:21:12.018Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "72ff8d0b6e20d31a573d89fa3687dad61b17eb207d0b6f650d7e3a32d8c21ec8",
+    "input_digest_sha256": "3117a835c8401ed3de121f8451f774b9e9095f9f066e69b9ec1cadfcee92ca45",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "6958b9db5873da2d5ba1de0d93f17e2999ca8aed0edf71fd6d81b8552e5cde2a",
+        "sha256": "c49c0ec00de070629cb1710d813310763dff60a68b9463d69d164a7a63601bab",
         "bytes": 38686
       },
       {
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d2070cb5e0108b9c8bfe61b8318e462c36cdeda692857d81de7a4000637a8527",
+        "sha256": "9566e5337b71a48c81fa2a48c90b7e5419de3a49185ed13341c86fe14758d861",
         "bytes": 1068
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "dc6ec7ea062c836a3159f7a27eadbc77b040ad8d48ed9bb5e69a1df134f075c1",
-        "bytes": 144336
+        "sha256": "c7db310935ac7057ffd57df2fddb2dedb310b113b1b3607b75fd363e75b0696f",
+        "bytes": 155974
       },
       {
         "path": "security/security-case.json",
-        "sha256": "dadd138d73c871e9d50eb893f621d36931bc7132d637b7dcdb5d173997fa9feb",
-        "bytes": 232915
+        "sha256": "7fd37a76935b6d0ea87621801f526a6a2213aa37bc3a352d8f15bca127905ba4",
+        "bytes": 249912
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -286,9 +286,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 29,
-      "evidence_files": 156,
-      "evidence_bundle_sha256": "8407db9439b9200c5cfc204b92956d02230b8a12bfe29fd1df283203c4f29772"
+      "claims": 30,
+      "evidence_files": 159,
+      "evidence_bundle_sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
     },
     "caid": {
       "core_vectors": 48,
@@ -402,7 +402,7 @@
         },
         {
           "language": "javascript",
-          "file": "lib/guard-signoff.js",
+          "file": "lib/guard-signoff.ts",
           "symbol": "handleSignoffDecision",
           "exported": true
         },
@@ -1117,19 +1117,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/authority/document-proof-join.js",
+          "file": "lib/authority/document-proof-join.ts",
           "symbol": "verifyAuthorityProofViaDocument",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/authority/authority-doc.js",
+          "file": "lib/authority/authority-doc.ts",
           "symbol": "verifyAuthorityChain",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/authority/authority-doc.js",
+          "file": "lib/authority/authority-doc.ts",
           "symbol": "resolveIssuerKeyAt",
           "exported": true
         },
@@ -1276,19 +1276,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/negotiate/evidence-challenge.js",
+          "file": "lib/negotiate/evidence-challenge.ts",
           "symbol": "createRegisteredEvidenceChallenge",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/challenge-store.js",
+          "file": "packages/gate/src/challenge-store.ts",
           "symbol": "createDurableChallengeStore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/negotiate/evidence-challenge.js",
+          "file": "lib/negotiate/evidence-challenge.ts",
           "symbol": "evaluateRegisteredPresentation",
           "exported": true
         }
@@ -1351,7 +1351,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/store.js",
+          "file": "packages/gate/src/store.ts",
           "symbol": "createDurableConsumptionStore",
           "exported": true
         }
@@ -1409,19 +1409,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/index.js",
+          "file": "packages/gate/src/index.ts",
           "symbol": "createGate",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/aec-execution.js",
+          "file": "packages/gate/src/aec-execution.ts",
           "symbol": "createAECExecutionGate",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/store.js",
+          "file": "packages/gate/src/store.ts",
           "symbol": "createDurableConsumptionStore",
           "exported": true
         }
@@ -1480,19 +1480,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/network-witness.js",
+          "file": "packages/gate/src/network-witness.ts",
           "symbol": "createMemoryWitnessSequenceStore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/network-witness.js",
+          "file": "packages/gate/src/network-witness.ts",
           "symbol": "acceptNetworkWitnessStatement",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/witness-postgres.js",
+          "file": "packages/gate/src/witness-postgres.ts",
           "symbol": "createPostgresWitnessSequenceStore",
           "exported": true
         }
@@ -1551,19 +1551,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/aec-execution.js",
+          "file": "packages/gate/src/aec-execution.ts",
           "symbol": "createAECExecutionGate",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/store.js",
+          "file": "packages/gate/src/store.ts",
           "symbol": "createDurableConsumptionStore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/evidence.js",
+          "file": "packages/gate/src/evidence.ts",
           "symbol": "createAtomicEvidenceLog",
           "exported": true
         }
@@ -2049,7 +2049,7 @@
         },
         {
           "language": "javascript",
-          "file": "lib/negotiate/evidence-challenge.js",
+          "file": "lib/negotiate/evidence-challenge.ts",
           "symbol": "evaluateRegisteredPresentation",
           "exported": true
         }
@@ -2644,37 +2644,37 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow.js",
+          "file": "packages/gate/src/action-escrow.ts",
           "symbol": "createActionEscrowKernel",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-verifiers.js",
+          "file": "packages/gate/src/action-escrow-verifiers.ts",
           "symbol": "createActionEscrowContractorDocumentBindingVerifier",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-custodian.js",
+          "file": "packages/gate/src/action-escrow-custodian.ts",
           "symbol": "createActionEscrowCustodianBridge",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-package.js",
+          "file": "packages/gate/src/action-escrow-package.ts",
           "symbol": "assembleActionEscrowContractorEvidencePackage",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-evidence.js",
+          "file": "packages/gate/src/action-escrow-evidence.ts",
           "symbol": "verifyActionEscrowEvidencePackage",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-postgres.js",
+          "file": "packages/gate/src/action-escrow-postgres.ts",
           "symbol": "createActionEscrowPostgresStore",
           "exported": true
         },
@@ -2809,6 +2809,150 @@
         "a project-system record is source evidence only and does not prove party acceptance, human approval, legal enforceability, or physical completion",
         "cancellation and amendment fail closed once a funding request enters the custodian boundary, pending an authenticated no-funds result or separately specified custodian unwind or rebind protocol; opening a dispute freezes policy state but does not move or refund money",
         "the runnable scenario uses fictional parties and deterministic local provider simulations and is not evidence of a live deployment"
+      ]
+    },
+    {
+      "claim_id": "receipt-program-is-caid-bound-budgeted-and-terminal",
+      "statement": "A receipt program executes only through an already configured Gate after the relying-party-pinned CAID resolver binds the exact executor-owned action and stable operation identifier to an issuer-signed bounded capability. Gate reserves budget before provider entry and commits the operation as executed or indeterminate; a real provider deadline, response loss, invalid output, replay, action substitution, operation relabeling, transaction-scoped trust configuration, and provider mutation of Gate-owned inputs cannot reopen or bypass the consequence boundary. Only after Gate terminal evidence exists, the pinned KMS/HSM signer succeeds, and the complete certificate is appended to the atomic evidence log does the kernel return durable proof over the exact program, context, bounded result projection, step sequence, and linked Gate evidence references. Signer, certificate-log, and post-commit evidence failures preserve the durable Gate outcome without issuing contradictory proof.",
+      "acceptance_roots": [
+        "a production Gate configured with relying-party-owned receipt, capability-issuer, policy, and CAID trust",
+        "a strict fork-aware atomic durable evidence log and durable bounded-capability store",
+        "an executor-owned observed action containing the stable provider operation identifier",
+        "an external KMS/HSM Ed25519 signer and an exact verifier-pinned key-id-to-public-key mapping",
+        "constructor-pinned issuer, tenant, environment, audience, signer key identifier, disclosure projection, and provider deadline",
+        "a relying-party-owned inclusion verifier for any claim that a certificate record is persisted in the pinned evidence stream"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/receipt-program.ts",
+          "symbol": "createReceiptProgramKernel",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/receipt-program.ts",
+          "symbol": "verifyReceiptProgramCertificate",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/index.ts",
+          "symbol": "createGate",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "security/vectors.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python implementation of the stateful receipt-program kernel or certificate verifier is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go implementation of the stateful receipt-program kernel or certificate verifier is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_receipt_program_exact_execution_certificate",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_caid_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_blind_retry_after_timeout",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_runtime_trust_or_operation_relabeling",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_live_authorization_mutation",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_post_commit_evidence_contradiction",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_signer_or_persistence_false_proof",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_resigned_schema_contradictions",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_gate_reused_error_metadata",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_receipt_program_result_projection",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_forged_evidence_inclusion",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_key_id_public_key_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_receipt_program_indeterminate_evidence_false_certificate",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_gate_executed_outcome_relabeling",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_receipt_program_expected_digest_refusal",
+          "polarity": "positive"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The receipt-program certificate composition, KMS/HSM signer boundary, CAID re-performance, bounded result projection, certificate-log append, recovery behavior, and exact Gate evidence references are executable but are not represented together in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "every protected effect path is completely mediated by the configured Gate and provider adapter",
+        "the capability issuer, Gate trust roots, CAID registry, certificate signer, certificate context, clocks, and durable stores remain correctly provisioned and protected",
+        "the provider honors the stable idempotency key; the constructor-pinned projector limits disclosure but cannot make provider statements truthful",
+        "a verifier obtains referenced authorization, capability, and evidence-log records when full independent re-performance is required",
+        "the relying party inclusion verifier authenticates the intended evidence-stream scope and does not treat a caller-rehashed record as proof of persistence"
+      ],
+      "exclusions": [
+        "the certificate is not a Bulletproof, zk-SNARK, consensus result, provider attestation, or independent proof of physical outcome",
+        "the operator signature proves certificate integrity under the pinned key and context but does not establish signer independence, provider truth, action wisdom, legality, safety, or commercial correctness",
+        "the runnable demo uses deterministic process-local stores, synthetic keys, and a simulated provider and is not production deployment evidence",
+        "the guarantee does not cover any effect path that bypasses Gate or a provider that violates the configured idempotency contract",
+        "the reference certificate append is not cross-store atomic with the capability commit; deployments requiring proof publication through every crash window need a transactional outbox or equivalent recovery design",
+        "a pre-execution failure while registering a newly delegated child capability still requires reconciliation of that delegation operation"
       ]
     }
   ],
@@ -3230,7 +3374,7 @@
       "purpose": "free adoption wedge: protect privileged MCP tool calls with the Gate enforcement contract"
     },
     {
-      "path": "lib/negotiate/evidence-challenge.js",
+      "path": "lib/negotiate/evidence-challenge.ts",
       "purpose": "action-bound evidence challenge registration and evaluation"
     },
     {

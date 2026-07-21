@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EMILIA Gate — enterprise entitlement layer (EP-GATE-ENTITLEMENT-v1).

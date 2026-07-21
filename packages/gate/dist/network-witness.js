@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Independent, privacy-minimized observation evidence for EMILIA Gate.

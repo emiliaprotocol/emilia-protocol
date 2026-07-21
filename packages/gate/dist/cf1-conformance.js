@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * CF-1 Consequence Firewall Conformance — the category badge above EG-1.

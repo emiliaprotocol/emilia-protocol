@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Relying-party evaluation of evidence that an expected Gate workload is

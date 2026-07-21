@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 /**
  * Durable, body-bound lifecycle store for AE-CHALLENGE-v1.

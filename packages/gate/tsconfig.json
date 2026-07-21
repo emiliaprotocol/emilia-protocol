@@ -74,6 +74,7 @@
     "src/store.ts",
     "src/mcp.ts",
     "src/index.ts",
-    "src/protocol-state.ts"
+    "src/protocol-state.ts",
+    "src/receipt-program.ts"
   ]
 }

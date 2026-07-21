@@ -4,6 +4,38 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.13.0 (2026-07-20)
+
+### Added
+
+- A receipt-program execution kernel that composes CAID matching, Gate
+  authorization, bounded capability reservation, provider execution,
+  execution evidence, and an operator-signed content-addressed certificate.
+- Offline certificate verification under a separately pinned operator key,
+  context, and evidence record, including CAID re-performance, exact schemas and
+  instruction sequencing, result digest, action/operation binding, and Gate
+  evidence-record references.
+- Explicit `executed`, `refused`, and `indeterminate` terminal states. Provider
+  timeout and non-canonical provider output halt the operation without restoring
+  replay authority.
+
+### Security
+
+- Production construction requires both a durable atomic evidence log and a
+  durable capability store, an external KMS/HSM signer, pinned certificate
+  context, pinned result projector, and finite provider deadline. Process-local
+  state and keys are available only behind an explicit test/demo opt-in.
+- CAID resolution, operation-id field selection, certificate signing and
+  context, result projection, deadline, clock, and Gate trust are
+  constructor-pinned; runtime requests cannot replace them.
+- Provider code receives deep-frozen snapshots rather than Gate's live
+  authorization objects. Complete certificates are appended to the atomic
+  evidence log, and signer/persistence failures preserve Gate's terminal state
+  without issuing contradictory proof.
+- The certificate is an operator-signed integrity and binding artifact. It is
+  not a zero-knowledge proof and does not attest that an external provider's
+  statement is truthful.
+
 ## 0.12.0 (2026-07-18)
 
 ### Added

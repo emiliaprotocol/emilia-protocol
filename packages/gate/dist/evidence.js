@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @emilia-protocol/gate — evidence log (tamper-detecting audit of decisions).
  * @license Apache-2.0
