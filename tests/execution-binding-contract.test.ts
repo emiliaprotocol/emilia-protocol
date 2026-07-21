@@ -2,6 +2,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
+  actionMaterialFields,
   buildExecutionBindingContract,
   enrichCanonicalActionForExecution,
   verifyExecutionBindingContract,
@@ -279,5 +280,104 @@ describe('execution-binding contract — branch coverage', () => {
     });
     expect(check.ok).toBe(false);
     expect(check.missing_fields).toContain('after_state_hash');
+  });
+});
+
+// The contract reaches verifyExecutionBindingContract from the database
+// (app/api/v1/trust-receipts/[receiptId]/execution/route.ts reads it out of
+// `created.after_state.execution_binding`), so at verify time the field names
+// are untrusted input rather than a compile-time allowlist.
+//
+// Every fixture here is built with JSON.parse, which is how the contract and the
+// observed action actually arrive. An object literal `{ __proto__: v }` is the
+// prototype-setter syntax and creates NO own key, so it does not reproduce any
+// of this; JSON.parse creates a real own '__proto__' property.
+describe('execution-binding contract: prototype-named fields', () => {
+  it('covers an observed field named __proto__ in observed_hash', () => {
+    const contract = JSON.parse(
+      '{"required":true,"required_fields":["__proto__"],"field_values":{"__proto__":250000},"field_hash":"x"}',
+    );
+    const observed = JSON.parse('{"__proto__":999999}');
+
+    const check = verifyExecutionBindingContract({ contract, observedAction: observed, executedAction: {} });
+
+    // The divergence is caught either way; the defect was that observed_hash
+    // attested to a digest that did not cover the field it named.
+    expect(check.mismatched_fields).toContain('__proto__');
+    expect(Object.prototype.hasOwnProperty.call(check.observed_values, '__proto__')).toBe(true);
+    expect(check.observed_values.__proto__).toBe(999999);
+    expect(check.observed_hash).toBe(hashCanonicalAction(check.observed_values));
+    expect(check.observed_hash).not.toBe(hashCanonicalAction({}));
+  });
+
+  it('keeps an object-valued __proto__ in the digest instead of repointing the accumulator', () => {
+    const contract = JSON.parse(
+      '{"required":true,"required_fields":["__proto__","amount"],"field_values":{"__proto__":{"x":1},"amount":5},"field_hash":"x"}',
+    );
+    const observed = JSON.parse('{"__proto__":{"x":2},"amount":5}');
+
+    const check = verifyExecutionBindingContract({ contract, observedAction: observed, executedAction: {} });
+
+    expect(check.mismatched_fields).toContain('__proto__');
+    expect(check.observed_values.__proto__).toEqual({ x: 2 });
+    expect(Object.keys(check.observed_values).sort()).toEqual(['__proto__', 'amount']);
+    expect(check.observed_hash).toBe(hashCanonicalAction(check.observed_values));
+  });
+
+  it.each(['__proto__', 'toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
+    'refuses an unbound field named %s with a reason instead of throwing',
+    (name) => {
+      // required_fields names the field but field_values carries no own entry for
+      // it, while the observed action does supply it. Reading the expected value
+      // off Object.prototype made toString/constructor/valueOf reach
+      // hashCanonicalAction as a function and throw a TypeError, which the route
+      // turns into a 500 rather than a binding refusal.
+      const contract = JSON.parse(JSON.stringify({
+        required: true, required_fields: [name], field_values: {}, field_hash: 'x',
+      }));
+      const observed = JSON.parse(`{"${name}":999}`);
+
+      const check = verifyExecutionBindingContract({ contract, observedAction: observed, executedAction: {} });
+
+      expect(check.ok).toBe(false);
+      expect(check.missing_fields).toContain(name);
+    },
+  );
+
+  it.each(['__proto__', 'toString', 'constructor', 'valueOf'])(
+    'resolves material fields for an action_type named %s without throwing',
+    (actionType) => {
+      // ACTION_FIELD_MAP[actionType] returned an Object.prototype member for these
+      // names, and spreading that non-iterable value threw. The HTTP route
+      // allowlists action_type, but these functions are exported and must not
+      // make that allowlist load-bearing.
+      expect(() => actionMaterialFields(actionType)).not.toThrow();
+      expect(actionMaterialFields(actionType)).toEqual(expect.arrayContaining(['organization_id', 'actor_id']));
+
+      const contract = buildExecutionBindingContract({
+        canonicalAction: { ...BASE, action_type: actionType, amount: 1 },
+        decision: { signoffRequired: true },
+      });
+      expect(contract.required_fields).toContain('amount');
+    },
+  );
+
+  it('advertises a bound __proto__ field in required_fields and field_hash', () => {
+    // required_fields is published from the names recorded at acceptance rather
+    // than read back out of the accumulator, so a bound field cannot be dropped
+    // from the advertised list by the shape of its own name.
+    const contract = buildExecutionBindingContract({
+      canonicalAction: JSON.parse(`{"action_type":"large_payment_release","amount":7,"currency":"USD",
+        "organization_id":"org_1","actor_id":"ep:entity:operator","target_resource_id":"acct:1"}`),
+      decision: { signoffRequired: true },
+    });
+
+    expect(contract.required_fields).toEqual([...contract.required_fields].sort());
+    expect(contract.required_fields).toContain('amount');
+    expect(contract.field_hash).toBe(hashCanonicalAction(contract.field_values));
+    // Every advertised required field is actually bound in field_values.
+    for (const field of contract.required_fields) {
+      expect(Object.prototype.hasOwnProperty.call(contract.field_values, field)).toBe(true);
+    }
   });
 });

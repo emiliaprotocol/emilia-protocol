@@ -68,8 +68,22 @@ export default {
     'packages/gate/src/key-registry.ts:90-103',
     'packages/gate/src/execution-binding.ts:54-61',
     'packages/gate/src/execution-binding.ts:112-123',
-    'packages/gate/src/execution-binding.ts:161-176',
-    'packages/gate/src/execution-binding.ts:181-204',
+    // Resolved from semantic anchors for the same reason as the index.ts range
+    // above: these were fixed line numbers into verifyExecutionBinding, and the
+    // per-field pass grew when the `__proto__`-named-field defects were fixed.
+    // The anchors span the whole per-field pass and the whole aggregate-plus-
+    // verdict block, so an edit inside either one cannot slide code out of the
+    // mutated surface.
+    mutationRange(
+      'packages/gate/src/execution-binding.ts',
+      'for (const field of requiredFields) {',
+      '&& !equalValue(expected.value, actual.value)) mismatched.push(key);',
+    ),
+    mutationRange(
+      'packages/gate/src/execution-binding.ts',
+      'try { assertCanonicalJson(signedValues); } catch {',
+      'observed_hash: invalidObserved.length === 0',
+    ),
     'packages/verify/src/reliance.ts:69-575',
     // .ts source, not the generated companion at the old .js path (mutants in
     // a companion never load -- vitest resolves imports to the source). Range

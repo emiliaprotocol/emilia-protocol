@@ -105,7 +105,7 @@ async function completeCustomerMirror(page, ceremony, mobile = false) {
   const questions = mirror.locator('fieldset[data-material-field]');
   await expect(questions).toHaveCount(3);
 
-  const materialFields = [];
+  const materialFields: any[] = [];
   for (let index = 0; index < 3; index += 1) {
     const materialField = await questions.nth(index).getAttribute('data-material-field');
     expect(CORRECT_MIRROR_ANSWERS[materialField]).toBeTruthy();

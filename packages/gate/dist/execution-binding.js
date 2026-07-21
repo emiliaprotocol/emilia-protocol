@@ -153,32 +153,49 @@ export function verifyExecutionBinding({ requirement, receipt, observedAction } 
     const invalidSigned = [];
     const invalidObserved = [];
     const mismatched = [];
-    const signedValues = {};
-    const observedValues = {};
+    // Null-prototype accumulators. A required field literally named `__proto__`
+    // written onto a plain `{}` hits Object.prototype's setter instead of
+    // creating an own key: the value silently escapes the binding digest, and
+    // when it is an object it repoints the accumulator's prototype so the
+    // aggregate re-check below throws with nothing to attribute the refusal to.
+    const signedValues = Object.create(null);
+    const observedValues = Object.create(null);
+    // Field names accepted into each accumulator, recorded at the point of
+    // acceptance. The aggregate re-check refuses by this list rather than reading
+    // the accumulator back, so a refusal stays attributable for every property
+    // key -- including names no `Object.keys` walk can return.
+    const signedAccepted = [];
+    const observedAccepted = [];
     for (const field of requiredFields) {
-        const expected = fieldValue(signed, field);
-        const actual = fieldValue(observed, field);
+        // Resolve the property key exactly once per iteration. A non-string entry
+        // is coerced on every use, so reading through the raw entry and writing
+        // through it again can address two different properties.
+        const key = typeof field === 'symbol' ? field : String(field);
+        const expected = fieldValue(signed, key);
+        const actual = fieldValue(observed, key);
         if (expected.state === 'missing') {
-            missingSigned.push(field);
+            missingSigned.push(key);
         }
         else if (expected.state === 'invalid') {
-            invalidSigned.push(field);
+            invalidSigned.push(key);
         }
         else {
-            signedValues[field] = expected.value;
+            signedValues[key] = expected.value;
+            signedAccepted.push(key);
         }
         if (actual.state === 'missing') {
-            missingObserved.push(field);
+            missingObserved.push(key);
         }
         else if (actual.state === 'invalid') {
-            invalidObserved.push(field);
+            invalidObserved.push(key);
         }
         else {
-            observedValues[field] = actual.value;
+            observedValues[key] = actual.value;
+            observedAccepted.push(key);
         }
         if (expected.state === 'valid' && actual.state === 'valid'
             && !equalValue(expected.value, actual.value))
-            mismatched.push(field);
+            mismatched.push(key);
     }
     // Per-field checks do not see one object reused by two required fields.
     // Validate the aggregate graphs before computing either digest.
@@ -186,7 +203,7 @@ export function verifyExecutionBinding({ requirement, receipt, observedAction } 
         assertCanonicalJson(signedValues);
     }
     catch {
-        for (const field of Object.keys(signedValues)) {
+        for (const field of signedAccepted) {
             if (!invalidSigned.includes(field))
                 invalidSigned.push(field);
         }
@@ -195,7 +212,7 @@ export function verifyExecutionBinding({ requirement, receipt, observedAction } 
         assertCanonicalJson(observedValues);
     }
     catch {
-        for (const field of Object.keys(observedValues)) {
+        for (const field of observedAccepted) {
             if (!invalidObserved.includes(field))
                 invalidObserved.push(field);
         }
