@@ -13,7 +13,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="27"/>
+    <date year="2026" month="July" day="21"/>
     <area>Security</area>
     <keyword>agent authorization</keyword>
     <keyword>evidence</keyword>
@@ -531,6 +531,11 @@
         revocation statement. Its reference verifier and vectors provide
         implementation experience, but they do not prove availability or
         completeness of current status information.</li>
+        <li><xref target="MODEL-TO-MATTER"/> is an Experimental
+        executor-side application profile over CAID, AEC, and AEB. Its
+        reference implementation and synthetic vectors do not establish a
+        wet-lab deployment, scientific validation, physical truth, partner, or
+        endorsement.</li>
         <li>Gate enforcement, Receipt Programs, and Action Escrow have
         reference implementation profiles. A development Trust Program build
         supplies implementation experience for staged orchestration. This
@@ -683,7 +688,7 @@
           <author fullname="Iman Schrock"/>
           <date year="2026" month="July"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-00"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-01"/>
       </reference>
       <reference anchor="EP-AEC" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">
         <front>
@@ -732,6 +737,14 @@
           <date year="2026" month="July"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-ep-revocation-statement-00"/>
+      </reference>
+      <reference anchor="MODEL-TO-MATTER" target="https://datatracker.ietf.org/doc/draft-schrock-model-to-matter/">
+        <front>
+          <title>Model-to-Matter: Authorization Evidence for Model-Directed Physical Execution</title>
+          <author fullname="Iman Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-model-to-matter-01"/>
       </reference>
       <reference anchor="DMSC-GW" target="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">
         <front>

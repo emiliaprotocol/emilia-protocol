@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="27"/>
+    <date year="2026" month="July" day="21"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization evidence</keyword>
@@ -634,7 +634,7 @@
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
             <date year="2026" month="July"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-01"/>
         </reference>
         <reference anchor="AEC" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">
           <front>
