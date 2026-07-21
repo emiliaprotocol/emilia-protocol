@@ -108,11 +108,11 @@ These routes expose the kernel operations over HTTP. They are thin wrappers that
 
 | Route | Operation |
 |---|---|
-| `app/api/handshake/route.js` | POST: initiate handshake; GET: list handshakes |
-| `app/api/handshake/[handshakeId]/route.js` | GET: retrieve handshake state |
+| `app/api/handshake/route.ts` | POST: initiate handshake; GET: list handshakes |
+| `app/api/handshake/[handshakeId]/route.ts` | GET: retrieve handshake state |
 | `app/api/handshake/[handshakeId]/present/route.js` | POST: add presentation |
-| `app/api/handshake/[handshakeId]/verify/route.js` | POST: verify handshake |
-| `app/api/handshake/[handshakeId]/revoke/route.js` | POST: revoke handshake |
+| `app/api/handshake/[handshakeId]/verify/route.ts` | POST: verify handshake |
+| `app/api/handshake/[handshakeId]/revoke/route.ts` | POST: revoke handshake |
 | `app/api/commit/issue/route.js` | POST: issue commit |
 | `app/api/commit/verify/route.js` | POST: verify commit |
 | `app/api/commit/[commitId]/route.js` | GET: retrieve commit |
@@ -132,7 +132,7 @@ These routes expose the kernel operations over HTTP. They are thin wrappers that
 | `app/api/disputes/appeal/route.js` | POST: appeal dispute |
 | `app/api/disputes/withdraw/route.js` | POST: withdraw dispute |
 | `app/api/disputes/report/route.js` | POST: file human report |
-| `app/api/health/route.js` | GET: health check |
+| `app/api/health/route.ts` | GET: health check |
 
 ---
 
@@ -149,7 +149,7 @@ Infrastructure and operational concerns. Necessary for running an EP node, but n
 | `app/api/cron/expire/route.js` | Cron: expire stale commits/handshakes |
 | `app/api/audit/route.js` | Audit log retrieval |
 | `app/api/stats/route.js` | System statistics |
-| `app/api/health/route.js` | Health check (also listed under kernel for liveness) |
+| `app/api/health/route.ts` | Health check (also listed under kernel for liveness) |
 | `app/api/operators/apply/route.js` | Operator application |
 | `supabase/` | Database migrations and configuration |
 | `lib/blockchain.js` | Blockchain anchoring adapter (optional integrity proof) |
@@ -188,7 +188,7 @@ Business features built ON the protocol. These consume trust decisions but do no
 | `app/api/trust/zk-proof/route.js` | ZK proof generation |
 | `app/api/inquiries/route.js` | Contact form |
 | `app/api/waitlist/route.js` | Waitlist signup |
-| `app/api/identity/bind/route.js` | Identity binding UI flow |
+| `app/api/identity/bind/route.ts` | Identity binding UI flow |
 | `app/api/identity/verify/route.js` | Identity verification UI flow |
 | `app/api/identity/continuity/` | Identity continuity (EP-IX extension) |
 | `app/api/identity/lineage/` | Identity lineage tracking |

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from auth.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import crypto from 'node:crypto';
 const MIN_TOKEN_LENGTH = 32;
 const MAX_TOKEN_LENGTH = 1024;

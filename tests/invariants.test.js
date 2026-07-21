@@ -105,7 +105,7 @@ describe('Score Scale Invariants', () => {
   });
 
   it('no decision path in commit.js treats scores as 0-1 when they are 0-100', () => {
-    const commitSource = readSource('lib/commit.js');
+    const commitSource = readSource(resolveJsOrTs('lib/commit.js'));
 
     // The commit fallback should NOT compare score against 0-1 thresholds.
     // e.g., "score > 0.7" or "score < 0.5" would be scale bugs.
@@ -115,7 +115,7 @@ describe('Score Scale Invariants', () => {
   });
 
   it('commit fallback path (no policy) never uses raw score for decisions', () => {
-    const commitSource = readSource('lib/commit.js');
+    const commitSource = readSource(resolveJsOrTs('lib/commit.js'));
 
     // The fallback (else branch when no policyResult) should default to 'review',
     // NOT use a numeric score threshold. Verify the code says decision = 'review'.
@@ -207,7 +207,7 @@ describe('Decision Vocabulary Invariants', () => {
   const CANONICAL_DECISIONS = new Set(['allow', 'review', 'deny']);
 
   it('commit.js VALID_DECISIONS only contains allow, review, deny', () => {
-    const source = readSource('lib/commit.js');
+    const source = readSource(resolveJsOrTs('lib/commit.js'));
     const match = source.match(
       /VALID_DECISIONS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/
     );
@@ -217,7 +217,7 @@ describe('Decision Vocabulary Invariants', () => {
   });
 
   it('commit.js VALID_DECISIONS does not contain "block" or "pass"', () => {
-    const source = readSource('lib/commit.js');
+    const source = readSource(resolveJsOrTs('lib/commit.js'));
     const match = source.match(
       /VALID_DECISIONS\s*=\s*new\s+Set\(\[([^\]]+)\]\)/
     );
@@ -238,7 +238,7 @@ describe('Decision Vocabulary Invariants', () => {
   });
 
   it('trust/gate route returns only canonical decisions', () => {
-    const source = readSource('app/api/trust/gate/route.js');
+    const source = readSource(resolveJsOrTs('app/api/trust/gate/route.js'));
 
     // Extract all string literals that appear as decision values.
     // Covers: decision = 'x', decision: 'x', ? 'x' : 'y' in decision context
@@ -348,7 +348,7 @@ describe('Machine-Readable Discovery', () => {
 
 describe('Event Type Uniqueness', () => {
   function extractWriteEvents() {
-    const source = readSource('lib/canonical-writer.js');
+    const source = readSource(resolveJsOrTs('lib/canonical-writer.js'));
     const match = source.match(
       /export\s+const\s+WRITE_EVENTS\s*=\s*\{([\s\S]*?)\};/
     );

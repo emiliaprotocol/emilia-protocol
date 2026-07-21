@@ -1,3 +1,5 @@
+// Generated from td-verify.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 /**
  * AI Trust Desk — buyer-side claim verifier (CLI).
  *
@@ -13,43 +15,37 @@
  *
  * Usage: node scripts/td-verify.mjs --slug acme-financial-2cdc3c
  */
-
 import { verifyPublishedPage } from '../lib/trust-desk/page-verify.js';
-
 function parseArgs(argv) {
-  const args = {};
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i].startsWith('--')) {
-      const key = argv[i].slice(2);
-      args[key] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true';
+    const args = {};
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i].startsWith('--')) {
+            const key = argv[i].slice(2);
+            args[key] = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true';
+        }
     }
-  }
-  return args;
+    return args;
 }
-
 const args = parseArgs(process.argv.slice(2));
 if (!args.slug) {
-  process.stderr.write('error: --slug <slug> is required\n');
-  process.exit(2);
+    process.stderr.write('error: --slug <slug> is required\n');
+    process.exit(2);
 }
-
 const result = verifyPublishedPage(args.slug);
 if (!result.found) {
-  process.stderr.write(`error: no published trust page for slug "${args.slug}"\n`);
-  process.exit(2);
+    process.stderr.write(`error: no published trust page for slug "${args.slug}"\n`);
+    process.exit(2);
 }
-
 process.stdout.write(`\nVerifying trust page: ${result.company} (${result.slug})\n`);
 process.stdout.write(`Claims: ${result.claim_count}\n\n`);
-
 for (const claim of result.claims) {
-  process.stdout.write(`${claim.passed ? '✓' : '✗'} ${claim.id} — ${claim.title}\n`);
-  for (const [name, check] of Object.entries(claim.checks)) {
-    const mark = check.ok === true ? '  ✓' : check.ok === false ? '  ✗' : '  ·';
-    process.stdout.write(`${mark} ${name}: ${check.detail}\n`);
-  }
-  process.stdout.write('\n');
+    process.stdout.write(`${claim.passed ? '✓' : '✗'} ${claim.id} — ${claim.title}\n`);
+    for (const [name, check] of Object.entries(claim.checks)) {
+        const checkObj = check;
+        const mark = checkObj.ok === true ? '  ✓' : checkObj.ok === false ? '  ✗' : '  ·';
+        process.stdout.write(`${mark} ${name}: ${checkObj.detail}\n`);
+    }
+    process.stdout.write('\n');
 }
-
 process.stdout.write(result.ok ? '✓ ALL CLAIMS VERIFIED\n\n' : '✗ VERIFICATION FAILED\n\n');
 process.exit(result.ok ? 0 : 1);

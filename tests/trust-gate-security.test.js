@@ -46,7 +46,7 @@ vi.mock('@/lib/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-const { POST } = await import('../app/api/trust/gate/route.js');
+const { POST } = await import('../app/api/trust/gate/route.ts');
 
 function request(body) {
   return new Request('https://www.emiliaprotocol.ai/api/trust/gate', {

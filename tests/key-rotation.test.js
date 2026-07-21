@@ -65,7 +65,7 @@ vi.mock('@supabase/supabase-js', () => ({
 // ============================================================================
 
 const { authenticateRequest, hashApiKey } = await import('../lib/supabase.js');
-const { POST } = await import('../app/api/keys/rotate/route.js');
+const { POST } = await import('../app/api/keys/rotate/route.ts');
 
 // ============================================================================
 // Helpers

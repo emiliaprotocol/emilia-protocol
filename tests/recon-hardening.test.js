@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { GET as healthGET } from '../app/api/health/route.js';
-import { GET as policiesGET } from '../app/api/policies/route.js';
+import { GET as healthGET } from '../app/api/health/route.ts';
+import { GET as policiesGET } from '../app/api/policies/route.ts';
 import { GET as entitySearchGET } from '../app/api/entities/search/route.js';
-import { GET as trustProfileGET } from '../app/api/trust/profile/[entityId]/route.js';
-import { POST as trustEvaluatePOST } from '../app/api/trust/evaluate/route.js';
-import { POST as installPreflightPOST } from '../app/api/trust/install-preflight/route.js';
-import { GET as trustCompatGET } from '../app/api/trust/route.js';
-import { GET as statsGET } from '../app/api/stats/route.js';
-import { GET as leaderboardGET } from '../app/api/leaderboard/route.js';
+import { GET as trustProfileGET } from '../app/api/trust/profile/[entityId]/route.ts';
+import { POST as trustEvaluatePOST } from '../app/api/trust/evaluate/route.ts';
+import { POST as installPreflightPOST } from '../app/api/trust/install-preflight/route.ts';
+import { GET as trustCompatGET } from '../app/api/trust/route.ts';
+import { GET as statsGET } from '../app/api/stats/route.ts';
+import { GET as leaderboardGET } from '../app/api/leaderboard/route.ts';
 import { GET as feedGET } from '../app/api/feed/route.js';
-import { GET as domainScoreGET } from '../app/api/trust/domain-score/[entityId]/route.js';
+import { GET as domainScoreGET } from '../app/api/trust/domain-score/[entityId]/route.ts';
 
 const ROOT = resolve(__dirname, '..');
 
@@ -21,8 +21,10 @@ function source(path) {
   // back to whichever extension actually exists on disk.
   const full = resolve(ROOT, path);
   if (!existsSync(full) && path.endsWith('.js')) {
-    const ts = resolve(ROOT, `${path.slice(0, -3)}.ts`);
-    if (existsSync(ts)) return readFileSync(ts, 'utf8');
+    for (const ext of ['.ts', '.tsx']) {
+      const candidate = resolve(ROOT, `${path.slice(0, -3)}${ext}`);
+      if (existsSync(candidate)) return readFileSync(candidate, 'utf8');
+    }
   }
   return readFileSync(full, 'utf8');
 }

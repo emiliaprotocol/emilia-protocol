@@ -263,7 +263,10 @@ function fixture(mutation) {
       );
       proof = {
         ...proof,
-        authority_document: { ...authorityDocument, head_digest: proof.registry_head },
+        authority_document: {
+          ...authorityDocument,
+          head_digest: /** @type {string} */ (proof.registry_head),
+        },
       };
       break;
     }

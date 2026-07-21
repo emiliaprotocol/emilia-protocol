@@ -110,10 +110,10 @@ describe('Content Security Policy directives', () => {
 // ---------------------------------------------------------------------------
 
 describe('TRUST_TABLES list', () => {
-  const writeGuardSrc = readFile('lib/write-guard.js');
+  const writeGuardSrc = readFile('lib/write-guard.ts');
 
   // Extract the TRUST_TABLES array from source
-  const tableMatch = writeGuardSrc.match(/const TRUST_TABLES\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
+  const tableMatch = writeGuardSrc.match(/const TRUST_TABLES(?:\s*:\s*[^=]+)?\s*=\s*Object\.freeze\(\[([\s\S]*?)\]\)/);
 
   it('TRUST_TABLES array is defined and frozen', () => {
     expect(tableMatch).not.toBeNull();
@@ -154,7 +154,7 @@ describe('TRUST_TABLES list', () => {
 // ---------------------------------------------------------------------------
 
 describe('Write-guard enforcement', () => {
-  const writeGuardSrc = readFile('lib/write-guard.js');
+  const writeGuardSrc = readFile('lib/write-guard.ts');
 
   it('blocks insert operations on trust tables', () => {
     expect(writeGuardSrc).toContain("'insert'");
@@ -187,7 +187,7 @@ describe('Write-guard enforcement', () => {
 
 describe('Rate limit coverage', () => {
   const middlewareSrc = readFile('middleware.js');
-  const rateLimitSrc = readFile('lib/rate-limit.js');
+  const rateLimitSrc = readFile('lib/rate-limit.ts');
 
   // Extract all rateCategory values used in middleware
   function extractRateCategories(src) {

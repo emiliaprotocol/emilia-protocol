@@ -5,7 +5,16 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 
 function read(relPath) {
-  return fs.readFileSync(path.join(ROOT, relPath), 'utf8');
+  // Routes/pages/components are migrating .js -> .ts/.tsx file-by-file; read
+  // whichever extension actually exists on disk.
+  const full = path.join(ROOT, relPath);
+  if (!fs.existsSync(full) && relPath.endsWith('.js')) {
+    for (const ext of ['.ts', '.tsx']) {
+      const candidate = path.join(ROOT, `${relPath.slice(0, -3)}${ext}`);
+      if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf8');
+    }
+  }
+  return fs.readFileSync(full, 'utf8');
 }
 
 function compact(value) {

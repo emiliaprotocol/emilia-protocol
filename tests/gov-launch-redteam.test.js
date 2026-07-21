@@ -14,7 +14,7 @@ vi.mock('@/lib/logger.js', () => ({
 
 const DisputeView = await import('../app/api/disputes/[disputeId]/route.js');
 const EntityRoute = await import('../app/api/entity/route.js');
-const SandboxProvision = await import('../app/api/pilot/sandbox/provision/route.js');
+const SandboxProvision = await import('../app/api/pilot/sandbox/provision/route.ts');
 
 function jsonReq(body, headers = {}) {
   return new Request('https://www.emiliaprotocol.ai/api/test', {

@@ -28,14 +28,14 @@ vi.mock('../lib/logger.js', () => ({
   logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { POST as benefitBankChange } from '../app/api/v1/adapters/gov/benefit-bank-change/precheck/route.js';
-import { POST as benefitAddressChange } from '../app/api/v1/adapters/gov/benefit-address-change/precheck/route.js';
-import { POST as caseworkerOverride } from '../app/api/v1/adapters/gov/caseworker-override/precheck/route.js';
-import { POST as vendorPaymentDestinationChange } from '../app/api/v1/adapters/gov/vendor-payment-destination-change/precheck/route.js';
-import { POST as disbursementRelease } from '../app/api/v1/adapters/gov/disbursement-release/precheck/route.js';
-import { POST as grantDisbursement } from '../app/api/v1/adapters/gov/grant-disbursement/precheck/route.js';
-import { POST as providerEnrollmentChange } from '../app/api/v1/adapters/gov/provider-enrollment-change/precheck/route.js';
-import { POST as eligibilityOverride } from '../app/api/v1/adapters/gov/eligibility-override/precheck/route.js';
+import { POST as benefitBankChange } from '../app/api/v1/adapters/gov/benefit-bank-change/precheck/route.ts';
+import { POST as benefitAddressChange } from '../app/api/v1/adapters/gov/benefit-address-change/precheck/route.ts';
+import { POST as caseworkerOverride } from '../app/api/v1/adapters/gov/caseworker-override/precheck/route.ts';
+import { POST as vendorPaymentDestinationChange } from '../app/api/v1/adapters/gov/vendor-payment-destination-change/precheck/route.ts';
+import { POST as disbursementRelease } from '../app/api/v1/adapters/gov/disbursement-release/precheck/route.ts';
+import { POST as grantDisbursement } from '../app/api/v1/adapters/gov/grant-disbursement/precheck/route.ts';
+import { POST as providerEnrollmentChange } from '../app/api/v1/adapters/gov/provider-enrollment-change/precheck/route.ts';
+import { POST as eligibilityOverride } from '../app/api/v1/adapters/gov/eligibility-override/precheck/route.ts';
 
 const inserted = [];
 

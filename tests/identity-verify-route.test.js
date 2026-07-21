@@ -25,7 +25,7 @@ vi.mock('@/lib/ep-ix', () => ({
   verifyBinding: mocks.verifyBinding,
 }));
 
-const { POST } = await import('../app/api/identity/verify/route.js');
+const { POST } = await import('../app/api/identity/verify/route.ts');
 
 function request(body) {
   return new Request('https://www.emiliaprotocol.ai/api/identity/verify', {

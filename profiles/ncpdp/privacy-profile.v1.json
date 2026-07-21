@@ -44,6 +44,6 @@
     "A disclosure verdict is a technical minimum-necessary policy decision, not a claim of HIPAA compliance, legal authorization, or NCPDP adoption.",
     "This profile is a data-minimization control, not a claim of legal compliance or an NCPDP-adopted standard."
   ],
-  "reference_implementation": "lib/ncpdp/privacy.js",
+  "reference_implementation": "lib/ncpdp/privacy.ts",
   "tests": "tests/ncpdp-privacy.test.js"
 }

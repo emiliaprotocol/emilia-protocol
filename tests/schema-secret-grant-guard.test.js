@@ -39,7 +39,7 @@ function filesUnder(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const target = path.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...filesUnder(target));
-    else if (entry.isFile() && /\.(?:js|mjs)$/.test(entry.name)) files.push(target);
+    else if (entry.isFile() && /\.(?:js|mjs|ts)$/.test(entry.name)) files.push(target);
   }
   return files;
 }

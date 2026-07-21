@@ -120,3 +120,4 @@ docs/briefs/INVESTOR_ONE_PAGER.md
 # so it is served publicly. The confidential raise deck stays in docs/strategy-private/decks/.
 public/briefs/emilia-informational-deck.pdf
 public/briefs/emilia-investor-onepager.pdf
+tsconfig.tsbuildinfo

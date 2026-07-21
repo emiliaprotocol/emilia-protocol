@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from helpers.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import { createAtomicEvidenceLog, createDurableConsumptionStore, createEg1Harness, createMemoryAtomicEvidenceBackend, createMemoryBackend, } from '../../../packages/gate/index.js';
 import { createGateRuntime, GITHUB_REPOSITORY_DELETE_ACTION } from '../src/runtime.js';
 import { createHttpServer } from '../src/server.js';

@@ -17,9 +17,9 @@
       "statement": "A Class-A approval or denial is a device-signed terminal decision over the same canonical action context; the operator cannot relabel the outcome after signing or use bearer authentication to deny a Class-A request.",
       "acceptance_roots": ["approver credential key pinned from enrollment", "single-use WebAuthn challenge store and decided-once audit constraint"],
       "enforcement_path": [
-        { "language": "javascript", "file": "lib/webauthn.js", "symbol": "buildAuthorizationContext", "exported": true },
-        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js", "symbol": "POST", "exported": true },
-        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js", "symbol": "POST", "exported": true },
+        { "language": "javascript", "file": "lib/webauthn.ts", "symbol": "buildAuthorizationContext", "exported": true },
+        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.ts", "symbol": "POST", "exported": true },
+        { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.ts", "symbol": "POST", "exported": true },
         { "language": "javascript", "file": "lib/guard-signoff.ts", "symbol": "handleSignoffDecision", "exported": true },
         { "language": "javascript", "file": "lib/signoff/decision-evidence.ts", "symbol": "buildPortableSignoffDecision", "exported": true },
         { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyWebAuthnSignoff", "exported": true }
@@ -203,11 +203,11 @@
       "acceptance_roots": ["registry issuer key pinned by the relying party", "registry epoch and head freshness policy"],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/authority/resolver.ts", "symbol": "evaluateAuthorityVerdict", "exported": true },
-        { "language": "javascript", "file": "lib/authority/proof.js", "symbol": "verifyAuthorityProof", "exported": true }
+        { "language": "javascript", "file": "lib/authority/proof.ts", "symbol": "verifyAuthorityProof", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "lib/authority/resolver.ts", "export": "evaluateAuthorityVerdict" },
-        { "language": "javascript", "file": "lib/authority/proof.js", "export": "verifyAuthorityProof" }
+        { "language": "javascript", "file": "lib/authority/proof.ts", "export": "verifyAuthorityProof" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "conformance/vectors/authority.v1.json" },
@@ -380,7 +380,7 @@
         { "language": "javascript", "file": "lib/authority/document-proof-join.ts", "symbol": "verifyAuthorityProofViaDocument", "exported": true },
         { "language": "javascript", "file": "lib/authority/authority-doc.ts", "symbol": "verifyAuthorityChain", "exported": true },
         { "language": "javascript", "file": "lib/authority/authority-doc.ts", "symbol": "resolveIssuerKeyAt", "exported": true },
-        { "language": "javascript", "file": "lib/authority/proof.js", "symbol": "verifyAuthorityProofSignature", "exported": true }
+        { "language": "javascript", "file": "lib/authority/proof.ts", "symbol": "verifyAuthorityProofSignature", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "lib/authority/document-proof-join.ts", "export": "verifyAuthorityProofViaDocument" },
@@ -672,13 +672,13 @@
       "statement": "Rx evidence artifacts reject unknown or direct patient and clinical fields, use pairwise patient references and keyed source-record commitments, export a projection rather than recursively copying the transaction, and disclose it only under a pinned audience, purpose, policy, retention, artifact, and key-scope profile.",
       "acceptance_roots": ["a deployment-managed sector privacy key of at least 256 bits", "issuer adherence to the exact artifact schemas", "a relying-party-pinned EP-HEALTH-DISCLOSURE-PROFILE-v1"],
       "enforcement_path": [
-        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "symbol": "buildPrivateRxAppealBundle", "exported": true },
-        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "symbol": "assertRxSignedArtifactPrivacy", "exported": true },
-        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "symbol": "evaluateRxDisclosure", "exported": true }
+        { "language": "javascript", "file": "lib/ncpdp/privacy.ts", "symbol": "buildPrivateRxAppealBundle", "exported": true },
+        { "language": "javascript", "file": "lib/ncpdp/privacy.ts", "symbol": "assertRxSignedArtifactPrivacy", "exported": true },
+        { "language": "javascript", "file": "lib/ncpdp/privacy.ts", "symbol": "evaluateRxDisclosure", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "export": "buildPrivateRxAppealBundle" },
-        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "export": "evaluateRxDisclosure" }
+        { "language": "javascript", "file": "lib/ncpdp/privacy.ts", "export": "buildPrivateRxAppealBundle" },
+        { "language": "javascript", "file": "lib/ncpdp/privacy.ts", "export": "evaluateRxDisclosure" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "tests/ncpdp-privacy.test.js" },
@@ -1114,14 +1114,14 @@
       "enforcement_path": [
         { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "symbol": "deriveMobileActionContinuity", "exported": true },
         { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "symbol": "verifyMobileProviderOutcome", "exported": true },
-        { "language": "javascript", "file": "lib/mobile/store.js", "symbol": "consumeMobileAction", "exported": true },
-        { "language": "javascript", "file": "lib/mobile/store.js", "symbol": "reconcileMobileActionOperation", "exported": true }
+        { "language": "javascript", "file": "lib/mobile/store.ts", "symbol": "consumeMobileAction", "exported": true },
+        { "language": "javascript", "file": "lib/mobile/store.ts", "symbol": "reconcileMobileActionOperation", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "export": "deriveMobileActionContinuity" },
         { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "export": "verifyMobileProviderOutcome" },
-        { "language": "javascript", "file": "lib/mobile/store.js", "export": "consumeMobileAction" },
-        { "language": "javascript", "file": "lib/mobile/store.js", "export": "reconcileMobileActionOperation" }
+        { "language": "javascript", "file": "lib/mobile/store.ts", "export": "consumeMobileAction" },
+        { "language": "javascript", "file": "lib/mobile/store.ts", "export": "reconcileMobileActionOperation" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "mobile/conformance/mobile-core.v1.json" },

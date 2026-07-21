@@ -15,6 +15,7 @@
     "packages/verify/**/*.js",
     "packages/gate/**/*.ts",
     "lib/handshake/**/*.js",
+    "lib/handshake/**/*.ts",
     "packages/gate/**/*.js"
   ],
   "exclude": [

@@ -169,18 +169,22 @@ export async function getTimeline(handshakeId: string, tenantId: string): Promis
   }
 
   const [handshakeRes, signoffRes] = await Promise.all([
-    supabase
-      .from('handshake_events')
-      .select('*')
-      .eq('handshake_id', handshakeId)
-      .order('created_at', { ascending: true })
+    Promise.resolve(
+      supabase
+        .from('handshake_events')
+        .select('*')
+        .eq('handshake_id', handshakeId)
+        .order('created_at', { ascending: true }),
+    )
       .then(r => r)
       .catch(() => ({ data: [], error: null })),
-    supabase
-      .from('signoff_events')
-      .select('*')
-      .eq('handshake_id', handshakeId)
-      .order('created_at', { ascending: true })
+    Promise.resolve(
+      supabase
+        .from('signoff_events')
+        .select('*')
+        .eq('handshake_id', handshakeId)
+        .order('created_at', { ascending: true }),
+    )
       .then(r => r)
       .catch(() => ({ data: [], error: null })),
   ]);

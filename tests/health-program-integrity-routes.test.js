@@ -37,8 +37,8 @@ vi.mock('../lib/health/program-integrity.js', () => ({
   createProgramIntegrityEngine: (...args) => mocks.createProgramIntegrityEngine(...args),
 }));
 
-import { POST as precheck } from '../app/api/v1/adapters/health/hospice-claim/precheck/route.js';
-import { POST as reconcile } from '../app/api/v1/adapters/health/hospice-claim/reconcile/route.js';
+import { POST as precheck } from '../app/api/v1/adapters/health/hospice-claim/precheck/route.ts';
+import { POST as reconcile } from '../app/api/v1/adapters/health/hospice-claim/reconcile/route.ts';
 
 const CAID = `caid:${'a'.repeat(64)}`;
 const DIGEST = (digit) => `sha256:${digit.repeat(64)}`;

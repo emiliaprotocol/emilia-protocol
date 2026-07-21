@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-
+// Generated from typecheck-strict.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 /**
  * Run the migration probe against a clean compiler program.
  *
@@ -8,41 +9,36 @@
  * incremental state so migration progress cannot be confused with a cached
  * zero-error result.
  */
-
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-
 const root = process.cwd();
 const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
 if (!existsSync(tsc)) {
-  console.error(`TypeScript compiler not found at ${tsc}. Run npm ci first.`);
-  process.exit(2);
+    console.error(`TypeScript compiler not found at ${tsc}. Run npm ci first.`);
+    process.exit(2);
 }
-
 const tiers = ['core', 'lib', 'rest', 'app'];
 const failures = [];
-
 for (const tier of tiers) {
-  const result = spawnSync(process.execPath, [
-    tsc,
-    '-p', `tsconfig.${tier}.json`,
-    '--noEmit',
-    '--incremental', 'false',
-    '--noImplicitAny', 'true',
-    '--pretty', 'false',
-  ], { cwd: root, encoding: 'utf8' });
-
-  const output = `${result.stdout || ''}${result.stderr || ''}`;
-  const errors = output.match(/error TS\d+/g)?.length || 0;
-  console.log(`[typecheck:strict:${tier}] ${errors} error${errors === 1 ? '' : 's'}`);
-  if (output) process.stdout.write(output);
-  if (result.status !== 0) failures.push({ tier, errors, status: result.status });
+    const result = spawnSync(process.execPath, [
+        tsc,
+        '-p', `tsconfig.${tier}.json`,
+        '--noEmit',
+        '--incremental', 'false',
+        '--noImplicitAny', 'true',
+        '--pretty', 'false',
+    ], { cwd: root, encoding: 'utf8' });
+    const output = `${result.stdout || ''}${result.stderr || ''}`;
+    const errors = output.match(/error TS\d+/g)?.length || 0;
+    console.log(`[typecheck:strict:${tier}] ${errors} error${errors === 1 ? '' : 's'}`);
+    if (output)
+        process.stdout.write(output);
+    if (result.status !== 0)
+        failures.push({ tier, errors, status: result.status });
 }
-
 if (failures.length) {
-  console.error('\nStrict migration probe is not yet clean.');
-  process.exit(1);
+    console.error('\nStrict migration probe is not yet clean.');
+    process.exit(1);
 }
-
 console.log('\nStrict migration probe is clean.');

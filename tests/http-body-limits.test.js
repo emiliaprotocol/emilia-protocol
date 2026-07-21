@@ -84,10 +84,10 @@ vi.mock('@/lib/logger.js', () => ({
 
 const DisputesRespond = await import('../app/api/disputes/respond/route.js');
 const DisputesFile = await import('../app/api/disputes/file/route.js');
-const ReceiptsSubmit = await import('../app/api/receipts/submit/route.js');
-const IdentityBind = await import('../app/api/identity/bind/route.js');
-const IdentityVerify = await import('../app/api/identity/verify/route.js');
-const IdentityContinuity = await import('../app/api/identity/continuity/route.js');
+const ReceiptsSubmit = await import('../app/api/receipts/submit/route.ts');
+const IdentityBind = await import('../app/api/identity/bind/route.ts');
+const IdentityVerify = await import('../app/api/identity/verify/route.ts');
+const IdentityContinuity = await import('../app/api/identity/continuity/route.ts');
 const CommitRevoke = await import('../app/api/commit/[commitId]/revoke/route.js');
 const HandshakePresent = await import('../app/api/handshake/[handshakeId]/present/route.js');
 

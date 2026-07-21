@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from server.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { loadGateServiceConfig } from './config.js';

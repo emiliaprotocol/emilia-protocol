@@ -54,8 +54,13 @@ const config = [
   // Keep this rule scoped to runtime code so tests and documentation can show
   // the bad shape when they are explicitly exercising the regression guard.
   {
-    files: ['app/**/*.js', 'app/**/*.jsx', 'lib/**/*.js', 'lib/**/*.mjs'],
-    ignores: ['lib/**/*.test.js', 'lib/**/*.test.jsx', 'lib/**/*.test.mjs'],
+    files: [
+      'app/**/*.js', 'app/**/*.jsx', 'app/**/*.ts', 'app/**/*.tsx',
+      'lib/**/*.js', 'lib/**/*.mjs', 'lib/**/*.ts', 'lib/**/*.mts',
+    ],
+    ignores: [
+      'lib/**/*.test.js', 'lib/**/*.test.jsx', 'lib/**/*.test.mjs', 'lib/**/*.test.ts',
+    ],
     plugins: {
       'ep-security': {
         rules: { 'no-raw-auth-entity': noRawAuthEntity },

@@ -30,7 +30,7 @@ const PHASE_DELAY_MS = 720;
 
 /**
  * Shape of the JSON body returned by GET /api/v1/grace/reference-scenario
- * on success (see app/api/v1/grace/reference-scenario/route.js). Declared
+ * on success (see app/api/v1/grace/reference-scenario/route.ts). Declared
  * here so the `data` state below carries its real, already-guaranteed
  * shape instead of the `null` TypeScript would otherwise infer from
  * `useState(null)`.

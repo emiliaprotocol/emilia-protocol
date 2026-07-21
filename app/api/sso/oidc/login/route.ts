@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: Apache-2.0
+// GET /api/sso/oidc/login?tenant=<id> — OIDC Authorization Code + PKCE.
+// Discovers the provider, builds the authorize URL, stashes state/nonce/verifier
+// in a signed httpOnly cookie, and 302-redirects to the IdP.
+
+export const runtime = 'nodejs';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { discover, buildAuthorizeUrl, randomUrlToken, pkceChallenge, assertSafeDiscoveryEndpoints } from '@/lib/sso/oidc';
+import { loadConnection, spOrigin } from '@/lib/sso/config';
+import { validateOidcRedirectUri, validateSsoProviderUrl } from '@/lib/sso/url-policy';
+import { signState, SSO_STATE_COOKIE } from '@/lib/sso/state';
+import { epProblem } from '@/lib/errors';
+import { logger } from '@/lib/logger.js';
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const url = new URL(request.url);
+  const tenant = url.searchParams.get('tenant');
+  if (!tenant) return epProblem(400, 'missing_tenant', 'tenant query parameter is required');
+
+  const { connection, error } = await loadConnection(tenant, 'oidc');
+  if (error) return epProblem(503, 'config_unavailable', 'Could not load SSO config');
+  if (!connection?.oidc_issuer || !connection?.oidc_client_id) {
+    return epProblem(404, 'sso_not_configured', `No OIDC connection configured for tenant ${tenant}`);
+  }
+  const issuer = await validateSsoProviderUrl(connection.oidc_issuer, 'oidc_issuer');
+  if (!issuer.valid) return epProblem(400, 'unsafe_sso_url', 'Configured OIDC issuer is not allowed');
+
+  const origin = spOrigin(request);
+  const redirect = validateOidcRedirectUri(connection.oidc_redirect_uri, origin);
+  if (!redirect.valid) return epProblem(400, 'unsafe_oidc_redirect_uri', 'Configured OIDC redirect URI is not allowed');
+  const redirectUri = redirect.url || `${origin}/api/sso/oidc/callback`;
+
+  let doc: Record<string, any>;
+  try {
+    // `issuer.valid` was checked above; the validator only returns valid:true
+    // together with a populated `url`, so this is guaranteed to be a string.
+    doc = await discover(issuer.url as string);
+  } catch (err) {
+    logger.error('[sso/oidc/login] discovery failed:', err);
+    return epProblem(502, 'oidc_discovery_failed', 'Could not reach the OIDC provider');
+  }
+
+  // SSRF: only the authorization_endpoint is used here (browser-followed), but a
+  // hostile issuer could still hand back a private/non-https target; gate it.
+  const safeEndpoints = await assertSafeDiscoveryEndpoints(doc, { fields: ['authorization_endpoint'] });
+  if (!safeEndpoints.valid) {
+    return epProblem(400, 'unsafe_sso_url', `OIDC ${safeEndpoints.field} is not allowed`);
+  }
+
+  const state = randomUrlToken();
+  const nonce = randomUrlToken();
+  const codeVerifier = randomUrlToken();
+  const authorizeUrl = buildAuthorizeUrl({
+    authorizationEndpoint: doc.authorization_endpoint,
+    clientId: connection.oidc_client_id,
+    redirectUri,
+    state, nonce,
+    codeChallenge: pkceChallenge(codeVerifier),
+  });
+
+  const res = NextResponse.redirect(authorizeUrl, 302);
+  res.cookies.set(SSO_STATE_COOKIE, signState({ tenant, state, nonce, codeVerifier, redirectUri }), {
+    httpOnly: true, secure: true, sameSite: 'lax', path: '/api/sso/oidc', maxAge: 600,
+  });
+  return res;
+}

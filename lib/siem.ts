@@ -1,0 +1,215 @@
+/**
+ * EP SIEM Integration — Security event forwarder
+ *
+ * @license Apache-2.0
+ *
+ * Forwards high-signal audit events to an external SIEM via HTTP webhook.
+ * Supports any SIEM that accepts HTTP POST (Splunk HEC, Datadog Events,
+ * Elastic, generic webhook). The format follows Splunk HEC by default;
+ * set SIEM_FORMAT=datadog for Datadog's event format.
+ *
+ * Configuration (environment variables):
+ *   SIEM_WEBHOOK_URL    — Required. Full SIEM ingest URL.
+ *   SIEM_AUTH_HEADER    — Optional. Authorization header value (e.g. "Splunk <HEC_TOKEN>").
+ *   SIEM_FORMAT         — Optional. 'splunk' (default) | 'datadog' | 'generic'
+ *   SIEM_SOURCE         — Optional. Source label for Splunk. Default: 'emilia-protocol'
+ *   SIEM_INDEX          — Optional. Splunk index. Default: 'security'
+ *   SIEM_DISABLED       — Set to 'true' to disable forwarding (e.g. in test envs)
+ *
+ * Usage:
+ *   import { siemEvent } from '@/lib/siem';
+ *   await siemEvent('HANDSHAKE_CONSUMED', { handshake_id, entity_id, ... });
+ *
+ * Design principles:
+ *   - Fire-and-forget with timeout. Never blocks the critical path.
+ *   - Never throws. Logs failures but does not propagate them.
+ *   - Structured events with consistent schema (source, time, event_type, severity).
+ *
+ * @license Apache-2.0
+ */
+
+import { logger } from './logger.js';
+import { getSiemConfig } from './env.js';
+
+// =============================================================================
+// Event severity classification
+// =============================================================================
+
+type SiemSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+const SEVERITY_MAP: Record<string, SiemSeverity> = {
+  // Critical — immediate alert
+  UNAUTHORIZED_ACCESS_ATTEMPT:  'critical',
+  RATE_LIMIT_EXCEEDED:          'critical',
+  PROOF_FORGERY_DETECTED:       'critical',
+  DOUBLE_CONSUMPTION_ATTEMPT:   'critical',
+  ANCHOR_FAILURE:               'critical',
+
+  // High — investigate within 1h
+  HANDSHAKE_REJECTED:           'high',
+  SIGNOFF_DENIED:               'high',
+  DISPUTE_ESCALATED:            'high',
+  API_KEY_ROTATED:              'high',
+  TENANT_SUSPENDED:             'high',
+  FRAUD_FLAG_RAISED:            'high',
+
+  // Medium — investigate within 24h
+  HANDSHAKE_CONSUMED:           'medium',
+  SIGNOFF_ATTESTED:             'medium',
+  COMMITMENT_PROOF_GENERATED:   'medium',
+  ENTITY_CREATED:               'medium',
+  DELEGATION_CREATED:           'medium',
+
+  // Low — informational
+  HANDSHAKE_CREATED:            'low',
+  EYE_ADVISORY_ISSUED:          'low',
+  EYE_OBSERVATION_RECORDED:     'low',
+  ANCHOR_BATCH_COMPLETED:       'low',
+};
+
+function getSeverity(eventType: string): SiemSeverity {
+  return SEVERITY_MAP[eventType] ?? 'low';
+}
+
+type SiemConfig = ReturnType<typeof getSiemConfig>;
+
+// =============================================================================
+// Payload formatters
+// =============================================================================
+
+function formatSplunk(
+  eventType: string,
+  data: Record<string, any>,
+  severity: SiemSeverity,
+  source: string,
+  { host, index }: Pick<SiemConfig, 'host' | 'index'>,
+): string {
+  return JSON.stringify({
+    time: Math.floor(Date.now() / 1000),
+    host,
+    source,
+    sourcetype: 'emilia:protocol:event',
+    index,
+    event: {
+      event_type: eventType,
+      severity,
+      ...data,
+    },
+  });
+}
+
+function formatDatadog(
+  eventType: string,
+  data: Record<string, any>,
+  severity: SiemSeverity,
+  source: string,
+): string {
+  const ddSeverity = severity === 'critical' ? 'error'
+    : severity === 'high' ? 'warning'
+    : 'info';
+
+  return JSON.stringify({
+    title:      `EP: ${eventType}`,
+    text:       `%%% \nEvent: ${eventType}\nSource: ${source}\n%%%`,
+    priority:   severity === 'critical' || severity === 'high' ? 'normal' : 'low',
+    alert_type: ddSeverity,
+    tags: [
+      `source:${source}`,
+      `event_type:${eventType}`,
+      `severity:${severity}`,
+    ],
+    ...data,
+  });
+}
+
+function formatGeneric(
+  eventType: string,
+  data: Record<string, any>,
+  severity: SiemSeverity,
+  source: string,
+): string {
+  return JSON.stringify({
+    timestamp:  new Date().toISOString(),
+    source,
+    event_type: eventType,
+    severity,
+    payload:    data,
+  });
+}
+
+// =============================================================================
+// Core forwarder
+// =============================================================================
+
+/**
+ * Forward a security event to the configured SIEM.
+ * Fire-and-forget — never throws, never blocks the critical path.
+ *
+ * @param eventType - Event type key (e.g. 'HANDSHAKE_CONSUMED')
+ * @param data      - Structured event payload. Must not contain secrets.
+ */
+export async function siemEvent(eventType: string, data: Record<string, any> = {}): Promise<void> {
+  const config = getSiemConfig();
+
+  if (!config.webhookUrl || config.disabled) {
+    // SIEM not configured — skip silently in non-production, warn in production
+    if (config.isProduction && !config.webhookUrl) {
+      logger.warn(`[siem] SIEM_WEBHOOK_URL not set — event ${eventType} not forwarded`);
+    }
+    return;
+  }
+
+  const severity = getSeverity(eventType);
+  const { source, format } = config;
+
+  let body: string;
+  if (format === 'datadog') {
+    body = formatDatadog(eventType, data, severity, source);
+  } else if (format === 'generic') {
+    body = formatGeneric(eventType, data, severity, source);
+  } else {
+    body = formatSplunk(eventType, data, severity, source, config);
+  }
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (config.authHeader) headers['Authorization'] = config.authHeader;
+
+  // Fire-and-forget with 5s timeout — never block the API response
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
+
+  fetch(config.webhookUrl, {
+    method: 'POST',
+    headers,
+    body,
+    signal: controller.signal,
+  })
+    .then(res => {
+      clearTimeout(timeout);
+      if (!res.ok) {
+        logger.warn(`[siem] Event ${eventType} forwarding failed: HTTP ${res.status}`);
+      }
+    })
+    .catch(err => {
+      clearTimeout(timeout);
+      if (err.name !== 'AbortError') {
+        logger.warn(`[siem] Event ${eventType} forwarding error: ${err.message}`);
+      }
+    });
+}
+
+/**
+ * Synchronous wrapper for use in server actions or places where you want
+ * to await the SIEM forward (e.g. in cron routes where latency is acceptable).
+ * Still swallows errors — SIEM failure must never fail the primary operation.
+ *
+ * @param eventType
+ * @param data
+ */
+export async function siemEventAwait(eventType: string, data: Record<string, any> = {}): Promise<void> {
+  try {
+    await siemEvent(eventType, data);
+  } catch {
+    // intentional no-op
+  }
+}

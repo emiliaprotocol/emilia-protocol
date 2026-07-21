@@ -1,0 +1,123 @@
+// SPDX-License-Identifier: Apache-2.0
+// /api/scim/v2/Groups/{id} — SCIM 2.0 Group resource (RFC 7644).
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getGuardedClient } from '@/lib/write-guard';
+import { logger } from '@/lib/logger.js';
+import {
+  toScimGroup, fromScimGroup, applyPatch, etag, validateScimGroup,
+} from '@/lib/scim/core';
+import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
+
+type ScimAuthResult =
+  | { tenantId: string; organizationId?: string; tokenId: string; response?: undefined }
+  | { response: NextResponse; tenantId?: undefined; organizationId?: undefined; tokenId?: undefined };
+
+type ScimPatchResult =
+  | { resource: any; error?: undefined }
+  | { error: { status: any; detail: any; scimType: any }; resource?: undefined };
+
+type RouteParams = { params: Promise<{ id: string }> };
+
+async function loadGroup(supabase: any, tenantId: string | undefined, id: string) {
+  return supabase.from('scim_groups').select('*').eq('tenant_id', tenantId).eq('id', id).maybeSingle();
+}
+
+export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  const auth = (await requireScimAuth(request)) as ScimAuthResult;
+  if (auth.response) return auth.response;
+  const { id } = await params;
+  const { data, error } = await loadGroup(getGuardedClient(), auth.tenantId, id);
+  if (error) return scimErrorResponse(503, 'Directory unavailable');
+  if (!data) return scimErrorResponse(404, `Group ${id} not found`);
+  return scimJson(toScimGroup(data, scimBaseUrl(request)), { etag: etag(data.version ?? 1) });
+}
+
+export async function PUT(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  const auth = (await requireScimAuth(request)) as ScimAuthResult;
+  if (auth.response) return auth.response;
+  const { id } = await params;
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
+
+  const validation = validateScimGroup(body);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
+
+  const supabase = getGuardedClient();
+  const { data: current, error: loadErr } = await loadGroup(supabase, auth.tenantId, id);
+  if (loadErr) return scimErrorResponse(503, 'Directory unavailable');
+  if (!current) return scimErrorResponse(404, `Group ${id} not found`);
+
+  const fields = fromScimGroup(body);
+  return writeGroup(supabase, auth.tenantId, id, current, fields, request);
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
+  const auth = (await requireScimAuth(request)) as ScimAuthResult;
+  if (auth.response) return auth.response;
+  const { id } = await params;
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
+
+  const supabase = getGuardedClient();
+  const { data: current, error: loadErr } = await loadGroup(supabase, auth.tenantId, id);
+  if (loadErr) return scimErrorResponse(503, 'Directory unavailable');
+  if (!current) return scimErrorResponse(404, `Group ${id} not found`);
+
+  const base = scimBaseUrl(request);
+  const patched = applyPatch(toScimGroup(current, base), body) as ScimPatchResult;
+  if (patched.error) return scimErrorResponse(patched.error.status, patched.error.detail, patched.error.scimType);
+
+  const validation = validateScimGroup(patched.resource);
+  if (!validation.ok) {
+    const { status, detail, scimType } = validation.error;
+    return scimErrorResponse(status, detail, scimType);
+  }
+  const fields = fromScimGroup(patched.resource);
+  return writeGroup(supabase, auth.tenantId, id, current, fields, request);
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams): Promise<Response> {
+  const auth = (await requireScimAuth(request)) as ScimAuthResult;
+  if (auth.response) return auth.response;
+  const { id } = await params;
+  const supabase = getGuardedClient();
+  const { data: current, error: loadErr } = await loadGroup(supabase, auth.tenantId, id);
+  if (loadErr) return scimErrorResponse(503, 'Directory unavailable');
+  if (!current) return scimErrorResponse(404, `Group ${id} not found`);
+
+  const { error } = await supabase.from('scim_groups').delete().eq('tenant_id', auth.tenantId).eq('id', id);
+  if (error) return scimErrorResponse(503, 'Directory unavailable');
+  return new Response(null, { status: 204 });
+}
+
+async function writeGroup(
+  supabase: any,
+  tenantId: string | undefined,
+  id: string,
+  current: any,
+  fields: any,
+  request: NextRequest,
+): Promise<NextResponse> {
+  const nextVersion = (current.version ?? 1) + 1;
+  try {
+    const { data, error } = await supabase
+      .from('scim_groups')
+      .update({ ...fields, version: nextVersion, updated_at: new Date().toISOString() })
+      .eq('tenant_id', tenantId).eq('id', id).select('*').single();
+    if (error) {
+      if (error.code === '23505') return scimErrorResponse(409, `displayName ${fields.display_name} already in use`, 'uniqueness');
+      logger.error('[scim/Groups/:id] write failed:', error);
+      return scimErrorResponse(503, 'Directory unavailable');
+    }
+    return scimJson(toScimGroup(data, scimBaseUrl(request)), { etag: etag(data.version ?? nextVersion) });
+  } catch (err) {
+    logger.error('[scim/Groups/:id] write error:', err);
+    return scimErrorResponse(500, 'Internal error');
+  }
+}

@@ -134,7 +134,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     const policyIds = (keyVersions || []).map((row) => row.policy_id);
-    let activeRollouts = [];
+    let activeRollouts: any[] = [];
     if (policyIds.length > 0) {
       const { data: activeRows, error: activeErr } = await supabase
         .from('policy_rollouts')
@@ -345,20 +345,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return epDbError(500, 'rollout_activation_failed', insertErr, 'cloud/policies/rollout');
     }
 
+    const rolloutData = rollout as any;
     return NextResponse.json({
-      rollout_id: rollout.rollout_id,
+      rollout_id: rolloutData.rollout_id,
       policy_id: versionRow.policy_id,
       policy_key: policy.policy_key,
       version: body.version,
       environment: body.environment,
       strategy,
       status: 'active',
-      canary_pct: rollout.canary_pct ?? null,
-      initiated_at: rollout.initiated_at,
+      canary_pct: rolloutData.canary_pct ?? null,
+      initiated_at: rolloutData.initiated_at,
       tenant_id: auth.tenantId,
       authorization_receipt_id: receiptId,
       authorization_action_hash: authorization.actionHash,
-      authorization_execution_reference_id: rollout.authorization_execution_reference_id,
+      authorization_execution_reference_id: rolloutData.authorization_execution_reference_id,
     });
   } catch (err) {
     if (err.name === 'CloudAuthorizationError') {

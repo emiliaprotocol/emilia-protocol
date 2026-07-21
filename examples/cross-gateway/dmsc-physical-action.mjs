@@ -447,7 +447,9 @@ export function verifyAuditBundle(bundle, {
       },
       as_of: evaluatedAt,
     });
-    const signature = verifyRelianceResult(bundle.decision, [pinnedGatewayDecisionKey]);
+    // Marked optional in this function's JSDoc, but both call sites in this
+    // example always pass it before reaching this verification branch.
+    const signature = verifyRelianceResult(bundle.decision, [/** @type {string} */ (pinnedGatewayDecisionKey)]);
     const payload = bundle.decision.payload;
     const reproducible = signature.accepted === true
       && recomputed.verdict === payload.verdict

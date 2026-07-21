@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
+// Generated from check-mobile-release.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-
 const root = resolve(import.meta.dirname, '..');
 const read = (path) => readFileSync(resolve(root, path), 'utf8');
 const contains = (path, value, message) => {
-  assert.match(read(path), value, `${path}: ${message}`);
+    assert.match(read(path), value, `${path}: ${message}`);
 };
-
 const identity = 'ai.emiliaprotocol.approver';
 const host = 'www.emiliaprotocol.ai';
-
 contains('examples/mobile-government/ios/project.yml', new RegExp(`PRODUCT_BUNDLE_IDENTIFIER: ${identity.replaceAll('.', '\\.')}`), 'permanent bundle identity drifted');
 contains('examples/mobile-government/ios/project.yml', /DEVELOPMENT_TEAM: 5M2Z48UQQY/, 'Apple team identity drifted');
 contains('examples/mobile-government/ios/project.yml', /APP_ATTEST_ENVIRONMENT: production/, 'release App Attest is not production');
@@ -31,7 +30,6 @@ contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /expectedDeci
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /catch APIError\.transport[\s\S]{0,500}recoverCeremonyResult\([\s\S]{0,160}challengeID: challenge\.challengeID/, 'iOS does not recover a possibly committed ceremony after a lost POST response');
 contains('examples/mobile-government/ios/Sources/MobileAPI.swift', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*outcomeUnknown/, 'iOS does not close an unresolved recovery lookup as outcome unknown');
 assert.doesNotMatch(read('examples/mobile-government/ios/Sources/MobileAPI.swift'), /Nothing was authorized/, 'iOS makes an unsafe non-commit claim after transport failure');
-
 contains('sdks/kotlin-mobile/sample/build.gradle.kts', new RegExp(`applicationId = "${identity.replaceAll('.', '\\.')}"`), 'permanent package identity drifted');
 contains('sdks/kotlin-mobile/sample/build.gradle.kts', /minSdk = 33/, 'production sample no longer matches the server integrity floor');
 contains('sdks/kotlin-mobile/sample/build.gradle.kts', /verifyProductionIdentity/, 'release signing gate is missing');
@@ -48,7 +46,6 @@ contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/M
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /catch \(_:\s*MobileApiException\.Transport\)[\s\S]{0,400}recoverCeremonyResult\([\s\S]{0,120}challenge\.challengeId,[\s\S]{0,80}expectedDecision/, 'Android does not recover a possibly committed ceremony after a lost POST response');
 contains('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt', /recoverCeremonyResult[\s\S]*v1\/mobile\/ceremonies\/[\s\S]*OutcomeUnknown/, 'Android does not close an unresolved recovery lookup as outcome unknown');
 assert.doesNotMatch(read('sdks/kotlin-mobile/sample/src/main/kotlin/ai/emiliaprotocol/approver/MobileApi.kt'), /Nothing was authorized/, 'Android makes an unsafe non-commit claim after transport failure');
-
 contains('app/.well-known/apple-app-site-association/route.js', new RegExp(`5M2Z48UQQY\\.${identity.replaceAll('.', '\\.')}`), 'Apple association identity drifted');
 contains('app/.well-known/assetlinks.json/route.js', new RegExp(identity.replaceAll('.', '\\.')), 'Android association identity drifted');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /create or replace function revoke_mobile_session/, 'atomic credential revocation is missing');
@@ -86,66 +83,55 @@ contains('scripts/check-mobile-production.mjs', /mobile_presentation_is_valid[\s
 contains('scripts/check-mobile-production.mjs', /create_mobile_demo_action_v2[\s\S]*mark_mobile_action_indeterminate[\s\S]*reconcile_mobile_action_operation[\s\S]*list_mobile_action_continuity/, 'production readiness omits the durable continuity RPCs');
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke all on mobile_kv_state,[\s\S]*from anon, authenticated/, 'public database grants were not revoked');
 for (const rpc of [
-  'mobile_state_add_if_absent',
-  'mobile_state_compare_and_set',
-  'create_mobile_pairing',
-  'touch_mobile_session',
-  'create_mobile_demo_action',
+    'mobile_state_add_if_absent',
+    'mobile_state_compare_and_set',
+    'create_mobile_pairing',
+    'touch_mobile_session',
+    'create_mobile_demo_action',
 ]) {
-  contains('supabase/migrations/20260715180000_mobile_production_platform.sql', new RegExp(`create or replace function ${rpc}\\(`), `${rpc} write boundary is missing`);
+    contains('supabase/migrations/20260715180000_mobile_production_platform.sql', new RegExp(`create or replace function ${rpc}\\(`), `${rpc} write boundary is missing`);
 }
 contains('supabase/migrations/20260715180000_mobile_production_platform.sql', /revoke insert, update, delete, truncate, references, trigger on mobile_kv_state,[\s\S]*from service_role/, 'service role can bypass the mobile RPC write boundary');
-contains('lib/write-guard.js', /'mobile_kv_state',[\s\S]*'mobile_action_challenges'/, 'native approval tables are not runtime write-guarded');
+contains('lib/write-guard.ts', /'mobile_kv_state',[\s\S]*'mobile_action_challenges'/, 'native approval tables are not runtime write-guarded');
 for (const path of [
-  'app/api/v1/mobile/pairings/route.js',
-  'app/api/v1/mobile/pairings/exchange/route.js',
-  'app/api/v1/mobile/inbox/route.js',
-  'app/api/v1/mobile/session/route.js',
-  'app/api/v1/mobile/ceremonies/[challengeId]/route.js',
-  'app/api/v1/mobile/demo/actions/route.js',
-  'app/api/v1/mobile/history/route.js',
-  'app/api/v1/mobile/actions/[actionReference]/passport/route.js',
-  'app/api/v1/mobile/actions/[actionReference]/withdraw/route.js',
-  'app/api/v1/mobile/actions/[actionReference]/consume/route.js',
-  'app/api/v1/mobile/actions/[actionReference]/outcomes/route.js',
-  'app/api/v1/mobile/actions/[actionReference]/alignments/route.js',
-  'app/api/v1/mobile/actions/[actionReference]/supersede/route.js',
-  'app/api/v1/mobile/executors/route.js',
-  'lib/mobile/runtime.js',
+    'app/api/v1/mobile/pairings/route.ts',
+    'app/api/v1/mobile/pairings/exchange/route.ts',
+    'app/api/v1/mobile/inbox/route.ts',
+    'app/api/v1/mobile/session/route.ts',
+    'app/api/v1/mobile/ceremonies/[challengeId]/route.ts',
+    'app/api/v1/mobile/demo/actions/route.ts',
+    'app/api/v1/mobile/history/route.ts',
+    'app/api/v1/mobile/actions/[actionReference]/passport/route.ts',
+    'app/api/v1/mobile/actions/[actionReference]/withdraw/route.ts',
+    'app/api/v1/mobile/actions/[actionReference]/consume/route.ts',
+    'app/api/v1/mobile/actions/[actionReference]/outcomes/route.ts',
+    'app/api/v1/mobile/actions/[actionReference]/alignments/route.ts',
+    'app/api/v1/mobile/actions/[actionReference]/supersede/route.ts',
+    'app/api/v1/mobile/executors/route.ts',
+    'lib/mobile/runtime.ts',
 ]) {
-  contains(path, /getGuardedClient/, 'mobile runtime bypasses the guarded database client');
-  assert.doesNotMatch(read(path), /\bgetServiceClient\b/, `${path}: unrestricted service client is forbidden`);
+    contains(path, /getGuardedClient/, 'mobile runtime bypasses the guarded database client');
+    assert.doesNotMatch(read(path), /\bgetServiceClient\b/, `${path}: unrestricted service client is forbidden`);
 }
-contains('lib/rate-limit.js', /mobile_runtime_ip[\s\S]*mobile_write/, 'mobile runtime throttles are missing');
-contains('lib/mobile/runtime.js', /session:\$\{runtime\.session\.session_id\}[\s\S]*mobile_write/, 'paired ceremonies are not session-rate-limited');
+contains('lib/rate-limit.ts', /mobile_runtime_ip[\s\S]*mobile_write/, 'mobile runtime throttles are missing');
+contains('lib/mobile/runtime.ts', /session:\$\{runtime\.session\.session_id\}[\s\S]*mobile_write/, 'paired ceremonies are not session-rate-limited');
 contains('.github/workflows/mobile-signed-release.yml', /EMILIA_ANDROID_CERTIFICATE_SHA256_HEX/, 'signed Android identity is not compared with its server pin');
 contains('.github/workflows/mobile-signed-release.yml', /MOBILE_ANDROID_SIGNING_CERT_SHA256[\s\S]*check-mobile-signing-identity\.mjs[\s\S]*AAB_CERT_SHA256/, 'APK and AAB signing identities are not cross-checked against one canonical certificate');
 contains('.github/workflows/mobile-signed-release.yml', /get-task-allow/, 'signed iOS archive is not checked for debugger entitlement');
 contains('.github/workflows/mobile-signed-release.yml', /github\.repository == 'emiliaprotocol\/emilia-protocol'[\s\S]*github\.ref == 'refs\/heads\/main'/, 'signed mobile release is not restricted to the canonical repository main branch');
 contains('.github/workflows/mobile-signed-release.yml', /actions\/checkout@[a-f0-9]+[\s\S]{0,120}ref: \$\{\{ github\.sha \}\}/, 'signed mobile release checkout is not pinned to the approved workflow commit');
 const signedReleaseWorkflow = read('.github/workflows/mobile-signed-release.yml');
-assert.equal(
-  [...signedReleaseWorkflow.matchAll(/actions\/checkout@[a-f0-9]+[\s\S]{0,120}?ref: \$\{\{ github\.sha \}\}/g)].length,
-  3,
-  'every signed mobile release checkout must use the approved workflow commit',
-);
-
+assert.equal([...signedReleaseWorkflow.matchAll(/actions\/checkout@[a-f0-9]+[\s\S]{0,120}?ref: \$\{\{ github\.sha \}\}/g)].length, 3, 'every signed mobile release checkout must use the approved workflow commit');
 const signingCheck = resolve(root, 'scripts/check-mobile-signing-identity.mjs');
 const certificateHex = '05'.repeat(32);
-const certificateFingerprint = /** @type {RegExpMatchArray} */ (certificateHex.toUpperCase().match(/../g)).join(':');
+const certificateFingerprint = certificateHex.toUpperCase().match(/../g).join(':');
 execFileSync(process.execPath, [signingCheck, certificateHex, certificateFingerprint, 'fixture'], { stdio: 'pipe' });
-assert.throws(
-  () => execFileSync(process.execPath, [signingCheck, certificateHex, '06'.repeat(32), 'fixture'], { stdio: 'pipe' }),
-  /Command failed/,
-  'signing identity mismatch must fail the release check',
-);
-
+assert.throws(() => execFileSync(process.execPath, [signingCheck, certificateHex, '06'.repeat(32), 'fixture'], { stdio: 'pipe' }), /Command failed/, 'signing identity mismatch must fail the release check');
 for (const path of [
-  'examples/mobile-government/README.md',
-  'examples/mobile-government/ios/README.md',
-  'sdks/kotlin-mobile/README.md',
+    'examples/mobile-government/README.md',
+    'examples/mobile-government/ios/README.md',
+    'sdks/kotlin-mobile/README.md',
 ]) {
-  assert.doesNotMatch(read(path), /example\.gov/, `${path}: stale example identity remains`);
+    assert.doesNotMatch(read(path), /example\.gov/, `${path}: stale example identity remains`);
 }
-
 console.log('mobile release invariants: OK');

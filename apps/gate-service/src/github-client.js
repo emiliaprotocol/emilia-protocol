@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from github-client.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js';
 const DEFAULT_BASE_URL = 'https://api.github.com';
 const DEFAULT_API_VERSION = '2026-03-10';

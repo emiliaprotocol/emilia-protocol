@@ -19,7 +19,7 @@ vi.mock('@/lib/logger.js', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
-const { POST } = await import('../app/api/receipt/route.js');
+const { POST } = await import('../app/api/receipt/route.ts');
 const { verifyReceipt } = await import('../packages/verify/index.js');
 
 function jsonReq(body) {

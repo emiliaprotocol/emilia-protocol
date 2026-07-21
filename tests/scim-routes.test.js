@@ -86,9 +86,9 @@ vi.mock('@/lib/write-guard', () => ({ getGuardedClient: () => mockClient }));
 // Import AFTER mocks are registered.
 const { authenticateScim, hashScimToken } = await import('../lib/scim/auth.js');
 const { SCIM, SCIM_LIMITS } = await import('../lib/scim/core.js');
-const Users = await import('../app/api/scim/v2/Users/route.js');
-const UserById = await import('../app/api/scim/v2/Users/[id]/route.js');
-const Groups = await import('../app/api/scim/v2/Groups/route.js');
+const Users = await import('../app/api/scim/v2/Users/route.ts');
+const UserById = await import('../app/api/scim/v2/Users/[id]/route.ts');
+const Groups = await import('../app/api/scim/v2/Groups/route.ts');
 
 // A request helper.
 function req(method, url, { token, body } = {}) {

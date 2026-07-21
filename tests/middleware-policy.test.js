@@ -53,12 +53,15 @@ function isRoutePublic(routeFilePath) {
 
 // Map a policy route pattern to a filesystem route file
 function policyKeyToFilePath(policyKey) {
-  // e.g. 'POST /api/operators/apply' -> 'app/api/operators/apply/route.js'
+  // e.g. 'POST /api/operators/apply' -> 'app/api/operators/apply/route.js' (or .ts,
+  // depending on migration progress for that route)
   const parts = policyKey.split(' ');
   const urlPath = parts[1];
   // Replace wildcard segments with a placeholder directory name
   const fsPath = urlPath.replace(/\/\*/g, '/[id]');
-  return path.resolve(__dirname, '..', `app${fsPath}/route.js`);
+  const base = path.resolve(__dirname, '..', `app${fsPath}/route`);
+  const tsPath = `${base}.ts`;
+  return fs.existsSync(tsPath) ? tsPath : `${base}.js`;
 }
 
 const policies = parseRoutePolicies();

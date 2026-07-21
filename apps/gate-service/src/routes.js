@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from routes.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js';
 export const GATE_ROUTE_PATHS = Object.freeze({
     live: '/v1/live',

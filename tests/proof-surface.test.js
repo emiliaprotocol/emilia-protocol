@@ -4,7 +4,18 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const read = (relative) => fs.readFileSync(path.join(ROOT, relative), 'utf8');
+// Routes/pages/components are migrating .js -> .ts/.tsx file-by-file; read
+// whichever extension actually exists on disk.
+const read = (relative) => {
+  const full = path.join(ROOT, relative);
+  if (!fs.existsSync(full) && relative.endsWith('.js')) {
+    for (const ext of ['.ts', '.tsx']) {
+      const candidate = path.join(ROOT, `${relative.slice(0, -3)}${ext}`);
+      if (fs.existsSync(candidate)) return fs.readFileSync(candidate, 'utf8');
+    }
+  }
+  return fs.readFileSync(full, 'utf8');
+};
 
 describe('public engineering evidence surface', () => {
   it('publishes one canonical, extractable proof page backed by generated evidence', () => {

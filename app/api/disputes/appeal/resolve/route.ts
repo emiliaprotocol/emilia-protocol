@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       error?: string;
     };
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
-    const operatorId = opAuth.operator_id;
-    if (!hasPermission(opAuth.role, 'appeal.resolve')) {
+    const operatorId = opAuth.operator_id || 'system';
+    if (!hasPermission(opAuth.role || '', 'appeal.resolve')) {
       return epProblem(403, 'forbidden', 'Operator role lacks appeal.resolve permission');
     }
 
@@ -71,13 +71,13 @@ export async function POST(request: NextRequest) {
     // Audit trail
     await recordOperatorAction(supabase, {
       operatorId,
-      operatorRole: opAuth.role,
+      operatorRole: opAuth.role || '',
       targetType: 'dispute',
       targetId: body.dispute_id,
       action: 'resolve_appeal',
       beforeState: { status: dispute.status },
       afterState: { status: body.resolution },
-      reasoning: body.rationale,
+      reasoning: body.rationale || '',
     });
 
     return NextResponse.json(result);

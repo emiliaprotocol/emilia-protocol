@@ -20,8 +20,8 @@ vi.mock('@/lib/write-guard', () => ({
   }),
 }));
 
-const SsoConnections = await import('../app/api/sso/connections/route.js');
-const ScimToken = await import('../app/api/scim/v2/provisioning-token/route.js');
+const SsoConnections = await import('../app/api/sso/connections/route.ts');
+const ScimToken = await import('../app/api/scim/v2/provisioning-token/route.ts');
 
 function request(method, path, body = {}) {
   return new Request(`https://www.emiliaprotocol.ai${path}`, {

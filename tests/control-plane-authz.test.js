@@ -47,12 +47,12 @@ vi.mock('@/lib/write-guard', () => ({
   getGuardedClient: (...args) => mockGetGuardedClient(...args),
 }));
 
-const { GET: domainScoreGET } = await import('../app/api/trust/domain-score/[entityId]/route.js');
-const { POST: identityBindPOST } = await import('../app/api/identity/bind/route.js');
-const { POST: identityContinuityPOST } = await import('../app/api/identity/continuity/route.js');
+const { GET: domainScoreGET } = await import('../app/api/trust/domain-score/[entityId]/route.ts');
+const { POST: identityBindPOST } = await import('../app/api/identity/bind/route.ts');
+const { POST: identityContinuityPOST } = await import('../app/api/identity/continuity/route.ts');
 const { POST: disputeResolvePOST } = await import('../app/api/disputes/resolve/route.js');
 const { POST: appealResolvePOST } = await import('../app/api/disputes/appeal/resolve/route.js');
-const { GET: signoffGET } = await import('../app/api/signoff/[challengeId]/route.js');
+const { GET: signoffGET } = await import('../app/api/signoff/[challengeId]/route.ts');
 
 function jsonRequest(url, body, init = {}) {
   return new Request(url, {

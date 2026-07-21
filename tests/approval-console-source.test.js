@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const page = readFileSync(resolve(ROOT, 'app/cloud/signoffs/page.js'), 'utf8');
+const page = readFileSync(resolve(ROOT, 'app/cloud/signoffs/page.tsx'), 'utf8');
 
 describe('/cloud/signoffs connected-console source contract', () => {
   it('contains no mock fixtures, placeholder domains, or browser credential persistence', () => {

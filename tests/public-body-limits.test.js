@@ -13,16 +13,16 @@ vi.mock('@/lib/logger.js', () => ({
 }));
 
 const Waitlist = await import('../app/api/waitlist/route.js');
-const Inquiries = await import('../app/api/inquiries/route.js');
-const Operators = await import('../app/api/operators/apply/route.js');
-const PilotRequest = await import('../app/api/pilot/request/route.js');
+const Inquiries = await import('../app/api/inquiries/route.ts');
+const Operators = await import('../app/api/operators/apply/route.ts');
+const PilotRequest = await import('../app/api/pilot/request/route.ts');
 const Checkout = await import('../app/api/checkout/route.js');
 const Guarded = await import('../app/api/v1/guarded/route.js');
-const TrustGate = await import('../app/api/trust/gate/route.js');
+const TrustGate = await import('../app/api/trust/gate/route.ts');
 const DemoReceipt = await import('../app/api/demo/require-receipt/route.js');
 const DemoX402 = await import('../app/api/demo/x402/route.js');
-const Mcp = await import('../app/api/mcp/[transport]/route.js');
-const SamlAcs = await import('../app/api/sso/saml/acs/route.js');
+const Mcp = await import('../app/api/mcp/[transport]/route.ts');
+const SamlAcs = await import('../app/api/sso/saml/acs/route.ts');
 
 function oversizedReq(path, bytes, body = {}) {
   return new Request(`https://www.emiliaprotocol.ai${path}`, {

@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/supabase', () => ({ authenticateRequest: vi.fn() }));
 const { authenticateRequest } = await import('@/lib/supabase');
-const { POST: evaluatePOST } = await import('@/app/api/v1/rx-reliance/evaluate/route.js');
+const { POST: evaluatePOST } = await import('@/app/api/v1/rx-reliance/evaluate/route.ts');
 const { POST: profilesPOST } = await import('@/app/api/v1/rx-reliance/profiles/route.js');
 
 const req = (body) => new Request('https://x/api', { method: 'POST', headers: { authorization: 'Bearer ep_live_test', 'content-type': 'application/json' }, body: JSON.stringify(body) });

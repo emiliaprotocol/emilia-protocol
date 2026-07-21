@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from production-config.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import { createAtomicEvidenceLog, createDurableConsumptionStore, } from '../../../packages/gate/index.js';
 import { createPostgresEvidenceBackend } from '../../../packages/gate/evidence-postgres.js';
 import { createSiemForwarder } from '../../../packages/gate/siem.js';

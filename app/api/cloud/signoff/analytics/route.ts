@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     const resolvedRows = rows.filter(
       (c) => ['approved', 'rejected'].includes(c.status) && c.created_at && c.updated_at,
     );
-    let medianResolutionMs = null;
+    let medianResolutionMs: number | null = null;
     if (resolvedRows.length > 0) {
       const durations = resolvedRows
         .map((c) => new Date(c.updated_at).getTime() - new Date(c.created_at).getTime())

@@ -61,19 +61,19 @@ const AUTHZ_SIGNALS = [
 // broad, verified during the 2026-07 sweep. Each entry is a deliberate decision,
 // not an oversight. Adding to this list is the explicit way to declare "public".
 const PUBLIC_BY_DESIGN = new Set([
-  'app/api/verify/[receiptId]/route.js',              // public receipt verifier — explicit projection, no secret cols
-  'app/api/disputes/[disputeId]/route.js',            // public dispute transparency — redacted view
-  'app/api/trust-desk/verify/[slug]/route.js',        // buyer-facing verification page
-  'app/api/trust-desk/status/[engagementId]/route.js',// sanitized status behind a 96-bit capability id
-  'app/api/delegations/[delegationId]/verify/route.js',// public offline delegation spot-check
-  'app/api/commit/[commitId]/route.js',               // has authorizeCommitAccess (matched below too, belt+suspenders)
-  'app/api/mcp/[transport]/route.js',                 // public read-only MCP connector (4 verify tools)
-  'app/api/identity/lineage/[entityId]/route.js',     // owner/operator gated (matched below); listed as reviewed
+  'app/api/verify/[receiptId]/route.ts',              // public receipt verifier — explicit projection, no secret cols
+  'app/api/disputes/[disputeId]/route.ts',            // public dispute transparency — redacted view
+  'app/api/trust-desk/verify/[slug]/route.ts',        // buyer-facing verification page
+  'app/api/trust-desk/status/[engagementId]/route.ts',// sanitized status behind a 96-bit capability id
+  'app/api/delegations/[delegationId]/verify/route.ts',// public offline delegation spot-check
+  'app/api/commit/[commitId]/route.ts',               // has authorizeCommitAccess (matched below too, belt+suspenders)
+  'app/api/mcp/[transport]/route.ts',                 // public read-only MCP connector (4 verify tools)
+  'app/api/identity/lineage/[entityId]/route.ts',     // owner/operator gated (matched below); listed as reviewed
   'app/api/r/[receiptId]/page.js',                    // public share page (not under api but guard scans api only)
-  'app/api/badge/[entity]/route.js',                  // public capability badge — boolean only, never a score/secret
-  'app/api/demo/crash/[scenarioId]/route.js',         // public, unauthenticated crash-test demo (self-signed sandbox)
-  'app/api/score/[entityId]/route.js',                // RETIRED — returns HTTP 410 Gone (score surface removed)
-  'app/api/score/[entityId]/history/route.js',        // RETIRED — returns HTTP 410 Gone
+  'app/api/badge/[entity]/route.ts',                  // public capability badge — boolean only, never a score/secret
+  'app/api/demo/crash/[scenarioId]/route.ts',         // public, unauthenticated crash-test demo (self-signed sandbox)
+  'app/api/score/[entityId]/route.ts',                // RETIRED — returns HTTP 410 Gone (score surface removed)
+  'app/api/score/[entityId]/history/route.ts',        // RETIRED — returns HTTP 410 Gone
 ]);
 
 function walk(dir) {
@@ -81,7 +81,7 @@ function walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) out.push(...walk(p));
-    else if (e.name === 'route.js') out.push(p);
+    else if (e.name === 'route.js' || e.name === 'route.ts') out.push(p);
   }
   return out;
 }

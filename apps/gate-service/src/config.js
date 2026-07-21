@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from config.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

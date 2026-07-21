@@ -44,11 +44,11 @@ export default defineConfig({
         // lifecycle) where unit tests would only verify the mock, not the
         // real behavior. They are covered by integration tests against real
         // services and by the operational runbooks.
-        'lib/supabase.js',     // Supabase client adapter
-        'lib/env.js',          // env-var accessor wrapper
-        'lib/siem.js',         // SIEM HTTP forwarder
-        'lib/shutdown.js',     // process SIGTERM/SIGINT lifecycle
-        'lib/logger.js',       // pino transport setup
+        'lib/supabase.ts',     // Supabase client adapter
+        'lib/env.ts',          // env-var accessor wrapper
+        'lib/siem.ts',         // SIEM HTTP forwarder
+        'lib/shutdown.ts',     // process SIGTERM/SIGINT lifecycle
+        'lib/logger.ts',       // pino transport setup
         // (lib/verify.js removed — duplicate of packages/verify/index.js, kept the
         // canonical packages/verify/ copy and deleted the lib/ duplicate.)
         // lib/verify-web.js is a byte-identical vendored copy of
@@ -93,7 +93,7 @@ export default defineConfig({
         // a 13-export state machine with TLA+ backstop, but holding it to
         // the protocol-kernel 88% bar would force test scaffolding that
         // largely re-mocks Supabase. Tracked separately.
-        'lib/ep-ix.js',
+        'lib/ep-ix.ts',
       ],
       thresholds: {
         // Ratchet history (never lower — only ratchet up):

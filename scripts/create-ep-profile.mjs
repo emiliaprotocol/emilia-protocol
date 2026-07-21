@@ -15,28 +15,31 @@
 import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, t, i, arr) => {
-  if (t.startsWith('--')) a.push([t.slice(2), arr[i + 1]]);
-  return a;
-}, /** @type {[string, string | undefined][]} */ ([])));
-
+    if (t.startsWith('--'))
+        a.push([t.slice(2), arr[i + 1]]);
+    return a;
+}, []));
 const vendor = (args.vendor || '').toLowerCase();
 const name = (args.name || '').toLowerCase();
 const ok = /^[a-z0-9][a-z0-9-]*$/;
 if (!ok.test(vendor) || !ok.test(name)) {
-  console.error('usage: create-ep-profile --vendor <slug> --name <slug>  (lowercase, alnum/hyphen)');
-  process.exit(1);
+    console.error('usage: create-ep-profile --vendor <slug> --name <slug>  (lowercase, alnum/hyphen)');
+    process.exit(1);
 }
 const urn = `urn:ep:profile:x-${vendor}:${name}`;
 const slug = `x-${vendor}-${name}`;
 const pluginPath = path.join(root, `lib/envelope/profiles/${slug}.js`);
 const vectorsPath = path.join(root, `conformance/vectors/${slug}.v1.json`);
 mkdirSync(path.dirname(pluginPath), { recursive: true });
-if (existsSync(pluginPath)) { console.error(`refusing to overwrite ${pluginPath}`); process.exit(1); }
-
+if (existsSync(pluginPath)) {
+    console.error(`refusing to overwrite ${pluginPath}`);
+    process.exit(1);
+}
 const plugin = `// SPDX-License-Identifier: Apache-2.0
+// Generated from create-ep-profile.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 // EP profile: ${urn}  (third-party, reserved private-use namespace)
 import { registerProfile } from '../envelope.js';
 
@@ -60,19 +63,16 @@ export function validateBody(env, opts = {}) {
 
 registerProfile('${urn}', { validateBody });
 `;
-
 const vectors = JSON.stringify({
-  '@version': `${slug.toUpperCase()}-VECTORS-v1`,
-  profile: urn,
-  spec: `docs/profiles/${slug}.md`,
-  description: 'Adversarial conformance vectors. must_reject = genuine forgeries that MUST verify { valid:false }; must_accept = well-formed cases.',
-  must_reject: [{ id: 'a_example_reject', title: 'describe the attack', expected: { valid: false, failing_check: 'body_present' } }],
-  must_accept: [{ id: 'z_well_formed', title: 'a valid envelope', expected: { valid: true } }],
+    '@version': `${slug.toUpperCase()}-VECTORS-v1`,
+    profile: urn,
+    spec: `docs/profiles/${slug}.md`,
+    description: 'Adversarial conformance vectors. must_reject = genuine forgeries that MUST verify { valid:false }; must_accept = well-formed cases.',
+    must_reject: [{ id: 'a_example_reject', title: 'describe the attack', expected: { valid: false, failing_check: 'body_present' } }],
+    must_accept: [{ id: 'z_well_formed', title: 'a valid envelope', expected: { valid: true } }],
 }, null, 2) + '\n';
-
 writeFileSync(pluginPath, plugin);
 writeFileSync(vectorsPath, vectors);
-
 console.log(`✓ created profile ${urn}
   plugin : lib/envelope/profiles/${slug}.js   (fill in validateBody)
   vectors: conformance/vectors/${slug}.v1.json

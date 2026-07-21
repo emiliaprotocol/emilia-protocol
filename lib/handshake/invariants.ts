@@ -1,0 +1,471 @@
+/**
+ * EP Handshake — Pure invariant check functions.
+ *
+ * One function per security invariant from CTO plan Section 19.
+ * Every function is pure (no side effects, no DB calls) and returns
+ * { ok: boolean, code: string, message: string }.
+ *
+ * Error codes reference Section 18 of the CTO plan.
+ *
+ * @license Apache-2.0
+ */
+
+import crypto from 'crypto';
+
+export type InvariantRecord = Record<string, any>;
+export interface InvariantResult {
+  ok: boolean;
+  code: string;
+  message: string;
+}
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+export const HANDSHAKE_MODES: string[] = ['basic', 'mutual', 'selective', 'delegated'];
+export const ASSURANCE_LEVELS: string[] = ['low', 'medium', 'substantial', 'high'];
+export const HANDSHAKE_STATUSES: string[] = [
+  'initiated',
+  'pending_verification',
+  'verified',
+  'rejected',
+  'expired',
+  'revoked',
+];
+
+export const VALID_MODES: Set<string> = new Set(HANDSHAKE_MODES);
+export const VALID_PARTY_ROLES: Set<string> = new Set(['initiator', 'responder', 'verifier', 'delegate']);
+export const VALID_DISCLOSURE_MODES: Set<string> = new Set(['full', 'selective', 'commitment']);
+export const ASSURANCE_RANK: Record<string, number> = { low: 1, medium: 2, substantial: 3, high: 4 };
+
+/**
+ * Canonical binding envelope fields — every field listed here MUST be
+ * included in binding_hash computation. Adding or removing a field
+ * requires incrementing BINDING_MATERIAL_VERSION.
+ *
+ * Reviewer note: These map to the protocol specification requirements:
+ *   action      → action_type
+ *   target      → resource_ref
+ *   policy_hash → policy_hash (SHA-256 of policy.rules at bind time)
+ *   party set   → party_set_hash (SHA-256 of sorted role:entity_ref pairs)
+ *   payload     → payload_hash (SHA-256 of canonicalized payload)
+ *   nonce       → nonce (32-byte random hex, unique per binding)
+ *   expiry      → expires_at (binding TTL deadline)
+ *
+ * LOCK 100 decision: initiator_entity_ref is stored on the binding record
+ * for audit/query convenience but is NOT included in this canonical list.
+ * Rationale: the initiator is already captured within party_set_hash (which
+ * hashes all role:entity_ref pairs). Adding initiator_entity_ref here would
+ * change binding hashes for all existing handshakes — a breaking change that
+ * would invalidate every unconsumed binding in production. The field lives on
+ * the handshake_bindings table row but outside the hash envelope.
+ */
+export const CANONICAL_BINDING_FIELDS = Object.freeze([
+  'action_type',
+  'resource_ref',
+  'policy_id',
+  'policy_version',
+  'policy_hash',
+  'interaction_id',
+  'party_set_hash',
+  'payload_hash',
+  'context_hash',
+  'nonce',
+  'expires_at',
+  'binding_material_version',
+]);
+
+export const BINDING_MATERIAL_VERSION = 1;
+
+// ── Crypto Helpers ───────────────────────────────────────────────────────────
+// sha256 imported from @/lib/crypto and re-exported for backward compatibility
+export { sha256 } from '@/lib/crypto';
+
+export function newNonce(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// ── Invariant Result Helper ──────────────────────────────────────────────────
+
+function pass(code: string): InvariantResult {
+  return { ok: true, code, message: 'ok' };
+}
+
+function fail(code: string, message: string): InvariantResult {
+  return { ok: false, code, message };
+}
+
+// ── Invariant 1: Must not finalize after expiry ─────────────────────────────
+
+/**
+ * Check that the handshake binding has not expired.
+ * @param {{ binding?: { expires_at: string } }} handshake
+ */
+export function checkNotExpired(handshake: { binding?: { expires_at: string } | null } | null | undefined): InvariantResult {
+  const code = 'BINDING_EXPIRED';
+  if (!handshake || !handshake.binding || !handshake.binding.expires_at) {
+    return fail(code, 'Handshake binding or expiry is missing');
+  }
+  const expiresAt = new Date(handshake.binding.expires_at);
+  if (new Date() >= expiresAt) {
+    return fail(code, 'Handshake binding has expired');
+  }
+  return pass(code);
+}
+
+// ── Invariant 2: All required parties must be present ───────────────────────
+
+/**
+ * Check that every party role required by policy has a corresponding
+ * presentation.
+ * @param {object} handshake
+ * @param {Array<{ party_role: string }>} parties
+ * @param {Array<{ party_role: string }>} presentations
+ * @param {{ rules?: { required_parties?: Record<string, unknown> } }|null} policy
+ */
+export function checkAllPartiesPresent(
+  handshake: InvariantRecord,
+  parties: Array<{ party_role: string }>,
+  presentations: Array<{ party_role: string }>,
+  policy: { rules?: { required_parties?: Record<string, unknown> } } | null,
+): InvariantResult {
+  const code = 'MISSING_REQUIRED_PARTY';
+  if (!policy || !policy.rules || !policy.rules.required_parties) {
+    // No policy requirements — vacuously true
+    return pass(code);
+  }
+
+  const requiredRoles = Object.keys(policy.rules.required_parties);
+  const presentedRoles = new Set((presentations || []).map((p) => p.party_role));
+  const missingRoles = requiredRoles.filter((role) => !presentedRoles.has(role));
+
+  if (missingRoles.length > 0) {
+    return fail(code, `Missing presentations for required roles: ${missingRoles.join(', ')}`);
+  }
+  return pass(code);
+}
+
+// ── Invariant 3: Binding verification ───────────────────────────────────────
+
+/**
+ * Check that the binding payload hash matches the verification payload hash.
+ *
+ * Audit-fix (H6): when the binding has a payload_hash set, the caller MUST
+ * supply verificationPayloadHash. The previous behavior skipped the check
+ * when the caller omitted the argument — an "omit to bypass" pattern that
+ * defeated the binding integrity guarantee whenever this function was
+ * called outside of the primary verify path (e.g., from the simulator or
+ * from a future integration that forgot the argument).
+ *
+ * @param {{ payload_hash?: string, nonce?: string }|null} binding
+ * @param {string|null} verificationPayloadHash
+ */
+export function checkBindingValid(
+  binding: { payload_hash?: string; nonce?: string } | null,
+  verificationPayloadHash: string | null,
+): InvariantResult {
+  const code = 'BINDING_INVALID';
+  if (!binding) {
+    return fail(code, 'Binding is missing');
+  }
+  if (!binding.nonce) {
+    return fail(code, 'Binding nonce is missing');
+  }
+  if (binding.payload_hash) {
+    if (!verificationPayloadHash) {
+      return fail(code, 'Binding has payload_hash but verificationPayloadHash was not provided');
+    }
+    if (binding.payload_hash !== verificationPayloadHash) {
+      return fail(code, 'Payload hash mismatch');
+    }
+  }
+  return pass(code);
+}
+
+// ── Invariant 4: Issuer / authority trust ───────────────────────────────────
+
+/**
+ * Check that the presentation's issuer is in the list of trusted authorities.
+ * @param {{ issuer_ref?: string }} presentation
+ * @param {Array<{ key_id: string, status?: string }>} authorities
+ */
+export function checkIssuerTrusted(
+  presentation: { issuer_ref?: string },
+  authorities: Array<{ key_id: string; status?: string }>,
+): InvariantResult {
+  const code = 'ISSUER_NOT_TRUSTED';
+  if (!presentation || !presentation.issuer_ref) {
+    // No issuer declared — cannot verify trust, treat as unknown
+    return fail(code, 'Presentation has no issuer_ref');
+  }
+  if (!authorities || !Array.isArray(authorities) || authorities.length === 0) {
+    return fail(code, 'No authorities provided for trust verification');
+  }
+  const authority = authorities.find((a) => a.key_id === presentation.issuer_ref);
+  if (!authority) {
+    return fail(code, `Issuer "${presentation.issuer_ref}" not found in authorities`);
+  }
+  return pass(code);
+}
+
+// ── Invariant 5: Revoked authority check ────────────────────────────────────
+
+/**
+ * Check that the authority has not been revoked.
+ * @param {{ status?: string }} authority
+ */
+export function checkAuthorityNotRevoked(authority: { status?: string } | null | undefined): InvariantResult {
+  const code = 'AUTHORITY_REVOKED';
+  if (!authority) {
+    return fail(code, 'Authority is missing');
+  }
+  if (authority.status === 'revoked') {
+    return fail(code, 'Authority has been revoked');
+  }
+  return pass(code);
+}
+
+// ── Invariant 6: Minimum assurance level ────────────────────────────────────
+
+/**
+ * Check that the achieved assurance level meets or exceeds the required level.
+ * @param {string} achievedLevel
+ * @param {string} requiredLevel
+ * @param {Record<string, number>} [assuranceRank] - rank mapping (higher = better); defaults to ASSURANCE_RANK
+ */
+export function checkAssuranceLevel(
+  achievedLevel: string,
+  requiredLevel: string,
+  assuranceRank?: Record<string, number>,
+): InvariantResult {
+  const code = 'ASSURANCE_BELOW_MINIMUM';
+  const rank: Record<string, number> = assuranceRank || ASSURANCE_RANK;
+  const achievedRank = rank[achievedLevel];
+  const requiredRank = rank[requiredLevel];
+
+  if (achievedRank === undefined) {
+    return fail(code, `Unknown achieved assurance level: ${achievedLevel}`);
+  }
+  if (requiredRank === undefined) {
+    return fail(code, `Unknown required assurance level: ${requiredLevel}`);
+  }
+  if (achievedRank < requiredRank) {
+    return fail(code, `Assurance level "${achievedLevel}" is below required "${requiredLevel}"`);
+  }
+  return pass(code);
+}
+
+// ── Invariant 7: No duplicate accepted results ──────────────────────────────
+
+/**
+ * Check that no existing accepted result already has the same binding hash.
+ * @param {Array<{ outcome?: string, binding_hash?: string }>} existingResults
+ * @param {string} bindingHash
+ */
+export function checkNoDuplicateResult(
+  existingResults: Array<{ outcome?: string; binding_hash?: string }>,
+  bindingHash: string,
+): InvariantResult {
+  const code = 'DUPLICATE_RESULT';
+  if (!existingResults || existingResults.length === 0) {
+    return pass(code);
+  }
+  const duplicate = existingResults.find(
+    (r) => r.outcome === 'accepted' && r.binding_hash === bindingHash,
+  );
+  if (duplicate) {
+    return fail(code, 'An accepted result with the same binding hash already exists');
+  }
+  return pass(code);
+}
+
+// ── Invariant 8: Must have subject interaction reference ────────────────────
+
+/**
+ * Check that the handshake has an interaction_id linking it to a subject
+ * interaction.
+ * @param {{ interaction_id?: string }} handshake
+ */
+export function checkInteractionBound(handshake: { interaction_id?: string } | null | undefined): InvariantResult {
+  const code = 'MISSING_INTERACTION_REF';
+  if (!handshake || !handshake.interaction_id) {
+    return fail(code, 'Handshake has no interaction_id');
+  }
+  return pass(code);
+}
+
+// ── Invariant 9: Actor-role match — no role spoofing ────────────────────────
+
+/**
+ * Check that the presentation's authenticated entity matches the party's
+ * entity_ref, preventing one actor from presenting on behalf of another.
+ * @param {{ entity_ref?: string }} presentation
+ * @param {string} authenticatedEntity — the entity_ref from authentication
+ * @param {{ entity_ref?: string }} party
+ */
+export function checkNoRoleSpoofing(
+  presentation: { entity_ref?: string },
+  authenticatedEntity: string,
+  party: { entity_ref?: string } | null | undefined,
+): InvariantResult {
+  const code = 'ROLE_SPOOFING';
+  if (!party || !party.entity_ref) {
+    return fail(code, 'Party has no entity_ref');
+  }
+  if (!authenticatedEntity) {
+    return fail(code, 'Authenticated entity is missing');
+  }
+  if (party.entity_ref !== authenticatedEntity) {
+    return fail(code, `Authenticated entity "${authenticatedEntity}" does not match party entity "${party.entity_ref}"`);
+  }
+  return pass(code);
+}
+
+// ── Invariant 10: Finalized state is immutable ──────────────────────────────
+
+/**
+ * Check that no existing result prevents further modification (immutability).
+ * @param {{ outcome?: string }|null} existingResult
+ */
+export function checkResultImmutability(existingResult: { outcome?: string } | null): InvariantResult {
+  const code = 'RESULT_IMMUTABLE';
+  if (!existingResult) {
+    return pass(code);
+  }
+  if (existingResult.outcome === 'accepted' || existingResult.outcome === 'rejected') {
+    return fail(code, `Result is finalized with outcome "${existingResult.outcome}" and cannot be modified`);
+  }
+  return pass(code);
+}
+
+// ── Run All Invariants ──────────────────────────────────────────────────────
+
+/**
+ * Run all applicable invariants against a verification context.
+ *
+ * @param {{
+ *   handshake: InvariantRecord,
+ *   parties: Array<InvariantRecord>,
+ *   presentations: Array<InvariantRecord>,
+ *   binding: InvariantRecord|null,
+ *   policy: InvariantRecord|null,
+ *   authorities: Array<InvariantRecord>,
+ *   existingResults: Array<InvariantRecord>,
+ *   existingResult: InvariantRecord|null,
+ *   verificationPayloadHash: string,
+ *   authenticatedEntity: string,
+ * }} context
+ * @returns {{ passed: boolean, violations: Array<{ ok: boolean, code: string, message: string }> }}
+ */
+export interface RunAllInvariantsContext {
+  handshake?: InvariantRecord;
+  parties?: InvariantRecord[];
+  presentations?: InvariantRecord[];
+  binding?: InvariantRecord | null;
+  policy?: InvariantRecord | null;
+  authorities?: InvariantRecord[];
+  existingResults?: InvariantRecord[];
+  existingResult?: InvariantRecord | null;
+  verificationPayloadHash?: string | null;
+  authenticatedEntity?: string | null;
+}
+
+export function runAllInvariants(context: RunAllInvariantsContext | null | undefined): {
+  passed: boolean;
+  violations: InvariantResult[];
+} {
+  const {
+    handshake = {},
+    parties = [],
+    presentations = [],
+    binding = null,
+    policy = null,
+    authorities = [],
+    existingResults = [],
+    existingResult = null,
+    verificationPayloadHash = null,
+    authenticatedEntity = null,
+  } = context || {};
+
+  // Build handshake-with-binding for checkNotExpired
+  const handshakeWithBinding = { ...handshake, binding } as { binding?: { expires_at: string } | null };
+
+  const results: InvariantResult[] = [];
+
+  // Invariant 1: Expiry
+  results.push(checkNotExpired(handshakeWithBinding));
+
+  // Invariant 2: All required parties present
+  results.push(
+    checkAllPartiesPresent(
+      handshake,
+      parties as Array<{ party_role: string }>,
+      presentations as Array<{ party_role: string }>,
+      policy,
+    ),
+  );
+
+  // Invariant 3: Binding valid
+  results.push(
+    checkBindingValid(
+      binding as { payload_hash?: string; nonce?: string } | null,
+      verificationPayloadHash,
+    ),
+  );
+
+  // Invariant 4: Issuer trust — run for each presentation that has an issuer_ref
+  for (const pres of presentations) {
+    if (pres.issuer_ref) {
+      results.push(
+        checkIssuerTrusted(
+          pres,
+          authorities as Array<{ key_id: string; status?: string }>,
+        ),
+      );
+    }
+  }
+
+  // Invariant 5: Authority not revoked — run for each matched authority
+  for (const pres of presentations) {
+    if (pres.issuer_ref && authorities) {
+      const authority = authorities.find((a) => a.key_id === pres.issuer_ref);
+      if (authority) {
+        results.push(checkAuthorityNotRevoked(authority));
+      }
+    }
+  }
+
+  // Invariant 6: Assurance level meets minimum
+  if (handshake.assurance_level && handshake.required_assurance) {
+    results.push(checkAssuranceLevel(handshake.assurance_level, handshake.required_assurance, ASSURANCE_RANK));
+  }
+
+  // Invariant 7: No duplicate result
+  if (binding && binding.payload_hash) {
+    results.push(checkNoDuplicateResult(existingResults, binding.payload_hash));
+  }
+
+  // Invariant 8: Interaction bound
+  results.push(checkInteractionBound(handshake));
+
+  // Invariant 9: No role spoofing — run for each presentation with a matching party
+  if (authenticatedEntity) {
+    for (const pres of presentations) {
+      const matchingParty = parties.find((p) => p.party_role === pres.party_role);
+      if (matchingParty) {
+        results.push(checkNoRoleSpoofing(pres, authenticatedEntity, matchingParty));
+      }
+    }
+  }
+
+  // Invariant 10: Result immutability
+  results.push(
+    checkResultImmutability(existingResult),
+  );
+
+  const violations = results.filter((r) => !r.ok);
+
+  return {
+    passed: violations.length === 0,
+    violations,
+  };
+}

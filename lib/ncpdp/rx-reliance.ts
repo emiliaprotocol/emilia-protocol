@@ -303,7 +303,7 @@ export function evaluateRxReliance(
  * holder's evidence vault; the bundle carries keyed references plus the exact
  * privacy-safe signed artifacts needed for selective re-performance.
  */
-export function buildRxAppealBundle(input) {
+export function buildRxAppealBundle(input: Parameters<typeof buildPrivateRxAppealBundle>[0]): Record<string, any> {
   return buildPrivateRxAppealBundle(input);
 }
 

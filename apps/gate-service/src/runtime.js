@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from runtime.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import crypto from 'node:crypto';
 import { createTrustedActionFirewall, hashCanonical, } from '../../../packages/gate/index.js';
 import { parseReceiptCarrier } from '../../../packages/require-receipt/index.js';

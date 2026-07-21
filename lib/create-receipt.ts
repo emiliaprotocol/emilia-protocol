@@ -1,0 +1,697 @@
+/**
+ * EMILIA Protocol — Receipt Creation Helper
+ * @license Apache-2.0
+ *
+ * ONE receipt creation engine. ONE truth path.
+ * Both /api/receipts/submit and /api/needs/[id]/rate MUST use this.
+ */
+
+import { getServiceClient } from '@/lib/supabase';
+import { computeReceiptComposite, computeReceiptHash, behaviorToSatisfaction, computeScoresFromClaims } from '@/lib/scoring';
+import { runReceiptFraudChecks } from '@/lib/sybil';
+import { buildIdentifiedSubmissionDigest, resolveProvenanceTier } from '@/lib/signatures';
+import { getUpstashConfig } from '@/lib/env';
+import crypto from 'crypto';
+import { logger } from './logger.js';
+
+// =============================================================================
+// DEDUPLICATION LOCK — two-layer TOCTOU guard
+// =============================================================================
+
+const _upstash = getUpstashConfig();
+const UPSTASH_URL = _upstash?.url;
+const UPSTASH_TOKEN = _upstash?.token;
+const _dedupUseRedis = !!_upstash;
+// 3s hard timeout on the Upstash dedup-lock round trips — a hung Redis must never
+// block receipt creation (the availability class that stalled the pen-test). Same
+// bound lib/rate-limit.js uses. Dedup is best-effort; DB idempotency is the real
+// guard, so a timeout fails OPEN to that fallback.
+const DEDUP_REDIS_TIMEOUT_MS = 3000;
+
+/** In-process mutex map for when Redis is not configured. */
+const _dedupMemoryLocks = new Map<string, Promise<void>>();
+
+/**
+ * Acquire a short-lived deduplication lock for a receipt submission.
+ *
+ * Redis path  : SET NX EX 10 — atomic, cross-instance safe.
+ * Memory path : Promise-chain mutex — correct for concurrent async in one process.
+ */
+async function acquireDeduplicationLock(
+  entityId: string,
+  submitterId: string,
+  transactionRef: string,
+): Promise<{ acquired: boolean; release: () => void }> {
+  const refHash = crypto.createHash('sha256').update(transactionRef).digest('hex').slice(0, 16);
+  const lockKey = `ep:dedup:${entityId}:${submitterId}:${refHash}`;
+  const LOCK_TTL = 10; // seconds
+
+  if (_dedupUseRedis) {
+    try {
+      // Upstash REST: SET key value NX EX ttl — returns "OK" or null
+      // _dedupUseRedis is derived from the same _upstash config as UPSTASH_URL/
+      // UPSTASH_TOKEN (both set together or both null), so this branch guarantees
+      // both are strings even though TS can't correlate the derived boolean.
+      const res = await fetch(UPSTASH_URL as string, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['SET', lockKey, '1', 'NX', 'EX', LOCK_TTL]),
+        signal: AbortSignal.timeout(DEDUP_REDIS_TIMEOUT_MS),
+      });
+      const json = await res.json();
+      const acquired = json.result === 'OK';
+
+      const release = acquired
+        ? async () => {
+            try {
+              await fetch(UPSTASH_URL as string, {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${UPSTASH_TOKEN}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(['DEL', lockKey]),
+                signal: AbortSignal.timeout(DEDUP_REDIS_TIMEOUT_MS),
+              });
+            } catch {
+              // Best-effort; TTL will expire the key anyway
+            }
+          }
+        : () => {};
+
+      return { acquired, release };
+    } catch {
+      // Redis unreachable or timed out. Dedup is a best-effort idempotency guard
+      // and DB-level idempotency remains the real defense, so fail OPEN: proceed
+      // as if the lock was acquired rather than block receipt creation on a hang.
+      return { acquired: true, release: () => {} };
+    }
+  }
+
+  // --- In-memory mutex path ---
+  // Each lock key maps to a Promise that resolves when the lock is free.
+  // We chain onto the existing promise so concurrent calls queue up.
+  let releaseFn: (() => void) | undefined;
+  const previousLock = _dedupMemoryLocks.get(lockKey) ?? Promise.resolve();
+
+  // This promise represents OUR hold on the lock.
+  const ourLock = previousLock.then(
+    () =>
+      new Promise<void>((resolve) => {
+        releaseFn = resolve; // caller invokes this to release
+      })
+  );
+
+  // Replace the map entry so the next waiter chains onto our hold.
+  _dedupMemoryLocks.set(lockKey, ourLock);
+
+  // Wait until all prior holders have released.
+  await previousLock;
+
+  // Auto-expire the in-memory lock after TTL (safety net).
+  const ttlTimer = setTimeout(() => {
+    if (releaseFn) releaseFn();
+  }, LOCK_TTL * 1000);
+
+  const release = () => {
+    clearTimeout(ttlTimer);
+    if (releaseFn) releaseFn();
+    // Clean up the map entry once no waiters remain.
+    if (_dedupMemoryLocks.get(lockKey) === ourLock) {
+      _dedupMemoryLocks.delete(lockKey);
+    }
+  };
+
+  return { acquired: true, release };
+}
+
+// =============================================================================
+// PER-ENTITY DAILY RECEIPT QUOTA
+// =============================================================================
+
+const ENTITY_DAILY_RECEIPT_LIMIT = 500;
+
+function isNoRowsError(error: unknown): boolean {
+  return (error as { code?: string } | null | undefined)?.code === 'PGRST116';
+}
+
+/**
+ * Check whether an entity has exceeded its daily receipt submission quota.
+ *
+ * Redis path  : INCR + EXPIRE — atomic, cross-instance safe.
+ * DB fallback : COUNT query against receipts table for current UTC day.
+ * Fail-closed : If neither path can establish a count, issuance is unavailable.
+ *
+ * @param entityId - UUID of the target entity
+ */
+async function checkEntityDailyQuota(
+  supabase: ReturnType<typeof getServiceClient>,
+  entityId: string,
+): Promise<{ allowed: boolean; count?: number; limit?: number; unavailable?: boolean }> {
+  // Try Redis first (fast, no DB load)
+  /* c8 ignore next 35 -- Redis/Upstash path; UPSTASH_URL and UPSTASH_TOKEN not configured in tests */
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    try {
+      const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+      const key = `ep:quota:entity:${entityId}:${today}`;
+      const res = await fetch(UPSTASH_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['INCR', key]),
+      });
+      const data = await res.json();
+      if (!data.error && data.result != null) {
+        if (data.result === 1) {
+          // Set expiry on first increment — expires at end of UTC day
+          const secondsUntilMidnight = 86400 - (Math.floor(Date.now() / 1000) % 86400);
+          await fetch(UPSTASH_URL, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${UPSTASH_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(['EXPIRE', key, String(secondsUntilMidnight + 60)]),
+          });
+        }
+        if (data.result > ENTITY_DAILY_RECEIPT_LIMIT) {
+          return { allowed: false, count: data.result, limit: ENTITY_DAILY_RECEIPT_LIMIT };
+        }
+        return { allowed: true, count: data.result, limit: ENTITY_DAILY_RECEIPT_LIMIT };
+      }
+    } catch (e: any) {
+      // Redis unavailable — fall through to DB count
+    }
+  }
+
+  // Fallback: count from Supabase
+  try {
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const { count, error } = await supabase
+      .from('receipts')
+      .select('id', { count: 'exact', head: true })
+      .eq('entity_id', entityId)
+      .gte('created_at', startOfDay.toISOString());
+
+    if (error) throw error;
+    // Number.isSafeInteger is not a type-narrowing predicate and `< 0` doesn't
+    // narrow away null either, but at runtime this guard already excludes null:
+    // Number.isSafeInteger(null) is false, so the `||` short-circuits and throws
+    // before `count < 0` (cast below) is ever evaluated on a null count.
+    if (!Number.isSafeInteger(count) || (count as number) < 0) {
+      throw new Error('receipt quota query returned no trustworthy count');
+    }
+    // Past the guard above, count is a verified safe non-negative integer.
+    const safeCount = count as number;
+
+    if (safeCount >= ENTITY_DAILY_RECEIPT_LIMIT) {
+      return { allowed: false, count: safeCount, limit: ENTITY_DAILY_RECEIPT_LIMIT };
+    }
+    return { allowed: true, count: safeCount, limit: ENTITY_DAILY_RECEIPT_LIMIT };
+  } catch (e: any) {
+    // Quota is an abuse-control boundary. Treat an unavailable or malformed
+    // counter as indeterminate, never as zero usage.
+    logger.warn('Entity daily quota check failed:', e.message);
+    return { allowed: false, unavailable: true };
+  }
+}
+
+/** Authenticated submitter entity projection (from auth). */
+export interface CreateReceiptSubmitter {
+  id: string;
+  entity_id?: string;
+  emilia_score?: number;
+  public_key?: string;
+  [key: string]: unknown;
+}
+
+export interface CreateReceiptSignals {
+  delivery_accuracy?: number | null;
+  product_accuracy?: number | null;
+  price_integrity?: number | null;
+  return_processing?: number | null;
+  agent_satisfaction?: number | null;
+}
+
+export interface CreateReceiptParams {
+  /** entity_id slug or UUID of entity being scored */
+  targetEntitySlug: string;
+  /** Authenticated submitter entity object (from auth) */
+  submitter: CreateReceiptSubmitter;
+  /** Required external transaction reference */
+  transactionRef: string;
+  /** purchase | service | task_completion | delivery | return */
+  transactionType: string;
+  signals?: CreateReceiptSignals;
+  /** completed | retried_same | retried_different | abandoned | disputed */
+  agentBehavior?: string | null;
+  /** v2 structured claims */
+  claims?: Record<string, unknown> | null;
+  /** Supporting evidence */
+  evidence?: Record<string, unknown>;
+  /** Caller-supplied idempotency key. If omitted, one is generated deterministically
+   * from (submitter.id, transactionRef, transactionType). */
+  idempotencyKey?: string | null;
+  /** Free-form transaction context recorded on the receipt */
+  context?: unknown;
+  /** Requested provenance tier (defaults to 'self_attested') */
+  provenanceTier?: string;
+  /** If true, sets bilateral_status to 'pending_confirmation' */
+  requestBilateral?: boolean;
+}
+
+/**
+ * Result of createReceipt(): either an error shape ({ error, status, ... })
+ * or a success/deduplicated shape ({ receipt, ... }). Callers narrow with a
+ * truthy check on `error`, so (as with the EP-IX results above) every field
+ * is optional on one merged interface rather than a tagged union.
+ */
+export interface CreateReceiptResult {
+  error?: string | null;
+  status?: number;
+  flags?: (string | undefined)[];
+  retry_after?: number;
+  receipt?: any;
+  deduplicated?: boolean;
+  _message?: string;
+  entityScore?: { emilia_score?: number; total_receipts?: number };
+  warnings?: (string | undefined)[];
+}
+
+/**
+ * createReceipt — THE ONLY function that writes to the receipts table.
+ * All receipt creation (manual, auto, system) MUST flow through this function.
+ * This is the canonical receipt write path. There is no other.
+ *
+ * Enforces: idempotency/deduplication (two-layer TOCTOU guard), fraud checks
+ * (graph analysis via runReceiptFraudChecks), self-score prevention,
+ * per-entity daily quota, composite_score computation, provenance verification,
+ * chain linking, and submitter credibility assessment.
+ *
+ * The caller (canonicalSubmitReceipt in canonical-writer.js) handles event
+ * emission and trust profile materialization after this function returns.
+ */
+export async function createReceipt(params: CreateReceiptParams): Promise<CreateReceiptResult> {
+  const {
+    targetEntitySlug,
+    submitter,
+    transactionRef,
+    transactionType,
+    signals = {},
+    agentBehavior,
+    claims,
+    evidence = {},
+    context = null,
+    provenanceTier = 'self_attested',
+    requestBilateral = false, // If true, sets bilateral_status to 'pending_confirmation'
+    idempotencyKey: callerIdempotencyKey = null,
+  } = params;
+
+  // === IDEMPOTENCY KEY ===
+  // If the caller supplies one, use it. Otherwise generate deterministically
+  // from the triple (submitter.id, transactionRef, transactionType) so that
+  // machine-originated writes are automatically idempotent.
+  const idempotencyKey = callerIdempotencyKey ||
+    `ep_idem_${crypto.createHash('sha256').update(`${submitter.id}:${transactionRef}:${transactionType}`).digest('hex')}`;
+
+  const supabase = getServiceClient();
+
+  // === RESOLVE TARGET ENTITY ===
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetEntitySlug);
+  const { data: targetEntity, error: targetError } = await supabase
+    .from('entities')
+    .select('id, entity_id')
+    .eq(isUuid ? 'id' : 'entity_id', targetEntitySlug)
+    .single();
+
+  if (targetError && !isNoRowsError(targetError)) {
+    logger.error('[create-receipt] target entity lookup failed:', targetError);
+    return { error: 'Target entity lookup unavailable', status: 503 };
+  }
+
+  if (!targetEntity) {
+    return { error: 'Target entity not found', status: 404 };
+  }
+
+  const targetEntityId = targetEntity.id;
+
+  // === SELF-SCORE CHECK ===
+  if (targetEntityId === submitter.id) {
+    return { error: 'An entity cannot submit receipts for itself', status: 403 };
+  }
+
+  // === PER-ENTITY DAILY QUOTA ===
+  const quotaCheck = await checkEntityDailyQuota(supabase, targetEntityId);
+  if (!quotaCheck.allowed) {
+    if (quotaCheck.unavailable) {
+      return { error: 'Receipt quota service unavailable', status: 503 };
+    }
+    return {
+      error: `Daily receipt limit reached for this entity (${quotaCheck.limit}/day). Try again tomorrow.`,
+      status: 429,
+    };
+  }
+
+  // === IDEMPOTENCY / DEDUPLICATION (TOCTOU-safe) ===
+  // Layer 1: acquire a short-lived mutex so concurrent requests with the same
+  // key cannot both pass the check and both insert.
+  const { acquired: lockAcquired, release: releaseLock } =
+    await acquireDeduplicationLock(targetEntityId, submitter.id, transactionRef);
+
+  /* c8 ignore next 3 -- memory lock always returns acquired=true; Redis path not active in tests */
+  if (!lockAcquired) {
+    // Another in-flight request is already processing this exact receipt.
+    return { error: 'Duplicate submission in progress. Please retry shortly.', retry_after: 10, status: 409 };
+  }
+
+  // === IDEMPOTENCY KEY CHECK (system-level, DB-enforced) ===
+  // Check for an existing receipt with the same idempotency_key first.
+  // This is the primary replay protection — the DB unique index is the
+  // source of truth, this application check is defense-in-depth.
+  const { data: idempotentHit, error: idempotencyError } = await supabase
+    .from('receipts')
+    .select('receipt_id, receipt_hash, created_at')
+    .eq('idempotency_key', idempotencyKey)
+    .single();
+
+  if (idempotencyError && !isNoRowsError(idempotencyError)) {
+    releaseLock();
+    logger.error('[create-receipt] idempotency lookup failed:', idempotencyError);
+    return { error: 'Receipt idempotency service unavailable', status: 503 };
+  }
+
+  if (idempotentHit) {
+    releaseLock();
+    return {
+      receipt: idempotentHit,
+      deduplicated: true,
+      _message: 'Receipt already exists for this idempotency_key. Returning existing receipt (idempotent).',
+    };
+  }
+
+  // Same transaction_ref + same submitter + same entity = duplicate.
+  // Returns the existing receipt instead of creating a new one.
+  // This makes receipt submission safe to retry.
+  // The lock is held across both the check AND the insert so that no concurrent
+  // request can interleave between them. It is always released in the finally
+  // block at the bottom of createReceipt() via the _releaseDedupLock variable.
+  let existingReceipt;
+  const { data, error: transactionLookupError } = await supabase
+    .from('receipts')
+    .select('receipt_id, receipt_hash, created_at')
+    .eq('entity_id', targetEntityId)
+    .eq('submitted_by', submitter.id)
+    .eq('transaction_ref', transactionRef)
+    .single();
+  if (transactionLookupError && !isNoRowsError(transactionLookupError)) {
+    releaseLock();
+    logger.error('[create-receipt] transaction deduplication lookup failed:', transactionLookupError);
+    return { error: 'Receipt deduplication service unavailable', status: 503 };
+  }
+  existingReceipt = data;
+
+  if (existingReceipt) {
+    releaseLock();
+    return {
+      receipt: existingReceipt,
+      deduplicated: true,
+      _message: 'Receipt already exists for this transaction_ref. Returning existing receipt (idempotent).',
+    };
+  }
+
+  // Lock is held from here through the insert. Released in the finally block.
+  try {
+    // === FRAUD CHECKS (graph analysis wired in) ===
+    const fraudCheck = await runReceiptFraudChecks(supabase, targetEntityId, submitter.id);
+    if (!fraudCheck.allowed) {
+      return {
+        error: fraudCheck.detail,
+        flags: fraudCheck.flags,
+        status: 429,
+      };
+    }
+
+    // === SUBMITTER CREDIBILITY (via canonical DB function) ===
+    const submitterScore = submitter.emilia_score ?? 50;
+
+    // is_entity_established RPC has shipped since migration 020 — the
+    // catch is defensive against transient RPC failures, not a "function
+    // doesn't exist yet" placeholder. Log so SIEM picks up RPC failures
+    // rather than silently treating every submitter as not-established.
+    let submitterEstablished = false;
+    try {
+      const { data: estData, error: estErr } = await supabase.rpc('is_entity_established', { p_entity_id: submitter.id });
+      if (estErr) {
+        logger.warn('[create-receipt] is_entity_established RPC error:', { submitterId: submitter.id, error: estErr.message });
+      } else if (estData && estData[0]) {
+        submitterEstablished = estData[0].established;
+      }
+    } catch (e) {
+      logger.warn('[create-receipt] is_entity_established threw:', { submitterId: submitter.id, error: e.message });
+      submitterEstablished = false;
+    }
+
+    // === BEHAVIORAL SATISFACTION ===
+    let agentSatisfaction = signals.agent_satisfaction ?? null;
+    if (agentBehavior) {
+      agentSatisfaction = behaviorToSatisfaction(agentBehavior);
+    }
+
+    // === EVIDENCE-BASED SCORING (v2) ===
+    let deliveryAccuracy = signals.delivery_accuracy ?? null;
+    let productAccuracy = signals.product_accuracy ?? null;
+    let priceIntegrity = signals.price_integrity ?? null;
+    let returnProcessing = signals.return_processing ?? null;
+
+    if (claims) {
+      // computeScoresFromClaims (lib/scoring.ts) builds its return value from a
+      // bare `{}` literal, which TS pins to the empty-object type — the function
+      // genuinely returns these four optional numeric fields at runtime, so cast
+      // at this access point rather than widen the (correctly inferred elsewhere)
+      // upstream signature.
+      const claimScores = computeScoresFromClaims(claims) as {
+        delivery_accuracy?: number | null;
+        product_accuracy?: number | null;
+        price_integrity?: number | null;
+        return_processing?: number | null;
+      };
+      if (claimScores.delivery_accuracy != null) deliveryAccuracy = claimScores.delivery_accuracy;
+      if (claimScores.product_accuracy != null) productAccuracy = claimScores.product_accuracy;
+      if (claimScores.price_integrity != null) priceIntegrity = claimScores.price_integrity;
+      if (claimScores.return_processing != null) returnProcessing = claimScores.return_processing;
+    }
+
+    // Post-processing validation: ensure receipt has at least one meaningful signal
+    const hasAnySignal = [deliveryAccuracy, productAccuracy, priceIntegrity,
+      returnProcessing, agentSatisfaction].some(v => v != null);
+    if (!hasAnySignal) {
+      return { error: 'Receipt produced no meaningful signals. Claims must include recognized fields (delivered, on_time, price_honored, as_described, return_accepted).', status: 400 };
+    }
+
+    // === COMPOSITE SCORE ===
+    const composite = computeReceiptComposite({
+      delivery_accuracy: deliveryAccuracy,
+      product_accuracy: productAccuracy,
+      price_integrity: priceIntegrity,
+      return_processing: returnProcessing,
+      agent_satisfaction: agentSatisfaction,
+    });
+
+    // === CHAIN LINKING ===
+    const { data: prevReceipt, error: previousReceiptError } = await supabase
+      .from('receipts')
+      .select('receipt_hash')
+      .eq('entity_id', targetEntityId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (previousReceiptError && !isNoRowsError(previousReceiptError)) {
+      logger.error('[create-receipt] chain-head lookup failed:', previousReceiptError);
+      return { error: 'Receipt chain unavailable', status: 503 };
+    }
+
+    const previousHash = prevReceipt?.receipt_hash || null;
+    const receiptId = `ep_rcpt_${crypto.randomBytes(16).toString('hex')}`;
+
+    // === CANONICAL HASH (all truth-bearing fields) ===
+    const receiptData = {
+      entity_id: targetEntityId,
+      submitted_by: submitter.id,
+      transaction_ref: transactionRef,
+      transaction_type: transactionType,
+      context: context || null,
+      delivery_accuracy: deliveryAccuracy,
+      product_accuracy: productAccuracy,
+      price_integrity: priceIntegrity,
+      return_processing: returnProcessing,
+      agent_satisfaction: agentSatisfaction,
+      agent_behavior: agentBehavior || null,
+      claims: claims || null,
+      evidence: evidence,
+      submitter_score: submitterScore,
+      submitter_established: submitterEstablished,
+    };
+
+    const receiptHash = await computeReceiptHash(receiptData, previousHash);
+
+    // === PROVENANCE TIER VERIFICATION ===
+    // The final chain hash includes this signature plus server-derived fields,
+    // so it cannot be the client-signable input. Verify a separate canonical
+    // submission digest against the authenticated entity's enrolled key. An
+    // inline key in `evidence` is only a consistency hint and confers no trust.
+    const identifiedSubmission = buildIdentifiedSubmissionDigest({
+      targetEntityRef: targetEntitySlug,
+      transactionRef,
+      transactionType,
+      signals,
+      agentBehavior,
+      claims,
+      evidence,
+      context,
+      requestBilateral,
+    });
+    const provenanceResolution = resolveProvenanceTier(
+      provenanceTier,
+      identifiedSubmission.digest,
+      evidence,
+      // resolveProvenanceTier treats a falsy key as "no enrolled key" either way
+      // (`if (!trustedPublicKey)`), so an absent public_key maps to '' here with
+      // no behavior change — it just satisfies the non-optional `string` param.
+      submitter.public_key || '',
+    );
+    const resolvedProvenanceTier = provenanceResolution.tier;
+    const provenanceWarning = provenanceResolution.warning;
+
+    // === INSERT ===
+    const { data: receipt, error: insertError } = await supabase
+      .from('receipts')
+      .insert({
+        receipt_id: receiptId,
+        idempotency_key: idempotencyKey,
+        entity_id: targetEntityId,
+        submitted_by: submitter.id,
+        transaction_ref: transactionRef,
+        transaction_type: transactionType,
+        context: context || null,
+        delivery_accuracy: deliveryAccuracy,
+        product_accuracy: productAccuracy,
+        price_integrity: priceIntegrity,
+        return_processing: returnProcessing,
+        agent_satisfaction: agentSatisfaction,
+        agent_behavior: agentBehavior || null,
+        evidence: evidence,
+        claims: claims || null,
+        submitter_score: submitterScore,
+        submitter_established: submitterEstablished,
+        graph_weight: fraudCheck.graphWeight ?? 1.0,
+        provenance_tier: resolvedProvenanceTier,
+        bilateral_status: requestBilateral ? 'pending_confirmation' : null,
+        confirmation_deadline: requestBilateral ? new Date(Date.now() + 48 * 3600000).toISOString() : null,
+        composite_score: composite,
+        receipt_hash: receiptHash,
+        previous_hash: previousHash,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      // === Layer 2: DB unique-constraint fallback (defense in depth) ===
+      // If a concurrent request raced past the mutex and inserted first,
+      // Postgres will raise a unique-constraint violation (code 23505).
+      // Treat it as a dedup hit instead of a 500 error.
+      const isUniqueViolation =
+        insertError.code === '23505' ||
+        insertError.message?.includes('duplicate key') ||
+        insertError.message?.includes('unique');
+
+      if (isUniqueViolation) {
+        // Try idempotency_key first (covers the new unique index), then
+        // fall back to the legacy submitter+entity+ref lookup.
+        const { data: racedByKey, error: racedByKeyError } = await supabase
+          .from('receipts')
+          .select('receipt_id, receipt_hash, created_at')
+          .eq('idempotency_key', idempotencyKey)
+          .single();
+
+        if (racedByKeyError && !isNoRowsError(racedByKeyError)) {
+          logger.error('[create-receipt] raced idempotency lookup failed:', racedByKeyError);
+          return { error: 'Receipt idempotency service unavailable', status: 503 };
+        }
+
+        let racedReceipt = racedByKey;
+        if (!racedReceipt) {
+          const racedTransaction = await supabase
+            .from('receipts')
+            .select('receipt_id, receipt_hash, created_at')
+            .eq('entity_id', targetEntityId)
+            .eq('submitted_by', submitter.id)
+            .eq('transaction_ref', transactionRef)
+            .single();
+          if (racedTransaction.error && !isNoRowsError(racedTransaction.error)) {
+            logger.error('[create-receipt] raced transaction lookup failed:', racedTransaction.error);
+            return { error: 'Receipt deduplication service unavailable', status: 503 };
+          }
+          racedReceipt = racedTransaction.data;
+        }
+
+        // A unique conflict without an existing receipt for this request is a
+        // chain-predecessor race (or an unknown invariant violation). It must
+        // not be mislabeled as a successful idempotent replay with null data.
+        if (!racedReceipt) {
+          return { error: 'Receipt chain changed concurrently; retry with a fresh chain head', status: 503 };
+        }
+
+        return {
+          receipt: racedReceipt,
+          deduplicated: true,
+          _message: 'Receipt already exists (unique constraint). Returning existing receipt (idempotent).',
+        };
+      }
+
+      logger.error('Receipt insert error:', insertError);
+      return { error: 'Failed to submit receipt', status: 500 };
+    }
+
+    // === GET UPDATED SCORE ===
+    const { data: updatedEntity } = await supabase
+      .from('entities')
+      .select('emilia_score, total_receipts')
+      .eq('id', targetEntityId)
+      .single();
+
+    const result: CreateReceiptResult = {
+      receipt: {
+        receipt_id: receipt.receipt_id,
+        idempotency_key: receipt.idempotency_key,
+        entity_id: receipt.entity_id,
+        composite_score: receipt.composite_score,
+        receipt_hash: receipt.receipt_hash,
+        created_at: receipt.created_at,
+      },
+      entityScore: {
+        emilia_score: updatedEntity?.emilia_score,
+        total_receipts: updatedEntity?.total_receipts,
+      },
+    };
+
+    const allWarnings = [...(fraudCheck.flags || [])];
+    if (provenanceWarning) {
+      allWarnings.push(provenanceWarning);
+    }
+    if (allWarnings.length > 0) {
+      result.warnings = allWarnings;
+    }
+
+    return result;
+  } finally {
+    // Always release the deduplication lock, regardless of outcome.
+    releaseLock();
+  }
+}

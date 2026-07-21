@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }),
       },
     );
-    const response = await consumeTrustReceipt(delegated, {
+    const response = await consumeTrustReceipt(delegated as any, {
       params: Promise.resolve({ receiptId }),
     });
     response.headers.set('cache-control', 'no-store, private');

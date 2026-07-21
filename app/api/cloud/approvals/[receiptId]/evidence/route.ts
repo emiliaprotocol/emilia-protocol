@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         headers: { authorization: request.headers.get('authorization') || '' },
       },
     );
-    const response = await readTrustReceiptEvidence(delegated, {
+    const response = await readTrustReceiptEvidence(delegated as any, {
       params: Promise.resolve({ receiptId }),
     });
     response.headers.set('cache-control', 'no-store, private');

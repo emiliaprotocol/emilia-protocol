@@ -135,7 +135,11 @@ export async function POST(req) {
     it('canonical-writer.js is in the allowlist (tested by script config)', async () => {
       // The script uses an allowlist Set — verify the file exists and
       // actually contains trust-table writes (proving exemption is necessary)
-      const cwPath = path.join(ROOT, 'lib', 'canonical-writer.js');
+      // lib/ is migrating .js -> .ts file-by-file; resolve whichever
+      // extension actually exists on disk.
+      const cwPathJs = path.join(ROOT, 'lib', 'canonical-writer.js');
+      const cwPathTs = path.join(ROOT, 'lib', 'canonical-writer.ts');
+      const cwPath = fs.existsSync(cwPathTs) ? cwPathTs : cwPathJs;
       const content = fs.readFileSync(cwPath, 'utf-8');
       const violations = scanFileForTrustViolations(content);
       // canonical-writer.js SHOULD contain trust-table writes
@@ -178,7 +182,11 @@ export async function POST(req) {
 
   describe('env.js exemption', () => {
     it('env.js contains EP_ env reads but is in the allowlist', () => {
-      const envPath = path.join(ROOT, 'lib', 'env.js');
+      // lib/ is migrating .js -> .ts file-by-file; resolve whichever
+      // extension actually exists on disk (same pattern as canonical-writer.js above).
+      const envPathJs = path.join(ROOT, 'lib', 'env.js');
+      const envPathTs = path.join(ROOT, 'lib', 'env.ts');
+      const envPath = fs.existsSync(envPathTs) ? envPathTs : envPathJs;
       const content = fs.readFileSync(envPath, 'utf-8');
       const violations = scanFileForEnvViolations(content);
       // env.js SHOULD contain EP_ env reads

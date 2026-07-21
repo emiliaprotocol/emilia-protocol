@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const result = await registerEndpoint(auth.tenantId, url, events) as { endpoint?: any, secret?: string, error?: string, status?: number };
 
     if (result.error) {
-      return epProblem(result.status, 'webhook_creation_failed', result.error);
+      return epProblem(result.status || 500, 'webhook_creation_failed', result.error);
     }
 
     return NextResponse.json({

@@ -104,7 +104,7 @@ function countRouteFiles() {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name === 'route.js') routes.push(full);
+      else if (entry.name === 'route.js' || entry.name === 'route.ts') routes.push(full);
     }
   }
   walk(apiDir);
@@ -119,11 +119,11 @@ function countPublicRouteFiles() {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name === 'route.js') {
+      else if (entry.name === 'route.js' || entry.name === 'route.ts') {
         // Derive the API path from the file path
         const apiPath = full
           .replace(path.join(ROOT, 'app'), '')
-          .replace(/\/route\.js$/, '');
+          .replace(/\/route\.(js|ts)$/, '');
         if (!OPENAPI_EXEMPT_ROUTES.includes(apiPath) && !apiPath.startsWith('/api/cloud/')) {
           routes.push(full);
         }

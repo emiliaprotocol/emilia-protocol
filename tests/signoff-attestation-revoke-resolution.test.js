@@ -60,7 +60,7 @@ vi.mock('@/lib/logger.js', () => ({
 }));
 
 import { revokeAttestation } from '../lib/signoff/revoke.js';
-import { POST as revokeRoute } from '../app/api/signoff/[challengeId]/revoke/route.js';
+import { POST as revokeRoute } from '../app/api/signoff/[challengeId]/revoke/route.ts';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

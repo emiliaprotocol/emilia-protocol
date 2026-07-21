@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
         expires_in_sec: 60 * 60,
         enforcement_mode: 'enforce',
       },
-    ));
+    ) as any);
     if (receiptResponse.status !== 201) return relayJson(receiptResponse);
     const receipt = await receiptResponse.json();
     if (!receipt.signoff_required || receipt.required_assurance !== 'A') {
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         expires_in_minutes: 60,
         comment: typeof body.comment === 'string' ? body.comment.slice(0, 500) : null,
       },
-    ));
+    ) as any);
     if (signoffResponse.status !== 201) {
       const failed = await relayJson(signoffResponse);
       failed.headers.set('x-emilia-orphaned-receipt-id', receipt.receipt_id);
