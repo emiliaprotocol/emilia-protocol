@@ -96,7 +96,7 @@ test('EP-QUORUM-v1: ordered 3-party signoff — consume blocked until quorum sat
   const adminKey = await registerEntity(request, ADMIN_ID, 'E2E org admin attesting approver enrollment');
 
   // ── Three devices, three passkeys.
-  const devices = [];
+  const devices: any[] = [];
   for (const seat of SEATS) {
     const dev = await newDevice(browser, baseURL);
     await enrollPasskey(dev.page, adminKey, seat);
