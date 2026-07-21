@@ -141,6 +141,20 @@ function unique(values: any[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }
 
+/**
+ * Own-property read. Every container consulted in this module is either
+ * request-shaped or read back from the database, so a key naming an
+ * `Object.prototype` member (`__proto__`, `toString`, `constructor`, `valueOf`,
+ * ...) must resolve to "absent" rather than to the inherited member. A plain
+ * `container[key]` hands back the prototype's value instead: an action-field
+ * lookup yields a non-iterable function, and a field-value lookup yields a
+ * value that is neither the authorized value nor missing.
+ */
+function ownValue(container: any, key: PropertyKey): any {
+  if (container === null || container === undefined) return undefined;
+  return Object.prototype.hasOwnProperty.call(container, key) ? container[key] : undefined;
+}
+
 function isPlainObject(value: any): boolean {
   return value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -182,7 +196,12 @@ function observedFieldValue(field: string, observedAction: any, executedAction: 
 }
 
 export function actionMaterialFields(actionType: string): string[] {
-  const direct = ACTION_FIELD_MAP[actionType] || [];
+  // `ACTION_FIELD_MAP[actionType]` on an inherited key returns an Object.prototype
+  // member, and spreading that non-iterable value below throws instead of
+  // refusing. The HTTP route allowlists action_type before reaching here, but
+  // this function is exported and must not make that allowlist load-bearing.
+  const direct = ownValue(ACTION_FIELD_MAP, actionType);
+  const directFields = Array.isArray(direct) ? direct : [];
   const s = String(actionType || '').toLowerCase();
   const inferred: string[] = [];
   if (s.includes('payment') || s.includes('bank') || s.includes('beneficiary') || s.includes('money')) {
@@ -200,7 +219,7 @@ export function actionMaterialFields(actionType: string): string[] {
   if (s.includes('delete') || s.includes('record') || s.includes('decision') || s.includes('override')) {
     inferred.push(...RECORD_FIELDS);
   }
-  return unique([...ALWAYS_BIND_FIELDS, ...direct, ...inferred]);
+  return unique([...ALWAYS_BIND_FIELDS, ...directFields, ...inferred]);
 }
 
 export function enrichCanonicalActionForExecution(canonicalAction: any, actionDetails: any = {}): any {
@@ -227,10 +246,24 @@ export function buildExecutionBindingContract({
 }: any = {}): any {
   const actionType = canonicalAction?.action_type || actionDetails?.action_type;
   const fields = actionMaterialFields(actionType);
-  const fieldValues: Record<string, unknown> = {};
+  // Null-prototype accumulator: a field literally named `__proto__` written onto
+  // a plain `{}` hits Object.prototype's setter instead of creating an own key,
+  // so the value escapes both `field_values` and `field_hash`. The field names
+  // here come from the fixed ALWAYS_BIND/ACTION_FIELD_MAP allowlists, so this is
+  // defense in depth rather than a live path -- but the allowlist should not be
+  // the only thing standing between a field name and the contract digest.
+  const fieldValues: Record<string, unknown> = Object.create(null);
+  // Field names accepted into the accumulator, recorded at the point of
+  // acceptance. `required_fields` is published from this list rather than read
+  // back out of the accumulator, so a bound field is always advertised as bound
+  // -- including names no `Object.keys` walk would return.
+  const bound: string[] = [];
   for (const field of fields) {
     const value = valueFrom(field, canonicalAction, actionDetails);
-    if (hasValue(value)) fieldValues[field] = normalizeValue(value);
+    if (hasValue(value)) {
+      fieldValues[field] = normalizeValue(value);
+      bound.push(field);
+    }
   }
 
   const required = decision?.signoffRequired === true
@@ -241,7 +274,7 @@ export function buildExecutionBindingContract({
     '@version': EXECUTION_BINDING_CONTRACT_VERSION,
     required,
     action_type: actionType || null,
-    required_fields: Object.keys(fieldValues).sort(),
+    required_fields: [...bound].sort(),
     field_values: fieldValues,
     field_hash: hashCanonicalAction(fieldValues),
     note: 'Executor MUST verify system-observed mutation fields match this contract before/while attesting execution.',
@@ -264,12 +297,28 @@ export function verifyExecutionBindingContract({
     return { ok: true, required: false, missing_fields: [], mismatched_fields: [], observed_values: {}, observed_hash: null };
   }
 
-  const missing: any[] = [];
-  const mismatched: any[] = [];
-  const observedValues: Record<string, unknown> = {};
+  const missing: string[] = [];
+  const mismatched: string[] = [];
+  // Null-prototype accumulator. A required field literally named `__proto__`
+  // written onto a plain `{}` hits Object.prototype's setter instead of creating
+  // an own key: the observed value silently escapes `observed_hash`, which then
+  // attests to a digest that does not cover the field it claims to cover. The
+  // contract reaches this function from the database (route.ts reads it from
+  // `after_state.execution_binding`), so these names are not a compile-time
+  // allowlist at verify time.
+  const observedValues: Record<string, unknown> = Object.create(null);
   const fields = Array.isArray(contract.required_fields) ? contract.required_fields : [];
-  for (const field of fields) {
-    const expected = contract.field_values?.[field];
+  for (const entry of fields) {
+    // Resolve the property key exactly once. A non-string entry is coerced on
+    // every use, so reading through the raw entry and writing through it again
+    // can address two different properties.
+    const field = String(entry);
+    // Own-property read: `contract.field_values?.[field]` resolves an inherited
+    // key off Object.prototype, so an unbound `__proto__` would compare against
+    // Object.prototype instead of being reported missing, and an unbound
+    // `toString`/`constructor`/`valueOf` would reach hashCanonicalAction as a
+    // function and throw -- a crash rather than a refusal with a reason.
+    const expected = ownValue(contract.field_values, field);
     if (!hasValue(expected)) {
       missing.push(field);
       continue;
