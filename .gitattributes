@@ -445,6 +445,7 @@ packages/verify/initiator-attestation.test.js linguist-generated=true
 packages/verify/no-symmetric.test.js linguist-generated=true
 packages/verify/orprg.test.js linguist-generated=true
 packages/verify/outcome-binding.test.js linguist-generated=true
+packages/verify/platform-attestation.test.js linguist-generated=true
 packages/verify/pq-hybrid.test.js linguist-generated=true
 packages/verify/quorum.test.js linguist-generated=true
 packages/verify/resolution.test.js linguist-generated=true

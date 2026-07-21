@@ -103,6 +103,60 @@ TLC runs automatically in CI (`.github/workflows/tlc.yml`) on every push touchin
 
 ---
 
+## TLA+ — `ep_receipt_program.tla`
+
+**Model checker:** TLC 2.19 (TLA+ tools `v1.7.4`, rev `5a47802`)
+**Verified parameters:** `Attempts = {attempt1, attempt2}` contending for one
+stable operation identifier
+**Local execution:** 2026-07-21, pinned jar SHA-256
+`936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Result:** 1,729 states generated, 780 distinct states, complete depth 10 —
+**no error found** across all 14 invariants and 3 action properties
+**Result evidence:** `formal/results/ep-receipt-program.tlc.summary.txt`
+**CI gate:** the pinned workflow executes this model on every relevant push and
+pull request; GitHub Actions is the source of truth for any particular commit's
+remote result.
+
+The model follows the capability-backed receipt-program lifecycle in
+`packages/gate/src/receipt-program.ts`:
+`RECEIPT -> MATCH -> RESERVE -> EXECUTE -> COMMIT -> CERTIFY`. It also explores
+early refusal, Gate refusal, operation-in-flight and committed replay, provider
+failure/timeout, commit uncertainty, missing execution evidence, certificate
+signing failure, and certificate persistence failure.
+
+| Checked property | What it states in this bounded model |
+|---|---|
+| `TypeInvariant` | every state variable remains in its declared finite domain |
+| `OperationStateSound` | open/reserved/committed operation states have consistent owner/outcome fields |
+| `PipelineOrderSafety` | match precedes reserve, reserve precedes effect, and effect precedes commit attempt |
+| `ReservationOwnership` | at most one attempt owns the stable operation reservation |
+| `EffectRequiresReservation` | provider entry requires exact match, Gate authorization, and owned reservation |
+| `CommitRequiresEffect` | a committed operation has a reservation owner whose provider effect was entered |
+| `ExecutedImpliesCommitted` | executed outcome requires a committed executed operation and result projection |
+| `IndeterminateLocksAuthority` | post-effect uncertainty leaves authority committed-indeterminate or reserved, never open |
+| `RefusalBeforeEffect` | a refused attempt neither wins the reservation nor enters the provider |
+| `ReplayFailClosed` | in-flight/committed replay remains refused before effect |
+| `SingleEffectOwner` | no more than one of the two contending attempts crosses the effect boundary |
+| `TerminalOutcomeComplete` | every terminal attempt has a closed outcome |
+| `CertificateOutcomeSound` | any signed/persisted certificate matches the closed outcome and result rule |
+| `CertificateEvidenceRequired` | executed/indeterminate certificates require execution evidence |
+| `TerminalAttemptStability` | terminal attempt phase, outcome, reason, and certificate state do not change |
+| `CommittedOperationStability` | committed status, owner, and outcome do not reverse |
+| `ReservationNeverReopens` | after provider ownership is reserved, it stays reserved or commits; it never automatically reopens |
+
+**Expected quiescence:** deadlock checking is disabled for this safety model
+because “both attempts terminal” is an expected state and no liveness claim is
+made. TLC still exhaustively checks every configured invariant/property over the
+complete finite state graph.
+
+**Scope exclusions:** this is not a refinement proof of the TypeScript/SQL
+implementation. It abstracts cryptography, JCS/CAID computation, database
+linearizability and durability, wall-clock behavior, provider truth, and
+arbitrary cardinality. See [`CONSERVATION_OF_AUTHORITY.md`](./CONSERVATION_OF_AUTHORITY.md)
+for the composed claim and exact bounds.
+
+---
+
 ## Alloy — `ep_relations.als`
 
 **Model checker:** Alloy 6.2.0 (SAT4J solver)
@@ -353,4 +407,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*
+*Last updated: 2026-07-21 (bounded receipt-program model: 14 invariants and 3 action properties checked across 780 distinct states with no error; Conservation of Authority claim boundary added). Prior: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*
