@@ -15,6 +15,7 @@ have succeeded; it does not reimplement them in Solidity.
 - Not deployed.
 - Not suitable for customer funds.
 - Base Sepolia is the only configured remote network; there is no Base mainnet target.
+- The off-chain bridge and operational scripts are strict TypeScript; the on-chain state machine is Solidity.
 
 ## State machine
 
@@ -82,7 +83,7 @@ the full value remains frozen, and fresh provider-signed evidence is required be
 
 ## Guarded Base Sepolia deployment
 
-Copy `.env.example`, provide non-development keys, and review `scripts/deploy.cjs`. The script refuses unsupported
+Copy `.env.example`, provide non-development keys, and review `scripts/deploy.ts`. The script refuses unsupported
 chains and refuses a remote deployment unless the explicit private/unaudited acknowledgement is present.
 
 ```bash
@@ -97,10 +98,12 @@ Deployment is not audit, production authorization, or permission to hold custome
 - `contracts/interfaces/IDTCBaseSettlement.sol` — stable contract surface.
 - `test/DTCBaseSettlement.test.cjs` — functional acceptance suite.
 - `test/DTCBaseSettlement.hostile.test.cjs` — adversarial and replay suite.
-- `scripts/demo.cjs` — runnable indeterminate-to-reconciled scenario.
-- `scripts/deploy.cjs` — fail-closed Base Sepolia deployment.
-- `lib/receipt-program-bridge.mjs` — real Gate receipt-program to Base saga adapter.
+- `scripts/demo.ts` — typed, runnable indeterminate-to-reconciled scenario.
+- `scripts/deploy.ts` — typed, fail-closed Base Sepolia deployment.
+- `lib/receipt-program-bridge.ts` — strict TypeScript Gate receipt-program to Base saga adapter and public types.
 - `test/DTCReceiptProgram.integration.test.cjs` — executed/indeterminate/pre-effect cross-ledger vectors.
+- `test/ReceiptProgramBridge.characterization.test.cjs` — deterministic-hash and fail-closed API contract.
+- `tsconfig.json` — strict NodeNext compiler contract; generated `dist/` output is local and ignored.
 - `formal/dtc_base_settlement.tla` — bounded transition-system model.
 - `formal/dtc_base_escrow.als` — relational transition model.
 - `SECURITY_REVIEW.md` — hostile findings, static-analysis triage, and release blockers.

@@ -7,14 +7,24 @@ SHA-256  contracts/DTCBaseSettlement.sol
 SHA-256  contracts/interfaces/IDTCBaseSettlement.sol
 2e763a971e1a8f23d8b9d4d245ba46bc72f4d1949ad47e9820c99ca8fec93484
 
-SHA-256  lib/receipt-program-bridge.mjs
-e2875d273a184445e3bc839662eb69ed80108b8bf4490b1ee1bc143429226614
+SHA-256  lib/receipt-program-bridge.ts
+8988e92dabccf25fe0bed84dd33be035ddcd54815a2b4308a575d0abd97c5306
+
+SHA-256  tsconfig.json
+8bf7f27395800b0d907804e8dee5ed6b1c60a24b444a79a96e911f6eb5d9c18d
+
+SHA-256  scripts/demo.ts
+1ab7c6f7a7387452fe4d569b256d10b69a5faeb157c733c67ec5506143c5c946
+
+SHA-256  scripts/deploy.ts
+62bf526f3ac905f7bd27cbcb1c61e2e7bccdcae978c8be8049e6045c298043be
 
 SHA-256  package-lock.json
-7af45376f53ca990bdb86af38f9438f5b973f5c0902026383460d3958f822aa4
+29cb0469f3f5ec7b537c42714aeb24f717051ca9ef24d8f2e8d8e6fff8e8842f
 
 Verification summary
-- Hardhat tests: 32 passing
+- TypeScript 5.9 strict typecheck and declaration build: passing
+- Hardhat tests: 35 passing
 - Contract statement coverage: 97.87 percent
 - Contract branch coverage: 63.07 percent
 - Contract function coverage: 95.35 percent

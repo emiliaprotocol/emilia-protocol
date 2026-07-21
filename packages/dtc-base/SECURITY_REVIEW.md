@@ -8,7 +8,7 @@
 
 - `contracts/DTCBaseSettlement.sol`
 - `contracts/interfaces/IDTCBaseSettlement.sol`
-- `lib/receipt-program-bridge.mjs`
+- `lib/receipt-program-bridge.ts` and its emitted declarations
 - functional, hostile, audit-regression, and real Gate integration tests
 - bounded TLA+ and Alloy models
 
@@ -32,6 +32,7 @@ Artifact hashes are recorded in `security/results/artifact-manifest.txt`; formal
 ## Verification executed
 
 - Solidity compile against Cancun EVM: pass.
+- Strict TypeScript typecheck and build: pass.
 - Hardhat functional/hostile/integration suite: pass.
 - Production dependency audit (`npm audit --omit=dev`): zero reported vulnerabilities.
 - Solidity coverage: high statement/function coverage; branch coverage remains below a production release target.

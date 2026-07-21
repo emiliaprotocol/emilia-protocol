@@ -7,7 +7,7 @@ describe('DTC Base x EMILIA receipt-program kernel', function () {
   async function fixture(label) {
     const gateApi = await import('../../gate/index.js');
     const { computeCaid } = await import('../../../caid/impl/js/caid.mjs');
-    const { createReceiptProgramBaseBridge } = await import('../lib/receipt-program-bridge.mjs');
+    const { createReceiptProgramBaseBridge } = await import('../dist/lib/receipt-program-bridge.js');
     const nowMs = Date.parse('2026-07-20T22:00:00.000Z');
     const operationId = `dtc_receipt_program_${label}`;
     const beneficiary = `sha256:${'a'.repeat(64)}`;

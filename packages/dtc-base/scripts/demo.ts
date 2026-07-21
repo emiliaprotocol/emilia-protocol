@@ -1,51 +1,34 @@
-const assert = require('node:assert/strict');
-const { ethers } = require('hardhat');
+import assert from 'node:assert/strict';
 
-const AUTHORIZATION_TYPES = {
-  Authorization: [
-    { name: 'receiptHash', type: 'bytes32' },
-    { name: 'caid', type: 'bytes32' },
-    { name: 'actionHash', type: 'bytes32' },
-    { name: 'programHash', type: 'bytes32' },
-    { name: 'inputHash', type: 'bytes32' },
-    { name: 'payer', type: 'address' },
-    { name: 'executor', type: 'address' },
-    { name: 'merchant', type: 'address' },
-    { name: 'authorizationSigner', type: 'address' },
-    { name: 'providerSigner', type: 'address' },
-    { name: 'maxAmount', type: 'uint256' },
-    { name: 'expiresAt', type: 'uint64' },
-    { name: 'providerConfigVersion', type: 'uint64' },
-    { name: 'nonce', type: 'uint256' },
-  ],
-};
+import type {} from '@nomicfoundation/hardhat-ethers';
+import hre from 'hardhat';
 
-const INVOCATION_TYPES = {
-  Invocation: [
-    { name: 'operationId', type: 'bytes32' },
-    { name: 'invocationHash', type: 'bytes32' },
-    { name: 'providerRequestId', type: 'bytes32' },
-    { name: 'observedAt', type: 'uint64' },
-  ],
-};
+import {
+  AUTHORIZATION_TYPES,
+  INVOCATION_TYPES,
+  OUTCOME_TYPES,
+  asDtcBaseSettlementContract,
+  connectDtcBaseSettlementContract,
+} from '../lib/receipt-program-bridge.js';
 
-const OUTCOME_TYPES = {
-  Outcome: [
-    { name: 'operationId', type: 'bytes32' },
-    { name: 'invocationHash', type: 'bytes32' },
-    { name: 'providerRequestId', type: 'bytes32' },
-    { name: 'evidenceHash', type: 'bytes32' },
-    { name: 'priorOutcomeDigest', type: 'bytes32' },
-    { name: 'amount', type: 'uint256' },
-    { name: 'observedAt', type: 'uint64' },
-    { name: 'kind', type: 'uint8' },
-  ],
-};
+const { ethers } = hre;
 
-async function main() {
+async function latestTimestamp(): Promise<bigint> {
+  const block = await ethers.provider.getBlock('latest');
+  if (!block) throw new Error('latest block is unavailable');
+  return BigInt(block.timestamp);
+}
+
+async function main(): Promise<void> {
   const [admin, bridge, provider, payer, executor, merchant] = await ethers.getSigners();
+  if (!admin || !bridge || !provider || !payer || !executor || !merchant) {
+    throw new Error('demo requires six funded local signers');
+  }
+
   const Factory = await ethers.getContractFactory('DTCBaseSettlement');
-  const settlement = await Factory.deploy(admin.address, bridge.address);
+  const settlement = asDtcBaseSettlementContract(
+    await Factory.deploy(admin.address, bridge.address),
+  );
   await settlement.waitForDeployment();
   await (await settlement.setProviderSigner(merchant.address, provider.address)).wait();
 
@@ -56,7 +39,6 @@ async function main() {
     chainId,
     verifyingContract: await settlement.getAddress(),
   };
-  const now = BigInt((await ethers.provider.getBlock('latest')).timestamp);
   const authorization = {
     receiptHash: ethers.sha256(ethers.toUtf8Bytes('EP-RECEIPT-v1:demo')),
     caid: ethers.sha256(ethers.toUtf8Bytes('EP-CAID-v1:purchase:blue-bicycle')),
@@ -69,13 +51,18 @@ async function main() {
     authorizationSigner: bridge.address,
     providerSigner: provider.address,
     maxAmount: ethers.parseEther('0.2'),
-    expiresAt: now + 3600n,
+    expiresAt: (await latestTimestamp()) + 3600n,
     providerConfigVersion: 1n,
     nonce: 1n,
   };
-  const authorizationSignature = await bridge.signTypedData(domain, AUTHORIZATION_TYPES, authorization);
+  const authorizationSignature = await bridge.signTypedData(
+    domain,
+    AUTHORIZATION_TYPES,
+    authorization,
+  );
   const operationId = await settlement.hashAuthorization(authorization);
-  await (await settlement.connect(payer).reserve(authorization, authorizationSignature, {
+  const payerSettlement = connectDtcBaseSettlementContract(settlement, payer);
+  await (await payerSettlement.reserve(authorization, authorizationSignature, {
     value: authorization.maxAmount,
   })).wait();
 
@@ -83,9 +70,10 @@ async function main() {
     operationId,
     invocationHash: ethers.sha256(ethers.toUtf8Bytes('provider-invocation:demo-001')),
     providerRequestId: ethers.sha256(ethers.toUtf8Bytes('provider-request-id:demo-001')),
-    observedAt: BigInt((await ethers.provider.getBlock('latest')).timestamp),
+    observedAt: await latestTimestamp(),
   };
-  await (await settlement.connect(executor).markInvoked(
+  const executorSettlement = connectDtcBaseSettlementContract(settlement, executor);
+  await (await executorSettlement.markInvoked(
     invocation,
     await provider.signTypedData(domain, INVOCATION_TYPES, invocation),
   )).wait();
@@ -97,7 +85,7 @@ async function main() {
     evidenceHash: ethers.sha256(ethers.toUtf8Bytes('provider-timeout:demo-001')),
     priorOutcomeDigest: ethers.ZeroHash,
     amount: 0n,
-    observedAt: BigInt((await ethers.provider.getBlock('latest')).timestamp),
+    observedAt: await latestTimestamp(),
     kind: 3,
   };
   await (await settlement.submitOutcome(
@@ -115,10 +103,11 @@ async function main() {
     evidenceHash: ethers.sha256(ethers.toUtf8Bytes('provider-settlement-record:demo-001')),
     priorOutcomeDigest: await settlement.hashOutcome(uncertain),
     amount: ethers.parseEther('0.15'),
-    observedAt: BigInt((await ethers.provider.getBlock('latest')).timestamp),
+    observedAt: await latestTimestamp(),
     kind: 1,
   };
-  await (await settlement.connect(admin).reconcile(
+  const adminSettlement = connectDtcBaseSettlementContract(settlement, admin);
+  await (await adminSettlement.reconcile(
     terminal,
     await provider.signTypedData(domain, OUTCOME_TYPES, terminal),
   )).wait();
@@ -144,7 +133,7 @@ async function main() {
   }, null, 2)}\n`);
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error);
   process.exitCode = 1;
 });

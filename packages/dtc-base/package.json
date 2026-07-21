@@ -2,30 +2,41 @@
   "name": "@emilia-protocol/dtc-base",
   "version": "0.1.0-private",
   "private": true,
+  "type": "module",
   "description": "Private DTC Base settlement profile for exact, consequence-bound machine actions",
   "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/lib/receipt-program-bridge.d.ts",
+      "import": "./dist/lib/receipt-program-bridge.js"
+    }
+  },
   "engines": {
     "node": ">=20.0.0"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "compile": "hardhat compile",
-    "demo": "hardhat run scripts/demo.cjs",
-    "deploy:base-sepolia": "hardhat run scripts/deploy.cjs --network baseSepolia",
-    "test": "hardhat test",
+    "demo": "npm run build && node dist/scripts/demo.js",
+    "deploy:base-sepolia": "npm run build && HARDHAT_NETWORK=baseSepolia node dist/scripts/deploy.js",
+    "test": "npm run build && hardhat test",
     "test:hostile": "hardhat test test/DTCBaseSettlement.hostile.test.cjs",
-    "coverage": "hardhat coverage",
+    "coverage": "npm run build && hardhat coverage",
     "lint:sol": "solhint contracts/DTCBaseSettlement.sol contracts/interfaces/IDTCBaseSettlement.sol",
     "formal:verify": "bash scripts/run-formal.sh",
-    "verify": "npm run compile && npm run lint:sol && npm test && npm run coverage"
+    "verify": "npm run typecheck && npm run compile && npm run lint:sol && npm test && npm run coverage"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.4.0",
     "ethers": "6.17.0"
   },
   "devDependencies": {
+    "@types/node": "26.1.1",
     "@nomicfoundation/hardhat-toolbox": "5.0.0",
     "hardhat": "2.28.5",
     "solhint": "6.2.3",
-    "solidity-coverage": "0.8.16"
+    "solidity-coverage": "0.8.16",
+    "typescript": "5.9.3"
   }
 }

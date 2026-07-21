@@ -2,4 +2,5 @@ artifacts/
 cache/
 coverage/
 coverage.json
+dist/
 node_modules/
