@@ -1,0 +1,1120 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                              27 July 2026
+Expires: 28 January 2027
+
+
+ The EMILIA Protocol: An Evidence Architecture for Consequential Agent
+                                Actions
+                    draft-schrock-ep-architecture-02
+
+Abstract
+
+   Consequential agent actions can cross operator and administrative
+   boundaries.  The party that later decides whether to rely on an
+   action record may not have participated in the interaction and may
+   not trust either operator.  This document describes an evidence
+   architecture for that case.  It separates transport and workload
+   identity, delegation and policy, material action identity,
+   authorization evidence, evidence satisfaction, local authorization,
+   durable consumption or reservation, effect invocation, outcome
+   evidence, revocation, and preservation.
+
+   The architecture composes the Canonical Action Identifier (CAID),
+   Authorization Evidence Chain (AEC), and Action Evidence Boundary
+   (AEB) with optional staged-approval and consequence-control profiles.
+   It does not define a universal token, policy language, execution
+   engine, settlement network, or distributed consensus system.  A valid
+   signature, a current credential, a satisfied evidence requirement,
+   and an observed effect remain different facts.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 28 January 2027.
+
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 1]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Applicability . . . . . . . . . . . . . . . . . . . . . .   3
+     1.2.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   4
+   2.  Decision and Lifecycle Vocabulary . . . . . . . . . . . . . .   5
+   3.  Architectural Invariants  . . . . . . . . . . . . . . . . . .   6
+     3.1.  Relying-Party-Controlled Trust Inputs . . . . . . . . . .   6
+     3.2.  Native Verification Before Correlation  . . . . . . . . .   6
+     3.3.  One Material Action Across the Chain  . . . . . . . . . .   6
+     3.4.  Durable State Before Effect . . . . . . . . . . . . . . .   6
+     3.5.  Uncertainty Is Retained . . . . . . . . . . . . . . . . .   7
+     3.6.  Complete Mediation  . . . . . . . . . . . . . . . . . . .   7
+   4.  Layered Composition . . . . . . . . . . . . . . . . . . . . .   7
+     4.1.  Transport, Workload, Agent, and Human Identity  . . . . .   7
+     4.2.  Delegation, Capability, and Policy  . . . . . . . . . . .   7
+     4.3.  Material Action Identity and Mapping  . . . . . . . . . .   8
+     4.4.  Authorization and Confirmation Evidence . . . . . . . . .   8
+     4.5.  Evidence Composition and Satisfaction . . . . . . . . . .   8
+     4.6.  Optional Staged Trust Programs  . . . . . . . . . . . . .   8
+     4.7.  Action Evidence Boundary  . . . . . . . . . . . . . . . .   8
+     4.8.  Outcome, Revocation, and Preservation . . . . . . . . . .   9
+     4.9.  Application and Consequence Profiles  . . . . . . . . . .   9
+   5.  End-to-End Verification and Consequence Flow  . . . . . . . .   9
+   6.  Programs and Multi-Stage Authorization  . . . . . . . . . . .  10
+     6.1.  Trust Program . . . . . . . . . . . . . . . . . . . . . .  10
+     6.2.  Receipt Program . . . . . . . . . . . . . . . . . . . . .  11
+     6.3.  Single Consequence Ownership  . . . . . . . . . . . . . .  11
+   7.  Optional Consequence-Control Profiles . . . . . . . . . . . .  11
+     7.1.  Bounded Capability  . . . . . . . . . . . . . . . . . . .  11
+     7.2.  Action Escrow . . . . . . . . . . . . . . . . . . . . . .  12
+     7.3.  Distributed Trust Computer Deployment Pattern . . . . . .  12
+   8.  Revocation, Disputes, and Compensating Actions  . . . . . . .  12
+     8.1.  Revocation and Current Status . . . . . . . . . . . . . .  12
+
+
+
+Schrock                  Expires 28 January 2027                [Page 2]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+     8.2.  Disputes  . . . . . . . . . . . . . . . . . . . . . . . .  13
+     8.3.  Compensating Actions  . . . . . . . . . . . . . . . . . .  13
+   9.  Component Boundaries and Implementation Status  . . . . . . .  13
+   10. Relationship to Adjacent Work . . . . . . . . . . . . . . . .  14
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  15
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  16
+   13. Operational Considerations  . . . . . . . . . . . . . . . . .  16
+   14. Changes from -01  . . . . . . . . . . . . . . . . . . . . . .  16
+   15. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  17
+   16. Normative References  . . . . . . . . . . . . . . . . . . . .  17
+   17. Informative References  . . . . . . . . . . . . . . . . . . .  17
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  19
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  20
+
+1.  Introduction
+
+   An agent in one administrative domain can request a gateway in
+   another domain to perform an action whose consequences are borne by a
+   third party.  Months later, an auditor, counterparty, insurer, or
+   regulator may need to determine which identity, delegation, policy,
+   approval, consumption, invocation, and outcome facts held for that
+   exact action.  An operator-controlled log can be useful
+   operationally, but it is not by itself portable evidence against a
+   dishonest or unavailable operator.
+
+   This architecture addresses that cross-domain and delayed-review
+   case.  It is not required for every agent interaction.  A deployment
+   in one trusted administrative domain, with no need to export or
+   preserve independently verifiable evidence, can use ordinary
+   authentication, authorization, and logging.
+
+   The architecture defines a narrow waist.  Native artifact verifiers
+   establish artifact-specific facts.  CAID correlates material action
+   content.  AEC evaluates whether a relying-party requirement is
+   satisfied.  Local policy decides whether to authorize.  AEB controls
+   the transition from evidence to a consequential effect and retains
+   uncertainty when an effect cannot yet be proved or disproved.
+   Optional profiles can add staged approvals, bounded capability state,
+   receipt-program execution, escrow-controlled release, attestation,
+   witnesses, or domain-specific bindings without changing the meaning
+   of the core decisions.
+
+1.1.  Applicability
+
+   The architecture is useful when at least one of the following is
+   true:
+
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 3]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   *  the requester, executor, consequence owner, and later relying
+      party are not all in one trust domain;
+
+   *  an action can move money, change infrastructure, disclose
+      protected data, create a legal or operational commitment, or cause
+      a physical effect;
+
+   *  authorization evidence must be verified after the live channel or
+      originating operator is unavailable;
+
+   *  one-time use, a budget, a deadline, staged approval, or separation
+      of duties must be enforced across retries or replicas; or
+
+   *  a provider can perform an effect and then fail to return a
+      definitive response.
+
+   The architecture does not make a low-risk interaction consequential
+   merely because an agent is involved.
+
+1.2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Native verifier:  The verifier defined by an artifact's own
+      specification, operating under trust anchors selected by the
+      relying party.
+
+   Relying party:  The party that states an evidence requirement and
+      decides whether to act on the verified facts.
+
+   Consequential action:  An action for which a deployment requires
+      evidence and consequence controls that survive beyond the live
+      interaction or operator boundary.
+
+   Effect boundary:  The point after which an external effect may have
+      occurred and a transport failure can no longer safely be
+      interpreted as no effect.
+
+   Consequence owner:  The one configured state machine responsible for
+      claiming, invoking, and recording the outcome of a protected
+      external effect.
+
+   Trust Program:  An optional relying-party-controlled orchestration
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 4]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+      profile in which verified evidence fills ordered or thresholded
+      stages before one consequence owner can receive a fenced execution
+      claim.  Some implementations use the term Authority Program for
+      the same pattern.
+
+   Receipt Program:  An optional consequence-owner profile that freezes
+      one CAID-bound instruction, executes through a configured Gate,
+      and emits a terminal certificate only after the Gate outcome and
+      evidence-log transition succeed.
+
+2.  Decision and Lifecycle Vocabulary
+
+   Conforming descriptions and APIs MUST keep the following states
+   distinct:
+
+   VERIFIED:  An artifact passed its native cryptographic and structural
+      verification under relying-party-selected trust anchors.  It does
+      not follow that the artifact filled an authorization role.
+
+   MATCH:  Two independently verified artifacts refer to the same
+      material action, either by direct CAID equality or by an explicit,
+      pinned mapping profile.  MATCH is content correlation, not
+      authorization.
+
+   SATISFIED:  The verified and matched evidence fills every slot in a
+      relying-party-pinned evidence requirement.  AEC can compute this
+      state.
+
+   AUTHORIZED:  The relying party's local policy permits an attempted
+      execution.  This is a business and policy decision; no presented
+      artifact establishes its own authority.
+
+   RESERVED or CONSUMED:  Durable state has fenced the operation's one-
+      time authority, capability budget, or equivalent right before
+      provider entry.  This is not evidence that an effect occurred.
+
+   INVOKED:  The consequence owner durably records that provider entry
+      has begun or may have begun.  From this point, an exception or
+      missing response cannot safely reopen authority.
+
+   EXECUTED:  Authenticated outcome evidence establishes that the bound
+      effect occurred.  This is distinct from what was requested or
+      authorized.
+
+   FAILED:  Authenticated outcome evidence establishes that the bound
+      effect did not occur or was definitively refused.  A transport
+      exception after provider entry is not sufficient for this state.
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 5]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   INDETERMINATE:  The effect may have occurred but current evidence
+      establishes neither EXECUTED nor FAILED.  Blind replay is unsafe.
+
+   RECONCILED:  Authenticated provider or system-of-record evidence
+      resolves an INDETERMINATE operation to EXECUTED or to a proved-no-
+      effect result.  Reconciliation does not invoke the effect again.
+
+   An implementation MUST NOT promote VERIFIED to MATCH, MATCH to
+   SATISFIED, SATISFIED to AUTHORIZED, AUTHORIZED to RESERVED or
+   CONSUMED, RESERVED or CONSUMED to INVOKED, or INVOKED to a terminal
+   outcome without performing the separate check and durable transition
+   that step requires.
+
+3.  Architectural Invariants
+
+3.1.  Relying-Party-Controlled Trust Inputs
+
+   Trust anchors, verifier profiles, role assignments, evidence
+   requirements, CAID mapping profiles, freshness limits, revocation
+   policy, clocks, consumption stores, consequence owners, and outcome
+   verifiers are relying-party inputs.  They MUST NOT be selected or
+   weakened by the artifact being judged or by transaction-scoped
+   requester input.
+
+3.2.  Native Verification Before Correlation
+
+   An artifact MUST pass its native verifier before any label, digest,
+   or claimed relationship from that artifact is used for CAID matching
+   or evidence satisfaction.  A CAID does not repair an invalid native
+   signature, an untrusted issuer, a stale credential, or an invalid
+   native policy result.
+
+3.3.  One Material Action Across the Chain
+
+   The action presented for approval, the action selected by local
+   policy, the action used for capability reservation, the action passed
+   to the consequence owner, and the action named by outcome evidence
+   MUST resolve to the same CAID or to a mapping result accepted under
+   one exact relying-party-pinned profile.  Missing, lossy, or ambiguous
+   mappings are INDETERMINATE and cannot establish MATCH.
+
+3.4.  Durable State Before Effect
+
+   When a deployment requires one-time use, a budget, staged approval,
+   or no-blind-retry behavior, the authoritative state transition MUST
+   be durable and atomic across replicas before provider entry.
+   Process-local state is suitable only for explicit test or
+   demonstration profiles.
+
+
+
+Schrock                  Expires 28 January 2027                [Page 6]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+3.5.  Uncertainty Is Retained
+
+   Before provider dispatch, the consequence owner MUST durably record
+   enough invocation intent that recovery can distinguish an uninvoked
+   operation from one that may have crossed the effect boundary.  On
+   restart, any operation for which provider entry cannot be disproved
+   MUST become or remain INDETERMINATE.  It MUST NOT silently return to
+   an executable state.
+
+3.6.  Complete Mediation
+
+   The architecture controls only paths that traverse the configured
+   enforcement point and consequence owner.  A valid evidence chain or
+   program state cannot prevent an administrator, alternate API, direct
+   credential, or external payment path from bypassing that control.
+   Non-bypassability is a deployment property.
+
+4.  Layered Composition
+
+4.1.  Transport, Workload, Agent, and Human Identity
+
+   This layer establishes who or what is present in a live channel, how
+   a workload or agent credential is managed, and which human or
+   organization a relying party has bound to a key.  WIMSE and related
+   workload-identity work are examples.  The evidence architecture
+   consumes those results but does not redefine them.
+
+   A current credential answers an identity or status question.  It does
+   not by itself prove that its subject authorized one exact action,
+   that a human rather than an agent operated the key, or that local
+   policy permits the consequence.
+
+4.2.  Delegation, Capability, and Policy
+
+   This layer establishes what a principal delegated, what a capability
+   permits, and what a policy decision point allowed.  OAuth profiles,
+   delegation artifacts, AuthZEN, and agent transport work occupy parts
+   of this layer.  A machine policy decision is not represented as human
+   approval unless a separately defined and verified approval artifact
+   establishes that fact.
+
+   A bounded capability combines an immutable signed grant with mutable
+   shared state.  Receipt verification establishes the grant; action-
+   scope matching and an atomic reserve/commit transition establish
+   whether one operation can consume part of its budget.  A signed
+   budget without one authoritative state domain cannot enforce
+   aggregate spend across replicas.
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 7]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+4.3.  Material Action Identity and Mapping
+
+   CAID [CAID] names typed material action content.  Direct equality is
+   byte-level content equality under the selected CAID suite.  Cross-
+   format comparison requires an Action-Mapping Profile selected and
+   pinned by the relying party.  A CAID carries no identity,
+   authorization, capability, execution, or outcome semantics.
+
+4.4.  Authorization and Confirmation Evidence
+
+   This layer carries evidence that a specified approval ceremony or
+   authorization event occurred.  EMILIA authorization receipts
+   [EP-RECEIPTS], multi-party quorum records [EP-QUORUM], and other
+   confirmation artifacts can occupy this layer under their own
+   guarantees.  No single artifact is assumed to fill every relying-
+   party requirement.
+
+4.5.  Evidence Composition and Satisfaction
+
+   AEC [EP-AEC] verifies each component using the component's native
+   verifier and role-scoped trust anchors, checks that all required
+   components MATCH the same material action, and evaluates a relying-
+   party-pinned requirement.  Its result is SATISFIED or UNSATISFIED,
+   not a universal authorization decision and not an execution result.
+
+4.6.  Optional Staged Trust Programs
+
+   A Trust Program can require several evidence stages, including
+   ordered dependencies, heterogeneous thresholds, and separation of
+   duties.  Each stage consumes bounded results from registered native
+   verifiers and can issue a signed stage receipt bound to the program,
+   action, stage policy, predecessor receipts, and accepted evidence.
+
+   A passing stage proves only that the configured technical evidence
+   rule was satisfied.  It does not upgrade weak native evidence, prove
+   civil identity, or make an action lawful.  A completed Trust Program
+   can fence one claim for one selected consequence owner; it does not
+   perform the external effect.  This document defines the architectural
+   role, not a Trust Program wire format.
+
+4.7.  Action Evidence Boundary
+
+   AEB [EP-AEB] joins native verification, CAID MATCH, AEC SATISFIED,
+   local AUTHORIZED, durable reservation or consumption, provider
+   invocation, closed outcomes, and authenticated reconciliation.  AEB
+   is a lifecycle and enforcement boundary; it is not another receipt,
+   credential, universal policy language, or evidence registry.
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 8]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+4.8.  Outcome, Revocation, and Preservation
+
+   Outcome evidence states what occurred after the effect boundary.
+   Revocation states that named authority or evidence is no longer valid
+   from an effective time.  Preservation mechanisms retain verifiability
+   as systems, operators, and algorithms change.  Each answers a
+   separate question, and none is inferred from receipt validity.
+
+4.9.  Application and Consequence Profiles
+
+   Profiles select action types, evidence requirements, trust anchors,
+   freshness, consumption, consequence ownership, outcome, and
+   reconciliation rules for one deployment context.  Agent gateways,
+   payments, healthcare, infrastructure, and physical systems can use
+   the architecture without changing the core artifact formats.  A
+   profile does not make a domain claim true; it states the checks and
+   mediation boundary a deployment will apply.
+
+5.  End-to-End Verification and Consequence Flow
+
+    native artifacts
+          |
+          v
+    VERIFIED -> MATCH -> SATISFIED -> AUTHORIZED
+                                         |
+                                reserve or consume
+                                         |
+                                         v
+                                RESERVED / CONSUMED
+                                         |
+                           record invocation intent
+                                         |
+                                         v
+                                     INVOKED
+                                   /    |    \
+                                  /     |     \
+                          EXECUTED   FAILED   INDETERMINATE
+                                                |
+                                 authenticated reconcile
+                                                |
+                                 executed or proved-no-effect
+
+                 Figure 1: Non-collapsing action lifecycle
+
+   1.   The relying party derives the proposed action from executor-
+        controlled facts and pins trust roots, verifier profiles, CAID
+        suites or mapping profiles, evidence requirements, freshness,
+        revocation policy, and the consequence owner.
+
+
+
+Schrock                  Expires 28 January 2027                [Page 9]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   2.   Each identity, delegation, policy, and approval artifact is
+        verified by its native verifier.  Presenter-supplied keys or
+        labels do not create authority.
+
+   3.   Verified artifacts are matched to the exact action.  Missing or
+        lossy mappings yield INDETERMINATE and fail a required MATCH.
+
+   4.   AEC evaluates the evidence requirement.  A missing role,
+        mismatched action, stale fact, invalid signature, or unpinned
+        trust anchor yields UNSATISFIED with a reproducible reason.
+
+   5.   An optional Trust Program admits the bounded native results into
+        one or more stages.  Otherwise, the relying party proceeds
+        directly to local policy.
+
+   6.   The local enforcement point decides whether the satisfied
+        evidence is sufficient to authorize an attempted execution.
+
+   7.   The authoritative state store atomically reserves or consumes
+        the operation before provider entry.  Failure to durably fence
+        the operation is a refusal.
+
+   8.   The consequence owner durably records invocation intent and then
+        invokes the provider.  Recovery MUST conservatively classify a
+        stranded operation as INDETERMINATE unless non-entry is
+        established.
+
+   9.   Authenticated owner or provider evidence records EXECUTED,
+        FAILED, or INDETERMINATE.  An exception after possible provider
+        entry is INDETERMINATE, not a refund or retry grant.
+
+   10.  Authenticated reconciliation can resolve INDETERMINATE without
+        invoking the action again.  Evidence records, revocation
+        statements, and preservation artifacts remain separate, linked
+        records.
+
+6.  Programs and Multi-Stage Authorization
+
+6.1.  Trust Program
+
+   A Trust Program addresses approvals in which one rule cannot be
+   reduced to a single signature or a flat M-of-N quorum.  A program can
+   require, for example, a department approval followed by a compliance
+   approval, with a later finance stage unlocked only by signed receipts
+   from both predecessors.  Each stage binds the same root CAID and
+   action digest plus the exact predecessor stage-receipt digests.
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 10]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   Stage thresholds apply to heterogeneous evidence seats.  A native
+   human quorum remains one natively verified quorum component; a Trust
+   Program MUST NOT decompose several unverified labels and relabel them
+   a quorum.  Likewise, a stage receipt MUST NOT be treated as execution
+   evidence.
+
+6.2.  Receipt Program
+
+   A Receipt Program addresses a different problem: executing one
+   already authorized and bounded instruction.  A reference profile can
+   bind the exact instruction, CAID, stable operation identifier,
+   capability projection, executor selector, deadline, and result
+   projection; call the configured Gate's reserve-before-effect path;
+   and issue a terminal certificate over the resulting step sequence and
+   linked Gate evidence.
+
+   A Receipt Program is not an approval workflow, a smart contract, or
+   proof that the external result is true.  Its certificate is no
+   stronger than the configured Gate, consequence owner, signer custody,
+   evidence log, outcome evidence, and non-bypassability of the provider
+   path.
+
+6.3.  Single Consequence Ownership
+
+   For one operation, exactly one configured consequence owner is
+   responsible for provider entry and effect-outcome state.  A Trust
+   Program may select a Receipt Program or an Action Escrow release
+   profile as that owner, but the two MUST NOT recursively claim or
+   execute the same effect.  Selection, claim, invocation, and outcome
+   are separate transitions.
+
+7.  Optional Consequence-Control Profiles
+
+7.1.  Bounded Capability
+
+   Bounded Capability Receipts [EP-BOUNDED] describe a signed exact-
+   scope grant plus durable mutable state for registration, reservation,
+   and commitment.  The profile can limit amount, unit, currency,
+   deadline, delegation, and operation identity.  It does not define
+   settlement, and signed bytes alone do not enforce a shared budget.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 11]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+7.2.  Action Escrow
+
+   An Action Escrow profile can bind final agreement bytes, structured
+   material terms, party roles, milestone evidence, exact release
+   action, funding evidence, and a custodian result into one closed
+   release state machine.  A release is reserved before provider entry.
+   An ambiguous provider result remains release-indeterminate until
+   authenticated custodian reconciliation.
+
+   Reference implementation experience exists for document binding,
+   durable release state, evidence packaging, and bounded external
+   adapters.  That experience does not make EMILIA a custodian, escrow
+   provider, settlement network, legal adjudicator, or source of truth
+   for off-platform effects.  Licensing, custody, solvency, legal
+   enforceability, and provider finality remain outside this
+   architecture.
+
+7.3.  Distributed Trust Computer Deployment Pattern
+
+   The term Distributed Trust Computer (DTC) is used by some
+   implementations for a deployment pattern that composes action
+   identity, authorization evidence, local policy, bounded authority,
+   durable consequence control, terminal evidence, and optional
+   independent witnesses or platform attestation.  The distribution is
+   of trust evidence and control roles; this architecture does not
+   require a blockchain or consensus protocol.
+
+   DTC is not a wire protocol defined by this document.  The repository
+   contains reference building blocks for several parts of the pattern,
+   including Gate enforcement, CAID, AEC, bounded capabilities, Receipt
+   Programs, Action Escrow, witness verification, and build-attestation
+   verification.  Their composition is not, by itself, evidence of a
+   deployed DTC, independent operators, physical-hardware attestation,
+   cross-vendor interoperability, or settlement finality.
+
+8.  Revocation, Disputes, and Compensating Actions
+
+8.1.  Revocation and Current Status
+
+   A portable revocation statement [EP-REVOCATION] can establish that a
+   pinned revoker invalidated one exact target at an effective time.  A
+   pre-claim revocation can prevent new authority from advancing.  A
+   revocation learned after provider entry does not rewrite an effect as
+   though it never happened.
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 12]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   Possession of no revocation statement is not proof of current non-
+   revocation.  A relying party that requires current status needs a
+   fresh authenticated status view with completeness and rollback
+   properties appropriate to its deployment.
+
+8.2.  Disputes
+
+   A dispute records that a party contests an authorization, outcome,
+   amount, quality, or other fact.  Opening a dispute does not prove
+   either side correct, revoke a credential, reverse an external effect,
+   or grant authority for a remedy.  Dispute evidence therefore remains
+   separate from the original immutable action record.
+
+8.3.  Compensating Actions
+
+   A return, refund, rollback, cancellation, or other remedy that
+   creates an external effect is a new consequential action.  It needs
+   its own action object, CAID, authorization evidence, operation
+   identifier, consequence owner, outcome, and reconciliation path.  A
+   remedy links to the original action but does not mutate it.
+
+9.  Component Boundaries and Implementation Status
+
+   The following status descriptions are intentionally narrower than the
+   architecture:
+
+   *  [EP-RECEIPTS] defines an action-bound authorization evidence
+      artifact and verification profiles.  It is a published individual
+      Internet-Draft, not an RFC or adopted standard.
+
+   *  [EP-QUORUM] composes distinct approval ceremonies for multi-party
+      requirements.  It is a published individual Internet-Draft.
+
+   *  [CAID] defines material action identity and profile-bounded
+      matching.  It grants no authority.  It is a published individual
+      Internet-Draft.
+
+   *  [EP-AEC] defines evidence composition and requirement
+      satisfaction.  It does not make the local authorization or
+      execution decision.  It is a published individual Internet-Draft.
+
+   *  [EP-BOUNDED] defines a signed grant plus durable reserve-execute-
+      commit profile for scoped, budgeted multi-operation authority.  It
+      is a published experimental individual Internet-Draft.
+
+   *  [EP-AEB] defines the effect-boundary lifecycle and enforcement
+      composition.  At the time of this revision it is a companion
+      individual-draft proposal, not an adopted standard.
+
+
+
+Schrock                  Expires 28 January 2027               [Page 13]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   *  [EP-REVOCATION] defines a portable terminal revocation statement.
+      Its reference verifier and vectors provide implementation
+      experience, but they do not prove availability or completeness of
+      current status information.
+
+   *  Gate enforcement, Receipt Programs, and Action Escrow have
+      reference implementation profiles.  A development Trust Program
+      build supplies implementation experience for staged orchestration.
+      This architecture does not standardize those APIs, claim
+      independent implementations, or assert that any specific
+      deployment completely mediates all consequential paths.
+
+   *  DTC names a broader deployment pattern.  It is not a protocol or a
+      deployment claim in this document.
+
+10.  Relationship to Adjacent Work
+
+   The architecture is designed to compose with, rather than absorb,
+   adjacent work:
+
+   *  The DMSC Agent Gateway gap-analysis draft [DMSC-GW] provides
+      concrete multi-domain and physical-action gateway scenarios.  It
+      is an individual draft, not a claim of IETF consensus.
+
+   *  WIMSE Condition-Bounded Credentials [WIMSE-CBC] establish workload
+      identity and channel-possession properties.  They do not by
+      themselves establish per-action human authorization.
+
+   *  WIMSE HTTP Signatures [WIMSE-HTTP-SIG] protect selected end-to-end
+      HTTP material.  An AEB profile must distinguish signed end-to-end
+      action fields from intermediary context that is legitimately
+      mutable or removable.
+
+   *  WIMSE Authorization Evidence [WIMSE-EVIDENCE] defines transport of
+      authorization evidence in workload-mediated HTTP.  AEC and AEB can
+      consume such evidence through its native verifier without
+      redefining the carrier.
+
+   *  AuthZEN's Access Request and Approval Profile [AUTHZEN-AARP]
+      defines asynchronous approval tasks and policy-decision-point re-
+      evaluation.  EMILIA profiles are complementary when a deployment
+      requires portable exact-action evidence, distinct human
+      ceremonies, durable consumption, or consequence reconciliation.
+      Those properties are not implied by a generic approval result.
+
+   *  FIDO Verifiable Intent [FIDO-VI] describes portable evidence of
+      user intent.  The cited page describes a contribution and
+      prospective standardization, not a final FIDO specification.
+
+
+
+Schrock                  Expires 28 January 2027               [Page 14]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   *  KLRC agent authentication [KLRC-AUTH] separates agent credentials
+      and their lifecycle from application semantics.  Credential
+      validity and per-action authorization remain separate in this
+      architecture.
+
+   *  AGTP [AGTP] carries agent identity, authority, attribution, and
+      application payloads at the wire layer.  This architecture defines
+      evidence that can be carried or referenced by that transport and
+      checked after the live channel is gone.
+
+11.  Security Considerations
+
+   The primary architectural failure is category collapse.  A valid
+   signature can authenticate an untrusted assertion; it does not make
+   the assertion authoritative.  A current credential does not prove a
+   human approved one exact action.  A policy ALLOW does not prove a
+   named human approved.  A matching CAID does not prove either artifact
+   is valid.  A satisfied evidence requirement does not prove an action
+   is lawful, safe, wise, or correctly executed.
+
+   Trust inputs MUST NOT be silently imported from the artifact being
+   judged.  Native verifier exceptions, missing trust configuration,
+   stale status, store unavailability, signer failure, or ambiguous
+   effects must fail closed while preserving a reason suitable for
+   recovery and audit.
+
+   Consumption and reservation state must resist replay, rollback,
+   concurrent writers, replica divergence, operation relabeling, and
+   caller mutation.  A provider idempotency key reduces duplicate
+   effects but does not replace local atomic state or authenticated
+   reconciliation.
+
+   Human evidence remains vulnerable to coercion, fatigue, mis-
+   rendering, compromised devices, and collusion.  Device-bound user
+   verification, exact-action presentation, initiator exclusion, staged
+   programs, and distinct-human quorum reduce specified threats but do
+   not establish comprehension or correctness.
+
+   Optional witness or platform-attestation evidence is bounded by the
+   independence of operators, enrollment of keys, measured-build policy,
+   freshness, and verifier correctness.  A same-operator witness or
+   software TPM fixture must not be described as independent or
+   physical-hardware proof.
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 15]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+12.  Privacy Considerations
+
+   Action objects and evidence chains can expose identities,
+   relationships, amounts, destinations, medical or employment context,
+   infrastructure topology, and business intent.  CAID is a digest-based
+   identifier, not an anonymization mechanism; low-entropy action spaces
+   can permit guessing.
+
+   Profiles SHOULD minimize portable fields, prefer pairwise identifiers
+   where correlation is not required, separate evidence references from
+   raw source records, define retention and disclosure policy, and avoid
+   placing secrets or bearer claim tokens in logs.  Selective-disclosure
+   mechanisms do not remove the need to bind every disclosed projection
+   to the exact action and relying-party requirement.
+
+13.  Operational Considerations
+
+   Production profiles need durable state, stable operation identifiers,
+   clock monitoring, key custody, trust-root rotation, authenticated
+   status and outcome sources, retention controls, and explicit recovery
+   for INDETERMINATE operations.  Test-only in-memory stores, generated
+   keys, local witnesses, and software attestation fixtures must be
+   visibly separated from production configuration.
+
+   Operators SHOULD expose the distinct lifecycle verdicts and refusal
+   reasons rather than one boolean "authorized" field.  Monitoring
+   SHOULD alert on repeated indeterminate outcomes, stale revocation
+   views, reconciliation backlog, store conflicts, signer failures, and
+   attempted bypass of the configured consequence owner.
+
+14.  Changes from -01
+
+   This revision:
+
+   *  makes CAID, AEC, and AEB the explicit continuity core;
+
+   *  extends the vocabulary with durable reservation, invocation,
+      indeterminate outcome, and reconciliation states;
+
+   *  adds the recovery invariant that possible provider entry cannot
+      return silently to an executable state;
+
+   *  adds optional staged Trust Programs and distinguishes them from
+      Receipt Programs;
+
+   *  defines single consequence ownership and profiles bounded
+      capabilities, Receipt Programs, and Action Escrow without changing
+      core artifact formats;
+
+
+
+Schrock                  Expires 28 January 2027               [Page 16]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   *  describes DTC as a deployment pattern, not a deployed protocol or
+      consensus system;
+
+   *  clarifies pre-claim and late revocation, disputes, and
+      compensating actions; and
+
+   *  adds explicit implementation-status, privacy, and operational
+      claim boundaries.
+
+15.  IANA Considerations
+
+   This document has no IANA actions.
+
+16.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+17.  Informative References
+
+   [AGTP]     Hood, C., "Agent Transfer Protocol (AGTP)", Work in
+              Progress, Internet-Draft, draft-hood-independent-agtp-09,
+              28 June 2026, <https://datatracker.ietf.org/doc/draft-
+              hood-independent-agtp/>.
+
+   [AUTHZEN-AARP]
+              McGuinness, K., "AuthZEN Access Request and Approval
+              Profile - Draft 1", 9 July 2026,
+              <https://openid.github.io/authzen/authzen-access-request-
+              approval-profile-1_0.html>.
+
+   [CAID]     Schrock, I., "The Canonical Action Identifier (CAID)",
+              Work in Progress, Internet-Draft, draft-schrock-canonical-
+              action-identifier-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-canonical-
+              action-identifier/>.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 17]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   [DMSC-GW]  Dunbar, L., Wang, Y., and B. Liu, "Deployment Scenarios
+              and Gap Analysis for AI Agent Gateway", Work in Progress,
+              Internet-Draft, draft-dunbar-dmsc-gw-scenarios-gap-
+              analysis-02, 2 July 2026,
+              <https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-
+              scenarios-gap-analysis/>.
+
+   [EP-AEB]   Schrock, I., "The Action Evidence Boundary for
+              Consequential Agent Effects", Work in Progress, Internet-
+              Draft, draft-schrock-action-evidence-boundary-00, July
+              2026, <https://datatracker.ietf.org/doc/draft-schrock-
+              action-evidence-boundary/>.
+
+   [EP-AEC]   Schrock, I., "Authorization Evidence Chains: Composing
+              Heterogeneous Agent-Action Evidence (EP-AEC)", Work in
+              Progress, Internet-Draft, draft-schrock-ep-authorization-
+              evidence-chain-04, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-evidence-chain/>.
+
+   [EP-BOUNDED]
+              Schrock, I., "Bounded Capability Receipts and Durable
+              Spend Control for Agent Actions", Work in Progress,
+              Internet-Draft, draft-schrock-ep-bounded-capability-
+              receipts-00, July 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-ep-bounded-capability-receipts/>.
+
+   [EP-QUORUM]
+              Schrock, I., "Multi-Party Quorum Authorization for High-
+              Risk Agent Actions (EP-QUORUM)", Work in Progress,
+              Internet-Draft, draft-schrock-ep-quorum-03, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              quorum/>.
+
+   [EP-RECEIPTS]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-08, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [EP-REVOCATION]
+              Schrock, I., "Portable Revocation Statements for Action-
+              Bound Authorization Artifacts", Work in Progress,
+              Internet-Draft, draft-schrock-ep-revocation-statement-00,
+              July 2026, <https://datatracker.ietf.org/doc/draft-
+              schrock-ep-revocation-statement/>.
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 18]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+   [FIDO-VI]  FIDO Alliance, "Building the Trust Layer for Agentic
+              Payments with AP2 and Verifiable Intent", 26 May 2026,
+              <https://fidoalliance.org/building-the-trust-layer-for-
+              agentic-payments-with-ap2-and-verifiable-intent/>.
+
+   [KLRC-AUTH]
+              Kasselman, P., Lombardo, J., Rosomakho, Y., Campbell, B.,
+              Steele, N., and A. Parecki, "AI Agent Authentication and
+              Authorization", Work in Progress, Internet-Draft, draft-
+              klrc-aiagent-auth-03, July 2026,
+              <https://datatracker.ietf.org/doc/draft-klrc-aiagent-
+              auth/>.
+
+   [WIMSE-CBC]
+              Nguyen-Huu, T., Nikitin, S., and J. O'Leary, "Condition-
+              Bounded Credentials for Workload and Agent Identity: Non-
+              Exfiltratable Keys and Validity by Presence", Work in
+              Progress, Internet-Draft, draft-winmagic-wimse-condition-
+              bounded-credentials-01, July 2026,
+              <https://datatracker.ietf.org/doc/draft-winmagic-wimse-
+              condition-bounded-credentials/>.
+
+   [WIMSE-EVIDENCE]
+              Munoz, C., "Signed Authorization-Evidence Records for
+              WIMSE-Authorized AI Agent Actions", Work in Progress,
+              Internet-Draft, draft-munoz-wimse-authorization-evidence-
+              01, July 2026, <https://datatracker.ietf.org/doc/draft-
+              munoz-wimse-authorization-evidence/>.
+
+   [WIMSE-HTTP-SIG]
+              Salowey, J. A. and Y. Sheffer, "WIMSE Workload-to-Workload
+              Authentication with HTTP Signatures", Work in Progress,
+              Internet-Draft, draft-ietf-wimse-http-signature-05, July
+              2026, <https://datatracker.ietf.org/doc/draft-ietf-wimse-
+              http-signature/>.
+
+Appendix A.  Acknowledgments
+
+   Eric Rescorla's review prompted a sharper separation between baseline
+   verifier security properties and the specific need for third-party,
+   cross-domain validation.  Linda Dunbar's Agent Gateway scenarios
+   supplied a concrete multi-operator use case.  Discussion of WIMSE
+   signatures and authorization evidence sharpened the boundary between
+   end-to-end signed material and mutable intermediary context.  Work on
+   agent credentials, authorization transports, and agent transfer
+   helped clarify why identity, policy, action evidence, execution, and
+   outcome remain separate.  These acknowledgments do not imply
+   endorsement of this document.
+
+
+
+Schrock                  Expires 28 January 2027               [Page 19]
+
+Internet-Draft               EP Architecture                   July 2026
+
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 20]

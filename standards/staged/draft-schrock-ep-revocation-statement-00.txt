@@ -1,0 +1,840 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                              27 July 2026
+Expires: 28 January 2027
+
+
+Portable Revocation Statements for Action-Bound Authorization Artifacts
+                draft-schrock-ep-revocation-statement-00
+
+Abstract
+
+   Signed authorization artifacts for agent actions (receipts, commits,
+   delegations) are being defined faster than the means to retract them.
+   Many deployed systems use live status services, revocation lists, or
+   issuer datastores.  This document defines a complementary portable
+   form for action-bound authorization artifacts: a signed, offline-
+   verifiable claim that a named logical target, addressed by identifier
+   and action commitment, is revoked.  Verification is fail-closed and
+   evaluates a fixed set of checks: version, closed object structure,
+   target binding, a revoker key pinned by the verifier and, for newly
+   emitted artifacts, bound to a full digest-derived key identifier (a
+   self-asserted key confers nothing), the presence of a strict
+   revocation instant that has taken effect by the verifier's decision
+   time, and an independently recomputed signature.  The statement
+   proves that a named, pinned revoker revoked this specific target.  It
+   does not prove that every relying party saw it, and offline
+   verification cannot prove the absence of a revocation that was not
+   presented.  A terminal revocation never ages out; current non-
+   revocation requires separate authenticated, policy-fresh status
+   evidence.  A Trust Program profile binds revocation to the complete
+   execution claim, and requires revocation-versus-claim to be resolved
+   atomically; a revocation learned after a claim never rewrites an
+   effect that may already have occurred.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+
+
+Schrock                  Expires 28 January 2027                [Page 1]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   This Internet-Draft will expire on 28 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  The Revocation Statement (EP-REVOCATION-v1) . . . . . . . . .   3
+     2.1.  Target  . . . . . . . . . . . . . . . . . . . . . . . . .   4
+     2.2.  Trust Program Execution-Claim Target Profile  . . . . . .   4
+     2.3.  Revoker, Instant, and Reason  . . . . . . . . . . . . . .   5
+     2.4.  Proof . . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   3.  Signed Payload and Canonicalization . . . . . . . . . . . . .   6
+   4.  Verification (Fail-Closed)  . . . . . . . . . . . . . . . . .   7
+   5.  Aggregation over Multiple Statements  . . . . . . . . . . . .   9
+   6.  Current Status Is a Separate Input  . . . . . . . . . . . . .   9
+   7.  Atomic Revocation versus Execution Claim  . . . . . . . . . .   9
+   8.  Generalization and Target-Profile Boundary  . . . . . . . . .  10
+   9.  What a Revocation Statement Proves and Does Not Prove . . . .  10
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .  11
+   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  12
+   12. References  . . . . . . . . . . . . . . . . . . . . . . . . .  12
+     12.1.  Normative References . . . . . . . . . . . . . . . . . .  12
+     12.2.  Informative References . . . . . . . . . . . . . . . . .  13
+   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .  14
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  15
+
+1.  Introduction
+
+   The evidence stack for high-risk agent actions produces durable
+   signed artifacts: authorization receipts
+   [I-D.schrock-ep-authorization-receipts], policy commits, delegation
+   records.  Each is designed to be carried, presented, and verified
+   offline, without a call back to its issuer.  The initial
+   implementation of this artifact family represented revocation only as
+
+
+
+Schrock                  Expires 28 January 2027                [Page 2]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   a server-side status flag.  That state is useful to online
+   enforcement but is not itself a portable record that another party
+   can verify offline.
+
+   This document defines a portable terminal record for one lifecycle
+   transition: revocation of an action-bound authorization artifact.  It
+   defines a revocation statement, a small signed object that binds one
+   logical target, carries who revoked it, when, and why, and verifies
+   offline under a key the verifier has pinned in advance.  The
+   statement is deliberately the same shape as the artifacts it
+   retracts: portable, digest-bound, and verifiable with no network.
+   Other ecosystems provide CRLs, OCSP responses, status lists, and
+   signed status assertions; this document specifies the target-binding
+   and verification rules for the artifact family described here.
+
+   The scope discipline of this document is strict.  A revocation
+   statement is the analogue of a CRL entry or an OCSP response
+   [RFC5280] [RFC6960], not of the CRL or OCSP service: it proves that a
+   specific revocation is real and binds a specific target.  It does
+   not, and cannot, tell a relying party about revocations it was never
+   handed.  Section 9 states plainly what verification proves and what
+   it does not.
+
+1.1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Target: the logical authorization instance being revoked, addressed
+   by a type, an identifier, and the action commitment the artifact
+   carries.  The action commitment is not necessarily a digest of
+   arbitrary artifact-wrapper bytes.  Revoker: the party asserting the
+   revocation.  Relying party: the party deciding whether to honor the
+   artifact the statement concerns.  Pinned key: a public key the
+   relying party associated with a revoker identifier out of band,
+   before verification.
+
+2.  The Revocation Statement (EP-REVOCATION-v1)
+
+   A revocation statement is a JSON object:
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 3]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   {
+     "@version": "EP-REVOCATION-v1",
+     "target_type": "receipt",
+     "target_id": "rcpt_01J...",
+     "action_hash": "sha256:<hex>",
+     "revoker_id": "ep:key:revoker#1",
+     "revoked_at": "2026-06-14T20:41:00Z",
+     "reason": "key compromise suspected",
+     "proof": {
+       "algorithm": "Ed25519",
+       "revoker_key_id": "ep:revoker-key:sha256:<64-hex>",
+       "signature_b64u": "<base64url Ed25519 signature>",
+       "public_key": "<base64url SPKI DER>"
+     }
+   }
+
+2.1.  Target
+
+   target_type names the kind of artifact being revoked.  This version
+   recognizes exactly three values: "receipt", "commit", and
+   "delegation". target_id is the identifier of the artifact.
+   action_hash is the action commitment the artifact carries, or the
+   commit hash for a commit target: a sha256 digest, carried either as
+   bare lowercase hex or with a "sha256:" prefix.  It does not identify
+   arbitrary unsigned wrapper bytes.
+
+   Both target_id AND action_hash are part of the binding.  A statement
+   revokes the (target_type, target_id, action_hash) triple, never just
+   an identifier.  Binding only an identifier would let a revocation
+   minted for one action be replayed against a reissued artifact
+   carrying the same identifier but a different action; the digest
+   closes that.
+
+2.2.  Trust Program Execution-Claim Target Profile
+
+   A Trust Program execution claim uses the existing "commit"
+   target_type.  Its target_id is the exact operation_id.  Its
+   action_hash is the lowercase sha256 digest of the JCS-canonicalized
+   EP-GATE-TRUST-PROGRAM-REVOCATION-TARGET-v1 object below:
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 4]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   {
+     "@version": "EP-GATE-TRUST-PROGRAM-REVOCATION-TARGET-v1",
+     "instance_id": "program-instance-123",
+     "program_digest": "sha256:<complete program digest>",
+     "program_version": 1,
+     "root_caid": "caid:1:<type>:jcs-sha256:<digest>",
+     "action_digest": "sha256:<exact action projection>",
+     "receipt_context_digest":
+       "sha256:<digest of exact pinned receipt context>",
+     "operation_id": "provider-operation-123",
+     "terminal_stage_receipt_digests": ["sha256:<digest>"],
+     "consequence_mode": "receipt-program",
+     "capability_template_digest": "sha256:<digest>",
+     "escrow_profile_digest": null
+   }
+
+   The object is CLOSED. terminal_stage_receipt_digests is sorted
+   lexicographically and contains the exact receipts on which the claim
+   depends. consequence_mode is exactly "receipt-program" or "action-
+   escrow".  Exactly one owner digest is non-null: the capability
+   template for Receipt Program, or the escrow profile for Action
+   Escrow.  The relying party MUST derive every member from its pinned
+   program, durable instance state, and executor-owned operation
+   context.  It MUST NOT copy any member from the revocation statement
+   or an untrusted presenter.  A change to any program, action,
+   operation, terminal-stage, receipt issuer context, or consequence-
+   owner binding produces a different target. receipt_context_digest is
+   the SHA-256 digest of the JCS-canonicalized closed object containing
+   exactly issuer, tenant, environment, audience, and key_id from the
+   relying party's pinned Trust Program receipt context.
+
+   This profile does not add a fourth core target_type and therefore
+   does not change the closed EP-REVOCATION-v1 statement schema.  It
+   defines how one logical Trust Program execution claim is represented
+   by the already-recognized commit target.
+
+2.3.  Revoker, Instant, and Reason
+
+   revoker_id names the party asserting the revocation.  The verifier
+   resolves this identifier against its own pinned key registry
+   (Section 4); the identifier alone confers nothing. revoked_at is the
+   instant the revocation took effect, as an [RFC3339] timestamp.  It is
+   REQUIRED: it is the effective-time anchor, and a statement without it
+   is refused. reason is a human-readable cause; it MAY be null.
+   Because reason and revoked_at are inside the signed payload, neither
+   can be edited after signing.
+
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 5]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+2.4.  Proof
+
+   proof carries the revoker's detached signature. algorithm is
+   "Ed25519" [RFC8032].  New producers MUST set revoker_key_id to
+   ep:revoker-key:sha256:<64-hex>, derived from the complete SHA-256
+   digest of the SPKI DER bytes. public_key is the revoker's public key
+   as base64url [RFC4648] of the SPKI DER encoding.  signature_b64u is
+   the base64url of a detached Ed25519 signature over the signed payload
+   defined in Section 3.  The verifier recomputes that payload; this
+   version defines no carried payload blob.
+
+   For compatibility with historical EP-REVOCATION-v1 local key
+   identifiers emitted before the digest-derived identifier requirement,
+   a verifier MAY accept a bounded local revoker_key_id only when
+   public_key is a non-empty, parseable Ed25519 SPKI that exactly equals
+   the relying-party-pinned SPKI and any key_id in that pin exactly
+   repeats the same local label.  A value beginning with ep:revoker-
+   key:sha256: MUST NOT enter this compatibility path unless it is the
+   complete identifier derived from the SPKI.  This rule adds no trust
+   to the label; trust remains the exact out-of-band SPKI pin.  The
+   exception applies only to identifier syntax: it does not grandfather
+   open object layouts, signed_payload_b64u, scope_note, or any other
+   extra member.
+
+   A statement without a proof is a bare claim.  It MUST be refused by
+   verifiers: no signature verifies, so the signature checks fail
+   closed.  A producer MUST NOT emit a statement that lacks any of
+   target_type, target_id, action_hash, revoker_id, revoked_at, or a
+   signature; the reference implementation's builder refuses to mint
+   one.
+
+   The statement and proof are CLOSED objects.  A verifier MUST refuse
+   unknown members at either level, even when the signature verifies
+   over SIGNED_FIELDS.  Additional metadata belongs in a separately
+   typed evidence object.
+
+3.  Signed Payload and Canonicalization
+
+   The revoker's signature is bound to the canonical bytes of a fixed
+   field set, SIGNED_FIELDS: the object containing exactly "@version",
+   "target_type", "target_id", "action_hash", "revoker_id",
+   "revoked_at", and "reason", with any absent member replaced by null.
+   The canonical serialization is deterministic JSON: object members
+   sorted lexicographically by key at every nesting level, no
+   insignificant whitespace, standard JSON string escaping.  For the
+   value domain a revocation statement uses (strings and null), this
+   serialization agrees with the JSON Canonicalization Scheme [RFC8785].
+   The signed bytes are the UTF-8 encoding of that serialization.
+
+
+
+Schrock                  Expires 28 January 2027                [Page 6]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   Member order in the transmitted statement is irrelevant;
+   canonicalization sorts keys.  The proof object itself is not part of
+   the signed payload.
+
+4.  Verification (Fail-Closed)
+
+   Verification takes three inputs: the target the relying party holds,
+   the candidate statement, and the relying party's options (its pinned
+   revoker key registry and decision time).  The target MUST be derived
+   from the artifact the relying party holds, never taken from the
+   statement: the statement is the claim under test, not the source of
+   what it is tested against.
+
+   The verifier evaluates nine named checks.  The verdict is valid if
+   and only if every check passes; any single failure yields an invalid
+   verdict.  Failure is a structured refusal carrying the failed checks
+   and reasons, never an exception: malformed, missing, or non-
+   canonicalizable input produces a refusal, not a crash.
+
+   version  The statement's "@version" MUST equal "EP-REVOCATION-v1".  A
+      statement under any other tag may carry different semantics and is
+      refused.
+
+   structure  The statement and proof MUST contain exactly the members
+      defined in Section 2.  Unknown or missing members are refused;
+      unsigned extensions cannot acquire accidental semantics.
+
+   target_bound  The statement MUST bind the same logical target the
+      verifier holds.  If no target is supplied, or the held target's
+      target_type is not one of the three recognized values, its
+      target_id is empty, or its action_hash is not a 64-hex SHA-256
+      digest, the check fails.  The statement MUST independently meet
+      the same structural requirements.  Otherwise its target_type and
+      target_id MUST equal the held target's, and the statement's
+      action_hash MUST equal the held target's action_hash after
+      normalization (an optional "sha256:" prefix is stripped and hex is
+      compared case-insensitively).  A statement whose target_id matches
+      but whose action_hash differs is the revoke-A-presented-for-B case
+      and MUST be refused: revoking A never revokes B.
+
+   revoker_key_pinned  The statement's revoker_id MUST resolve to a
+      public key the verifier pinned in advance.  No pinned entry (or no
+      registry at all) means refusal: a self-asserted key confers
+      nothing, since anyone can mint a keypair and sign "X is revoked".
+      If the proof carries a public_key, it MUST equal the pinned key; a
+      differing key is a key-substitution attempt and is refused.  The
+      verifier MUST NOT fall back to the proof's own public_key.
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 7]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   revoker_key_bound  For a digest-profile artifact, the verifier MUST
+      derive ep:revoker-key:sha256:<64-hex> from the complete SPKI DER
+      bytes and require exact agreement with proof.revoker_key_id and
+      any key_id carried by the relying-party pin.  A substituted or
+      truncated identifier is refused.  The historical-v1 local-label
+      compatibility rule in Section 2.4 applies only under an exact,
+      non-empty, parseable Ed25519 SPKI pin.
+
+   revoked_at_present  revoked_at MUST be present and parse as a strict
+      RFC 3339 timestamp.  Permissive calendar normalization, such as
+      accepting 30 February, is not allowed.  A statement without a
+      revocation instant has no record of when the revocation took
+      effect and is refused.
+
+   effective_at_or_before_T  revoked_at MUST be at or before the
+      verifier's decision time.  A correctly signed statement with a
+      future effective instant does not establish that the target is
+      revoked at the current decision time and is refused until that
+      instant.
+
+   revoker_signature_valid  The proof algorithm MUST be Ed25519, and the
+      signature MUST verify under the PINNED key and no other, over the
+      payload bytes the verifier itself recomputes per Section 3.  A
+      missing proof, missing signature, or forged signature is refused.
+
+   signature_binds_statement  The bytes the signature is checked against
+      are recomputed from the presented statement fields.  If any signed
+      field (the target, revoker_id, revoked_at, or reason) was edited
+      after signing, the recomputed bytes differ from the signed bytes
+      and the statement is refused.  If the presented fields cannot be
+      canonicalized, no payload bytes exist and no signature can verify
+      against them: refusal, fail-closed.  If no statement is presented
+      at all, this check and the previous one both fail: an absent
+      statement confers nothing.
+
+   The complete refusal set, restated: wrong or missing version; unknown
+   or missing statement or proof members; no statement presented; no
+   target supplied; unrecognized target_type; target_type, target_id, or
+   action_hash mismatch; unpinned revoker_id; proof key differing from
+   the pinned key; a revoker_key_id satisfying neither the full SPKI
+   digest rule nor the exact-pinned historical-v1 compatibility rule; an
+   empty or non-Ed25519 proof key; a non-string revoker_id; absent or
+   malformed revoked_at; a revoked_at later than the decision time;
+   absent, forged, or non-binding signature; and non-canonicalizable
+   presented fields; malformed target ids or digests; and an algorithm
+   label other than Ed25519.
+
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 8]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+5.  Aggregation over Multiple Statements
+
+   A relying party may have collected several statements from several
+   sources.  The aggregate rule is: the target is revoked, as far as
+   this collection shows, if and only if at least one statement in the
+   collection verifies against the target under Section 4.  The matching
+   statement need not be first or alone; statements that are validly
+   signed but bind other targets are ignored, not errors.  Anything that
+   is not a collection yields false.
+
+   The aggregate rule is not a completeness oracle.  A false result
+   means "no valid binding statement is present in this collection",
+   never "this target was never revoked anywhere".
+
+6.  Current Status Is a Separate Input
+
+   A revocation is a terminal negative fact.  Once its revoked_at
+   instant has been reached, a verifier MUST NOT reject it because it is
+   old.  Passage of time cannot transform REVOKED into acceptable.
+   Implementations that retain a legacy maximum-age option for API
+   compatibility MUST ignore that option when verifying a revocation
+   statement.
+
+   Current non-revocation is a different claim.  A relying party that
+   needs to establish that no revocation is known as of time T MUST
+   obtain separately authenticated status evidence and apply a relying-
+   party-selected freshness bound.  Missing, stale, future-dated,
+   rolled-back, or incomplete status evidence MUST NOT be treated as
+   proof of non-revocation.
+
+   The Token Status List specification [I-D.ietf-oauth-status-list]
+   defines a status substrate for JOSE- and COSE-secured tokens.  This
+   document does not redefine that substrate.  A future action-artifact
+   binding may profile an existing status mechanism while preserving the
+   logical (target_type, target_id, action_hash) binding defined here.
+
+7.  Atomic Revocation versus Execution Claim
+
+   For a Trust Program target defined in Section 2.2, the effective
+   revocation check and the transition that claims the consequence MUST
+   be linearized in one durable atomic boundary.  If an authentic,
+   binding revocation whose revoked_at is at or before the claim
+   decision commits first, the claim MUST be refused.  If the claim
+   commits first, a later revocation is recorded as late and prevents
+   future authority; it MUST NOT relabel an executed, refused,
+   indeterminate, or otherwise in-flight consequence as though no
+   provider entry occurred.
+
+
+
+
+Schrock                  Expires 28 January 2027                [Page 9]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   A deployment that cannot establish which transition won, including
+   one that checks revocation in a different store without a shared
+   atomic protocol, MUST return an indeterminate or refusal outcome.  It
+   MUST NOT infer success, retry the effect, or reconstruct ordering
+   from wall-clock timestamps alone.  Authenticated reconciliation may
+   resolve an indeterminate effect; it does not execute the effect
+   again.
+
+   Revocation, dispute, and remedy are separate lifecycle facts.  A
+   revocation withdraws authority for the exact target.  It does not
+   open or resolve a dispute, establish liability, select a remedy,
+   authorize a compensating action, or undo an effect.  Those
+   transitions require their own evidence and independently evaluated
+   authority.
+
+8.  Generalization and Target-Profile Boundary
+
+   Nothing in the statement or its verification is specific to one
+   artifact kind.  The binding is the (target_type, target_id,
+   action_hash) triple, so the mechanism applies to any target profile
+   that defines those values: this version enumerates authorization
+   receipts, commits, and delegation records as the recognized target
+   types.  A verifier conforming to this version refuses a held target
+   of any other type; extending the recognized set is a matter for a
+   future version, not for unilateral verifier behavior.
+
+   For receipt and delegation targets, action_hash is the action
+   commitment defined by that artifact profile.  It is not a digest of
+   arbitrary unsigned wrapper serialization.  Two wrappers with the same
+   target_type, target_id, and action_hash are the same logical
+   revocation target under this version.  A profile that requires byte-
+   for-byte artifact identity MUST define and bind a separate artifact
+   digest.
+
+   The Trust Program profile in Section 2.2 uses the recognized "commit"
+   target and defines action_hash as the digest of a closed, exact
+   execution-claim projection.  A generic commit verifier MUST NOT
+   invent a looser Trust Program projection or omit terminal-stage and
+   consequence- owner bindings.
+
+9.  What a Revocation Statement Proves and Does Not Prove
+
+   Offline verification of a revocation statement proves, with no
+   network and no trust in the bearer:
+
+   *  a named revoker, whose key the relying party pinned, signed the
+      revocation (attribution, not authority);
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 10]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   *  the statement binds the same logical (target_type, target_id,
+      action_hash) the relying party is reasoning about;
+
+   *  the signed fields, including revoked_at and reason, were not
+      edited after signing; and
+
+   *  the revocation had taken effect by the verifier's decision time.
+
+   It does NOT prove:
+
+   *  that every relying party saw the revocation.  A statement proves
+      the revoker revoked; distribution is a separate problem, and a
+      revoker holding a valid statement has proof it acted, not proof
+      anyone received it.
+
+   *  the absence of a later revocation.  Offline verification cannot
+      answer "has this authorization been revoked by a statement I do
+      not hold?"; that is the liveness and transparency problem that
+      CRLs and OCSP [RFC5280] [RFC6960] exist to address, and it is out
+      of scope here.  Treating absence-of-statement as proof-of-not-
+      revoked is a relying-party error this mechanism cannot prevent.  A
+      relying party that needs liveness MUST obtain authenticated,
+      policy-fresh status evidence as described in Section 6.
+
+   *  that the revoker was entitled to revoke this target.  The
+      signature proves who signed and what it binds; whether that party
+      had the authority to revoke is the relying party's pinning policy
+      (whom it pins as a revoker for a given target), not a property of
+      the statement.
+
+   *  byte-for-byte identity of unsigned artifact wrappers beyond the
+      action commitment, unless another target profile supplies and
+      binds a separate artifact digest.
+
+10.  Security Considerations
+
+   Pinning is the trust boundary.  The only trust input this mechanism
+   adds is the revoker's signature under a key the verifier pinned out
+   of band.  Every attack in the conformance catalogue that involves
+   keys reduces to one rule: the verdict honors the pinned key and
+   nothing else.  An unpinned revoker is refused even when its embedded
+   key verifies its own signature; a pinned revoker presenting a
+   different key is refused even when the signature math passes under
+   the presented key.
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 11]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   One closed representation.  The verifier refuses unknown statement
+   and proof members and derives the signed bytes from the presented
+   fields.  A second producer-supplied payload representation is
+   forbidden.
+
+   Bind the digest, not just the identifier.  The revoke-A-presented-
+   for-B replay, where a genuine revocation for one action is stapled to
+   another artifact, is refused because action_hash is part of the
+   binding and of the signed bytes.
+
+   Fail closed means refuse with a reason.  Malformed statements, absent
+   statements, unparseable timestamps, and non-canonicalizable fields
+   all produce a structured refusal naming the failed check;
+   verification never throws and never degrades to acceptance.
+
+   A revocation statement grants nothing.  A valid statement only
+   retracts; it cannot be replayed to authorize, and a forged one fails
+   signature verification.  The residual harm of a forged statement that
+   somehow verified would be denial of service (treating a live
+   authorization as revoked), which is why the pinning rule and the
+   logical-target-binding rule both gate acceptance.
+
+   Terminality is monotonic.  A verifier MUST NOT apply a freshness
+   window to a revocation fact.  Freshness applies only to separately
+   authenticated status evidence.  Deployments MUST NOT advertise
+   absence of a revocation statement as proof of current non-revocation;
+   Section 9 is normative reading for anyone relying on this mechanism.
+
+   Atomicity is part of the Trust Program target profile, not a property
+   supplied by a signature.  A valid revocation checked before a non-
+   atomic provider claim can still race with execution.  Implementations
+   claiming this profile MUST demonstrate one linearization point for
+   the exact revocation target and consequence claim, and MUST preserve
+   claimed and indeterminate effects for reconciliation when revocation
+   arrives late.
+
+11.  IANA Considerations
+
+   This document has no IANA actions.  A future revision may register a
+   media type for the statement.
+
+12.  References
+
+12.1.  Normative References
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 12]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
+              Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
+              <https://www.rfc-editor.org/info/rfc3339>.
+
+   [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
+              Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
+              <https://www.rfc-editor.org/info/rfc4648>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032,
+              DOI 10.17487/RFC8032, January 2017,
+              <https://www.rfc-editor.org/info/rfc8032>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+12.2.  Informative References
+
+   [I-D.ietf-oauth-status-list]
+              Looker, T., Bastian, P., and C. Bormann, "Token Status
+              List (TSL)", Work in Progress, Internet-Draft, draft-ietf-
+              oauth-status-list-21, June 2026,
+              <https://datatracker.ietf.org/doc/draft-ietf-oauth-status-
+              list/>.
+
+   [I-D.schrock-ep-authorization-receipts]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-08, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [RFC5280]  Cooper, D., Santesson, S., Farrell, S., Boeyen, S.,
+              Housley, R., and W. Polk, "Internet X.509 Public Key
+              Infrastructure Certificate and Certificate Revocation List
+              (CRL) Profile", RFC 5280, DOI 10.17487/RFC5280, May 2008,
+              <https://www.rfc-editor.org/info/rfc5280>.
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 13]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   [RFC6960]  Santesson, S., Myers, M., Ankney, R., Malpani, A.,
+              Galperin, S., and C. Adams, "X.509 Internet Public Key
+              Infrastructure Online Certificate Status Protocol - OCSP",
+              RFC 6960, DOI 10.17487/RFC6960, June 2013,
+              <https://www.rfc-editor.org/info/rfc6960>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+Appendix A.  Implementation Status
+
+   Apache-2.0 verifier implementations are published in JavaScript,
+   Python, and Go in the EMILIA Protocol repository.  They implement
+   single-statement verification with the nine named checks and the
+   aggregate rule over a collection.  A JSON Schema is published at
+   public/schemas/ep-revocation.schema.json.  An attack-catalogue-first
+   vector file (conformance/vectors/revocation.v1.json) enumerates
+   seventeen rejection cases every conformant verifier is required to
+   refuse (forged signature; unpinned revoker key; substituted pinned
+   key; different target_id; different action_hash; wrong version;
+   fields tampered after signing; missing revoked_at; future effective
+   instant; malformed target shape; mismatched algorithm label; full
+   revoker-key-id substitution; unsigned top-level field injection; and
+   unsigned proof payload injection; empty proof-key substitution; non-
+   string revoker-id confusion; and timestamp over-precision) and four
+   acceptance cases (a well-formed binding statement, the aggregate rule
+   finding one valid binding statement among unrelated ones, and an old
+   terminal revocation remaining valid despite a legacy maximum-age
+   option, plus historical-v1 local key-label compatibility under the
+   exact pinned SPKI).  The negative vectors are minted with real keys
+   and real detached signatures over canonical bytes, so each is a
+   genuine forgery attempt rather than hand-edited JSON that fails for
+   an unrelated reason.  The executable suite contains 19 real-signature
+   cases and agrees across the JavaScript, Python, and Go
+   implementations.  Those ports are maintained in one repository by one
+   team; this is cross-language consistency evidence, not an independent
+   implementation claim.
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 14]
+
+Internet-Draft            Revocation Statement                 July 2026
+
+
+   The generic verifiers can validate the resulting closed "commit"
+   triple for the Trust Program target profile.  A development
+   implementation has durable compare-and-swap consequence claims, exact
+   program/action/stage-receipt/owner bindings, and preserves claimed or
+   indeterminate consequences across invalidation.  It does not yet
+   expose one end-to-end adapter that derives this target object,
+   verifies a portable statement, and commits revocation-versus-claim in
+   the same durable transaction.  This draft therefore makes no
+   completed implementation or independent-interoperability claim for
+   that profile.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 28 January 2027               [Page 15]
