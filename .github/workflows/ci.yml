@@ -411,6 +411,15 @@ jobs:
       - name: Check public conformance claims against the current manifest
         run: npm run check:public-conformance-claims
       - name: Check published proof statistics against an executed test run
+        env:
+          # generate-proof-stats.mjs runs the full vitest suite, and
+          # tests/grace-curtailment.test.js execFileSync-spawns
+          # examples/grace/proof-of-curtailment-vector.mjs as a bare `node`
+          # child process. Vitest's own transform pipeline covers everything
+          # it loads directly, but not that grandchild subprocess, which
+          # still needs the loader hook to resolve .js specifiers renamed to
+          # .ts during the migration.
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: npm run check:proof-stats
       - name: Check generated LLM context against current evidence manifests
         run: npm run check:llm-context
