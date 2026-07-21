@@ -71,7 +71,7 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
   it('surfaces the executable CAID mapping boundary', () => {
     expect(context.current_evidence.caid).toMatchObject({
       core_vectors: 48,
-      mapping_vectors: 18,
+      mapping_vectors: 23,
       same_team_ports: ['javascript', 'python', 'go'],
     });
     expect(context.current_evidence.caid.mapping_verdicts).toContain('INDETERMINATE');

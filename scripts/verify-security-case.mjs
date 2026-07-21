@@ -19,6 +19,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyReproduciblePackage } from './verify-reproducible-package.mjs';
 import { strictParseGate } from '../conformance/runners/strict-json.mjs';
 import { buildSuiteContract, compareResultRow, executionSuiteFile, validateResultRows, } from '../conformance/result-contract.mjs';
+// The governed security case dynamically executes TypeScript-migrated source
+// whose historical import specifiers still end in .js. Register the same
+// resolver CI uses so `npm run check:security-case` is not CI-environment-only.
+import './ts-loader/register.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = path.join(ROOT, 'security', 'claims.v1.json');
 const DEFAULT_RESOLVED = path.join(ROOT, 'security', 'security-case.json');

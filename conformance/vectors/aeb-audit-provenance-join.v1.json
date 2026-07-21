@@ -1,10 +1,26 @@
 {
   "@version": "EMILIA-AEB-AUDIT-PROVENANCE-JOIN-V1",
   "status": "profile-sketch",
-  "description": "Synthetic cross-layer join vector for an AEB decision referenced by an AUDIT-shaped record and C2PA, OTEL, and SCITT provenance references. This does not implement or claim conformance with C2PA, AUDIT, OTEL, or SCITT.",
+  "description": "Synthetic opaque-reference correlation fixture for an AEB decision referenced by an AUDIT-shaped record and C2PA, OTEL, and SCITT references. It validates CAID derivation and exact reference binding, but does not parse or natively verify C2PA, AUDIT, OTEL, or SCITT artifacts and does not claim conformance with them.",
+  "action_object": {
+    "action_type": "travel.cancel-notify.1",
+    "primary_action": "!CANCEL",
+    "resource": "flight",
+    "cancel_time": "t+1pm",
+    "secondary_action": "!EMAIL",
+    "notification_recipient": "zhangsan",
+    "constraint_type": "loc",
+    "constraint_value": "Beijing",
+    "constraint_time": "t+1am",
+    "constraint_subject": "me",
+    "entities_digest": "sha256:240a2e00860cac72b5a57fe8ef12209325416c8309b9e570d88714358a17987d",
+    "constraints_digest": "sha256:1a6512e2ba3d3f9da43f22f63ae29db255df400551244e9962c97e66be813a79",
+    "alternatives_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "sequence_digest": "sha256:d621c9243fe591af16bf31e9e57bd89ab0fc06d1d18863676bbe93ef8c7691f2"
+  },
   "aeb_decision": {
     "event_type": "emilia.aeb.decision.v1",
-    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:b4d0004d8ca466ab72dc1ea6578c8eafc2384a84b2ee00898d168d6d5f743aa2",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
     "decision": "SATISFIED",
     "authorization_state": "AUTHORIZED",
     "consumption_state": "CONSUMED",
@@ -13,11 +29,11 @@
     "mapping_profile_digests": ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
     "occurred_at": "2026-07-20T12:00:00Z"
   },
-  "expected_aeb_event_digest": "sha256:8d2e3f7dc2ed745cbcacd5f76d6677d3c4d72c43bf99200327fdf5ab110ec096",
+  "expected_aeb_event_digest": "sha256:e5124415a08d3b6022946ab60f6f7a4060ff8a546b0e416fe2c9810cc36cffe2",
   "audit_record": {
     "event_type": "audit.action.v1",
-    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:b4d0004d8ca466ab72dc1ea6578c8eafc2384a84b2ee00898d168d6d5f743aa2",
-    "aeb_event_digest": "sha256:8d2e3f7dc2ed745cbcacd5f76d6677d3c4d72c43bf99200327fdf5ab110ec096",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:PmfQKO5EindayPVAOArERjPosuU2J9Q7VgOEdOBxs8U",
+    "aeb_event_digest": "sha256:e5124415a08d3b6022946ab60f6f7a4060ff8a546b0e416fe2c9810cc36cffe2",
     "session_ref": "session-1",
     "provenance_refs": [
       { "format": "c2pa", "manifest_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444" },
@@ -26,6 +42,7 @@
     ],
     "outcome_state": "INDETERMINATE"
   },
+  "expected_audit_binding_digest": "sha256:58996e5f8af3ef1b780d030e7402e44d8b5882bb0208cdc44351cb276f5767b2",
   "vectors": [
     {
       "id": "aeb-audit-provenance-join-verifies",
@@ -50,7 +67,21 @@
       "mutations": [
         { "path": "/audit_record/outcome_state", "value": "EXECUTED" }
       ],
-      "expect": { "valid": false, "reasons": ["outcome_state_mismatch"] }
+      "expect": { "valid": false, "reasons": ["outcome_state_mismatch", "audit_binding_digest_mismatch"] }
+    },
+    {
+      "id": "c2pa-reference-splice-refuses",
+      "mutations": [
+        { "path": "/audit_record/provenance_refs/0/manifest_digest", "value": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+      ],
+      "expect": { "valid": false, "reasons": ["audit_binding_digest_mismatch"] }
+    },
+    {
+      "id": "session-splice-refuses",
+      "mutations": [
+        { "path": "/audit_record/session_ref", "value": "session-attacker" }
+      ],
+      "expect": { "valid": false, "reasons": ["audit_binding_digest_mismatch"] }
     }
   ]
 }

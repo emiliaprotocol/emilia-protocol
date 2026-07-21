@@ -23,6 +23,10 @@ import {
   executionSuiteFile,
   validateResultRows,
 } from '../conformance/result-contract.mjs';
+// The governed security case dynamically executes TypeScript-migrated source
+// whose historical import specifiers still end in .js. Register the same
+// resolver CI uses so `npm run check:security-case` is not CI-environment-only.
+import './ts-loader/register.mjs';
 
 const ROOT: string = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE: string = path.join(ROOT, 'security', 'claims.v1.json');

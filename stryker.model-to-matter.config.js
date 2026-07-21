@@ -10,6 +10,7 @@ export default {
     'sdks/kotlin-mobile/build/**',
     'sdks/kotlin-mobile/sample/build/**',
     '.next/**',
+    '.vercel/**',
     'reports/**',
   ],
   // Every executable function from sha256hex through effect verification.

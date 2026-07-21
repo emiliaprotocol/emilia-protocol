@@ -1,22 +1,28 @@
 # Evidence readiness workspace
 
-`/evidence-readiness` is the tenant-facing review surface for EMILIA Cloud
-events. It does not ship sample data or browser-persisted credentials.
+`/evidence-readiness` is a bounded tenant-facing review surface for EMILIA
+Cloud Guard trust-receipt lifecycle records. It does not ship sample data or
+persist credentials in the browser.
 
 The page sends a tenant-scoped `ept_...` Cloud API key in memory to
-`GET /api/evidence-readiness/runs`. The route authenticates the key with the
-existing Cloud control plane, requires `read`, scopes every query to the key's
-tenant, and returns normalized event records plus the existing integrity check.
-The browser can export the selected authenticated event as a reviewer package;
-the export is not a new source of truth.
+`GET /api/cloud/evidence-readiness/runs`. The route authenticates the key with
+the existing Cloud control plane, requires `read`, and currently requires a
+production-scoped key because the underlying legacy audit rows do not carry a
+separate Cloud-environment binding. It establishes tenant-owned receipt IDs in
+the database before loading their bounded timelines, then returns an allowlist
+projection rather than raw `after_state`, metadata, or event details. A source
+failure returns no partial response. The browser can export the selected
+normalized snapshot; the export is not a new source of truth.
 
 For deployment:
 
 1. Issue a tenant key with `read` permission through the existing Cloud tenant
    API-key flow.
 2. Configure the Cloud/Supabase environment used by the control plane.
-3. Confirm that the tenant event tables contain action, decision, evidence, and
-   outcome fields if the corresponding columns are to appear in the workspace.
+3. Confirm that `audit_events` contains the tenant's Guard trust-receipt
+   lifecycle. The surface intentionally does not read the older unscoped
+   protocol, handshake, or signoff event tables.
 
 The UI deliberately reports missing fields as `not recorded`; it does not infer
-compliance or turn an absent CAID into a positive result.
+compliance, claim that an external effect occurred, or turn an absent CAID into
+a positive result. Customer-created records may include tests.

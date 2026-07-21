@@ -10,6 +10,7 @@ export default {
     'sdks/kotlin-mobile/build/**',
     'sdks/kotlin-mobile/sample/build/**',
     '.next/**',
+    '.vercel/**',
     'reports/**',
   ],
   mutate: [

@@ -356,7 +356,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const a = action();
     const p = profile();
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-      challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-once',
+      challengeStore: issueStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-once-00000001',
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
     const results = await Promise.all([
@@ -478,12 +478,12 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const p = profile();
     const challengeStore = store();
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-partial',
+      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-partial-00001',
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a, ['biosafety_review', 'domain_screening']));
     const result = await evaluateRegisteredModelToMatterPresentation({
       action: a, challenge, graph, profile: p, as_of: NOW, challengeStore,
-      next_nonce: 'm2m-followup',
+      next_nonce: 'm2m-followup-0001',
       clearanceStore: actionStore(),
       revokedEvidenceDigests: new Set(),
     });
@@ -497,7 +497,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
     const p = profile();
     const challengeStore = store();
     const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-action-swap',
+      challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: 'm2m-action-swap-1',
     });
     const graph = buildModelToMatterGraph(a, evidenceSet(a));
     const changed = action({ model: { ...ACTION_INPUT.model, harness_digest: digest('changed-harness') } });
@@ -556,7 +556,7 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
       const p = profile(testCase.profile || {});
       const challengeStore = store();
       const challenge = await createRegisteredModelToMatterChallenge(a, p, {
-        challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: `m2m-${testCase.label}`,
+        challengeStore, expires_at: CHALLENGE_EXPIRES, nonce: `m2m-${testCase.label}-evidence`,
       });
       const result = await evaluateRegisteredModelToMatterPresentation({
         action: a, challenge, graph: buildModelToMatterGraph(a, testCase.evidence(a)),

@@ -283,6 +283,7 @@ const ROUTE_POLICIES = {
   'GET /api/cloud/audit/export':      { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/audit/integrity':   { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/audit/report':      { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/evidence-readiness/runs': { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/events/search':     { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/events/timeline/*': { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/policies/*/versions': { rateCategory: 'cloud_read', useAuth: true },

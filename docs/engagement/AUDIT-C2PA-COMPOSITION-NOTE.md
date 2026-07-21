@@ -35,9 +35,9 @@ SCITT. AUDIT remains free to define its own record model and trust profile.
 
 ## Minimal event profile to test
 
-An implementation profile can carry the following fields in an AUDIT record,
-SCITT statement, or deployment-specific C2PA assertion. The names below are a
-profile sketch, not a registration claim:
+An implementation profile can carry the following fields in an AUDIT-shaped
+record, SCITT statement, or deployment-specific C2PA assertion. The names below
+are a profile sketch, not a registration or native-conformance claim:
 
 ```json
 {
@@ -76,18 +76,21 @@ The profile MUST preserve the following distinctions:
 The first useful test is small and cross-layer:
 
 1. Construct one canonical action and compute its CAID.
-2. Produce an AEB authorization receipt and an optional C2PA provenance
-   reference for the same action or output asset.
+2. Produce an AEB decision reference and an optional C2PA provenance reference
+   for the same action or output asset.
 3. Emit the AEB decision with the CAID and receipt digest into an AUDIT-shaped
    record and, optionally, an OTEL span or SCITT statement.
-4. Verify each native artifact independently.
+4. Verify each native artifact independently before running the join.
 5. Recompute the CAID and receipt digest from the presented bytes.
 6. Accept the cross-layer join only when every digest and profile pin matches.
 7. Include negative vectors for a changed C2PA manifest, a changed action, a
    receipt/action splice, an absent mapping profile, and an indeterminate
    provider outcome.
 
-This produces a testable answer to the AUDIT question “how do records refer to
+The committed fixture currently tests only opaque-reference correlation and
+negative splices. It does not parse or natively verify AUDIT, C2PA, OTEL, or
+SCITT artifacts. With those independent verifiers supplied, this produces a
+testable answer to the AUDIT question “how do records refer to
 the same trajectory or action?” without asking AUDIT to standardize an
 authorization ceremony or asking C2PA to make an authorization decision.
 

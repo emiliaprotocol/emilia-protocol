@@ -6,30 +6,34 @@ import SiteFooter from "@/components/SiteFooter";
 import { color, font, styles, cta } from "@/lib/tokens";
 
 type EvidenceRun = {
-  event_id: string;
-  source_table: string | null;
+  receipt_id: string;
   created_at: string | null;
-  action: string | null;
-  agent: string | null;
-  authority: string | null;
+  action_type: string | null;
+  action_hash: string | null;
   caid: string | null;
   status: string | null;
   decision: string | null;
-  outcome: string | null;
-  evidence: unknown[];
-  obligations: unknown[];
-  detail: Record<string, unknown>;
+  policy_id: string | null;
+  authority_verdict: string | null;
+  enforcement_mode: string | null;
+  adapter: string | null;
+  amount: number | null;
+  currency: string | null;
+  signoff_required: boolean;
 };
 
 type EvidenceReadinessResponse = {
   schema: "emilia.evidence-readiness.v1";
   tenant_id: string;
-  total: number;
-  offset: number;
+  environment: "production";
+  source: "audit_events.guard_trust_receipts";
+  returned: number;
   limit: number;
-  integrity?: { anomalies?: unknown[] };
+  truncated: boolean;
+  date_range: { from: string | null; to: string | null };
   runs: EvidenceRun[];
   generated_at: string;
+  claim_boundary: string;
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -57,7 +61,8 @@ function isEvidenceReadinessResponse(value: unknown): value is EvidenceReadiness
   const candidate = value as Partial<EvidenceReadinessResponse>;
   return candidate.schema === "emilia.evidence-readiness.v1"
     && typeof candidate.tenant_id === "string"
-    && Number.isFinite(candidate.total)
+    && candidate.environment === "production"
+    && Number.isFinite(candidate.returned)
     && Array.isArray(candidate.runs);
 }
 
@@ -76,7 +81,7 @@ export default function EvidenceReadinessPage() {
     return runs.filter((run) => displayStatus(run) === filter);
   }, [filter, runs]);
   const selected =
-    runs.find((run) => run.event_id === selectedId) || visibleRuns[0] || null;
+    runs.find((run) => run.receipt_id === selectedId) || visibleRuns[0] || null;
 
   async function connect() {
     const key = apiKey.trim();
@@ -89,8 +94,9 @@ export default function EvidenceReadinessPage() {
     setLoading(true);
     setConnected(false);
     setError("");
+    setApiKey("");
     try {
-      const res = await fetch("/api/evidence-readiness/runs?limit=100", {
+      const res = await fetch("/api/cloud/evidence-readiness/runs?limit=100", {
         headers: { Authorization: `Bearer ${key}` },
         cache: "no-store",
       });
@@ -108,7 +114,7 @@ export default function EvidenceReadinessPage() {
       }
       setResponse(data);
       setConnected(true);
-      setSelectedId(data.runs[0]?.event_id || null);
+      setSelectedId(data.runs[0]?.receipt_id || null);
     } catch (err) {
       setResponse(null);
       setError(
@@ -125,6 +131,8 @@ export default function EvidenceReadinessPage() {
       schema: "emilia.evidence-readiness.package.v1",
       tenant_id: response.tenant_id,
       generated_at: new Date().toISOString(),
+      source: response.source,
+      claim_boundary: response.claim_boundary,
       run: selected,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -133,7 +141,7 @@ export default function EvidenceReadinessPage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${selected.event_id || "evidence-run"}-reviewer-package.json`;
+    anchor.download = `${selected.receipt_id || "evidence-run"}-event-snapshot.json`;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -152,9 +160,9 @@ export default function EvidenceReadinessPage() {
             Evidence readiness for agent runs.
           </h1>
           <p style={{ ...styles.body, maxWidth: 750, fontSize: 19 }}>
-            Connect a tenant-scoped EMILIA Cloud key and inspect the events that
-            actually happened: action, authority, decision, evidence, and
-            outcome.
+            Connect a production-scoped EMILIA Cloud key and inspect bounded,
+            tenant-scoped trust-receipt lifecycle records: action, policy,
+            authority verdict, decision, and status.
           </p>
           <div
             style={{
@@ -165,12 +173,13 @@ export default function EvidenceReadinessPage() {
             }}
           >
             <div style={{ ...styles.cardTitle, marginBottom: 4 }}>
-              No synthetic data
+              No bundled demo data
             </div>
             <div style={styles.cardBody}>
-              This workspace reads the authenticated tenant event stream. The
-              API key is held in memory only and is never written to local
-              storage.
+              This workspace reads records stored for the authenticated tenant.
+              Records may include customer-created tests and do not independently
+              prove an asserted external effect. The API key is cleared after
+              each request and is never written to local storage.
             </div>
           </div>
         </section>
@@ -218,8 +227,8 @@ export default function EvidenceReadinessPage() {
                   marginTop: 12,
                 }}
               >
-                Connected to tenant {response.tenant_id}. {response.total}{" "}
-                events available.
+                Connected to tenant {response.tenant_id}. {response.returned}{" "}
+                bounded receipt records loaded{response.truncated ? " (more may exist)" : ""}.
               </div>
             )}
           </div>
@@ -242,18 +251,18 @@ export default function EvidenceReadinessPage() {
                 }}
               >
                 {[
-                  [String(response.total ?? runs.length), "events available"],
+                  [String(response.returned ?? runs.length), "records loaded"],
                   [
                     String(countStatus(runs, ["READY", "SATISFIED"])),
-                    "satisfied decisions",
+                    "READY/SATISFIED labels",
                   ],
                   [
-                    String(countStatus(runs, ["INDETERMINATE"])),
-                    "indeterminate outcomes",
+                    String(runs.filter((run) => run.signoff_required).length),
+                    "signoff-required records",
                   ],
                   [
-                    String(response.integrity?.anomalies?.length ?? 0),
-                    "integrity anomalies",
+                    String(runs.filter((run) => Boolean(run.caid)).length),
+                    "records carrying CAID",
                   ],
                 ].map(([value, label]) => (
                   <div key={label} style={{ ...styles.card, padding: 18 }}>
@@ -290,7 +299,7 @@ export default function EvidenceReadinessPage() {
                 <div>
                   <div style={styles.eyebrow}>RUN REVIEW</div>
                   <h2 style={styles.h2}>
-                    Find the missing proof before it becomes a dispute.
+                    Inspect what was recorded before relying on it.
                   </h2>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -337,16 +346,16 @@ export default function EvidenceReadinessPage() {
                   )}
                   {visibleRuns.map((run) => (
                     <button
-                      key={run.event_id}
-                      onClick={() => setSelectedId(run.event_id)}
+                      key={run.receipt_id}
+                      onClick={() => setSelectedId(run.receipt_id)}
                       style={{
                         ...styles.card,
                         padding: 18,
                         textAlign: "left",
                         cursor: "pointer",
-                        border: `1px solid ${selected?.event_id === run.event_id ? color.t1 : color.border}`,
+                        border: `1px solid ${selected?.receipt_id === run.receipt_id ? color.t1 : color.border}`,
                         background:
-                          selected?.event_id === run.event_id
+                          selected?.receipt_id === run.receipt_id
                             ? color.cardHover
                             : color.card,
                       }}
@@ -365,7 +374,7 @@ export default function EvidenceReadinessPage() {
                             color: color.t3,
                           }}
                         >
-                          {run.event_id}
+                          {run.receipt_id}
                         </span>
                         <span
                           style={{
@@ -381,11 +390,11 @@ export default function EvidenceReadinessPage() {
                         </span>
                       </div>
                       <div style={{ ...styles.cardTitle, marginTop: 10 }}>
-                        {run.action || "Unclassified event"}
+                        {run.action_type || "Unclassified action"}
                       </div>
                       <div style={{ ...styles.cardBody, marginTop: 3 }}>
-                        {run.agent || "unknown actor"} ·{" "}
-                        {run.authority || "scope unavailable"}
+                        {run.policy_id || "policy not recorded"} ·{" "}
+                        {run.authority_verdict || "authority verdict unavailable"}
                       </div>
                       <div
                         style={{
@@ -407,7 +416,7 @@ export default function EvidenceReadinessPage() {
                     <>
                       <div style={styles.eyebrow}>SELECTED EVENT</div>
                       <h3 style={{ ...styles.h2, marginBottom: 8 }}>
-                        {selected.action || "Unclassified event"}
+                        {selected.action_type || "Unclassified action"}
                       </h3>
                       <dl
                         style={{
@@ -422,9 +431,9 @@ export default function EvidenceReadinessPage() {
                         <dd style={{ margin: 0, fontFamily: font.mono }}>
                           {selected.decision || "not recorded"}
                         </dd>
-                        <dt style={{ color: color.t3 }}>Outcome</dt>
+                        <dt style={{ color: color.t3 }}>Status</dt>
                         <dd style={{ margin: 0, fontFamily: font.mono }}>
-                          {selected.outcome || "not recorded"}
+                          {selected.status || "not recorded"}
                         </dd>
                         <dt style={{ color: color.t3 }}>CAID</dt>
                         <dd
@@ -436,24 +445,20 @@ export default function EvidenceReadinessPage() {
                         >
                           {selected.caid || "not recorded"}
                         </dd>
-                        <dt style={{ color: color.t3 }}>Evidence</dt>
-                        <dd style={{ margin: 0 }}>
-                          {selected.evidence?.length
-                            ? selected.evidence.join(" · ")
-                            : "not recorded"}
+                        <dt style={{ color: color.t3 }}>Policy</dt>
+                        <dd style={{ margin: 0, fontFamily: font.mono }}>
+                          {selected.policy_id || "not recorded"}
                         </dd>
-                        <dt style={{ color: color.t3 }}>Coverage signals</dt>
-                        <dd style={{ margin: 0 }}>
-                          {selected.obligations?.length
-                            ? selected.obligations.join(" · ")
-                            : "not recorded"}
+                        <dt style={{ color: color.t3 }}>Action hash</dt>
+                        <dd style={{ margin: 0, fontFamily: font.mono, overflowWrap: "anywhere" }}>
+                          {selected.action_hash || "not recorded"}
                         </dd>
                       </dl>
                       <button
                         onClick={exportPackage}
                         style={{ ...cta.primary, marginTop: 24 }}
                       >
-                        Generate reviewer package
+                        Export normalized event snapshot
                       </button>
                     </>
                   ) : (

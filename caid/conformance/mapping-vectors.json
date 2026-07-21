@@ -37,10 +37,14 @@
         { "name": "constraint_type", "type": "string" },
         { "name": "constraint_value", "type": "string" },
         { "name": "constraint_time", "type": "string" },
-        { "name": "constraint_subject", "type": "string" }
+        { "name": "constraint_subject", "type": "string" },
+        { "name": "entities_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP entity list, including entity/action associations" },
+        { "name": "constraints_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP constraint list" },
+        { "name": "alternatives_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete SILP alternatives list" },
+        { "name": "sequence_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the declared SILP action sequence" }
       ],
       "optional_fields": [],
-      "digest_notes": "The root intent, primary target and timing, secondary action and recipient, and the constraint are material. SILP correlation metadata such as req_id, session_id, priority, confidence, and output hints are not material unless a separate action profile says otherwise.",
+      "digest_notes": "The root intent, complete ordered entity and constraint collections, declared action sequence, all alternatives, primary target and timing, and secondary action and recipient are material. SILP correlation metadata such as req_id, session_id, priority, confidence, and output hints are not material unless a separate action profile says otherwise.",
       "references": ["draft-hwang-silp-protocol-01"]
     }
   ],
@@ -122,7 +126,11 @@
         "/constraints/0/type",
         "/constraints/0/value",
         "/constraints/0/time",
-        "/constraints/0/subject"
+        "/constraints/0/subject",
+        "/entities",
+        "/constraints",
+        "/alternatives",
+        "/meta/seq"
       ],
       "rules": [
         { "source_path": "/intent", "target_field": "primary_action", "transform": "copy" },
@@ -133,7 +141,11 @@
         { "source_path": "/constraints/0/type", "target_field": "constraint_type", "transform": "copy" },
         { "source_path": "/constraints/0/value", "target_field": "constraint_value", "transform": "copy" },
         { "source_path": "/constraints/0/time", "target_field": "constraint_time", "transform": "copy" },
-        { "source_path": "/constraints/0/subject", "target_field": "constraint_subject", "transform": "copy" }
+        { "source_path": "/constraints/0/subject", "target_field": "constraint_subject", "transform": "copy" },
+        { "source_path": "/entities", "target_field": "entities_digest", "transform": "sha256-jcs" },
+        { "source_path": "/constraints", "target_field": "constraints_digest", "transform": "sha256-jcs" },
+        { "source_path": "/alternatives", "target_field": "alternatives_digest", "transform": "sha256-jcs" },
+        { "source_path": "/meta/seq", "target_field": "sequence_digest", "transform": "sha256-jcs" }
       ]
     }
   },
@@ -364,6 +376,62 @@
       "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
       "mutations": [
         { "side": "right", "target": "source", "op": "set", "path": "/entities/2/action", "value": "!NOTIFY" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-sequence-order-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/meta/seq/0", "value": "!EMAIL" },
+        { "side": "right", "target": "source", "op": "set", "path": "/meta/seq/1", "value": "!CANCEL" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-entity-action-association-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/entities/0/action", "value": "!EMAIL" }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-additional-action-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/entities", "value": [
+          { "id": "act", "value": "flight", "action": "!CANCEL" },
+          { "id": "time", "value": "t+1pm", "action": "!CANCEL" },
+          { "id": "act", "value": "zhangsan", "action": "!EMAIL" },
+          { "id": "act", "value": "merchant", "action": "!PAY" }
+        ] }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-additional-constraint-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/constraints", "value": [
+          { "type": "loc", "value": "Beijing", "time": "t+1am", "subject": "me" },
+          { "type": "budget", "value": "200", "subject": "me" }
+        ] }
+      ],
+      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+    },
+    {
+      "id": "silp-alternative-is-material",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "source", "op": "set", "path": "/alternatives", "value": [
+          { "intent": "!RESCHEDULE" }
+        ] }
       ],
       "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
     },

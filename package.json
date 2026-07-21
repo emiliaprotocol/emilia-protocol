@@ -13,7 +13,7 @@
   },
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -104,8 +104,13 @@
     "conformance:operator2": "node conformance/operator2/verify-live.mjs"
   },
   "lint-staged": {
-    "{app,lib,components}/**/*.{js,mjs,ts,tsx}": [
-      "eslint --max-warnings=0",
+    "{app,components}/**/*.{js,mjs,ts,tsx}": [
+      "eslint --max-warnings=0"
+    ],
+    "lib/**/*.{ts,tsx,mts}": [
+      "eslint --max-warnings=0"
+    ],
+    "{app,lib,components}/**/*.{js,mjs,ts,tsx,mts}": [
       "node scripts/check-license-headers.js"
     ]
   },

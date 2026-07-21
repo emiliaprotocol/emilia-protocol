@@ -10,6 +10,8 @@ function queryResult(result, calls) {
     like(field, value) { calls.push(['like', field, value]); return chain; },
     in(field, value) { calls.push(['in', field, value]); return chain; },
     order(field, value) { calls.push(['order', field, value]); return chain; },
+    gte(field, value) { calls.push(['gte', field, value]); return chain; },
+    lte(field, value) { calls.push(['lte', field, value]); return chain; },
     limit(value) { calls.push(['limit', value]); return Promise.resolve(result); },
   };
   return chain;
@@ -60,7 +62,35 @@ describe('tenant-scoped Guard receipt dashboard', () => {
     const receipts = replayGuardReceipts([
       { event_type: 'guard.trust_receipt.created', target_id: 'owned', after_state: { organization_id: 'tenant_a' }, created_at: '2026-07-16T12:00:00Z' },
       { event_type: 'guard.trust_receipt.created', target_id: 'foreign', after_state: { organization_id: 'tenant_b' }, created_at: '2026-07-16T12:01:00Z' },
-    ], ['owned']);
+    ], ['owned'], 'tenant_a');
     expect(receipts.map((receipt) => receipt.receipt_id)).toEqual(['owned']);
+  });
+
+  it('requires the replayed creation event itself to match the authenticated tenant', () => {
+    const receipts = replayGuardReceipts([
+      { event_type: 'guard.trust_receipt.created', target_id: 'collision', after_state: { organization_id: 'tenant_b' }, created_at: '2026-07-16T12:00:00Z' },
+      { event_type: 'guard.trust_receipt.consumed', target_id: 'collision', after_state: {}, created_at: '2026-07-16T12:01:00Z' },
+    ], ['collision'], 'tenant_a');
+    expect(receipts).toEqual([]);
+  });
+
+  it('bounds and date-scopes the tenant-owned receipt prequery', async () => {
+    const firstCalls = [];
+    const supabase = {
+      from() {
+        return queryResult({ data: [], error: null }, firstCalls);
+      },
+    };
+    const result = await loadTenantGuardReceipts({
+      supabase,
+      tenantId: 'tenant_a',
+      limit: 25,
+      dateFrom: '2026-07-01T00:00:00Z',
+      dateTo: '2026-07-21T00:00:00Z',
+    });
+    expect(result.error).toBeNull();
+    expect(firstCalls).toContainEqual(['gte', 'created_at', '2026-07-01T00:00:00Z']);
+    expect(firstCalls).toContainEqual(['lte', 'created_at', '2026-07-21T00:00:00Z']);
+    expect(firstCalls).toContainEqual(['limit', 25]);
   });
 });

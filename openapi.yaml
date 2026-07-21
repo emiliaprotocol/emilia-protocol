@@ -3437,32 +3437,28 @@ paths:
         '500':
           description: Report generation failed
 
-  /api/evidence-readiness/runs:
+  /api/cloud/evidence-readiness/runs:
     get:
       operationId: listEvidenceReadinessRuns
       tags: [Cloud]
-      summary: List tenant-scoped evidence-readiness runs
+      summary: List bounded tenant-scoped trust-receipt lifecycle records
       description: |
-        Returns normalized authorization, authority, CAID, decision, evidence,
-        and outcome fields from the authenticated tenant event stream. Requires
-        read permission. The endpoint never accepts a tenant identifier from
-        the caller; tenant scope is derived from the bearer credential.
+        Returns an allowlisted projection of Guard trust-receipt lifecycle
+        records for the authenticated tenant. Requires read permission and a
+        production-scoped Cloud key. Tenant scope is derived from the bearer
+        credential; raw audit-event payloads are never returned. Records may
+        include customer-created tests and do not independently prove an
+        asserted external effect.
       security:
-        - BearerAuth: []
+        - CloudBearerAuth: []
       parameters:
         - name: limit
           in: query
           schema:
             type: integer
             minimum: 1
-            maximum: 500
-            default: 100
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
+            maximum: 100
+            default: 50
         - name: date_from
           in: query
           schema:
@@ -3475,37 +3471,105 @@ paths:
             format: date-time
       responses:
         '200':
-          description: Tenant-scoped normalized evidence runs and integrity status
+          description: Bounded, tenant-scoped normalized receipt records
           content:
             application/json:
               schema:
                 type: object
-                required: [schema, tenant_id, total, offset, limit, integrity, runs, generated_at]
+                additionalProperties: false
+                required: [schema, tenant_id, environment, source, returned, limit, truncated, date_range, runs, generated_at, claim_boundary]
                 properties:
                   schema:
                     type: string
                     enum: [emilia.evidence-readiness.v1]
                   tenant_id:
                     type: string
-                  total:
-                    type: integer
-                  offset:
+                  environment:
+                    type: string
+                    enum: [production]
+                  source:
+                    type: string
+                    enum: [audit_events.guard_trust_receipts]
+                  returned:
                     type: integer
                   limit:
                     type: integer
-                  integrity:
+                  truncated:
+                    type: boolean
+                  date_range:
                     type: object
+                    additionalProperties: false
+                    required: [from, to]
+                    properties:
+                      from:
+                        type: string
+                        nullable: true
+                        format: date-time
+                      to:
+                        type: string
+                        nullable: true
+                        format: date-time
                   runs:
                     type: array
                     items:
                       type: object
+                      additionalProperties: false
+                      required: [receipt_id, created_at, action_type, action_hash, caid, decision, status, policy_id, authority_verdict, enforcement_mode, adapter, amount, currency, signoff_required]
+                      properties:
+                        receipt_id:
+                          type: string
+                        created_at:
+                          type: string
+                          nullable: true
+                          format: date-time
+                        action_type:
+                          type: string
+                          nullable: true
+                        action_hash:
+                          type: string
+                          nullable: true
+                        caid:
+                          type: string
+                          nullable: true
+                        decision:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                          nullable: true
+                        policy_id:
+                          type: string
+                          nullable: true
+                        authority_verdict:
+                          type: string
+                          nullable: true
+                        enforcement_mode:
+                          type: string
+                          nullable: true
+                        adapter:
+                          type: string
+                          nullable: true
+                        amount:
+                          type: number
+                          nullable: true
+                        currency:
+                          type: string
+                          nullable: true
+                        signoff_required:
+                          type: boolean
                   generated_at:
                     type: string
                     format: date-time
+                  claim_boundary:
+                    type: string
+        '400':
+          description: Invalid limit or date range
         '401':
           description: Cloud API authentication required
         '403':
-          description: Read permission required
+          description: Read permission and a production-scoped key required
+        '503':
+          description: Tenant-scoped evidence source unavailable; no partial response
         '500':
           description: Evidence-readiness query failed
 

@@ -53,19 +53,21 @@ same canonical signer as `receipts.v1.json`).
 
 ## `succession-authorization-binding.v1.json` — cross-format succession binding
 
-This small vector binds a succession receipt's optional `authorization_binding`
-claim to the exact CAID and canonical authorization-receipt hash it names. It
-also covers changed action material, changed CAID, and an absent optional claim.
-The vector proves composition when the claim is present; it does not make a
-succession receipt an authorization receipt or make an absent claim invalid.
+This small vector checks a succession receipt's optional `authorization_binding`
+claim against a derived CAID and canonical authorization-receipt hash. Native
+verification of both formats is an explicit precondition: the fixture does not
+verify signatures, freshness, audience, succession state, or replay state. It
+therefore demonstrates internal binding consistency after native verification;
+it does not independently prove cross-format composition, turn a succession
+receipt into authorization, or make an absent optional claim invalid.
 
 ## `aeb-audit-provenance-join.v1.json` — staged composition profile
 
-This synthetic vector checks the narrow join between an AEB decision and an
-AUDIT-shaped record carrying C2PA, OTEL, and SCITT references. It is a profile
-sketch only: it does not parse or verify those native formats and makes no
-claim of C2PA, AUDIT, OTEL, or SCITT conformance. Its negative cases pin CAID
-splicing, AEB-event digest splicing, and preservation of `INDETERMINATE`.
+This synthetic opaque-reference fixture checks the narrow join between an AEB
+decision and an AUDIT-shaped record carrying C2PA, OTEL, and SCITT references.
+It derives and parses the CAID and binds the exact session, provenance-reference
+set, and outcome label. It does not parse or natively verify those external
+formats and makes no claim of C2PA, AUDIT, OTEL, or SCITT conformance.
 
 ## Opt-in profile suites (cross-language)
 

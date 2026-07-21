@@ -39,6 +39,7 @@ const config = {
     'sdks/kotlin-mobile/build/**',
     'sdks/kotlin-mobile/sample/build/**',
     '.next/**',
+    '.vercel/**',
     'reports/**',
   ],
 

@@ -51,7 +51,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = createMemoryBackend();
     const issuerStore = createDurableChallengeStore(backend);
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: issuerStore, challenge_id: 'challenge-restart', nonce: 'nonce-restart', expires_at: expiresAt,
+      challengeStore: issuerStore, challenge_id: 'challenge-restart', nonce: 'nonce-restart-0001', expires_at: expiresAt,
     });
 
     const restartedA = createDurableChallengeStore(backend);
@@ -69,7 +69,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = createMemoryBackend();
     const store = createDurableChallengeStore(backend);
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-body', nonce: 'nonce-body', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-body', nonce: 'nonce-body-0000001', expires_at: expiresAt,
     });
     const tampered = { ...challenge, action_digest: `sha256:${'ef'.repeat(32)}` };
     const refused = await evaluateRegisteredPresentation(tampered, completeGraph(), policy, { challengeStore: store, verifiers, as_of: asOf });
@@ -84,7 +84,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = createMemoryBackend();
     const store = createDurableChallengeStore(backend);
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-policy', nonce: 'nonce-policy', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-policy', nonce: 'nonce-policy-00001', expires_at: expiresAt,
     });
     const weakened = { ...policy, requirement: 'authorization_receipt' };
     const refused = await evaluateRegisteredPresentation(challenge, completeGraph(), weakened, {
@@ -103,14 +103,25 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     const backend = createMemoryBackend();
     const store = createDurableChallengeStore(backend);
     const challenge = await createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-followup', nonce: 'nonce-first', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-followup', nonce: 'nonce-first-000001', expires_at: expiresAt,
     });
     const partial = { ...completeGraph(), nodes: completeGraph().nodes.slice(0, 1), edges: [] };
     const first = await evaluateRegisteredPresentation(challenge, partial, policy, {
-      challengeStore: store, verifiers, as_of: asOf, nonce: 'nonce-second',
+      challengeStore: store, verifiers, as_of: asOf, nonce: 'nonce-second-00001',
     });
     expect(first.verdict).toBe('missing_evidence');
     expect(await createDurableChallengeStore(backend).has(first.next_challenge)).toBe(true);
+  });
+
+  it('refuses weak caller-supplied nonces before durable registration', async () => {
+    const backend = createMemoryBackend();
+    const store = createDurableChallengeStore(backend);
+    await expect(createRegisteredEvidenceChallenge(action, policy, {
+      challengeStore: store,
+      challenge_id: 'challenge-weak-nonce',
+      nonce: 'too-short',
+      expires_at: expiresAt,
+    })).rejects.toThrow(/16-128 base64url/);
   });
 
   it('propagates backend outage without an in-memory fallback', async () => {
@@ -122,7 +133,7 @@ describe('durable AE-CHALLENGE lifecycle', () => {
     };
     const store = createDurableChallengeStore(backend);
     await expect(createRegisteredEvidenceChallenge(action, policy, {
-      challengeStore: store, challenge_id: 'challenge-outage', nonce: 'nonce-outage', expires_at: expiresAt,
+      challengeStore: store, challenge_id: 'challenge-outage', nonce: 'nonce-outage-00001', expires_at: expiresAt,
     })).rejects.toThrow(/backend_unavailable/);
   });
 });
