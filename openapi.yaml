@@ -3437,6 +3437,78 @@ paths:
         '500':
           description: Report generation failed
 
+  /api/evidence-readiness/runs:
+    get:
+      operationId: listEvidenceReadinessRuns
+      tags: [Cloud]
+      summary: List tenant-scoped evidence-readiness runs
+      description: |
+        Returns normalized authorization, authority, CAID, decision, evidence,
+        and outcome fields from the authenticated tenant event stream. Requires
+        read permission. The endpoint never accepts a tenant identifier from
+        the caller; tenant scope is derived from the bearer credential.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Tenant-scoped normalized evidence runs and integrity status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema, tenant_id, total, offset, limit, integrity, runs, generated_at]
+                properties:
+                  schema:
+                    type: string
+                    enum: [emilia.evidence-readiness.v1]
+                  tenant_id:
+                    type: string
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+                  integrity:
+                    type: object
+                  runs:
+                    type: array
+                    items:
+                      type: object
+                  generated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Evidence-readiness query failed
+
   /api/cloud/events/search:
     get:
       tags: [Cloud]

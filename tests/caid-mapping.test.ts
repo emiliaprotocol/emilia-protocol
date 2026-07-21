@@ -15,7 +15,7 @@ const registry = JSON.parse(readFileSync(new URL('../caid/registry/action-types.
 describe('CAID Action-Mapping Profile', () => {
   it('passes every shared material-equivalence vector', () => {
     const results = runMappingVectors(corpus);
-    expect(results).toHaveLength(13);
+    expect(results).toHaveLength(18);
     expect(results.filter((result) => !result.pass)).toEqual([]);
   });
 

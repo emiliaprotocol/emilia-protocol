@@ -106,7 +106,7 @@ function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOp
     policy_id: policy?.policy_id ?? null,
     policy_digest: digestPolicy(policy),
     required_evidence: deriveRequiredEvidence(policy, opts.prior ?? null),
-    present_as: ['EP-AEG-v1'],
+    present_as: ['ep-aec-v1'],
     obtain_hints: opts.obtain_hints ?? [],
     expires_at: opts.expires_at,
   };
@@ -127,8 +127,16 @@ export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: str
   return [...new Set(tokens)].filter((t) => !satisfied.has(t)).map((type) => ({
     type,
     ...(typeof assuranceByType[type] === 'string' ? { assurance_class: assuranceByType[type] } : {}),
-    ...(Number.isFinite(policy?.freshness_sec?.[type]) ? { fresh_max_sec: policy.freshness_sec[type] } : {}),
-    ...(policy?.revocation_required?.includes(type) ? { revocation_checked: true } : {}),
+    ...(Number.isFinite(policy?.freshness_sec?.[type]) ? {
+      max_age_sec: policy.freshness_sec[type],
+      // Compatibility alias for the -00 wire shape.
+      fresh_max_sec: policy.freshness_sec[type],
+    } : {}),
+    ...(policy?.revocation_required?.includes(type) ? {
+      status: 'current',
+      // Compatibility alias for the -00 wire shape.
+      revocation_checked: true,
+    } : {}),
   }));
 }
 

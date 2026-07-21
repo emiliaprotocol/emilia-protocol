@@ -82,7 +82,8 @@ boundary.
 - `registry/` — action-type registry seed, suites, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
 - `conformance/vectors.json` — 48 core identifier vectors
-- `conformance/mapping-vectors.json` — 13 cross-format mapping vectors
+- `conformance/mapping-vectors.json` — 18 cross-format mapping vectors,
+  including the SILP IR to CAID `CANCEL+EMAIL` profile
 - `bindings/` — one-page composition notes for existing specs (MCP, A2A,
   AP2, AuthZEN, ACTA, WIMSE, permit receipts, outcome attestation, OAuth
   agent-authorization drafts, AGTP, EMILIA receipts, Continuum)

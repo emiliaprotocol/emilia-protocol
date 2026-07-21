@@ -1,0 +1,94 @@
+{
+  "@version": "EMILIA-SUCCESSION-AUTHORIZATION-BINDING-V1",
+  "description": "Cross-format vector for the optional succession-receipt authorization_binding claim. The succession format remains authoritative for succession semantics; this vector tests only the optional binding to an exact CAID and canonical EP receipt representation. The caid member shown in the authorization fixture is a derived composition value, not a native EP-RECEIPT-v1 member: native EP uses action_hash, and the CAID is computed from the verified Action Object under a pinned CAID mapping/profile. Derivation order is: verify the native receipt, derive the CAID, embed the derived caid member in this fixture representation, then hash the complete representation.",
+  "canonicalization": "RFC 8785 JSON Canonicalization Scheme",
+  "caid_derivation": {
+    "type_definition": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/caid/registry/action-types.json#L961-L979",
+    "action_object": {
+      "action_type": "travel.cancel-notify.1",
+      "primary_action": "!CANCEL",
+      "resource": "flight",
+      "cancel_time": "t+1pm",
+      "secondary_action": "!EMAIL",
+      "notification_recipient": "zhangsan",
+      "constraint_type": "loc",
+      "constraint_value": "Beijing",
+      "constraint_time": "t+1am",
+      "constraint_subject": "me"
+    },
+    "canonical_action_object_utf8": "{\"action_type\":\"travel.cancel-notify.1\",\"cancel_time\":\"t+1pm\",\"constraint_subject\":\"me\",\"constraint_time\":\"t+1am\",\"constraint_type\":\"loc\",\"constraint_value\":\"Beijing\",\"notification_recipient\":\"zhangsan\",\"primary_action\":\"!CANCEL\",\"resource\":\"flight\",\"secondary_action\":\"!EMAIL\"}",
+    "suite": "jcs-sha256",
+    "digest_algorithm": "SHA-256 over the UTF-8 bytes of canonical_action_object_utf8",
+    "domain_separation": "none",
+    "digest_hex": "b4d0004d8ca466ab72dc1ea6578c8eafc2384a84b2ee00898d168d6d5f743aa2",
+    "digest_base64url_unpadded": "tNAATYykZqty3B6mV4yOr8I4SoSy7gCJjRaNbV90OqI",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:tNAATYykZqty3B6mV4yOr8I4SoSy7gCJjRaNbV90OqI"
+  },
+  "authorization_receipt": {
+    "@version": "EP-RECEIPT-v1",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:tNAATYykZqty3B6mV4yOr8I4SoSy7gCJjRaNbV90OqI",
+    "action_type": "travel.cancel-notify.1",
+    "action": {
+      "primary_action": "!CANCEL",
+      "resource": "flight",
+      "cancel_time": "t+1pm",
+      "secondary_action": "!EMAIL",
+      "notification_recipient": "zhangsan",
+      "constraint_type": "loc",
+      "constraint_value": "Beijing",
+      "constraint_time": "t+1am",
+      "constraint_subject": "me"
+    },
+    "authorization": {
+      "principal": "did:example:alice",
+      "audience": "travel.example",
+      "decision": "approved"
+    },
+    "issued_at": "2026-07-20T12:00:00Z"
+  },
+  "succession_receipt": {
+    "credential": {
+      "subject": {
+        "authorization_binding": {
+          "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:tNAATYykZqty3B6mV4yOr8I4SoSy7gCJjRaNbV90OqI",
+          "receipt_hash": "bf075e476f116e9ca6e22d9dd2875d6d1236a07b7b1e50b27d0b112cd23cc32d",
+          "format": "EP-RECEIPT-v1"
+        }
+      }
+    }
+  },
+  "vectors": [
+    {
+      "id": "binding-present-verifies",
+      "expect": { "present": true, "valid": true, "asserts_binding": true, "reasons": [] }
+    },
+    {
+      "id": "receipt-hash-mismatch-refuses",
+      "mutations": [
+        { "path": "/succession_receipt/credential/subject/authorization_binding/receipt_hash", "value": "0000000000000000000000000000000000000000000000000000000000000000" }
+      ],
+      "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["receipt_hash_mismatch"] }
+    },
+    {
+      "id": "caid-mismatch-refuses",
+      "mutations": [
+        { "path": "/succession_receipt/credential/subject/authorization_binding/caid", "value": "caid:1:travel.cancel-notify.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }
+      ],
+      "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["caid_mismatch"] }
+    },
+    {
+      "id": "changed-receipt-material-refuses",
+      "mutations": [
+        { "path": "/authorization_receipt/action/cancel_time", "value": "t+2pm" }
+      ],
+      "expect": { "present": true, "valid": false, "asserts_binding": false, "reasons": ["receipt_hash_mismatch"] }
+    },
+    {
+      "id": "optional-binding-absent-does-not-invalidate-succession",
+      "mutations": [
+        { "path": "/succession_receipt/credential/subject/authorization_binding", "delete": true }
+      ],
+      "expect": { "present": false, "valid": true, "asserts_binding": false, "reasons": [] }
+    }
+  ]
+}

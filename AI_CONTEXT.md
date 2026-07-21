@@ -22,7 +22,7 @@ When this file conflicts with a quantitative claim elsewhere, use the machine-re
 - Formal inventory: 26 TLA+ invariants, 35 Alloy facts, 32 Alloy assertions. Formal scope and exclusions remain claim-specific.
 - Composed symbolic model: 10 Tamarin obligations verified across challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution; 2 deliberately unsafe variants are falsified with attack traces.
 - Red-team catalog: 85 cases.
-- CAID: 48 core identifier vectors plus 13 mapping vectors in three same-team ports, with closed EQUIVALENT_UNDER_PROFILE / NOT_EQUIVALENT / INDETERMINATE results.
+- CAID: 48 core identifier vectors plus 18 mapping vectors in three same-team ports, with closed EQUIVALENT_UNDER_PROFILE / NOT_EQUIVALENT / INDETERMINATE results.
 - Model-to-Matter: 15 deterministic JavaScript executor-profile vectors covering clearance, refusal, replay, storage failure, and effect tampering. No biological screening, scientific-safety, physical-truth, deployment, or endorsement claim is made.
 
 ## Canonical Definitions

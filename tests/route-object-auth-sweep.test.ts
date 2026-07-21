@@ -77,6 +77,15 @@ const PUBLIC_BY_DESIGN = new Set([
   'app/api/score/[entityId]/history/route.ts',        // RETIRED — returns HTTP 410 Gone
 ]);
 
+// Match PUBLIC_BY_DESIGN regardless of route.js vs route.ts so this list doesn't
+// need a lockstep edit every time a listed route is converted during the TS migration.
+const PUBLIC_BY_DESIGN_NORMALIZED = new Set(
+  Array.from(PUBLIC_BY_DESIGN, (p) => p.replace(/\.(js|ts)$/, ''))
+);
+function isPublicByDesign(rel) {
+  return PUBLIC_BY_DESIGN_NORMALIZED.has(rel.replace(/\.(js|ts)$/, ''));
+}
+
 function walk(dir) {
   const out = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -105,7 +114,7 @@ describe('object-authorization sweep — every dynamic route is gated or reviewe
   });
 
   it.each(files)('%s carries an authorization gate or is reviewed-public', (rel) => {
-    if (PUBLIC_BY_DESIGN.has(rel)) return; // explicit, reviewed decision
+    if (isPublicByDesign(rel)) return; // explicit, reviewed decision
     const src = fs.readFileSync(path.resolve(API_DIR, '../..', rel), 'utf8');
     const hasGate = AUTHZ_SIGNALS.some((sig) => src.includes(sig));
     expect(

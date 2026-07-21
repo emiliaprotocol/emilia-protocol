@@ -42,7 +42,9 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(types).toContain('policy_permit');
     expect(types).toContain('workload_identity');
     expect(req.find((r) => r.type === 'authorization_receipt').fresh_max_sec).toBe(300);
+    expect(req.find((r) => r.type === 'authorization_receipt').max_age_sec).toBe(300);
     expect(req.find((r) => r.type === 'authorization_receipt').revocation_checked).toBe(true);
+    expect(req.find((r) => r.type === 'authorization_receipt').status).toBe('current');
   });
 
   it('carries per-type assurance constraints when the policy supplies them', () => {

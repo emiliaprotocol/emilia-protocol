@@ -51,6 +51,22 @@ reference verifier is `verifyReceiptJws` in
 Regenerate byte-identically with `node generate-jws.mjs` (fixed Ed25519 seeds,
 same canonical signer as `receipts.v1.json`).
 
+## `succession-authorization-binding.v1.json` — cross-format succession binding
+
+This small vector binds a succession receipt's optional `authorization_binding`
+claim to the exact CAID and canonical authorization-receipt hash it names. It
+also covers changed action material, changed CAID, and an absent optional claim.
+The vector proves composition when the claim is present; it does not make a
+succession receipt an authorization receipt or make an absent claim invalid.
+
+## `aeb-audit-provenance-join.v1.json` — staged composition profile
+
+This synthetic vector checks the narrow join between an AEB decision and an
+AUDIT-shaped record carrying C2PA, OTEL, and SCITT references. It is a profile
+sketch only: it does not parse or verify those native formats and makes no
+claim of C2PA, AUDIT, OTEL, or SCITT conformance. Its negative cases pin CAID
+splicing, AEB-event digest splicing, and preservation of `INDETERMINATE`.
+
 ## Opt-in profile suites (cross-language)
 
 Five opt-in verify profiles ship shared, cross-language vector suites that the

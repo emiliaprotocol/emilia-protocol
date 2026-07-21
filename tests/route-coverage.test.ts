@@ -13,7 +13,7 @@ const API_DIR = path.join(ROOT, 'app', 'api');
 const MIDDLEWARE_PATH = path.join(ROOT, 'middleware.ts');
 const OPENAPI_PATH = path.join(ROOT, 'openapi.yaml');
 
-/** Read all `route.js` files under app/api/ and return their API paths. */
+/** Read all `route.js`/`route.ts` files under app/api/ and return their API paths. */
 function discoverRouteFiles() {
   const files = fg.sync('app/api/**/route.{js,ts}', { cwd: ROOT });
   return files.map((f) => {

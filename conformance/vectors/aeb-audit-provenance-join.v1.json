@@ -1,0 +1,56 @@
+{
+  "@version": "EMILIA-AEB-AUDIT-PROVENANCE-JOIN-V1",
+  "status": "profile-sketch",
+  "description": "Synthetic cross-layer join vector for an AEB decision referenced by an AUDIT-shaped record and C2PA, OTEL, and SCITT provenance references. This does not implement or claim conformance with C2PA, AUDIT, OTEL, or SCITT.",
+  "aeb_decision": {
+    "event_type": "emilia.aeb.decision.v1",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:b4d0004d8ca466ab72dc1ea6578c8eafc2384a84b2ee00898d168d6d5f743aa2",
+    "decision": "SATISFIED",
+    "authorization_state": "AUTHORIZED",
+    "consumption_state": "CONSUMED",
+    "evidence_requirement_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "evidence_digests": ["sha256:2222222222222222222222222222222222222222222222222222222222222222"],
+    "mapping_profile_digests": ["sha256:3333333333333333333333333333333333333333333333333333333333333333"],
+    "occurred_at": "2026-07-20T12:00:00Z"
+  },
+  "expected_aeb_event_digest": "sha256:8d2e3f7dc2ed745cbcacd5f76d6677d3c4d72c43bf99200327fdf5ab110ec096",
+  "audit_record": {
+    "event_type": "audit.action.v1",
+    "caid": "caid:1:travel.cancel-notify.1:jcs-sha256:b4d0004d8ca466ab72dc1ea6578c8eafc2384a84b2ee00898d168d6d5f743aa2",
+    "aeb_event_digest": "sha256:8d2e3f7dc2ed745cbcacd5f76d6677d3c4d72c43bf99200327fdf5ab110ec096",
+    "session_ref": "session-1",
+    "provenance_refs": [
+      { "format": "c2pa", "manifest_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444" },
+      { "format": "otel", "trace_id": "trace-1" },
+      { "format": "scitt", "statement_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555" }
+    ],
+    "outcome_state": "INDETERMINATE"
+  },
+  "vectors": [
+    {
+      "id": "aeb-audit-provenance-join-verifies",
+      "expect": { "valid": true, "reasons": [] }
+    },
+    {
+      "id": "aeb-audit-caid-splice-refuses",
+      "mutations": [
+        { "path": "/audit_record/caid", "value": "caid:1:travel.cancel-notify.1:jcs-sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+      ],
+      "expect": { "valid": false, "reasons": ["caid_mismatch"] }
+    },
+    {
+      "id": "aeb-audit-event-digest-splice-refuses",
+      "mutations": [
+        { "path": "/audit_record/aeb_event_digest", "value": "sha256:0000000000000000000000000000000000000000000000000000000000000000" }
+      ],
+      "expect": { "valid": false, "reasons": ["aeb_event_digest_mismatch"] }
+    },
+    {
+      "id": "indeterminate-outcome-is-not-rewritten",
+      "mutations": [
+        { "path": "/audit_record/outcome_state", "value": "EXECUTED" }
+      ],
+      "expect": { "valid": false, "reasons": ["outcome_state_mismatch"] }
+    }
+  ]
+}
