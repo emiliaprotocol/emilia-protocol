@@ -94,6 +94,7 @@ export declare function createReceiptProgramTerminalOutcomeVerifier(options: Rec
 export declare function createReceiptProgramExecutionOutcomeVerifier(options: ReceiptProgramTerminalOptions): (input: RecordLike) => Promise<boolean>;
 export interface ActionEscrowTerminalOptions {
     agreementId: string;
+    operationId: string;
     releaseActionDigest: string;
     profileDigest: string;
     componentVerifiers: Record<string, (...args: any[]) => any>;

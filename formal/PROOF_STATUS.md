@@ -183,6 +183,39 @@ making the safety properties hold vacuously.
 
 ---
 
+## TLA+ — `ep_lifecycle_remedy.tla` (post-effect remedy safety)
+
+**Model checker:** TLC 2.19, revision `5a47802`
+
+**Tool digest:** `936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`
+**Status:** verified locally on 2026-07-21; CI reruns the model for the public launch
+
+The bounded model preserves one already-executed original effect while two
+tenant-scoped remedy slots compete for a conserved budget. It checks 14 state
+invariants and 12 temporal properties covering authenticated decisions, fresh
+remedy identities, exclusive owner selection, one claim owner, partial remedy
+accounting, tenant isolation, indeterminate fencing, authenticated
+reconciliation, appeals, and non-retroactive late revocation.
+
+```text
+4,605,977 states generated
+638,384 distinct states found
+complete depth 9
+Model checking completed. No error has been found.
+```
+
+The companion witness module makes 11 reachability predicates fail as intended,
+producing traces at depths 2 through 5. This demonstrates that the strict paths
+are reachable rather than vacuously true.
+
+**Scope boundary:** this model begins after the original effect is authenticated
+as executed. Runtime tests separately cover petition intake while the original
+result is indeterminate and the append-only reconciliation to `executed` or
+`proved_no_effect`. The model does not prove provider behavior, signatures,
+database implementation, wall-clock truth, legal entitlement, or deployment.
+
+---
+
 ## Alloy — `ep_relations.als`
 
 **Model checker:** Alloy 6.2.0 (SAT4J solver)

@@ -543,10 +543,16 @@ test('Action Escrow maps only authenticated terminal states and binds the claim 
   const packageDigest = HASH('8');
   const releaseActionDigest = HASH('4');
   const profileDigest = HASH('7');
-  const pkg = { agreement_id: 'agreement_1', stage: 'released', package_digest: packageDigest };
+  const pkg = {
+    agreement_id: 'agreement_1',
+    stage: 'released',
+    package_digest: packageDigest,
+    release: { operation_idempotency_key: 'provider_operation_123' },
+  };
   let verifierOptions: any;
   const terminal = createActionEscrowTerminalOutcomeVerifier({
     agreementId: 'agreement_1',
+    operationId: 'provider_operation_123',
     releaseActionDigest,
     profileDigest,
     componentVerifiers: {
@@ -579,7 +585,8 @@ test('Action Escrow maps only authenticated terminal states and binds the claim 
   assert.deepEqual([...verifierOptions.documentBytes], [1, 2, 3]);
 
   const executionVerifier = createActionEscrowExecutionOutcomeVerifier({
-    agreementId: 'agreement_1', releaseActionDigest, profileDigest,
+    agreementId: 'agreement_1', operationId: 'provider_operation_123',
+    releaseActionDigest, profileDigest,
     componentVerifiers: {},
     verifyActionEscrowEvidencePackage: async () => ({
       valid: true, package_digest: packageDigest, agreement_id: 'agreement_1',
@@ -596,6 +603,21 @@ test('Action Escrow maps only authenticated terminal states and binds the claim 
     evidence: { package: pkg, document_bytes: new Uint8Array([1]) },
     authorizationBinding: actionEscrowAuthorizationBinding({ escrow_profile_digest: HASH('0') }),
   }), false);
+  assert.equal(await executionVerifier({
+    outcome: 'executed', evidenceDigest: packageDigest,
+    evidence: { package: pkg, document_bytes: new Uint8Array([1]) },
+    authorizationBinding: actionEscrowAuthorizationBinding({ operation_id: 'other-operation' }),
+  }), false);
+  assert.equal((await terminal({
+    evidence: {
+      package: {
+        ...pkg,
+        release: { operation_idempotency_key: 'other-operation' },
+      },
+      document_bytes: new Uint8Array([1]),
+    },
+    authorizationBinding: actionEscrowAuthorizationBinding(),
+  })).reason, 'action_escrow_binding_mismatch');
 
   assert.equal((await terminal({
     evidence: { package: { ...pkg, stage: 'funded' }, document_bytes: new Uint8Array([1]) },
@@ -638,7 +660,8 @@ test('terminal adapters refuse mixed or wrong consequence ownership before verif
 
   let escrowCalled = false;
   const escrow = createActionEscrowTerminalOutcomeVerifier({
-    agreementId: 'agreement_1', releaseActionDigest: HASH('4'), profileDigest: HASH('7'),
+    agreementId: 'agreement_1', operationId: 'provider_operation_123',
+    releaseActionDigest: HASH('4'), profileDigest: HASH('7'),
     componentVerifiers: {},
     verifyActionEscrowEvidencePackage: async () => {
       escrowCalled = true;
@@ -647,7 +670,10 @@ test('terminal adapters refuse mixed or wrong consequence ownership before verif
   });
   assert.equal((await escrow({
     evidence: {
-      package: { agreement_id: 'agreement_1', stage: 'released', package_digest: HASH('8') },
+      package: {
+        agreement_id: 'agreement_1', stage: 'released', package_digest: HASH('8'),
+        release: { operation_idempotency_key: 'provider_operation_123' },
+      },
       document_bytes: new Uint8Array([1]),
     },
     authorizationBinding: actionEscrowAuthorizationBinding({ capability_template_digest: HASH('6') }),

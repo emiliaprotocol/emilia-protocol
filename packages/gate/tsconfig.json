@@ -78,6 +78,10 @@
     "src/receipt-program.ts",
     "src/trust-program.ts",
     "src/trust-program-adapters.ts",
-    "src/trust-program-postgres.ts"
+    "src/trust-program-postgres.ts",
+    "src/trust-program-revocation.ts",
+    "src/remedy-program.ts",
+    "src/remedy-program-receipt.ts",
+    "src/remedy-program-postgres.ts"
   ]
 }

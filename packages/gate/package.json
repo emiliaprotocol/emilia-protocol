@@ -67,6 +67,10 @@
     "./trust-program": "./trust-program.js",
     "./trust-program-adapters": "./trust-program-adapters.js",
     "./trust-program-postgres": "./trust-program-postgres.js",
+    "./trust-program-revocation": "./trust-program-revocation.js",
+    "./remedy-program": "./remedy-program.js",
+    "./remedy-program-receipt": "./remedy-program-receipt.js",
+    "./remedy-program-postgres": "./remedy-program-postgres.js",
     "./zk-range-proof": "./zk-range-proof.js"
   },
   "bin": {
@@ -103,6 +107,10 @@
     "trust-program.js",
     "trust-program-adapters.js",
     "trust-program-postgres.js",
+    "trust-program-revocation.js",
+    "remedy-program.js",
+    "remedy-program-receipt.js",
+    "remedy-program-postgres.js",
     "zk-range-proof.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",

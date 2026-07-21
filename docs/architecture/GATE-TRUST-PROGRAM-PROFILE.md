@@ -2,9 +2,12 @@
 
 # EMILIA Gate Trust Program Profile v1
 
-**Status:** closed private operational profile  
-**Machine discriminator:** `EP-GATE-TRUST-PROGRAM-PROFILE-v1`  
-**Conformance suite:** `EP-GATE-TRUST-PROGRAM-v1`  
+**Status:** private implementation profile; not a deployment or standardization claim
+
+**Machine discriminator:** `EP-GATE-TRUST-PROGRAM-PROFILE-v1`
+
+**Conformance suite:** `EP-GATE-TRUST-PROGRAM-v1`
+
 **Reference API:** `packages/gate/src/trust-program.ts`
 
 This document is an internal implementation and operations contract for the
@@ -15,23 +18,34 @@ MAY describe requirements of this private profile only.
 
 ## 1. Purpose and boundary
 
-A Trust Program is a relying-party-controlled, fail-closed authorization DAG
-for one exact consequential action. It composes registered evidence verifiers,
-stage thresholds, signed stage receipts, atomic state transitions, and one
-consequence owner. It does not redefine the Handshake, Quorum, AEC, capability,
-Receipt Program, or Action Escrow artifact formats.
+A Trust Program is a relying-party-controlled, fail-closed policy and
+enforcement controller for one exact consequential action. It composes
+registered evidence verifiers, stage thresholds, signed stage receipts, atomic
+state transitions, and one downstream effect-claim owner. Gate decides whether
+the configured technical path may advance and fences ownership of one claim; it
+does not perform the external effect, adjudicate a dispute, or make the action
+legally enforceable. It does not redefine the Handshake, Quorum, AEC,
+capability, Receipt Program, or Action Escrow artifact formats.
 
 The profile answers four operational questions:
 
 1. Which evidence seats must be filled?
 2. Which stages depend on signed completion of earlier stages?
-3. When is a single consequence claim available?
-4. Which one downstream kernel owns that consequence?
+3. When may Gate issue one fenced claim for the downstream effect owner?
+4. Which one downstream kernel owns that effect claim and its result?
 
 The program is closed: unknown program, stage, rule, requirement, or execution
 fields are rejected; bounds are fixed by the reference API; every declared
 stage must contribute to execution; and evidence cannot create new stages,
-weaken thresholds, select trust roots, or choose its consequence owner.
+weaken thresholds, select trust roots, or choose its downstream effect-claim
+owner.
+
+The lifecycle vocabulary in this profile follows
+[Lifecycle and Remedy Kernel](./LIFECYCLE-REMEDY-KERNEL.md). In particular, the
+original effect record is immutable; a pre-claim revocation can prevent a claim,
+whereas a late revocation cannot undo a claimed or executed effect; a dispute is
+not a decision; and every remedy is a new compensating action with its own CAID,
+action digest, operation ID, authorization, claim, and downstream owner.
 
 ## 2. Trust boundaries
 
@@ -46,13 +60,16 @@ weaken thresholds, select trust roots, or choose its consequence owner.
   verifier's bounded projection.
 - The Trust Program store owns atomic revision state. Production state must be
   shared across replicas and survive process restart.
-- Receipt Program or Action Escrow owns the protected effect. A Trust Program
-  grants neither kernel permission to bypass its own reserve, execution,
-  outcome, or reconciliation controls.
+- Gate owns policy evaluation, evidence admission, stage progression,
+  execution-readiness, and atomic claim fencing. It does not own the provider
+  effect or the downstream owner's effect assertion.
+- Receipt Program or Action Escrow owns the protected effect claim and the
+  owner-specific result. A Trust Program grants neither kernel permission to
+  bypass its own reserve, execution, outcome, or reconciliation controls.
 
 Complete mediation remains a deployment property. A passing Trust Program has
 no authority over a path that can reach the protected system without traversing
-the configured Gate and consequence-owning executor.
+the configured Gate and selected effect-claim owner.
 
 ## 3. Closed program object
 
@@ -67,13 +84,13 @@ The complete top-level key set is:
 | `action_digest`            | Lowercase `sha256:` digest of the exact action projection.                |
 | `valid_from`, `expires_at` | Strict UTC instants with `expires_at > valid_from`.                       |
 | `stages`                   | One to 64 closed stage definitions.                                       |
-| `execution`                | Closed terminal-stage and consequence-owner definition.                   |
+| `execution`                | Closed terminal-stage and downstream effect-claim-owner definition.       |
 
 Canonical JSON safety checks run before semantic validation. The implementation
 rejects unsupported values, aliases, cycles, unsafe numeric forms, and other
 non-canonical input. The resulting program digest binds the complete program,
 including stage order, dependencies, policies, thresholds, validity window,
-and consequence owner.
+and downstream effect-claim owner.
 
 ### 3.1 Stage definition
 
@@ -109,21 +126,22 @@ Each requirement contains exactly:
 A stage contains one to 64 requirements. A program contains at most 1,024
 requirements.
 
-### 3.2 Single consequence ownership
+### 3.2 Single downstream effect-claim ownership
 
 The execution object contains exactly `depends_on`, `consequence_mode`,
 `capability_template_digest`, and `escrow_profile_digest`.
 
-| `consequence_mode` | `capability_template_digest` | `escrow_profile_digest`   | Owner                                             |
-| ------------------ | ---------------------------- | ------------------------- | ------------------------------------------------- |
-| `receipt-program`  | Required `sha256:` digest    | MUST be `null`            | Receipt Program executes the bounded instruction. |
-| `action-escrow`    | MUST be `null`               | Required `sha256:` digest | Action Escrow executes the governed release.      |
+| `consequence_mode` | `capability_template_digest` | `escrow_profile_digest`   | Downstream owner responsibility |
+| ------------------ | ---------------------------- | ------------------------- | ------------------------------- |
+| `receipt-program`  | Required `sha256:` digest    | MUST be `null`            | Receipt Program owns the bounded instruction's effect claim and execution evidence. |
+| `action-escrow`    | MUST be `null`               | Required `sha256:` digest | Action Escrow owns the release-effect claim and provider reconciliation. |
 
 The mode is required. Both digests non-null, both null, an unknown mode, or a
 digest populated for the non-owner is `program_execution_invalid`. This
-exclusive choice prevents nested consequence ownership: Trust Program selects
-one downstream state machine; Receipt Program and Action Escrow do not wrap or
-recursively authorize one another for the same effect.
+exclusive choice prevents nested effect-claim ownership: Gate selects and
+fences one downstream state machine; Receipt Program and Action Escrow do not
+wrap or recursively authorize one another for the same effect. Selection is not
+execution, and a successful Gate claim is not an execution outcome.
 
 ## 4. Processing model
 
@@ -198,7 +216,7 @@ eventual receipt. A changed receipt body fails digest verification, while a
 valid receipt presented against the wrong predecessor expectation fails the
 expected-binding check.
 
-### 4.4 Claim one consequence
+### 4.4 Fence one downstream effect claim
 
 Execution becomes `ready` only when all terminal stages named by
 `execution.depends_on` are satisfied. Before a claim, Gate rechecks the
@@ -209,14 +227,23 @@ Production durable stores require a stable `operationId` and caller-held claim
 token. The compare-and-swap claim binds:
 
 - instance, operation, program, CAID, and action;
+- the digest of the pinned issuer, tenant, environment, audience, and key-id
+  receipt context;
 - sorted terminal stage-receipt digests;
 - the exclusive `consequence_mode`; and
 - the owner digest, with the non-owner digest null.
 
 The execution-binding verifier must validate that complete object against the
-selected downstream kernel. A successful claim moves `ready` to `claimed`.
-Reusing the exact operation ID and claim token is idempotent; another claimant
-is refused.
+selected downstream kernel. A successful claim moves `ready` to `claimed`; it
+does not say that provider entry or any external effect occurred. The claim
+token is a bearer capability for this controller transition: possession of the
+secret, together with the bound operation, authorizes the holder to submit the
+owner result for finalization. It is not an identity credential, receipt,
+comparison verdict, or legal entitlement. It must be high entropy, transmitted
+only over an authenticated confidential channel, excluded from logs, and
+protected like any other bearer secret. The store retains only its digest.
+Reusing the exact operation ID and token is idempotent; a different token is
+refused.
 
 Every state loaded from storage is revalidated against the pinned program,
 stage graph, evidence ledger, signed stage receipts, execution status, and
@@ -227,23 +254,29 @@ finalized, and reconciled instants must form a monotonic transition history;
 missing terminal timestamps and clock rollback are refused before another
 state revision can be committed.
 
-### 4.5 Finalize, freeze, and reconcile
+### 4.5 Record the owner result, fence uncertainty, and reconcile
 
-Only the claim-token holder can finalize. `executed`, `refused`, and
-`indeterminate` require a `sha256:` evidence digest and, in production,
-successful verification of the supplied outcome evidence against the stored
-authorization binding.
+Only the claim-token holder can submit finalization. `executed`, `refused`, and
+`indeterminate` are downstream owner results and require a `sha256:` evidence
+digest and, in production, successful verification of the supplied owner
+evidence against the stored authorization binding. A comparison verdict or
+receipt assessment is not an execution outcome and cannot satisfy this check.
 
 `indeterminate` means provider entry may have occurred but success or failure
-is not proven. It is not a retry grant. A new execution claim returns
+is not proven. It is a fenced owner result, not a retry grant and not an
+irreversible terminal conclusion. A new execution claim returns
 `execution_indeterminate`. Only authenticated reconciliation may transition it
 to `executed` or `proved_no_effect`; reconciliation does not invoke the effect
-again.
+again. In the Action Escrow adapter, `release_indeterminate` maps to this fenced
+owner result and remains eligible only for Action Escrow's authenticated
+reconciliation transitions.
 
-Invalidation is revision-checked and terminal for unclaimed authorization.
-Invalidating a program does not rewrite a claimed, indeterminate, or already
-terminal consequence as if the effect had not occurred. Those states retain
-their outcome and reconciliation obligations.
+Invalidation or revocation before claim is revision-checked and terminal for
+that unclaimed authorization: Gate must not mint a downstream claim after the
+authority is no longer current. Revocation learned after claim is late. It may
+be recorded for future authority, dispute, and remedy policy, but it does not
+rewrite a claimed, indeterminate, or already observed effect as if it had not
+occurred. Those states retain their owner result and reconciliation obligations.
 
 ## 5. Required operational controls
 
@@ -260,8 +293,8 @@ Production deployment requires all of the following:
    has since changed.
 5. A KMS/HSM or equivalently controlled Ed25519 stage-receipt signer and a
    separately configured verification key.
-6. Stable operation IDs, protected claim tokens, and one selected downstream
-   consequence kernel.
+6. Stable operation IDs, high-entropy bearer claim tokens protected from
+   disclosure, and one selected downstream effect-claim owner.
 7. Authenticated execution-outcome and reconciliation evidence tied to the same
    operation, action, tenant, environment, and provider boundary.
 8. Clock monitoring sufficient to enforce program, evidence, revocation, and
@@ -325,11 +358,17 @@ inputs. It does not establish:
 - truth of external facts or quality of work;
 - that an authorized action was wise, safe, lawful, or commercially suitable;
   or
-- that a claimed external effect occurred exactly as authorized.
+- that a claimed external effect occurred exactly as authorized;
+- adjudication of a dispute, reversal of an external effect, or legal
+  enforceability of a remedy; or
+- deployment, production operation, independent conformance, or adoption as a
+  public standard.
 
 Stage receipts prove integrity and attribution under the configured operator
 key. They do not make the operator independent. A DAG proves that configured
 evidence gates advanced in the declared order; it does not turn weak evidence
 into strong evidence. The final assurance is bounded by the native verifiers,
-their pinned roots, atomic state, consequence-owner enforcement, authenticated
-outcome evidence, and non-bypassability of the protected path.
+their pinned roots, atomic state, downstream owner enforcement, authenticated
+owner-result evidence, and non-bypassability of the protected path. The result
+is technically gated under the configured profile; that phrase makes no claim
+about legal enforceability.

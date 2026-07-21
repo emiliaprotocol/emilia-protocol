@@ -701,6 +701,7 @@ export function createReceiptProgramExecutionOutcomeVerifier(
 
 export interface ActionEscrowTerminalOptions {
   agreementId: string;
+  operationId: string;
   releaseActionDigest: string;
   profileDigest: string;
   componentVerifiers: Record<string, (...args: any[]) => any>;
@@ -722,6 +723,8 @@ export function createActionEscrowTerminalOutcomeVerifier(
   options: ActionEscrowTerminalOptions,
 ): TerminalVerifier {
   if (typeof options.agreementId !== 'string' || options.agreementId.length === 0
+      || typeof options.operationId !== 'string' || options.operationId.length === 0
+      || options.operationId.length > 512 || /[\u0000-\u001f\u007f]/.test(options.operationId)
       || !DIGEST.test(options.releaseActionDigest) || !DIGEST.test(options.profileDigest)
       || !isDataRecord(options.componentVerifiers)) {
     throw new TypeError('Action Escrow adapter configuration invalid');
@@ -729,6 +732,7 @@ export function createActionEscrowTerminalOutcomeVerifier(
   const componentVerifiers = snapshotPinned(options.componentVerifiers);
   const pinned = snapshotPinned({
     agreementId: options.agreementId,
+    operationId: options.operationId,
     releaseActionDigest: options.releaseActionDigest,
     profileDigest: options.profileDigest,
     componentVerifiers,
@@ -741,6 +745,9 @@ export function createActionEscrowTerminalOutcomeVerifier(
   const verifier = async ({ evidence, authorizationBinding }: RecordLike) => {
     if (!actionEscrowOwnership(authorizationBinding, pinned.profileDigest)) {
       return terminalRefusal('consequence_ownership_invalid');
+    }
+    if (authorizationBinding.operation_id !== pinned.operationId) {
+      return terminalRefusal('action_escrow_binding_mismatch');
     }
     if (!exactKeys(
       evidence,
@@ -757,6 +764,11 @@ export function createActionEscrowTerminalOutcomeVerifier(
     if (!outcome) return terminalRefusal('action_escrow_state_not_terminal');
     if (pkg.agreement_id !== pinned.agreementId || pkg.package_digest === undefined
         || !DIGEST.test(pkg.package_digest)) {
+      return terminalRefusal('action_escrow_binding_mismatch');
+    }
+    if (outcome !== 'refused'
+        && (!isDataRecord(pkg.release)
+          || pkg.release.operation_idempotency_key !== pinned.operationId)) {
       return terminalRefusal('action_escrow_binding_mismatch');
     }
     if (!(evidence.document_bytes instanceof Uint8Array)

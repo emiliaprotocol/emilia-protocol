@@ -60,8 +60,8 @@ const EXECUTION_STATE_KEYS = new Set([
 ]);
 const AUTHORIZATION_BINDING_KEYS = new Set([
     'instance_id', 'operation_id', 'program_digest', 'root_caid', 'action_digest',
-    'terminal_stage_receipt_digests', 'consequence_mode', 'capability_template_digest',
-    'escrow_profile_digest',
+    'receipt_context_digest', 'terminal_stage_receipt_digests', 'consequence_mode',
+    'capability_template_digest', 'escrow_profile_digest',
 ]);
 function fail(reason) {
     return { ok: false, reason };
@@ -581,6 +581,9 @@ function storedStateValid(state, program, programDigest, instanceId, receiptCont
             || binding.program_digest !== programDigest
             || binding.root_caid !== program.root_caid
             || binding.action_digest !== program.action_digest
+            || typeof binding.receipt_context_digest !== 'string'
+            || !DIGEST.test(binding.receipt_context_digest)
+            || binding.receipt_context_digest !== digest(receiptContext)
             || canonicalize(binding.terminal_stage_receipt_digests)
                 !== canonicalize([...terminalReceipts].sort())
             || binding.consequence_mode !== program.execution.consequence_mode
@@ -1122,6 +1125,7 @@ export function createTrustProgramKernel(options) {
             program_digest: programDigest,
             root_caid: program.root_caid,
             action_digest: program.action_digest,
+            receipt_context_digest: digest(receiptContext),
             terminal_stage_receipt_digests: program.execution.depends_on
                 .map((stageId) => loaded.state.stages[stageId].receipt.receipt_digest).sort(),
             consequence_mode: program.execution.consequence_mode,

@@ -63,6 +63,10 @@ export { CAPABILITY_RECEIPT_VERSION, CAPABILITY_STATE_VERSION, CAPABILITY_SHARE_
 export { ZK_RANGE_RECEIPT_VERSION, ZK_RANGE_SCHEME, ZK_RANGE_BACKEND_PACKAGE, deriveZkRangeBases, loadBulletproofBackend, mintZkRangeReceipt, verifyZkRangeReceipt, } from './zk-range-proof.js';
 export { RECEIPT_PROGRAM_VERSION, RECEIPT_PROGRAM_CERTIFICATE_VERSION, RECEIPT_PROGRAM_SIGNATURE_ALGORITHM, createReceiptProgramKernel, verifyReceiptProgramCertificate, } from './receipt-program.js';
 export { TRUST_PROGRAM_VERSION, TRUST_STAGE_RECEIPT_VERSION, validateTrustProgram, trustProgramDigest, verifyTrustStageReceipt, createMemoryTrustProgramStore, createTrustProgramKernel, } from './trust-program.js';
+export { TRUST_PROGRAM_REVOCATION_TARGET_VERSION, deriveTrustProgramRevocationTargetObject, deriveTrustProgramRevocationTarget, verifyTrustProgramRevocation, applyTrustProgramRevocation, } from './trust-program-revocation.js';
+export { REMEDY_PROGRAM_VERSION, createRemedyMemoryStore, createRemedyProgramKernel, } from './remedy-program.js';
+export { ACTION_REMEDY_RECEIPT_VERSION, REMEDY_PROGRAM_RECEIPT_VERSION, ACTION_REMEDY_RECEIPT_DOMAIN, expectedRemedyProgramReceiptBindings, remedyProgramReceiptSigningBytes, issueRemedyProgramReceipt, signRemedyProgramReceipt, createRemedyProgramReceipt, verifyRemedyProgramReceipt, } from './remedy-program-receipt.js';
+export { REMEDY_PROGRAM_PG_STORE_VERSION, REMEDY_PROGRAM_MAX_STATE_BYTES, REMEDY_PROGRAM_MAX_FORWARD_SKEW_MINUTES, REMEDY_PROGRAM_POSTGRES_SQL, createRemedyProgramPostgresStore, } from './remedy-program-postgres.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;

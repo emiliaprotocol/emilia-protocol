@@ -21,4 +21,3 @@ def test_accepts_ordered_prefix_quorum_two_of_three():
         "allowedOrigins": ["https://www.emiliaprotocol.ai"],
     })
     assert result["valid"] is True
-
