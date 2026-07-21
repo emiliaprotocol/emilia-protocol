@@ -15,7 +15,7 @@
 // observedAction is absent."
 
 import { describe, it, expect } from 'vitest';
-import { verifyExecutionBinding } from '../packages/gate/execution-binding.js';
+import { verifyExecutionBinding, hashCanonical } from '../packages/gate/execution-binding.js';
 
 const REQUIREMENT = Object.freeze({
   execution_binding: {
@@ -313,12 +313,186 @@ describe('Gate execution-binding — fail-closed on absent observed action', () 
     expect(observedOnly.observed_hash).toBeNull();
   });
 
+  // The three cases below are the other half of the `__proto__` story. The
+  // refusals above pin that a REFUSED `__proto__` field is still named; these
+  // pin that an ACCEPTED one is still BOUND. Writing `values['__proto__'] = v`
+  // onto a plain `{}` runs Object.prototype's setter: a scalar is dropped
+  // (the field never reaches the digest it is supposed to be covered by) and an
+  // object repoints the accumulator's prototype (the aggregate re-check then
+  // throws with no own key to attribute the refusal to, so the throw escapes
+  // verifyExecutionBinding as a crash instead of a reasoned refusal).
+
+  const withOwnProto = (value) => {
+    const container = {};
+    Object.defineProperty(container, '__proto__', {
+      value, enumerable: true, writable: true, configurable: true,
+    });
+    return container;
+  };
+  const PROTO_REQUIREMENT = { execution_binding: { required_fields: ['__proto__'] } };
+
+  it('BINDS a scalar __proto__-named field into the digest instead of dropping it', () => {
+    const r = verifyExecutionBinding({
+      requirement: PROTO_REQUIREMENT,
+      receipt: { payload: { claim: withOwnProto(250000) } },
+      observedAction: withOwnProto(250000),
+    });
+    expect(r.ok).toBe(true);
+    // The digest must cover the field. An empty-object digest means the value
+    // never landed, and the binding claims coverage it does not have.
+    expect(r.signed_hash).not.toBe(hashCanonical({}));
+    expect(r.signed_hash).toBe(hashCanonical(withOwnProto(250000)));
+    expect(r.observed_hash).toBe(r.signed_hash);
+
+    // ...and the digest is a function of the VALUE, not just the field name.
+    const other = verifyExecutionBinding({
+      requirement: PROTO_REQUIREMENT,
+      receipt: { payload: { claim: withOwnProto(300000) } },
+      observedAction: withOwnProto(300000),
+    });
+    expect(other.ok).toBe(true);
+    expect(other.signed_hash).not.toBe(r.signed_hash);
+  });
+
+  it('does not CRASH on an object-valued __proto__-named field, and binds it', () => {
+    const call = () => verifyExecutionBinding({
+      requirement: PROTO_REQUIREMENT,
+      receipt: { payload: { claim: withOwnProto({ amount: 1 }) } },
+      observedAction: withOwnProto({ amount: 1 }),
+    });
+    expect(call).not.toThrow();
+    const r = call();
+    expect(r.ok).toBe(true);
+    expect(r.signed_hash).toBe(hashCanonical(withOwnProto({ amount: 1 })));
+    expect(r.observed_hash).toBe(r.signed_hash);
+  });
+
+  it('NAMES a __proto__-named field refused only by the aggregate alias check', () => {
+    const requirement = { execution_binding: { required_fields: ['__proto__', 'sibling'] } };
+    const shared = { amount: 1 };
+    const aliased = withOwnProto(shared);
+    aliased.sibling = shared;
+    // Built with defineProperty, never an object literal: `{ __proto__: v }` is
+    // the prototype-setter syntax and would produce no own key at all.
+    const observed = withOwnProto({ amount: 1 });
+    observed.sibling = { amount: 1 };
+
+    const r = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: aliased } },
+      observedAction: observed,
+    });
+    expect(r.ok).toBe(false);
+    // Each field passes on its own; only the aggregate graph sees the alias.
+    // Both must be named, including the one no Object.keys walk would return
+    // from a plain-object accumulator.
+    expect(r.invalid_signed_fields).toEqual(['__proto__', 'sibling']);
+    expect(r.invalid_observed_fields).toEqual([]);
+    expect(r.signed_hash).toBeNull();
+  });
+
+  // A symbol-named required field is the same defect at a different key type:
+  // it reaches the accumulator as an own symbol property, which the canonical
+  // JSON profile refuses -- but no Object.keys walk can name it, so the refusal
+  // used to be unrecordable and the digest call threw uncaught.
+  it('REFUSES a symbol-named required field with a reason instead of throwing', () => {
+    const material = Symbol('material');
+    const call = () => verifyExecutionBinding({
+      requirement: { execution_binding: { required_fields: [material] } },
+      receipt: { payload: { claim: { [material]: 1 } } },
+      observedAction: { [material]: 1 },
+    });
+    expect(call).not.toThrow();
+    const r = call();
+    expect(r.ok).toBe(false);
+    expect(r.invalid_signed_fields).toEqual([material]);
+    expect(r.invalid_observed_fields).toEqual([material]);
+    expect(r.signed_hash).toBeNull();
+    expect(r.observed_hash).toBeNull();
+  });
+
+  // A per-field refusal and the aggregate backstop are different mechanisms with
+  // different blast radii: the per-field pass refuses one field, the aggregate
+  // pass refuses every field it accepted. A field that the per-field pass
+  // already refused must never reach the accumulator, or its refusal widens
+  // into its siblings and the response blames fields that were never wrong.
+  //
+  // These two are also what pin fieldValue's per-property refusals under
+  // mutation. Its per-CONTAINER refusal (the `isPlainObject(container)` guard)
+  // has no such oracle and cannot get one: a non-plain container refuses every
+  // required field at once, so returning an unrecognized state instead of
+  // `invalid` moves all of them from the per-field refusal to the identical
+  // aggregate refusal, with the same fields, order, and null hashes. That
+  // mutant is equivalent. It reported as killed before the `__proto__`
+  // accumulator fix only by accident: the refused field's `undefined` was
+  // swallowed by Object.prototype's setter, which flipped the verdict to a
+  // wrong ok:true that a test then caught.
+  it('confines a per-field signed refusal to that field, leaving a valid sibling clean', () => {
+    const requirement = { execution_binding: { required_fields: ['refused', 'sibling'] } };
+    const claim = { sibling: { amount: 1 } };
+    Object.defineProperty(claim, 'refused', {
+      value: { amount: 2 }, enumerable: false, configurable: true,
+    });
+
+    const r = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim } },
+      observedAction: { refused: { amount: 2 }, sibling: { amount: 1 } },
+    });
+    expect(r.ok).toBe(false);
+    expect(r.invalid_signed_fields).toEqual(['refused']);
+    expect(r.invalid_observed_fields).toEqual([]);
+    expect(r.observed_hash).toBe(hashCanonical({ refused: { amount: 2 }, sibling: { amount: 1 } }));
+  });
+
+  it('confines a per-field observed refusal to that field, leaving a valid sibling clean', () => {
+    const requirement = { execution_binding: { required_fields: ['refused', 'sibling'] } };
+    const observed = { sibling: { amount: 1 } };
+    Object.defineProperty(observed, 'refused', {
+      value: { amount: 2 }, enumerable: false, configurable: true,
+    });
+
+    const r = verifyExecutionBinding({
+      requirement,
+      receipt: { payload: { claim: { refused: { amount: 2 }, sibling: { amount: 1 } } } },
+      observedAction: observed,
+    });
+    expect(r.ok).toBe(false);
+    expect(r.invalid_observed_fields).toEqual(['refused']);
+    expect(r.invalid_signed_fields).toEqual([]);
+    expect(r.signed_hash).toBe(hashCanonical({ refused: { amount: 2 }, sibling: { amount: 1 } }));
+  });
+
   // A required-field entry that is not a string is coerced to a property key
   // every time it is used, so a non-string entry can run code BETWEEN the
   // per-field read and the accumulator write, and make one property answer
   // twice differently. The already-refused field must stay refused exactly
   // once: the aggregate re-check must not re-report a field the per-field pass
   // already named.
+  it('binds an accepted value under the same field name it was read from', () => {
+    // A field name that answers differently on each coercion. If the verifier
+    // resolves the entry to a property key more than once, it can read
+    // `amount_usd` and then bind that value under `beneficiary_account_hash` --
+    // a digest that attests to a field pairing neither side ever presented.
+    let coercions = 0;
+    const drifting = {
+      toString() {
+        coercions += 1;
+        return coercions === 1 ? 'amount_usd' : 'beneficiary_account_hash';
+      },
+    };
+    const claim = { amount_usd: 250000, beneficiary_account_hash: 'sha256:vendorA' };
+
+    const r = verifyExecutionBinding({
+      requirement: { execution_binding: { required_fields: [drifting] } },
+      receipt: { payload: { claim } },
+      observedAction: { ...claim },
+    });
+    expect(r.ok).toBe(true);
+    expect(r.signed_hash).toBe(hashCanonical({ amount_usd: 250000 }));
+    expect(r.observed_hash).toBe(r.signed_hash);
+  });
+
   it('reports an already-refused signed field exactly once under a side-effecting field name', () => {
     const shared = { amount: 1 };
     const claim = { b: shared };
