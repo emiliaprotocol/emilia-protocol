@@ -138,6 +138,7 @@
     "zod": "^4.4.3"
   },
   "overrides": {
+    "@hono/node-server": "2.0.8",
     "rollup": "^4.22.5",
     "postcss": "^8.5.12",
     "qs": "^6.15.2",
