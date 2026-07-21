@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import pako from 'pako';
+import * as pako from 'pako';
 
 const ROOT: string = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm: string = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -33,13 +33,14 @@ export function assertArtifactBytesMatch(expected: Buffer | Uint8Array | undefin
  */
 export function canonicalizeNpmTarball(archive: Buffer | Uint8Array): Buffer {
   const tarBytes: Uint8Array = pako.ungzip(archive);
-  return Buffer.from(pako.gzip(tarBytes, {
+  const gzipBytes: Buffer = Buffer.from(pako.gzip(tarBytes, {
     level: 9,
-    header: {
-      time: 0,
-      os: 255,
-    },
   }));
+  // Pako 3 no longer exposes the v1 `header` option.  Normalize the two
+  // gzip header fields that are allowed to vary by runtime: MTIME and OS.
+  gzipBytes.writeUInt32LE(0, 4);
+  gzipBytes[9] = 0xff;
+  return gzipBytes;
 }
 
 /**
