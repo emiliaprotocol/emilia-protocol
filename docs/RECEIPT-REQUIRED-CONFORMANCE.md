@@ -47,7 +47,7 @@ console.log(report.level, report.passed, report.checks);
 ```
 
 If `report.passed` is true you may display the badge. EMILIA's own example
-servers are held to this in CI (`tests/receipt-required-conformance.test.js`),
+servers are held to this in CI (`tests/receipt-required-conformance.test.ts`),
 so the reference implementations can never silently fall out of conformance.
 
 ## Claim the badge

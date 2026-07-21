@@ -27,7 +27,7 @@ path, while adapter records use Ed25519 over canonical bytes.
 
 ```bash
 node examples/grace/live-control-room.mjs
-npx vitest run tests/grace-mobile-grid.test.js
+npx vitest run tests/grace-mobile-grid.test.ts
 ```
 
 The public web experience is `/grace/live`. It calls the same reference scenario

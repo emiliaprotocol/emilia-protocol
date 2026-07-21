@@ -3,13 +3,13 @@
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
-import { buildActionEscrowRuntime } from './build-action-escrow-runtime.mjs';
+import { buildStandaloneRuntimes } from './build-standalone-runtimes.mjs';
 
 const root = process.cwd();
 const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
 const builds = [
   ['lib/strict-json.ts', 'lib', 'lib/dist'],
-  ['packages/gate/action-control-manifest.ts', 'packages/gate', 'packages/gate/dist'],
+  ['packages/gate/src/action-control-manifest.ts', 'packages/gate/src', 'packages/gate/dist'],
 ];
 
 for (const [entry, rootDir, outDir] of builds) {
@@ -27,4 +27,4 @@ for (const [entry, rootDir, outDir] of builds) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-await buildActionEscrowRuntime();
+await buildStandaloneRuntimes();

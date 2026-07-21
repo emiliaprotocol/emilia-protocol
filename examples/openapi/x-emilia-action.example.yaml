@@ -18,7 +18,7 @@
 # it. That is how the manifest becomes a dependency rather than a spec.
 #
 # Validate this file's x-emilia-action against public/schemas/x-emilia-action.schema.json
-# (see tests/x-emilia-action-example.test.js).
+# (see tests/x-emilia-action-example.test.ts).
 
 openapi: 3.0.3
 info:

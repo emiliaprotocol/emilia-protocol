@@ -3,7 +3,8 @@
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
-    "strict": false, "strictNullChecks": true,
+    "strict": false,
+    "strictNullChecks": true,
     "target": "es2022",
     "module": "nodenext",
     "moduleResolution": "nodenext",
@@ -15,11 +16,15 @@
     "packages/verify/**/*.js",
     "packages/gate/**/*.ts",
     "lib/handshake/**/*.js",
+    "lib/handshake/**/*.ts",
     "packages/gate/**/*.js"
   ],
   "exclude": [
     "**/*.test.js",
     "packages/verify/dist/**",
-    "**/node_modules/**"
+    "packages/gate/dist/**",
+    "**/node_modules/**",
+    "**/*.test.ts",
+    "**/*.test.mts"
   ]
 }

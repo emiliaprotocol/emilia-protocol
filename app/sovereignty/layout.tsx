@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: Apache-2.0
+
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'European Digital Sovereignty for Accountable AI — EMILIA',
+  description:
+    'EMILIA turns EU AI Act human oversight from a policy promise into an offline-verifiable '
+    + 'authorization receipt: a named human approved the exact AI action, checkable by European '
+    + 'institutions without trusting a foreign cloud or the operator that produced the log.',
+  alternates: { canonical: '/sovereignty' },
+  openGraph: {
+    title: 'European Digital Sovereignty for Accountable AI',
+    description:
+      'An open authorization-receipt layer for verifiable human authority over AI actions. '
+      + 'No receipt, no execution. Offline-verifiable, Apache-2.0, self-hostable.',
+    url: 'https://www.emiliaprotocol.ai/sovereignty',
+    type: 'website',
+  },
+  keywords: [
+    'European digital sovereignty',
+    'EU AI Act Article 14',
+    'verifiable human oversight',
+    'AI Act human oversight',
+    'authorization receipts',
+    'accountable AI infrastructure',
+    'eIDAS AI authorization',
+    'offline verifiable AI governance',
+  ],
+};
+
+export default function SovereigntyLayout({ children }: { children: React.ReactNode }) {
+  return children;
+}

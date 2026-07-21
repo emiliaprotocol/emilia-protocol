@@ -153,7 +153,7 @@ as `scoped-human-authority-valid-at-authorization`:
 case for every failure mode (unknown, revoked, expired, not-yet-valid,
 out-of-scope, wrong-role, over-limit, currency-mismatch, policy-mismatch,
 delegation-broken, unavailable, stale, plus proof unpinned/tampered/head-
-mismatch/stale/forged-key-id). Driven by `tests/authority-registry.test.js`. The
+mismatch/stale/forged-key-id). Driven by `tests/authority-registry.test.ts`. The
 authority-claim guard (`scripts/check-authority-claims.mjs`, CI) fails the build
 if any public surface claims enforced/scoped authority without this registry
 entry and these passing vectors.

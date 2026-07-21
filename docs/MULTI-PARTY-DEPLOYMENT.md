@@ -122,7 +122,7 @@ round-trip test proves the mapped members pass the real `quorumGate`.
     challenges, `quorum_policy IS NULL`, skip the gate unchanged).
   - Quorum fan-out at `app/api/v1/signoffs/request/route.js` (one signoff per
     roster approver when a `quorum_policy` is present).
-  - **Live multi-device E2E**: `e2e/multi-party-quorum.spec.js` — three virtual
+  - **Live multi-device E2E**: `e2e/multi-party-quorum.spec.ts` — three virtual
     WebAuthn authenticators sign PO→AO→IG; consume returns 403 until all three
     sign, then 200. **PASSED.**
   - **Cross-language conformance**: 9 `EP-QUORUM-v1` vectors

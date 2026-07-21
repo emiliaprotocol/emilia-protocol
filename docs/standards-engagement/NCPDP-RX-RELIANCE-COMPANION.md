@@ -115,8 +115,8 @@ cryptographically verifiable proof of the evidence behind the decision.
 - `profiles/ncpdp/specialty-pa-evidence-challenge.v1.json` — an illustrative payer challenge.
 - `lib/ncpdp/rx-reliance.js` — the reference evaluator (`evaluateRxReliance`, `verifyRxArtifact`, `buildRxAppealBundle`).
 - `examples/ncpdp/specialty-pa-reliance-flow.mjs` — a full offline flow (`node examples/ncpdp/specialty-pa-reliance-flow.mjs`).
-- `conformance/vectors/ncpdp-rx-reliance.v1.json` + `tests/ncpdp-rx-reliance.test.js` — a positive approve, a positive signed deny, and a reject for every `rx_do_not_rely_*` verdict.
-- `tests/ncpdp-privacy.test.js` — pairwise-linkability, bare-hash, direct-field,
+- `conformance/vectors/ncpdp-rx-reliance.v1.json` + `tests/ncpdp-rx-reliance.test.ts` — a positive approve, a positive signed deny, and a reject for every `rx_do_not_rely_*` verdict.
+- `tests/ncpdp-privacy.test.ts` — pairwise-linkability, bare-hash, direct-field,
   free-text, future-timestamp, signed-envelope-smuggling, planted-PHI export,
   purpose/audience substitution, over-retention, artifact over-disclosure, and
   key-scope attacks.

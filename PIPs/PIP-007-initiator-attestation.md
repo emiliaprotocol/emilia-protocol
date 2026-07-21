@@ -330,8 +330,8 @@ the implemented touchpoints and their tests. Versions:
   response and audit row (preserved in observe mode), where a caller minting
   §6.2 contexts passes it to the issuer's `initiatorAttestation`. The pilot
   observe-mode report (`app/api/pilot/sandbox/report/route.js`) includes it
-  in flagged sample rows. Tests: `tests/guard-policies.test.js` (the full
-  trigger map) and `tests/guard-adapter-aml.test.js` (response + audit
+  in flagged sample rows. Tests: `tests/guard-policies.test.ts` (the full
+  trigger map) and `tests/guard-adapter-aml.test.ts` (response + audit
   carriage, observe-mode preservation).
 
 ## Deployment guidance (non-normative)

@@ -20,8 +20,8 @@
     },
     {
       "path": "scripts/build-standards-observatory.mjs",
-      "bytes": 13963,
-      "sha256": "c025d369b498c034c3534a23552d31a1d00e2bbdd144e7c042f19fdb1a792dac"
+      "bytes": 14524,
+      "sha256": "a4b98a1a9288023a4f561a4587d325350348e5045e1d0800a690fc57b1ff984a"
     }
   ],
   "outputs": [

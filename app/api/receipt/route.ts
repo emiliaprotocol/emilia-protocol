@@ -1,0 +1,162 @@
+import crypto from 'crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
+import { getGuardedClient } from '@/lib/write-guard';
+import { open as openSecret } from '@/lib/crypto/secret-box';
+import { canonicalize } from '@/lib/guard-evidence-receipt';
+import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
+import { logger } from '@/lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
+
+// readEpJson's inferred return type doesn't discriminate cleanly on `ok`
+// (lib/http/route-body.js is still untyped) — pin the real contract here and
+// cast at the call site rather than fighting the widened inference.
+type ReadEpJsonResult =
+  | { ok: true; value: any }
+  | { ok: false; response: NextResponse; error?: any };
+
+/**
+ * POST /api/receipt
+ *
+ * Protocol-standard receipt submission endpoint.
+ * Creates a self-verifying EP-RECEIPT-v1 document with Ed25519 signature.
+ *
+ * This route is AUTHENTICATED. The issuer is derived from the authenticated
+ * entity, not from the request body — anything in `body.issuer` is checked
+ * against the auth context and rejected on mismatch. Without this guard the
+ * route is a receipt-forgery vector: any caller could specify any
+ * `issuer` and receive an Ed25519 signature attesting to that issuer's
+ * authorship of an arbitrary claim.
+ *
+ * Body: { subject, outcome, action_type, context?, issuer? (optional but
+ *        must equal authenticated entity if provided) }
+ * Returns: EP-RECEIPT-v1 signed document
+ */
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+
+    const parsed = (await readEpJson(request, MAX_BODY_BYTES, undefined)) as ReadEpJsonResult;
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
+
+    // ── ISSUER COMES FROM AUTH (per safety invariant) ────────────────────
+    // Body issuer is optional; if present, must match auth. Never trust
+    // a body-supplied issuer alone.
+    // authenticateRequest resolves an entity row; the stable entity_id is what
+    // issuer comparisons + lookups use. authEntityId() unwraps it (same fix as
+    // the v1 identity sites in 7c5cfcf — this protocol-standard route was missed).
+    const authedIssuer = authEntityId(auth);
+    if (body.issuer && body.issuer.trim() && body.issuer.trim() !== authedIssuer) {
+      return epProblem(
+        403,
+        'issuer_mismatch',
+        'body.issuer does not match authenticated entity',
+      );
+    }
+    const issuer = authedIssuer;
+
+    const subject = (body.subject || '').trim();
+    const outcome = body.outcome || 'positive';
+    const actionType = body.action_type || 'interaction';
+    const context = body.context || {};
+
+    if (!subject) return epProblem(400, 'missing_subject', 'subject is required');
+
+    const supabase = getGuardedClient();
+
+    // Look up issuer's signing key
+    const { data: issuerEntity, error: issuerErr } = await supabase
+      .from('entities')
+      .select('entity_id, private_key_encrypted, public_key')
+      .eq('entity_id', issuer)
+      .single();
+
+    if (issuerErr || !issuerEntity) {
+      return epProblem(404, 'issuer_not_found', 'Issuer entity not found');
+    }
+
+    // Build receipt payload (canonical format)
+    const receiptId = `ep_r_${crypto.randomBytes(16).toString('hex')}`;
+    const now = new Date().toISOString();
+
+    const payload = {
+      receipt_id: receiptId,
+      issuer,
+      subject,
+      claim: {
+        action_type: actionType,
+        outcome,
+        context,
+      },
+      created_at: now,
+      protocol_version: 'EP-CORE-v1.0',
+    };
+
+    // Sign the canonical payload with Ed25519. A receipt without a valid
+    // signature is not a receipt — fail loud rather than returning an
+    // unsigned document that callers might mistakenly treat as
+    // authoritative. The canonical /api/receipt path is "issuer entity
+    // has a key, signing succeeds"; missing key or signing failure is a
+    // 5xx, not a silently-degraded 201.
+    if (!issuerEntity.private_key_encrypted) {
+      logger.warn('[api/receipt] Issuer has no signing key', { issuer });
+      return epProblem(
+        409,
+        'issuer_unsigned',
+        'Issuer entity has no signing key on file; cannot mint a signed receipt',
+      );
+    }
+    let signatureValue;
+    try {
+      const privateKeyDer = Buffer.from(openSecret(issuerEntity.private_key_encrypted), 'base64url');
+      const keyObject = crypto.createPrivateKey({
+        key: privateKeyDer,
+        format: 'der',
+        type: 'pkcs8',
+      });
+      const canonicalPayload = canonicalize(payload);
+      const sig = crypto.sign(null, Buffer.from(canonicalPayload, 'utf8'), keyObject);
+      signatureValue = Buffer.from(sig).toString('base64url');
+    } catch (sigErr) {
+      logger.error('[api/receipt] Ed25519 signing failed', { issuer, error: sigErr?.message });
+      return epProblem(500, 'signing_failed', 'Receipt signing failed');
+    }
+
+    // Build EP-RECEIPT-v1 document
+    const document = {
+      '@version': 'EP-RECEIPT-v1',
+      payload,
+      signature: {
+        algorithm: 'Ed25519',
+        signer: issuer,
+        value: signatureValue,
+        key_discovery: '/.well-known/ep-keys.json',
+      },
+      metadata: {
+        operator: 'ep_operator_emilia_primary',
+        issued_at: now,
+      },
+    };
+
+    // No DB persistence here. /api/receipt is the protocol-standard
+    // signed-document endpoint — the EP-RECEIPT-v1 payload IS the receipt.
+    // It is cryptographically verifiable with an independently trusted issuer
+    // key; the signature and key-discovery hint do not establish their own
+    // authority. Callers who need
+    // the receipt in the trust-DB should POST it to /api/receipts/submit,
+    // which goes through canonical-writer.js (the only sanctioned trust-table
+    // writer per check-protocol-discipline.js). Keeping a best-effort insert
+    // here would bypass the canonical writer and silently degrade write
+    // semantics on failure, which is exactly what the discipline check exists
+    // to prevent.
+
+    return NextResponse.json(document, { status: 201 });
+  } catch (err) {
+    return epProblem(500, 'internal_error', 'Receipt creation failed');
+  }
+}

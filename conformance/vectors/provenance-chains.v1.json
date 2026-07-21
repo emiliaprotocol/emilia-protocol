@@ -1,7 +1,7 @@
 {
   "@version": "EP-PROVENANCE-CHAIN-VECTORS-v1",
   "wire_tag": "EP-PROVENANCE-CHAIN-v1",
-  "description": "Negative + positive conformance vectors for verifyProvenanceOffline() (lib/provenance/chain.js). The cryptographic bundles themselves are minted live in tests/provenance-chain.test.js because the proofs must be real Ed25519 signatures over canonical bytes; this file is the AUTHORITATIVE catalogue of the attacks every conformant verifier MUST reject (valid:false) and the one well-formed bundle it MUST accept (valid:true). Each id here is asserted by name in the test.",
+  "description": "Negative + positive conformance vectors for verifyProvenanceOffline() (lib/provenance/chain.js). The cryptographic bundles themselves are minted live in tests/provenance-chain.test.ts because the proofs must be real Ed25519 signatures over canonical bytes; this file is the AUTHORITATIVE catalogue of the attacks every conformant verifier MUST reject (valid:false) and the one well-formed bundle it MUST accept (valid:true). Each id here is asserted by name in the test.",
   "must_reject": [
     {
       "id": "a_broken_inter_hop_link",

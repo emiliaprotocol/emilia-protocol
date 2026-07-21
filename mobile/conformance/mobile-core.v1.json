@@ -334,7 +334,7 @@
       "expect": { "valid": true },
       "execution": {
         "runner": "vitest",
-        "file": "tests/mobile-action-continuity.test.js",
+        "file": "tests/mobile-action-continuity.test.ts",
         "title": "computes one stable CAID from the exact authoritative action bytes"
       }
     },
@@ -343,7 +343,7 @@
       "expect": { "valid": true },
       "execution": {
         "runner": "vitest",
-        "file": "tests/mobile-action-continuity.test.js",
+        "file": "tests/mobile-action-continuity.test.ts",
         "title": "reconciles only an exact signed provider outcome and preserves terminal refusals"
       }
     },
@@ -352,7 +352,7 @@
       "expect": { "valid": false },
       "execution": {
         "runner": "vitest",
-        "file": "tests/mobile-action-continuity.test.js",
+        "file": "tests/mobile-action-continuity.test.ts",
         "title": "accepts terminal execution only under a pinned provider key and exact operation binding"
       }
     },

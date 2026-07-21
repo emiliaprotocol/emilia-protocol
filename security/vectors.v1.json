@@ -5,17 +5,17 @@
     {
       "id": "accept_device_signed_denial",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/signoff-decision-evidence.test.js", "title": "exports a device-signed denial that verifies offline under a pinned approver key" }
+      "execution": { "runner": "vitest", "file": "tests/signoff-decision-evidence.test.ts", "title": "exports a device-signed denial that verifies offline under a pinned approver key" }
     },
     {
       "id": "reject_signed_denial_relabel",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/webauthn-approve-route.test.js", "title": "refuses to relabel a device-signed denial as approval" }
+      "execution": { "runner": "vitest", "file": "tests/webauthn-approve-route.test.ts", "title": "refuses to relabel a device-signed denial as approval" }
     },
     {
       "id": "reject_class_a_bearer_denial",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/v1-api.test.js", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt" }
+      "execution": { "runner": "vitest", "file": "tests/v1-api.test.ts", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt" }
     },
     {
       "id": "accept_monotonic_witness_sequence",
@@ -50,17 +50,17 @@
     {
       "id": "accept_durable_challenge_after_restart",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.js", "title": "survives restart and admits exactly one concurrent presentation" }
+      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.ts", "title": "survives restart and admits exactly one concurrent presentation" }
     },
     {
       "id": "reject_tampered_registered_challenge",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.js", "title": "binds registration to the entire challenge body, not only id and nonce" }
+      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.ts", "title": "binds registration to the entire challenge body, not only id and nonce" }
     },
     {
       "id": "reject_challenge_policy_drift",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.js", "title": "refuses policy drift without consuming the registered challenge" }
+      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.ts", "title": "refuses policy drift without consuming the registered challenge" }
     },
     {
       "id": "accept_successful_effect_once",
@@ -80,117 +80,117 @@
     {
       "id": "reject_aec_replay_via_decoy_component",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/aec-execution-gate.test.js", "title": "cannot mint a fresh replay key with an invalid decoy component" }
+      "execution": { "runner": "vitest", "file": "tests/aec-execution-gate.test.ts", "title": "cannot mint a fresh replay key with an invalid decoy component" }
     },
     {
       "id": "accept_phi_minimized_projection",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "projects an appeal bundle without recursively copying planted PHI" }
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.ts", "title": "projects an appeal bundle without recursively copying planted PHI" }
     },
     {
       "id": "reject_direct_patient_data",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs" }
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.ts", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs" }
     },
     {
       "id": "accept_purpose_bound_disclosure",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "discloses only to the pinned audience and purpose within the retention budget" }
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.ts", "title": "discloses only to the pinned audience and purpose within the retention budget" }
     },
     {
       "id": "reject_health_disclosure_substitution",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks" }
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.ts", "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks" }
     },
     {
       "id": "accept_byte_identical_registry_artifact",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "accepts a registry artifact only when every published byte matches" }
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.ts", "title": "accepts a registry artifact only when every published byte matches" }
     },
     {
       "id": "reject_registry_byte_substitution",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte registry artifact substitution" }
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte registry artifact substitution" }
     },
     {
       "id": "accept_byte_identical_pypi_wheel",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI wheel only when every published byte matches" }
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.ts", "title": "accepts a PyPI wheel only when every published byte matches" }
     },
     {
       "id": "reject_pypi_wheel_substitution",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI wheel substitution" }
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte PyPI wheel substitution" }
     },
     {
       "id": "accept_byte_identical_pypi_sdist",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI sdist only when every published byte matches" }
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.ts", "title": "accepts a PyPI sdist only when every published byte matches" }
     },
     {
       "id": "reject_pypi_sdist_substitution",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI sdist substitution" }
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.ts", "title": "rejects a one-byte PyPI sdist substitution" }
     },
     {
       "id": "accept_all_declared_release_chains",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "every declared package uses its complete verifiable release chain" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "every declared package uses its complete verifiable release chain" }
     },
     {
       "id": "accept_npm_pypi_release_byte_chains",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses reproducible registry-byte verification" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "every declared npm and PyPI package uses reproducible registry-byte verification" }
     },
     {
       "id": "accept_go_tag_proxy_chain",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "Go release isolates tag write authority and verifies the public proxy origin" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "Go release isolates tag write authority and verifies the public proxy origin" }
     },
     {
       "id": "reject_go_release_without_proxy_comparison",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go tag publisher without public-proxy source comparison" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "refuses a Go tag publisher without public-proxy source comparison" }
     },
     {
       "id": "reject_go_release_write_job_code_execution",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses Go release code execution in the contents-write tag job" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "refuses Go release code execution in the contents-write tag job" }
     },
     {
       "id": "reject_go_release_mutable_or_credentialed_checkout",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses a Go release checkout that follows mutable main or keeps credentials" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "refuses a Go release checkout that follows mutable main or keeps credentials" }
     },
     {
       "id": "reject_unclassified_go_module",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses an unclassified Go module even when its release manifest is absent" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "refuses an unclassified Go module even when its release manifest is absent" }
     },
     {
       "id": "reject_release_chain_without_registry_comparison",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed" }
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.ts", "title": "refuses a reusable publisher with its post-registry byte comparison removed" }
     },
     {
       "id": "accept_owner_approved_release_dispatch",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/release-approval.test.js", "title": "accepts an owner dispatch bound to the exact package version and tag" }
+      "execution": { "runner": "vitest", "file": "tests/release-approval.test.ts", "title": "accepts an owner dispatch bound to the exact package version and tag" }
     },
     {
       "id": "reject_unapproved_release_dispatch",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/release-approval.test.js", "title": "rejects automatic events, other actors, tag drift, and weak confirmation" }
+      "execution": { "runner": "vitest", "file": "tests/release-approval.test.ts", "title": "rejects automatic events, other actors, tag drift, and weak confirmation" }
     },
     {
       "id": "accept_model_to_matter_once",
       "expect": { "valid": true },
-      "execution": { "runner": "vitest", "file": "tests/model-to-matter.test.js", "title": "admits at most one clearance across distinct challenges for the same action" }
+      "execution": { "runner": "vitest", "file": "tests/model-to-matter.test.ts", "title": "admits at most one clearance across distinct challenges for the same action" }
     },
     {
       "id": "reject_model_to_matter_without_revocation_state",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent" }
+      "execution": { "runner": "vitest", "file": "tests/model-to-matter.test.ts", "title": "fails before challenge consumption when explicit revocation state is absent" }
     },
     {
       "id": "accept_action_escrow_exact_release_once",
@@ -245,7 +245,7 @@
     {
       "id": "reject_action_escrow_custodian_alias_or_unfunded_release",
       "expect": { "valid": false },
-      "execution": { "runner": "vitest", "file": "tests/action-escrow-escrow-com.test.js", "title": "refuses milestone acceptance until every schedule is secured and funded" }
+      "execution": { "runner": "vitest", "file": "tests/action-escrow-escrow-com.test.ts", "title": "refuses milestone acceptance until every schedule is secured and funded" }
     },
     {
       "id": "accept_action_escrow_project_source_snapshot",

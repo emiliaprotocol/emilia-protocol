@@ -137,8 +137,8 @@ remain at their stated lower evidence types.
 - **Evidence type**: local-harness — deterministic example vector plus
   unit test, one repository.
 - **Evidence reference**: `examples/evidence-graph/evidence-graph-vector.mjs`
-  + `.json` (deterministic, negatives enforced), `tests/evidence-graph.test.js`,
-  `tests/admissibility-profiles.test.js` (same evidence bundle, two pinned
+  + `.json` (deterministic, negatives enforced), `tests/evidence-graph.test.ts`,
+  `tests/admissibility-profiles.test.ts` (same evidence bundle, two pinned
   profiles, one admissible and one missing_evidence, replay digests differ
   deterministically), `docs/EP-ADMISSIBILITY-PROFILE-SPEC.md`,
   `public/.well-known/ep-admissibility-profiles.json` (reference profiles,
@@ -412,11 +412,11 @@ remain at their stated lower evidence types.
 - **Carrier / rule**: scoped delegation records verified like receipts;
   out-of-scope or expired fails closed.
 - **Implementation status**: **partial** — implemented with single-repo tests
-  (`lib/delegation.js`, `tests/delegation.test.js`); NOT yet in the
+  (`lib/delegation.js`, `tests/delegation.test.ts`); NOT yet in the
   cross-language conformance suite. Stated so the row cannot read as more
   than it is.
 - **Specification status**: documented; not yet an I-D.
-- **Evidence type**: unit-level (`tests/delegation.test.js`) — not vector
+- **Evidence type**: unit-level (`tests/delegation.test.ts`) — not vector
   evidence.
 - **Becomes fully reviewable when**: a cross-language delegation vector
   file lands in `conformance/vectors/` and all three verifiers agree on it

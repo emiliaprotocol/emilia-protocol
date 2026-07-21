@@ -43,7 +43,7 @@ Normative detail: `docs/EP-ENVELOPE-SPEC.md`. Registry:
   `proof_alg_allowed` (no `none`/unlisted). Then `validateBody` runs; verdict is
   `sharedOk && body.valid`. A throwing plugin is a rejection.
 - **`PluginCannotWeaken`:** a plugin can never rescue a shared rejection or affect
-  another profile. (Enforced in code; covered by `tests/envelope.test.js`.)
+  another profile. (Enforced in code; covered by `tests/envelope.test.ts`.)
 - **`migrate(obj, urn)`:** lossless wrap — `canonicalize(payload) === canonicalize(obj)`;
   no re-signing; previously-issued objects and the posted I-D stay valid.
 - **Registry:** content-addressed (per-profile `content_hash`, manifest
@@ -63,8 +63,8 @@ implement the envelope are unaffected.
 
 `lib/envelope/{envelope,profiles,descriptors,index}.js`;
 `scripts/build-ep-registry.mjs`; `scripts/create-ep-profile.mjs`;
-`tests/envelope.test.js` (adversarial: fail-closed, PluginCannotWeaken, lossless
-migration, wrapped-profile parity) + `tests/ep-registry.test.js` (no-drift +
+`tests/envelope.test.ts` (adversarial: fail-closed, PluginCannotWeaken, lossless
+migration, wrapped-profile parity) + `tests/ep-registry.test.ts` (no-drift +
 profiles-are-registered + vectors-exist).
 
 ## Security implications

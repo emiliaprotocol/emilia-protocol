@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getGuardedClient } from '@/lib/write-guard';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
+import { epProblem } from '@/lib/errors';
+import { authenticateOperator } from '@/lib/operator-auth';
+
+/**
+ * GET /api/cron/expire
+ *
+ * @internal
+ * @access cron — requires CRON_SECRET. Not part of the public API.
+ *
+ * Scheduled job that enforces time-based protocol rules:
+ *
+ * 1. Bilateral confirmations: expire after 48 hours
+ *    pending_confirmation -> expired
+ *
+ * 2. Dispute response deadlines: escalate after 7 days
+ *    open (past deadline, no response) -> under_review
+ *
+ * Without this, deadlines are checked only at request time,
+ * meaning stale bilateral requests and overdue disputes sit
+ * in limbo forever if nobody queries them.
+ *
+ * Call via Vercel Cron (vercel.json) or external scheduler.
+ * Requires CRON_SECRET for authentication.
+ */
+export async function GET(request: NextRequest) {
+  // Authenticate operator (supports per-operator tokens + legacy CRON_SECRET)
+  const auth = authenticateOperator(request);
+  if (!auth.valid) {
+    return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
+  }
+
+  const supabase = getGuardedClient();
+  const now = new Date().toISOString();
+  const results: { bilateral_expired: number, disputes_escalated: number, continuity_expired: number, errors: Array<{ step: string, error: any }> } = { bilateral_expired: 0, disputes_escalated: 0, continuity_expired: 0, errors: [] };
+
+  // 1. Expire stale bilateral confirmations (48h window)
+  try {
+    const { data: stale } = await supabase
+      .from('receipts')
+      .select('receipt_id')
+      .eq('bilateral_status', 'pending_confirmation')
+      .lt('confirmation_deadline', now);
+
+    if (stale && stale.length > 0) {
+      const ids = stale.map(r => r.receipt_id);
+      await protocolWrite({
+        type: COMMAND_TYPES.EXPIRE_RECEIPTS,
+        actor: 'cron:expire',
+        input: { receipt_ids: ids },
+      });
+      results.bilateral_expired = ids.length;
+    }
+  } catch (err) {
+    results.errors.push({ step: 'bilateral_expire', error: err.message });
+  }
+
+  // 2. Escalate overdue disputes (7-day response window)
+  try {
+    const { data: overdue } = await supabase
+      .from('disputes')
+      .select('dispute_id')
+      .eq('status', 'open')
+      .lt('response_deadline', now)
+      .is('responded_at', null);
+
+    if (overdue && overdue.length > 0) {
+      const ids = overdue.map(d => d.dispute_id);
+      await protocolWrite({
+        type: COMMAND_TYPES.ESCALATE_DISPUTES,
+        actor: 'cron:expire',
+        input: { dispute_ids: ids },
+      });
+      results.disputes_escalated = ids.length;
+    }
+  } catch (err) {
+    results.errors.push({ step: 'dispute_escalate', error: err.message });
+  }
+
+  // 3. Expire stale continuity claims (30-day window)
+  try {
+    const { data: staleIx } = await supabase
+      .from('continuity_claims')
+      .select('continuity_id')
+      .in('status', ['pending', 'under_challenge'])
+      .lt('expires_at', now);
+
+    if (staleIx && staleIx.length > 0) {
+      const ids = staleIx.map(c => c.continuity_id);
+      await protocolWrite({
+        type: COMMAND_TYPES.EXPIRE_CONTINUITY_CLAIMS,
+        actor: 'cron:expire',
+        input: { continuity_ids: ids },
+      });
+      results.continuity_expired = ids.length;
+    }
+  } catch (err) {
+    // Table may not exist yet — that's fine
+    if (!err.message?.includes('does not exist')) {
+      results.errors.push({ step: 'continuity_expire', error: err.message });
+    }
+  }
+
+  return NextResponse.json({
+    status: results.errors.length === 0 ? 'ok' : 'partial',
+    timestamp: now,
+    ...results,
+  });
+}

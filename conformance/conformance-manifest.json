@@ -4,7 +4,7 @@
   "vector_bundle": {
     "version": "EP-LIVE-CONFORMANCE-CATALOG-v1",
     "path": "conformance/suites.mjs",
-    "sha256": "2f614283d4024c2dc4e89535cd1a56b8ba2548fc66f9b96760fc8fb56825cd3d"
+    "sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
   },
   "suites": [
     {
@@ -127,12 +127,12 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run-js.mjs",
-        "sha256": "e1b8d96e3992a3e18a3df02f49e292e38a606a95b3030a840421767879504ae7"
+        "sha256": "7452eb7b6b91ac9a1387a63eb8a0bc299c0597371945cb8aea0096980d039a7b"
       },
       "source": {
-        "files": 106,
-        "bytes": 1203850,
-        "tree_sha256": "b96bb179eb2739085f70ca604da1788ab6b4db1693f18c9981865f27437680ba"
+        "files": 138,
+        "bytes": 1624468,
+        "tree_sha256": "e9f098103406992d1e1f99d0ceb5075875ee4b77d59d05e02473ce0616ccb651"
       },
       "suites": 21,
       "vectors": 328,
@@ -176,5 +176,5 @@
       "status": "pass"
     }
   ],
-  "manifest_sha256": "bbf006ff565f31507201c416d5b69d9bab18cac892edffa5a1aa4a0710172fea"
+  "manifest_sha256": "833a60781fa24d104c935de7cd9472ef219f3d32cd8b4316f6412e9eacb79022"
 }

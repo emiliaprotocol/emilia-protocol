@@ -119,7 +119,7 @@
     },
     "delegationLink": {
       "type": "object",
-      "description": "One DRP delegation reference. Field names mirror lib/delegation.js (delegator<-principal_id, delegatee<-agent_entity_id, scope, max_value_usd, expires_at, constraints).",
+      "description": "One DRP delegation reference. Field names mirror lib/delegation.ts (delegator<-principal_id, delegatee<-agent_entity_id, scope, max_value_usd, expires_at, constraints).",
       "additionalProperties": false,
       "required": ["sequence", "delegation_id", "delegator", "delegatee", "scope", "expires_at", "parent_ref"],
       "properties": {

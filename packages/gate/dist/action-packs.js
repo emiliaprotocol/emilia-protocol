@@ -1,3 +1,4 @@
+// @ts-nocheck
 // SPDX-License-Identifier: Apache-2.0
 // EMILIA Gate default action packs: the high-risk families that should require
 // pre-execution human authorization before a machine mutates the world.
@@ -104,7 +105,7 @@ export const DEFAULT_PASS_THROUGH_ACTIONS = Object.freeze([
         match: { protocol: 'mcp', tool: 'read_status' },
     }),
 ]);
-export function createDefaultActionRiskManifest({ includePassThrough = true, extraActions = [] } = {}) {
+export function createDefaultActionRiskManifest({ includePassThrough = true, extraActions = [], } = {}) {
     return {
         '@version': ACTION_RISK_MANIFEST_VERSION,
         actions: [

@@ -154,7 +154,7 @@ Registered as `evidence-admissible-under-pinned-reliance-profile` in the
 ## Conformance
 
 `conformance/vectors/reliance.v1.json` carries a positive `rely` and a reject
-vector for every `do_not_rely_*` verdict; `tests/reliance-kernel.test.js`
+vector for every `do_not_rely_*` verdict; `tests/reliance-kernel.test.ts`
 assembles a fully-valid packet with live signatures and breaks exactly one leg
 per vector. Unit invariants additionally pin the joins between signed action
 material, authority policy, the ceremony that achieved assurance, and the

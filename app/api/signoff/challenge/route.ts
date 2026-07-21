@@ -1,0 +1,73 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityActor } from '@/lib/auth-projections.js';
+import { issueChallenge } from '@/lib/signoff/challenge';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
+import { epError } from '@/lib/errors/response';
+import { validateSignoffChallenge } from '@/lib/validation/schemas';
+import { readEpJson } from '@/lib/http/route-body';
+import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
+
+/**
+ * POST /api/signoff/challenge
+ *
+ * Issue a new Accountable Signoff challenge. A challenge represents a
+ * request for a human entity to review and attest to an action before
+ * it may proceed.
+ *
+ * Required body fields:
+ *   - handshakeId:         The handshake this signoff is bound to
+ *   - accountableActorRef: The entity_ref of the accountable human
+ *   - signoffPolicyId:     The policy governing this signoff
+ *   - expiresAt:           ISO 8601 expiration timestamp
+ */
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
+    // readEpJson's own return type is presently inferred (its source module
+    // has not been given explicit type annotations yet), which loses the
+    // `ok`-discriminated union shape its JSDoc has always documented. Pin the
+    // real, unchanged contract here so this call site narrows correctly.
+    const parsed = (await readEpJson(request, MAX_BODY_BYTES, undefined)) as
+      | { ok: false; response: NextResponse; error: any }
+      | { ok: true; value: any };
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
+
+    // ── Schema validation (early gate) ────────────────────────────────
+    const validation = validateSignoffChallenge(body);
+    if (!validation.valid) {
+      return epError(EP_ERROR_CODES.INVALID_INPUT, validation.errors.join('; '));
+    }
+    const { data } = validation;
+
+    // ── Manual validation (belt-and-suspenders fallback) ──────────────
+    const required = ['handshakeId', 'accountableActorRef', 'signoffPolicyId', 'expiresAt'];
+    for (const field of required) {
+      if (!body[field]) {
+        return EP_ERRORS.BAD_REQUEST(`Missing required field: ${field}`);
+      }
+    }
+
+    const challengeInput = data as any;
+    const result = await issueChallenge({
+      actor: authEntityActor(auth as any),
+      ...challengeInput,
+    });
+
+    const resultAny = result as any;
+    if (resultAny.error) {
+      return epProblem(resultAny.status || 500, 'signoff_challenge_failed', resultAny.error);
+    }
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (err) {
+    logger.error('Signoff challenge error:', err);
+    return EP_ERRORS.INTERNAL();
+  }
+}

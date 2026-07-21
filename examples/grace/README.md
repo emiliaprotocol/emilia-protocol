@@ -12,7 +12,7 @@ authorization and binds the resulting evidence.
 
 ```bash
 node examples/grace/live-control-room.mjs
-npx vitest run tests/grace-mobile-grid.test.js
+npx vitest run tests/grace-mobile-grid.test.ts
 ```
 
 This is the current end-to-end reference: two distinct Class-A mobile handshakes,

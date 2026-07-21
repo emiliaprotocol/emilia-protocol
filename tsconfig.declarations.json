@@ -8,5 +8,5 @@
     "skipLibCheck": false
   },
   "include": ["**/*.d.ts"],
-  "exclude": ["**/dist/**", "**/node_modules/**"]
+  "exclude": ["**/dist/**", "**/node_modules/**", ".next/**", "next-env.d.ts"]
 }

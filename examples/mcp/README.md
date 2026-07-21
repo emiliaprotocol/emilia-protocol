@@ -3,7 +3,7 @@
 [![Receipt Required: RR-1](https://img.shields.io/badge/Receipt%20Required-RR--1-22c55e)](../../docs/RECEIPT-REQUIRED-CONFORMANCE.md)
 
 These servers earn the **RR-1** badge in CI — the conformance harness
-(`tests/receipt-required-conformance.test.js`) re-proves it on every push, so
+(`tests/receipt-required-conformance.test.ts`) re-proves it on every push, so
 the claim can't go stale. See [RECEIPT-REQUIRED-CONFORMANCE.md](../../docs/RECEIPT-REQUIRED-CONFORMANCE.md).
 
 

@@ -1,0 +1,164 @@
+// SPDX-License-Identifier: Apache-2.0
+// EMILIA Protocol — /api/entities/[entityId]/auto-receipt
+//
+// GET  /api/entities/:entityId/auto-receipt
+//   → Returns the current auto-receipt config for the entity.
+//   → Requires a valid API key that belongs to the requested entity.
+//
+// POST /api/entities/:entityId/auto-receipt
+//   → Updates the auto-receipt config for the entity.
+//   → Body: { enabled: boolean, redact_fields?: string[], privacy_mode?: 'standard'|'anonymous' }
+//   → Requires a valid API key that belongs to the requested entity.
+//
+// Auth model:
+//   Every request must carry a Bearer API key. The key is resolved to an
+//   entity and compared against the path parameter — an entity may only read
+//   or update its own config. This prevents cross-entity config pollution.
+
+import { NextResponse, NextRequest } from 'next/server';
+import { authenticateRequest } from '@/lib/supabase';
+import { authEntityId } from '@/lib/auth-projections.js';
+import { getAutoReceiptConfig, setAutoReceiptConfig } from '@/lib/auto-receipt-config';
+import { EP_ERRORS } from '@/lib/errors';
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { readEpJson } from '@/lib/http/route-body';
+import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
+
+// ---------------------------------------------------------------------------
+// GET — retrieve current config
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/entities/[entityId]/auto-receipt
+ *
+ * Returns the auto-receipt configuration for the specified entity.
+ * The caller must authenticate as that entity (their API key's entity_id
+ * must match the path parameter).
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ entityId: string }> }
+): Promise<NextResponse> {
+  try {
+    const { entityId } = await params;
+
+    // Rate limit — reads are cheaper but still gated
+    const ip = getClientIP(request);
+    const rl = await checkRateLimit(ip, 'read');
+    if (!rl.allowed) {
+      return EP_ERRORS.RATE_LIMITED();
+    }
+
+    // Authenticate
+    const auth = await authenticateRequest(request);
+    if (auth.error) {
+      return EP_ERRORS.UNAUTHORIZED();
+    }
+
+    // Entity-scoped access: callers may only access their own config
+    if (authEntityId(auth) !== entityId) {
+      return EP_ERRORS.FORBIDDEN('You may only read your own auto-receipt configuration.');
+    }
+
+    const config = await getAutoReceiptConfig(entityId);
+
+    return NextResponse.json({
+      entity_id: entityId,
+      ...config,
+    });
+  } catch (err) {
+    logger.error('[auto-receipt GET] error:', err);
+    return EP_ERRORS.INTERNAL();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST — update config
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/entities/[entityId]/auto-receipt
+ *
+ * Updates the auto-receipt configuration for the specified entity.
+ *
+ * Request body:
+ * ```json
+ * {
+ *   "enabled": true,
+ *   "redact_fields": ["my_internal_id", "billing_ref"],
+ *   "privacy_mode": "anonymous"
+ * }
+ * ```
+ *
+ * `enabled` is required. `redact_fields` and `privacy_mode` are optional
+ * and default to `[]` and `"standard"` respectively.
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ entityId: string }> }
+): Promise<NextResponse> {
+  try {
+    const { entityId } = await params;
+
+    // Rate limit — writes
+    const ip = getClientIP(request);
+    const rl = await checkRateLimit(ip, 'protocol_write');
+    if (!rl.allowed) {
+      return EP_ERRORS.RATE_LIMITED();
+    }
+
+    // Authenticate
+    const auth = await authenticateRequest(request);
+    if (auth.error) {
+      return EP_ERRORS.UNAUTHORIZED();
+    }
+
+    // Entity-scoped access: callers may only update their own config
+    if (authEntityId(auth) !== entityId) {
+      return EP_ERRORS.FORBIDDEN('You may only update your own auto-receipt configuration.');
+    }
+
+    // Parse body
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    // readEpJson's ok:false branch always sets `response` to the NextResponse
+    // built from epProblem(...); TS's inference of the underlying multi-branch
+    // union (across readLimitedJson's many return shapes) just can't see that
+    // as a guaranteed discriminant, so it widens `response` to include
+    // `undefined`. Assert the type the code already guarantees.
+    if (!parsed.ok) return parsed.response as NextResponse;
+    const body = parsed.value;
+    const { enabled, redact_fields, privacy_mode } = body;
+
+    // Validate required field
+    if (typeof enabled !== 'boolean') {
+      return EP_ERRORS.BAD_REQUEST('"enabled" is required and must be a boolean.');
+    }
+
+    // Validate optional fields
+    if (redact_fields !== undefined) {
+      if (!Array.isArray(redact_fields) || redact_fields.some(f => typeof f !== 'string')) {
+        return EP_ERRORS.BAD_REQUEST('"redact_fields" must be an array of strings.');
+      }
+    }
+
+    if (privacy_mode !== undefined && privacy_mode !== 'standard' && privacy_mode !== 'anonymous') {
+      return EP_ERRORS.BAD_REQUEST('"privacy_mode" must be "standard" or "anonymous".');
+    }
+
+    const updated = await setAutoReceiptConfig(entityId, {
+      enabled,
+      redact_fields: redact_fields ?? [],
+      privacy_mode: privacy_mode ?? 'standard',
+    });
+
+    return NextResponse.json(
+      { entity_id: entityId, ...updated },
+      { status: 200 },
+    );
+  } catch (err) {
+    logger.error('[auto-receipt POST] error:', err);
+    return EP_ERRORS.INTERNAL();
+  }
+}

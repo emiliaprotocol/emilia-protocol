@@ -1,28 +1,28 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-20T23:11:45.192Z",
+  "evidence_snapshot_at": "2026-07-21T08:54:07.792Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "f2f1ac71f8b8d47f1f0f86e33546d5674611f733cb85f6f3ffd668fdbba0b6bf",
+    "input_digest_sha256": "af2f23b18c305ef49ea9263ef7196e60d0a1588c6423d5e6e42948fae703088f",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "6958b9db5873da2d5ba1de0d93f17e2999ca8aed0edf71fd6d81b8552e5cde2a",
+        "sha256": "7ca48a67f18c69100e2c7f44137db5dab3c34e5a58b03003e1e54f29233e0433",
         "bytes": 38686
       },
       {
         "path": "scripts/generate-llm-context.mjs",
-        "sha256": "a0dfdecd25bcf5cd08cf20bee33bdf53bc7ad92dac1b3e23d9b03a4e7ae72dfc",
-        "bytes": 25188
+        "sha256": "df8dc25a11d8a65d36e0923319d60dac4a4cff665381c7402f9e560d45cb8732",
+        "bytes": 26442
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "9519c1bc610eb45ca535a4dae71b27aadd4887f73bf3a3fb0e8b4bdd35488aaf",
+        "sha256": "ffeddf179e153d02730008ad1db6619a0510256e06808368c18a8147d2a56c1f",
         "bytes": 1068
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "3f20251372794c3d512d9164fbde402879ce2ec19ac7aa4eda9cc6e3c5144a86",
+        "sha256": "cfa19313b406b5a0526a34711c46bb66144db1330829973501a283d1dc677b34",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "8f4c80dc8130e330c5c21f9f7602b6a0daee60038b43e0ada6d3cd42ab01a50d",
-        "bytes": 155822
+        "sha256": "aacfeed164a32ec2cfcf1d30951adb6b90172253a01c1528412fcd539061cd6b",
+        "bytes": 155974
       },
       {
         "path": "security/security-case.json",
-        "sha256": "cb8a6a72322e99fd61b89a13a71934c0023bf4cc5f1f0eb9d342f7aaeacca649",
-        "bytes": 249704
+        "sha256": "ea3eca63ac2bcc80d030dcddc8e3233feedaeab7736e0d39da31f527ca4875bf",
+        "bytes": 249912
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -266,8 +266,8 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "bbf006ff565f31507201c416d5b69d9bab18cac892edffa5a1aa4a0710172fea",
-      "vector_bundle_sha256": "2f614283d4024c2dc4e89535cd1a56b8ba2548fc66f9b96760fc8fb56825cd3d"
+      "manifest_sha256": "833a60781fa24d104c935de7cd9472ef219f3d32cd8b4316f6412e9eacb79022",
+      "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
       "tla_invariants": 26,
@@ -288,7 +288,7 @@
       "status": "passed",
       "claims": 30,
       "evidence_files": 159,
-      "evidence_bundle_sha256": "b922141e9280b1f6f46afb78cb0922e20ab4c9ef30e1b0129cc9801c7c856160"
+      "evidence_bundle_sha256": "9a3e5aa1ee90ffb7b73096e98f833a3a23b1c20ce36b692fd8deedf3a042fad4"
     },
     "caid": {
       "core_vectors": 48,
@@ -384,25 +384,25 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/webauthn.js",
+          "file": "lib/webauthn.ts",
           "symbol": "buildAuthorizationContext",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.js",
+          "file": "app/api/v1/signoffs/[signoffId]/webauthn-options/route.ts",
           "symbol": "POST",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js",
+          "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.ts",
           "symbol": "POST",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/guard-signoff.js",
+          "file": "lib/guard-signoff.ts",
           "symbol": "handleSignoffDecision",
           "exported": true
         },
@@ -798,13 +798,13 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/authority/resolver.js",
+          "file": "lib/authority/resolver.ts",
           "symbol": "evaluateAuthorityVerdict",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/authority/proof.js",
+          "file": "lib/authority/proof.ts",
           "symbol": "verifyAuthorityProof",
           "exported": true
         }
@@ -1117,25 +1117,25 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/authority/document-proof-join.js",
+          "file": "lib/authority/document-proof-join.ts",
           "symbol": "verifyAuthorityProofViaDocument",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/authority/authority-doc.js",
+          "file": "lib/authority/authority-doc.ts",
           "symbol": "verifyAuthorityChain",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/authority/authority-doc.js",
+          "file": "lib/authority/authority-doc.ts",
           "symbol": "resolveIssuerKeyAt",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/authority/proof.js",
+          "file": "lib/authority/proof.ts",
           "symbol": "verifyAuthorityProofSignature",
           "exported": true
         }
@@ -1276,19 +1276,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/negotiate/evidence-challenge.js",
+          "file": "lib/negotiate/evidence-challenge.ts",
           "symbol": "createRegisteredEvidenceChallenge",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/challenge-store.js",
+          "file": "packages/gate/src/challenge-store.ts",
           "symbol": "createDurableChallengeStore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/negotiate/evidence-challenge.js",
+          "file": "lib/negotiate/evidence-challenge.ts",
           "symbol": "evaluateRegisteredPresentation",
           "exported": true
         }
@@ -1296,7 +1296,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/evidence-challenge-durable.test.js"
+          "evidence": "tests/evidence-challenge-durable.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1351,7 +1351,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/store.js",
+          "file": "packages/gate/src/store.ts",
           "symbol": "createDurableConsumptionStore",
           "exported": true
         }
@@ -1409,19 +1409,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/index.js",
+          "file": "packages/gate/src/index.ts",
           "symbol": "createGate",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/aec-execution.js",
+          "file": "packages/gate/src/aec-execution.ts",
           "symbol": "createAECExecutionGate",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/store.js",
+          "file": "packages/gate/src/store.ts",
           "symbol": "createDurableConsumptionStore",
           "exported": true
         }
@@ -1480,19 +1480,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/network-witness.js",
+          "file": "packages/gate/src/network-witness.ts",
           "symbol": "createMemoryWitnessSequenceStore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/network-witness.js",
+          "file": "packages/gate/src/network-witness.ts",
           "symbol": "acceptNetworkWitnessStatement",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/witness-postgres.js",
+          "file": "packages/gate/src/witness-postgres.ts",
           "symbol": "createPostgresWitnessSequenceStore",
           "exported": true
         }
@@ -1551,19 +1551,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/aec-execution.js",
+          "file": "packages/gate/src/aec-execution.ts",
           "symbol": "createAECExecutionGate",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/store.js",
+          "file": "packages/gate/src/store.ts",
           "symbol": "createDurableConsumptionStore",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/evidence.js",
+          "file": "packages/gate/src/evidence.ts",
           "symbol": "createAtomicEvidenceLog",
           "exported": true
         }
@@ -1571,7 +1571,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/aec-execution-gate.test.js"
+          "evidence": "tests/aec-execution-gate.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1625,19 +1625,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/ncpdp/privacy.js",
+          "file": "lib/ncpdp/privacy.ts",
           "symbol": "buildPrivateRxAppealBundle",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/ncpdp/privacy.js",
+          "file": "lib/ncpdp/privacy.ts",
           "symbol": "assertRxSignedArtifactPrivacy",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/ncpdp/privacy.js",
+          "file": "lib/ncpdp/privacy.ts",
           "symbol": "evaluateRxDisclosure",
           "exported": true
         }
@@ -1645,7 +1645,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/ncpdp-privacy.test.js"
+          "evidence": "tests/ncpdp-privacy.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1718,7 +1718,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-reproducibility.test.js"
+          "evidence": "tests/release-reproducibility.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1774,7 +1774,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-reproducibility.test.js"
+          "evidence": "tests/release-reproducibility.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1866,7 +1866,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-chain-coverage.test.js"
+          "evidence": "tests/release-chain-coverage.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -1951,7 +1951,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/release-chain-coverage.test.js"
+          "evidence": "tests/release-chain-coverage.test.ts"
         },
         "python": {
           "status": "not_applicable",
@@ -2019,37 +2019,37 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "createModelToMatterProfile",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "modelToMatterCaid",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "verifyModelToMatterEvidence",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "createModelToMatterExecutor",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "evaluateRegisteredModelToMatterPresentation",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/negotiate/evidence-challenge.js",
+          "file": "lib/negotiate/evidence-challenge.ts",
           "symbol": "evaluateRegisteredPresentation",
           "exported": true
         }
@@ -2057,7 +2057,7 @@
       "language_coverage": {
         "javascript": {
           "status": "covered",
-          "evidence": "tests/model-to-matter.test.js"
+          "evidence": "tests/model-to-matter.test.ts"
         },
         "python": {
           "status": "gap",
@@ -2340,25 +2340,25 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "symbol": "deriveMobileActionContinuity",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "symbol": "verifyMobileProviderOutcome",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/mobile/store.js",
+          "file": "lib/mobile/store.ts",
           "symbol": "consumeMobileAction",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/mobile/store.js",
+          "file": "lib/mobile/store.ts",
           "symbol": "reconcileMobileActionOperation",
           "exported": true
         }
@@ -2555,19 +2555,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "verifyGraceMobileAuthorization",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "executeGraceCurtailment",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "buildActionStateCapsule",
           "exported": true
         }
@@ -2644,37 +2644,37 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow.js",
+          "file": "packages/gate/src/action-escrow.ts",
           "symbol": "createActionEscrowKernel",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-verifiers.js",
+          "file": "packages/gate/src/action-escrow-verifiers.ts",
           "symbol": "createActionEscrowContractorDocumentBindingVerifier",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-custodian.js",
+          "file": "packages/gate/src/action-escrow-custodian.ts",
           "symbol": "createActionEscrowCustodianBridge",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-package.js",
+          "file": "packages/gate/src/action-escrow-package.ts",
           "symbol": "assembleActionEscrowContractorEvidencePackage",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-evidence.js",
+          "file": "packages/gate/src/action-escrow-evidence.ts",
           "symbol": "verifyActionEscrowEvidencePackage",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/action-escrow-postgres.js",
+          "file": "packages/gate/src/action-escrow-postgres.ts",
           "symbol": "createActionEscrowPostgresStore",
           "exported": true
         },
@@ -2825,19 +2825,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "packages/gate/receipt-program.js",
+          "file": "packages/gate/src/receipt-program.ts",
           "symbol": "createReceiptProgramKernel",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/receipt-program.js",
+          "file": "packages/gate/src/receipt-program.ts",
           "symbol": "verifyReceiptProgramCertificate",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "packages/gate/index.js",
+          "file": "packages/gate/src/index.ts",
           "symbol": "createGate",
           "exported": true
         }
@@ -3374,7 +3374,7 @@
       "purpose": "free adoption wedge: protect privileged MCP tool calls with the Gate enforcement contract"
     },
     {
-      "path": "lib/negotiate/evidence-challenge.js",
+      "path": "lib/negotiate/evidence-challenge.ts",
       "purpose": "action-bound evidence challenge registration and evaluation"
     },
     {
@@ -3482,7 +3482,7 @@
       "purpose": "offline regulator-style oversight demo: monthly clinician-approval receipts verify from signed bytes, bind a named approver, keep patient references out of the receipt, and refuse tampering or unpinned keys"
     },
     {
-      "path": "lib/frontier/model-to-matter.js",
+      "path": "lib/frontier/model-to-matter.ts",
       "purpose": "executor-side Model-to-Matter clearance profile"
     },
     {
@@ -3498,7 +3498,7 @@
       "purpose": "buildable iOS and Android government approval reference applications using system-of-record actions and server-pinned profiles"
     },
     {
-      "path": "lib/grace/mobile-grid.js",
+      "path": "lib/grace/mobile-grid.ts",
       "purpose": "canonical grid.curtailment composition across distinct Class-A mobile approvals, bounded one-time dispatch, independent meter evidence, Action State, and settlement"
     },
     {
@@ -3524,7 +3524,7 @@
       "purpose": "run the free privileged-tool-call wedge: refuse, approve the exact action, execute once, and refuse replay"
     },
     {
-      "command": "npx vitest run tests/assurance-package.test.js",
+      "command": "npx vitest run tests/assurance-package.test.ts",
       "purpose": "execute Assurance Plane package, drift, determinism, null-conclusion, and control-mapping tests"
     },
     {
@@ -3576,7 +3576,7 @@
       "purpose": "run the offline oversight receipt report and its tamper and unpinned-approver refusals"
     },
     {
-      "command": "node conformance/vectors/generate-agentroa-orprg-ep.mjs --check && npx vitest run tests/agentroa-orprg-ep-caid.test.js",
+      "command": "node conformance/vectors/generate-agentroa-orprg-ep.mjs --check && npx vitest run tests/agentroa-orprg-ep-caid.test.ts",
       "purpose": "check the cross-standard corpus without rewriting it, then verify AgentROA, ORPRG, EP quorum, pinned CAID mappings, replay refusal, and substitution negatives"
     },
     {

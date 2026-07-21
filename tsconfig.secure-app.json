@@ -13,10 +13,10 @@
     "types": ["react", "node"]
   },
   "include": [
-    "apps/secure-app/App.js",
-    "apps/secure-app/index.js",
+    "apps/secure-app/App.tsx",
+    "apps/secure-app/index.ts",
     "apps/secure-app/babel.config.js",
-    "apps/secure-app/lib/**/*.js",
+    "apps/secure-app/lib/**/*.ts",
     "apps/secure-app/lib/**/*.mjs"
   ],
   "exclude": [

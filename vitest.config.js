@@ -1,7 +1,63 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import fs from 'fs';
+import { companionRuntimePaths } from './scripts/standalone-runtime-targets.mjs';
+
+const COMPANION_RUNTIME_PATHS = companionRuntimePaths(fs, __dirname);
+
+// Node-20 standalone-runtime companions are generated transpilations of .ts
+// sources (see scripts/build-standalone-runtimes.mjs). Tests must exercise the
+// SOURCES, not the generated twins -- a resolve-stage plugin redirects any
+// import that would land on a companion file to its .ts/.mts source (aliases
+// can't do this: they match import specifiers, and companions are reached via
+// './x.js' / '@/lib/x.js' specifiers that only identify the companion after
+// resolution). Companions also stay out of coverage below.
+const companionAbsolute = new Map(COMPANION_RUNTIME_PATHS.map((runtimePath) => [
+  path.resolve(__dirname, runtimePath),
+  path.resolve(__dirname, runtimePath.replace(/\.mjs$/, '.mts').replace(/\.js$/, '.ts')),
+]));
+// Mutation runs only (EP_MUTATE_SRC=1, set by the test:mutation:* scripts):
+// Stryker instruments packages/*/src/*.ts, but the suites load the compiled
+// dist/ output -- so every mutant sat unloaded and "survived" as false
+// no-coverage. Under the flag, any import that lands in a package's dist/
+// is redirected to its src/*.ts twin, and .js specifiers between src files
+// resolve to their .ts siblings. Normal test runs keep exercising dist
+// (what ships) exactly as before.
+const MUTATE_SRC = process.env.EP_MUTATE_SRC === '1';
+
+const companionSourceRedirect = {
+  name: 'ep-companion-source-redirect',
+  enforce: 'pre',
+  async resolveId(source, importer, options) {
+    if (MUTATE_SRC && importer && /\/packages\/[^/]+\/src\//.test(importer) && /^\.\.?\//.test(source) && source.endsWith('.js')) {
+      const tsCandidate = path.resolve(path.dirname(importer), source.replace(/\.js$/, '.ts'));
+      if (fs.existsSync(tsCandidate)) return tsCandidate;
+    }
+    // No specifier-shape filter: '@/lib/supabase' (extensionless, used by
+    // vi.mock in tests) and '@/lib/supabase.js' (used by sources) must both
+    // land on the SAME redirected id, or module mocks silently miss.
+    const resolved = await this.resolve(source, importer, { skipSelf: true, ...options });
+    if (!resolved) return null;
+    if (MUTATE_SRC) {
+      const m = resolved.id.match(/^(.*\/packages\/[^/]+)\/dist\/(.+)\.js$/);
+      if (m) {
+        const srcTwin = `${m[1]}/src/${m[2]}.ts`;
+        if (fs.existsSync(srcTwin)) return srcTwin;
+      }
+    }
+    const target = companionAbsolute.get(resolved.id);
+    return target ?? null;
+  },
+};
 
 export default defineConfig({
+  // The root tsconfig.json sets jsx: "preserve" for Next's compiler; the test
+  // transform must actually COMPILE the JSX in .tsx sources instead of
+  // preserving it, or importing a .tsx file from a test fails to parse.
+  // This vite is rolldown-vite (oxc transforms), so the esbuild-style option
+  // spelling does nothing -- configure oxc directly.
+  oxc: { jsx: { runtime: 'automatic' } },
+  plugins: [companionSourceRedirect],
   resolve: {
     alias: {
       '@': path.resolve(__dirname),
@@ -31,24 +87,35 @@ export default defineConfig({
     // .claude/.serena are local agent scratch/worktree directories. They may
     // contain stale copies of this repo with their own tests and env assumptions;
     // collecting them would poison the canonical gate with non-source artifacts.
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**', 'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**'],
+    exclude: [
+      'e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**',
+      'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**', '.stryker-*-tmp/**',
+      // Generated Node-20 companions of .test.ts sources (e.g. under
+      // conformance/): vitest must collect the .ts source only, or every
+      // converted test in a companion-glob tree runs twice.
+      ...COMPANION_RUNTIME_PATHS,
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage',
-      include: ['lib/**/*.js'],
+      include: ['lib/**/*.ts', 'lib/**/*.js'],
       exclude: [
         '**/*.test.js',
+        '**/*.test.ts',
+        // Generated Node-20 standalone-runtime companions (untested transpiled
+        // twins of .ts sources; the aliases above route tests to the sources).
+        ...COMPANION_RUNTIME_PATHS,
         // ── Infrastructure adapters — exercised via integration, not units ──
         // These wrap external systems (DB, env, observability sinks, process
         // lifecycle) where unit tests would only verify the mock, not the
         // real behavior. They are covered by integration tests against real
         // services and by the operational runbooks.
-        'lib/supabase.js',     // Supabase client adapter
-        'lib/env.js',          // env-var accessor wrapper
-        'lib/siem.js',         // SIEM HTTP forwarder
-        'lib/shutdown.js',     // process SIGTERM/SIGINT lifecycle
-        'lib/logger.js',       // pino transport setup
+        'lib/supabase.ts',     // Supabase client adapter
+        'lib/env.ts',          // env-var accessor wrapper
+        'lib/siem.ts',         // SIEM HTTP forwarder
+        'lib/shutdown.ts',     // process SIGTERM/SIGINT lifecycle
+        'lib/logger.ts',       // pino transport setup
         // (lib/verify.js removed — duplicate of packages/verify/index.js, kept the
         // canonical packages/verify/ copy and deleted the lib/ duplicate.)
         // lib/verify-web.js is a byte-identical vendored copy of
@@ -93,7 +160,7 @@ export default defineConfig({
         // a 13-export state machine with TLA+ backstop, but holding it to
         // the protocol-kernel 88% bar would force test scaffolding that
         // largely re-mocks Supabase. Tracked separately.
-        'lib/ep-ix.js',
+        'lib/ep-ix.ts',
       ],
       thresholds: {
         // Ratchet history (never lower — only ratchet up):

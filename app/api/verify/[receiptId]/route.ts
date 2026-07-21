@@ -1,0 +1,179 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getGuardedClient } from '@/lib/write-guard';
+import { MERKLE_V2_ALG, verifyMerkleProof } from '@/lib/blockchain';
+import { computeReceiptHash } from '@/lib/scoring';
+import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
+
+type AnchorInfo = {
+  batch_id: any;
+  merkle_alg: any;
+  merkle_root: any;
+  merkle_proof: any;
+  leaf_index: any;
+  proof_valid: boolean;
+  legacy_refused: boolean;
+  transaction_hash: any;
+  chain_id: any;
+  block_number: any;
+  explorer_url: any;
+  anchored_at: any;
+};
+
+/**
+ * GET /api/verify/[receiptId]
+ *
+ * Verify a receipt's cryptographic integrity and blockchain anchor.
+ * No authentication required — verification is public by design.
+ *
+ * Returns:
+ *   - Receipt data and hash
+ *   - Merkle proof (if anchored)
+ *   - On-chain verification status
+ *   - Links to block explorer
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ receiptId: string }> }
+): Promise<NextResponse> {
+  try {
+    const { receiptId } = await params;
+    const supabase = getGuardedClient();
+
+    // Look up the receipt
+    const { data: receipt, error } = await supabase
+      .from('receipts')
+      .select(`
+        receipt_id, entity_id, submitted_by,
+        transaction_ref, transaction_type,
+        context,
+        delivery_accuracy, product_accuracy,
+        price_integrity, return_processing,
+        agent_satisfaction, agent_behavior,
+        claims, submitter_score, submitter_established,
+        composite_score, evidence,
+        receipt_hash, previous_hash,
+        anchor_batch_id, merkle_proof, merkle_leaf_index,
+        created_at
+      `)
+      .eq('receipt_id', receiptId)
+      .single();
+
+    if (error || !receipt) {
+      return epProblem(404, 'receipt_not_found', 'Receipt not found');
+    }
+
+    // Recompute hash to verify integrity.
+    // This MUST pass the exact same field set that create-receipt.js binds via
+    // computeReceiptHash (context, agent_behavior, claims, submitter_score,
+    // submitter_established included), or authentic receipts carrying those
+    // fields recompute to a different hash and falsely report hash_valid:false.
+    const recomputedHash = await computeReceiptHash({
+      entity_id: receipt.entity_id,
+      submitted_by: receipt.submitted_by,
+      transaction_ref: receipt.transaction_ref,
+      transaction_type: receipt.transaction_type,
+      context: receipt.context,
+      delivery_accuracy: receipt.delivery_accuracy,
+      product_accuracy: receipt.product_accuracy,
+      price_integrity: receipt.price_integrity,
+      return_processing: receipt.return_processing,
+      agent_satisfaction: receipt.agent_satisfaction,
+      agent_behavior: receipt.agent_behavior,
+      claims: receipt.claims,
+      evidence: receipt.evidence,
+      submitter_score: receipt.submitter_score,
+      submitter_established: receipt.submitter_established,
+    }, receipt.previous_hash);
+
+    const hashValid = recomputedHash === receipt.receipt_hash;
+
+    // Revocation status (PIP-006 §"Federation contract" item 3 — the
+    // verifier-of-record reports whether this operator has revoked the
+    // receipt). Receipts here are not individually revocable today, so the
+    // honest answer is always false; the field exists so a federation relying
+    // party can consult it uniformly. Operators that maintain a revocation feed
+    // populate `revoked` from their own list.
+    const revoked = false;
+
+    // Build response
+    const response = {
+      receipt_id: receipt.receipt_id,
+      receipt_hash: receipt.receipt_hash,
+      hash_valid: hashValid,
+      recomputed_hash: recomputedHash,
+      revoked,
+      revocation: {
+        revoked,
+        checked: true,
+        basis: 'operator revocation list (empty — receipts are short-lived and not individually revocable)',
+      },
+      created_at: receipt.created_at,
+
+      // Receipt data (for independent verification)
+      data: {
+        entity_id: receipt.entity_id,
+        submitted_by: receipt.submitted_by,
+        transaction_ref: receipt.transaction_ref,
+        transaction_type: receipt.transaction_type,
+        delivery_accuracy: receipt.delivery_accuracy,
+        product_accuracy: receipt.product_accuracy,
+        price_integrity: receipt.price_integrity,
+        return_processing: receipt.return_processing,
+        agent_satisfaction: receipt.agent_satisfaction,
+        agent_behavior: receipt.agent_behavior,
+        composite_score: receipt.composite_score,
+      },
+
+      // Chain integrity
+      chain: {
+        previous_hash: receipt.previous_hash,
+        chain_intact: hashValid,
+      },
+
+      // Blockchain anchor (if present)
+      anchor: null as AnchorInfo | null,
+    };
+
+    // Add anchor verification if this receipt has been anchored
+    if (receipt.anchor_batch_id && receipt.merkle_proof) {
+      const { data: batch } = await supabase
+        .from('anchor_batches')
+        .select('batch_id, merkle_root, merkle_alg, transaction_hash, chain_id, block_number, explorer_url, created_at')
+        .eq('batch_id', receipt.anchor_batch_id)
+        .single();
+
+      if (batch) {
+        // Production verification is strict-v2. Legacy v1 anchors are dormant
+        // compatibility artifacts only; do not verify them from the public API.
+        const isV2 = batch.merkle_alg === MERKLE_V2_ALG;
+        const proofValid = isV2 && verifyMerkleProof(
+          receipt.receipt_hash,
+          receipt.merkle_proof,
+          batch.merkle_root,
+          { v2: true }
+        );
+
+        response.anchor = {
+          batch_id: batch.batch_id,
+          merkle_alg: batch.merkle_alg || null,
+          merkle_root: batch.merkle_root,
+          merkle_proof: receipt.merkle_proof,
+          leaf_index: receipt.merkle_leaf_index,
+          proof_valid: proofValid,
+          legacy_refused: !isV2,
+          transaction_hash: batch.transaction_hash,
+          chain_id: batch.chain_id,
+          block_number: batch.block_number,
+          explorer_url: batch.explorer_url,
+          anchored_at: batch.created_at,
+        };
+      }
+    }
+
+    return NextResponse.json(response);
+  } catch (err) {
+    logger.error('Verify error:', err);
+    return epProblem(500, 'internal_error', 'Internal server error');
+  }
+}

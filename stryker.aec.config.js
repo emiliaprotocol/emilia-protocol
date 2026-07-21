@@ -13,19 +13,22 @@ export default {
     'reports/**',
   ],
   mutate: [
-    'packages/verify/evidence-chain.js:55-532',
-    'packages/gate/aec-execution.js:20-287',
-    'packages/gate/evidence.js:27-40',
-    'packages/gate/evidence.js:99-307',
+    // These moved from hand-written .js to compiled TypeScript (src/*.ts ->
+    // dist/*.js, with a re-export shim at the old .js path). Ranges
+    // re-derived line-for-line against the real src/*.ts sources.
+    'packages/verify/src/evidence-chain.ts:57-536',
+    'packages/gate/src/aec-execution.ts:38-318',
+    'packages/gate/src/evidence.ts:27-40',
+    'packages/gate/src/evidence.ts:98-307',
   ],
   testFiles: [
-    'tests/aec-safety-critical.test.js',
-    'tests/aec-role-conformance.test.js',
-    'tests/aec-mutation-oracles.test.js',
-    'tests/aec-isolated-refusals.test.js',
-    'tests/aec-execution-gate.test.js',
-    'tests/role-non-substitution.test.js',
-    'tests/atomic-evidence-log.test.js',
+    'tests/aec-safety-critical.test.{js,ts}',
+    'tests/aec-role-conformance.test.{js,ts}',
+    'tests/aec-mutation-oracles.test.{js,ts}',
+    'tests/aec-isolated-refusals.test.{js,ts}',
+    'tests/aec-execution-gate.test.{js,ts}',
+    'tests/role-non-substitution.test.{js,ts}',
+    'tests/atomic-evidence-log.test.{js,ts}',
   ],
   thresholds: {
     // Ratcheted over the complete public AEC verifier boundary, execution gate,

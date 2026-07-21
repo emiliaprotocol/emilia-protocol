@@ -137,7 +137,7 @@ Run:
 ```bash
 node examples/model-to-matter/demo.mjs
 npm run m2m:conformance
-npx vitest run tests/model-to-matter.test.js tests/model-to-matter-security-branches.test.js tests/model-to-matter-mutation-oracles.test.js
+npx vitest run tests/model-to-matter.test.ts tests/model-to-matter-security-branches.test.ts tests/model-to-matter-mutation-oracles.test.ts
 npm run test:mutation:model-to-matter
 ```
 

@@ -31,16 +31,14 @@ const ASSURANCE_CONFIDENCE_SCORE = {
 
 // ── Confidence Label Mapping ────────────────────────────────────────────────
 
-/** @type {Array<[number, string]>} */
-const SCORE_TO_CONFIDENCE_LABEL = [
+const SCORE_TO_CONFIDENCE_LABEL: Array<[number, string]> = [
   [0.90, 'confident'],
   [0.80, 'emerging'],
   [0.60, 'provisional'],
   [0.0, 'insufficient'],
 ];
 
-/** @param {number} score @returns {string} */
-function scoreToLabel(score) {
+function scoreToLabel(score: number): string {
   for (const [threshold, label] of SCORE_TO_CONFIDENCE_LABEL) {
     if (score >= threshold) return label;
   }
@@ -116,7 +114,7 @@ export function mapHandshakeToTrustDecision(handshakeResult) {
       handshake_id,
       assurance_achieved,
     },
-    profileSummary: null,
+    profileSummary: undefined,
     extensions: { evidence },
   });
 }

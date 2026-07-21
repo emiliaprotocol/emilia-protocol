@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+// Generated from pep-obligation.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 //
 // A WIMSE Policy Enforcement Point obligation: per-action human authorization.
 //
@@ -27,9 +29,7 @@
 // the receipt is non-bearer and single-use (consumption is enforced elsewhere in
 // the PEP, e.g. @emilia-protocol/gate), so a leaked copy conveys no replayable
 // authority.
-
 import { verifyEmiliaReceipt } from '../../packages/require-receipt/index.js';
-
 /**
  * @param {object}   o
  * @param {string}   o.action             the exact action_type this request performs
@@ -39,29 +39,30 @@ import { verifyEmiliaReceipt } from '../../packages/require-receipt/index.js';
  * @param {number}   [o.maxAgeSec=900]     reject receipts older than this
  * @returns {{allow: boolean, reason: string, receipt_id?: string, subject?: string, detail?: string}}
  */
-export function enforceHumanAuthorizationObligation({ action, presentedReceipt, pinnedIssuerKeys, now = Date.now(), maxAgeSec = 900 }) {
-  if (!action) return { allow: false, reason: 'no_action_specified' };            // misconfigured PEP: cannot bind
-  if (!Array.isArray(pinnedIssuerKeys) || pinnedIssuerKeys.length === 0) return { allow: false, reason: 'no_pinned_issuer_keys' };
-  if (!presentedReceipt) return { allow: false, reason: 'missing_receipt' };      // delegation alone is not sufficient
-
-  const v = verifyEmiliaReceipt(presentedReceipt, {              // EP's real offline Ed25519-over-JCS verifier
-    trustedKeys: pinnedIssuerKeys,                              // trust is PINNED by the PEP, never inline
-    action,                                                     // must bind THIS exact action_type
-    maxAgeSec,                                                  // must be inside its validity window (fail-closed on undated)
-  });
-  if (v.ok) return { allow: true, reason: 'authorized', receipt_id: v.receipt_id, subject: v.subject };
-
-  const REASON = {                                              // map EP's verifier reasons to precise PEP reasons
-    malformed_receipt: 'malformed_receipt',
-    payload_outside_ijson_profile: 'malformed_receipt',
-    bad_signature_encoding: 'malformed_receipt',
-    no_trusted_keys_configured: 'no_pinned_issuer_keys',
-    untrusted_or_invalid_signature: 'wrong_issuer_key',        // no pinned key verified this signature
-    receipt_expired: 'expired',
-    action_mismatch: 'action_mismatch',
-    outcome_not_accepted: 'outcome_not_accepted',
-  };
-  return { allow: false, reason: REASON[v.reason] || v.reason, detail: v.detail }; // fail closed on anything unmapped
+export function enforceHumanAuthorizationObligation({ action, presentedReceipt, pinnedIssuerKeys, now = Date.now(), maxAgeSec = 900 } = {}) {
+    if (!action)
+        return { allow: false, reason: 'no_action_specified' }; // misconfigured PEP: cannot bind
+    if (!Array.isArray(pinnedIssuerKeys) || pinnedIssuerKeys.length === 0)
+        return { allow: false, reason: 'no_pinned_issuer_keys' };
+    if (!presentedReceipt)
+        return { allow: false, reason: 'missing_receipt' }; // delegation alone is not sufficient
+    const v = verifyEmiliaReceipt(presentedReceipt, {
+        trustedKeys: pinnedIssuerKeys, // trust is PINNED by the PEP, never inline
+        action, // must bind THIS exact action_type
+        maxAgeSec, // must be inside its validity window (fail-closed on undated)
+    });
+    if (v.ok)
+        return { allow: true, reason: 'authorized', receipt_id: v.receipt_id, subject: v.subject };
+    const REASON = {
+        malformed_receipt: 'malformed_receipt',
+        payload_outside_ijson_profile: 'malformed_receipt',
+        bad_signature_encoding: 'malformed_receipt',
+        no_trusted_keys_configured: 'no_pinned_issuer_keys',
+        untrusted_or_invalid_signature: 'wrong_issuer_key', // no pinned key verified this signature
+        receipt_expired: 'expired',
+        action_mismatch: 'action_mismatch',
+        outcome_not_accepted: 'outcome_not_accepted',
+    };
+    return { allow: false, reason: REASON[v.reason] || v.reason, detail: v.detail }; // fail closed on anything unmapped
 }
-
 export default enforceHumanAuthorizationObligation;

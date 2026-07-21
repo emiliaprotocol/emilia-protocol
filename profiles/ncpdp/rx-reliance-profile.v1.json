@@ -60,7 +60,7 @@
   "acceptance_discipline": "VERIFIED (signature and digest checks pass) is kept separate from ACCEPTED (issuer key pinned by the relying party). The relying party pins its own keys and policy; EMILIA authors no bar and is never in the trust path.",
   "privacy_profile": "EP-NCPDP-RX-PRIVACY-PROFILE-v1. Signed artifacts have exact allowlists, patient references are pairwise, and source records use keyed commitments. This is a minimization control, not a legal-compliance claim.",
   "exports": "EP-RX-RELIANCE-BUNDLE-v2 — a content-addressed, PHI-minimized projection with keyed references to evidence retained in the holder's controlled vault.",
-  "conformance": "conformance/vectors/ncpdp-rx-reliance.v1.json (positive approve + positive signed deny + a reject for every rx_do_not_rely_* verdict); tests/ncpdp-rx-reliance.test.js.",
+  "conformance": "conformance/vectors/ncpdp-rx-reliance.v1.json (positive approve + positive signed deny + a reject for every rx_do_not_rely_* verdict); tests/ncpdp-rx-reliance.test.ts.",
   "wedge": "CMS-0057-F pushes medical prior auth through FHIR APIs but repeatedly excludes drugs from those requirements, leaving drug PA / pharmacy benefit authorization as the NCPDP-owned gap this profile targets.",
   "standards_status": "Candidate companion profile. No EP Internet-Draft is IETF-adopted or endorsed; this profile is not an NCPDP standard or operating rule until NCPDP adopts it."
 }

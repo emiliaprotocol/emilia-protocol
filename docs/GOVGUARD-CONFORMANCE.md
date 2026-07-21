@@ -20,7 +20,7 @@ checks:
 Reference check:
 
 ```bash
-npm run test:run -- tests/govguard-gg1-conformance.test.js
+npm run test:run -- tests/govguard-gg1-conformance.test.ts
 ```
 
 The reference implementation exercises the same primitives used by the v1 API:

@@ -110,7 +110,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Gate the documented Action Escrow run on minimum Node
         run: |
-          npm run check:action-escrow-runtime
+          npm run check:standalone-runtimes
           node --test examples/action-escrow/scenario.test.mjs examples/action-escrow/standalone.test.mjs
       - name: Install the PostgreSQL client used by the live isolation test
         run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends postgresql-client
@@ -351,6 +351,13 @@ jobs:
       - run: python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
       - run: npm ci --ignore-scripts
       - name: Execute exact claims and require the checked-in security case to be current
+        env:
+          # Every claim's implementations[] entry is dynamically import()ed to
+          # confirm the named export is real and callable. packages/gate/src
+          # and lib/ files import siblings by .js specifier per this repo's
+          # renamed-in-place convention, so this step needs the same loader
+          # hook the other steps in this job already have.
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: npm run check:security-case
       - name: Run deterministic cross-language hostile corpus
         env:
@@ -411,6 +418,15 @@ jobs:
       - name: Check public conformance claims against the current manifest
         run: npm run check:public-conformance-claims
       - name: Check published proof statistics against an executed test run
+        env:
+          # generate-proof-stats.mjs runs the full vitest suite, and
+          # tests/grace-curtailment.test.ts execFileSync-spawns
+          # examples/grace/proof-of-curtailment-vector.mjs as a bare `node`
+          # child process. Vitest's own transform pipeline covers everything
+          # it loads directly, but not that grandchild subprocess, which
+          # still needs the loader hook to resolve .js specifiers renamed to
+          # .ts during the migration.
+          NODE_OPTIONS: "--import ${{ github.workspace }}/scripts/ts-loader/register.mjs"
         run: npm run check:proof-stats
       - name: Check generated LLM context against current evidence manifests
         run: npm run check:llm-context
@@ -510,7 +526,7 @@ jobs:
 
       - name: No direct receipt inserts outside canonical path
         run: |
-          hits=$(grep -rn "\.from('receipts')\.insert\|\.from(\"receipts\")\.insert" app/ lib/ mcp-server/ --include='*.js' --include='*.mjs' | grep -v "lib/create-receipt.js" | grep -v "lib/canonical-writer.js" || true)
+          hits=$(grep -rn "\.from('receipts')\.insert\|\.from(\"receipts\")\.insert" app/ lib/ mcp-server/ --include='*.js' --include='*.mjs' --include='*.ts' --include='*.tsx' --include='*.mts' | grep -v "lib/create-receipt\.\(js\|ts\)" | grep -v "lib/canonical-writer\.\(js\|ts\)" || true)
           if [ -n "$hits" ]; then
             echo "::error::Direct receipt inserts found outside canonical path:"
             echo "$hits"
@@ -525,9 +541,9 @@ jobs:
           #   lib/env.js              — the canonical env accessor (by definition)
           #   lib/operator-auth.js    — reads EP_OPERATOR_KEYS at module init;
           #                             refactor to env.js TODO'd in the script
-          hits=$(grep -rn "process\.env\.EP_" lib/ app/ --include='*.js' --include='*.mjs' \
-            | grep -v "lib/env.js" \
-            | grep -v "lib/operator-auth.js" \
+          hits=$(grep -rn "process\.env\.EP_" lib/ app/ --include='*.js' --include='*.mjs' --include='*.ts' --include='*.tsx' --include='*.mts' \
+            | grep -v "lib/env\.\(js\|ts\)" \
+            | grep -v "lib/operator-auth\.\(js\|ts\)" \
             || true)
           if [ -n "$hits" ]; then
             echo "::error::Raw process.env.EP_ reads found outside lib/env.js (and allowlist):"
@@ -574,7 +590,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run benchmark tests
-        run: npx vitest run tests/benchmark.test.js tests/adversarial-benchmarks.test.js
+        run: npx vitest run tests/benchmark.test.ts tests/adversarial-benchmarks.test.ts
         env:
           BENCHMARK_CI: '1'
 
@@ -916,11 +932,11 @@ jobs:
           spec_paths=$(grep -c '^\s\+/api/' openapi.yaml || echo 0)
           # Exclude surfaces that are intentionally documented OUTSIDE EP's
           # protocol OpenAPI (mirrors the OPENAPI_EXEMPTIONS in
-          # tests/route-coverage.test.js): SCIM is RFC 7643/7644 + its own
+          # tests/route-coverage.test.ts): SCIM is RFC 7643/7644 + its own
           # ServiceProviderConfig; the pilot sandbox is GTM onboarding tooling.
-          route_files=$(find app/api -name route.js 2>/dev/null | grep -vE '/api/scim/|/api/sso/|/api/pilot/|/api/badge/|/api/demo/|/api/score/' | wc -l | tr -d ' ')
+          route_files=$(find app/api \( -name route.js -o -name route.ts \) 2>/dev/null | grep -vE '/api/scim/|/api/sso/|/api/pilot/|/api/badge/|/api/demo/|/api/score/' | wc -l | tr -d ' ')
           echo "openapi.yaml paths: $spec_paths"
-          echo "core app/api route.js files (excl. scim, sso, pilot): $route_files"
+          echo "core app/api route files (excl. scim, sso, pilot): $route_files"
           # Enforce minimum 75% coverage — cloud/operational routes may be documented separately.
           # Full parity remains an open hardening milestone. The enforced
           # current floor is 75%; no completed full-parity claim is made.
@@ -1053,7 +1069,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run Postgres integration tests
-        run: npx vitest run tests/postgres-integration.test.js
+        run: npx vitest run tests/postgres-integration.test.ts
         env:
           INTEGRATION_POSTGRES: "1"
           PGHOST:     localhost

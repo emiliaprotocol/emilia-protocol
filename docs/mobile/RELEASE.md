@@ -94,12 +94,12 @@ source .env.production && npm run mobile:production-readiness
 MOBILE_TEST_DATABASE_URL='postgresql://...' npm run mobile:db-contract
 node --test packages/mobile/*.test.js
 npx vitest run \
-  tests/mobile-action-continuity.test.js \
-  tests/mobile-action-continuity-routes.test.js \
-  tests/mobile-production-attestation.test.js \
-  tests/mobile-production-routes.test.js \
-  tests/mobile-production-runtime.test.js \
-  tests/mobile-production-store.test.js
+  tests/mobile-action-continuity.test.ts \
+  tests/mobile-action-continuity-routes.test.ts \
+  tests/mobile-production-attestation.test.ts \
+  tests/mobile-production-routes.test.ts \
+  tests/mobile-production-runtime.test.ts \
+  tests/mobile-production-store.test.ts
 
 swift test --package-path sdks/swift-mobile
 xcodebuild \

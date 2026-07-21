@@ -114,6 +114,6 @@ The guard list is frozen (`Object.freeze`) and includes: `receipts`, `commits`, 
 
 A static analysis script runs in CI to verify that no route file under `app/api/` imports forbidden canonical functions directly (bypassing `protocolWrite()`). It also verifies that route files use `getGuardedClient()` instead of `getServiceClient()`, with an explicit allowlist for routes that are pending migration.
 
-### Conformance Test Suite (`tests/conformance.test.js`)
+### Conformance Test Suite (`tests/conformance.test.ts`)
 
 47 structural invariant tests verify that the protocol's internal consistency holds: every command type has complete coverage (validator + handler + aggregate), the write guard covers all trust tables, binding fields are canonical and frozen, assurance levels are properly ordered, and the CI script covers all canonical functions.

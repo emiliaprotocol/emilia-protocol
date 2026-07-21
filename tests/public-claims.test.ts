@@ -1,0 +1,617 @@
+/**
+ * Public Claims Audit — Static Analysis Tests
+ *
+ * Verifies that every public-facing claim (README, website, .well-known,
+ * OpenAPI, SDK READMEs, MCP server README) is literally true in the code.
+ *
+ * Standard: "Can a serious buyer, auditor, or regulator read this literally
+ * and find it true in the code?"
+ */
+
+import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { resolveSourcePath } from '../scripts/ts-loader/resolve-source-path.mjs';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function readFile(relPath) {
+  // Source files are being migrated .js -> .ts; resolveSourcePath finds the
+  // renamed sibling for a literal path (see scripts/ts-loader/README.md).
+  return fs.readFileSync(path.join(ROOT, resolveSourcePath(ROOT, relPath)), 'utf-8');
+}
+
+/**
+ * Routes that exist in the filesystem but are intentionally omitted from
+ * openapi.yaml because they are internal / not part of the public API.
+ * Mirrors the OPENAPI_EXEMPTIONS list in route-coverage.test.js.
+ */
+const OPENAPI_EXEMPT_ROUTES = [
+  // Signoff routes — not yet in openapi.yaml; will be added in a follow-up.
+  '/api/signoff/challenge',
+  '/api/signoff/[challengeId]',
+  '/api/signoff/[challengeId]/attest',
+  '/api/signoff/[challengeId]/deny',
+  '/api/signoff/[challengeId]/revoke',
+  '/api/signoff/[challengeId]/consume',
+  // Cloud routes — internal / not yet in openapi.yaml.
+  '/api/cloud/audit/export',
+  '/api/cloud/audit/integrity',
+  '/api/cloud/audit/report',
+  '/api/cloud/events/search',
+  '/api/cloud/events/timeline/[handshakeId]',
+  '/api/cloud/policies/[policyId]/diff',
+  '/api/cloud/policies/[policyId]/rollout',
+  '/api/cloud/policies/[policyId]/simulate',
+  '/api/cloud/policies/[policyId]/versions',
+  '/api/cloud/signoff/analytics',
+  '/api/cloud/signoff/dashboard',
+  '/api/cloud/signoff/escalate',
+  '/api/cloud/signoff/notify',
+  '/api/cloud/signoff/pending',
+  '/api/cloud/signoff/queue',
+  // Webhook routes — cloud control-plane.
+  '/api/cloud/webhooks',
+  '/api/cloud/webhooks/[endpointId]',
+  '/api/cloud/webhooks/[endpointId]/deliveries',
+  '/api/cloud/webhooks/[endpointId]/test',
+  // Key management — internal operational endpoint.
+  '/api/keys/rotate',
+  // Cron jobs — internal, triggered by Vercel cron, not external callers.
+  '/api/cron/collusion-scan',
+  // Cloud scoring calibration — cloud control-plane.
+  '/api/cloud/scoring/recommendations',
+  // Public lead form (marketing intake), not a protocol surface.
+  '/api/pilot/request',
+  // Self-serve observe-mode pilot sandbox (provision + report), not a protocol surface.
+  '/api/pilot/sandbox/provision',
+  '/api/pilot/sandbox/report',
+  // Embeddable capability badge + require-receipt demand demo — public demo/badge
+  // surfaces, not core protocol API.
+  '/api/badge/[entity]',
+  '/api/demo/require-receipt',
+  '/api/demo/x402',
+  // Retired (HTTP 410): legacy compatibility-score endpoints, removed from the
+  // public API (verifiable evidence, not a score). Route files return 410 only.
+  '/api/score/[entityId]',
+  '/api/score/[entityId]/history',
+  // SCIM 2.0 (RFC 7643/7644) — standardized provisioning surface, described by
+  // the RFC + ServiceProviderConfig, not EP's protocol OpenAPI.
+  '/api/scim/v2/ServiceProviderConfig',
+  '/api/scim/v2/ResourceTypes',
+  '/api/scim/v2/Users',
+  '/api/scim/v2/Users/[id]',
+  '/api/scim/v2/Groups',
+  '/api/scim/v2/Groups/[id]',
+  '/api/scim/v2/provisioning-token',
+  // Enterprise SSO (SAML 2.0 / OIDC) — protocol-standard auth surfaces, not
+  // EP's protocol OpenAPI.
+  '/api/sso/saml/metadata',
+  '/api/sso/saml/login',
+  '/api/sso/saml/acs',
+  '/api/sso/oidc/login',
+  '/api/sso/oidc/callback',
+  '/api/sso/connections',
+  '/api/sso/session',
+];
+
+function countRouteFiles() {
+  const apiDir = path.join(ROOT, 'app', 'api');
+  const routes = [];
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name === 'route.js' || entry.name === 'route.ts') routes.push(full);
+    }
+  }
+  walk(apiDir);
+  return routes.length;
+}
+
+/** Count only public route files (those not in OPENAPI_EXEMPT_ROUTES). */
+function countPublicRouteFiles() {
+  const apiDir = path.join(ROOT, 'app', 'api');
+  const routes = [];
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name === 'route.js' || entry.name === 'route.ts') {
+        // Derive the API path from the file path
+        const apiPath = full
+          .replace(path.join(ROOT, 'app'), '')
+          .replace(/\/route\.(js|ts)$/, '');
+        if (!OPENAPI_EXEMPT_ROUTES.includes(apiPath) && !apiPath.startsWith('/api/cloud/')) {
+          routes.push(full);
+        }
+      }
+    }
+  }
+  walk(apiDir);
+  return routes.length;
+}
+
+function countOpenApiPaths() {
+  const content = readFile('openapi.yaml');
+  const pathMatches = content.match(/^  \/api\//gm);
+  return pathMatches ? pathMatches.length : 0;
+}
+
+function countMcpTools(source) {
+  const matches = source.match(/name:\s*['"]ep_[a-z_]+['"]/g);
+  return matches ? matches.length : 0;
+}
+
+function countMcpToolsInReadme(source) {
+  // Count rows in tool tables — lines starting with | `ep_
+  const matches = source.match(/\|\s*`ep_[a-z_]+`/g);
+  return matches ? matches.length : 0;
+}
+
+// ── 1. README Claims ───────────────────────────────────────────────────────
+
+describe('README claims', () => {
+  const readme = readFile('README.md');
+
+  it('Route parity: public route files match OpenAPI path count', () => {
+    // README no longer contains an explicit route parity table.
+    // Verify the underlying invariant directly: every public route file
+    // has a corresponding OpenAPI path entry.
+    const publicRouteCount = countPublicRouteFiles();
+    const openApiCount = countOpenApiPaths();
+
+    expect(publicRouteCount).toBeGreaterThan(0);
+    // OpenAPI covers at least all public protocol routes.
+    // Cloud control-plane routes may not yet be in OpenAPI.
+    expect(openApiCount).toBeGreaterThanOrEqual(publicRouteCount);
+  });
+
+  it('MCP tools exist in mcp-server/index.js', () => {
+    // The main README no longer lists individual MCP tools (the MCP
+    // server README still does and is tested separately below).
+    // Verify the MCP server defines at least one tool.
+    const mcpSource = readFile('mcp-server/index.js');
+    const actualToolCount = countMcpTools(mcpSource);
+
+    expect(actualToolCount).toBeGreaterThan(0);
+  });
+
+  it('"three interoperable objects" claim matches PROTOCOL-STANDARD.md', () => {
+    const protocolStandard = readFile('docs/PROTOCOL-STANDARD.md');
+
+    // README claims three core objects: Trust Receipt, Trust Profile, Trust Decision
+    expect(readme).toMatch(/three interoperable objects/i);
+    expect(readme).toContain('Trust Receipt');
+    expect(readme).toContain('Trust Profile');
+    expect(readme).toContain('Trust Decision');
+
+    // PROTOCOL-STANDARD.md must also list the same three
+    expect(protocolStandard).toContain('Trust Receipt');
+    expect(protocolStandard).toContain('Trust Profile');
+    expect(protocolStandard).toContain('Trust Decision');
+    expect(protocolStandard).toMatch(/three interoperable objects/i);
+  });
+
+  it('Decision vocabulary in lib/commit.js is allow/review/deny', () => {
+    const commitSource = readFile('lib/commit.js');
+
+    // Extract VALID_DECISIONS from commit.js
+    const validDecisionsMatch = commitSource.match(
+      /VALID_DECISIONS\s*=\s*new\s+Set\(\[([^\]]+)\]/
+    );
+    expect(validDecisionsMatch).not.toBeNull();
+
+    const decisions = validDecisionsMatch[1]
+      .match(/'([^']+)'/g)
+      .map((d) => d.replace(/'/g, ''));
+
+    // Canonical set should be exactly allow, review, deny
+    expect(decisions.sort()).toEqual(['allow', 'deny', 'review']);
+
+    // README mentions Trust Decision as a core object (the individual
+    // decision values are an implementation detail not repeated in the
+    // streamlined README)
+    expect(readme).toContain('Trust Decision');
+  });
+
+  it('Does NOT claim ZK (zero-knowledge) in primary public claims', () => {
+    // The streamlined README does not mention zero-knowledge proofs at all.
+    // Verify the README does not lead with ZK claims anywhere.
+    expect(readme.toLowerCase()).not.toMatch(/zero-knowledge proof/);
+
+    // The README should describe EP as a trust substrate / protocol,
+    // not as a cryptographic proof system.
+    expect(readme).toMatch(/trust/i);
+  });
+});
+
+// ── 2. Website Claims ──────────────────────────────────────────────────────
+
+describe('Website (landing.html) claims', () => {
+  const landing = readFile('content/landing.html');
+
+  it('Does NOT claim "standard" status in hero/lead (it is a protocol)', () => {
+    // The hero section should say "protocol" not claim it is already a "standard"
+    // Extract hero section
+    const heroMatch = landing.match(
+      /<!-- HERO -->[\s\S]*?<\/section>/
+    );
+    expect(heroMatch).not.toBeNull();
+    const hero = heroMatch[0];
+
+    // Hero should say "protocol" prominently
+    expect(hero.toLowerCase()).toContain('protocol');
+
+    // Hero h1 and hook should not claim "standard" as the entity type
+    // (using "standard" in a policy name like "standard" is fine,
+    //  claiming EP IS a standard is premature)
+    const h1Match = hero.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+    if (h1Match) {
+      expect(h1Match[1].toLowerCase()).not.toContain('the standard');
+    }
+  });
+
+  it('Does NOT use "zero-knowledge proof" as a primary claim', () => {
+    // The hero section should not claim ZK
+    const heroMatch = landing.match(
+      /<!-- HERO -->[\s\S]*?<\/section>/
+    );
+    expect(heroMatch).not.toBeNull();
+    const hero = heroMatch[0];
+    expect(hero.toLowerCase()).not.toContain('zero-knowledge');
+  });
+
+  it('Does NOT use "trust layer" as the lead hero positioning', () => {
+    // "The Trust Layer" appears in a comparison table context (line 914),
+    // which is acceptable. But it must NOT be the h1 or hero-hook lead.
+    const heroMatch = landing.match(
+      /<!-- HERO -->[\s\S]*?<\/section>/
+    );
+    expect(heroMatch).not.toBeNull();
+    const hero = heroMatch[0];
+
+    const h1Match = hero.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+    if (h1Match) {
+      expect(h1Match[1].toLowerCase()).not.toContain('trust layer');
+    }
+
+    const hookMatch = hero.match(/class="hero-hook"[^>]*>([\s\S]*?)<\/p>/);
+    if (hookMatch) {
+      expect(hookMatch[1].toLowerCase()).not.toContain('trust layer');
+    }
+  });
+});
+
+// ── 3. .well-known Claims ──────────────────────────────────────────────────
+
+describe('.well-known/ep-trust.json claims', () => {
+  const wellKnown = JSON.parse(readFile('public/.well-known/ep-trust.json'));
+
+  it('Every URL endpoint has a corresponding route file', () => {
+    // Extract URL fields that reference /api/ paths
+    const urlFields = [
+      'trust_profile_url',
+      'trust_evaluate_url',
+      'receipt_submit_url',
+      'receipt_confirm_url',
+      'dispute_file_url',
+      'dispute_report_url',
+    ];
+
+    for (const field of urlFields) {
+      const url = wellKnown[field];
+      expect(url).toBeDefined();
+
+      // Extract the path from the URL, e.g. /api/trust/profile/{entity_id}
+      const pathMatch = url.match(/\/api\/[^\s?#]+/);
+      expect(pathMatch).not.toBeNull();
+
+      let apiPath = pathMatch[0];
+      // Normalize template params: {entity_id} -> [entityId] style for directory lookup
+      // But we just need to check a route.js exists in the right directory
+      // Strip the template param to get the directory
+      apiPath = apiPath.replace(/\/\{[^}]+\}$/, '');
+
+      // Check that a route.js exists somewhere under this path
+      const routeDir = path.join(ROOT, 'app', apiPath);
+      // Routes are migrating from .js to .ts file-by-file; check both.
+      const routeFileExists = (dir) => fs.existsSync(path.join(dir, 'route.js')) || fs.existsSync(path.join(dir, 'route.ts'));
+      // Some routes use dynamic segments like [entityId]
+      // So we check either the exact path or a dynamic segment variant
+      let exists = routeFileExists(routeDir);
+      if (!exists) {
+        // Try to find a route.js in a directory that matches the pattern
+        // e.g., /api/trust/profile might have /api/trust/profile/[entityId]/route.js
+        const parentDir = routeDir;
+        if (fs.existsSync(parentDir)) {
+          const entries = fs.readdirSync(parentDir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory() && entry.name.startsWith('[')) {
+              if (routeFileExists(path.join(parentDir, entry.name))) {
+                exists = true;
+                break;
+              }
+            }
+          }
+        }
+        // Also check if a route file exists directly in the parent
+        if (!exists) {
+          exists = routeFileExists(parentDir);
+        }
+      }
+
+      expect(exists, `Route file missing for ${field}: ${apiPath}`).toBe(true);
+    }
+  });
+
+  it('protocol_version matches PROTOCOL-STANDARD.md version', () => {
+    const protocolStandard = readFile('docs/PROTOCOL-STANDARD.md');
+
+    // Extract version from PROTOCOL-STANDARD.md header
+    const versionMatch = protocolStandard.match(/\*\*Version:\*\*\s*(\S+)/);
+    expect(versionMatch).not.toBeNull();
+    const specVersion = versionMatch[1];
+
+    // .well-known uses "version" field
+    const wellKnownVersion = wellKnown.version;
+    expect(wellKnownVersion).toBeDefined();
+
+    // The .well-known version should be compatible with the spec version
+    // .well-known says "1.1", spec says "1.0" — both are 1.x family
+    // They should share the same major version
+    const specMajor = specVersion.split('.')[0];
+    const wellKnownMajor = wellKnownVersion.split('.')[0];
+    expect(wellKnownMajor).toBe(specMajor);
+  });
+});
+
+// ── 4. OpenAPI Coverage ────────────────────────────────────────────────────
+
+describe('OpenAPI coverage', () => {
+  it('OpenAPI path count matches or exceeds public route file count', () => {
+    const publicRouteCount = countPublicRouteFiles();
+    const openApiCount = countOpenApiPaths();
+
+    // They should be equal (route parity claim) or OpenAPI >= public routes
+    // Internal/exempt routes are excluded from this check.
+    expect(openApiCount).toBeGreaterThanOrEqual(publicRouteCount);
+  });
+
+  it('Route parity: OpenAPI covers all public protocol routes', () => {
+    const publicRouteCount = countPublicRouteFiles();
+    const openApiCount = countOpenApiPaths();
+    // OpenAPI must cover at least all public protocol routes.
+    expect(openApiCount).toBeGreaterThanOrEqual(publicRouteCount);
+  });
+});
+
+// ── 5. SDK Claims ──────────────────────────────────────────────────────────
+
+describe('SDK (TypeScript) claims', () => {
+  const sdkReadme = readFile('sdks/typescript/README.md');
+
+  it('EP_BASE_URL referenced in SDK README matches actual default in client.ts', () => {
+    // Read the source TS, not the compiled dist/. CI doesn't build the SDK
+    // before running this suite (sdks/typescript/dist/ is gitignored), and
+    // the value being verified — DEFAULT_BASE_URL — is identical in source
+    // and compiled output anyway.
+    const clientSource = readFile('sdks/typescript/src/client.ts');
+
+    // Extract DEFAULT_BASE_URL from client.ts
+    const defaultUrlMatch = clientSource.match(
+      /DEFAULT_BASE_URL\s*=\s*['"]([^'"]+)['"]/
+    );
+    expect(defaultUrlMatch).not.toBeNull();
+    const actualDefault = defaultUrlMatch[1];
+
+    // SDK README should reference the same base URL
+    expect(sdkReadme).toContain(actualDefault);
+  });
+
+  it('SDK README EP_BASE_URL default matches code default', () => {
+    // Read the source TS, not the compiled dist/. CI doesn't build the SDK
+    // before running this suite (sdks/typescript/dist/ is gitignored), and
+    // the value being verified — DEFAULT_BASE_URL — is identical in source
+    // and compiled output anyway.
+    const clientSource = readFile('sdks/typescript/src/client.ts');
+
+    const defaultUrlMatch = clientSource.match(
+      /DEFAULT_BASE_URL\s*=\s*['"]([^'"]+)['"]/
+    );
+    const actualDefault = defaultUrlMatch[1];
+
+    // README says default is https://emiliaprotocol.ai
+    const readmeDefaultMatch = sdkReadme.match(
+      /EP_BASE_URL.*?\|\s*`([^`]+)`/
+    );
+    if (readmeDefaultMatch) {
+      expect(readmeDefaultMatch[1]).toBe(actualDefault);
+    } else {
+      // If no explicit default in table, just verify the URL appears
+      expect(sdkReadme).toContain(actualDefault);
+    }
+  });
+});
+
+// ── 6. MCP Server Claims ──────────────────────────────────────────────────
+
+describe('MCP server README claims', () => {
+  const mcpReadme = readFile('mcp-server/README.md');
+  const mcpSource = readFile('mcp-server/index.js');
+
+  it('Tool count in MCP README matches actual handlers in index.js', () => {
+    // Count tool descriptions in the README summary table
+    const readmeToolCount = countMcpToolsInReadme(mcpReadme);
+
+    // Count actual tool definitions in index.js
+    const actualToolCount = countMcpTools(mcpSource);
+
+    expect(readmeToolCount).toBeGreaterThan(0);
+    expect(actualToolCount).toBeGreaterThan(0);
+    expect(readmeToolCount).toBe(actualToolCount);
+  });
+
+  it('MCP README claims the actual MCP tool count', () => {
+    // README says "<n> tools"; keep it tied to the source list.
+    const claimMatch = mcpReadme.match(/(\d+)\s*tools/);
+    expect(claimMatch).not.toBeNull();
+    const claimedCount = Number(claimMatch[1]);
+
+    const actualToolCount = countMcpTools(mcpSource);
+    expect(actualToolCount).toBe(claimedCount);
+  });
+
+  it('Every tool listed in MCP README exists as a handler in index.js', () => {
+    // Extract tool names from README
+    const readmeTools =
+      mcpReadme
+        .match(/`(ep_[a-z_]+)`/g)
+        ?.map((t) => t.replace(/`/g, '')) || [];
+    const uniqueReadmeTools = [...new Set(readmeTools)];
+
+    // Extract tool names from index.js
+    const sourceTools =
+      mcpSource
+        .match(/name:\s*['"]ep_([a-z_]+)['"]/g)
+        ?.map((m) => 'ep_' + m.match(/ep_([a-z_]+)/)[1]) || [];
+
+    for (const tool of uniqueReadmeTools) {
+      expect(
+        sourceTools.includes(tool),
+        `Tool ${tool} listed in MCP README but not found in index.js`
+      ).toBe(true);
+    }
+  });
+});
+
+// ── 7. Crypto Claims ──────────────────────────────────────────────────────
+
+describe('Crypto / ZK claims', () => {
+  it('lib/zk-proofs.js does NOT claim "zero-knowledge proofs" in primary description', () => {
+    const zkSource = readFile('lib/zk-proofs.js');
+
+    // Extract the top JSDoc comment (first block comment)
+    const topComment = zkSource.match(/\/\*\*([\s\S]*?)\*\//);
+    expect(topComment).not.toBeNull();
+    const description = topComment[1];
+
+    // The primary description should say "commitment" not claim to implement
+    // actual zero-knowledge proofs (it uses HMAC-SHA256 commitments)
+    expect(description.toLowerCase()).toContain('commitment');
+
+    // It should NOT say "implements zero-knowledge proofs" as the lead description
+    // (referencing ZK as context/comparison is fine, claiming to implement ZK SNARKs is not)
+    const firstLine = description.split('\n').find((l) => l.trim().length > 0);
+    expect(firstLine?.toLowerCase()).not.toMatch(
+      /implements?\s+zero-knowledge\s+proofs?/
+    );
+  });
+
+  it('README does not claim ZK in primary "What is EP" description', () => {
+    const readme = readFile('README.md');
+    const whatIsEP =
+      readme.split('## What is EP?')[1]?.split('---')[0] || '';
+
+    // "What is EP" should not lead with zero-knowledge claims
+    expect(whatIsEP).not.toMatch(/zero-knowledge proof/i);
+  });
+
+  it('README extension description does not claim "zero-knowledge proofs"', () => {
+    const readme = readFile('README.md');
+
+    // The streamlined README describes extensions via Handshake and
+    // Accountable Signoff.  It must not claim zero-knowledge proofs.
+    expect(readme).not.toMatch(/Zero-knowledge proofs/);
+    expect(readme.toLowerCase()).not.toMatch(/zero-knowledge proof/);
+
+    // Verify the README mentions the Handshake extension
+    expect(readme).toContain('Handshake');
+  });
+});
+
+// ── 8. Test-count freshness (README ↔ proof-stats) ──────────────────────────
+// Regression guard for finding #1: the README "Automated test cases | N across M
+// files" line drifted from ground truth. The count grows on every added test, so
+// the README states it as a FLOOR ("N+ across M+ files") that stays true as the
+// suite grows; a floor passes when the true count in lib/proof-stats.json is >= N.
+// A bare exact number must still equal proof-stats exactly (backstop). The exact
+// number lives once in lib/proof-stats.json, rendered by app/page.js.
+
+describe('README test-count freshness', () => {
+  const readme = readFile('README.md');
+  const proofStats = JSON.parse(readFile('lib/proof-stats.json'));
+
+  it('"Automated test cases | N(+) across M(+) files" is consistent with lib/proof-stats.json', () => {
+    // Proof-points row: | Automated test cases | 5,000+ across 250+ files |
+    const match = readme.match(
+      /Automated test cases\s*\|\s*([\d,]+)(\+?)\s+across\s+([\d,]+)(\+?)\s+files/i
+    );
+    expect(
+      match,
+      'README must contain an "Automated test cases | N across M files" claim'
+    ).not.toBeNull();
+
+    const claimedTests = Number(match[1].replace(/,/g, ''));
+    const testsIsFloor = match[2] === '+';
+    const claimedFiles = Number(match[3].replace(/,/g, ''));
+    const filesIsFloor = match[4] === '+';
+
+    if (testsIsFloor) {
+      expect(
+        proofStats.tests.total,
+        `README states a floor of ${claimedTests}+ tests; true count ${proofStats.tests.total} must be >= it`
+      ).toBeGreaterThanOrEqual(claimedTests);
+    } else {
+      expect(claimedTests).toBe(proofStats.tests.total);
+    }
+
+    if (filesIsFloor) {
+      expect(proofStats.tests.files).toBeGreaterThanOrEqual(claimedFiles);
+    } else {
+      expect(claimedFiles).toBe(proofStats.tests.files);
+    }
+  });
+});
+
+// ── 9. WYSIWYS honesty (README ↔ EP-WYSIWYS-SPEC.md) ────────────────────────
+// Regression guard for finding #2: the README overclaimed WYSIWYS as an
+// absolute ("What the human saw is what they signed. No script can forge
+// it..."), while docs/EP-WYSIWYS-SPEC.md marks it EXPERIMENTAL and states it
+// "reduces, does not eliminate" the presentation-attack surface.
+
+describe('WYSIWYS claim honesty', () => {
+  const readme = readFile('README.md');
+
+  it('README does not state WYSIWYS as an unqualified absolute', () => {
+    // The bare declarative "what the human saw is what they signed" (no hedge)
+    // is an overclaim. A quoted/hedged form ("what you saw is what you signed"
+    // gap) is fine.
+    expect(readme.toLowerCase()).not.toMatch(
+      /what the human saw is what they signed/
+    );
+  });
+
+  it('README WYSIWYS mentions co-occur with a reduces/narrows/experimental hedge', () => {
+    // Wherever the README talks about "what you saw is what you signed", the
+    // surrounding sentence must qualify it.
+    const idx = readme.toLowerCase().indexOf('what you saw is what you signed');
+    if (idx !== -1) {
+      // Inspect a window around the mention for a hedging word.
+      const window = readme
+        .slice(Math.max(0, idx - 200), idx + 400)
+        .toLowerCase();
+      expect(window).toMatch(/reduce|narrow|experimental|does not eliminate|gap/);
+    }
+    // The README must not contain the old absolute "No script can forge it".
+    expect(readme).not.toContain('No script can forge it');
+  });
+
+  it('EP-WYSIWYS-SPEC.md keeps its experimental / reduces-not-eliminates framing', () => {
+    const spec = readFile('docs/EP-WYSIWYS-SPEC.md');
+    expect(spec.toLowerCase()).toMatch(/experimental/);
+    expect(spec.toLowerCase()).toMatch(/does not\b[\s\S]{0,40}\beliminate/);
+  });
+});

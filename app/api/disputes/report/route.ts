@@ -1,0 +1,91 @@
+import crypto from 'crypto';
+import { NextResponse, NextRequest } from 'next/server';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { checkAbuse } from '@/lib/procedural-justice';
+import { getGuardedClient } from '@/lib/write-guard';
+import { getClientIP } from '@/lib/rate-limit';
+import { readEpJson } from '@/lib/http/route-body';
+import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
+
+/**
+ * POST /api/disputes/report
+ *
+ * Human appeal endpoint. No authentication required.
+ * Routes through protocol write with abuse detection.
+ *
+ * "EP must never make trust more powerful than appeal."
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
+
+    // Accept both field naming conventions
+    const entityId = body.entity_id;
+    const reportType = body.report_type || body.reason;
+    // Cap at 5000 chars to prevent DB bloat on this unauthenticated endpoint
+    const rawDescription = body.description || body.details;
+    const description = typeof rawDescription === 'string'
+      ? rawDescription.trim().slice(0, 5000)
+      : '';
+
+    if (!entityId || !reportType) {
+      return EP_ERRORS.BAD_REQUEST('entity_id and report_type (or reason) are required');
+    }
+
+    const validTypes = [
+      'wrongly_downgraded', 'harmed_by_trusted_entity',
+      'fraudulent_entity', 'inaccurate_profile', 'other',
+    ];
+    if (!validTypes.includes(reportType)) {
+      return EP_ERRORS.BAD_REQUEST(`Invalid report_type. Must be one of: ${validTypes.join(', ')}`);
+    }
+
+    // Abuse detection — use getClientIP() which reads the rightmost (trusted edge)
+    // value from x-forwarded-for, not the first (attacker-controlled) value.
+    const reporterIp = getClientIP(request);
+    const reporterIpHash = crypto.createHash('sha256').update(reporterIp).digest('hex').slice(0, 16);
+    const supabase = getGuardedClient();
+    const abuseCheck = await checkAbuse(supabase, 'report', {
+      entity_id: entityId,
+      report_type: reportType,
+      reporter_ip_hash: reporterIpHash,
+    }, { failClosed: true });
+
+    if (!abuseCheck.allowed) {
+      return epProblem(429, 'report_throttled', `Report throttled: ${abuseCheck.pattern}. Try again later.`, {
+        pattern: abuseCheck.pattern,
+      });
+    }
+
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.FILE_REPORT,
+      input: {
+        entity_id: entityId,
+        report_type: reportType,
+        description: description || '',
+        reporter_ip_hash: reporterIpHash,
+      },
+      actor: 'anonymous',
+    });
+
+    if (result.error) {
+      return epProblem(result.status || 500, 'report_failed', result.error);
+    }
+
+    return NextResponse.json({
+      report_id: result.report_id,
+      entity_id: result.entity_id,
+      display_name: result.display_name,
+      _message: 'Report received. An operator will review this.',
+      _principle: 'Trust must never be more powerful than appeal.',
+    }, { status: 201 });
+  } catch (err) {
+    logger.error('Report filing error:', err);
+    return EP_ERRORS.INTERNAL();
+  }
+}

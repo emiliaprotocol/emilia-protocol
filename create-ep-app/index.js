@@ -1,54 +1,50 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
+// Generated from index.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 // Secure development scaffold for the EMILIA issuer -> relying-party verifier
 // boundary. It deliberately uses the published issuer and verifier packages;
 // generated applications do not contain a second cryptographic implementation.
-
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
-
 const projectName = process.argv[2];
 if (!projectName) {
-  console.error('Usage: npx @emilia-protocol/create-ep-app <project-name>');
-  process.exit(1);
+    console.error('Usage: npx @emilia-protocol/create-ep-app <project-name>');
+    process.exit(1);
 }
 if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(projectName) || projectName === '.' || projectName === '..') {
-  console.error('Project name must be 1-64 safe filename characters and may not be a path.');
-  process.exit(1);
+    console.error('Project name must be 1-64 safe filename characters and may not be a path.');
+    process.exit(1);
 }
-
 const cwd = resolve(process.cwd());
 const root = resolve(cwd, projectName);
 const rel = relative(cwd, root);
 if (!rel || rel.startsWith('..') || rel.includes('/') || rel.includes('\\')) {
-  console.error('Resolved project path escapes the current directory.');
-  process.exit(1);
+    console.error('Resolved project path escapes the current directory.');
+    process.exit(1);
 }
 if (existsSync(root)) {
-  console.error(`Refusing to overwrite existing path: ${projectName}`);
-  process.exit(1);
+    console.error(`Refusing to overwrite existing path: ${projectName}`);
+    process.exit(1);
 }
 mkdirSync(root, { recursive: false, mode: 0o700 });
-
 function write(name, body) {
-  writeFileSync(resolve(root, name), body, { flag: 'wx', mode: 0o600 });
+    writeFileSync(resolve(root, name), body, { flag: 'wx', mode: 0o600 });
 }
-
 write('package.json', `${JSON.stringify({
-  name: projectName,
-  version: '0.1.0',
-  private: true,
-  type: 'module',
-  scripts: {
-    demo: 'node demo.mjs',
-    verify: 'node verify-receipt.mjs receipt.json relying-party-trust.json',
-  },
-  dependencies: {
-    '@emilia-protocol/issue': '0.6.1',
-    '@emilia-protocol/verify': '3.10.0',
-  },
+    name: projectName,
+    version: '0.1.0',
+    private: true,
+    type: 'module',
+    scripts: {
+        demo: 'node demo.mjs',
+        verify: 'node verify-receipt.mjs receipt.json relying-party-trust.json',
+    },
+    dependencies: {
+        '@emilia-protocol/issue': '0.6.1',
+        '@emilia-protocol/verify': '3.10.0',
+    },
 }, null, 2)}\n`);
-
 write('demo.mjs', `import { writeFileSync } from 'node:fs';
 import { generateIssuerKeyBundle, issueFromKeyBundle } from '@emilia-protocol/issue';
 import { verifyTrustReceipt } from '@emilia-protocol/verify';
@@ -95,7 +91,6 @@ console.log('VERIFIED under the separately loaded development trust profile.');
 console.log('REFUSED after exact-action mutation.');
 console.log('This demonstrates cryptographic binding, not identity, authority, perception, execution, or legal reliance.');
 `);
-
 write('verify-receipt.mjs', `import { readFileSync } from 'node:fs';
 import { verifyTrustReceipt } from '@emilia-protocol/verify';
 import { strictJsonGate } from '@emilia-protocol/verify/strict-json';
@@ -127,7 +122,6 @@ const result = verifyTrustReceipt(receipt, {
 console.log(JSON.stringify(result, null, 2));
 process.exitCode = result.valid ? 0 : 1;
 `);
-
 write('README.md', `# ${projectName}
 
 This is a local development demonstration of the EMILIA issuer-to-verifier
@@ -147,5 +141,4 @@ identity, legal authority, what a person perceived, policy correctness,
 execution, effects, safety, or legal reliance. Replace the generated profile
 with independently enrolled and governed production trust roots before use.
 `);
-
 console.log(`Created ${projectName}. Run: cd ${projectName} && npm install && npm run demo`);

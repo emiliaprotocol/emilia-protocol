@@ -69,7 +69,7 @@ export async function safePinnedFetch(
   // Validate + resolve in one shot; get back the exact public IP to pin to.
   const check = await validateSsoProviderUrl(target, 'sso_fetch_url', lookup ? { lookup } : undefined);
   if (!check.valid) {
-    throw new Error(`SSRF-blocked SSO fetch (${check.error})`);
+    throw new Error(`SSRF-blocked SSO fetch (${(check as { valid: false; error: string }).error})`);
   }
 
   const url = new URL(target);

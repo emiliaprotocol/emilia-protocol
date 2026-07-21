@@ -10,7 +10,7 @@
 **Token type:** `secevent+jwt` (RFC 8417 Security Event Token, JWS-COMPACT)
 **Reference implementation:** `lib/eye/set.js` (`buildEyeSet`, `verifyEyeSet`)
 **Conformance vectors:** `conformance/vectors/eye-set.v1.json`
-**Conformance tests:** `tests/eye-set.test.js`
+**Conformance tests:** `tests/eye-set.test.ts`
 
 > This is a **specification proposal** plus a **reference implementation**. It is
 > **experimental**. It is **not** a production claim, asserts **no** customers, and
@@ -257,7 +257,7 @@ posture tighten-only. It MUST NOT read this as authorization.
 ## 5. Conformance vectors
 
 `conformance/vectors/eye-set.v1.json` is the authoritative catalogue; every id is
-asserted by name in `tests/eye-set.test.js`. The negatives are minted with **real**
+asserted by name in `tests/eye-set.test.ts`. The negatives are minted with **real**
 Ed25519 keys and **real** EdDSA signatures over the **real** JWS signing input, so
 each is a genuine forgery / tamper / confusion attempt, not hand-edited JSON.
 
@@ -276,7 +276,7 @@ each is a genuine forgery / tamper / confusion attempt, not hand-edited JSON.
 | `z_well_formed_elevated_set_pinned_fresh` | Pinned, fresh, audience-matched, marked | accept | — |
 | `z2_well_formed_review_required_no_audience_pin` | Pinned, fresh, no audience pin, marked | accept | — |
 
-Run: `npx vitest run tests/eye-set.test.js`.
+Run: `npx vitest run tests/eye-set.test.ts`.
 
 ---
 

@@ -1,0 +1,71 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "strictNullChecks": true,
+    "noEmit": true,
+    "incremental": true,
+    "module": "esnext",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "viem": ["./stubs/viem.d.ts"],
+      "viem/accounts": ["./stubs/viem-accounts.d.ts"],
+      "viem/chains": ["./stubs/viem-chains.d.ts"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.js",
+    "**/*.test.mjs",
+    "**/*.test.ts",
+    "**/test/**",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/dist/**",
+    ".next/**",
+    "packages/**",
+    "scripts/**",
+    "mobile/**",
+    "sdks/**",
+    "apps/**",
+    "witness/**",
+    "caid/**",
+    "conformance/**",
+    "attestation/**",
+    "bench/**",
+    "fuzz/**",
+    "load-tests/**",
+    "ml/**",
+    "integrations/**",
+    "cli/**",
+    "create-ep-app/**",
+    "examples/**",
+    "formal/**",
+    "receipt-required-pr-kit/**",
+    "actions/**"
+  ]
+}

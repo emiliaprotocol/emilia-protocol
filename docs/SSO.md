@@ -66,15 +66,15 @@ mismatch — is **rejected** (401).
 The security-critical validation is unit-tested against fixture IdPs (no live
 provider needed):
 
-- `tests/sso-oidc.test.js` (12) — signs real ID tokens with a fixture key and
+- `tests/sso-oidc.test.ts` (12) — signs real ID tokens with a fixture key and
   proves accept-valid / reject wrong-aud / wrong-iss / expired / bad-nonce /
   key-not-in-JWKS, plus PKCE (RFC 7636 vector), discovery, token exchange.
-- `tests/sso-saml.test.js` (8) — SP metadata + AuthnRequest structure, rejects
+- `tests/sso-saml.test.ts` (8) — SP metadata + AuthnRequest structure, rejects
   unsigned/garbage, and (where openssl is present) signs a real SAML assertion
   and proves the ACS accepts it and rejects a different-key signature.
-- `tests/sso-state.test.js` (5) — the HMAC state token: tamper + expiry + wrong-secret rejection.
-- `tests/sso-session.test.js` (6) — EP session mint/verify, tamper + wrong-secret + cookie parsing.
-- `tests/secret-box.test.js` (7) — AES-256-GCM round-trip, tamper rejection, plaintext-passthrough rollout.
+- `tests/sso-state.test.ts` (5) — the HMAC state token: tamper + expiry + wrong-secret rejection.
+- `tests/sso-session.test.ts` (6) — EP session mint/verify, tamper + wrong-secret + cookie parsing.
+- `tests/secret-box.test.ts` (7) — AES-256-GCM round-trip, tamper rejection, plaintext-passthrough rollout.
 
 > **Live IdP round-trip:** the validators are exercised against fixture
 > providers here; connecting a specific Okta/Entra tenant (its real signing

@@ -73,10 +73,10 @@ Authority cannot come from nothing:
 The vectors live in
 [`conformance/vectors/delegation-integrity.v1.json`](../../conformance/vectors/delegation-integrity.v1.json)
 (`EP-DELEGATION-INTEGRITY-v1`) and are exercised by
-[`tests/delegation-integrity.test.js`](../../tests/delegation-integrity.test.js), which
+[`tests/delegation-integrity.test.ts`](../../tests/delegation-integrity.test.ts), which
 asserts each verdict, the specific check that must fail, the human-readable reason, and
 that re-running yields byte-identical results (determinism).
 
 ```
-npx vitest run tests/delegation-integrity.test.js
+npx vitest run tests/delegation-integrity.test.ts
 ```

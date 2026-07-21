@@ -1,3 +1,5 @@
+// Generated from signoff-flow.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 /**
  * Load Test: Full Signoff Flow (End-to-End)
  *
@@ -12,29 +14,14 @@
  *
  * @license Apache-2.0
  */
-
 import { check, sleep, group } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 import http from 'k6/http';
-import {
-  standardStages,
-  SLO,
-  epPost,
-  makeHandshakePayload,
-  makePresentationPayload,
-  makeChallengePayload,
-  BASE_URL,
-  RESPONDER_HEADERS,
-  makeAttestationPayload,
-  makeConsumePayload,
-} from './config.js';
-
+import { standardStages, SLO, epPost, makeHandshakePayload, makePresentationPayload, makeChallengePayload, BASE_URL, RESPONDER_HEADERS, makeAttestationPayload, makeConsumePayload, } from './config.js';
 // ── Custom metrics ───────────────────────────────────────────────────────────
-
 const flowDuration = new Trend('ep_signoff_flow_duration', true);
 const flowErrors = new Rate('ep_signoff_flow_errors');
 const flowCount = new Counter('ep_signoff_flow_total');
-
 // Per-step durations
 const stepCreate = new Trend('ep_step_create_ms', true);
 const stepPresent = new Trend('ep_step_present_ms', true);
@@ -42,134 +29,105 @@ const stepVerify = new Trend('ep_step_verify_ms', true);
 const stepChallenge = new Trend('ep_step_challenge_ms', true);
 const stepAttest = new Trend('ep_step_attest_ms', true);
 const stepConsume = new Trend('ep_step_consume_ms', true);
-
 // ── k6 options ───────────────────────────────────────────────────────────────
-
 export const options = {
-  stages: standardStages(50),
-
-  thresholds: {
-    ep_signoff_flow_duration: [
-      `p(50)<${SLO.signoffFlow.p50}`,
-      `p(95)<${SLO.signoffFlow.p95}`,
-      `p(99)<${SLO.signoffFlow.p99}`,
-    ],
-    ep_signoff_flow_errors: [`rate<${SLO.errorRate}`],
-    http_req_failed: [`rate<${SLO.errorRate}`],
-  },
+    stages: standardStages(50),
+    thresholds: {
+        ep_signoff_flow_duration: [
+            `p(50)<${SLO.signoffFlow.p50}`,
+            `p(95)<${SLO.signoffFlow.p95}`,
+            `p(99)<${SLO.signoffFlow.p99}`,
+        ],
+        ep_signoff_flow_errors: [`rate<${SLO.errorRate}`],
+        http_req_failed: [`rate<${SLO.errorRate}`],
+    },
 };
-
 // ── Test function ────────────────────────────────────────────────────────────
-
 export default function signoffFlow() {
-  const flowStart = Date.now();
-  let failed = false;
-
-  group('signoff-flow', function () {
-    // Step 1: Create handshake
-    const createRes = epPost('/api/handshake', makeHandshakePayload());
-    stepCreate.add(createRes.timings.duration);
-
-    if (!check(createRes, { 'create: 201': (r) => r.status === 201 })) {
-      failed = true;
-      return;
-    }
-    const hsBody = createRes.json();
-    const handshakeId = hsBody.handshake_id || hsBody.id || hsBody.handshakeId;
-
-    // Step 2: Present both parties (mutual mode — dual-key auth)
-    const presInit = epPost(
-      `/api/handshake/${handshakeId}/present`,
-      makePresentationPayload('initiator'),
-    );
-    const presResp = http.post(
-      `${BASE_URL}/api/handshake/${handshakeId}/present`,
-      JSON.stringify(makePresentationPayload('responder')),
-      { headers: RESPONDER_HEADERS },
-    );
-    stepPresent.add(presInit.timings.duration + presResp.timings.duration);
-
-    if (!check(presInit, { 'present initiator: 201': (r) => r.status === 201 })) {
-      failed = true;
-      return;
-    }
-    if (!check(presResp, { 'present responder: 201': (r) => r.status === 201 })) {
-      failed = true;
-      return;
-    }
-
-    // Step 3: Verify handshake
-    // Pass all hashes from the create response so verify can match them
-    const bindingData = hsBody.binding || {};
-    const verifyRes = epPost(`/api/handshake/${handshakeId}/verify`, {
-      payload_hash: bindingData.payload_hash || null,
-      nonce: bindingData.nonce || null,
-      action_hash: hsBody.action_hash || null,
-      policy_hash: hsBody.policy_hash || null,
+    const flowStart = Date.now();
+    let failed = false;
+    group('signoff-flow', function () {
+        // Step 1: Create handshake
+        const createRes = epPost('/api/handshake', makeHandshakePayload());
+        stepCreate.add(createRes.timings.duration);
+        if (!check(createRes, { 'create: 201': (r) => r.status === 201 })) {
+            failed = true;
+            return;
+        }
+        const hsBody = createRes.json();
+        const handshakeId = hsBody.handshake_id || hsBody.id || hsBody.handshakeId;
+        // Step 2: Present both parties (mutual mode — dual-key auth)
+        const presInit = epPost(`/api/handshake/${handshakeId}/present`, makePresentationPayload('initiator'));
+        const presResp = http.post(`${BASE_URL}/api/handshake/${handshakeId}/present`, JSON.stringify(makePresentationPayload('responder')), { headers: RESPONDER_HEADERS });
+        stepPresent.add(presInit.timings.duration + presResp.timings.duration);
+        if (!check(presInit, { 'present initiator: 201': (r) => r.status === 201 })) {
+            failed = true;
+            return;
+        }
+        if (!check(presResp, { 'present responder: 201': (r) => r.status === 201 })) {
+            failed = true;
+            return;
+        }
+        // Step 3: Verify handshake
+        // Pass all hashes from the create response so verify can match them
+        const bindingData = hsBody.binding || {};
+        const verifyRes = epPost(`/api/handshake/${handshakeId}/verify`, {
+            payload_hash: bindingData.payload_hash || null,
+            nonce: bindingData.nonce || null,
+            action_hash: hsBody.action_hash || null,
+            policy_hash: hsBody.policy_hash || null,
+        });
+        stepVerify.add(verifyRes.timings.duration);
+        if (!check(verifyRes, { 'verify: 200': (r) => r.status === 200 })) {
+            failed = true;
+            return;
+        }
+        // Step 4: Issue challenge (pass binding_hash from create response)
+        const bindingHash = bindingData.binding_hash || '';
+        const challengeRes = epPost('/api/signoff/challenge', makeChallengePayload(handshakeId, bindingHash));
+        stepChallenge.add(challengeRes.timings.duration);
+        if (!check(challengeRes, { 'challenge: 201': (r) => r.status === 201 })) {
+            failed = true;
+            return;
+        }
+        const challengeBody = challengeRes.json();
+        const challengeId = challengeBody.challenge_id || challengeBody.id || challengeBody.challengeId;
+        // Step 5: Attest
+        const attestRes = epPost(`/api/signoff/${challengeId}/attest`, makeAttestationPayload());
+        stepAttest.add(attestRes.timings.duration);
+        if (!check(attestRes, { 'attest: 201': (r) => r.status === 201 })) {
+            failed = true;
+            return;
+        }
+        const attestBody = attestRes.json();
+        const signoffId = attestBody.signoff_id || attestBody.id || attestBody.signoffId;
+        // Step 6: Consume signoff
+        const consumeRes = epPost(`/api/signoff/${signoffId}/consume`, makeConsumePayload());
+        stepConsume.add(consumeRes.timings.duration);
+        if (!check(consumeRes, { 'consume: 201': (r) => r.status === 201 })) {
+            failed = true;
+        }
     });
-    stepVerify.add(verifyRes.timings.duration);
-
-    if (!check(verifyRes, { 'verify: 200': (r) => r.status === 200 })) {
-      failed = true;
-      return;
-    }
-
-    // Step 4: Issue challenge (pass binding_hash from create response)
-    const bindingHash = bindingData.binding_hash || '';
-    const challengeRes = epPost('/api/signoff/challenge', makeChallengePayload(handshakeId, bindingHash));
-    stepChallenge.add(challengeRes.timings.duration);
-
-    if (!check(challengeRes, { 'challenge: 201': (r) => r.status === 201 })) {
-      failed = true;
-      return;
-    }
-    const challengeBody = challengeRes.json();
-    const challengeId = challengeBody.challenge_id || challengeBody.id || challengeBody.challengeId;
-
-    // Step 5: Attest
-    const attestRes = epPost(`/api/signoff/${challengeId}/attest`, makeAttestationPayload());
-    stepAttest.add(attestRes.timings.duration);
-
-    if (!check(attestRes, { 'attest: 201': (r) => r.status === 201 })) {
-      failed = true;
-      return;
-    }
-    const attestBody = attestRes.json();
-    const signoffId = attestBody.signoff_id || attestBody.id || attestBody.signoffId;
-
-    // Step 6: Consume signoff
-    const consumeRes = epPost(`/api/signoff/${signoffId}/consume`, makeConsumePayload());
-    stepConsume.add(consumeRes.timings.duration);
-
-    if (!check(consumeRes, { 'consume: 201': (r) => r.status === 201 })) {
-      failed = true;
-    }
-  });
-
-  const elapsed = Date.now() - flowStart;
-  flowDuration.add(elapsed);
-  flowCount.add(1);
-  flowErrors.add(failed ? 1 : 0);
-
-  sleep(0.5);
+    const elapsed = Date.now() - flowStart;
+    flowDuration.add(elapsed);
+    flowCount.add(1);
+    flowErrors.add(failed ? 1 : 0);
+    sleep(0.5);
 }
-
 // ── Summary ──────────────────────────────────────────────────────────────────
-
 /**
  * @param {{ metrics: Object<string, {values?: {rate?: number, 'p(50)'?: number, 'p(95)'?: number, 'p(99)'?: number}}> }} data - k6 run summary
  */
 export function handleSummary(data) {
-  const p50 = data.metrics.ep_signoff_flow_duration?.values?.['p(50)'];
-  const p95 = data.metrics.ep_signoff_flow_duration?.values?.['p(95)'];
-  const p99 = data.metrics.ep_signoff_flow_duration?.values?.['p(99)'];
-  const errRate = data.metrics.ep_signoff_flow_errors?.values?.rate || 0;
-  /** @param {number | undefined} v */
-  const fmt = (v) => (typeof v === 'number' ? String(Math.round(v)) : 'N/A');
-  /** @param {number | undefined} v @param {number} target */
-  const slo = (v, target) => (typeof v === 'number' && v < target ? 'PASS' : 'FAIL');
-
-  const summary = `
+    const p50 = data.metrics.ep_signoff_flow_duration?.values?.['p(50)'];
+    const p95 = data.metrics.ep_signoff_flow_duration?.values?.['p(95)'];
+    const p99 = data.metrics.ep_signoff_flow_duration?.values?.['p(99)'];
+    const errRate = data.metrics.ep_signoff_flow_errors?.values?.rate || 0;
+    /** @param {number | undefined} v */
+    const fmt = (v) => (typeof v === 'number' ? String(Math.round(v)) : 'N/A');
+    /** @param {number | undefined} v @param {number} target */
+    const slo = (v, target) => (typeof v === 'number' && v < target ? 'PASS' : 'FAIL');
+    const summary = `
 ╔══════════════════════════════════════════════════════════════╗
 ║           SIGNOFF FLOW (E2E) — LOAD TEST RESULTS            ║
 ╠══════════════════════════════════════════════════════════════╣
@@ -189,9 +147,8 @@ export function handleSummary(data) {
 ║    Consume:    ${String(Math.round(data.metrics.ep_step_consume_ms?.values?.['p(50)'] || 0) + 'ms').padEnd(10)}                                    ║
 ╚══════════════════════════════════════════════════════════════╝
 `;
-
-  return {
-    stdout: summary,
-    'signoff-flow-results.json': JSON.stringify(data, null, 2),
-  };
+    return {
+        stdout: summary,
+        'signoff-flow-results.json': JSON.stringify(data, null, 2),
+    };
 }

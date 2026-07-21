@@ -131,5 +131,5 @@ consult.
 - `lib/revocation/revocation.js`, `lib/eye/eye-set.js`
 - `conformance/vectors/revocation.v1.json`,
   `conformance/vectors/eye-set.v1.json`
-- `tests/revocation.test.js`, `tests/eye-set.test.js` (live-crypto
+- `tests/revocation.test.ts`, `tests/eye-set.test.ts` (live-crypto
   adversarial suites; every catalogued vector asserted by id)

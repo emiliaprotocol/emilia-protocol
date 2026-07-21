@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Generated from build-soc2-evidence-pdf.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 /**
  * EMILIA Protocol — SOC 2 Evidence Map PDF builder
  * @license Apache-2.0
@@ -16,38 +18,27 @@
  * present in the build environment) and printed with the system Chrome, exactly
  * as the existing sector PDFs were produced.
  */
-
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-
 const SRC = join(ROOT, 'docs/compliance/EMILIA-SOC2-EVIDENCE-MAP.md');
 const OUT = join(ROOT, 'public/compliance/emilia-soc2-evidence-map.pdf');
-
 const CHROME = [
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/Applications/Chromium.app/Contents/MacOS/Chromium',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
 ].find((p) => existsSync(p));
-
 if (!CHROME) {
-  console.error('No Chrome/Chromium found for headless print. Install Google Chrome.');
-  process.exit(1);
+    console.error('No Chrome/Chromium found for headless print. Install Google Chrome.');
+    process.exit(1);
 }
-
 // --- 1. markdown body -> HTML fragment (pandoc, already in the build env) ---
-const bodyHtml = execFileSync(
-  'pandoc',
-  [SRC, '-f', 'gfm', '-t', 'html', '--syntax-highlighting=none'],
-  { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
-);
-
+const bodyHtml = execFileSync('pandoc', [SRC, '-f', 'gfm', '-t', 'html', '--syntax-highlighting=none'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
 // --- 2. wrap in print-tuned shell. The <title> becomes the PDF Title, matching
 //        the existing PDFs whose Title is the source HTML filename. ---
 const html = `<!doctype html>
@@ -87,23 +78,16 @@ const html = `<!doctype html>
   h1, h2, h3 { break-after: avoid; }
 </style></head>
 <body>${bodyHtml}</body></html>`;
-
 const tmp = mkdtempSync(join(tmpdir(), 'ep-soc2-'));
 const htmlPath = join(tmp, 'emilia-soc2-evidence-map.html');
 writeFileSync(htmlPath, html, 'utf8');
-
 // --- 3. headless Chrome print-to-pdf (same producer as the sector PDFs) ---
-execFileSync(
-  CHROME,
-  [
+execFileSync(CHROME, [
     '--headless=new',
     '--disable-gpu',
     '--no-pdf-header-footer',
     `--print-to-pdf=${OUT}`,
     `file://${htmlPath}`,
-  ],
-  { stdio: 'ignore' },
-);
-
+], { stdio: 'ignore' });
 const bytes = readFileSync(OUT).length;
 console.log(`OK — wrote ${OUT} (${bytes} bytes)`);

@@ -34,6 +34,7 @@ integrations/langchain-emilia/dist/
 coverage/
 test-results/
 reports/mutation/
+.stryker-*-tmp/
 /release-artifacts/
 /registry-copy/
 formal/tamarin/run-output/
@@ -119,3 +120,5 @@ docs/briefs/INVESTOR_ONE_PAGER.md
 # so it is served publicly. The confidential raise deck stays in docs/strategy-private/decks/.
 public/briefs/emilia-informational-deck.pdf
 public/briefs/emilia-investor-onepager.pdf
+tsconfig.tsbuildinfo
+playwright-report/

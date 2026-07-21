@@ -11,7 +11,7 @@
 **Render profile:** `EP-WYSIWYS-RENDER-v1`
 **Reference implementation:** `lib/wysiwys/render.js`
 **Conformance vectors:** `conformance/vectors/wysiwys.v1.json`
-**Conformance tests:** `tests/wysiwys.test.js`
+**Conformance tests:** `tests/wysiwys.test.ts`
 
 > This is a **specification proposal** plus a **reference implementation**. It
 > is **experimental**. It is **not** a production claim, asserts **no**
@@ -237,7 +237,7 @@ flag.
 ## 6. Conformance vectors
 
 `conformance/vectors/wysiwys.v1.json` is the authoritative catalogue; every id
-is asserted by name in `tests/wysiwys.test.js`. The negatives are minted with
+is asserted by name in `tests/wysiwys.test.ts`. The negatives are minted with
 **real** Ed25519 keys and **real** detached proofs over canonical bytes, so each
 is a genuine forgery attempt, not hand-edited JSON.
 
@@ -251,7 +251,7 @@ is a genuine forgery attempt, not hand-edited JSON.
 | `z_well_formed_high_stakes_signed` | Re-rendered, bound, signed under the pinned key | accept | — |
 | `z2_well_formed_low_stakes_no_attestation` | Low-stakes, attestation not required, none supplied | accept | — |
 
-Run: `npx vitest run tests/wysiwys.test.js`.
+Run: `npx vitest run tests/wysiwys.test.ts`.
 
 ---
 

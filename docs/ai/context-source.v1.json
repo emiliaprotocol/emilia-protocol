@@ -283,7 +283,7 @@
       "purpose": "free adoption wedge: protect privileged MCP tool calls with the Gate enforcement contract"
     },
     {
-      "path": "lib/negotiate/evidence-challenge.js",
+      "path": "lib/negotiate/evidence-challenge.ts",
       "purpose": "action-bound evidence challenge registration and evaluation"
     },
     {
@@ -391,7 +391,7 @@
       "purpose": "offline regulator-style oversight demo: monthly clinician-approval receipts verify from signed bytes, bind a named approver, keep patient references out of the receipt, and refuse tampering or unpinned keys"
     },
     {
-      "path": "lib/frontier/model-to-matter.js",
+      "path": "lib/frontier/model-to-matter.ts",
       "purpose": "executor-side Model-to-Matter clearance profile"
     },
     {
@@ -407,7 +407,7 @@
       "purpose": "buildable iOS and Android government approval reference applications using system-of-record actions and server-pinned profiles"
     },
     {
-      "path": "lib/grace/mobile-grid.js",
+      "path": "lib/grace/mobile-grid.ts",
       "purpose": "canonical grid.curtailment composition across distinct Class-A mobile approvals, bounded one-time dispatch, independent meter evidence, Action State, and settlement"
     },
     {
@@ -433,7 +433,7 @@
       "purpose": "run the free privileged-tool-call wedge: refuse, approve the exact action, execute once, and refuse replay"
     },
     {
-      "command": "npx vitest run tests/assurance-package.test.js",
+      "command": "npx vitest run tests/assurance-package.test.ts",
       "purpose": "execute Assurance Plane package, drift, determinism, null-conclusion, and control-mapping tests"
     },
     {
@@ -485,7 +485,7 @@
       "purpose": "run the offline oversight receipt report and its tamper and unpinned-approver refusals"
     },
     {
-      "command": "node conformance/vectors/generate-agentroa-orprg-ep.mjs --check && npx vitest run tests/agentroa-orprg-ep-caid.test.js",
+      "command": "node conformance/vectors/generate-agentroa-orprg-ep.mjs --check && npx vitest run tests/agentroa-orprg-ep-caid.test.ts",
       "purpose": "check the cross-standard corpus without rewriting it, then verify AgentROA, ORPRG, EP quorum, pinned CAID mappings, replay refusal, and substitution negatives"
     },
     {

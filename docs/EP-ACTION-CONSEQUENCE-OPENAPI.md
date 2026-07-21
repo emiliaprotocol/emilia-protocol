@@ -14,7 +14,7 @@ reads the API's OpenAPI spec sees the consequence declaration with no second
 fetch. An API MAY publish the well-known manifest, annotate inline, or both.
 
 - Schema: [`public/schemas/x-emilia-action.schema.json`](../public/schemas/x-emilia-action.schema.json)
-- Example: [`examples/openapi/x-emilia-action.example.yaml`](../examples/openapi/x-emilia-action.example.yaml) (validated in CI, `tests/x-emilia-action-example.test.js`)
+- Example: [`examples/openapi/x-emilia-action.example.yaml`](../examples/openapi/x-emilia-action.example.yaml) (validated in CI, `tests/x-emilia-action-example.test.ts`)
 - Vocabulary: [`EP-ACTION-TYPE-PROFILE-REGISTRY.md`](./standards-engagement/EP-ACTION-TYPE-PROFILE-REGISTRY.md) (the `urn:ep:action:*` namespace)
 
 ## Why an OpenAPI extension (and not a new protocol)

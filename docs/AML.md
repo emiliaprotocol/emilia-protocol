@@ -66,8 +66,8 @@ which list is loaded.
 
 ## Conformance
 
-`tests/aml-screening.test.js` (25) covers normalization, exact/alias/fuzzy
+`tests/aml-screening.test.ts` (25) covers normalization, exact/alias/fuzzy
 sanctions matching, embargo, structuring (repeated / single / aggregation),
-velocity, and the aggregate recommendation. `tests/guard-adapter-aml.test.js` (9, incl. structuring detected purely from EP-persisted history)
+velocity, and the aggregate recommendation. `tests/guard-adapter-aml.test.ts` (9, incl. structuring detected purely from EP-persisted history)
 proves the end-to-end adapter flow: sanctions → deny, structuring → signoff,
 clean → allow, and observe-mode never blocks.

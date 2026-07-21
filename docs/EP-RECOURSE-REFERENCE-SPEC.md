@@ -26,7 +26,7 @@ socket that lets the insurer / surety / employer / facilitator plug their balanc
 sheet into that proof.
 
 - Schema: [`public/schemas/ep-recourse-reference.schema.json`](../public/schemas/ep-recourse-reference.schema.json)
-- Runnable vector + verifier: [`examples/recourse/recourse-reference-vector.mjs`](../examples/recourse/recourse-reference-vector.mjs) (`node examples/recourse/recourse-reference-vector.mjs`) · frozen [`.json`](../examples/recourse/recourse-reference-vector.json) · CI: `tests/recourse-reference.test.js`
+- Runnable vector + verifier: [`examples/recourse/recourse-reference-vector.mjs`](../examples/recourse/recourse-reference-vector.mjs) (`node examples/recourse/recourse-reference-vector.mjs`) · frozen [`.json`](../examples/recourse/recourse-reference-vector.json) · CI: `tests/recourse-reference.test.ts`
 - Extends the advisory `named-owner liability` block in [`lib/provenance/chain.js`](../lib/provenance/chain.js) into full, verifiable terms.
 
 ## The high-risk request, completed

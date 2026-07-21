@@ -40,7 +40,11 @@ const nextConfig = {
       ...(config.resolve.extensionAlias || {}),
       '.js': ['.ts', '.tsx', '.js'],
       '.jsx': ['.tsx', '.jsx'],
-      '.mjs': ['.mts', '.mjs'],
+      // .mjs deliberately maps to itself only: Next's SWC loader has no rule
+      // for .mts, and every renamed .mts in bundle-reachable trees has a
+      // generated, drift-gated .mjs companion -- the bundle ships the
+      // companion while tsc types the source.
+      '.mjs': ['.mjs'],
     };
     // `$` keeps exported package subpaths (for example
     // @emilia-protocol/verify/document-action-binding) resolvable through the
@@ -53,7 +57,7 @@ const nextConfig = {
     // Single point that makes every `import './x.js'` resolve to `./x.ts`.
     config.resolve.extensionAlias = {
       '.js': ['.ts', '.tsx', '.js', '.jsx'],
-      '.mjs': ['.mts', '.mjs'],
+      '.mjs': ['.mjs'],
       ...(config.resolve.extensionAlias || {}),
     };
     return config;

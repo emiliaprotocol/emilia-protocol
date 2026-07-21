@@ -48,32 +48,36 @@ const config = {
   //   - lib/logger.js (I/O infrastructure, not protocol logic)
   //   - lib/supabase.js, lib/env.js (config/connection boilerplate)
   //   - lib/cloud/ (cloud control plane — tested via integration suite)
+  // .ts sources only: the old .js paths are now generated Node-20 companions,
+  // and vitest resolves every import to the source (companion redirect in
+  // vitest.config.js) -- mutants placed in a companion never load.
   mutate: [
-    'lib/handshake/*.js',
-    'lib/signoff/*.js',
-    'lib/commit.js',
-    'lib/create-receipt.js',
-    'lib/canonical-writer.js',
-    'lib/protocol-write.js',
-    'lib/scoring.js',
-    'lib/scoring-v2.js',
-    'lib/write-guard.js',
+    'lib/handshake/*.ts',
+    'lib/signoff/*.ts',
+    'lib/commit.ts',
+    'lib/create-receipt.ts',
+    'lib/canonical-writer.ts',
+    'lib/protocol-write.ts',
+    'lib/scoring.ts',
+    'lib/scoring-v2.ts',
+    'lib/write-guard.ts',
     '!lib/**/*.test.js',
+    '!lib/**/*.test.ts',
   ],
 
   // ── Test file pattern ──────────────────────────────────────────────────────
   // Only run the unit test files that directly cover the mutated modules.
   // Keeps the mutation run fast (~5 min vs ~30 min for the full suite).
   testFiles: [
-    'tests/handshake*.test.js',
-    'tests/signoff*.test.js',
-    'tests/commit*.test.js',
-    'tests/receipt*.test.js',
-    'tests/scoring*.test.js',
-    'tests/write-guard*.test.js',
-    'tests/protocol-write*.test.js',
-    'tests/property-based.test.js',
-    'tests/adversarial*.test.js',
+    'tests/handshake*.test.{js,ts}',
+    'tests/signoff*.test.{js,ts}',
+    'tests/commit*.test.{js,ts}',
+    'tests/receipt*.test.{js,ts}',
+    'tests/scoring*.test.{js,ts}',
+    'tests/write-guard*.test.{js,ts}',
+    'tests/protocol-write*.test.{js,ts}',
+    'tests/property-based.test.{js,ts}',
+    'tests/adversarial*.test.{js,ts}',
   ],
 
   // ── Thresholds ─────────────────────────────────────────────────────────────

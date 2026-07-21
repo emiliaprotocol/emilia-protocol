@@ -47,7 +47,7 @@ Each API key maps to exactly one entity. Different keys return different entitie
 
 ## Test Coverage
 
-16 automated tests in `tests/auth-rpc.test.js` covering:
+16 automated tests in `tests/auth-rpc.test.ts` covering:
 
 - Header validation (missing, wrong prefix, empty)
 - RPC error handling (503 on failure, null data)

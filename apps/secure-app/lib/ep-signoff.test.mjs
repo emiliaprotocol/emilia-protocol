@@ -13,7 +13,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { canonicalize, challengeFromContext, buildAttestation } from './ep-signoff.mjs';
+import { canonicalize, challengeFromContext, buildAttestation } from './ep-signoff.js';
 import { verifyWebAuthnSignoff } from '../../../packages/verify/index.js';
 
 const RP_ID = 'www.emiliaprotocol.ai';
