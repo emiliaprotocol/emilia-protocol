@@ -54,6 +54,29 @@ import { canonicalize, actionHash } from '../../packages/issue/index.js';
 export const DISPLAY_ATTESTATION_VERSION = 'EP-DISPLAY-ATTESTATION-v1';
 export const RENDER_PROFILE = 'EP-WYSIWYS-RENDER-v1';
 
+interface DisplaySigner {
+  signer_key_id: string;
+  privateKey: crypto.KeyObject;
+  publicKeyB64u?: string;
+  algorithm?: string;
+}
+
+interface DisplayAttestationProof {
+  algorithm: string;
+  signer_key_id: string;
+  signed_payload_b64u: string;
+  signature_b64u: string;
+  public_key?: string;
+}
+
+interface DisplayAttestation {
+  '@version': string;
+  render_profile: string;
+  action_hash: string;
+  display_hash: string;
+  proof?: DisplayAttestationProof;
+}
+
 // ── small helpers ────────────────────────────────────────────────────────
 
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
@@ -182,9 +205,9 @@ export function renderAction(action) {
  *           publicKeyB64u?: string, algorithm?: string }} [args.signer] - optional signer.
  * @returns {object} an EP-DISPLAY-ATTESTATION-v1 object.
  */
-export function buildDisplayAttestation({ action, signer } = /** @type {any} */ ({})) {
+export function buildDisplayAttestation({ action, signer }: { action: Record<string, any>; signer?: DisplaySigner } = {} as any): DisplayAttestation {
   const rendered = renderAction(action);
-  const att = {
+  const att: DisplayAttestation = {
     '@version': DISPLAY_ATTESTATION_VERSION,
     render_profile: rendered.render_profile,
     action_hash: rendered.action_hash,
@@ -257,15 +280,23 @@ function verifyDetachedEd25519(proof, expectedPayloadB64u, boundPublicKeyB64u) {
  *   the pinned key for its named signer.
  * @returns {{ valid: boolean, checks: object, errors: string[], display_hash: string|null }}
  */
-export function verifyDisplayAttestation(action, attestation, opts = {}) {
-  /** @type {{ render_deterministic: boolean, attestation_present: boolean, display_hash_match: boolean, proof_signed: boolean|null }} */
-  const checks = {
+export function verifyDisplayAttestation(action, attestation, opts: {
+  requireDisplayAttestation?: boolean;
+  requireSignedAttestation?: boolean;
+  displaySignerKeys?: Record<string, { public_key: string }>;
+} = {}) {
+  const checks: {
+    render_deterministic: boolean;
+    attestation_present: boolean;
+    display_hash_match: boolean;
+    proof_signed: boolean | null;
+  } = {
     render_deterministic: false,    // rendering is a pure fn of the signed action
     attestation_present: false,     // present iff required-or-supplied
     display_hash_match: false,      // attested hash == re-derived hash
     proof_signed: null,             // null = not required / not present
   };
-  const errors = [];
+  const errors: string[] = [];
   const fail = (msg) => { errors.push(msg); return { valid: false, checks, errors, display_hash: null }; };
 
   if (!action || typeof action !== 'object') return fail('Missing canonical action');

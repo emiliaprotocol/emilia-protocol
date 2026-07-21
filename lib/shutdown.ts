@@ -20,7 +20,7 @@ const DRAIN_TIMEOUT_MS = 10_000;
 
 let inFlightCount = 0;
 let shutdownInitiated = false;
-const drainWaiters = new Set();
+const drainWaiters = new Set<() => void>();
 
 // ---------------------------------------------------------------------------
 // In-flight write tracking — called by protocolWrite()
@@ -48,13 +48,13 @@ export function isShutdownInitiated() {
 
 function waitForDrain(timeoutMs) {
   if (inFlightCount === 0) return Promise.resolve();
-  return /** @type {Promise<void>} */ (new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     drainWaiters.add(resolve);
     setTimeout(() => {
       drainWaiters.delete(resolve);
       resolve(); // resolve anyway after timeout
     }, timeoutMs);
-  }));
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +83,7 @@ async function shutdown(signal) {
     // closePool is an optional export on lib/supabase.js (not declared in its
     // current JSDoc type) — the typeof guard below is exactly why the access
     // is safe even when the export doesn't exist.
-    const { closePool } = /** @type {*} */ (await import('@/lib/supabase'));
+    const { closePool } = (await import('@/lib/supabase')) as { closePool?: () => Promise<void> };
     if (typeof closePool === 'function') {
       await closePool();
       log('Supabase connection pool closed');

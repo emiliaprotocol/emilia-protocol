@@ -23,6 +23,11 @@ export function productionReceiptVerifierOptions({
   maxAgeSec = 900,
   allowedOutcomes = ['allow', 'allow_with_signoff'],
   config = getGovVerifierConfig(),
+}: {
+  action?: string;
+  maxAgeSec?: number;
+  allowedOutcomes?: string[];
+  config?: ReturnType<typeof getGovVerifierConfig>;
 } = {}) {
   return {
     trustedKeys: config.trustedIssuerKeys,
@@ -80,16 +85,26 @@ export function requiredAssuranceForAction(action, { manifest = DEFAULT_ACTION_C
  * @param {object} [opts.quorumPolicy] explicit quorum policy override
  * @returns {{ ok: boolean, have: string, need: string, reason: string|null, approvers?: string[] }}
  */
-export function enforceReceiptAssuranceForProduction(doc, opts = {}) {
+export function enforceReceiptAssuranceForProduction(doc, opts: {
+  action?: string;
+  requiredTier?: 'software' | 'class_a' | 'quorum';
+  approverKeys?: object;
+  manifest?: object;
+  config?: ReturnType<typeof getGovVerifierConfig>;
+  quorumPolicies?: object;
+  rpId?: string;
+  allowedOrigins?: string[];
+  quorumPolicy?: object;
+} = {}) {
   const need = opts.requiredTier || requiredAssuranceForAction(opts.action, { manifest: opts.manifest });
   const config = opts.config || getGovVerifierConfig();
   const quorumPolicies = opts.quorumPolicies || getPinnedQuorumPolicies();
-  return /** @type {any} */ (evaluateReceiptAssurance(doc, need, {
+  return (evaluateReceiptAssurance(doc, need, {
     approverKeys: opts.approverKeys || getPinnedApproverKeys(),
     rpId: opts.rpId || config.rpId,
     allowedOrigins: opts.allowedOrigins || config.allowedOrigins,
-    quorumPolicy: opts.quorumPolicy || quorumPolicies[/** @type {string} */ (opts.action)] || null,
-  }));
+    quorumPolicy: opts.quorumPolicy || quorumPolicies[opts.action as string] || null,
+  }) as any);
 }
 
 export function assertGovVerifierReady(config = getGovVerifierConfig(), {
@@ -98,7 +113,7 @@ export function assertGovVerifierReady(config = getGovVerifierConfig(), {
   approverKeys = getPinnedApproverKeys(),
   quorumPolicies = getPinnedQuorumPolicies(),
 } = {}) {
-  const errors = [];
+  const errors: string[] = [];
   if (config.trustedIssuerKeys.length === 0) {
     errors.push('EP_TRUSTED_ISSUER_KEYS must pin at least one issuer key for non-demo guarded endpoints');
   }
@@ -113,7 +128,13 @@ export function assertGovVerifierReady(config = getGovVerifierConfig(), {
   return { ok: errors.length === 0, errors };
 }
 
-export function verifyTrustReceiptForGov(receipt, opts = {}) {
+export function verifyTrustReceiptForGov(receipt, opts: {
+  approverKeys?: object;
+  logPublicKey?: string;
+  rpId?: string | null;
+  allowedOrigins?: string[];
+  expectedPolicyHash?: string | null;
+} = {}) {
   const {
     approverKeys,
     logPublicKey,
@@ -121,14 +142,19 @@ export function verifyTrustReceiptForGov(receipt, opts = {}) {
     allowedOrigins = getGovVerifierConfig().allowedOrigins,
     expectedPolicyHash = getGovVerifierConfig().expectedPolicyHash,
   } = opts;
+  // verifyTrustReceipt's declared options type requires approverKeys/logPublicKey
+  // and only string|undefined (not null) for rpId/expectedPolicyHash; this gov
+  // wrapper is deliberately more permissive (matches verifyTrustReceipt's own
+  // fail-closed handling of missing/null values), so the boundary is asserted
+  // here rather than tightened.
   const result = verifyTrustReceipt(receipt, {
-    approverKeys,
+    approverKeys: approverKeys || {},
     logPublicKey,
     strict: true,
     rpId,
     allowedOrigins,
     expectedPolicyHash,
-  });
+  } as Parameters<typeof verifyTrustReceipt>[1]);
   return {
     ...result,
     gov: {

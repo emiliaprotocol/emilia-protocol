@@ -122,7 +122,7 @@ function answerFromIntakeFact(q, ctx) {
   const intake = ctx.intake || {};
   const lower = (q.text || '').toLowerCase();
 
-  let field = null;
+  let field: 'cloud_provider' | 'model_providers' | 'ai_uses_customer_data' | null = null;
   let value = null;
   if (/cloud|region|data center|datacentre|hosting/.test(lower)) {
     field = 'cloud_provider';
@@ -182,7 +182,7 @@ async function answerWithLlm(q, ctx) {
     validate: (o) => o && typeof o.answer === 'string' && Array.isArray(o.sources),
   });
 
-  if (!res.ok) return escalate(q, `llm_${/** @type {{ok:false,reason:string,provider:string|null,raw?:string}} */ (res).reason}`);
+  if (!res.ok) return escalate(q, `llm_${res.reason}`);
 
   const { answer, sources, confidence } = res.data;
   const conf = clamp01(confidence);
@@ -236,7 +236,7 @@ function escalate(q, reason, extra = {}) {
 /** Pick the template section whose heading/body best overlaps the question. */
 function selectSection(tpl, questionText) {
   const lower = (questionText || '').toLowerCase();
-  const words = new Set(lower.split(/\W+/).filter((w) => w.length > 3));
+  const words = new Set<string>(lower.split(/\W+/).filter((w) => w.length > 3));
   let best = null;
   let bestScore = -1;
   for (const s of tpl.sections) {

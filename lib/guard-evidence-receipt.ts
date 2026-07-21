@@ -62,7 +62,9 @@ export function canonicalize(value) {
 // dev/test an ephemeral key is generated so the round-trip still verifies. The
 // keypair is cached for the process lifetime.
 
-let _cachedKeypair = null;
+type EvidenceSigningKeypair = { privateKey: crypto.KeyObject; publicKeySpkiB64u: string };
+
+let _cachedKeypair: EvidenceSigningKeypair | null = null;
 
 /**
  * Resolve the Ed25519 signing keypair. Returns { privateKey, publicKeySpkiB64u }
@@ -71,7 +73,7 @@ let _cachedKeypair = null;
  *
  * @returns {{ privateKey: crypto.KeyObject, publicKeySpkiB64u: string } | null}
  */
-export function getEvidenceSigningKeypair() {
+export function getEvidenceSigningKeypair(): EvidenceSigningKeypair | null {
   if (_cachedKeypair) return _cachedKeypair;
 
   const config = getCommitSigningConfig();
@@ -83,7 +85,7 @@ export function getEvidenceSigningKeypair() {
     }
     const pkcs8Der = Buffer.concat([ED25519_PKCS8_DER_PREFIX, seed]);
     const privateKey = crypto.createPrivateKey({ key: pkcs8Der, format: 'der', type: 'pkcs8' });
-    const publicKey = crypto.createPublicKey(/** @type {*} */ (privateKey));
+    const publicKey = crypto.createPublicKey(privateKey as unknown as crypto.PublicKeyInput);
     const publicKeySpkiB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
     _cachedKeypair = { privateKey, publicKeySpkiB64u };
     return _cachedKeypair;

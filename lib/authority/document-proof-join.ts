@@ -20,6 +20,32 @@ import { verifyAuthorityProofSignature } from './proof.js';
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const ISSUER_KID_RE = /^ep:authority-issuer-key:sha256:[0-9a-f]{64}$/;
 
+interface AuthorityProofChecks {
+  document_chain: boolean;
+  continuity: boolean;
+  document_anchor: boolean;
+  organization_binding: boolean;
+  proof_document_binding: boolean;
+  registry_issuer_binding: boolean;
+  issuer_key_resolved: boolean;
+  issuer_key_usage: boolean;
+  proof_signature: boolean;
+  proof_time_anchor: boolean;
+  registry_head: boolean;
+  epoch_fresh: boolean;
+}
+
+interface VerifyAuthorityProofViaDocumentOpts {
+  expectedDocumentHead?: string;
+  expectedBootstrapDigest?: string;
+  expectedOrganizationId?: string;
+  expectedOrganizationDomain?: string;
+  expectedRegistryIssuerId?: string;
+  expectedProofIssuedAt?: string;
+  expectRegistryHead?: string;
+  expectMinEpoch?: number;
+}
+
 function exactObject(value, keys) {
   return value && typeof value === 'object' && !Array.isArray(value)
     && Object.keys(value).length === keys.length
@@ -42,9 +68,9 @@ function exactObject(value, keys) {
  * @param {string} [opts.expectRegistryHead] authority-registry snapshot head
  * @param {number} [opts.expectMinEpoch] minimum authority-registry epoch
  */
-export function verifyAuthorityProofViaDocument(proof, docs, opts = {}) {
+export function verifyAuthorityProofViaDocument(proof, docs, opts: VerifyAuthorityProofViaDocumentOpts = {}) {
   opts = opts && typeof opts === 'object' ? opts : {};
-  const checks = {
+  const checks: AuthorityProofChecks = {
     document_chain: false,
     continuity: false,
     document_anchor: false,
@@ -60,7 +86,12 @@ export function verifyAuthorityProofViaDocument(proof, docs, opts = {}) {
   };
   const signature = verifyAuthorityProofSignature(proof);
   checks.proof_signature = signature.verified;
-  const fail = (reason, extra = {}) => ({
+  const fail = (reason, extra: {
+    checks?: Partial<AuthorityProofChecks>;
+    document_head?: string;
+    bootstrap_digest?: string;
+    proof_digest?: string;
+  } = {}) => ({
     // Verification is proof mathematics plus document-chain continuity.
     // Acceptance additionally requires relying-party identity, time, document,
     // key-usage, and registry-snapshot trust inputs.
@@ -189,7 +220,7 @@ export function verifyAuthorityProofViaDocument(proof, docs, opts = {}) {
       // Number.isSafeInteger's lib type is `(number: unknown) => boolean`, not a
       // user-defined type guard, so TS does not narrow opts.expectMinEpoch here even
       // though the runtime check above already proved it is a defined safe integer.
-      || /** @type {number} */ (opts.expectMinEpoch) < 0) {
+      || (opts.expectMinEpoch as number) < 0) {
     return fail('registry_snapshot_pins_required', {
       ...context,
       proof_digest: signature.proof_digest,
@@ -206,7 +237,7 @@ export function verifyAuthorityProofViaDocument(proof, docs, opts = {}) {
   // expectMinEpoch guard above (the function would have returned otherwise);
   // TS just can't carry that fact across the earlier non-predicate check.
   if (!(Number.isSafeInteger(proof.registry_epoch)
-      && proof.registry_epoch >= /** @type {number} */ (opts.expectMinEpoch))) {
+      && proof.registry_epoch >= (opts.expectMinEpoch as number))) {
     return fail('stale_registry', {
       ...context,
       proof_digest: signature.proof_digest,

@@ -144,7 +144,19 @@ export const DEFAULTS = Object.freeze({
  * @param {object} opts { slug, effectiveDate }
  * @returns {Record<string,string>}
  */
-export function buildPolicyVars(intake = {}, opts = {}) {
+export function buildPolicyVars(
+  intake: {
+    company?: string;
+    product_description?: string;
+    contact_name?: string;
+    contact_email?: string;
+    cloud_provider?: string;
+    model_providers?: string;
+    product_name?: string;
+    website?: string;
+  } = {},
+  opts: { slug?: string; effectiveDate?: string } = {},
+) {
   const today = opts.effectiveDate || new Date().toISOString().slice(0, 10);
   const nextYear = addYears(today, 1);
   const company = intake.company || 'the Vendor';

@@ -21,11 +21,43 @@ import { getPublishedPage } from './page-store.js';
 
 const CUSTOMER_DIR = path.join(process.cwd(), 'data', 'trust-desk', 'customers');
 
+// ── Result shape ────────────────────────────────────────────────────────────
+
+type PageVerifyChecks = {
+  content_integrity: { ok: boolean; detail: string };
+  payload_binding: { ok: boolean; detail: string };
+  signature: { ok: boolean | null; detail: string };
+};
+
+type PageVerifyClaim = {
+  id: any;
+  claim_id: any;
+  title: any;
+  category: any;
+  content_hash: any;
+  payload_hash: any;
+  signed_at: any;
+  signer: any;
+  checks: PageVerifyChecks;
+  passed: boolean;
+};
+
+type PageVerifyFound = {
+  found: true;
+  slug: any;
+  company: any;
+  ok: boolean;
+  claim_count: number;
+  claims: PageVerifyClaim[];
+};
+
+type PageVerifyResult = { found: false; slug: string } | PageVerifyFound;
+
 /**
  * Sync, file-backend verification (used by the CLI). For the server/API or the
  * Supabase backend, use verifyPublishedPageAsync.
  */
-export function verifyPublishedPage(slug) {
+export function verifyPublishedPage(slug): PageVerifyResult {
   if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {
     return { found: false, slug };
   }
@@ -45,7 +77,7 @@ export function verifyPublishedPage(slug) {
 /**
  * Backend-agnostic verification (file or Supabase). Used by the verify endpoint.
  */
-export async function verifyPublishedPageAsync(slug) {
+export async function verifyPublishedPageAsync(slug): Promise<PageVerifyResult> {
   const page = await getPublishedPage(slug);
   if (!page) return { found: false, slug };
   return verifyDoc(page.raw, page.getArtifact);
@@ -53,8 +85,8 @@ export async function verifyPublishedPageAsync(slug) {
 
 // ── Core ────────────────────────────────────────────────────────────────────
 
-function verifyDoc(doc, getArtifact) {
-  let key = null;
+function verifyDoc(doc, getArtifact): PageVerifyFound {
+  let key: string | null = null;
   try {
     key = getSigningKey();
   } catch {
@@ -62,7 +94,7 @@ function verifyDoc(doc, getArtifact) {
   }
 
   const claims = (doc.claims || []).map((claim) => {
-    const checks = {};
+    const checks = {} as PageVerifyChecks;
 
     // 1. content integrity
     const raw = getArtifact(claim.source_file);

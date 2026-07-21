@@ -43,7 +43,7 @@ function normalizeJson(value, path, state = { nodes: 0 }, depth = 0) {
     return Object.is(value, -0) ? 0 : value;
   }
   if (Array.isArray(value)) {
-    const result = [];
+    const result: any[] = [];
     for (let index = 0; index < value.length; index += 1) {
       if (!Object.hasOwn(value, index)) {
         throw new GateCommitBindingError(`${path} contains a sparse array`);

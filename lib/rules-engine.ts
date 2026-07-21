@@ -173,8 +173,8 @@ export function evaluateAction(input) {
     throw new TypeError('evaluateAction: input is required and must be an object');
   }
 
-  const reason_codes = [];
-  const separation_of_duty_violations = [];
+  const reason_codes: string[] = [];
+  const separation_of_duty_violations: string[] = [];
 
   // ── Layer 1: hard-deny (§4.5) ───────────────────────────────────────────
   // Order matches the audit spec exactly so reviewers can diff line-by-line.
@@ -192,7 +192,7 @@ export function evaluateAction(input) {
   }
 
   // ── Layer 2: mandatory signoff (§4.6) ───────────────────────────────────
-  let required_signoff = null;
+  let required_signoff: { reason_code: string } | null = null;
   const workflowSignoff = SIGNOFF_REQUIRED_WORKFLOWS[input.workflow];
   if (workflowSignoff) {
     required_signoff = { reason_code: workflowSignoff };

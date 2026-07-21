@@ -91,10 +91,10 @@ function stripFrontMatter(md) {
  */
 export function essayMdToHtml(md) {
   const lines = md.split('\n');
-  const out = [];
+  const out: string[] = [];
   let inCode = false;
   let codeLang = '';
-  let codeLines = [];
+  let codeLines: string[] = [];
 
   for (const line of lines) {
     if (line.startsWith('```')) {

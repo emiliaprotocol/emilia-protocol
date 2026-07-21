@@ -395,7 +395,7 @@ export function createReleaseLockAdapterBoundary({
           : 'The authoritative document provider result was unavailable or ambiguous.',
       );
     }
-    const contacts = Object.values(context?.contacts || {});
+    const contacts = Object.values<{ identifier: string }>(context?.contacts || {});
     if (context?.requireBoundParticipants === true
         && (contacts.length !== 2
           || contacts.some((contact) => !contactPresent(

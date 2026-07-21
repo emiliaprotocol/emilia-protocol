@@ -75,7 +75,7 @@ export function buildMerkleTree(leafHashes, { v2 = false } = {}) {
   let currentLayer = treeLeaves;
 
   while (currentLayer.length > 1) {
-    const nextLayer = [];
+    const nextLayer: string[] = [];
     for (let i = 0; i < currentLayer.length; i += 2) {
       if (i + 1 < currentLayer.length) {
         nextLayer.push(pair(currentLayer[i], currentLayer[i + 1]));
@@ -106,7 +106,7 @@ export function generateMerkleProof(layers, leafIndex) {
     return null;
   }
 
-  const proof = [];
+  const proof: { hash: string; position: 'left' | 'right' }[] = [];
   let index = leafIndex;
 
   for (let i = 0; i < layers.length - 1; i++) {
@@ -252,12 +252,10 @@ export async function anchorToBase(batchId, merkleRoot, { v2 = false } = {}) {
     // source for anchoring data-only txs, so the extra fields required by
     // viem's CustomSource are never needed at runtime; cast at this call
     // boundary rather than widening the signer's declared factory type.
-    const account = /** @type {import('viem').Account} */ (
-      signer.createAccount({
-        privateKeyToAccount,
-        toAccount: (source) => toAccount(/** @type {import('viem/accounts').AccountSource} */ (source)),
-      })
-    );
+    const account = signer.createAccount({
+      privateKeyToAccount,
+      toAccount: (source) => toAccount(source as import('viem/accounts').AccountSource),
+    }) as import('viem').Account;
 
     const publicClient = createPublicClient({
       chain: selectedChain,
@@ -277,7 +275,7 @@ export async function anchorToBase(batchId, merkleRoot, { v2 = false } = {}) {
     const hash = await walletClient.sendTransaction(/** @type {any} */ ({
       to: account.address,
       value: 0n,
-      data: /** @type {`0x${string}`} */ (hexData),
+      data: hexData as `0x${string}`,
     }));
 
     // Wait for confirmation

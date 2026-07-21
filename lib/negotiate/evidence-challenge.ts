@@ -68,7 +68,30 @@ function policyMatchesChallenge(challenge, policy) {
   }
 }
 
-function mintChallengeForDigest(action_digest, policy, opts = {}) {
+/**
+ * Shared options bag threaded through the challenge mint / register / evaluate
+ * lifecycle below. Every field is optional because each function only reads
+ * the subset it needs; the type lives here once so `opts` can be spread from
+ * one stage into the next (createFollowupEvidenceChallenge, evaluateRegisteredPresentation)
+ * without losing fields.
+ */
+type EvidenceChallengeOpts = {
+  expires_at?: string;
+  nonce?: string;
+  challenge_id?: string;
+  prior?: { satisfied_by?: string[] } | null;
+  obtain_hints?: any[];
+  challengeStore?: {
+    register: (challenge: any) => boolean | Promise<boolean>;
+    consume: (challenge: any) => boolean | Promise<boolean>;
+  };
+  verifiers?: Record<string, any>;
+  as_of?: string;
+  consumedNonces?: Set<string>;
+  next_expires_at?: string;
+};
+
+function mintChallengeForDigest(action_digest, policy, opts: EvidenceChallengeOpts = {}) {
   const expiresAt = parseTimestamp(opts.expires_at);
   if (Number.isNaN(expiresAt)) throw new Error('expires_at is required and MUST be a valid timestamp');
   if (!validSha256Digest(action_digest)) throw new Error('action_digest MUST be a sha256 digest');
@@ -95,7 +118,7 @@ function mintChallengeForDigest(action_digest, policy, opts = {}) {
  * @param {object} policy
  * @param {{satisfied_by?: string[]}|null} [priorResult]
  */
-export function deriveRequiredEvidence(policy, priorResult = null) {
+export function deriveRequiredEvidence(policy, priorResult: { satisfied_by?: string[] } | null = null) {
   const tokens = String(policy?.requirement ?? '')
     .match(/[A-Za-z0-9_.:-]+/g)?.filter((t) => !['AND', 'OR'].includes(t.toUpperCase())) ?? [];
   const satisfied = new Set(priorResult?.satisfied_by ?? []);
@@ -127,7 +150,7 @@ function requireChallengeStore(store) {
 }
 
 /** Mint and atomically register a challenge before it is exposed to a caller. */
-export async function createRegisteredEvidenceChallenge(action, policy, opts = {}) {
+export async function createRegisteredEvidenceChallenge(action, policy, opts: EvidenceChallengeOpts = {}) {
   const store = requireChallengeStore(opts.challengeStore);
   const challenge = createEvidenceChallenge(action, policy, opts);
   if (await store.register(challenge) !== true) {
@@ -141,7 +164,7 @@ export async function createRegisteredEvidenceChallenge(action, policy, opts = {
  * The action digest is copied from the original server-minted challenge; it is
  * never recomputed from the presented graph or any other presenter input.
  */
-export function createFollowupEvidenceChallenge(challenge, policy, priorResult, opts = {}) {
+export function createFollowupEvidenceChallenge(challenge, policy, priorResult, opts: EvidenceChallengeOpts = {}) {
   if (challenge?.['@version'] !== CHALLENGE_VERSION) throw new Error('unknown challenge version');
   if (!policyMatchesChallenge(challenge, policy)) throw new Error('policy changed since the original challenge');
   const expires_at = opts.expires_at ?? challenge.expires_at;
@@ -155,7 +178,7 @@ export function createFollowupEvidenceChallenge(challenge, policy, priorResult, 
 }
 
 /** Mint and atomically register a follow-up before returning it to a presenter. */
-export async function createRegisteredFollowupEvidenceChallenge(challenge, policy, priorResult, opts = {}) {
+export async function createRegisteredFollowupEvidenceChallenge(challenge, policy, priorResult, opts: EvidenceChallengeOpts = {}) {
   const store = requireChallengeStore(opts.challengeStore);
   const next = createFollowupEvidenceChallenge(challenge, policy, priorResult, opts);
   if (await store.register(next) !== true) {
@@ -177,7 +200,7 @@ export async function createRegisteredFollowupEvidenceChallenge(challenge, polic
  * @param {object} opts        {verifiers, as_of (REQUIRED), consumedNonces: Set,
  *                              next_expires_at?, nonce?}
  */
-export function evaluatePresentation(challenge, graphDoc, policy, opts = {}) {
+export function evaluatePresentation(challenge, graphDoc, policy, opts: EvidenceChallengeOpts = {}) {
   const refuse = (reason) => ({ verdict: 'refused', reasons: [reason], next_challenge: null });
 
   if (challenge?.['@version'] !== CHALLENGE_VERSION) return refuse('unknown challenge version');
@@ -199,7 +222,7 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts = {}) {
   }
 
   const result = evaluateEvidenceGraph(graphDoc, policy, { verifiers: opts.verifiers, as_of: opts.as_of });
-  let next_challenge = null;
+  let next_challenge: ReturnType<typeof createFollowupEvidenceChallenge> | null = null;
   if (result.verdict !== 'admissible') {
     next_challenge = createFollowupEvidenceChallenge(challenge, policy, result, {
       expires_at: opts.next_expires_at ?? challenge.expires_at,
@@ -215,7 +238,7 @@ export function evaluatePresentation(challenge, graphDoc, policy, opts = {}) {
  * challenge and consumes its exact body on the first evaluation attempt.
  * Backend errors propagate so an outage cannot become a freshness verdict.
  */
-export async function evaluateRegisteredPresentation(challenge, graphDoc, policy, opts = {}) {
+export async function evaluateRegisteredPresentation(challenge, graphDoc, policy, opts: EvidenceChallengeOpts = {}) {
   const refuse = (reason) => ({ verdict: 'refused', reasons: [reason], next_challenge: null });
 
   if (challenge?.['@version'] !== CHALLENGE_VERSION) return refuse('unknown challenge version');
@@ -237,7 +260,7 @@ export async function evaluateRegisteredPresentation(challenge, graphDoc, policy
   }
 
   const result = evaluateEvidenceGraph(graphDoc, policy, { verifiers: opts.verifiers, as_of: opts.as_of });
-  let next_challenge = null;
+  let next_challenge: Awaited<ReturnType<typeof createRegisteredFollowupEvidenceChallenge>> | null = null;
   if (result.verdict !== 'admissible') {
     next_challenge = await createRegisteredFollowupEvidenceChallenge(challenge, policy, result, {
       ...opts,

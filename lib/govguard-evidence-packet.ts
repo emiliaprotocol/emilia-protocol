@@ -54,6 +54,48 @@ function bucket(rows) {
   return { summary, byActionType };
 }
 
+type GovGuardEvidenceEvent = {
+  after_state?: {
+    enforcement_mode?: string;
+    observed_decision?: string;
+    decision?: string;
+    action_type?: string;
+    target_resource_id?: string;
+    receipt_id?: string;
+    signoff_tier?: string;
+    required_assurance?: string;
+    policy_id?: string;
+    policy_hash?: string;
+    action_hash?: string;
+    execution_binding?: { field_hash?: string };
+    amount?: number;
+    currency?: string;
+    reasons?: any[];
+    initiator_attestation?: any;
+  } | null;
+  target_id?: string | null;
+  created_at?: string | null;
+};
+
+type GovGuardHighRiskAction = {
+  receipt_id: string | null;
+  action_type: string;
+  target_resource_id: string | null;
+  would_have: string;
+  enforcement_mode: string | null;
+  signoff_tier: string | null;
+  required_assurance: string | null;
+  policy_id: string | null;
+  policy_hash: string | null;
+  action_hash: string | null;
+  execution_binding_hash: string | null;
+  amount: number | null;
+  currency: string | null;
+  reasons: any[];
+  initiator_attestation: any;
+  observed_at: string | null;
+};
+
 /**
  * @param {object} [opts]
  * @param {string} [opts.pilotId]
@@ -66,11 +108,16 @@ export function buildGovGuardEvidencePacket({
   events = [],
   generatedAt = new Date().toISOString(),
   verifier = '@emilia-protocol/verify',
+}: {
+  pilotId?: string;
+  events?: GovGuardEvidenceEvent[];
+  generatedAt?: string;
+  verifier?: string;
 } = {}) {
   const rows = events || [];
   const { summary, byActionType } = bucket(rows);
   const gated = summary.would_require_signoff + summary.would_deny;
-  const highRiskActions = [];
+  const highRiskActions: GovGuardHighRiskAction[] = [];
 
   for (const ev of rows) {
     const a = ev.after_state || {};

@@ -34,7 +34,17 @@ export const EP_X402_SCHEME = 'emilia-receipt';
  * @param {string} [o.profile] the EP profile URN expected (default: the core receipt)
  * @param {string} [o.description]
  */
-export function x402ReceiptChallenge({ resource = null, action = null, profile = 'urn:ep:profile:receipt:v1', description } = {}) {
+export function x402ReceiptChallenge({
+  resource = null,
+  action = null,
+  profile = 'urn:ep:profile:receipt:v1',
+  description,
+}: {
+  resource?: string | null;
+  action?: string | null;
+  profile?: string;
+  description?: string;
+} = {}) {
   return {
     x402Version: X402_VERSION,
     error: 'EMILIA authorization proof required',

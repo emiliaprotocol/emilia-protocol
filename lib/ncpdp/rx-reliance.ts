@@ -121,7 +121,13 @@ export function signRxArtifact(body, privateKey) {
  * expected type and action hash; `accepted` = verified AND the issuer key is
  * pinned by the relying party AND (if a staleness bound is supplied) fresh.
  */
-export function verifyRxArtifact(artifact, opts = {}) {
+export function verifyRxArtifact(artifact, opts: {
+  expectType?: string;
+  expectActionHash?: string;
+  pinnedKeys?: string[];
+  now?: number;
+  maxStalenessSec?: number;
+} = {}) {
   const out = { verified: false, accepted: false, reason: null };
   if (!artifact || typeof artifact !== 'object') return { ...out, reason: 'absent' };
   if (opts.expectType && artifact['@type'] !== opts.expectType) return { ...out, reason: 'wrong_type' };
@@ -150,8 +156,11 @@ export function verifyRxArtifact(artifact, opts = {}) {
   if (opts.now !== undefined || opts.maxStalenessSec !== undefined) {
     const at = strictInstantMs(artifact.issued_at);
     const bounded = opts.maxStalenessSec !== undefined;
-    if (!Number.isFinite(opts.now) || Number.isNaN(at) || at > opts.now
-      || (bounded && (!Number.isFinite(opts.maxStalenessSec) || opts.maxStalenessSec < 0
+    // `typeof ... !== 'number'` is redundant with Number.isFinite at runtime (isFinite
+    // is already false for non-numbers) but gives TS a narrowing signal it can carry
+    // into the later `opts.now` / `opts.maxStalenessSec` arithmetic in this same OR chain.
+    if (typeof opts.now !== 'number' || !Number.isFinite(opts.now) || Number.isNaN(at) || at > opts.now
+      || (bounded && (typeof opts.maxStalenessSec !== 'number' || !Number.isFinite(opts.maxStalenessSec) || opts.maxStalenessSec < 0
         || (opts.now - at) > opts.maxStalenessSec * 1000))) {
       return { ...out, reason: 'stale' };
     }
@@ -180,15 +189,28 @@ function toMs(t) {
  * @param {object} input { challenge, packet, now }
  * @param {object} [opts] verifier options for the base kernel { approverKeys, logPublicKey, rpId, revokerKeys }
  */
-export function evaluateRxReliance({ challenge, packet, now } = {}, opts = {}) {
+export function evaluateRxReliance(
+  { challenge, packet, now }: {
+    challenge?: Record<string, any>;
+    packet?: Record<string, any>;
+    now?: number | string | Date | null;
+  } = {},
+  opts: Record<string, any> = {},
+) {
   const nowMs = toMs(now);
-  const reasons = [];
-  /** @type {{ base: string|null, prescriber_authority: boolean|null, patient_consent: boolean|null, clinical_evidence: boolean|null, benefit: boolean|'stale'|'policy_mismatch'|'fresh'|null, signed_denial: boolean|null }} */
-  const checks = { base: null, prescriber_authority: null, patient_consent: null, clinical_evidence: null, benefit: null, signed_denial: null };
+  const reasons: string[] = [];
+  const checks: {
+    base: string | null;
+    prescriber_authority: boolean | null;
+    patient_consent: boolean | null;
+    clinical_evidence: boolean | null;
+    benefit: boolean | 'stale' | 'policy_mismatch' | 'fresh' | null;
+    signed_denial: boolean | null;
+  } = { base: null, prescriber_authority: null, patient_consent: null, clinical_evidence: null, benefit: null, signed_denial: null };
   const determination = packet?.determination === 'approve' || packet?.determination === 'deny'
     ? packet.determination
     : null;
-  const deny = (verdict, reason, extra = {}) => { reasons.push(reason); return { verdict, rely: false, reasons, checks, base_verdict: extra.base ?? null, determination }; };
+  const deny = (verdict: string, reason: string, extra: { base?: string | null } = {}) => { reasons.push(reason); return { verdict, rely: false, reasons, checks, base_verdict: extra.base ?? null, determination }; };
 
   if (!challenge || challenge['@type'] !== RX_CHALLENGE_VERSION) return deny('rx_do_not_rely_missing_prescriber_authority', 'no pinned EP-RX-EVIDENCE-CHALLENGE-v1');
   if (!packet || challenge && packet['@type'] !== RX_PACKET_VERSION) return deny('rx_do_not_rely_missing_prescriber_authority', 'no EP-RX-RELIANCE-PACKET-v1 supplied');

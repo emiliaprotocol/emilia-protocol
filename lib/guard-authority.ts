@@ -17,6 +17,23 @@ function meetsAssurance(have, required) {
   return (ASSURANCE_RANK[have] || 0) >= (ASSURANCE_RANK[required] || 0);
 }
 
+interface AuthorityCtx {
+  role?: string;
+  allowedRoles?: string[];
+  actionType?: string;
+  requireExplicitScope?: boolean;
+  at?: string;
+  requiredAssurance?: string;
+}
+
+interface AuthorityVerdict {
+  authorized: boolean;
+  reason: string;
+  assurance_class: string | null;
+  authority_id?: string;
+  role?: string | null;
+}
+
 /**
  * Pure decision over a single authority record. No I/O — unit-testable.
  *
@@ -31,14 +48,14 @@ function meetsAssurance(have, required) {
  * }} ctx
  * @returns {{ authorized: boolean, reason: string, assurance_class: string|null, authority_id?: string, role?: string|null }}
  */
-export function evaluateAuthority(record, {
+export function evaluateAuthority(record: Record<string, any> | null, {
   role,
   allowedRoles,
   actionType,
   requireExplicitScope = false,
   at,
   requiredAssurance,
-} = {}) {
+}: AuthorityCtx = {}): AuthorityVerdict {
   const now = at || new Date().toISOString();
   if (!record) return { authorized: false, reason: 'no_active_authority', assurance_class: null };
   if (record.revoked_at) return { authorized: false, reason: 'authority_revoked', assurance_class: null };
@@ -106,7 +123,7 @@ export async function resolveGuardAuthority(supabase, {
   requireExplicitScope = false,
   at,
   requiredAssurance,
-} = {}) {
+}: AuthorityCtx & { organizationId?: string; approverId?: string } = {}): Promise<AuthorityVerdict> {
   if (!organizationId || !approverId) {
     return { authorized: false, reason: 'missing_authority_subject', assurance_class: null };
   }
@@ -120,7 +137,7 @@ export async function resolveGuardAuthority(supabase, {
     .limit(100);
   if (error) return { authorized: false, reason: 'authority_lookup_failed', assurance_class: null };
   const rows = data || [];
-  let firstRefusal = null;
+  let firstRefusal: AuthorityVerdict | null = null;
   for (const record of rows) {
     const verdict = evaluateAuthority(record, {
       role,

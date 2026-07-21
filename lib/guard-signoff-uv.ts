@@ -48,12 +48,27 @@ import { verifyWebAuthnSignoff } from '../packages/verify/index.js';
  *   verifies against the key, asserts user presence AND user verification, and
  *   (when rpId supplied) is scoped to the expected RP.
  */
+type SignoffDecision = {
+  context?: Record<string, any>;
+  webauthn?: {
+    authenticator_data?: string;
+    client_data_json?: string;
+    signature?: string;
+  };
+};
+
 export function deriveSignoffUserVerification({
   decision,
   approverPublicKeySpki,
   expectedActionHash,
   rpId,
   allowedOrigins,
+}: {
+  decision?: SignoffDecision | null;
+  approverPublicKeySpki?: string;
+  expectedActionHash?: string;
+  rpId?: string;
+  allowedOrigins?: string[];
 } = {}) {
   if (!decision || typeof decision !== 'object') {
     return { verified: false, reason: 'missing_decision' };

@@ -365,7 +365,9 @@ export async function POST(request) {
       actorId: actor_id,
       actorRole: body.actor_role || 'unknown',
       actionType: body.action_type,
-      targetChangedFields: changedFields,
+      // validateGuardActionInput() above (with its own early-return on failure)
+      // already confirmed changedFields is a real string array at runtime.
+      targetChangedFields: /** @type {string[]} */ (changedFields),
       amount: body.amount,
       currency: body.currency,
       riskFlags: body.risk_flags || [],
@@ -374,7 +376,9 @@ export async function POST(request) {
     });
 
     const mode = resolveGuardEnforcementMode(body, ENFORCEMENT_MODES.ENFORCE);
-    if (!Object.values(ENFORCEMENT_MODES).includes(mode)) {
+    // mode is arbitrary caller input at this point; widen the frozen enum's
+    // literal-tuple type to string[] for the membership check itself.
+    if (!(/** @type {string[]} */ (Object.values(ENFORCEMENT_MODES))).includes(mode)) {
       return epProblem(400, 'invalid_enforcement_mode', `mode must be one of ${Object.values(ENFORCEMENT_MODES).join(', ')}`);
     }
     /** @type {{ decision: string, reasons: string[], signoffRequired: boolean, requiredAssurance?: string, signoffTier?: string, observed_decision?: string, aml_signals?: string[] }} */

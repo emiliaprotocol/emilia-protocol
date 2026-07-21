@@ -158,7 +158,8 @@ if (shortNotice.within) throw new Error('SHORT-NOTICE ORDER NOT REFUSED');
 // ── 2. The negotiation loop: settlement authority challenges, facility presents ──
 const nonces = new Set();
 const challenge = createEvidenceChallenge(EVENT, CURTAILMENT_SETTLEMENT_POLICY, { expires_at: '2026-07-22T00:00:00Z', nonce: 'grace-n1' });
-const presented = evaluatePresentation(challenge, graph, CURTAILMENT_SETTLEMENT_POLICY, { verifiers, as_of: AS_OF, consumedNonces: nonces });
+/** @type {{ verdict: string, reasons: any[], next_challenge: any, result?: any, replay_digest?: any }} */
+const presented = (evaluatePresentation(challenge, graph, CURTAILMENT_SETTLEMENT_POLICY, { verifiers, as_of: AS_OF, consumedNonces: nonces }));
 if (presented.verdict !== 'admissible') throw new Error(`expected admissible, got ${presented.verdict}: ${presented.reasons}`);
 
 // ── 3. The signed reliance result + independent re-verification ─────────────

@@ -218,7 +218,7 @@ export function runGovGuardGg1Reference() {
   });
   checks.push(pass('execution_mismatch_refused', !executionMismatch.ok && executionMismatch.reason === 'execution_binding_mismatch', executionMismatch));
 
-  const packet = buildGovGuardEvidencePacket(/** @type {any} */ ({
+  const packet = buildGovGuardEvidencePacket({
     pilotId: 'pilot_gov_1',
     events: [{
       target_id: 'tr_observe',
@@ -235,7 +235,7 @@ export function runGovGuardGg1Reference() {
       },
     }],
     generatedAt: '2026-06-29T00:00:00.000Z',
-  }));
+  } as any);
   checks.push(pass('observe_evidence_exported', packet.high_risk_actions.length === 1 && packet.summary.would_require_signoff === 1, {
     packet_version: packet['@version'],
     high_risk_actions: packet.high_risk_actions.length,

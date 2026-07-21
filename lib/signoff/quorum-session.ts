@@ -96,8 +96,8 @@ export function quorumGate(policy, actionHash, members, opts = {}) {
  * the quorum is satisfied. Pure — does no I/O.
  */
 export function evaluateTrail(policy, actionHash, candidates, opts = {}) {
-  const accepted = [];
-  const rejected = [];
+  const accepted: Record<string, any>[] = [];
+  const rejected: { approver: any; role: any; reason: string | undefined }[] = [];
   for (const c of candidates || []) {
     const r = canAccept(policy, actionHash, accepted, c, opts);
     if (r.ok) accepted.push(c);

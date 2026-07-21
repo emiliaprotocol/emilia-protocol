@@ -182,7 +182,7 @@ function runtime() {
   };
 }
 
-async function execute(input, state, overrides = {}) {
+async function execute(input, state, overrides: { actuator?: any; meter?: any } = {}) {
   return executeGraceCurtailment({
     ...input,
     executionStore: state.executionStore,

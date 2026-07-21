@@ -98,7 +98,7 @@ export function normalizeQuorumTemplate(row) {
  * @returns {{ ok: boolean, violations: string[] }}
  */
 export function evaluateQuorumAgainstTemplate(policy, template) {
-  const violations = [];
+  const violations: string[] = [];
   if (!template) {
     // No org intent expressed → nothing to enforce here. (Whether a template is
     // REQUIRED is a separate, caller-side decision — see resolve + route logic.)
@@ -161,7 +161,7 @@ export function evaluateQuorumAgainstTemplate(policy, template) {
  *   runtime; missing either short-circuits to `{ template: null }` below
  * @returns {Promise<{ template?: object|null, error?: string, tableMissing?: boolean }>}
  */
-export async function resolveOrgQuorumTemplate(supabase, { organizationId, actionType } = {}) {
+export async function resolveOrgQuorumTemplate(supabase, { organizationId, actionType }: { organizationId?: string; actionType?: string } = {}) {
   if (!organizationId || !actionType) {
     // Missing subject can't be matched to org intent — caller decides. Treat as
     // "no template" so it doesn't hard-fail unrelated creation.

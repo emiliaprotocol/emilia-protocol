@@ -49,7 +49,22 @@ export function activeProvider() {
  * @param {(obj:any)=>boolean} [opts.validate] predicate; reject parse if false
  * @returns {Promise<{ok:true,data:any,provider:string,usage?:object}|{ok:false,reason:string,provider:string|null,raw?:string}>}
  */
-export async function llmJSON({ system, user, maxTokens = 900, temperature = 0, validate } = {}) {
+export async function llmJSON({
+  system,
+  user,
+  maxTokens = 900,
+  temperature = 0,
+  validate,
+}: {
+  system?: string;
+  user?: string;
+  maxTokens?: number;
+  temperature?: number;
+  validate?: (obj: any) => boolean;
+} = {}): Promise<
+  | { ok: true; data: any; provider: string; usage?: object }
+  | { ok: false; reason: string; provider: string | null; raw?: string }
+> {
   const provider = activeProvider();
   if (!provider) return { ok: false, reason: 'no_provider', provider: null };
 

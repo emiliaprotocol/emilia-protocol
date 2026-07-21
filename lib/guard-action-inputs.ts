@@ -7,8 +7,99 @@ import {
   hashCanonicalAction,
 } from './guard-policies.js';
 
-/** @type {Set<string | undefined>} */
-const AMOUNT_REQUIRED_ACTIONS = new Set([
+type GuardActionType = (typeof GUARD_ACTION_TYPES)[keyof typeof GUARD_ACTION_TYPES];
+
+/**
+ * Shape of the raw Guard/GovGuard action request body. Every field is
+ * caller-supplied JSON and therefore optional/untrusted; fields that are
+ * only ever passed through (never inspected) are typed `unknown`, and
+ * fields the validator actually inspects/compares get their real type.
+ * The index signature backs the dynamic `body[field]` lookups below.
+ */
+interface GuardActionBody {
+  [key: string]: unknown;
+  target_changed_fields?: unknown;
+  changed_fields?: unknown;
+  enforcement_mode?: string;
+  mode?: string;
+  amount?: number;
+  benefit_amount?: number;
+  recent_amounts?: unknown[];
+  counterparty_name?: string;
+  beneficiary_name?: string;
+  payee_name?: string;
+  counterparty_country?: string;
+  beneficiary_country?: string;
+  currency?: string;
+  display_summary?: string;
+  target_resource_id?: string;
+  rollout_policy_id?: string;
+  rollout_policy_key?: string;
+  rollout_policy_version?: number;
+  rollout_policy_rules?: Record<string, any>;
+  rollout_policy_mode?: string;
+  rollout_policy_status?: string;
+  rollout_environment?: string;
+  rollout_strategy?: string;
+  rollout_canary_pct?: number | null;
+  rollout_metadata?: Record<string, any>;
+  before_state?: Record<string, any>;
+  after_state?: Record<string, any>;
+  expires_in_sec?: unknown;
+  executing_key_id?: string;
+  risk_flags?: unknown;
+  payment_instruction_id?: unknown;
+  destination_hash?: unknown;
+  payment_destination_hash?: unknown;
+  action_caid?: unknown;
+  caid_digest?: unknown;
+  caid_action?: unknown;
+  bank_account?: unknown;
+  bank_account_hash?: unknown;
+  routing_number?: unknown;
+  routing_number_hash?: unknown;
+  iban?: unknown;
+  swift_bic?: unknown;
+  payment_address?: unknown;
+  agency_id?: unknown;
+  program_id?: unknown;
+  vendor_id?: unknown;
+  recipient_id?: unknown;
+  grant_id?: unknown;
+  award_id?: unknown;
+  provider_id?: unknown;
+  provider_tax_id_hash?: unknown;
+  provider_status?: unknown;
+  npi?: unknown;
+  claimant_id?: unknown;
+  eligibility_case_id?: unknown;
+  eligibility_rule?: unknown;
+  eligibility_status?: unknown;
+  address_hash?: unknown;
+  mailing_address_hash?: unknown;
+  phone_hash?: unknown;
+  email_hash?: unknown;
+  contact_method?: unknown;
+  identity_document_hash?: unknown;
+  identity_status?: unknown;
+  case_id?: unknown;
+  decision_id?: unknown;
+  subject_id?: unknown;
+  record_id?: unknown;
+  override_reason?: unknown;
+  regulated_decision?: unknown;
+  principal_id?: unknown;
+  permission?: unknown;
+  role?: unknown;
+  scope?: unknown;
+  repo?: unknown;
+  ref?: unknown;
+  commit_sha?: unknown;
+  artifact_digest?: unknown;
+  environment?: unknown;
+}
+
+const AMOUNT_REQUIRED_ACTIONS: Set<string | undefined> = new Set([
   GUARD_ACTION_TYPES.GOV_DISBURSEMENT_RELEASE,
   GUARD_ACTION_TYPES.GOV_GRANT_DISBURSEMENT,
   GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
@@ -34,13 +125,17 @@ function distinctNormalized(values) {
     .map((value) => value.trim().toLowerCase()));
 }
 
-export function resolveGuardChangedFields(body = {}, defaults = []) {
+// Returns whatever the caller supplied (unvalidated) or `defaults` verbatim —
+// validateGuardActionInput() is what actually checks the shape at runtime.
+export function resolveGuardChangedFields(body: GuardActionBody = {}, defaults: string[] = []): unknown {
   if (body.target_changed_fields !== undefined) return body.target_changed_fields;
   if (body.changed_fields !== undefined) return body.changed_fields;
   return defaults;
 }
 
-export function resolveGuardEnforcementMode(body = {}, fallback = ENFORCEMENT_MODES.ENFORCE) {
+// Returns whatever the caller supplied (unvalidated) or `fallback` verbatim —
+// callers are expected to check the result against ENFORCEMENT_MODES themselves.
+export function resolveGuardEnforcementMode(body: GuardActionBody = {}, fallback: string = ENFORCEMENT_MODES.ENFORCE): string {
   return body.enforcement_mode ?? body.mode ?? fallback;
 }
 
@@ -50,7 +145,10 @@ export function resolveGuardEnforcementMode(body = {}, fallback = ENFORCEMENT_MO
  * @param {typeof GUARD_ACTION_TYPES[keyof typeof GUARD_ACTION_TYPES]} [options.actionType]
  * @param {string[]} [options.changedFields]
  */
-export function validateGuardActionInput(body = {}, { actionType, changedFields } = {}) {
+export function validateGuardActionInput(
+  body: GuardActionBody = {},
+  { actionType, changedFields }: { actionType?: GuardActionType; changedFields?: unknown } = {},
+) {
   if (!isStringArray(changedFields || [])) {
     return {
       status: 400,
@@ -132,35 +230,48 @@ export function validateGuardActionInput(body = {}, { actionType, changedFields 
         detail: 'target_resource_id must equal policy:<rollout_policy_key>',
       };
     }
-    if (!Number.isSafeInteger(body.rollout_policy_version) || body.rollout_policy_version < 1) {
+    // `!` is safe: Number.isSafeInteger short-circuits `||` before the `< 1`
+    // comparison runs, so rollout_policy_version is a real number here even
+    // though Number.isSafeInteger isn't a type-narrowing guard to TS.
+    if (!Number.isSafeInteger(body.rollout_policy_version) || body.rollout_policy_version! < 1) {
       return {
         status: 400,
         code: 'invalid_rollout_policy_version',
         detail: 'rollout_policy_version must be a positive integer',
       };
     }
+    // `!` is safe: the `!isPlainObject(body.before_state)` check just before
+    // this short-circuits `||` before before_state.active_rollouts is read,
+    // so before_state is a real object here (isPlainObject isn't a
+    // type-narrowing guard to TS since it has no type predicate).
     if (!isPlainObject(body.rollout_policy_rules)
         || !isPlainObject(body.rollout_metadata)
         || !isPlainObject(body.before_state)
         || !isPlainObject(body.after_state)
-        || !Array.isArray(body.before_state.active_rollouts)) {
+        || !Array.isArray(body.before_state!.active_rollouts)) {
       return {
         status: 400,
         code: 'invalid_rollout_state',
         detail: 'policy rules, metadata, before_state.active_rollouts, and after_state must be structured JSON objects',
       };
     }
-    if (!['immediate', 'canary'].includes(body.rollout_strategy)) {
+    // `!` is safe: the requiredStrings loop above already returned early
+    // unless body.rollout_strategy is a non-empty string (TS can't carry
+    // that narrowing from the dynamic body[field] loop to this named
+    // property access).
+    if (!['immediate', 'canary'].includes(body.rollout_strategy!)) {
       return {
         status: 400,
         code: 'invalid_rollout_strategy',
         detail: 'rollout_strategy must be immediate or canary',
       };
     }
+    // `!` is safe: Number.isSafeInteger short-circuits `&&`/`||` before the
+    // range comparisons run, so rollout_canary_pct is a real number here.
     if (body.rollout_strategy === 'canary'
         && (!Number.isSafeInteger(body.rollout_canary_pct)
-          || body.rollout_canary_pct < 1
-          || body.rollout_canary_pct > 99)) {
+          || body.rollout_canary_pct! < 1
+          || body.rollout_canary_pct! > 99)) {
       return {
         status: 400,
         code: 'invalid_rollout_canary_pct',
@@ -196,7 +307,9 @@ export function validateGuardActionInput(body = {}, { actionType, changedFields 
       canary_pct: body.rollout_strategy === 'canary' ? body.rollout_canary_pct : null,
       metadata: body.rollout_metadata,
     };
-    if (hashCanonicalAction(body.after_state) !== hashCanonicalAction(expectedAfterState)) {
+    // `!` is safe: the isPlainObject(body.after_state) check earlier in this
+    // block already returned early unless after_state is a real object.
+    if (hashCanonicalAction(body.after_state!) !== hashCanonicalAction(expectedAfterState)) {
       return {
         status: 400,
         code: 'rollout_after_state_mismatch',
@@ -208,7 +321,7 @@ export function validateGuardActionInput(body = {}, { actionType, changedFields 
   return null;
 }
 
-export function extractGuardActionDetails(body = {}, changedFields = []) {
+export function extractGuardActionDetails(body: GuardActionBody = {}, changedFields: unknown = []) {
   return {
     amount: body.amount,
     currency: body.currency,

@@ -34,75 +34,61 @@ const PARTICIPANT_ROLES = new Set([
   'SHARE',
 ]);
 
-/**
- * @typedef {{
- *   kind: 'evidence_ready',
- *   provider: 'acrobat_sign',
- *   evidence: Readonly<Record<string, unknown>>,
- *   document_bytes: Uint8Array
- * } | {
- *   kind: 'refused'|'mismatch'|'not_final'|'provider_error',
- *   provider: 'acrobat_sign',
- *   operation?: string,
- *   reason_code?: string,
- *   http_status?: number|null,
- *   expected_agreement_id?: string,
- *   agreement_id?: string,
- *   expected_status?: string,
- *   provider_status?: string
- * }} AcrobatSignEvidenceResult
- */
+type AcrobatSignEvidenceResult = {
+  kind: 'evidence_ready';
+  provider: 'acrobat_sign';
+  evidence: Readonly<Record<string, unknown>>;
+  document_bytes: Uint8Array;
+} | {
+  kind: 'refused' | 'mismatch' | 'not_final' | 'provider_error';
+  provider: 'acrobat_sign';
+  operation?: string;
+  reason_code?: string;
+  http_status?: number | null;
+  expected_agreement_id?: string;
+  agreement_id?: string;
+  expected_status?: string;
+  provider_status?: string;
+};
 
-/**
- * @typedef {import('./bounded-fetch.js').BoundedFetchResult
- *   | {kind:'http_error', status:number}
- *   | {kind:'invalid', status:number}} AcrobatSignProviderFailureInput
- */
+type AcrobatSignProviderFailureInput =
+  | import('./bounded-fetch.js').BoundedFetchResult
+  | { kind: 'http_error'; status: number }
+  | { kind: 'invalid'; status: number };
 
-/**
- * @typedef {{
- *   set_id: string,
- *   role: string,
- *   order: number,
- *   members: {email: string, member_status: string}[],
- *   completion_status: string
- * }} AcrobatSignParticipantSet
- */
+type AcrobatSignParticipantSet = {
+  set_id: string;
+  role: string;
+  order: number;
+  members: { email: string; member_status: string }[];
+  completion_status: string;
+};
 
-/**
- * @typedef {{
- *   agreement_id: string,
- *   agreement_status: string,
- *   metadata_etag: string|null,
- *   participant_sets: AcrobatSignParticipantSet[]
- * }} AcrobatSignAgreement
- */
+type AcrobatSignAgreement = {
+  agreement_id: string;
+  agreement_status: string;
+  metadata_etag: string | null;
+  participant_sets: AcrobatSignParticipantSet[];
+};
 
-/**
- * @typedef {{
- *   event_id: string,
- *   event_type: string,
- *   event_at: string,
- *   event_at_epoch_ms: number,
- *   version_id: string
- * }} AcrobatSignNormalizedEvent
- */
+type AcrobatSignNormalizedEvent = {
+  event_id: string;
+  event_type: string;
+  event_at: string;
+  event_at_epoch_ms: number;
+  version_id: string;
+};
 
-/**
- * @typedef {{
- *   version_id: string,
- *   snapshot_digest: string
- * }} AcrobatSignEventSnapshot
- */
+type AcrobatSignEventSnapshot = {
+  version_id: string;
+  snapshot_digest: string;
+};
 
 function isRecord(value) {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
-/**
- * @returns {value is string}
- */
-function validString(value, maxLength) {
+function validString(value, maxLength): value is string {
   return typeof value === 'string'
     && value.length > 0
     && value.length <= maxLength
@@ -161,20 +147,18 @@ function mediaType(headers) {
     : null;
 }
 
-/**
- * @param {'refused'|'mismatch'|'not_final'|'provider_error'} kind
- * @param {{
- *   operation?: string,
- *   reason_code?: string,
- *   http_status?: number|null,
- *   expected_agreement_id?: string,
- *   agreement_id?: string,
- *   expected_status?: string,
- *   provider_status?: string
- * }} [fields]
- * @returns {AcrobatSignEvidenceResult}
- */
-function closedResult(kind, fields = {}) {
+function closedResult(
+  kind: 'refused' | 'mismatch' | 'not_final' | 'provider_error',
+  fields: {
+    operation?: string;
+    reason_code?: string;
+    http_status?: number | null;
+    expected_agreement_id?: string;
+    agreement_id?: string;
+    expected_status?: string;
+    provider_status?: string;
+  } = {},
+): AcrobatSignEvidenceResult {
   return deepFreezeJson({
     kind,
     provider: 'acrobat_sign',
@@ -230,7 +214,7 @@ function normalizeExpected(expected) {
       || expected.participantSets.length > 100) {
     return null;
   }
-  const participantSets = [];
+  const participantSets: AcrobatSignParticipantSet[] = [];
   const setIds = new Set();
   for (const set of expected.participantSets) {
     const role = typeof set?.role === 'string'
@@ -290,7 +274,7 @@ function participantSets(value) {
 function normalizeParticipantSets(value) {
   const sets = participantSets(value);
   if (!sets || sets.length === 0 || sets.length > 100) return null;
-  const normalizedSets = [];
+  const normalizedSets: AcrobatSignParticipantSet[] = [];
   const setIds = new Set();
   for (const set of sets) {
     const role = typeof set?.role === 'string' ? set.role.toUpperCase() : '';
@@ -394,7 +378,7 @@ function normalizeAgreementEvents(value) {
       || value.events.length > 10_000) {
     return null;
   }
-  const events = [];
+  const events: AcrobatSignNormalizedEvent[] = [];
   const ids = new Set();
   for (const event of value.events) {
     const at = normalizeEventInstant(event?.date);
@@ -422,7 +406,7 @@ function normalizeAgreementEvents(value) {
   ));
   // events is non-empty here: value.events.length > 0 was checked above and
   // the loop pushes exactly one entry per source event (or returns null).
-  const latestAt = (/** @type {AcrobatSignNormalizedEvent} */ (events.at(-1))).event_at_epoch_ms;
+  const latestAt = (events.at(-1) as AcrobatSignNormalizedEvent).event_at_epoch_ms;
   const latestVersions = new Set(
     events
       .filter((event) => event.event_at_epoch_ms === latestAt)
@@ -436,7 +420,7 @@ function normalizeAgreementEvents(value) {
     version_id: event.version_id,
   }));
   return {
-    version_id: (/** @type {AcrobatSignNormalizedEvent} */ (events.at(-1))).version_id,
+    version_id: (events.at(-1) as AcrobatSignNormalizedEvent).version_id,
     snapshot_digest: `sha256:${createHash('sha256')
       .update(JSON.stringify(snapshot))
       .digest('hex')}`,
@@ -487,6 +471,14 @@ export function createAcrobatSignAdapter({
   maxMetadataBytes = DEFAULT_MAX_METADATA_BYTES,
   maxDocumentBytes = DEFAULT_MAX_DOCUMENT_BYTES,
   clock = () => new Date().toISOString(),
+}: {
+  apiOrigin?: string;
+  oauthAccessToken?: string;
+  fetch?: Function;
+  timeoutMs?: number;
+  maxMetadataBytes?: number;
+  maxDocumentBytes?: number;
+  clock?: () => string;
 } = {}) {
   const origin = validateAcrobatSignOrigin(apiOrigin);
   if (!validString(oauthAccessToken, 8192) || /\s/.test(oauthAccessToken)) {
@@ -499,14 +491,18 @@ export function createAcrobatSignAdapter({
   const documentLimit = validateResponseLimit(maxDocumentBytes, 'maxDocumentBytes');
   const authorization = `Bearer ${oauthAccessToken}`;
 
-  /**
-   * @returns {Promise<import('./bounded-fetch.js').BoundedFetchResult>}
-   */
-  async function call(path, accept, maxBytes, deadline) {
+  async function call(
+    path: string,
+    accept: string,
+    maxBytes: number,
+    deadline: number,
+  ): Promise<import('./bounded-fetch.js').BoundedFetchResult> {
     const remaining = deadline - Date.now();
     if (remaining < 1) return { kind: 'failure', reason: 'timeout' };
     return requestBounded(
-      /** @type {Function} */ (fetchImpl),
+      // `typeof fetchImpl !== 'function'` above already throws otherwise; this
+      // hoisted nested function doesn't inherit that narrowing from TS.
+      fetchImpl!,
       `${origin}${path}`,
       {
         method: 'GET',
@@ -523,13 +519,14 @@ export function createAcrobatSignAdapter({
     );
   }
 
-  /**
-   * @returns {Promise<
-   *   {ok: false, result: AcrobatSignEvidenceResult}
-   *   | {ok: true, agreement: AcrobatSignAgreement}
-   * >}
-   */
-  async function fetchAgreementSnapshot(encodedAgreementId, deadline, operation) {
+  async function fetchAgreementSnapshot(
+    encodedAgreementId: string,
+    deadline: number,
+    operation: string,
+  ): Promise<
+    | { ok: false; result: AcrobatSignEvidenceResult }
+    | { ok: true; agreement: AcrobatSignAgreement }
+  > {
     const response = await call(
       `/api/rest/v6/agreements/${encodedAgreementId}`,
       'application/json',
@@ -574,13 +571,14 @@ export function createAcrobatSignAdapter({
     return { ok: true, agreement };
   }
 
-  /**
-   * @returns {Promise<
-   *   {ok: false, result: AcrobatSignEvidenceResult}
-   *   | {ok: true, events: AcrobatSignEventSnapshot}
-   * >}
-   */
-  async function fetchEventSnapshot(encodedAgreementId, deadline, operation) {
+  async function fetchEventSnapshot(
+    encodedAgreementId: string,
+    deadline: number,
+    operation: string,
+  ): Promise<
+    | { ok: false; result: AcrobatSignEvidenceResult }
+    | { ok: true; events: AcrobatSignEventSnapshot }
+  > {
     const response = await call(
       `/api/rest/v6/agreements/${encodedAgreementId}/events`,
       'application/json',
@@ -616,11 +614,10 @@ export function createAcrobatSignAdapter({
     return { ok: true, events };
   }
 
-  /**
-   * @param {{notification?: unknown, expected?: unknown}} [options]
-   * @returns {Promise<AcrobatSignEvidenceResult>}
-   */
-  async function fetchFinalEvidence({ notification, expected } = {}) {
+  async function fetchFinalEvidence({
+    notification,
+    expected,
+  }: { notification?: unknown; expected?: unknown } = {}): Promise<AcrobatSignEvidenceResult> {
     const normalizedExpected = normalizeExpected(expected);
     if (!normalizedExpected) {
       return closedResult('refused', {

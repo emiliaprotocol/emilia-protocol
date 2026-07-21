@@ -362,6 +362,7 @@ export function createReceivingGateway({
     let graph;
     try { graph = evidenceGraph(action, receipt); } catch { return refusal('malformed_action_or_evidence'); }
     const evaluatedAt = now();
+    /** @type {{ verdict: string, reasons: any[], next_challenge: any, result?: any, replay_digest?: any }} */
     let base;
     try {
       base = await evaluateRegisteredPresentation(challengeDocument, graph, policy, {

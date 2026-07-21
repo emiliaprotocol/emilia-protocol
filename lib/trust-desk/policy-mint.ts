@@ -73,7 +73,12 @@ export function unresolvedCount(text) {
  * @param {string} [opts.effectiveDate]
  * @returns {Array<{doc_id,title,filename,path,content,content_hash,bytes}>}
  */
-export function mintPolicies({ intake, slug, outDir, effectiveDate }) {
+export function mintPolicies({ intake, slug, outDir, effectiveDate }: {
+  intake: any;
+  slug: string;
+  outDir?: string;
+  effectiveDate?: string;
+}) {
   const vars = buildPolicyVars(intake, { slug, effectiveDate });
   const templates = loadTemplates();
   if (outDir) fs.mkdirSync(outDir, { recursive: true });
@@ -97,7 +102,7 @@ export function mintPolicies({ intake, slug, outDir, effectiveDate }) {
       // render them as bracketed fill-ins, not broken mustache syntax.
       .replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_m, inner) => `[${inner.trim()}]`);
     const filename = `${tpl.id}.md`;
-    let filePath = null;
+    let filePath: string | null = null;
     if (outDir) {
       filePath = path.join(outDir, filename);
       fs.writeFileSync(filePath, safe);

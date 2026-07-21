@@ -8,6 +8,7 @@
 // payload hash and a chain hash over the prior event hash.
 
 import crypto from 'node:crypto';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { getServiceClient } from './supabase.js';
 import { siemEvent } from './siem.js';
 import { logger } from './logger.js';
@@ -37,6 +38,19 @@ export function sanitizeSecurityPayload(value) {
   return out;
 }
 
+type SecurityEventInput = {
+  eventType?: string;
+  severity?: string;
+  actorId?: string | null;
+  tenantId?: string | null;
+  targetType?: string | null;
+  targetId?: string | null;
+  correlationId?: string | null;
+  payload?: Record<string, any>;
+  previousHash?: string | null;
+  createdAt?: string;
+};
+
 /**
  * @param {{
  *   eventType?: string,
@@ -62,7 +76,7 @@ export function buildSecurityEvent({
   payload = {},
   previousHash = null,
   createdAt = new Date().toISOString(),
-} = {}) {
+}: SecurityEventInput = {}) {
   if (!eventType || typeof eventType !== 'string') {
     throw new Error('security event requires eventType');
   }
@@ -98,7 +112,7 @@ export function buildSecurityEvent({
 
 export function verifySecurityEventChain(events) {
   let previousHash = null;
-  const errors = [];
+  const errors: string[] = [];
   for (const [i, event] of events.entries()) {
     const expected = buildSecurityEvent({
       eventType: event.event_type,
@@ -122,7 +136,7 @@ export function verifySecurityEventChain(events) {
 
 export async function appendSecurityEvent(event, { supabase = getServiceClient(), forwardSiem = true } = {}) {
   const tenantId = event.tenantId ?? event.tenant_id ?? null;
-  let lastError = null;
+  let lastError: PostgrestError | null = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     let previousHash = null;
     try {

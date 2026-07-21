@@ -24,6 +24,12 @@ const PHONE = /^\+[1-9][0-9]{7,14}$/;
 const SENSITIVE_KEY = /(authorization|cookie|secret|passw(or)?d|token|bearer|api[-_]?key|private[-_]?key)/i;
 const AUTHORITY_SIGNATURE = /^[A-Za-z0-9_-]{86}$/;
 
+type ReleaseLockCryptoSuite = {
+  contactDigest(channel: string, identifier: string): string;
+  contactProofDigest(proofBody: Record<string, unknown>): string;
+  verifyAuthorityAssertion(assertion: Record<string, unknown>, signature: string): boolean;
+};
+
 function isRecord(value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
@@ -43,7 +49,11 @@ function exactKeys(value, allowed, required = allowed) {
  * @param {{min?: number, max?: number, pattern?: RegExp|null}} [opts]
  * @returns {string}
  */
-function text(value, field, { min = 1, max = 512, pattern = null } = {}) {
+function text(
+  value: unknown,
+  field: string,
+  { min = 1, max = 512, pattern = null }: { min?: number; max?: number; pattern?: RegExp | null } = {},
+): string {
   if (typeof value !== 'string'
       || value.length < min
       || value.length > max
@@ -107,7 +117,7 @@ function materialObject(value, field) {
  * @param {string|null} [maxExpiresAt]
  * @returns {number}
  */
-function boundedExpiry(value, field, nowMs, maxExpiresAt = null) {
+function boundedExpiry(value: unknown, field: string, nowMs: number, maxExpiresAt: string | null = null): number {
   const expiresAtMs = instant(value, field);
   if (expiresAtMs < nowMs + RELEASE_LOCK_MIN_LIFETIME_MS
       || expiresAtMs > nowMs + RELEASE_LOCK_MAX_LIFETIME_MS) {
@@ -553,6 +563,12 @@ export function validateChangeOrderInput(input, {
   contractorEntityId,
   maxExpiresAt = null,
   amendment = false,
+}: {
+  now?: number | (() => number);
+  cryptoSuite?: ReleaseLockCryptoSuite;
+  contractorEntityId?: string;
+  maxExpiresAt?: string | null;
+  amendment?: boolean;
 } = {}) {
   const keys = new Set([
     'organization_id',
@@ -602,8 +618,8 @@ export function validateChangeOrderInput(input, {
     ? null
     : instant(input.invitation_expires_at, 'invitation_expires_at');
   if (!amendment && (
-    /** @type {number} */ (invitationExpiresAtMs) <= nowMs
-      || /** @type {number} */ (invitationExpiresAtMs) > lockExpiresAtMs
+    (invitationExpiresAtMs as number) <= nowMs
+      || (invitationExpiresAtMs as number) > lockExpiresAtMs
   )) {
     throw releaseLockRefusal(
       400,
@@ -671,8 +687,8 @@ export function validateChangeOrderInput(input, {
     );
   }
   if (!amendment
-      && (/** @type {number} */ (invitationExpiresAtMs) > Date.parse(contractor.contact.verification_expires_at)
-        || /** @type {number} */ (invitationExpiresAtMs) > Date.parse(customer.contact.verification_expires_at))) {
+      && ((invitationExpiresAtMs as number) > Date.parse(contractor.contact.verification_expires_at)
+        || (invitationExpiresAtMs as number) > Date.parse(customer.contact.verification_expires_at))) {
     throw releaseLockRefusal(
       400,
       'invalid_invitation_expiry',
@@ -724,6 +740,9 @@ export function validateChangeOrderInput(input, {
 export function validateDrawReleaseInput(input, {
   now = Date.now(),
   maxExpiresAt,
+}: {
+  now?: number | (() => number);
+  maxExpiresAt?: string | null;
 } = {}) {
   const keys = new Set(['organization_id', 'expected_version', 'draw']);
   const required = new Set(['expected_version', 'draw']);

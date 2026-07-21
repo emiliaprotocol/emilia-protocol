@@ -55,7 +55,7 @@ export async function POST(request) {
     // compiler, but the guarantee holds at runtime.
     /** @type {string} */
     const approverId = body.approver_id;
-    /** @type {{ error?: {status:number, code:string, detail:string}, hasDirectory?: boolean, basis?: 'directory'|'operator_attested', directoryUserId?: string|null, storedApproverId?: string }} */
+    /** @type {{ error?: {status:number, code:string, detail:string}, hasDirectory?: boolean, basis?: string, directoryUserId?: string|null, storedApproverId?: string }} */
     const basisResolution = await resolveEnrollmentBasis(supabase, organizationId, approverId);
     if (basisResolution.error) {
       return epProblem(basisResolution.error.status, basisResolution.error.code, basisResolution.error.detail);

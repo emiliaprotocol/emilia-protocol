@@ -30,6 +30,44 @@ import { evaluateAdmissibility } from '../evidence/admissibility.js';
 
 export const AUTHORITY_DOC_VERSION = 'EP-AUTHORITY-DOC-v1';
 
+interface AuthorityOrg {
+  domain: string;
+  id?: string;
+  name?: string;
+}
+
+interface AuthorityIssuerKeyEntry {
+  kid: string;
+  key: string;
+  usages?: string[];
+  custody_class?: string;
+  valid_from: string;
+  valid_to: string;
+  revoked_at?: string;
+  registry_issuer_id?: string;
+  roles?: string[];
+}
+
+interface AuthorityEndorsement {
+  by_org: string;
+  by_key: string;
+  doc_digest: string;
+  sig: string;
+}
+
+interface AuthorityDoc {
+  '@version': string;
+  org: AuthorityOrg;
+  seq: number;
+  prev_doc_digest: string | null;
+  root_key: string;
+  issuer_keys: AuthorityIssuerKeyEntry[];
+  issued_at: string;
+  sig: string;
+  continuity_sig?: string;
+  endorsements?: AuthorityEndorsement[];
+}
+
 // Deterministic JCS-style canonicalization (I-JSON subset; no floats) —
 // byte-identical to lib/evidence/admissibility.js canon().
 function canon(v) {
@@ -93,8 +131,12 @@ export function docCoreDigest(doc) {
  * @param {object} [prev]               {doc, continuityPrivateKey} — required for rotations:
  *                                      continuityPrivateKey must correspond to a key in prev.doc
  */
-export function createAuthorityDoc(p, rootPrivateKey, prev = null) {
-  const rootPub = crypto.createPublicKey(/** @type {*} */ (rootPrivateKey)).export({ type: 'spki', format: 'der' }).toString('base64url');
+export function createAuthorityDoc(
+  p,
+  rootPrivateKey,
+  prev: { doc: AuthorityDoc; continuityPrivateKey: crypto.KeyObject } | null = null,
+) {
+  const rootPub = crypto.createPublicKey(rootPrivateKey as any).export({ type: 'spki', format: 'der' }).toString('base64url');
   const core = {
     '@version': AUTHORITY_DOC_VERSION,
     org: p.org,
@@ -104,8 +146,10 @@ export function createAuthorityDoc(p, rootPrivateKey, prev = null) {
     issuer_keys: p.issuer_keys.map((k) => ({ kid: k.kid ?? authorityIssuerKeyId(k.key), ...k })),
     issued_at: p.issued_at,
   };
-  /** @type {typeof core & { sig: string, continuity_sig?: string }} */
-  const doc = { ...core, sig: crypto.sign(null, Buffer.from(canon(core), 'utf8'), rootPrivateKey).toString('base64url') };
+  const doc = {
+    ...core,
+    sig: crypto.sign(null, Buffer.from(canon(core), 'utf8'), rootPrivateKey).toString('base64url'),
+  } as typeof core & { sig: string; continuity_sig?: string };
   if (prev) {
     doc.continuity_sig = crypto.sign(null, Buffer.from(docCoreDigest(doc), 'utf8'), prev.continuityPrivateKey).toString('base64url');
   }
@@ -133,9 +177,9 @@ export function endorseAuthorityDoc(doc, endorserOrg, endorserPrivateKey) {
  * substitute (the compromise-recovery path).
  */
 export function verifyAuthorityChain(docs) {
-  const reasons = [];
+  const reasons: string[] = [];
   if (!Array.isArray(docs) || docs.length === 0) return { verified: false, head: null, breaks: [], reasons: ['empty chain'] };
-  const breaks = [];
+  const breaks: number[] = [];
   const registryIdentityByKid = new Map();
   for (let i = 0; i < docs.length; i++) {
     const d = docs[i];
@@ -269,7 +313,7 @@ export function resolveIssuerKeyAt(docs, kid, atISO) {
 
   // The newest document effective at the authenticated instant is the entire
   // issuer-key state. Omission is removal; never fall through to an older doc.
-  let effectiveDoc = null;
+  let effectiveDoc: AuthorityDoc | null = null;
   for (let i = docs.length - 1; i >= 0; i--) {
     if (authorityInstantMs(docs[i]?.issued_at) <= at) {
       effectiveDoc = docs[i];
@@ -313,7 +357,12 @@ export function verifyEndorsement(e, doc) {
  * @param {object} [opts]      {anchors?: [b64url endorser keys], as_of?: ISO}
  * @returns evaluateAdmissibility result (verdict + reasons + replay_digest)
  */
-export function evaluateIntroduction(docs, observations, policy, opts = {}) {
+export function evaluateIntroduction(
+  docs,
+  observations,
+  policy,
+  opts: { anchors?: string[]; as_of?: string } = {},
+) {
   const chain = verifyAuthorityChain(docs);
   const head = chain.head;
   const anchors = new Set(opts.anchors ?? []);
@@ -338,6 +387,6 @@ export function evaluateIntroduction(docs, observations, policy, opts = {}) {
     { as_of: opts.as_of },
   );
   result.reasons = [...chain.reasons, ...result.reasons];
-  /** @type {{ authority?: object }} */ (result).authority = { org: head?.org ?? null, head_digest: head ? docCoreDigest(head) : null, continuity_breaks: chain.breaks };
+  (result as { authority?: object }).authority = { org: head?.org ?? null, head_digest: head ? docCoreDigest(head) : null, continuity_breaks: chain.breaks };
   return result;
 }
