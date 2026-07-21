@@ -1,3 +1,8 @@
+/**
+ * EMILIA Protocol — MCP bundle builder
+ * @license Apache-2.0
+ */
+
 import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +20,7 @@ await build({
   format: 'esm',
   target: 'node20',
   minifyWhitespace: true,
+  banner: { js: '/* @license Apache-2.0 */' },
   external: [
     '@emilia-protocol/verify/*',
     '../packages/verify/strict-json.js',
