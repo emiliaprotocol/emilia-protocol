@@ -44,3 +44,25 @@ for (const v of suite.vectors) {
     if (v.expect_requirement_source) assert.equal(r.requirement_source, v.expect_requirement_source);
   });
 }
+
+test('[aec] ep-platform-attestation is reserved and cannot be replaced by a presenter verifier', () => {
+  const chain = {
+    '@version': 'EP-AEC-v1',
+    action: suite.action,
+    components: [{
+      type: 'ep-platform-attestation',
+      evidence: { '@version': 'EP-PLATFORM-ATTESTATION-v1', token: 'presenter-controlled' },
+    }],
+    requirement: 'ep-platform-attestation',
+  };
+  const r = verifyAuthorizationChain(chain, {
+    requirement: 'ep-platform-attestation',
+    expectedActionDigest: `sha256:${D}`,
+    verifiers: {
+      'ep-platform-attestation': () => ({ valid: true, action_digest: `sha256:${D}` }),
+    },
+  });
+  assert.equal(r.satisfied, false);
+  assert.equal(r.components[0].valid, false);
+  assert.equal(r.components[0].reason, 'component evidence did not verify');
+});

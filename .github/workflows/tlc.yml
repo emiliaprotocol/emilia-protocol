@@ -14,17 +14,23 @@ on:
     paths:
       - 'formal/**.tla'
       - 'formal/**.cfg'
+      - 'formal/CONSERVATION_OF_AUTHORITY.md'
+      - 'formal/PROOF_STATUS.md'
+      - 'formal/RUN_TLC.md'
       - '.github/workflows/tlc.yml'
   pull_request:
     paths:
       - 'formal/**.tla'
       - 'formal/**.cfg'
+      - 'formal/CONSERVATION_OF_AUTHORITY.md'
+      - 'formal/PROOF_STATUS.md'
+      - 'formal/RUN_TLC.md'
       - '.github/workflows/tlc.yml'
   workflow_dispatch:
 
 jobs:
   tlc:
-    name: Verify ep_handshake.tla + ep_capability.tla
+    name: Verify handshake + capability + receipt program
     runs-on: ubuntu-latest
 
     steps:
@@ -102,6 +108,31 @@ jobs:
             exit 1
           fi
 
+      - name: Run TLC on ep_receipt_program.tla
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_receipt_program.cfg \
+            ep_receipt_program.tla \
+            2>&1 | tee tlc-receipt-program-output.txt
+
+      - name: Check ep_receipt_program TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-receipt-program-output.txt; then
+            echo "TLC found an error — one or more receipt-program properties are violated."
+            grep -A 20 "Error:" tlc-receipt-program-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-receipt-program-output.txt; then
+            echo "TLC: all receipt-program properties hold in the configured bounds."
+          else
+            echo "TLC did not produce a clean completion message. Check the artifact."
+            cat tlc-receipt-program-output.txt
+            exit 1
+          fi
+
       - name: Upload TLC output
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -110,4 +141,5 @@ jobs:
           path: |
             formal/tlc-output.txt
             formal/tlc-capability-output.txt
+            formal/tlc-receipt-program-output.txt
           retention-days: 90

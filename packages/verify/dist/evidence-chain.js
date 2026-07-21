@@ -32,6 +32,7 @@
  */
 import crypto from 'node:crypto';
 import { canonicalize, verifyTrustReceipt, verifyQuorum } from '../index.js';
+import { EP_PLATFORM_ATTESTATION_COMPONENT, verifyPlatformAttestation, } from './platform-attestation.js';
 import { strictJsonGate } from './strict-json.js';
 export const AEC_VERSION = 'EP-AEC-v1';
 const MAX_COMPONENTS = 64;
@@ -42,7 +43,7 @@ const MAX_QUORUM_MEMBERS = 32;
 const MAX_JSON_DEPTH = 64;
 const MAX_JSON_NODES = 50000;
 const MAX_JSON_STRING_BYTES = 1024 * 1024;
-const RESERVED_COMPONENT_TYPES = new Set(['ep-quorum', 'ep-receipt']);
+const RESERVED_COMPONENT_TYPES = new Set(['ep-quorum', 'ep-receipt', EP_PLATFORM_ATTESTATION_COMPONENT]);
 const IDENT_CHAR = /[A-Za-z0-9_.:-]/;
 const IDENT = /^[A-Za-z0-9_.:-]+$/;
 const HEX_256 = /^[0-9a-f]{64}$/;
@@ -207,6 +208,33 @@ function boundedJson(value) {
  */
 function builtinVerifiers() {
     return {
+        // A signed platform attestation result consumed under a relying-party-owned
+        // profile. Trust keys, nonce, profile, audience, build references, and
+        // freshness all come from opts; the presenter supplies only the token.
+        [EP_PLATFORM_ATTESTATION_COMPONENT]: (evidence, ctx) => {
+            const profile = ctx?.policiesByType?.[EP_PLATFORM_ATTESTATION_COMPONENT];
+            const trustedAttesters = ctx?.keysByType?.[EP_PLATFORM_ATTESTATION_COMPONENT];
+            if (!isRecord(profile)) {
+                return { valid: false, action_digest: null, detail: { reason: 'missing relying-party platform-attestation profile' } };
+            }
+            let expectedActionDigest;
+            try {
+                expectedActionDigest = `sha256:${actionDigest(ctx?.action)}`;
+            }
+            catch {
+                return { valid: false, action_digest: null, detail: { reason: 'platform-attestation action is not canonicalizable' } };
+            }
+            return verifyPlatformAttestation(evidence, {
+                trustedAttesters,
+                expectedProfile: profile.expected_profile,
+                expectedAudience: profile.expected_audience,
+                expectedNonce: profile.expected_nonce,
+                expectedActionDigest,
+                referenceMeasurements: profile.reference_measurements,
+                verificationTime: ctx?.verificationTime,
+                maxAgeSeconds: profile.max_age_sec,
+            });
+        },
         // A distinct-human quorum (EP-QUORUM-v1) — the two-person-rule leg.
         'ep-quorum': (evidence, ctx) => {
             // `verifyQuorum` proves internal consistency only. Acceptance additionally

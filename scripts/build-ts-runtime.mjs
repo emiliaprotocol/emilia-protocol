@@ -7,8 +7,10 @@ import { buildStandaloneRuntimes } from './build-standalone-runtimes.mjs';
 
 const root = process.cwd();
 const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
+// lib/strict-json.js is a deliberately vendored copy of the verify package's
+// compiled runtime, guarded by tests/verify-web-consistency.test.ts. It has no
+// TypeScript source entry and must not be treated as a generated companion.
 const builds = [
-  ['lib/strict-json.ts', 'lib', 'lib/dist'],
   ['packages/gate/src/action-control-manifest.ts', 'packages/gate/src', 'packages/gate/dist'],
 ];
 

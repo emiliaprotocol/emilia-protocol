@@ -1,0 +1,18 @@
+EP-RECEIPT-PROGRAM-BOUNDED-MODEL-v1
+Method: bounded_exhaustive_state_exploration
+Execution date: 2026-07-21
+Model SHA-256: dde17a1f4397fa2a1ce9265f57e92bdd61f07987a262f50fad85fb97ef399d62
+Runner SHA-256: 84347343d98796c5f2983170b24f34b9c4a7bdad97d2a4a3c77c98dd7dbad586
+
+CaidValidatedBeforeReservation (31 sound states; reserve-before-validation mutant rejected across 115 states): verified
+ReservationPrecedesExternalEffect (31 sound states; effect-without-reservation mutant rejected across 139 states): verified
+ConsumedReceiptReplayIsRefused (31 sound states; replay mutant rejected across 61 states): verified
+IndeterminateRetainsReservation (31 sound states; release-on-indeterminate mutant rejected across 31 states): verified
+TerminalStateIsImmutable (31 sound states; terminal-rewrite mutant rejected across 43 states): verified
+CertificateRequiresTerminalEvidenceSignerAndAppend (31 sound states; premature-certificate mutant rejected across 56 states): verified
+
+Result: 6 of 6 bounded obligations verified; 6 of 6 deliberately weakened variants produced concrete counterexamples.
+
+Scope: same-team bounded exhaustive exploration of the finite lifecycle abstraction in the bound model bytes above. Historical facts preserve CAID-at-reserve, reservation-before-effect, consumption count, and first terminal state. This is partial formal evidence, not an unbounded protocol proof or independent implementation evidence.
+Assumptions: CAID validation, terminal evidence validation, signer verification, and durable append success are authenticated outcomes supplied to the model.
+Exclusions: more than one receipt-program instance, more than two attempted external effects, provider internals, database isolation failure, cryptographic compromise, and physical-world truth.

@@ -1,115 +1,124 @@
-# Running TLC on ep_handshake.tla
+# Running the EMILIA TLC models
 
-This document gives exact steps to run the TLC model checker against the
-EP handshake protocol specification and record the result.
+This document reproduces the pinned TLC checks for:
 
----
+- `ep_handshake.tla`
+- `ep_capability.tla`
+- `ep_receipt_program.tla`
+
+The checks are bounded safety checks. A clean run means TLC found no
+counterexample in each model's checked finite configuration; it is not a proof
+of the TypeScript/SQL implementation or an unbounded theorem.
 
 ## Prerequisites
 
-- Java 11 or later installed (`java -version`)
-- `tla2tools.jar` (the TLA+ model checker, ~6 MB, no other dependencies)
+- Java 17 (CI uses Temurin 17)
+- `curl`
+- `shasum` on macOS or `sha256sum` on Linux
 
----
+## Download and authenticate the pinned checker
 
-## Step 1 — Download tla2tools.jar
+Run from the repository root:
 
-```
-curl -L -o /usr/local/bin/tla2tools.jar \
-  https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
-```
-
-Or download manually from:
-https://github.com/tlaplus/tlaplus/releases/latest
-
-Verify the download:
-```
-java -jar /usr/local/bin/tla2tools.jar 2>&1 | head -3
+```sh
+TLA_VERSION=v1.7.4
+TLA_SHA256=936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+curl -fsSL -o tla2tools.jar \
+  "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+printf '%s  %s\n' "$TLA_SHA256" tla2tools.jar | shasum -a 256 -c -
 ```
 
----
+Linux may use this final verification line instead:
 
-## Step 2 — Run TLC
-
-From the repo root:
-
+```sh
+printf '%s  %s\n' "$TLA_SHA256" tla2tools.jar | sha256sum -c -
 ```
+
+Expected checksum output:
+
+```text
+tla2tools.jar: OK
+```
+
+The authenticated jar reports:
+
+```text
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+```
+
+Do not replace the tagged URL with the mutable `latest` URL. The same version
+and checksum are pinned in `.github/workflows/tlc.yml`.
+
+## Run all models
+
+From the repository root:
+
+```sh
 cd formal
-java -jar /usr/local/bin/tla2tools.jar \
+
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
   -config ep_handshake.cfg \
   ep_handshake.tla \
   2>&1 | tee tlc-output.txt
+
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_capability.cfg \
+  ep_capability.tla \
+  2>&1 | tee tlc-capability-output.txt
+
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_receipt_program.cfg \
+  ep_receipt_program.tla \
+  2>&1 | tee tlc-receipt-program-output.txt
 ```
 
-TLC will:
-1. Parse the spec and config
-2. Generate the initial state from `Init`
-3. Explore all reachable states via `Next`
-4. Check every `INVARIANT` listed in `ep_handshake.cfg` at every state
+The generated `tlc-*-output.txt` files are local/CI run artifacts. CI uploads
+all three for 90 days; they are not required source files.
 
-With `Handshakes = {h1, h2}` and `Actors = {a1, a2}` the state space is large
-but finite and tractable on a modern laptop (expect 1–10 minutes).
+## Interpret the output
 
-To use more CPU cores (e.g. 4 workers):
-```
-java -jar /usr/local/bin/tla2tools.jar \
-  -workers 4 \
-  -config ep_handshake.cfg \
-  ep_handshake.tla \
-  2>&1 | tee tlc-output.txt
-```
+A successful complete check contains:
 
----
-
-## Step 3 — Interpret the output
-
-**Success (all properties hold):**
-```
+```text
 Model checking completed. No error has been found.
-  Estimates of the probability that TLC did not check all reachable states
-  because two distinct states had the same fingerprint:
-  calculated (optimistic):  val = ...
 ```
 
-You will also see a state-space summary like:
-```
-The number of states found during the model checking job: NNNN
-The number of distinct states found during the model checking job: NNNN
-```
+It also reports generated/distinct state counts, complete graph depth, and zero
+states left on the queue. Record those exact values in `PROOF_STATUS.md` only
+after the run completes.
 
-**Failure (invariant violated):**
-```
+A violation contains output such as:
+
+```text
 Error: Invariant <Name> is violated.
 ```
-TLC will print the full error trace showing how it reached the violating state.
-Treat this as a critical bug — file an issue before claiming any property is verified.
 
----
+Preserve the full counterexample trace. Do not rename or weaken a property to
+obtain a green run; reconcile the model with the implementation and determine
+whether the defect is in the model, the code, or both.
 
-## Step 4 — Record the result
+`ep_receipt_program.cfg` intentionally sets `CHECK_DEADLOCK FALSE`: when both
+bounded attempts reach `terminal`, the model is correctly quiescent. The model
+makes no liveness claim; all listed safety invariants and action properties are
+still checked over the complete reachable graph.
 
-Once TLC finishes with no errors:
+## CI
 
-1. Commit `tlc-output.txt` alongside `ep_handshake.cfg`:
-   ```
-   git add formal/ep_handshake.cfg formal/tlc-output.txt
-   git commit -m "formal: add TLC cfg and verified output for ep_handshake"
-   ```
-
-2. Update `formal/PROOF_STATUS.md`:
-   - Change every row that says `Specified — not yet verified` to
-     `Verified (TLC, YYYY-MM-DD)` using today's date.
-   - Update the "To verify" section to note TLC has been run and link to
-     `tlc-output.txt`.
-   - Update the `Last updated` line.
-
----
+`.github/workflows/tlc.yml` repeats the authenticated download and runs all
+three models for changes to the TLA+/configuration files, this runbook, the
+formal status ledger, the Conservation of Authority artifact, or the workflow
+itself. CI fails if TLC reports an error or does not produce the clean completion
+message.
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| `java: command not found` | Install Java: `brew install openjdk` (macOS) |
-| `OutOfMemoryError` | Add `-Xmx4G` before `-jar`: `java -Xmx4G -jar tla2tools.jar ...` |
-| `Error: Unknown operator` | Ensure you are running from the `formal/` directory so TLC finds the spec |
-| State space too large | Reduce to `Handshakes = {h1}`, `Actors = {a1}` in `ep_handshake.cfg` and re-run as a smoke test |
+| Symptom | Action |
+|---|---|
+| `java: command not found` | Install a Java 17 runtime. |
+| Checksum mismatch | Delete the jar and stop; do not execute an unauthenticated artifact. Confirm the pinned release and checksum in the workflow. |
+| `OutOfMemoryError` | Increase `-Xmx2G` locally; do not reduce model bounds without documenting the changed scope. |
+| Parse/semantic error | Run from `formal/` and preserve the exact SANY/TLC diagnostics. |
+| Invariant/property violation | Preserve the trace and treat it as a model-or-implementation defect until resolved. |

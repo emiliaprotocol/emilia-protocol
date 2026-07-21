@@ -1,13 +1,24 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7",
-  "claim_count": 30,
-  "evidence_file_count": 159,
+  "evidence_bundle_sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781",
+  "claim_count": 32,
+  "evidence_file_count": 171,
   "execution": {
     "required": true,
     "status": "passed",
     "evidence": [
+      {
+        "runner": "bounded-formal",
+        "file": "formal/check-conservation-authority.mjs",
+        "obligations": [
+          "AggregateBranchBudgetIsConserved",
+          "AuthoritativeAllocationIsRequired",
+          "ConcurrentReservationsAreAtomic",
+          "DelegationPathAuthorityNeverAmplifies"
+        ],
+        "result": "passed"
+      },
       {
         "runner": "bounded-formal",
         "file": "formal/check-outcome-authority-join.mjs",
@@ -18,6 +29,19 @@
           "RegistryPinsMandatory",
           "ReplayResultDigestCommitsVerdict",
           "RevokedRotationAndProofKeysFailClosed"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "bounded-formal",
+        "file": "formal/check-receipt-program.mjs",
+        "obligations": [
+          "CaidValidatedBeforeReservation",
+          "CertificateRequiresTerminalEvidenceSignerAndAppend",
+          "ConsumedReceiptReplayIsRefused",
+          "IndeterminateRetainsReservation",
+          "ReservationPrecedesExternalEffect",
+          "TerminalStateIsImmutable"
         ],
         "result": "passed"
       },
@@ -226,6 +250,16 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/gate/capability-receipt.test.js",
+        "titles": [
+          "a delegation chain that grants increasing authority is rejected",
+          "delegation burns parent budget before registering a spendable child",
+          "delegation cannot outlive its parent, including across multiple hops"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/gate/evidence-atomic.test.js",
         "titles": [
           "atomic evidence: a backend cannot claim success without persisting the record",
@@ -351,6 +385,26 @@
       },
       {
         "runner": "node-test",
+        "file": "packages/verify/platform-attestation.test.js",
+        "titles": [
+          "PLATFORM ATTESTATION: accepts the exact RP-pinned result",
+          "PLATFORM ATTESTATION: ignores a custom override for the reserved AEC type",
+          "PLATFORM ATTESTATION: rejects a different EAT nonce",
+          "PLATFORM ATTESTATION: rejects a different action digest",
+          "PLATFORM ATTESTATION: rejects an expired result",
+          "PLATFORM ATTESTATION: rejects an unpinned build measurement",
+          "PLATFORM ATTESTATION: rejects attester key substitution",
+          "accepts only the exact RP-pinned EAT/JWT platform-attestation result",
+          "is a non-overridable built-in AEC component bound to the chain action",
+          "rejects duplicate JSON members before interpretation and all unknown fields",
+          "rejects expired, future-issued, over-age, and malformed freshness claims",
+          "rejects key substitution and never consumes presenter-supplied trust anchors",
+          "rejects nonce, action, build measurement, profile, and audience mismatches"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
         "file": "packages/verify/quorum.test.js",
         "titles": [
           "EP-QUORUM-v1: initiator sitting in an approver seat is rejected",
@@ -467,7 +521,9 @@
           "proof: proof_accepted_when_pinned",
           "proof: reject_proof_registry_head_mismatch",
           "resolve: authorized_within_scope_and_limit",
-          "resolve: reject_amount_exceeded"
+          "resolve: reject_amount_exceeded",
+          "resolve: reject_delegation_parent_missing",
+          "resolve: reject_delegation_widened_amount"
         ],
         "result": "passed"
       },
@@ -665,7 +721,7 @@
       "package": "@emilia-protocol/gate",
       "version": "0.13.0",
       "filename": "emilia-protocol-gate-0.13.0.tgz",
-      "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665",
+      "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae",
       "file_count": 419
     },
     "mobile-sdk": {
@@ -679,16 +735,16 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7",
-      "file_count": 159
+      "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781",
+      "file_count": 171
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.11.0",
       "filename": "emilia-protocol-verify-3.11.0.tgz",
-      "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e",
-      "file_count": 191
+      "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e",
+      "file_count": 197
     }
   },
   "claims": [
@@ -839,11 +895,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -1102,11 +1158,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -1210,11 +1266,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -1329,11 +1385,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -1451,11 +1507,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -1599,7 +1655,184 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
+        }
+      ]
+    },
+    {
+      "claim_id": "conservation-of-authority-is-bounded-and-non-amplifying",
+      "statement": "Within an accepted delegation path, action and audience selectors can only narrow, budget dimensions and expiry cannot increase, and cycles or a leaf naming itself as an ancestor are refused. Aggregate sibling-budget conservation is claimed only when allocations come from an authoritative epoch-pinned ledger and reservations are atomic; it is not inferred from path containment alone.",
+      "acceptance_roots": [
+        "the relying party's pinned authority-registry view and capability issuer",
+        "an authoritative epoch-pinned allocation ledger for aggregate branch claims",
+        "atomic compare-and-update reservation in the shared capability store"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/authority/resolver.ts",
+          "symbol": "evaluateAuthorityVerdict",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "symbol": "delegateCapabilityReceipt",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "symbol": "createMemoryCapabilityStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "symbol": "createPostgresCapabilityStore",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/authority/resolver.ts",
+          "export": "evaluateAuthorityVerdict"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "export": "delegateCapabilityReceipt"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "export": "createMemoryCapabilityStore"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/src/capability-receipt.ts",
+          "export": "createPostgresCapabilityStore"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/authority.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python authority resolver, bounded-capability delegation kernel, or authoritative allocation store is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go authority resolver, bounded-capability delegation kernel, or authoritative allocation store is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "authorized_within_scope_and_limit",
+          "polarity": "positive",
+          "expect": {
+            "valid": true,
+            "verdict": "authorized"
+          },
+          "execution": {
+            "runner": "vitest",
+            "file": "tests/authority-registry.test.ts",
+            "title": "resolve: authorized_within_scope_and_limit"
+          }
+        },
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "reject_delegation_widened_amount",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "verdict": "delegation_broken"
+          },
+          "execution": {
+            "runner": "vitest",
+            "file": "tests/authority-registry.test.ts",
+            "title": "resolve: reject_delegation_widened_amount"
+          }
+        },
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "reject_delegation_parent_missing",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "verdict": "delegation_broken"
+          },
+          "execution": {
+            "runner": "vitest",
+            "file": "tests/authority-registry.test.ts",
+            "title": "resolve: reject_delegation_parent_missing"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/authority-registry.test.ts",
+          "title": "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization",
+          "runner": "vitest"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "delegation burns parent budget before registering a spendable child",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "delegation cannot outlive its parent, including across multiple hops",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/capability-receipt.test.js",
+          "title": "a delegation chain that grants increasing authority is rejected",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/conservation-authority.model.mjs",
+          "runner": "formal/check-conservation-authority.mjs",
+          "result_evidence": "formal/results/conservation-authority.summary.txt",
+          "obligations": [
+            "DelegationPathAuthorityNeverAmplifies",
+            "AggregateBranchBudgetIsConserved",
+            "AuthoritativeAllocationIsRequired",
+            "ConcurrentReservationsAreAtomic"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of action and audience selector sets, two independent budget dimensions, expiry, two sibling allocations, and two concurrent reservation requests; every deliberately weakened obligation produces a concrete counterexample."
+        }
+      ],
+      "assumptions": [
+        "every accepted child is evaluated against its direct authenticated parent",
+        "aggregate branch claims use the same authoritative allocation epoch for all siblings",
+        "all workers share a linearizable atomic reservation boundary"
+      ],
+      "exclusions": [
+        "the bounded evidence is not an unbounded theorem or a refinement proof of TypeScript or SQL",
+        "path non-amplification alone does not conserve aggregate sibling budgets",
+        "registry compromise, database isolation failure, legal authority, human intent, and physical-world truth are outside this claim"
+      ],
+      "release_artifacts": [
+        "gate-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "gate-sdk",
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -1741,11 +1974,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -1900,11 +2133,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -2081,11 +2314,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -2298,7 +2531,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -2403,11 +2636,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -2535,11 +2768,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665"
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -2642,11 +2875,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665"
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -2766,11 +2999,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665"
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -2895,11 +3128,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665"
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -3069,11 +3302,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665"
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -3207,7 +3440,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -3319,11 +3552,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -3457,7 +3690,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -3674,7 +3907,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -3884,7 +4117,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -4075,7 +4308,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -4359,7 +4592,219 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
+        }
+      ]
+    },
+    {
+      "claim_id": "platform-attestation-result-is-rp-pinned-and-action-bound",
+      "statement": "An ep-platform-attestation AEC leg is satisfied only by a closed, verifier-signed EAT/JWT attestation result under the relying party's pinned Ed25519 key, profile, audience, nonce, exact action digest, accepted build measurement, verification time, and maximum age. Presenter-supplied keys and verifier overrides are refused. Acceptance does not claim that EMILIA appraised raw hardware evidence or independently established a TPM, TEE, secure-boot chain, or genuine device.",
+      "acceptance_roots": [
+        "the external RATS Verifier's issuer and Ed25519 result-signing key pinned by the relying party",
+        "the EAT profile, audience, nonce, action, reference build measurements, verification time, and maximum age pinned by the relying party",
+        "the external Verifier's appraisal policy, endorsements, and reference values"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/platform-attestation.ts",
+          "symbol": "verifyPlatformAttestation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/src/evidence-chain.ts",
+          "symbol": "verifyAuthorizationChain",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/platform-attestation.js",
+          "export": "verifyPlatformAttestation"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/evidence-chain.js",
+          "export": "verifyAuthorizationChain"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/platform-attestation.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python verifier for the reserved ep-platform-attestation AEC component is claimed."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go verifier for the reserved ep-platform-attestation AEC component is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "accept_exact_pinned_result",
+          "polarity": "positive",
+          "expect": {
+            "valid": true,
+            "reason": null
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/platform-attestation.test.js",
+            "title": "PLATFORM ATTESTATION: accepts the exact RP-pinned result"
+          }
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_key_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "reason": "signature_invalid"
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/platform-attestation.test.js",
+            "title": "PLATFORM ATTESTATION: rejects attester key substitution"
+          }
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_nonce_mismatch",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "reason": "nonce_mismatch"
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/platform-attestation.test.js",
+            "title": "PLATFORM ATTESTATION: rejects a different EAT nonce"
+          }
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_action_mismatch",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "reason": "action_digest_mismatch"
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/platform-attestation.test.js",
+            "title": "PLATFORM ATTESTATION: rejects a different action digest"
+          }
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_build_mismatch",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "reason": "measurement_untrusted"
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/platform-attestation.test.js",
+            "title": "PLATFORM ATTESTATION: rejects an unpinned build measurement"
+          }
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_expired_result",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "reason": "token_expired"
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/platform-attestation.test.js",
+            "title": "PLATFORM ATTESTATION: rejects an expired result"
+          }
+        },
+        {
+          "suite": "conformance/vectors/platform-attestation.v1.json",
+          "case_id": "reject_reserved_override",
+          "polarity": "negative",
+          "expect": {
+            "valid": false,
+            "reason": "component evidence did not verify"
+          },
+          "execution": {
+            "runner": "node-test",
+            "file": "packages/verify/platform-attestation.test.js",
+            "title": "PLATFORM ATTESTATION: ignores a custom override for the reserved AEC type"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/verify/platform-attestation.test.js",
+          "title": "accepts only the exact RP-pinned EAT/JWT platform-attestation result",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/platform-attestation.test.js",
+          "title": "is a non-overridable built-in AEC component bound to the chain action",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/platform-attestation.test.js",
+          "title": "rejects key substitution and never consumes presenter-supplied trust anchors",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/platform-attestation.test.js",
+          "title": "rejects nonce, action, build measurement, profile, and audience mismatches",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/platform-attestation.test.js",
+          "title": "rejects expired, future-issued, over-age, and malformed freshness claims",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/platform-attestation.test.js",
+          "title": "rejects duplicate JSON members before interpretation and all unknown fields",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The RATS Verifier-to-Relying-Party role boundary, EAT/JWT parsing, pinned external appraisal result, and exact platform-attestation AEC component are covered by executable JavaScript vectors but are not represented in the current TLA+, Alloy, or Tamarin models."
+        }
+      ],
+      "assumptions": [
+        "the external Verifier correctly appraises raw platform evidence and protects its result-signing key",
+        "the relying party provisions the correct verifier key, profile, reference measurements, action, nonce, audience, clock, and freshness bound",
+        "all consequential execution paths use the AEC result rather than bypassing the measured Gate boundary"
+      ],
+      "exclusions": [
+        "EMILIA does not verify raw TPM or TEE quotes in this profile",
+        "an authentic attestation result does not prove that reference values or appraisal policy are complete or correct",
+        "a measured build is not thereby vulnerability-free, physically genuine, or the only code able to affect the action",
+        "no Python, Go, deployed hardware, independent operator, or supply-chain validation is claimed"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -4534,11 +4979,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -4688,7 +5133,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -4834,11 +5279,11 @@
         },
         {
           "artifact_id": "verify-sdk",
-          "sha256": "d50bc6307180022022b20dfbaa36bcf5abdf5e4cd5698ca8c4ffbd4687b7fb8e"
+          "sha256": "37a577ed016f75aeccb985bd0e010973f0eb189c5ec33cbfce4c6c9c7502241e"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -4957,7 +5402,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -5128,7 +5573,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -5516,11 +5961,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665"
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     },
@@ -5812,8 +6257,20 @@
       ],
       "formal": [
         {
-          "status": "not_modeled",
-          "gap": "The receipt-program certificate composition, KMS/HSM signer boundary, CAID re-performance, bounded result projection, certificate-log append, recovery behavior, and exact Gate evidence references are executable but are not represented together in the current TLA+, Alloy, or Tamarin models."
+          "status": "partial",
+          "method": "bounded_exhaustive_state_exploration",
+          "model": "formal/receipt-program.model.mjs",
+          "runner": "formal/check-receipt-program.mjs",
+          "result_evidence": "formal/results/receipt-program.summary.txt",
+          "obligations": [
+            "CaidValidatedBeforeReservation",
+            "ReservationPrecedesExternalEffect",
+            "ConsumedReceiptReplayIsRefused",
+            "IndeterminateRetainsReservation",
+            "TerminalStateIsImmutable",
+            "CertificateRequiresTerminalEvidenceSignerAndAppend"
+          ],
+          "scope": "Same-team bounded exhaustive exploration of one receipt-program lifecycle with at most two attempted external effects; authenticated CAID, evidence, signer, and append outcomes are abstract inputs, and every deliberately weakened obligation produces a concrete counterexample. The companion TLA+ model and its independently labeled TLC result are recorded in formal/PROOF_STATUS.md and formal/results/ep-receipt-program.tlc.summary.txt."
         }
       ],
       "assumptions": [
@@ -5838,11 +6295,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "7ec01caccce39c401d1e293cd16843d942cb0610afbb1b09db7e557fdf18a665"
+          "sha256": "a299c14ca3ee71772bdc61f90fd250c1b5be40a3e80a997eaf85db7c573394ae"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "19d8d3062a1b7463348d6cc5f4867a07752cdfa8a5ae6b9dbe5c9650c464efb7"
+          "sha256": "c439477626a06c3a429dd6d98f0fd2bb765c93cdd665f00b9f48106288a5d781"
         }
       ]
     }
@@ -5921,6 +6378,10 @@
       "sha256": "d7a8492bb360cd6a75c227bef83ee1b8bd5f682b747fe7ef19f9cb538ecad91e"
     },
     {
+      "path": "conformance/vectors/platform-attestation.v1.json",
+      "sha256": "0566af3581d5e172dd044107ca13e69dc5e72161ae2a688b26ae07cde45f5d00"
+    },
+    {
       "path": "conformance/vectors/quorum.v1.json",
       "sha256": "ad9a79488fd9b2fe338a18212ee61e4de9f2a89b72889a70d16694ddfbe3db76"
     },
@@ -5965,8 +6426,20 @@
       "sha256": "ff3ea5fb20752360fc17f93312e0ae145f7240beb6e67dfc5e9743e2d39a0cc1"
     },
     {
+      "path": "formal/check-conservation-authority.mjs",
+      "sha256": "f046656ec0807913210c799f15a10a596969b1be05549111eb83c01fe2577037"
+    },
+    {
       "path": "formal/check-outcome-authority-join.mjs",
       "sha256": "8926897f9a71a3436cca5a2c81e0d4d440629d116ea77c24926b352c50710794"
+    },
+    {
+      "path": "formal/check-receipt-program.mjs",
+      "sha256": "84347343d98796c5f2983170b24f34b9c4a7bdad97d2a4a3c77c98dd7dbad586"
+    },
+    {
+      "path": "formal/conservation-authority.model.mjs",
+      "sha256": "f72e0764d0fa2f8c781c6ba34a112cc9290c7b19d14c918fbfabf3739c7a9581"
     },
     {
       "path": "formal/outcome-authority-join.cases.json",
@@ -5977,8 +6450,20 @@
       "sha256": "4432adf2297621cce7d92b1ad1c4d28eae9c068722dce42f7760d3310da8f65a"
     },
     {
+      "path": "formal/receipt-program.model.mjs",
+      "sha256": "dde17a1f4397fa2a1ce9265f57e92bdd61f07987a262f50fad85fb97ef399d62"
+    },
+    {
+      "path": "formal/results/conservation-authority.summary.txt",
+      "sha256": "df9001b784b1fe2e0e863f049fc4ac736b009b264447fd4c6ea2f17fea3172d9"
+    },
+    {
       "path": "formal/results/outcome-authority-join.summary.txt",
       "sha256": "653a50ab1ec4242eb9f0b279adf75153de2f298133c14471a58ec46d4ae6c81d"
+    },
+    {
+      "path": "formal/results/receipt-program.summary.txt",
+      "sha256": "f98f6f3777a31cb017db872ae3f60bca4c4ede73750b81f8791c8feef6dbe2d6"
     },
     {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
@@ -6081,6 +6566,10 @@
       "sha256": "d875da0bceb720157fe5a41d05f098326aabb813c61836bd1338b54cf3f98fbd"
     },
     {
+      "path": "packages/gate/capability-receipt.test.js",
+      "sha256": "0ec7139438ee8d8f1f4da107ae4e51f9baff451bcfa97bb289705ebaef9ff122"
+    },
+    {
       "path": "packages/gate/deploy/sql/001-runtime.sql",
       "sha256": "0f3539da67d89140ed64ff71c0e44bdb088e9e53640581d543dbc9ab0dfef671"
     },
@@ -6127,6 +6616,10 @@
     {
       "path": "packages/gate/src/aec-execution.ts",
       "sha256": "da799e756355bb76c5b03a0c302d7fd00b07dc78b7e31f6b1ad9047c06c9bbbc"
+    },
+    {
+      "path": "packages/gate/src/capability-receipt.ts",
+      "sha256": "bd72524526611b55077b72ee3a6e5b9c820a1e277ee912cfbe8c39cab2c9d40a"
     },
     {
       "path": "packages/gate/src/challenge-store.ts",
@@ -6277,6 +6770,14 @@
       "sha256": "0ccd5acd47fa9efdfd8c6cc7a9d110e75605a9fb86ff7e46c5c34466de445f44"
     },
     {
+      "path": "packages/verify/platform-attestation.js",
+      "sha256": "e1ec8b2da78cb0a27294337a06a2ce12288f11c3d888c71c2bb5e7923b1338dc"
+    },
+    {
+      "path": "packages/verify/platform-attestation.test.js",
+      "sha256": "4a7a14838e4d7352e5193f3a74b9dcfa65881244f699c67ba4137673a359fd0e"
+    },
+    {
       "path": "packages/verify/quorum.js",
       "sha256": "b53cd3e57f41f286e1620e26035d37d592928f0b895f93dabd3dc990093ce492"
     },
@@ -6310,7 +6811,7 @@
     },
     {
       "path": "packages/verify/src/evidence-chain.ts",
-      "sha256": "b655b8a12bc907e8ab39165d856e4cf0fa8fccfa333913b425b384c5cb245310"
+      "sha256": "4f6c8be1102c683dfb4e69c5fd62467d083808c57bc745179d43e00dfdcd177d"
     },
     {
       "path": "packages/verify/src/index.ts",
@@ -6319,6 +6820,10 @@
     {
       "path": "packages/verify/src/outcome-binding.ts",
       "sha256": "c797cdb260279260610c2081cb607c7343eae1fc1b09d18c186118be8c6f6826"
+    },
+    {
+      "path": "packages/verify/src/platform-attestation.ts",
+      "sha256": "770dfe824b32a46a3372b159575e618020c28cbb7b6dbb3f0da4082b32f88c1c"
     },
     {
       "path": "packages/verify/src/quorum.ts",
@@ -6382,7 +6887,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "aacfeed164a32ec2cfcf1d30951adb6b90172253a01c1528412fcd539061cd6b"
+      "sha256": "c16c1d206a5ffbea58fc35d4943d1f315a0b54e80d4dc8c4d7ac231ea0582163"
     },
     {
       "path": "security/vectors.v1.json",

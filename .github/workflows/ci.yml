@@ -413,6 +413,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Rebuild governed TypeScript runtimes and refuse drift
+        run: |
+          npm run build:ts-runtime
+          git diff --exit-code
       - name: Check language governance
         run: node scripts/check-language-governance.js
       - name: Check public conformance claims against the current manifest
