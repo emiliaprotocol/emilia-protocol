@@ -1,0 +1,432 @@
+{
+  "@version": "EP-AUTHORITY-PROGRAM-CONFORMANCE-v1",
+  "status": "private-prepublication-test-vector",
+  "note": "Deterministic test keys only. This vector is not an adopted standard or independent implementation.",
+  "program": {
+    "@version": "EP-AUTHORITY-PROGRAM-v1",
+    "program_id": "authority-program:conformance:v1",
+    "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+    "expression": {
+      "type": "sequence",
+      "children": [
+        {
+          "type": "stage",
+          "stage_id": "stage-a",
+          "authority": {
+            "organization_id": "org:alpha",
+            "key_id": "key:alpha"
+          },
+          "aec_requirement_digest": "sha256:85416fd30cf12c87216eb2cb65d8b913fdfcf533f78750a3167ab5341402455a",
+          "aom_requirement_digest": "sha256:b8e740158f11c9880f2b29db684a24b122012ea9c65d6a4cafa3d48cea8b8eb0",
+          "capability_requirement_digest": "sha256:f9885a304705d99734e940da61a20eab6eea8a52c0fbf778b13f97cee868aa55"
+        },
+        {
+          "type": "parallel",
+          "parallel_id": "parallel-bc",
+          "allocation_requirement_digest": "sha256:ce6309844af9396e5264d2a0131721fd5fb62986dd0b29a300c46ef2cbd65cbe",
+          "allocation_proof_digest": "sha256:daf53fcb58c41fd2e0c53cca947870984e2dc969dd0811c18d892acc1d85242f",
+          "branches": [
+            {
+              "type": "stage",
+              "stage_id": "stage-b",
+              "authority": {
+                "organization_id": "org:beta",
+                "key_id": "key:beta"
+              },
+              "aec_requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
+              "aom_requirement_digest": "sha256:a4135136f77be1ee71c3c5f78ee9d0b554a1772b10640908db569e133c68265a",
+              "capability_requirement_digest": "sha256:b027c239d176bc56c6a312e2b8592d5d84506fa493c32ad3acb7833deec641b0"
+            },
+            {
+              "type": "stage",
+              "stage_id": "stage-c",
+              "authority": {
+                "organization_id": "org:gamma",
+                "key_id": "key:gamma"
+              },
+              "aec_requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
+              "aom_requirement_digest": "sha256:dcf610755a24823078d2725cf94500cf85a12b340f6a5751e55bc7f8e5ad9dfa",
+              "capability_requirement_digest": "sha256:da6e76375f78f5699a3e4e6479c8c7f137d36ad84c63340d097cc5e2a2b08dff"
+            }
+          ]
+        },
+        {
+          "type": "stage",
+          "stage_id": "stage-d",
+          "authority": {
+            "organization_id": "org:delta",
+            "key_id": "key:delta"
+          },
+          "aec_requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
+          "aom_requirement_digest": "sha256:f902251f2f9f3d256519e113632c27451ea16885ba6f3555869cf708027fef56",
+          "capability_requirement_digest": "sha256:e475b459c9af2b5a56fba299e764709450b34d1e6ff4140eb54e29d8445186fc"
+        }
+      ]
+    },
+    "proof": {
+      "algorithm": "Ed25519",
+      "organization_id": "org:governance",
+      "key_id": "key:program",
+      "signature_b64u": "qVMzVwvpmrmbzIQm4MUp8PuL2pRLXnyeDdG-b_s2XlyJA41cx58e-c1fVpmaQ864N7OZAH4ZYwVZ2Ei6m4FTCA"
+    }
+  },
+  "program_pin": {
+    "digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+    "organization_id": "org:governance",
+    "key_id": "key:program",
+    "public_key": "MCowBQYDK2VwAyEADNELFRXMOIkgWLd4AtKpyv6u_b5TuaF3ylMB1mJRzPw"
+  },
+  "stage_keys": {
+    "org:alpha": {
+      "key:alpha": "MCowBQYDK2VwAyEAolCFZ6TIPu2RUDdH8ubHi3GHNQaTkFjzUkXZvZNN63Y"
+    },
+    "org:beta": {
+      "key:beta": "MCowBQYDK2VwAyEAltX36hwgEb8Jn3PV5G-HwheKM1-BhWStHWC0KQWNt-0"
+    },
+    "org:gamma": {
+      "key:gamma": "MCowBQYDK2VwAyEAnT6cC6riPZsrB-SMLERmAxJcR6Nha1w12SJfAgvF3Fg"
+    },
+    "org:delta": {
+      "key:delta": "MCowBQYDK2VwAyEAKJ4T8YgZ5lssiCbW81dZa4-1_kkm4idrY3GDVgGGvFU"
+    }
+  },
+  "stage_receipts": [
+    {
+      "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
+      "receipt_id": "authority-stage-receipt:stage-a:conformance",
+      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "stage_id": "stage-a",
+      "issuer": {
+        "organization_id": "org:alpha",
+        "key_id": "key:alpha"
+      },
+      "predecessor_receipt_digests": [],
+      "aec": {
+        "requirement_digest": "sha256:85416fd30cf12c87216eb2cb65d8b913fdfcf533f78750a3167ab5341402455a",
+        "result_digest": "sha256:76fb792e3cf338258ddccfd12387efcd2b70f735835d2b19a5375cfba9f3c0c4"
+      },
+      "aom": {
+        "requirement_digest": "sha256:b8e740158f11c9880f2b29db684a24b122012ea9c65d6a4cafa3d48cea8b8eb0",
+        "result_digest": "sha256:f60afae3def50f469cf77cde319684632076f18af9ed15202f2e9dd4dd723084"
+      },
+      "capability": {
+        "requirement_digest": "sha256:f9885a304705d99734e940da61a20eab6eea8a52c0fbf778b13f97cee868aa55",
+        "input_digest": "sha256:4badb65b06955eb9eaff99e3177ea0953c4917c9a320c2add15b240bdadcb470",
+        "output_digest": "sha256:924408116654c385829aa3578b5a3bd5d0e7e56ca2cd87ab865e883236986bc1"
+      },
+      "proof": {
+        "algorithm": "Ed25519",
+        "key_id": "key:alpha",
+        "signature_b64u": "cd8arwTPL3rxBiCLSBA1Fv9y91Bh3ROrPFRn13LcC5jslvU-7o2TAloC0KDiFPFZD04ENXxz9uxg5mQodsLFBw"
+      }
+    },
+    {
+      "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
+      "receipt_id": "authority-stage-receipt:stage-b:conformance",
+      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "stage_id": "stage-b",
+      "issuer": {
+        "organization_id": "org:beta",
+        "key_id": "key:beta"
+      },
+      "predecessor_receipt_digests": [
+        "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+      ],
+      "aec": {
+        "requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
+        "result_digest": "sha256:aca8cf296c92b2873517fe7d43b6ad6b58932d67501210fc83482522ded4df3b"
+      },
+      "aom": {
+        "requirement_digest": "sha256:a4135136f77be1ee71c3c5f78ee9d0b554a1772b10640908db569e133c68265a",
+        "result_digest": "sha256:9be545bf6cbb2904627baeec8523c00dad1ca4f7d8dcc1e33341a77e358df621"
+      },
+      "capability": {
+        "requirement_digest": "sha256:b027c239d176bc56c6a312e2b8592d5d84506fa493c32ad3acb7833deec641b0",
+        "input_digest": "sha256:a638e85871e8550c2259889b90814b19d5f736f3d7ea2755c87c95533804ffdb",
+        "output_digest": "sha256:566639c48925e2d09a42921dece983a782f612a8852b454673ddaf38b7eb1da0"
+      },
+      "proof": {
+        "algorithm": "Ed25519",
+        "key_id": "key:beta",
+        "signature_b64u": "0b5lLhHdxfjuQUCKGcyEP7VGl3hmL3OOGgpJIUfgrJr7PffM3xzdgCRLVuDtGvgeLZe3RJ4IPJuHaOo2c4WfDA"
+      }
+    },
+    {
+      "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
+      "receipt_id": "authority-stage-receipt:stage-c:conformance",
+      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "stage_id": "stage-c",
+      "issuer": {
+        "organization_id": "org:gamma",
+        "key_id": "key:gamma"
+      },
+      "predecessor_receipt_digests": [
+        "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+      ],
+      "aec": {
+        "requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
+        "result_digest": "sha256:8f0053d7e6f565d2af156cae3b5bab13ac826f1b1167fb42809130479b80cb1c"
+      },
+      "aom": {
+        "requirement_digest": "sha256:dcf610755a24823078d2725cf94500cf85a12b340f6a5751e55bc7f8e5ad9dfa",
+        "result_digest": "sha256:7bf83ceda82405e9eb5d1b4b292614ec591f4e20843cadc0a2630a2ab1988ad3"
+      },
+      "capability": {
+        "requirement_digest": "sha256:da6e76375f78f5699a3e4e6479c8c7f137d36ad84c63340d097cc5e2a2b08dff",
+        "input_digest": "sha256:33345c06b56af5d29bb6fc6f67bc8a4f1462676721f5e12bcbab39faedb37637",
+        "output_digest": "sha256:b2cb25d69d7cb9cb3387eb7d19789c98553244bcf96c277fe0eb651511b55e60"
+      },
+      "proof": {
+        "algorithm": "Ed25519",
+        "key_id": "key:gamma",
+        "signature_b64u": "7tHo_aXyVAMwO-wq5H0DDZj20DN7iBkCgfS__dUfK9g1DqlPk_ekcxS343dQXweVulo2OTuEYc44q3I4-yFYAg"
+      }
+    },
+    {
+      "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
+      "receipt_id": "authority-stage-receipt:stage-d:conformance",
+      "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+      "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+      "stage_id": "stage-d",
+      "issuer": {
+        "organization_id": "org:delta",
+        "key_id": "key:delta"
+      },
+      "predecessor_receipt_digests": [
+        "sha256:4727b3a2a0fe925c7cf545e7062c8160f7790d9f15e25fd43a0ef646d481fbc9",
+        "sha256:ed15766b12270bbce2d1435f48b60b65a2f71efff58dcf506d0c58a51ca026fc"
+      ],
+      "aec": {
+        "requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
+        "result_digest": "sha256:f158afe1c3cfbe6afc42285364583d80b9fbc54cd83801562fe8f8c06089c4c9"
+      },
+      "aom": {
+        "requirement_digest": "sha256:f902251f2f9f3d256519e113632c27451ea16885ba6f3555869cf708027fef56",
+        "result_digest": "sha256:7f6179fd3fc6b81721970548e0d52d356fcede7cde45badb0d167281451fbe53"
+      },
+      "capability": {
+        "requirement_digest": "sha256:e475b459c9af2b5a56fba299e764709450b34d1e6ff4140eb54e29d8445186fc",
+        "input_digest": "sha256:aeee4dc08c88c48f3d0e1fe9723205ccf06b9cf951b78ba629bbe080a2f0f322",
+        "output_digest": "sha256:62c6533f25f9866839092f1d3b858e41da15dca699d41492fa2981fe4100c51e"
+      },
+      "proof": {
+        "algorithm": "Ed25519",
+        "key_id": "key:delta",
+        "signature_b64u": "_tFDQzMnXFgmu3J6DA2Eu5CVBmgCiMCQqAdFNdMbT1R-idkW_Zutli5qfkfhN6bGbs1HBQY-3ASEqtsjXGzvDA"
+      }
+    }
+  ],
+  "native_results": {
+    "stages": {
+      "stage-a": {
+        "aec": {
+          "valid": true,
+          "requirement_digest": "sha256:85416fd30cf12c87216eb2cb65d8b913fdfcf533f78750a3167ab5341402455a",
+          "result_digest": "sha256:76fb792e3cf338258ddccfd12387efcd2b70f735835d2b19a5375cfba9f3c0c4"
+        },
+        "aom": {
+          "valid": true,
+          "requirement_digest": "sha256:b8e740158f11c9880f2b29db684a24b122012ea9c65d6a4cafa3d48cea8b8eb0",
+          "result_digest": "sha256:f60afae3def50f469cf77cde319684632076f18af9ed15202f2e9dd4dd723084"
+        },
+        "capability": {
+          "valid": true,
+          "narrowed": true,
+          "requirement_digest": "sha256:f9885a304705d99734e940da61a20eab6eea8a52c0fbf778b13f97cee868aa55",
+          "input_digest": "sha256:4badb65b06955eb9eaff99e3177ea0953c4917c9a320c2add15b240bdadcb470",
+          "output_digest": "sha256:924408116654c385829aa3578b5a3bd5d0e7e56ca2cd87ab865e883236986bc1"
+        }
+      },
+      "stage-b": {
+        "aec": {
+          "valid": true,
+          "requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
+          "result_digest": "sha256:aca8cf296c92b2873517fe7d43b6ad6b58932d67501210fc83482522ded4df3b"
+        },
+        "aom": {
+          "valid": true,
+          "requirement_digest": "sha256:a4135136f77be1ee71c3c5f78ee9d0b554a1772b10640908db569e133c68265a",
+          "result_digest": "sha256:9be545bf6cbb2904627baeec8523c00dad1ca4f7d8dcc1e33341a77e358df621"
+        },
+        "capability": {
+          "valid": true,
+          "narrowed": true,
+          "requirement_digest": "sha256:b027c239d176bc56c6a312e2b8592d5d84506fa493c32ad3acb7833deec641b0",
+          "input_digest": "sha256:a638e85871e8550c2259889b90814b19d5f736f3d7ea2755c87c95533804ffdb",
+          "output_digest": "sha256:566639c48925e2d09a42921dece983a782f612a8852b454673ddaf38b7eb1da0"
+        }
+      },
+      "stage-c": {
+        "aec": {
+          "valid": true,
+          "requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
+          "result_digest": "sha256:8f0053d7e6f565d2af156cae3b5bab13ac826f1b1167fb42809130479b80cb1c"
+        },
+        "aom": {
+          "valid": true,
+          "requirement_digest": "sha256:dcf610755a24823078d2725cf94500cf85a12b340f6a5751e55bc7f8e5ad9dfa",
+          "result_digest": "sha256:7bf83ceda82405e9eb5d1b4b292614ec591f4e20843cadc0a2630a2ab1988ad3"
+        },
+        "capability": {
+          "valid": true,
+          "narrowed": true,
+          "requirement_digest": "sha256:da6e76375f78f5699a3e4e6479c8c7f137d36ad84c63340d097cc5e2a2b08dff",
+          "input_digest": "sha256:33345c06b56af5d29bb6fc6f67bc8a4f1462676721f5e12bcbab39faedb37637",
+          "output_digest": "sha256:b2cb25d69d7cb9cb3387eb7d19789c98553244bcf96c277fe0eb651511b55e60"
+        }
+      },
+      "stage-d": {
+        "aec": {
+          "valid": true,
+          "requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
+          "result_digest": "sha256:f158afe1c3cfbe6afc42285364583d80b9fbc54cd83801562fe8f8c06089c4c9"
+        },
+        "aom": {
+          "valid": true,
+          "requirement_digest": "sha256:f902251f2f9f3d256519e113632c27451ea16885ba6f3555869cf708027fef56",
+          "result_digest": "sha256:7f6179fd3fc6b81721970548e0d52d356fcede7cde45badb0d167281451fbe53"
+        },
+        "capability": {
+          "valid": true,
+          "narrowed": true,
+          "requirement_digest": "sha256:e475b459c9af2b5a56fba299e764709450b34d1e6ff4140eb54e29d8445186fc",
+          "input_digest": "sha256:aeee4dc08c88c48f3d0e1fe9723205ccf06b9cf951b78ba629bbe080a2f0f322",
+          "output_digest": "sha256:62c6533f25f9866839092f1d3b858e41da15dca699d41492fa2981fe4100c51e"
+        }
+      }
+    },
+    "parallel_allocations": {
+      "parallel-bc": {
+        "valid": true,
+        "authoritative": true,
+        "parallel_id": "parallel-bc",
+        "requirement_digest": "sha256:ce6309844af9396e5264d2a0131721fd5fb62986dd0b29a300c46ef2cbd65cbe",
+        "proof_digest": "sha256:daf53fcb58c41fd2e0c53cca947870984e2dc969dd0811c18d892acc1d85242f"
+      }
+    }
+  },
+  "invalid_cases": [
+    {
+      "name": "missing-predecessor",
+      "replace_stage_id": "stage-d",
+      "replacement_receipt": {
+        "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
+        "receipt_id": "authority-stage-receipt:stage-d:conformance",
+        "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+        "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+        "stage_id": "stage-d",
+        "issuer": {
+          "organization_id": "org:delta",
+          "key_id": "key:delta"
+        },
+        "predecessor_receipt_digests": [
+          "sha256:4727b3a2a0fe925c7cf545e7062c8160f7790d9f15e25fd43a0ef646d481fbc9"
+        ],
+        "aec": {
+          "requirement_digest": "sha256:9482a050f9a159886eaff760c8f048464db766fddfc33ab2e8b22e9f296e1c1a",
+          "result_digest": "sha256:f158afe1c3cfbe6afc42285364583d80b9fbc54cd83801562fe8f8c06089c4c9"
+        },
+        "aom": {
+          "requirement_digest": "sha256:f902251f2f9f3d256519e113632c27451ea16885ba6f3555869cf708027fef56",
+          "result_digest": "sha256:7f6179fd3fc6b81721970548e0d52d356fcede7cde45badb0d167281451fbe53"
+        },
+        "capability": {
+          "requirement_digest": "sha256:e475b459c9af2b5a56fba299e764709450b34d1e6ff4140eb54e29d8445186fc",
+          "input_digest": "sha256:aeee4dc08c88c48f3d0e1fe9723205ccf06b9cf951b78ba629bbe080a2f0f322",
+          "output_digest": "sha256:62c6533f25f9866839092f1d3b858e41da15dca699d41492fa2981fe4100c51e"
+        },
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "key:delta",
+          "signature_b64u": "3JP0ACATr3xypPXLSv_2GSk8OwMQ2aIDM6fQkcfYLoTAZZFGft9gm0OQgWBovIH25l0e1EvjEvIfuO8a2vXQDA"
+        }
+      },
+      "expected_reason": "predecessor_receipt_digest_mismatch"
+    },
+    {
+      "name": "wrong-aec-result",
+      "replace_stage_id": "stage-b",
+      "replacement_receipt": {
+        "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
+        "receipt_id": "authority-stage-receipt:stage-b:conformance",
+        "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+        "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+        "stage_id": "stage-b",
+        "issuer": {
+          "organization_id": "org:beta",
+          "key_id": "key:beta"
+        },
+        "predecessor_receipt_digests": [
+          "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+        ],
+        "aec": {
+          "requirement_digest": "sha256:2c0d586c0a1dc0f0e6b1cb317da8e2188c5fa9f7e7cbf79388c3f3677a8aacbd",
+          "result_digest": "sha256:6fa52ef277dd5ab1a454b2e30ece61fb901f50194f5a6550a53d4649ee985a7c"
+        },
+        "aom": {
+          "requirement_digest": "sha256:a4135136f77be1ee71c3c5f78ee9d0b554a1772b10640908db569e133c68265a",
+          "result_digest": "sha256:9be545bf6cbb2904627baeec8523c00dad1ca4f7d8dcc1e33341a77e358df621"
+        },
+        "capability": {
+          "requirement_digest": "sha256:b027c239d176bc56c6a312e2b8592d5d84506fa493c32ad3acb7833deec641b0",
+          "input_digest": "sha256:a638e85871e8550c2259889b90814b19d5f736f3d7ea2755c87c95533804ffdb",
+          "output_digest": "sha256:566639c48925e2d09a42921dece983a782f612a8852b454673ddaf38b7eb1da0"
+        },
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "key:beta",
+          "signature_b64u": "w5C2qYn2lmyOdJprte86bGBGSzE0lcQMa6H0H8RIryqYwOVDo3fS7g4LN0Atimj4RbDxAC-6bQtEIMbcw5XADA"
+        }
+      },
+      "expected_reason": "aec_verification_mismatch"
+    },
+    {
+      "name": "wrong-aom-requirement",
+      "replace_stage_id": "stage-c",
+      "replacement_receipt": {
+        "@version": "EP-AUTHORITY-STAGE-RECEIPT-v1",
+        "receipt_id": "authority-stage-receipt:stage-c:conformance",
+        "program_digest": "sha256:ef32873e18eadb91a485db697a0228952ac1b4e7f31570fe7f997558a430c51c",
+        "root_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "root_action_digest": "sha256:0b27883b72d2f8350a673871762e7758bc92a9ef7f57657b0c2c5a075bd247c3",
+        "stage_id": "stage-c",
+        "issuer": {
+          "organization_id": "org:gamma",
+          "key_id": "key:gamma"
+        },
+        "predecessor_receipt_digests": [
+          "sha256:11f6d6d8cd2b7aa29556768702442eda3fba9e001d0e3c920f0e9fe02eaa9697"
+        ],
+        "aec": {
+          "requirement_digest": "sha256:d1a549fb97f22f1f7c3a4a02b47ea5871a87d28ff479416e46a2ad9db7c535b3",
+          "result_digest": "sha256:8f0053d7e6f565d2af156cae3b5bab13ac826f1b1167fb42809130479b80cb1c"
+        },
+        "aom": {
+          "requirement_digest": "sha256:853b83c209ef253b7ea1dc2f11867d32a47fc92ccd8fdaf290309ddb394b763f",
+          "result_digest": "sha256:7bf83ceda82405e9eb5d1b4b292614ec591f4e20843cadc0a2630a2ab1988ad3"
+        },
+        "capability": {
+          "requirement_digest": "sha256:da6e76375f78f5699a3e4e6479c8c7f137d36ad84c63340d097cc5e2a2b08dff",
+          "input_digest": "sha256:33345c06b56af5d29bb6fc6f67bc8a4f1462676721f5e12bcbab39faedb37637",
+          "output_digest": "sha256:b2cb25d69d7cb9cb3387eb7d19789c98553244bcf96c277fe0eb651511b55e60"
+        },
+        "proof": {
+          "algorithm": "Ed25519",
+          "key_id": "key:gamma",
+          "signature_b64u": "y0-UD-3cBhmb3b50Y85z1W8gxdltqvtcUW0rv5P6yLlKgDHSdCFz1PSUI3SlnmvKKC3QBk-ziZ2F_LIyfUgzCw"
+        }
+      },
+      "expected_reason": "aom_requirement_mismatch"
+    }
+  ]
+}

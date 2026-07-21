@@ -42,6 +42,7 @@
     "src/agentroa.ts",
     "src/orprg.ts",
     "src/evidence-chain.ts",
+    "src/authority-program.ts",
     "src/index.ts",
     "src/cli.ts"
   ]
