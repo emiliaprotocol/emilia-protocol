@@ -1,7 +1,7 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494",
+  "evidence_bundle_sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16",
   "claim_count": 30,
   "evidence_file_count": 159,
   "execution": {
@@ -679,7 +679,7 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494",
+      "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16",
       "file_count": 159
     },
     "verify-sdk": {
@@ -843,7 +843,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -1106,7 +1106,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -1214,7 +1214,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -1333,7 +1333,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -1455,7 +1455,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -1469,7 +1469,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/authority/resolver.js",
+          "file": "lib/authority/resolver.ts",
           "symbol": "evaluateAuthorityVerdict",
           "exported": true
         },
@@ -1483,7 +1483,7 @@
       "implementations": [
         {
           "language": "javascript",
-          "file": "lib/authority/resolver.js",
+          "file": "lib/authority/resolver.ts",
           "export": "evaluateAuthorityVerdict"
         },
         {
@@ -1599,7 +1599,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -1745,7 +1745,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -1904,7 +1904,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -2085,7 +2085,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -2298,7 +2298,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -2407,7 +2407,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -2539,7 +2539,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -2646,7 +2646,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -2770,7 +2770,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -2899,7 +2899,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -3073,7 +3073,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -3207,7 +3207,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -3323,7 +3323,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -3457,7 +3457,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -3674,7 +3674,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -3884,7 +3884,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -3900,31 +3900,31 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "createModelToMatterProfile",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "modelToMatterCaid",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "verifyModelToMatterEvidence",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "createModelToMatterExecutor",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "evaluateRegisteredModelToMatterPresentation",
           "exported": true
         },
@@ -3938,17 +3938,17 @@
       "implementations": [
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "export": "createModelToMatterExecutor"
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "export": "modelToMatterCaid"
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "export": "evaluateRegisteredModelToMatterPresentation"
         }
       ],
@@ -4075,7 +4075,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -4359,7 +4359,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -4538,7 +4538,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -4554,13 +4554,13 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "symbol": "deriveMobileActionContinuity",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "symbol": "verifyMobileProviderOutcome",
           "exported": true
         },
@@ -4580,12 +4580,12 @@
       "implementations": [
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "export": "deriveMobileActionContinuity"
         },
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "export": "verifyMobileProviderOutcome"
         },
         {
@@ -4688,7 +4688,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -4838,7 +4838,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -4957,7 +4957,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -4972,19 +4972,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "verifyGraceMobileAuthorization",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "executeGraceCurtailment",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "buildActionStateCapsule",
           "exported": true
         }
@@ -4992,17 +4992,17 @@
       "implementations": [
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "export": "verifyGraceMobileAuthorization"
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "export": "executeGraceCurtailment"
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "export": "buildActionStateCapsule"
         }
       ],
@@ -5128,7 +5128,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -5520,7 +5520,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     },
@@ -5842,7 +5842,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+          "sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
         }
       ]
     }
@@ -6005,16 +6005,16 @@
       "sha256": "6ba7aad0f8a8a71dc449b5f9d2202a468f95cc8dd90678627970167d8b301920"
     },
     {
-      "path": "lib/authority/resolver.js",
-      "sha256": "26e138b2da677380f2d17c1f9a24cf54aa9b5f5ddc262578ceeb96b2dfe5330e"
+      "path": "lib/authority/resolver.ts",
+      "sha256": "4c79a62389219115b1b59539763f64515433f823808a1d47d7fe4613dc6c2f21"
     },
     {
-      "path": "lib/frontier/model-to-matter.js",
-      "sha256": "31050ef9f7532f018d2ca3acc8a7592836c57c648fe0f7faa69356eb01fecdd8"
+      "path": "lib/frontier/model-to-matter.ts",
+      "sha256": "27a5dd1ab3ec6cdbee3c3cb9efc52c7e8fbdae4bc6df9634abd53f009744cf75"
     },
     {
-      "path": "lib/grace/mobile-grid.js",
-      "sha256": "f6eb5437d4e59dc05cc3ad49bc2bea49ee488f9215783e3f345100c34c508061"
+      "path": "lib/grace/mobile-grid.ts",
+      "sha256": "e21df5a39840c39cff43c906a019a34e63266e0d5cdb502c2d3159aa76c43024"
     },
     {
       "path": "lib/guard-signoff.ts",
@@ -6022,15 +6022,15 @@
     },
     {
       "path": "lib/integrations/action-escrow/escrow-com.ts",
-      "sha256": "25836605a772becb56f93e664ca31f7e057a2b5ebb56399cf8c1ef12790b8858"
+      "sha256": "d9bb09e764a42136f44adb63c69f05521fd727a25ecee42ded16c84654aac95e"
     },
     {
       "path": "lib/integrations/action-escrow/procore-change-order.ts",
-      "sha256": "60d91169b9b8c45b7b810191c7d18dc27cf7ba0cba652639ed3a4d60e6e62eb7"
+      "sha256": "2b7cd54ba093a01143976c828aaf45fa47712684b093b298d8fc546d40587995"
     },
     {
-      "path": "lib/mobile/action-continuity.js",
-      "sha256": "af3a6b5efe6e99c307272c3a00d209deb6e81b53a97e375e19c270ff71ac2384"
+      "path": "lib/mobile/action-continuity.ts",
+      "sha256": "1a83f0188f9897c534deb1c3dce5ea46141a1184dfc9e9e5a89ca2fcea5237ba"
     },
     {
       "path": "lib/mobile/store.js",
@@ -6382,7 +6382,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "c7db310935ac7057ffd57df2fddb2dedb310b113b1b3607b75fd363e75b0696f"
+      "sha256": "f0bd5569057c8ed4d483853dbd73ae0dc6615a807dfb3646f89081bdef1e4a57"
     },
     {
       "path": "security/vectors.v1.json",

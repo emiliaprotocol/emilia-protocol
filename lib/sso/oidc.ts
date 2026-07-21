@@ -21,12 +21,12 @@ import { safePinnedFetch } from './pinned-fetch.js';
 
 // ── PKCE + state/nonce ───────────────────────────────────────────────────────
 
-export function randomUrlToken(bytes = 32) {
+export function randomUrlToken(bytes: number = 32): string {
   return crypto.randomBytes(bytes).toString('base64url');
 }
 
 /** PKCE S256 challenge for a verifier (RFC 7636). */
-export function pkceChallenge(verifier) {
+export function pkceChallenge(verifier: string): string {
   return crypto.createHash('sha256').update(verifier, 'utf8').digest('base64url');
 }
 
@@ -34,11 +34,11 @@ export function pkceChallenge(verifier) {
 
 /**
  * Fetch an OIDC provider's discovery document.
- * @param {string} issuer
- * @param {Function} [fetchImpl]
- * @returns {Promise<{ issuer?: string, authorization_endpoint: string, token_endpoint: string, jwks_uri: string, [key: string]: * }>}
  */
-export async function discover(issuer, fetchImpl = safePinnedFetch) {
+export async function discover(
+  issuer: string,
+  fetchImpl: typeof safePinnedFetch = safePinnedFetch,
+): Promise<Record<string, any>> {
   const url = `${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`;
   // SSRF: refuse server-followed redirects. The issuer host was validated, but a
   // redirect (3xx) can hop the discovery fetch to localhost/link-local/cloud
@@ -61,17 +61,11 @@ export async function discover(issuer, fetchImpl = safePinnedFetch) {
  * server will dereference must pass the same public-host/https policy. Note:
  * endpoints are NOT required to share the issuer's host — real IdPs (e.g.
  * Google) serve token/jwks from sibling domains.
- *
- * @param {object} doc - the discovery document
- * @param {object} [opts]
- * @param {string[]} [opts.fields] - which endpoint fields to validate
- * @param {Function} [opts.lookup] - injectable DNS lookup (for tests)
- * @returns {Promise<{valid:boolean, field?:string, error?:string}>}
  */
 export async function assertSafeDiscoveryEndpoints(
-  doc,
-  { fields = ['authorization_endpoint', 'token_endpoint', 'jwks_uri'], lookup } = {},
-) {
+  doc: any,
+  { fields = ['authorization_endpoint', 'token_endpoint', 'jwks_uri'], lookup }: any = {},
+): Promise<{ valid: boolean; field?: string; error?: string }> {
   for (const field of fields) {
     const v = await validateSsoProviderUrl(
       doc?.[field],
@@ -79,9 +73,9 @@ export async function assertSafeDiscoveryEndpoints(
       // validateSsoProviderUrl's JSDoc (lib/sso/url-policy.js) types `lookup` against
       // Node's full dns.lookup overload set; here it's an injectable test double with
       // a simpler shape, so a loose cast avoids over-constraining the call site.
-      lookup ? /** @type {any} */ ({ lookup }) : undefined,
+      lookup ? ({ lookup } as any) : undefined,
     );
-    if (!v.valid) return { valid: false, field, error: v.error };
+    if (!v.valid) return { valid: false, field, error: (v as { valid: false; error: string }).error };
   }
   return { valid: true };
 }
@@ -92,9 +86,14 @@ export async function assertSafeDiscoveryEndpoints(
  * Build the authorization-request URL (Authorization Code + PKCE).
  */
 export function buildAuthorizeUrl({
-  authorizationEndpoint, clientId, redirectUri, scope = 'openid email profile',
-  state, nonce, codeChallenge,
-}) {
+  authorizationEndpoint,
+  clientId,
+  redirectUri,
+  scope = 'openid email profile',
+  state,
+  nonce,
+  codeChallenge,
+}: any): string {
   if (!authorizationEndpoint || !clientId || !redirectUri) {
     throw new Error('buildAuthorizeUrl requires authorizationEndpoint, clientId, redirectUri');
   }
@@ -115,11 +114,19 @@ export function buildAuthorizeUrl({
 // ── Token exchange ───────────────────────────────────────────────────────────
 
 export async function exchangeCode({
-  tokenEndpoint, clientId, clientSecret, code, redirectUri, codeVerifier, fetchImpl = safePinnedFetch,
-}) {
+  tokenEndpoint,
+  clientId,
+  clientSecret,
+  code,
+  redirectUri,
+  codeVerifier,
+  fetchImpl = safePinnedFetch,
+}: any): Promise<any> {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
-    code, redirect_uri: redirectUri, client_id: clientId,
+    code,
+    redirect_uri: redirectUri,
+    client_id: clientId,
   });
   if (codeVerifier) body.set('code_verifier', codeVerifier);
   if (clientSecret) body.set('client_secret', clientSecret);
@@ -130,13 +137,21 @@ export async function exchangeCode({
   // even though pinned-fetch.js documents the real shape it resolves: a minimal
   // fetch-Response shim with .ok/.status/.json()/.text(). Assert that documented
   // contract rather than widening to `any`.
-  const res = /** @type {{ ok: boolean, status: number, json: () => Promise<any>, text: () => Promise<string> }} */ (await fetchImpl(tokenEndpoint, {
+  const res = (await fetchImpl(tokenEndpoint, {
     method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      accept: 'application/json',
+    },
     body: body.toString(),
     // SSRF: never follow a redirect on the secret-bearing token POST.
     redirect: 'error',
-  }));
+  })) as {
+    ok: boolean;
+    status: number;
+    json: () => Promise<any>;
+    text: () => Promise<string>;
+  };
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Token exchange failed: HTTP ${res.status} ${text.slice(0, 200)}`);
@@ -150,32 +165,40 @@ export async function exchangeCode({
  * Validate an OIDC ID token: signature (against the provider JWKS), issuer,
  * audience, expiry (jose), and nonce binding (RFC — checked here since jose does
  * not check nonce).
- *
- * @param {string} idToken - the compact JWS ID token
- * @param {object} [opts]
- * @param {string} [opts.issuer] - expected `iss` (required at runtime; validated below)
- * @param {string} [opts.clientId] - expected `aud` (required at runtime; validated below)
- * @param {object} [opts.jwks] - a JWKS object (local verification, for tests)
- * @param {string} [opts.jwksUri] - the provider JWKS URI (remote verification)
- * @param {string} [opts.nonce] - the nonce that MUST match the token's claim
- * @returns {Promise<{ valid:boolean, claims?:object, subject?:string, email?:string, error?:string }>}
  */
-export async function validateIdToken(idToken, opts = {}) {
+export async function validateIdToken(
+  idToken: string,
+  opts: any = {},
+): Promise<
+  | { valid: false; error: string; claims?: undefined; subject?: undefined; email?: undefined }
+  | {
+      valid: true;
+      claims: any;
+      subject: string;
+      email: string | undefined;
+      error?: undefined;
+    }
+> {
   const { issuer, clientId, jwks, jwksUri, nonce } = opts;
-  if (!idToken) return { valid: false, error: 'Missing ID token' };
-  if (!issuer || !clientId) return { valid: false, error: 'validateIdToken requires issuer and clientId' };
+  if (!idToken)
+    return { valid: false, error: 'Missing ID token' };
+  if (!issuer || !clientId)
+    return { valid: false, error: 'validateIdToken requires issuer and clientId' };
 
-  let keySet;
+  let keySet: any;
   try {
     if (jwks) keySet = jose.createLocalJWKSet(jwks);
     // Pin the JWKS fetch to the validated IP too (jose re-resolves via global
     // fetch otherwise). customFetch receives (url, { method, signal, headers }).
     // safePinnedFetch (lib/sso/pinned-fetch.js) is a drop-in fetch replacement;
     // jose's FetchImplementation type is stricter than checkJs can infer here.
-    else if (jwksUri) keySet = jose.createRemoteJWKSet(new URL(jwksUri), { [jose.customFetch]: /** @type {any} */ (safePinnedFetch) });
+    else if (jwksUri)
+      keySet = jose.createRemoteJWKSet(new URL(jwksUri), {
+        [jose.customFetch]: safePinnedFetch as any,
+      });
     else return { valid: false, error: 'validateIdToken requires jwks or jwksUri' };
   } catch (e) {
-    return { valid: false, error: `JWKS error: ${e.message}` };
+    return { valid: false, error: `JWKS error: ${(e as any).message}` };
   }
 
   try {
@@ -203,9 +226,12 @@ export async function validateIdToken(idToken, opts = {}) {
       subject: payload.sub,
       // jose's JWTPayload only types the registered claims; `email` is an
       // OIDC-profile-scope claim outside that set, so its value is `unknown`.
-      email: /** @type {string|undefined} */ (payload.email),
+      email: payload.email as string | undefined,
     };
   } catch (e) {
-    return { valid: false, error: `ID token validation failed: ${e.code || e.message}` };
+    return {
+      valid: false,
+      error: `ID token validation failed: ${(e as any).code || (e as any).message}`,
+    };
   }
 }

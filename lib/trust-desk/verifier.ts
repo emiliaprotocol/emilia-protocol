@@ -43,12 +43,9 @@ const CERT_CLAIMS = [
 
 /**
  * Verify a single answer against the 6 gates.
- * @param {object} answer answerer output (status === 'answered')
- * @param {object} ctx { intake }
- * @returns {{passed:boolean, failures:Array<{gate:string,detail:string}>}}
  */
-export function verifyAnswer(answer, ctx = {}) {
-  const failures = [];
+export function verifyAnswer(answer: any, ctx: any = {}) {
+  const failures: any[] = [];
   const intake = ctx.intake || {};
   const text = answer.answer || '';
 
@@ -119,11 +116,8 @@ export function verifyAnswer(answer, ctx = {}) {
 
 /**
  * Verify a whole engagement's answers and decide the publish path.
- * @param {Array} answers answerer outputs (mixed answered/escalated)
- * @param {object} ctx { intake }
- * @returns {{decision:'auto'|'partial'|'full', passRate:number, perQuestion:Array, counts:object}}
  */
-export function verifyEngagement(answers, ctx = {}) {
+export function verifyEngagement(answers: any, ctx: any = {}) {
   const perQuestion = answers.map((a) => {
     if (a.status !== ANSWER_STATUS.ANSWERED) {
       return { id: a.id, status: a.status, passed: false, failures: [{ gate: 'answered', detail: a.escalation_reason || 'not answered' }] };
@@ -138,8 +132,7 @@ export function verifyEngagement(answers, ctx = {}) {
   const failRate = failed / total;
   const passRate = passed / total;
 
-  /** @type {'auto'|'partial'|'full'} */
-  let decision;
+  let decision: 'auto' | 'partial' | 'full';
   if (failed === 0) decision = 'auto';
   else if (failRate <= FULL_ESCALATION_FAIL_RATE) decision = 'partial';
   else decision = 'full';
@@ -154,7 +147,7 @@ export function verifyEngagement(answers, ctx = {}) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function allowedContacts(intake) {
+function allowedContacts(intake: any) {
   const set = new Set();
   for (const v of [intake.contact_email, intake.data_officer_email, intake.security_lead_email]) {
     if (v) set.add(String(v).toLowerCase());
@@ -163,7 +156,7 @@ function allowedContacts(intake) {
   return set;
 }
 
-function certSupported(key, intake) {
+function certSupported(key: any, intake: any) {
   const soc2 = intake.soc2_status;
   switch (key) {
     case 'type2':

@@ -146,7 +146,7 @@ function normalizedEffectContract(effect) {
   }
 
   const payeeIds = new Set();
-  let total = 0n;
+  let total = BigInt(0);
   const payees = action.payees.map((payee) => {
     if (!isRecord(payee)
         || !text(payee.party_id, 256)

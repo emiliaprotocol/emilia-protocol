@@ -33,16 +33,9 @@ const PRINCIPAL_DELEGATION_WEIGHT = 0.15;
  * Reads receipt.delegation_id (if present) and receipt.context.principal_id
  * (if present) to determine whether a principal should receive a secondary
  * attribution signal.
- *
- * @param {Object} receipt - The receipt object as submitted or returned from DB
- * @param {string} receipt.entity_id - The agent entity's slug or UUID
- * @param {string} [receipt.delegation_id] - Optional delegation ID
- * @param {Object} [receipt.context] - Optional context object
- * @param {string} [receipt.context.principal_id] - Optional principal identifier
- * @returns {Array<{ role: string, entity_id: string, weight: number }>}
  */
-export function buildAttributionChain(receipt) {
-  const chain = [
+export function buildAttributionChain(receipt: any): Array<{ role: string, entity_id: any, weight: number, delegation_id?: any }> {
+  const chain: Array<{ role: string, entity_id: any, weight: number, delegation_id?: any }> = [
     {
       role: 'agent',
       entity_id: receipt.entity_id,
@@ -77,11 +70,8 @@ export function buildAttributionChain(receipt) {
  * Positive: completed tasks, high-composite receipts (≥ 70), good behavior.
  * Negative: abandoned, disputed, low-composite receipts (< 50).
  * Neutral receipts return true (erring toward positive for judgment purposes).
- *
- * @param {Object} receipt
- * @returns {boolean}
  */
-function isPositiveOutcome(receipt) {
+function isPositiveOutcome(receipt: any): boolean {
   // Explicit behavioral outcome takes precedence
   if (receipt.agent_behavior) {
     const positive = ['completed'];
@@ -113,13 +103,8 @@ function isPositiveOutcome(receipt) {
  *
  * This function is designed to be called fire-and-forget (non-blocking).
  * Errors are caught and logged; they must never surface to the caller.
- *
- * @param {Object} receipt - The receipt object returned from the DB insert
- * @param {Array}  attributionChain - From buildAttributionChain()
- * @param {import('@supabase/supabase-js').SupabaseClient} [supabase] - Optional; created if omitted
- * @returns {Promise<{ agent_attributed: boolean, principal_attributed: boolean, signals_written: number }>}
  */
-export async function applyAttributionChain(receipt, attributionChain, supabase) {
+export async function applyAttributionChain(receipt: any, attributionChain: any[], supabase?: any): Promise<{ agent_attributed: boolean, principal_attributed: boolean, signals_written: number }> {
   const db = supabase || getServiceClient();
   const result = { agent_attributed: true, principal_attributed: false, signals_written: 0 };
 
@@ -185,19 +170,15 @@ export async function applyAttributionChain(receipt, attributionChain, supabase)
  *   - Base: fraction of delegations that produced positive outcomes
  *   - Weighted by the signal weight (currently always 0.15, but future-proofed)
  *   - Agents with zero delegations: score null (no judgment yet)
- *
- * @param {string} principalId - Principal entity ID or human identifier
- * @param {import('@supabase/supabase-js').SupabaseClient} [supabase]
- * @returns {Promise<{
- *   judgment_score: number|null,
- *   agents_authorized: number,
- *   good_outcome_rate: number|null,
- *   total_signals: number,
- *   positive_signals: number,
- *   negative_signals: number,
- * }>}
  */
-export async function getDelegationJudgmentScore(principalId, supabase) {
+export async function getDelegationJudgmentScore(principalId: string, supabase?: any): Promise<{
+  judgment_score: number | null,
+  agents_authorized: number,
+  good_outcome_rate: number | null,
+  total_signals: number,
+  positive_signals: number,
+  negative_signals: number,
+}> {
   const db = supabase || getServiceClient();
 
   try {
@@ -238,22 +219,22 @@ export async function getDelegationJudgmentScore(principalId, supabase) {
     }
 
     const totalSignals = signals.length;
-    const positiveSignals = signals.filter(s => s.outcome_positive).length;
+    const positiveSignals = signals.filter((s: any) => s.outcome_positive).length;
     const negativeSignals = totalSignals - positiveSignals;
     const goodOutcomeRate = totalSignals > 0 ? positiveSignals / totalSignals : null;
 
     // Unique agents authorized by this principal
-    const agentsAuthorized = new Set(signals.map(s => s.agent_entity_id)).size;
+    const agentsAuthorized = new Set(signals.map((s: any) => s.agent_entity_id)).size;
 
     // Weighted judgment score: weight each outcome by the declared signal weight.
     // This future-proofs for heterogeneous weights (e.g. high-value delegations
     // weighted more heavily than low-value ones).
     const weightedPositive = signals
-      .filter(s => s.outcome_positive)
-      .reduce((sum, s) => sum + (s.weight ?? PRINCIPAL_DELEGATION_WEIGHT), 0);
+      .filter((s: any) => s.outcome_positive)
+      .reduce((sum: number, s: any) => sum + (s.weight ?? PRINCIPAL_DELEGATION_WEIGHT), 0);
 
     const weightedTotal = signals
-      .reduce((sum, s) => sum + (s.weight ?? PRINCIPAL_DELEGATION_WEIGHT), 0);
+      .reduce((sum: number, s: any) => sum + (s.weight ?? PRINCIPAL_DELEGATION_WEIGHT), 0);
 
     const judgmentScore = weightedTotal > 0
       ? Math.round((weightedPositive / weightedTotal) * 100) / 100
@@ -269,7 +250,7 @@ export async function getDelegationJudgmentScore(principalId, supabase) {
       positive_signals: positiveSignals,
       negative_signals: negativeSignals,
     };
-  } catch (err) {
+  } catch (err: any) {
     logger.error('[EP Attribution] getDelegationJudgmentScore failed:', err.message);
     return {
       judgment_score: null,

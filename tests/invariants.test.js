@@ -44,6 +44,14 @@ function readSource(relPath) {
   return fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
 }
 
+// Routes and lib modules are migrating from .js to .ts file-by-file; resolve
+// a "some/path/route.js" or "lib/x.js"-style relative path to whichever
+// extension actually exists on disk.
+function resolveJsOrTs(relPath) {
+  const ts = relPath.replace(/\.js$/, '.ts');
+  return fs.existsSync(path.join(ROOT, ts)) ? ts : relPath;
+}
+
 // ============================================================================
 // 1. Score Scale Invariants
 // ============================================================================
@@ -141,7 +149,7 @@ describe('Enum Consistency — cross-layer contracts', () => {
 
   // Extract API validTypes from route.js
   function extractApiValidTypes() {
-    const routeSource = readSource('app/api/disputes/report/route.js');
+    const routeSource = readSource(resolveJsOrTs('app/api/disputes/report/route.js'));
     const match = routeSource.match(/const\s+validTypes\s*=\s*\[([\s\S]*?)\]/);
     expect(match).not.toBeNull();
     return match[1].match(/'([^']+)'/g).map(s => s.replace(/'/g, ''));
@@ -219,7 +227,7 @@ describe('Decision Vocabulary Invariants', () => {
   });
 
   it('trust-decision.js uses the same canonical vocabulary', () => {
-    const source = readSource('lib/trust-decision.js');
+    const source = readSource(resolveJsOrTs('lib/trust-decision.js'));
     // buildTrustDecision documents the decision parameter as 'allow' | 'review' | 'deny'
     expect(source).toContain("'allow'");
     expect(source).toContain("'review'");
@@ -265,7 +273,7 @@ describe('Decision Vocabulary Invariants', () => {
 
 describe('Route Comment Integrity', () => {
   it('audit route claims operator-level access and actually checks permissions', () => {
-    const source = readSource('app/api/audit/route.js');
+    const source = readSource(resolveJsOrTs('app/api/audit/route.js'));
 
     // Verify the comment claims operator-level access
     expect(source.toLowerCase()).toContain('operator-level');
@@ -312,7 +320,7 @@ describe('Machine-Readable Discovery', () => {
 
       // Check that either a route.js exists in this directory
       // or a dynamic route directory [param]/ exists with route.js
-      const directRoute = path.join(ROOT, 'app', 'api', routePath, 'route.js');
+      const directRoute = resolveJsOrTs(path.join('app', 'api', routePath, 'route.js'));
       const hasTemplateParam = url.includes('{');
 
       if (hasTemplateParam) {
@@ -323,7 +331,7 @@ describe('Machine-Readable Discovery', () => {
           const entries = fs.readdirSync(parentDir);
           found = entries.some(e =>
             e.startsWith('[') &&
-            fs.existsSync(path.join(parentDir, e, 'route.js'))
+            (fs.existsSync(path.join(parentDir, e, 'route.js')) || fs.existsSync(path.join(parentDir, e, 'route.ts')))
           );
         }
         expect(found).toBe(true);

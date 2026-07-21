@@ -317,10 +317,11 @@ describe('.well-known/ep-trust.json claims', () => {
 
       // Check that a route.js exists somewhere under this path
       const routeDir = path.join(ROOT, 'app', apiPath);
-      const routeFile = path.join(routeDir, 'route.js');
+      // Routes are migrating from .js to .ts file-by-file; check both.
+      const routeFileExists = (dir) => fs.existsSync(path.join(dir, 'route.js')) || fs.existsSync(path.join(dir, 'route.ts'));
       // Some routes use dynamic segments like [entityId]
       // So we check either the exact path or a dynamic segment variant
-      let exists = fs.existsSync(routeFile);
+      let exists = routeFileExists(routeDir);
       if (!exists) {
         // Try to find a route.js in a directory that matches the pattern
         // e.g., /api/trust/profile might have /api/trust/profile/[entityId]/route.js
@@ -329,17 +330,16 @@ describe('.well-known/ep-trust.json claims', () => {
           const entries = fs.readdirSync(parentDir, { withFileTypes: true });
           for (const entry of entries) {
             if (entry.isDirectory() && entry.name.startsWith('[')) {
-              const dynamicRoute = path.join(parentDir, entry.name, 'route.js');
-              if (fs.existsSync(dynamicRoute)) {
+              if (routeFileExists(path.join(parentDir, entry.name))) {
                 exists = true;
                 break;
               }
             }
           }
         }
-        // Also check if route.js exists directly in the parent
+        // Also check if a route file exists directly in the parent
         if (!exists) {
-          exists = fs.existsSync(path.join(parentDir, 'route.js'));
+          exists = routeFileExists(parentDir);
         }
       }
 

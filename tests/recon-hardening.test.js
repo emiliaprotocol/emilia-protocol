@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { GET as healthGET } from '../app/api/health/route.js';
@@ -17,7 +17,14 @@ import { GET as domainScoreGET } from '../app/api/trust/domain-score/[entityId]/
 const ROOT = resolve(__dirname, '..');
 
 function source(path) {
-  return readFileSync(resolve(ROOT, path), 'utf8');
+  // Routes and pages are migrating from .js to .ts/.tsx file-by-file; fall
+  // back to whichever extension actually exists on disk.
+  const full = resolve(ROOT, path);
+  if (!existsSync(full) && path.endsWith('.js')) {
+    const ts = resolve(ROOT, `${path.slice(0, -3)}.ts`);
+    if (existsSync(ts)) return readFileSync(ts, 'utf8');
+  }
+  return readFileSync(full, 'utf8');
 }
 
 function nextRequest(url, init) {

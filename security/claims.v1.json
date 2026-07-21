@@ -202,11 +202,11 @@
       "statement": "An authority proof is accepted only under a relying-party-pinned registry issuer and only within its action, role, policy, time, currency, amount, organization, and delegation scope.",
       "acceptance_roots": ["registry issuer key pinned by the relying party", "registry epoch and head freshness policy"],
       "enforcement_path": [
-        { "language": "javascript", "file": "lib/authority/resolver.js", "symbol": "evaluateAuthorityVerdict", "exported": true },
+        { "language": "javascript", "file": "lib/authority/resolver.ts", "symbol": "evaluateAuthorityVerdict", "exported": true },
         { "language": "javascript", "file": "lib/authority/proof.js", "symbol": "verifyAuthorityProof", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "lib/authority/resolver.js", "export": "evaluateAuthorityVerdict" },
+        { "language": "javascript", "file": "lib/authority/resolver.ts", "export": "evaluateAuthorityVerdict" },
         { "language": "javascript", "file": "lib/authority/proof.js", "export": "verifyAuthorityProof" }
       ],
       "language_coverage": {
@@ -885,17 +885,17 @@
         "the action-clearance backend is shared, atomic, ownership-fenced, and non-expiring"
       ],
       "enforcement_path": [
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterProfile", "exported": true },
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "modelToMatterCaid", "exported": true },
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "verifyModelToMatterEvidence", "exported": true },
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterExecutor", "exported": true },
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "evaluateRegisteredModelToMatterPresentation", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "symbol": "createModelToMatterProfile", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "symbol": "modelToMatterCaid", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "symbol": "verifyModelToMatterEvidence", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "symbol": "createModelToMatterExecutor", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "symbol": "evaluateRegisteredModelToMatterPresentation", "exported": true },
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.ts", "symbol": "evaluateRegisteredPresentation", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "createModelToMatterExecutor" },
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "modelToMatterCaid" },
-        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "evaluateRegisteredModelToMatterPresentation" }
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "export": "createModelToMatterExecutor" },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "export": "modelToMatterCaid" },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.ts", "export": "evaluateRegisteredModelToMatterPresentation" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "tests/model-to-matter.test.js" },
@@ -1112,14 +1112,14 @@
         "PostgreSQL serializes action consumption, executor-key rotation, timeout, and reconciliation transitions"
       ],
       "enforcement_path": [
-        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "symbol": "deriveMobileActionContinuity", "exported": true },
-        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "symbol": "verifyMobileProviderOutcome", "exported": true },
+        { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "symbol": "deriveMobileActionContinuity", "exported": true },
+        { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "symbol": "verifyMobileProviderOutcome", "exported": true },
         { "language": "javascript", "file": "lib/mobile/store.js", "symbol": "consumeMobileAction", "exported": true },
         { "language": "javascript", "file": "lib/mobile/store.js", "symbol": "reconcileMobileActionOperation", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "export": "deriveMobileActionContinuity" },
-        { "language": "javascript", "file": "lib/mobile/action-continuity.js", "export": "verifyMobileProviderOutcome" },
+        { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "export": "deriveMobileActionContinuity" },
+        { "language": "javascript", "file": "lib/mobile/action-continuity.ts", "export": "verifyMobileProviderOutcome" },
         { "language": "javascript", "file": "lib/mobile/store.js", "export": "consumeMobileAction" },
         { "language": "javascript", "file": "lib/mobile/store.js", "export": "reconcileMobileActionOperation" }
       ],
@@ -1271,14 +1271,14 @@
         "owner-fenced durable execution and settlement stores"
       ],
       "enforcement_path": [
-        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "verifyGraceMobileAuthorization", "exported": true },
-        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "executeGraceCurtailment", "exported": true },
-        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "symbol": "buildActionStateCapsule", "exported": true }
+        { "language": "javascript", "file": "lib/grace/mobile-grid.ts", "symbol": "verifyGraceMobileAuthorization", "exported": true },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.ts", "symbol": "executeGraceCurtailment", "exported": true },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.ts", "symbol": "buildActionStateCapsule", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "verifyGraceMobileAuthorization" },
-        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "executeGraceCurtailment" },
-        { "language": "javascript", "file": "lib/grace/mobile-grid.js", "export": "buildActionStateCapsule" }
+        { "language": "javascript", "file": "lib/grace/mobile-grid.ts", "export": "verifyGraceMobileAuthorization" },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.ts", "export": "executeGraceCurtailment" },
+        { "language": "javascript", "file": "lib/grace/mobile-grid.ts", "export": "buildActionStateCapsule" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "conformance/vectors/grace-mobile-grid.v1.json" },

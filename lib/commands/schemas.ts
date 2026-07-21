@@ -9,20 +9,20 @@
 
 import { ProtocolWriteError } from '@/lib/protocol-write';
 
-function requireField(obj, field, label) {
+function requireField(obj: any, field: string, label?: string): void {
   if (!obj[field] && obj[field] !== 0 && obj[field] !== false) {
     throw new ProtocolWriteError(`${label || field} is required`, { code: 'VALIDATION_ERROR', status: 400 });
   }
 }
 
-function requireString(obj, field, label) {
+function requireString(obj: any, field: string, label?: string): void {
   requireField(obj, field, label);
   if (typeof obj[field] !== 'string') {
     throw new ProtocolWriteError(`${label || field} must be a string`, { code: 'VALIDATION_ERROR', status: 400 });
   }
 }
 
-function requireArray(obj, field, label) {
+function requireArray(obj: any, field: string, label?: string): void {
   if (!Array.isArray(obj[field]) || obj[field].length === 0) {
     throw new ProtocolWriteError(`${label || field} must be a non-empty array`, { code: 'VALIDATION_ERROR', status: 400 });
   }
@@ -30,15 +30,15 @@ function requireArray(obj, field, label) {
 
 // ── Receipt Commands ─────────────────────────────────────────────────────
 
-export function validateSubmitReceipt(input) {
+export function validateSubmitReceipt(input: any): void {
   requireString(input, 'entity_id');
 }
 
-export function validateSubmitAutoReceipt(input) {
+export function validateSubmitAutoReceipt(input: any): void {
   requireString(input, 'entity_id');
 }
 
-export function validateConfirmReceipt(input) {
+export function validateConfirmReceipt(input: any): void {
   requireString(input, 'receipt_id');
   requireString(input, 'confirming_entity_id');
   if (typeof input.confirm !== 'boolean') {
@@ -48,41 +48,41 @@ export function validateConfirmReceipt(input) {
 
 // ── Commit Commands ─────────────────────────────────────────────────────
 
-export function validateIssueCommit(input) {
+export function validateIssueCommit(input: any): void {
   requireString(input, 'entity_id');
   requireString(input, 'action_type');
 }
 
-export function validateVerifyCommit(input) {
+export function validateVerifyCommit(input: any): void {
   requireString(input, 'commit_id');
 }
 
-export function validateRevokeCommit(input) {
+export function validateRevokeCommit(input: any): void {
   requireString(input, 'commit_id');
   requireString(input, 'reason');
 }
 
 // ── Dispute Commands ─────────────────────────────────────────────────────
 
-export function validateFileDispute(input) {
+export function validateFileDispute(input: any): void {
   requireString(input, 'receipt_id');
   requireString(input, 'reason');
 }
 
-export function validateRespondDispute(input) {
+export function validateRespondDispute(input: any): void {
   requireString(input, 'dispute_id');
   requireString(input, 'responder_id');
   requireString(input, 'response');
 }
 
-export function validateResolveDispute(input) {
+export function validateResolveDispute(input: any): void {
   requireString(input, 'dispute_id');
   requireString(input, 'resolution');
   requireString(input, 'rationale');
   requireString(input, 'operator_id');
 }
 
-export function validateAppealDispute(input) {
+export function validateAppealDispute(input: any): void {
   requireString(input, 'dispute_id');
   requireString(input, 'reason');
   if (input.reason && input.reason.trim().length < 10) {
@@ -90,18 +90,18 @@ export function validateAppealDispute(input) {
   }
 }
 
-export function validateResolveAppeal(input) {
+export function validateResolveAppeal(input: any): void {
   requireString(input, 'dispute_id');
   requireString(input, 'resolution');
   requireString(input, 'rationale');
   requireString(input, 'operator_id');
 }
 
-export function validateWithdrawDispute(input) {
+export function validateWithdrawDispute(input: any): void {
   requireString(input, 'dispute_id');
 }
 
-export function validateFileReport(input) {
+export function validateFileReport(input: any): void {
   requireString(input, 'entity_id');
   requireString(input, 'report_type');
   requireString(input, 'description');
@@ -109,30 +109,30 @@ export function validateFileReport(input) {
 
 // ── Handshake Commands ───────────────────────────────────────────────────
 
-export function validateInitiateHandshake(input) {
+export function validateInitiateHandshake(input: any): void {
   requireString(input, 'mode');
   requireString(input, 'policy_id');
   requireArray(input, 'parties');
 }
 
-export function validateAddPresentation(input) {
+export function validateAddPresentation(input: any): void {
   requireString(input, 'handshake_id');
   requireString(input, 'party_role');
   requireString(input, 'presentation_hash');
 }
 
-export function validateVerifyHandshake(input) {
+export function validateVerifyHandshake(input: any): void {
   requireString(input, 'handshake_id');
 }
 
-export function validateRevokeHandshake(input) {
+export function validateRevokeHandshake(input: any): void {
   requireString(input, 'handshake_id');
   requireString(input, 'reason');
 }
 
 // ── Schema Map (command_type → validator) ────────────────────────────────
 
-export const COMMAND_SCHEMAS = {
+export const COMMAND_SCHEMAS: Record<string, Function> = {
   submit_receipt: validateSubmitReceipt,
   submit_auto_receipt: validateSubmitAutoReceipt,
   confirm_receipt: validateConfirmReceipt,

@@ -29,19 +29,19 @@ import { setStatus, getEngagement, STATUS } from './store.js';
 import { logger } from '../logger.js';
 
 /**
- * @param {object} opts
- * @param {object} opts.engagement engagement record { engagement_id, intake, questionnaire_* }
- * @param {boolean} [opts.persist=true] write status transitions to the store
- * @returns {Promise<object>} pipeline result
+ * Pipeline orchestrator.
  */
-export async function runPipeline({ engagement, persist = true }) {
+export async function runPipeline({
+  engagement,
+  persist = true,
+}: any): Promise<any> {
   const t0 = Date.now();
   const id = engagement.engagement_id;
   const intake = engagement.intake || {};
   const slug = engagement.slug || deriveSlug(intake.company, id);
   const log = logger.child ? logger.child({ engagement_id: id }) : logger;
 
-  const persistStatus = async (status, extra) => {
+  const persistStatus = async (status: string, extra?: any): Promise<void> => {
     if (!persist || !id) return;
     if (await getEngagement(id)) await setStatus(id, status, extra);
   };
@@ -164,23 +164,20 @@ export async function runPipeline({ engagement, persist = true }) {
   }
 }
 
-/**
- * @param {{
- *   id: string,
- *   slug: string,
- *   persist: boolean,
- *   reason: string,
- *   detail: string,
- *   engagement: object,
- *   t0: number,
- *   verification?: any,
- *   answers?: any[]
- * }} options
- */
-async function finishEscalated({ id, slug, persist, reason, detail, engagement, t0, verification, answers }) {
+async function finishEscalated({
+  id,
+  slug,
+  persist,
+  reason,
+  detail,
+  engagement,
+  t0,
+  verification,
+  answers,
+}: any): Promise<any> {
   const perQuestionEscalations = (answers || [])
-    .filter((a) => a.status !== 'answered')
-    .map((a) => ({ id: a.id, reason: a.escalation_reason }));
+    .filter((a: any) => a.status !== 'answered')
+    .map((a: any) => ({ id: a.id, reason: a.escalation_reason }));
 
   if (persist && id && (await getEngagement(id))) {
     await setStatus(id, STATUS.ESCALATED, {
@@ -194,9 +191,11 @@ async function finishEscalated({ id, slug, persist, reason, detail, engagement, 
     });
   }
   // Fire-and-forget customer notice; never block escalation on email.
-  notifyEscalated({ engagement, reason, etaHours: reason.startsWith('extraction') ? 24 : 4 }).catch(
-    () => {},
-  );
+  notifyEscalated({
+    engagement,
+    reason,
+    etaHours: reason.startsWith('extraction') ? 24 : 4,
+  }).catch(() => {});
 
   return {
     ok: true,

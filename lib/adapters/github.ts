@@ -12,8 +12,8 @@ const GITHUB_API = 'https://api.github.com';
 /**
  * Fetch GitHub App metadata for pre-action enforcement.
  */
-export async function getGitHubAppMetadata(appSlug, token = null) {
-  const headers = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'EMILIA-Protocol' };
+export async function getGitHubAppMetadata(appSlug: string, token: string | null = null): Promise<Record<string, any>> {
+  const headers: Record<string, string> = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'EMILIA-Protocol' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   try {
@@ -47,7 +47,7 @@ export async function getGitHubAppMetadata(appSlug, token = null) {
         installations: app.installations_count || 0,
       },
     };
-  } catch (err) {
+  } catch (err: any) {
     return { error: err.message, available: false };
   }
 }
@@ -56,10 +56,10 @@ export async function getGitHubAppMetadata(appSlug, token = null) {
  * Verify GitHub org ownership for identity binding.
  * Checks if a specific user/app has admin access to the org.
  */
-export async function verifyGitHubOrgControl(orgName, token) {
+export async function verifyGitHubOrgControl(orgName: string, token: string): Promise<Record<string, any>> {
   if (!token) return { verified: false, reason: 'Token required for org verification' };
 
-  const headers = {
+  const headers: Record<string, string> = {
     'Accept': 'application/vnd.github+json',
     'Authorization': `Bearer ${token}`,
     'User-Agent': 'EMILIA-Protocol',
@@ -76,7 +76,7 @@ export async function verifyGitHubOrgControl(orgName, token) {
       state: membership.state,
       org: orgName,
     };
-  } catch (err) {
+  } catch (err: any) {
     return { verified: false, reason: err.message };
   }
 }
@@ -84,16 +84,16 @@ export async function verifyGitHubOrgControl(orgName, token) {
 /**
  * Extract permission risk class from GitHub App permissions.
  */
-export function classifyGitHubPermissions(permissions) {
+export function classifyGitHubPermissions(permissions: Record<string, any>): string {
   const dangerousPerms = ['administration', 'organization_administration', 'members', 'organization_secrets', 'actions'];
   const sensitivePerms = ['contents', 'issues', 'pull_requests', 'workflows', 'packages'];
   const readOnlyPerms = ['metadata', 'statuses', 'checks'];
 
   const permKeys = Object.keys(permissions);
-  const writePerms = Object.entries(permissions).filter(([, v]) => v === 'write').map(([k]) => k);
+  const writePerms = Object.entries(permissions).filter(([, v]: [string, any]) => v === 'write').map(([k]: [string, any]) => k);
 
-  if (writePerms.some(p => dangerousPerms.includes(p))) return 'dangerous';
-  if (writePerms.some(p => sensitivePerms.includes(p))) return 'sensitive';
+  if (writePerms.some((p: string) => dangerousPerms.includes(p))) return 'dangerous';
+  if (writePerms.some((p: string) => sensitivePerms.includes(p))) return 'sensitive';
   if (writePerms.length > 0) return 'moderate';
   if (permKeys.length > 0) return 'read_only';
   return 'minimal';

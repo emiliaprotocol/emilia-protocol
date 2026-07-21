@@ -51,6 +51,7 @@ export async function POST(request) {
     const swChecks = pr?.softwareChecks || { passed: [], failed: [] };
 
     // Decision logic
+    /** @type {'allow'|'review'|'deny'} */
     let decision;
     if (pr?.pass && (pr?.softwarePass !== false)) {
       decision = 'allow';

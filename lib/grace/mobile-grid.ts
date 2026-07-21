@@ -34,36 +34,32 @@ const DECIMAL = /^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,3})?$/;
 const ID = /^[A-Za-z0-9:_.@/-]{3,256}$/;
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
-function record(value) {
+function record(value: any): value is Record<string, any> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
-function exactMembers(value, members) {
+function exactMembers(value: any, members: Set<string>): boolean {
   return record(value) && Object.keys(value).every((key) => members.has(key));
 }
 
-/**
- * @param {*} value
- * @returns {value is string}
- */
-function validInstant(value) {
+function validInstant(value: any): value is string {
   return typeof value === 'string' && INSTANT.test(value) && Number.isFinite(Date.parse(value));
 }
 
-function validId(value) {
+function validId(value: any): value is string {
   return typeof value === 'string' && ID.test(value);
 }
 
-function digestBytes(value) {
+function digestBytes(value: any): Buffer {
   if (!isCanonicalizable(value)) throw new TypeError('value is outside the EP canonicalization profile');
   return crypto.createHash('sha256').update(canonicalize(value), 'utf8').digest();
 }
 
-export function graceDigest(value) {
+export function graceDigest(value: any): string {
   return `sha256:${digestBytes(value).toString('hex')}`;
 }
 
-function publicSpki(publicKey) {
+function publicSpki(publicKey: any): crypto.KeyObject | null {
   if (typeof publicKey !== 'string' || !/^[A-Za-z0-9_-]+$/.test(publicKey)) return null;
   try {
     const key = crypto.createPublicKey({
@@ -77,7 +73,7 @@ function publicSpki(publicKey) {
   }
 }
 
-function privateEd25519(privateKey) {
+function privateEd25519(privateKey: any): crypto.KeyObject | null {
   try {
     if (privateKey?.type === 'private' && privateKey.asymmetricKeyType === 'ed25519') return privateKey;
     const key = crypto.createPrivateKey(privateKey);
@@ -87,11 +83,7 @@ function privateEd25519(privateKey) {
   }
 }
 
-/**
- * @param {object} body
- * @param {{ privateKey?: *, keyId?: string }} [options]
- */
-export function signGraceArtifact(body, { privateKey, keyId } = {}) {
+export function signGraceArtifact(body: any, { privateKey, keyId }: any = {}): any {
   if (!record(body) || !isCanonicalizable(body) || !validId(keyId)) {
     throw new TypeError('canonical artifact body and signer key ID are required');
   }
@@ -102,11 +94,7 @@ export function signGraceArtifact(body, { privateKey, keyId } = {}) {
   return { ...signed, signature: { algorithm: 'Ed25519', value } };
 }
 
-/**
- * @param {object} artifact
- * @param {{ publicKeySpkiB64u?: string, keyId?: string, version?: string }} [options]
- */
-export function verifyGraceArtifact(artifact, { publicKeySpkiB64u, keyId, version } = {}) {
+export function verifyGraceArtifact(artifact: any, { publicKeySpkiB64u, keyId, version }: any = {}): boolean {
   try {
     if (!record(artifact) || artifact['@version'] !== version
         || artifact.signer_key_id !== keyId || !validId(keyId)
@@ -128,8 +116,8 @@ export function verifyGraceArtifact(artifact, { publicKeySpkiB64u, keyId, versio
   }
 }
 
-export function validateCurtailmentAction(action) {
-  const errors = [];
+export function validateCurtailmentAction(action: any): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
   if (!exactMembers(action, ACTION_MEMBERS)) return { valid: false, errors: ['action_shape_invalid'] };
   if (!isCanonicalizable(action)) errors.push('action_not_canonicalizable');
   if (action['@version'] !== GRACE_MOBILE_ACTION_VERSION) errors.push('action_version_invalid');
@@ -160,7 +148,7 @@ export function validateCurtailmentAction(action) {
   return { valid: errors.length === 0, errors };
 }
 
-export function createCurtailmentAction(input = {}) {
+export function createCurtailmentAction(input: any = {}): any {
   const action = {
     '@version': GRACE_MOBILE_ACTION_VERSION,
     action_id: input.actionId,
@@ -181,7 +169,7 @@ export function createCurtailmentAction(input = {}) {
   return action;
 }
 
-export function buildCurtailmentControlledAction(action) {
+export function buildCurtailmentControlledAction(action: any): any {
   const checked = validateCurtailmentAction(action);
   if (!checked.valid) throw new TypeError(`invalid grid.curtailment action: ${checked.errors.join(', ')}`);
   return {
@@ -205,7 +193,7 @@ export function buildCurtailmentControlledAction(action) {
   };
 }
 
-export function buildCurtailmentPresentation(action) {
+export function buildCurtailmentPresentation(action: any): any {
   const controlledAction = buildCurtailmentControlledAction(action);
   const targetMw = (Number(action.target_delta_kw) / 1000).toFixed(3).replace(/\.000$/, '');
   const minutes = Math.round((Date.parse(action.window.not_after) - Date.parse(action.window.not_before)) / 60000);
@@ -219,7 +207,7 @@ export function buildCurtailmentPresentation(action) {
   };
 }
 
-export function actionAsEnvelopeOrder(action) {
+export function actionAsEnvelopeOrder(action: any): any {
   const checked = validateCurtailmentAction(action);
   if (!checked.valid) return { valid: false, order: null, reason: checked.errors[0] };
   return {
@@ -233,7 +221,7 @@ export function actionAsEnvelopeOrder(action) {
   };
 }
 
-function classASignoff(evidence) {
+function classASignoff(evidence: any): any {
   if (!record(evidence?.context) || !record(evidence?.signoff)
       || evidence.signoff.key_class !== 'A' || !record(evidence.signoff.webauthn)
       || evidence.signoff.context_hash !== hashCanonical(evidence.context)
@@ -241,22 +229,13 @@ function classASignoff(evidence) {
   return { context: evidence.context, webauthn: evidence.signoff.webauthn };
 }
 
-/**
- * @param {{
- *   action?: object,
- *   presentation?: object,
- *   policy?: object,
- *   evidence?: object[],
- *   profile?: object,
- * }} [options]
- */
 export function verifyGraceMobileAuthorization({
   action,
   presentation,
   policy,
   evidence,
   profile,
-} = {}) {
+}: any = {}): any {
   const checks = {
     action: false,
     pinned_profile: false,
@@ -275,7 +254,7 @@ export function verifyGraceMobileAuthorization({
         || !validId(profile.rp_id)
         || !Array.isArray(profile.allowed_origins) || profile.allowed_origins.length === 0
         || profile.allowed_origins.length > 16
-        || !profile.allowed_origins.every((origin) => typeof origin === 'string'
+        || !profile.allowed_origins.every((origin: any) => typeof origin === 'string'
           && origin.length > 0 && origin.length <= 2048)
         || new Set(profile.allowed_origins).size !== profile.allowed_origins.length
         || !Number.isSafeInteger(profile.max_challenge_age_ms)
@@ -287,14 +266,14 @@ export function verifyGraceMobileAuthorization({
       return { valid: false, checks, authorization_digest: null };
     }
     const roster = profile.approvers;
-    checks.pinned_profile = roster.length > 0 && roster.every((item) => record(item)
+    checks.pinned_profile = roster.length > 0 && roster.every((item: any) => record(item)
       && validId(item.role) && validId(item.approver) && validId(item.device_key_id)
       && typeof item.public_key_spki === 'string'
       && ['ios', 'android'].includes(item.platform)
       && validId(item.app_id) && typeof item.credential_id === 'string')
-      && new Set(roster.map((item) => item.approver)).size === roster.length
-      && new Set(roster.map((item) => item.device_key_id)).size === roster.length
-      && new Set(roster.map((item) => item.credential_id)).size === roster.length;
+      && new Set(roster.map((item: any) => item.approver)).size === roster.length
+      && new Set(roster.map((item: any) => item.device_key_id)).size === roster.length
+      && new Set(roster.map((item: any) => item.credential_id)).size === roster.length;
     if (!checks.pinned_profile) return { valid: false, checks, authorization_digest: null };
 
     const controlledAction = buildCurtailmentControlledAction(action);
@@ -302,11 +281,11 @@ export function verifyGraceMobileAuthorization({
     const actionHash = graceDigest(controlledAction);
     const presentationHash = graceDigest(normalizedPresentation);
     const policyHash = graceDigest(policy);
-    const rosterByApprover = new Map(roster.map((item) => [item.approver, item]));
-    const approverIndexById = new Map(roster.map((item, index) => [item.approver, index + 1]));
-    const members = [];
-    const indices = [];
-    const windows = [];
+    const rosterByApprover = new Map(roster.map((item: any) => [item.approver, item]));
+    const approverIndexById = new Map(roster.map((item: any, index: number) => [item.approver, index + 1]));
+    const members: any[] = [];
+    const indices: any[] = [];
+    const windows: boolean[] = [];
     let semantics = true;
     for (const item of evidence) {
       const signoff = classASignoff(item);
@@ -353,7 +332,7 @@ export function verifyGraceMobileAuthorization({
       policy: {
         mode: 'threshold',
         required: profile.required,
-        approvers: roster.map(({ role, approver }) => ({ role, approver })),
+        approvers: roster.map(({ role, approver }: any) => ({ role, approver })),
         distinct_humans: true,
         window_sec: profile.window_sec,
       },
@@ -368,7 +347,7 @@ export function verifyGraceMobileAuthorization({
       authorization_digest: valid ? graceDigest({
         action_hash: actionHash,
         policy_hash: policyHash,
-        evidence: evidence.map((item) => graceDigest(item)),
+        evidence: evidence.map((item: any) => graceDigest(item)),
       }) : null,
     };
   } catch {
@@ -376,14 +355,14 @@ export function verifyGraceMobileAuthorization({
   }
 }
 
-function stripDigest(value) {
+function stripDigest(value: any): string | null {
   return typeof value === 'string' && HEX_DIGEST.test(value) ? value.slice(7) : null;
 }
 
-function normalizeCapsule(value) {
+function normalizeCapsule(value: any): any {
   if (Array.isArray(value)) return value.map(normalizeCapsule);
   if (!record(value)) return value;
-  const output = {};
+  const output: Record<string, any> = {};
   for (const [key, member] of Object.entries(value)) {
     const normalized = normalizeCapsule(member);
     if (normalized === null || normalized === undefined) continue;
@@ -393,7 +372,7 @@ function normalizeCapsule(value) {
   return output;
 }
 
-export function actionStateCapsuleId(capsule) {
+export function actionStateCapsuleId(capsule: any): string | null {
   if (!record(capsule)) return null;
   const canonical = Object.fromEntries(Object.entries(capsule)
     .filter(([key]) => key !== 'capsule_id' && key !== 'chain'));
@@ -402,17 +381,6 @@ export function actionStateCapsuleId(capsule) {
   return digestBytes(normalized).toString('hex');
 }
 
-/**
- * @param {{
- *   action?: object,
- *   operator?: string,
- *   developer?: string,
- *   timestamp?: string,
- *   dispatchRequestDigest?: string,
- *   meterDigest?: string,
- *   authorizationDigest?: string,
- * }} [options]
- */
 export function buildActionStateCapsule({
   action,
   operator,
@@ -421,7 +389,7 @@ export function buildActionStateCapsule({
   dispatchRequestDigest,
   meterDigest,
   authorizationDigest,
-} = {}) {
+}: any = {}): any {
   const actionCheck = validateCurtailmentAction(action);
   const requestDigest = stripDigest(dispatchRequestDigest);
   const responseDigest = stripDigest(meterDigest);
@@ -478,26 +446,22 @@ export function buildActionStateCapsule({
   };
 }
 
-function actionStateProtectedHeaders(capsule, keyId) {
-  return new Map(/** @type {Array<[number, *]>} */ ([
+function actionStateProtectedHeaders(capsule: any, keyId: string): Map<number | string, any> {
+  return new Map([
     [1, -8],
     [3, ACTION_STATE_MEDIA_TYPE],
     [4, Buffer.from(keyId, 'utf8')],
-    [15, new Map(/** @type {Array<[number|string, *]>} */ ([
+    [15, new Map([
       [1, capsule.developer],
       [2, `urn:agent-action-capsule:${capsule.operator}:${capsule.action_id}`],
       ['capsule_action_type', capsule.action_type],
       ['capsule_decision_id', capsule.action_id],
       ['capsule_statement_type', 'agent_action'],
-    ]))],
-  ]));
+    ] as Array<[number | string, any]>)],
+  ] as Array<[number | string, any]>);
 }
 
-/**
- * @param {object} capsule
- * @param {{ privateKey?: *, keyId?: string }} [options]
- */
-export function createActionStateSignedStatement(capsule, { privateKey, keyId } = {}) {
+export function createActionStateSignedStatement(capsule: any, { privateKey, keyId }: any = {}): any {
   if (!record(capsule) || actionStateCapsuleId(capsule) !== capsule.capsule_id || !validId(keyId)) {
     throw new TypeError('a valid sealed Action State Capsule and key ID are required');
   }
@@ -522,11 +486,7 @@ export function createActionStateSignedStatement(capsule, { privateKey, keyId } 
   };
 }
 
-/**
- * @param {object} statement
- * @param {{ publicKeySpkiB64u?: string, keyId?: string }} [options]
- */
-export function verifyActionStateSignedStatement(statement, { publicKeySpkiB64u, keyId } = {}) {
+export function verifyActionStateSignedStatement(statement: any, { publicKeySpkiB64u, keyId }: any = {}): any {
   try {
     if (!record(statement) || statement.media_type !== ACTION_STATE_MEDIA_TYPE
         || statement.anchoring !== 'unregistered_signed_statement'
@@ -572,7 +532,7 @@ export function verifyActionStateSignedStatement(statement, { publicKeySpkiB64u,
   }
 }
 
-export async function runCurtailmentOnce(key, store, execute) {
+export async function runCurtailmentOnce(key: string, store: any, execute: Function): Promise<any> {
   if (typeof key !== 'string' || !key || !store || store.durable !== true
       || store.ownershipFenced !== true || typeof store.reserve !== 'function'
       || typeof store.commit !== 'function' || typeof execute !== 'function') {
@@ -596,35 +556,13 @@ export async function runCurtailmentOnce(key, store, execute) {
       try {
         if ((await store.commit(key)) !== true) throw new Error('execution_consumption_commit_failed');
       } catch (commitError) {
-        if (error && typeof error === 'object') error.execution_state_error = String(commitError?.message || commitError);
+        if (error && typeof error === 'object') (error as any).execution_state_error = String((commitError as any)?.message || commitError);
       }
     }
     throw error;
   }
 }
 
-/**
- * @param {{
- *   action?: object,
- *   envelope?: object,
- *   spent?: object,
- *   presentation?: object,
- *   policy?: object,
- *   authorizationEvidence?: object[],
- *   authorizationProfile?: object,
- *   executionStore?: *,
- *   actuator?: *,
- *   actuatorTrust?: object,
- *   meter?: *,
- *   meterTrust?: object,
- *   settlementStore?: *,
- *   settle?: Function,
- *   operator?: string,
- *   developer?: string,
- *   capsuleSigner?: { keyId?: string, privateKey?: * },
- *   clock?: () => string,
- * }} [options]
- */
 export async function executeGraceCurtailment({
   action,
   envelope,
@@ -644,7 +582,7 @@ export async function executeGraceCurtailment({
   developer = 'cosa-reference-adapter/1.0',
   capsuleSigner,
   clock = () => new Date().toISOString(),
-} = {}) {
+}: any = {}): Promise<any> {
   const actionResult = actionAsEnvelopeOrder(action);
   if (!actionResult.valid) return { ok: false, verdict: 'refuse_action', reason: actionResult.reason };
   let gateAt;
@@ -668,8 +606,8 @@ export async function executeGraceCurtailment({
       || !record(actuatorTrust) || !meter || typeof meter.observe !== 'function'
       || typeof meter.verify !== 'function' || !record(meterTrust)
       || !validId(operator) || !validId(developer)
-      || !record(capsuleSigner) || !validId((/** @type {{ keyId?: string, privateKey?: * }} */ (capsuleSigner)).keyId)
-      || !privateEd25519((/** @type {{ keyId?: string, privateKey?: * }} */ (capsuleSigner)).privateKey)
+      || !record(capsuleSigner) || !validId((capsuleSigner as any).keyId)
+      || !privateEd25519((capsuleSigner as any).privateKey)
       || !settlementStore || typeof settlementStore.reserve !== 'function'
       || typeof settlementStore.commit !== 'function' || typeof settle !== 'function') {
     return { ok: false, verdict: 'refuse_adapter_unavailable', reason: 'pinned actuator and meter adapters are required' };
@@ -722,7 +660,7 @@ export async function executeGraceCurtailment({
   if (!meterValid) return { ok: false, verdict: 'effect_unconfirmed', reason: 'meter statement failed pinned verification', retry_safe: false, acknowledgment };
   const compliance = computeCompliance(actionResult.order, {
     baseline_mw: meterStatement.baseline_mw,
-    intervals_mw: meterStatement.intervals.map((item) => item.load_mw),
+    intervals_mw: meterStatement.intervals.map((item: any) => item.load_mw),
   });
   if (!compliance.computable) return { ok: false, verdict: 'effect_unconfirmed', reason: compliance.reason, retry_safe: false };
 
@@ -735,7 +673,7 @@ export async function executeGraceCurtailment({
     timestamp: meterStatement.observed_at,
     dispatchRequestDigest: requestDigest,
     meterDigest,
-    authorizationDigest: /** @type {string | undefined} */ (authorization.authorization_digest ?? undefined),
+    authorizationDigest: (authorization.authorization_digest ?? undefined) as string | undefined,
   });
   const actionState = createActionStateSignedStatement(capsule, capsuleSigner);
   const settlementClaim = {

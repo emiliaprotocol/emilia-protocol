@@ -15,14 +15,13 @@ const GUARD_CLOUD_PERMISSIONS = new Set([
   'approval_request',
 ]);
 
-/**
- * @param {Request} request
- * @param {{
- *   authenticateProtocol?: typeof authenticateRequest,
- *   authenticateCloud?: typeof authenticateCloudRequest
- * }} [dependencies]
- */
-export async function authenticateGuardRequest(request, dependencies = {}) {
+export async function authenticateGuardRequest(
+  request: Request,
+  dependencies: {
+    authenticateProtocol?: typeof authenticateRequest,
+    authenticateCloud?: typeof authenticateCloudRequest
+  } = {}
+): Promise<any> {
   const header = request.headers.get('authorization') || '';
   const isTenantControlPlaneKey = /^Bearer\s+ept_/i.test(header);
   if (!isTenantControlPlaneKey) {
@@ -62,7 +61,7 @@ export async function authenticateGuardRequest(request, dependencies = {}) {
   };
 }
 
-export function isCloudGuardPrincipal(auth) {
+export function isCloudGuardPrincipal(auth: any): boolean {
   return Boolean(auth?.guard_cloud?.key_id);
 }
 

@@ -80,15 +80,14 @@ const TEMPLATES = [
   },
 ];
 
-let _cache = null;
+let _cache: any[] | null = null;
 
 /**
  * Load + hash all templates. Cached for the process lifetime.
- * @returns {Array<{id,title,file,path,content,content_hash,keywords,sections}>}
  */
-export function loadTemplates() {
+export function loadTemplates(): any[] {
   if (_cache) return _cache;
-  _cache = TEMPLATES.map((t) => {
+  _cache = TEMPLATES.map((t: any) => {
     const filePath = path.join(TEMPLATE_DIR, t.file);
     const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
     return {
@@ -103,8 +102,8 @@ export function loadTemplates() {
 }
 
 /** Look up a single template by id. */
-export function getTemplate(id) {
-  return loadTemplates().find((t) => t.id === id) || null;
+export function getTemplate(id: string): any | null {
+  return loadTemplates().find((t: any) => t.id === id) || null;
 }
 
 /**
@@ -116,15 +115,12 @@ export function getTemplate(id) {
  * "least-privilege" matches the keyword "least privilege". A single
  * multi-word hit (weight 1.0) is enough to clear the classifier's template
  * threshold; single words accumulate (0.4 each).
- *
- * @param {string} questionText
- * @returns {Array<{id:string,score:number,hits:string[]}>} sorted desc by score
  */
-export function scoreTemplates(questionText) {
+export function scoreTemplates(questionText: string): Array<{id:string, score:number, hits:string[]}> {
   const hay = normalizeMatch(questionText);
   return loadTemplates()
-    .map((t) => {
-      const hits = [];
+    .map((t: any) => {
+      const hits: string[] = [];
       let score = 0;
       for (const k of t.keywords) {
         const nk = normalizeMatch(k);
@@ -137,11 +133,11 @@ export function scoreTemplates(questionText) {
       }
       return { id: t.id, score, hits };
     })
-    .sort((a, b) => b.score - a.score);
+    .sort((a: any, b: any) => b.score - a.score);
 }
 
 /** Lowercase + collapse hyphens/underscores/whitespace to single spaces. */
-function normalizeMatch(s) {
+function normalizeMatch(s: string): string {
   return String(s || '')
     .toLowerCase()
     .replace(/[-_/]+/g, ' ')
@@ -151,14 +147,12 @@ function normalizeMatch(s) {
 
 /**
  * Split markdown into `## N. Heading` sections for excerpt selection.
- * @param {string} content
- * @returns {Array<{heading:string,body:string}>}
  */
-function splitSections(content) {
+function splitSections(content: string): Array<{heading:string, body:string}> {
   if (!content) return [];
   const lines = content.split('\n');
-  const sections = [];
-  let current = null;
+  const sections: any[] = [];
+  let current: any = null;
   for (const line of lines) {
     const h = line.match(/^##\s+(.*)$/);
     if (h) {
@@ -169,5 +163,5 @@ function splitSections(content) {
     }
   }
   if (current) sections.push(current);
-  return sections.map((s) => ({ heading: s.heading, body: s.body.trim() }));
+  return sections.map((s: any) => ({ heading: s.heading, body: s.body.trim() }));
 }

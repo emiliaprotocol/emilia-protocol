@@ -22,7 +22,7 @@ const MAX_CLOCK_SKEW_MS = 60 * 1000;
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
 const DEVELOPMENT_STATE_SECRET = crypto.randomBytes(32).toString('base64url');
 
-function decodeBase64url(value, maxBytes) {
+function decodeBase64url(value: any, maxBytes: number): Buffer | null {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) return null;
   try {
     const bytes = Buffer.from(value, 'base64url');
@@ -32,12 +32,9 @@ function decodeBase64url(value, maxBytes) {
   }
 }
 
-function stateSecret() {
+function stateSecret(): string {
   const { stateSecret: explicit, isProduction } = getSsoConfig();
   if (explicit) return explicit;
-  // Fail closed in production: never sign OIDC state/nonce/PKCE round-trips with
-  // the predictable 'ep-sso-dev-secret' fallback (would allow state/nonce
-  // forgery). Same posture as lib/sso/session.js and lib/crypto/secret-box.js.
   if (isProduction) {
     throw new Error('sso/state: SSO_STATE_SECRET is required in production — refusing to sign SSO state without an explicit secret.');
   }
@@ -45,7 +42,7 @@ function stateSecret() {
 }
 
 /** Sign a state payload → a compact `<b64url(json)>.<hmac>` token. */
-export function signState(payload) {
+export function signState(payload: any): string {
   const body = Buffer.from(JSON.stringify({ ...payload, iat: Date.now() }), 'utf8').toString('base64url');
   const mac = crypto.createHmac('sha256', stateSecret()).update(body).digest('base64url');
   return `${body}.${mac}`;
@@ -55,7 +52,7 @@ export function signState(payload) {
  * Verify + decode a state token. Returns the payload, or null if the signature
  * is invalid or the token is older than maxAgeMs.
  */
-export function verifyState(token, maxAgeMs = DEFAULT_MAX_AGE_MS) {
+export function verifyState(token: any, maxAgeMs: number = DEFAULT_MAX_AGE_MS): any {
   if (!token || typeof token !== 'string' || token.length > MAX_STATE_TOKEN_CHARS
       || !Number.isSafeInteger(maxAgeMs) || maxAgeMs < 0) return null;
   const parts = token.split('.');

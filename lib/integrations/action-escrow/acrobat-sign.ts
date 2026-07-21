@@ -647,7 +647,7 @@ export function createAcrobatSignAdapter({
       deadline,
       'fetch_agreement',
     );
-    if (!initialSnapshot.ok) return initialSnapshot.result;
+    if (!initialSnapshot.ok) return (initialSnapshot as { ok: false; result: AcrobatSignEvidenceResult }).result;
     const agreement = initialSnapshot.agreement;
     if (agreement.agreement_id !== normalizedExpected.agreementId) {
       return closedResult('mismatch', {
@@ -681,7 +681,7 @@ export function createAcrobatSignAdapter({
       deadline,
       'fetch_agreement_events',
     );
-    if (!initialEvents.ok) return initialEvents.result;
+    if (!initialEvents.ok) return (initialEvents as { ok: false; result: AcrobatSignEvidenceResult }).result;
 
     const documentResponse = await call(
       `/api/rest/v6/agreements/${encodedAgreementId}/combinedDocument`
@@ -713,13 +713,13 @@ export function createAcrobatSignAdapter({
       deadline,
       'refetch_agreement',
     );
-    if (!finalSnapshot.ok) return finalSnapshot.result;
+    if (!finalSnapshot.ok) return (finalSnapshot as { ok: false; result: AcrobatSignEvidenceResult }).result;
     const finalEvents = await fetchEventSnapshot(
       encodedAgreementId,
       deadline,
       'refetch_agreement_events',
     );
-    if (!finalEvents.ok) return finalEvents.result;
+    if (!finalEvents.ok) return (finalEvents as { ok: false; result: AcrobatSignEvidenceResult }).result;
     if (!agreementSnapshotsMatch(agreement, finalSnapshot.agreement)
         || !eventSnapshotsMatch(initialEvents.events, finalEvents.events)) {
       return closedResult('mismatch', {

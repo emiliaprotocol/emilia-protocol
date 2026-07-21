@@ -46,7 +46,7 @@ export const AUTHORITY_VERDICTS = Object.freeze([
   'delegation_broken',
   'insufficient_assurance',
   'registry_unavailable',
-]);
+] as const);
 
 const VERDICT = Object.freeze(
   Object.fromEntries(AUTHORITY_VERDICTS.map((v) => [v, v])),
@@ -54,7 +54,7 @@ const VERDICT = Object.freeze(
 
 const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 
-function strictInstantMs(value) {
+function strictInstantMs(value: any): number {
   if (typeof value !== 'string') return NaN;
   const match = value.match(RFC3339_INSTANT);
   if (!match) return NaN;
@@ -72,15 +72,15 @@ function strictInstantMs(value) {
 
 /** Assurance ordering: a higher class satisfies a lower requirement. */
 const ASSURANCE_RANK = Object.freeze({ C: 1, B: 2, A: 3 });
-function meetsAssurance(have, required) {
+function meetsAssurance(have: any, required: any): boolean {
   if (!required) return true;
   if (!Object.hasOwn(ASSURANCE_RANK, have) || !Object.hasOwn(ASSURANCE_RANK, required)) return false;
-  return ASSURANCE_RANK[have] >= ASSURANCE_RANK[required];
+  return (ASSURANCE_RANK as any)[have] >= (ASSURANCE_RANK as any)[required];
 }
 
 const MAX_DELEGATION_DEPTH = 8;
 
-function sha256hex(bytes) {
+function sha256hex(bytes: Buffer): string {
   return crypto.createHash('sha256').update(bytes).digest('hex');
 }
 
@@ -89,10 +89,8 @@ function sha256hex(bytes) {
  * deliberately small and stable: an offline verifier re-derives this exact
  * shape to recompute `authority_result_hash`, so its field set and ordering
  * (via canonical JSON) are part of the wire contract.
- *
- * @param {object} r a resolver result
  */
-export function authorityResultCore(r) {
+export function authorityResultCore(r: any): any {
   return {
     '@version': AUTHORITY_REGISTRY_VERSION,
     action_type: r.action_type ?? null,
@@ -111,12 +109,12 @@ export function authorityResultCore(r) {
 }
 
 /** sha256:<hex> over the canonical authority-result core (excludes the hash itself). */
-export function authorityResultHash(r) {
-  return `sha256:${sha256hex(canonicalize(authorityResultCore(r)))}`;
+export function authorityResultHash(r: any): string {
+  return `sha256:${sha256hex(Buffer.from(canonicalize(authorityResultCore(r)), 'utf8'))}`;
 }
 
 /** Build the six receipt-binding fields from a resolver result. */
-export function authorityBinding(r) {
+export function authorityBinding(r: any): any {
   return {
     authority_id: r.authority_id ?? null,
     authority_verdict: r.verdict,
@@ -127,7 +125,7 @@ export function authorityBinding(r) {
   };
 }
 
-function fail(verdict, detail, extra = {}) {
+function fail(verdict: string, detail: string, extra: any = {}): any {
   return { verdict, authorized: false, detail: detail ?? verdict, ...extra };
 }
 
@@ -137,7 +135,7 @@ function fail(verdict, detail, extra = {}) {
  * action_scopes / max_amount_usd simply has null limits (see the resolver's
  * treatment of null scope/limit below).
  */
-export function normalizeAuthorityRecord(row) {
+export function normalizeAuthorityRecord(row: any): any {
   if (!row) return null;
   const scopes = row.action_scopes ?? row.scope ?? null;
   return {
@@ -165,12 +163,8 @@ export function normalizeAuthorityRecord(row) {
  * what its parent granted. Fail-closed: a missing, revoked, expired, or
  * out-of-window ancestor, a scope the parent does not itself hold, an amount
  * ceiling above the parent's, or a cycle/over-deep chain, is `delegation_broken`.
- *
- * @param {object} record   the (already validated) leaf authority record
- * @param {((id:string)=>object|null)|undefined} resolveParent  synchronous ancestor lookup (absent when the store has no ancestry access)
- * @param {string} atISO
  */
-function checkDelegation(record, resolveParent, atISO) {
+function checkDelegation(record: any, resolveParent: any, atISO: string): any {
   const at = strictInstantMs(atISO);
   let child = record;
   const seen = new Set([record.authority_id]);
@@ -185,7 +179,6 @@ function checkDelegation(record, resolveParent, atISO) {
       return { ok: false, detail: 'delegation_organization_mismatch' };
     }
 
-    // The parent must itself be a live authority at authorization time.
     if (parent.revoked_at || (parent.status && parent.status !== 'active')) {
       return { ok: false, detail: 'delegation_parent_revoked' };
     }
@@ -197,13 +190,10 @@ function checkDelegation(record, resolveParent, atISO) {
     if (parentFrom !== null && parentFrom > at) return { ok: false, detail: 'delegation_parent_not_yet_valid' };
     if (parentTo !== null && parentTo < at) return { ok: false, detail: 'delegation_parent_expired' };
 
-    // Containment: null means unbounded only at a root. Under a constrained
-    // parent, omission cannot reopen scope or amount. Currency, policy,
-    // assurance, and organization are equally monotone delegation dimensions.
     if (Array.isArray(parent.action_scopes)) {
       if (!Array.isArray(child.action_scopes)) return { ok: false, detail: 'delegation_scope_widened' };
       const parentScopes = new Set(parent.action_scopes);
-      if (!child.action_scopes.every((s) => parentScopes.has(s))) {
+      if (!child.action_scopes.every((s: any) => parentScopes.has(s))) {
         return { ok: false, detail: 'delegation_scope_widened' };
       }
     }
@@ -219,7 +209,7 @@ function checkDelegation(record, resolveParent, atISO) {
     }
     if (!Object.hasOwn(ASSURANCE_RANK, parent.assurance_class)
       || !Object.hasOwn(ASSURANCE_RANK, child.assurance_class)
-      || ASSURANCE_RANK[child.assurance_class] > ASSURANCE_RANK[parent.assurance_class]) {
+      || (ASSURANCE_RANK as any)[child.assurance_class] > (ASSURANCE_RANK as any)[parent.assurance_class]) {
       return { ok: false, detail: 'delegation_assurance_widened' };
     }
     child = parent;
@@ -230,34 +220,13 @@ function checkDelegation(record, resolveParent, atISO) {
 /**
  * PURE verdict over a fully-resolved context. No I/O. This is the function an
  * offline verifier and every conformance vector run against.
- *
- * @param {object} ctx
- * @param {object|null} ctx.record        the resolved authorities row (normalized) or null
- * @param {(id:string)=>object|null} [ctx.resolveParent]  ancestry lookup for delegation
- * @param {object|null} ctx.snapshot      { epoch:int, head:'sha256:...' } | null when unavailable
- * @param {boolean} [ctx.unavailable]     store could not be reached — fail closed
- * @param {object} input
- * @param {string} [input.organization_id]
- * @param {string} [input.principal_id]
- * @param {string} [input.approver_id]    the subject whose authority is being relied on (approver > principal)
- * @param {string} [input.action_type]
- * @param {number} [input.amount]
- * @param {string} [input.currency]
- * @param {string} [input.policy_hash]
- * @param {string} [input.issued_at]      ISO-8601 — authority is judged AS OF this instant
- * @param {number} [input.expected_min_epoch]  relying-party pin: reject a registry older than this
- * @param {string} [input.requiredAssurance]   'A' | 'B' | 'C'
- * @param {string} [input.required_role]        when set, the record's role must equal it
- * @returns {object} { verdict, authorized, detail, authority_id?, ...facts, registry_epoch, registry_head, ...binding-source fields }
  */
-export function evaluateAuthorityVerdict(ctx, input) {
+export function evaluateAuthorityVerdict(ctx: any, input: any): any {
   if (!input || typeof input !== 'object' || Array.isArray(input)) input = {};
   const at = input.issued_at;
   const atMs = strictInstantMs(at);
   const subjectRef = input.approver_id || input.principal_id || null;
 
-  // Carry the request facts onto every result so the result hash binds WHAT was
-  // asked, not only the verdict — an offline verifier recomputes the same core.
   const base = {
     action_type: input.action_type ?? null,
     amount: typeof input.amount === 'number' ? input.amount : null,
@@ -268,22 +237,19 @@ export function evaluateAuthorityVerdict(ctx, input) {
     registry_epoch: ctx?.snapshot?.epoch ?? null,
     registry_head: ctx?.snapshot?.head ?? null,
   };
-  const out = (r) => ({ ...base, ...r, verdict: r.verdict });
+  const out = (r: any) => ({ ...base, ...r, verdict: r.verdict });
 
-  // 0. Registry commitment must be present and fresh, or nothing can be relied on.
   if (ctx?.unavailable || !ctx?.snapshot) {
-    return out(fail(VERDICT.registry_unavailable, 'registry_unavailable', { registry_epoch: null, registry_head: null }));
+    return out(fail(VERDICT.registry_unavailable as any, 'registry_unavailable', { registry_epoch: null, registry_head: null }));
   }
-  if (Number.isSafeInteger(input.expected_min_epoch) && ctx.snapshot.epoch < /** @type {number} */ (input.expected_min_epoch)) {
-    return out(fail(VERDICT.registry_unavailable, 'stale_registry'));
+  if (Number.isSafeInteger(input.expected_min_epoch) && ctx.snapshot.epoch < (input.expected_min_epoch as number)) {
+    return out(fail(VERDICT.registry_unavailable as any, 'stale_registry'));
   }
 
   const record = ctx.record ? normalizeAuthorityRecord(ctx.record) : null;
 
-  // 1. No record for this subject in this org — unknown, never assumed.
-  if (!record) return out(fail(VERDICT.unknown_authority, 'no_authority_record'));
+  if (!record) return out(fail(VERDICT.unknown_authority as any, 'no_authority_record'));
 
-  // Carry the record's granted facts for the result core.
   const facts = {
     authority_id: record.authority_id,
     role: record.role,
@@ -291,80 +257,64 @@ export function evaluateAuthorityVerdict(ctx, input) {
     max_amount_usd: record.max_amount_usd,
   };
 
-  // A store lookup is not itself proof that the returned row belongs to the
-  // request. Re-bind the record to both requested dimensions so a poisoned or
-  // mis-keyed cache cannot substitute another human's or tenant's authority.
   if (!subjectRef || record.subject_ref !== subjectRef
     || !input.organization_id || record.organization_id !== input.organization_id) {
-    return out({ ...facts, ...fail(VERDICT.unknown_authority, 'authority_subject_or_organization_mismatch') });
+    return out({ ...facts, ...fail(VERDICT.unknown_authority as any, 'authority_subject_or_organization_mismatch') });
   }
 
-  // 2. Revocation and lifecycle status.
-  if (record.revoked_at) return out({ ...facts, ...fail(VERDICT.revoked_authority, 'revoked_at') });
+  if (record.revoked_at) return out({ ...facts, ...fail(VERDICT.revoked_authority as any, 'revoked_at') });
   if (record.status && record.status !== 'active') {
-    return out({ ...facts, ...fail(VERDICT.revoked_authority, `status_${record.status}`) });
+    return out({ ...facts, ...fail(VERDICT.revoked_authority as any, `status_${record.status}`) });
   }
 
-  // 3. Validity window, judged as of issued_at (NOT wall-clock now).
   if (!Number.isFinite(atMs)) {
-    return out({ ...facts, ...fail(VERDICT.expired_authority, 'invalid_issued_at') });
+    return out({ ...facts, ...fail(VERDICT.expired_authority as any, 'invalid_issued_at') });
   }
   const validToMs = record.valid_to ? strictInstantMs(record.valid_to) : null;
   const validFromMs = record.valid_from ? strictInstantMs(record.valid_from) : null;
   if ((record.valid_to && !Number.isFinite(validToMs)) || (record.valid_from && !Number.isFinite(validFromMs))) {
-    return out({ ...facts, ...fail(VERDICT.expired_authority, 'invalid_authority_window') });
+    return out({ ...facts, ...fail(VERDICT.expired_authority as any, 'invalid_authority_window') });
   }
   if (validToMs !== null && validToMs < atMs) {
-    return out({ ...facts, ...fail(VERDICT.expired_authority, 'valid_to_passed') });
+    return out({ ...facts, ...fail(VERDICT.expired_authority as any, 'valid_to_passed') });
   }
   if (validFromMs !== null && validFromMs > atMs) {
-    return out({ ...facts, ...fail(VERDICT.not_yet_valid, 'valid_from_future') });
+    return out({ ...facts, ...fail(VERDICT.not_yet_valid as any, 'valid_from_future') });
   }
 
-  // 4. Role.
   if (input.required_role && record.role !== input.required_role) {
-    return out({ ...facts, ...fail(VERDICT.wrong_role, 'role_mismatch') });
+    return out({ ...facts, ...fail(VERDICT.wrong_role as any, 'role_mismatch') });
   }
 
-  // 5. Action scope. A null scope means "unscoped" and is only acceptable for a
-  //    non-critical caller; the enforcement layer decides whether an unscoped
-  //    authority may stand for a critical action. Here: a PRESENT scope that
-  //    omits the action is a hard wrong_scope.
   if (Array.isArray(record.action_scopes) && !record.action_scopes.includes(input.action_type)) {
-    return out({ ...facts, ...fail(VERDICT.wrong_scope, 'action_not_in_scope') });
+    return out({ ...facts, ...fail(VERDICT.wrong_scope as any, 'action_not_in_scope') });
   }
 
-  // 6. Amount ceiling (currency-aware, fail-closed on any currency it cannot
-  //    prove containment in — EP holds no FX oracle).
   if (record.max_amount_usd !== null && record.max_amount_usd !== undefined) {
     if (!Number.isFinite(record.max_amount_usd) || record.max_amount_usd < 0
-      || !Number.isFinite(input.amount) || /** @type {number} */ (input.amount) < 0
+      || !Number.isFinite(input.amount) || (input.amount as number) < 0
       || typeof input.currency !== 'string' || input.currency.length === 0) {
-      return out({ ...facts, ...fail(VERDICT.amount_exceeded, 'amount_or_ceiling_unprovable') });
+      return out({ ...facts, ...fail(VERDICT.amount_exceeded as any, 'amount_or_ceiling_unprovable') });
     }
     const ceilingCurrency = record.currency || 'USD';
     const amountCurrency = input.currency;
     if (amountCurrency !== ceilingCurrency) {
-      return out({ ...facts, ...fail(VERDICT.amount_exceeded, 'currency_mismatch') });
+      return out({ ...facts, ...fail(VERDICT.amount_exceeded as any, 'currency_mismatch') });
     }
-    if (/** @type {number} */ (input.amount) > record.max_amount_usd) {
-      return out({ ...facts, ...fail(VERDICT.amount_exceeded, 'over_ceiling') });
+    if ((input.amount as number) > record.max_amount_usd) {
+      return out({ ...facts, ...fail(VERDICT.amount_exceeded as any, 'over_ceiling') });
     }
   }
 
-  // 7. Policy pinning. If the authority was granted against a specific policy
-  //    hash, the action's policy must match it exactly.
   if (record.policy_hash && record.policy_hash !== input.policy_hash) {
-    return out({ ...facts, ...fail(VERDICT.policy_mismatch, 'policy_hash_mismatch') });
+    return out({ ...facts, ...fail(VERDICT.policy_mismatch as any, 'policy_hash_mismatch') });
   }
 
-  // 8. Delegation containment.
-  const deleg = checkDelegation(record, ctx.resolveParent, /** @type {string} */ (at));
-  if (!deleg.ok) return out({ ...facts, ...fail(VERDICT.delegation_broken, deleg.detail) });
+  const deleg = checkDelegation(record, ctx.resolveParent, at as string);
+  if (!deleg.ok) return out({ ...facts, ...fail(VERDICT.delegation_broken as any, deleg.detail) });
 
-  // 9. Assurance floor (a real, pre-existing gate — kept in the closed set).
   if (!meetsAssurance(record.assurance_class, input.requiredAssurance)) {
-    return out({ ...facts, ...fail(VERDICT.insufficient_assurance, 'assurance_below_required', { assurance_class: record.assurance_class ?? null }) });
+    return out({ ...facts, ...fail(VERDICT.insufficient_assurance as any, 'assurance_below_required', { assurance_class: record.assurance_class ?? null }) });
   }
 
   return out({

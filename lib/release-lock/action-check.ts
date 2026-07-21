@@ -35,9 +35,9 @@ function shuffled(values, randomInt) {
 function moneyDecoys(value) {
   const cents = BigInt(value.replace('.', ''));
   const alternatives = new Set([
-    cents + 1n,
-    cents + 100n,
-    cents > 100n ? cents - 100n : cents + 1000n,
+    cents + BigInt(1),
+    cents + BigInt(100),
+    cents > BigInt(100) ? cents - BigInt(100) : cents + BigInt(1000),
   ]);
   return [...alternatives].map((amount) => {
     const digits = amount.toString().padStart(3, '0');

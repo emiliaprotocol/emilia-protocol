@@ -30,7 +30,7 @@ function verify(payload, signature, publicKeyB64u) {
 
 describe('public demo signing boundary', () => {
   it('contains no source-controlled demo private key', () => {
-    const source = fs.readFileSync(path.join(ROOT, 'lib/demo-receipt.js'), 'utf8');
+    const source = fs.readFileSync(path.join(ROOT, 'lib/demo-receipt.ts'), 'utf8');
     const forbiddenName = ['DEMO', 'PRIVATE', 'JWK'].join('_');
     expect(source).not.toContain(forbiddenName);
     expect(source).not.toMatch(/createPrivateKey\(\s*\{\s*key:\s*DEMO/);

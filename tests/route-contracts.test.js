@@ -15,23 +15,27 @@ const ROOT = join(import.meta.dirname, '..');
 
 /**
  * Convert an OpenAPI path like /api/trust/profile/{entityId}
- * to the Next.js App Router file path:
- *   app/api/trust/profile/[entityId]/route.js
+ * to the Next.js App Router file path (route.js or route.ts, whichever
+ * exists -- routes are migrating from JS to TypeScript file-by-file):
+ *   app/api/trust/profile/[entityId]/route.ts
  */
 function openapiPathToRouteFile(apiPath) {
   const converted = apiPath.replace(/\{([^}]+)\}/g, '[$1]');
-  return join(ROOT, 'app', converted, 'route.js');
+  const dir = join(ROOT, 'app', converted);
+  const ts = join(dir, 'route.ts');
+  if (existsSync(ts)) return ts;
+  return join(dir, 'route.js');
 }
 
 // Check whether a route file exists for a middleware policy path.
 // Handles three cases:
-//   1. Exact match:  /api/health -> app/api/health/route.js
-//   2. Prefix match: /api/trust/profile -> app/api/trust/profile/[...]/route.js
-//   3. Wildcards:    /api/entities/*/auto-receipt -> app/api/entities/[param]/auto-receipt/route.js
+//   1. Exact match:  /api/health -> app/api/health/route.{js,ts}
+//   2. Prefix match: /api/trust/profile -> app/api/trust/profile/[...]/route.{js,ts}
+//   3. Wildcards:    /api/entities/*/auto-receipt -> app/api/entities/[param]/auto-receipt/route.{js,ts}
 function findRouteFile(routePath) {
   const parts = routePath.split('/').filter(Boolean);
   const candidates = resolvePathParts(join(ROOT, 'app'), parts);
-  return candidates.some(dir => existsSync(join(dir, 'route.js')));
+  return candidates.some(dir => existsSync(join(dir, 'route.js')) || existsSync(join(dir, 'route.ts')));
 }
 
 function resolvePathParts(base, parts) {

@@ -497,7 +497,7 @@ export async function verifyPolicyRolloutAuthorization({
   if (!shaped.ok) return shaped;
 
   if (shaped.quorumPolicy) {
-    const approvedStates = shaped.approvals.map((event) => event.after_state);
+    const approvedStates = (shaped as PolicyRolloutQuorumEvidence).approvals.map((event) => event.after_state);
     const credentialIds = approvedStates
       .map((state) => state?.webauthn?.credential_id)
       .filter(Boolean);
@@ -585,8 +585,9 @@ export async function verifyPolicyRolloutAuthorization({
     };
   }
 
-  const approvedState = shaped.approved.after_state;
-  const approverId = approvedState?.approver_id || shaped.approved.actor_id || null;
+  const singleShaped = shaped as PolicyRolloutSingleEvidence;
+  const approvedState = singleShaped.approved.after_state;
+  const approverId = approvedState?.approver_id || singleShaped.approved.actor_id || null;
   const credentialId = approvedState?.webauthn?.credential_id || null;
   if (!credentialId) {
     return failure(403, 'rollout_authorization_assurance_insufficient', 'The Class-A approval has no enrolled credential');

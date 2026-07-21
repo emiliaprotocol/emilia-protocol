@@ -238,7 +238,15 @@ export async function anchorToBase(batchId, merkleRoot, { v2 = false } = {}) {
   const hexData = '0x' + Buffer.from(calldata).toString('hex');
 
   try {
-    // Dynamic import viem (tree-shakeable, no ethers bloat)
+    // Dynamic import viem (tree-shakeable, no ethers bloat). Literal
+    // specifiers, so webpack traces and bundles the real dependency for the
+    // standalone server output exactly as before -- only viem's TYPES are
+    // stubbed (tsconfig.json "paths", stubs/viem*.d.ts), because resolving
+    // viem's real types here makes the checker instantiate "ox"'s ABI
+    // generics against this file's own usage and hit ox's known "type
+    // instantiation is excessively deep" limit. Every call below still gets
+    // real typing from this file's own annotations; only the raw module
+    // namespace is untyped.
     const { createWalletClient, createPublicClient, http } = await import('viem');
     const { privateKeyToAccount, toAccount } = await import('viem/accounts');
     const { base, baseSepolia } = await import('viem/chains');
@@ -254,8 +262,8 @@ export async function anchorToBase(batchId, merkleRoot, { v2 = false } = {}) {
     // boundary rather than widening the signer's declared factory type.
     const account = signer.createAccount({
       privateKeyToAccount,
-      toAccount: (source) => toAccount(source as import('viem/accounts').AccountSource),
-    }) as import('viem').Account;
+      toAccount: (source) => toAccount(source as any),
+    }) as any;
 
     const publicClient = createPublicClient({
       chain: selectedChain,
@@ -272,11 +280,11 @@ export async function anchorToBase(batchId, merkleRoot, { v2 = false } = {}) {
     // viem's SendTransactionParameters is a large discriminated union (legacy,
     // EIP-1559, EIP-4844 blob, etc.); a plain data-only tx object structurally
     // matches multiple overload legs and checkJs can't pick one without a cast.
-    const hash = await walletClient.sendTransaction(/** @type {any} */ ({
+    const hash = await walletClient.sendTransaction({
       to: account.address,
-      value: 0n,
+      value: BigInt(0),
       data: hexData as `0x${string}`,
-    }));
+    } as any);
 
     // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash });

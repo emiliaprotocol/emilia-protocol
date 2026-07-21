@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   verifyReceiptTool,
   verifySignoffTool,
-} from '../app/api/mcp/[transport]/route.js';
+} from '../app/api/mcp/[transport]/verifier-tools.js';
 
 function canonicalize(value) {
   if (value === null || value === undefined) return JSON.stringify(value);

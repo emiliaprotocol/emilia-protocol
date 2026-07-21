@@ -217,6 +217,7 @@ export async function POST(request) {
       }
     }
 
+    /** @type {'allow'|'review'|'deny'} */
     let decision = reasons.length === 0 ? 'allow' : 'deny';
 
     // A gate decision is usable only when backed by a durable allow commit.
@@ -301,7 +302,7 @@ export async function POST(request) {
       reasons,
       warnings,
       appealPath: 'https://emiliaprotocol.ai/appeal',
-      contextUsed: null,
+      contextUsed: undefined,
       profileSummary: {
         confidence: conf,
         evidence_level: ee,

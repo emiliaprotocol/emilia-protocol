@@ -5,7 +5,15 @@ import { strictJsonGate } from '../../strict-json.js';
 const MAX_CONFIGURED_RESPONSE_BYTES = 64 * 1024 * 1024;
 const MAX_CONFIGURED_TIMEOUT_MS = 60_000;
 
-function headerValue(headers, name) {
+export type BoundedFetchResult =
+  | { kind: 'response'; status: number; headers: any; bytes: Uint8Array }
+  | { kind: 'failure'; reason: 'timeout' | 'network' | 'response_too_large' | 'invalid_response' };
+
+type ReadBoundedBodyResult =
+  | { kind: 'body'; bytes: Uint8Array }
+  | { kind: 'failure'; reason: 'timeout' | 'network' | 'response_too_large' | 'invalid_response' };
+
+function headerValue(headers: any, name: string): string | null {
   if (headers && typeof headers.get === 'function') return headers.get(name);
   if (!headers || typeof headers !== 'object') return null;
   const match = Object.entries(headers)
@@ -13,7 +21,7 @@ function headerValue(headers, name) {
   return match ? String(match[1]) : null;
 }
 
-function concatenate(chunks, total) {
+function concatenate(chunks: Uint8Array[], total: number): Uint8Array {
   const output = new Uint8Array(total);
   let offset = 0;
   for (const chunk of chunks) {
@@ -23,7 +31,11 @@ function concatenate(chunks, total) {
   return output;
 }
 
-async function readBoundedBody(response, maxBytes, controller) {
+async function readBoundedBody(
+  response: Response,
+  maxBytes: number,
+  controller: AbortController
+): Promise<ReadBoundedBodyResult> {
   const contentLength = headerValue(response.headers, 'content-length');
   if (contentLength !== null) {
     if (!/^[0-9]+$/.test(contentLength)) {
@@ -50,7 +62,7 @@ async function readBoundedBody(response, maxBytes, controller) {
   }
 
   const reader = response.body.getReader();
-  const chunks = [];
+  const chunks: Uint8Array[] = [];
   let total = 0;
   while (true) {
     const { done, value } = await reader.read();
@@ -71,14 +83,14 @@ async function readBoundedBody(response, maxBytes, controller) {
   return { kind: 'body', bytes: concatenate(chunks, total) };
 }
 
-export function validateResponseLimit(value, fieldName) {
+export function validateResponseLimit(value: any, fieldName: string): number {
   if (!Number.isSafeInteger(value) || value < 1 || value > MAX_CONFIGURED_RESPONSE_BYTES) {
     throw new TypeError(`${fieldName} is outside the supported range`);
   }
   return value;
 }
 
-export function validateTimeout(value, fieldName = 'timeoutMs') {
+export function validateTimeout(value: any, fieldName: string = 'timeoutMs'): number {
   if (!Number.isSafeInteger(value) || value < 1 || value > MAX_CONFIGURED_TIMEOUT_MS) {
     throw new TypeError(`${fieldName} is outside the supported range`);
   }
@@ -88,13 +100,11 @@ export function validateTimeout(value, fieldName = 'timeoutMs') {
 /**
  * Accepts only a bare HTTPS origin. Callers construct fixed paths beneath the
  * returned value and requestBounded re-checks every final URL against it.
- *
- * @param {string} input
- * @param {object} [opts]
- * @param {Set<string>} [opts.allowedHosts]
- * @param {string} [opts.fieldName]
  */
-export function validatePinnedOrigin(input, { allowedHosts, fieldName = 'apiOrigin' } = {}) {
+export function validatePinnedOrigin(
+  input: any,
+  { allowedHosts, fieldName = 'apiOrigin' }: { allowedHosts?: Set<string>, fieldName?: string } = {}
+): string {
   if (typeof input !== 'string' || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty HTTPS origin`);
   }
@@ -121,29 +131,16 @@ export function validatePinnedOrigin(input, { allowedHosts, fieldName = 'apiOrig
 }
 
 /**
- * @typedef {{
- *   kind: 'response',
- *   status: number,
- *   headers: object,
- *   bytes: Uint8Array
- * } | {
- *   kind: 'failure',
- *   reason: 'timeout'|'network'|'response_too_large'|'invalid_response'
- * }} BoundedFetchResult
- */
-
-/**
  * Fetches one exact-origin resource without redirects and bounds both the
  * response body and total wall-clock time. Error messages and response bodies
  * are intentionally not surfaced.
- *
- * @param {Function} fetchImpl
- * @param {string|URL} input
- * @param {object} init
- * @param {{expectedOrigin:string,maxBytes:number,timeoutMs:number}} policy
- * @returns {Promise<BoundedFetchResult>}
  */
-export async function requestBounded(fetchImpl, input, init, policy) {
+export async function requestBounded(
+  fetchImpl: Function,
+  input: string | URL,
+  init: any,
+  policy: { expectedOrigin?: string; maxBytes?: number; timeoutMs?: number }
+): Promise<BoundedFetchResult> {
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch must be a function');
   const maxBytes = validateResponseLimit(policy?.maxBytes, 'maxBytes');
   const timeoutMs = validateTimeout(policy?.timeoutMs);
@@ -161,12 +158,12 @@ export async function requestBounded(fetchImpl, input, init, policy) {
 
   const controller = new AbortController();
   let timedOut = false;
-  let timer;
-  const timeout = new Promise((resolve) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout: Promise<BoundedFetchResult> = new Promise((resolve) => {
     timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
-      resolve({ kind: 'failure', reason: 'timeout' });
+      resolve({ kind: 'failure', reason: 'timeout' } as const as BoundedFetchResult);
     }, timeoutMs);
     timer.unref?.();
   });
@@ -212,16 +209,20 @@ export async function requestBounded(fetchImpl, input, init, policy) {
     }
   })();
 
-  const result = await Promise.race([operation, timeout]);
+  const result = await Promise.race([operation as Promise<BoundedFetchResult>, timeout]);
   clearTimeout(timer);
-  return result;
+  return result as BoundedFetchResult;
 }
 
-export function responseHeader(response, name) {
+export function responseHeader(response: any, name: string): string | null {
   return headerValue(response?.headers, name);
 }
 
-export function parseJsonObject(bytes, contentType, allowedProviderContentTypes = []) {
+export function parseJsonObject(
+  bytes: Uint8Array,
+  contentType: any,
+  allowedProviderContentTypes: any[] = []
+): { ok: false } | { ok: true; value: Record<string, any> } {
   if (typeof contentType !== 'string') return { ok: false };
   const mediaType = contentType.split(';', 1)[0].trim().toLowerCase();
   const allowed = new Set(

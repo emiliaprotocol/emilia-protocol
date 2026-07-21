@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const expandMigration = readFileSync(
@@ -8,10 +8,12 @@ const expandMigration = readFileSync(
   'utf8',
 );
 const migration = expandMigration;
-const route = readFileSync(
-  new URL('../app/api/cloud/policies/[policyId]/rollout/route.js', import.meta.url),
-  'utf8',
-);
+// Route is migrating from .js to .ts; resolve whichever extension exists.
+const routeTsUrl = new URL('../app/api/cloud/policies/[policyId]/rollout/route.ts', import.meta.url);
+const routeUrl = existsSync(routeTsUrl)
+  ? routeTsUrl
+  : new URL('../app/api/cloud/policies/[policyId]/rollout/route.js', import.meta.url);
+const route = readFileSync(routeUrl, 'utf8');
 
 describe('policy rollout atomic Accountable Signoff migration contract', () => {
   it('records a unique receipt, action, execution reference, and authority', () => {

@@ -3,13 +3,22 @@
 //
 // Generates Node-20-executable .js companions for .ts sources that are
 // imported outside the ts-loader/bundler resolution path: the documented
-// Action Escrow example (tested against the minimum supported Node), and
+// Action Escrow example (tested against the minimum supported Node),
 // conformance/runners/run-js.mjs (exercised with zero extra tooling by
 // deploy/airgap/verify-offline.sh, which the airgap-audit CI job runs on
 // Node 20 by design, to prove air-gapped verification needs nothing but
-// node + the repo). Node's built-in TypeScript stripping only exists from
-// 22.6 on, so these two consumers need a real transpiled .js file, not the
-// ts-loader hook's resolve-only fix.
+// node + the repo), and apps/gate-service (ships as a BYOC Docker image
+// pinned below Node's unflagged stripping threshold, and its own CI job's
+// test suite runs on Node 20). Node's built-in TypeScript stripping only
+// exists from 22.6 on (unflagged from 23.6), so these consumers need a real
+// transpiled .js file, not the ts-loader hook's resolve-only fix. Using
+// transpileModule (syntactic type-stripping only, no cross-file semantic
+// checking) rather than a full tsc program build is deliberate: these files
+// type-check fine under this repo's loose per-tier tsconfigs, but test/
+// directories are excluded from every tier's checkJs/typecheck coverage, so
+// apps/gate-service/test/helpers.ts in particular has never actually been
+// verified against strict-null-checks and isn't worth blocking a Node-20
+// compatibility shim on.
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,8 +32,19 @@ const SCRIPT_NAME = 'scripts/build-standalone-runtimes.mjs';
 const TARGETS = [
   'lib/integrations/action-escrow/procore-change-order.ts',
   'lib/integrations/action-escrow/acrobat-sign.ts',
+  'lib/integrations/action-escrow/bounded-fetch.ts',
+  'lib/integrations/action-escrow/licensed-custodian.ts',
   'lib/authority/authority-doc.ts',
   'lib/authority/document-proof-join.ts',
+  'lib/evidence/admissibility.ts',
+  'apps/gate-service/src/auth.ts',
+  'apps/gate-service/src/config.ts',
+  'apps/gate-service/src/github-client.ts',
+  'apps/gate-service/src/production-config.ts',
+  'apps/gate-service/src/routes.ts',
+  'apps/gate-service/src/runtime.ts',
+  'apps/gate-service/src/server.ts',
+  'apps/gate-service/test/helpers.ts',
 ].map((relativeSource) => {
   const sourcePath = resolve(repositoryRoot, relativeSource);
   const runtimePath = sourcePath.replace(/\.ts$/, '.js');

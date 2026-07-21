@@ -27,13 +27,9 @@ const PREFIX = 'epenc:v1:';
 const IV_LEN = 12;
 const TAG_LEN = 16;
 
-function keyBytes() {
-  const explicit = getSecretBoxKey(); // EP_SECRET_KEY via the canonical accessor
+function keyBytes(): Buffer {
+  const explicit = getSecretBoxKey();
   if (explicit) return Buffer.from(explicit, 'hex');
-  // No explicit key. The fallback derives the AES key from the service-role key,
-  // which is SHARED across tenants in a multi-tenant deployment — so every
-  // tenant's secrets would be sealed under one key. Fail CLOSED in production;
-  // keep the convenience fallback only for local/dev. (T1)
   if (process.env.NODE_ENV === 'production') {
     throw new Error('secret-box: EP_SECRET_KEY (64 hex) is required in production — refusing the shared service-role-derived fallback key');
   }
@@ -42,7 +38,7 @@ function keyBytes() {
 }
 
 /** Encrypt a secret for storage. null/empty passes through unchanged. */
-export function seal(plaintext) {
+export function seal(plaintext: any): string | null {
   if (plaintext == null || plaintext === '') return plaintext;
   const iv = crypto.randomBytes(IV_LEN);
   const cipher = crypto.createCipheriv('aes-256-gcm', keyBytes(), iv, { authTagLength: TAG_LEN });
@@ -56,7 +52,7 @@ export function seal(plaintext) {
  * (pre-encryption rows). A sealed value that fails authentication throws —
  * a tampered ciphertext must never decrypt to something plausible.
  */
-export function open(stored) {
+export function open(stored: any): string {
   if (stored == null || stored === '' || !String(stored).startsWith(PREFIX)) return stored;
   const raw = Buffer.from(String(stored).slice(PREFIX.length), 'base64url');
   if (raw.length < IV_LEN + TAG_LEN + 1) throw new Error('secret-box: ciphertext too short');
@@ -69,6 +65,6 @@ export function open(stored) {
 }
 
 /** True if the stored value is sealed (vs a pre-encryption plaintext row). */
-export function isSealed(stored) {
+export function isSealed(stored: any): boolean {
   return typeof stored === 'string' && stored.startsWith(PREFIX);
 }

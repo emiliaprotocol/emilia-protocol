@@ -24,7 +24,7 @@ const CUSTOMER_DIR = path.join(process.cwd(), 'data', 'trust-desk', 'customers')
  * Signing: each claim gets a fresh signed envelope (claim_id, payload_hash,
  * signed_at, signature) on every load.
  */
-export function loadCustomer(slug) {
+export function loadCustomer(slug: any) {
   if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {
     return null;
   }
@@ -41,11 +41,8 @@ export function loadCustomer(slug) {
  * each claim gets its signed envelope (stored if minted, else signed at load).
  * Shared by loadCustomer (file) and the Supabase page loader so both backends
  * produce identical output.
- *
- * @param {object} raw the stored trust-page document
- * @returns {object} customer with hydrated claims
  */
-export function hydrateCustomerDoc(raw) {
+export function hydrateCustomerDoc(raw: any) {
   if (!raw) return null;
   const claims = (raw.claims || []).map((claim) => {
     const { id, title, category, source_file, summary, bullets, policy_version } = claim;
@@ -105,7 +102,7 @@ export function listCustomers() {
  *   - expiring: expires_at - 30d < now < expires_at
  *   - stale:    now > expires_at
  */
-export function trustPageStatus(customer) {
+export function trustPageStatus(customer: any) {
   const now = Date.now();
   const expiresAtStr = customer?.engagement?.expires_at || customer?.expires_at;
   const expiresAt = expiresAtStr ? new Date(expiresAtStr).getTime() : NaN;

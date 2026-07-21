@@ -12,12 +12,17 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API_DIR = path.join(ROOT, 'app', 'api');
+// Routes are migrating from .js to .ts file-by-file; resolve each entry to
+// whichever extension actually exists on disk.
 const AUTH_BOUNDARY_ROUTES = [
-  'app/api/handshake/[handshakeId]/present/route.js',
-  'app/api/handshake/[handshakeId]/verify/route.js',
-  'app/api/cloud/webhooks/[endpointId]/route.js',
-  'app/api/keys/rotate/route.js',
-];
+  'app/api/handshake/[handshakeId]/present/route',
+  'app/api/handshake/[handshakeId]/verify/route',
+  'app/api/cloud/webhooks/[endpointId]/route',
+  'app/api/keys/rotate/route',
+].map((base) => {
+  const ts = `${base}.ts`;
+  return fs.existsSync(path.join(ROOT, ts)) ? ts : `${base}.js`;
+});
 const ACTOR_BOUNDARY_DIRS = [
   path.join(ROOT, 'app', 'api', 'handshake'),
   path.join(ROOT, 'app', 'api', 'disputes'),

@@ -22,13 +22,8 @@ import { ASSURANCE_RANK } from '@/lib/handshake/invariants.js';
 
 /**
  * Classify a single field change.
- *
- * @param {string} path
- * @param {unknown} before
- * @param {unknown} after
- * @returns {{ path: string, before: unknown, after: unknown, risk: 'loosening'|'tightening'|'neutral', rationale: string }}
  */
-function classifyChange(path, before, after) {
+function classifyChange(path: string, before: any, after: any): any {
   // nonce_required / payload_hash_required: true → false is loosening.
   // Non-boolean values on these fields are flagged separately — they should
   // never reach production (the handshake-layer validator rejects them) but
@@ -61,8 +56,8 @@ function classifyChange(path, before, after) {
 
   // minimum_assurance: lowered = loosening, raised = tightening.
   if (path.endsWith('.minimum_assurance')) {
-    const b = ASSURANCE_RANK[before];
-    const a = ASSURANCE_RANK[after];
+    const b = (ASSURANCE_RANK as any)[before];
+    const a = (ASSURANCE_RANK as any)[after];
     if (b !== undefined && a !== undefined) {
       if (a < b) return { path, before, after, risk: 'loosening', rationale: `assurance lowered ${before} → ${after}.` };
       if (a > b) return { path, before, after, risk: 'tightening', rationale: `assurance raised ${before} → ${after}.` };
@@ -87,7 +82,7 @@ function classifyChange(path, before, after) {
 /**
  * Recursively walk two objects and emit changes.
  */
-function walk(pathPrefix, a, b, out) {
+function walk(pathPrefix: string, a: any, b: any, out: any[]): void {
   // Handle addition/removal of entire subtrees.
   if (a === undefined && b !== undefined) {
     // Addition: default tightening if it's a new constraint, loosening if it removes something.
@@ -131,28 +126,19 @@ function walk(pathPrefix, a, b, out) {
 
 /**
  * Compute a semantic diff between two policy rules objects.
- *
- * @param {object} before - The prior policy.rules
- * @param {object} after  - The new policy.rules
- * @returns {{
- *   changes: Array,
- *   risk: 'loosening' | 'tightening' | 'neutral',
- *   summary: { loosening: number, tightening: number, neutral: number },
- * }}
  */
-export function diffPolicy(before, after) {
-  const out = [];
+export function diffPolicy(before: any, after: any): any {
+  const out: any[] = [];
   walk('', before || {}, after || {}, out);
 
   const summary = { loosening: 0, tightening: 0, neutral: 0 };
-  for (const c of out) summary[c.risk] = (summary[c.risk] || 0) + 1;
+  for (const c of out) summary[c.risk as keyof typeof summary] = (summary[c.risk as keyof typeof summary] || 0) + 1;
 
   // Overall diff classification:
   //   any loosening → 'loosening'
   //   only tightening → 'tightening'
   //   else → 'neutral'
-  /** @type {'loosening' | 'tightening' | 'neutral'} */
-  let overall = 'neutral';
+  let overall: 'loosening' | 'tightening' | 'neutral' = 'neutral';
   if (summary.loosening > 0) overall = 'loosening';
   else if (summary.tightening > 0) overall = 'tightening';
 
@@ -161,10 +147,8 @@ export function diffPolicy(before, after) {
 
 /**
  * Format a diff as a human-readable string.
- *
- * @param {ReturnType<typeof diffPolicy>} diff
  */
-export function formatDiff(diff) {
+export function formatDiff(diff: any): string {
   if (diff.changes.length === 0) return 'Policy diff: no changes.';
   const lines = [
     `Policy diff: ${diff.risk.toUpperCase()} (${diff.summary.loosening} loosening, ${diff.summary.tightening} tightening, ${diff.summary.neutral} neutral)`,

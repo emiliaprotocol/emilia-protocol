@@ -22,17 +22,16 @@ import { storeBackend } from './store.js';
 
 const CUSTOMER_DIR = path.join(process.cwd(), 'data', 'trust-desk', 'customers');
 
-let _sb = null;
-async function sb() {
+let _sb: any = null;
+async function sb(): Promise<any> {
   if (!_sb) _sb = await import('./store-supabase.js');
   return _sb;
 }
 
 /**
  * Persist a published page.
- * @param {object} opts { slug, doc, policies:[{doc_id,filename,content,content_hash}], answers }
  */
-export async function putPublishedPage({ slug, doc, policies, answers }) {
+export async function putPublishedPage({ slug, doc, policies, answers }: any): Promise<string> {
   if (storeBackend() === 'supabase') {
     return (await sb()).putPage({ doc, policies, answers });
   }
@@ -49,21 +48,19 @@ export async function putPublishedPage({ slug, doc, policies, answers }) {
 
 /**
  * Load a published page + a sync artifact reader.
- * @param {string} slug
- * @returns {Promise<{raw,customer,status,getArtifact:(source_file:string)=>(string|null)}|null>}
  */
-export async function getPublishedPage(slug) {
+export async function getPublishedPage(slug: string): Promise<{raw: any, customer: any, status: any, getArtifact: (source_file: string) => string | null} | null> {
   if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) return null;
 
   if (storeBackend() === 'supabase') {
     const page = await (await sb()).getPage(slug);
     if (!page) return null;
     const { doc, policies = [], answers = {} } = page;
-    const byFilename = new Map(policies.map((p) => [p.filename, p.content]));
-    const getArtifact = (sourceFile) => {
+    const byFilename: Map<string, string> = new Map(policies.map((p: any) => [p.filename, p.content]));
+    const getArtifact = (sourceFile: string | null): string | null => {
       if (!sourceFile) return null;
       if (sourceFile.endsWith('/answers.json')) return JSON.stringify(answers);
-      return byFilename.get(path.basename(sourceFile)) ?? null;
+      return (byFilename.get(path.basename(sourceFile)) as string | undefined) ?? null;
     };
     return { raw: doc, customer: hydrateCustomerDoc(doc), status: trustPageStatus(doc), getArtifact };
   }
@@ -72,7 +69,7 @@ export async function getPublishedPage(slug) {
   const file = path.join(CUSTOMER_DIR, `${slug}.json`);
   if (!file.startsWith(CUSTOMER_DIR + path.sep) || !fs.existsSync(file)) return null;
   const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const getArtifact = (sourceFile) => {
+  const getArtifact = (sourceFile: string | null): string | null => {
     const p = path.join(CUSTOMER_DIR, sourceFile || '');
     if (!p.startsWith(CUSTOMER_DIR + path.sep) || !fs.existsSync(p)) return null;
     return fs.readFileSync(p, 'utf8');
@@ -81,17 +78,17 @@ export async function getPublishedPage(slug) {
 }
 
 /** List published slugs across the active backend. */
-export async function listPublishedSlugs() {
+export async function listPublishedSlugs(): Promise<string[]> {
   if (storeBackend() === 'supabase') return (await sb()).listPageSlugs();
   if (!fs.existsSync(CUSTOMER_DIR)) return [];
   return fs
     .readdirSync(CUSTOMER_DIR)
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => f.replace(/\.json$/, ''));
+    .filter((f: string) => f.endsWith('.json'))
+    .map((f: string) => f.replace(/\.json$/, ''));
 }
 
 /** Read the monitor marker for a page ({} if none). */
-export async function getPageMonitor(slug) {
+export async function getPageMonitor(slug: string): Promise<Record<string, any>> {
   if (storeBackend() === 'supabase') return (await sb()).getPageMonitor(slug);
   try {
     return JSON.parse(fs.readFileSync(path.join(CUSTOMER_DIR, slug, 'monitor.json'), 'utf8'));
@@ -101,7 +98,7 @@ export async function getPageMonitor(slug) {
 }
 
 /** Persist the monitor marker for a page. */
-export async function setPageMonitor(slug, monitor) {
+export async function setPageMonitor(slug: string, monitor: Record<string, any>): Promise<undefined> {
   if (storeBackend() === 'supabase') return (await sb()).setPageMonitor(slug, monitor);
   const dir = path.join(CUSTOMER_DIR, slug);
   fs.mkdirSync(dir, { recursive: true });

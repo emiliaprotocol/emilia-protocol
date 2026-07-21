@@ -9,7 +9,7 @@ const root = process.cwd();
 const tsc = join(root, 'node_modules', 'typescript', 'bin', 'tsc');
 const builds = [
   ['lib/strict-json.ts', 'lib', 'lib/dist'],
-  ['packages/gate/action-control-manifest.ts', 'packages/gate', 'packages/gate/dist'],
+  ['packages/gate/src/action-control-manifest.ts', 'packages/gate/src', 'packages/gate/dist'],
 ];
 
 for (const [entry, rootDir, outDir] of builds) {

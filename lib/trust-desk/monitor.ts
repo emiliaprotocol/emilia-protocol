@@ -21,12 +21,10 @@ const FROM = process.env.TRUST_DESK_FROM_EMAIL || 'AI Trust Desk <trust@emiliapr
 
 /**
  * Run one monitoring pass.
- * @returns {Promise<{scanned:number, current:number, expiring:number, stale:number, notified:string[]}>}
  */
-export async function runMonitor() {
+export async function runMonitor(): Promise<{ scanned: number; current: number; expiring: number; stale: number; notified: string[] }> {
   const slugs = await listPublishedSlugs();
-  /** @type {{scanned:number, current:number, expiring:number, stale:number, notified:string[]}} */
-  const result = { scanned: 0, current: 0, expiring: 0, stale: 0, notified: [] };
+  const result: { scanned: number; current: number; expiring: number; stale: number; notified: string[] } = { scanned: 0, current: 0, expiring: 0, stale: 0, notified: [] };
 
   for (const slug of slugs) {
     const page = await getPublishedPage(slug);
@@ -61,7 +59,12 @@ export async function runMonitor() {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-async function sendRefreshEmail({ email, company, slug, status }) {
+async function sendRefreshEmail({
+  email,
+  company,
+  slug,
+  status,
+}: any): Promise<boolean> {
   if (!email) return false;
   const apiKey = process.env.RESEND_API_KEY;
   const subject =
@@ -87,8 +90,8 @@ async function sendRefreshEmail({ email, company, slug, status }) {
       body: JSON.stringify({ from: FROM, to: email, subject, text: body }),
     });
     return res.ok;
-  } catch (err) {
-    logger.warn('trust-desk monitor: refresh email failed', { slug, error: err.message });
+  } catch (err: any) {
+    logger.warn('trust-desk monitor: refresh email failed', { slug, error: err?.message });
     return false;
   }
 }

@@ -25,10 +25,10 @@ const DEV_FALLBACK_KEY = 'atd-dev-signing-key-not-for-production-use';
 let _warned = false;
 
 /**
- * @returns {string} the active HMAC signing key
- * @throws if production and ATD_SIGNING_KEY is unset (fail closed)
+ * Returns the active HMAC signing key.
+ * Throws if production and ATD_SIGNING_KEY is unset (fail closed).
  */
-export function getSigningKey() {
+export function getSigningKey(): string {
   const envKey = process.env.ATD_SIGNING_KEY;
   if (envKey) return envKey;
 
@@ -49,8 +49,7 @@ export function getSigningKey() {
  * Public, non-secret fingerprint of the active signing key. Safe to expose
  * on the verify endpoint so a buyer can confirm two claims were signed by the
  * same key without ever seeing the key itself.
- * @returns {string} `atdk_` + first 16 hex of sha256(key)
  */
-export function signingKeyFingerprint() {
+export function signingKeyFingerprint(): string {
   return `atdk_${sha256(getSigningKey()).slice(0, 16)}`;
 }

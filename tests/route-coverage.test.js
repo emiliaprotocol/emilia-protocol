@@ -15,12 +15,12 @@ const OPENAPI_PATH = path.join(ROOT, 'openapi.yaml');
 
 /** Read all `route.js` files under app/api/ and return their API paths. */
 function discoverRouteFiles() {
-  const files = fg.sync('app/api/**/route.js', { cwd: ROOT });
+  const files = fg.sync('app/api/**/route.{js,ts}', { cwd: ROOT });
   return files.map((f) => {
     // app/api/disputes/[disputeId]/adjudicate/route.js -> /api/disputes/[disputeId]/adjudicate
     const relative = f
       .replace(/^app/, '')
-      .replace(/\/route\.js$/, '');
+      .replace(/\/route\.(js|ts)$/, '');
     return { file: f, apiPath: relative };
   });
 }

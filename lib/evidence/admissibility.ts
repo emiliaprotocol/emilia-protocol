@@ -33,14 +33,14 @@ export const ADMISSIBILITY_VERDICTS = Object.freeze([
 ]);
 
 // Deterministic JCS-style canonicalization (I-JSON subset; no floats).
-function canon(v) {
+function canon(v: any): string {
   if (v === null || typeof v !== 'object') return JSON.stringify(v);
   if (Array.isArray(v)) return `[${v.map(canon).join(',')}]`;
   return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`;
 }
-const sha256hex = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const sha256hex = (s: string): string => crypto.createHash('sha256').update(s).digest('hex');
 const DIGEST_RE = /^(?:sha256:)?([0-9a-f]{64})$/i;
-const comparableAction = (value) => {
+const comparableAction = (value: any): any => {
   if (typeof value !== 'string') return value ?? null;
   const match = DIGEST_RE.exec(value);
   return match ? `sha256:${match[1].toLowerCase()}` : value;
@@ -75,21 +75,21 @@ const comparableAction = (value) => {
  * @returns {{ verdict:string, policy_id:string, reliance_purpose:string, action_digest:string|null,
  *            requirement:string, satisfied_by:string[], per_component:object[], reasons:string[], replay_digest:string }}
  */
-export function evaluateAdmissibility(bundle, policy, opts = {}) {
+export function evaluateAdmissibility(bundle: any, policy: any, opts: any = {}) {
   opts = opts && typeof opts === 'object' && !Array.isArray(opts) ? opts : {};
-  const reasons = [];
-  const components = Array.isArray(bundle?.components) ? bundle.components : [];
+  const reasons: string[] = [];
+  const components: any[] = Array.isArray(bundle?.components) ? bundle.components : [];
   const asOf = opts.as_of ? Date.parse(opts.as_of) : NaN;
   const requireAgreement = policy?.require_action_agreement !== false;
   const freshness = policy?.freshness_sec && typeof policy.freshness_sec === 'object'
     && !Array.isArray(policy.freshness_sec) ? policy.freshness_sec : {};
-  const revReq = new Set(Array.isArray(policy?.revocation_required)
+  const revReq = new Set<string>(Array.isArray(policy?.revocation_required)
     ? policy.revocation_required : []);
-  const malformedPolicy = [];
+  const malformedPolicy: string[] = [];
   if (policy?.freshness_sec !== undefined
       && (!policy.freshness_sec || typeof policy.freshness_sec !== 'object'
         || Array.isArray(policy.freshness_sec)
-        || Object.values(policy.freshness_sec).some((value) => !Number.isFinite(value) || value < 0))) {
+        || (Object.values(policy.freshness_sec) as any[]).some((value: any) => !Number.isFinite(value) || value < 0))) {
     malformedPolicy.push('freshness_sec must be an object of non-negative finite seconds');
   }
   if (policy?.revocation_required !== undefined
@@ -103,7 +103,7 @@ export function evaluateAdmissibility(bundle, policy, opts = {}) {
   }
 
   // Normalize component facts (the replay-stable view — only decision-relevant fields).
-  const facts = components.map((c) => {
+  const facts: any[] = components.map((c) => {
     const component = c && typeof c === 'object' && !Array.isArray(c) ? c : {};
     const ageSec = (component.issued_at && !Number.isNaN(asOf))
       ? Math.floor((asOf - Date.parse(component.issued_at)) / 1000) : null;
@@ -122,7 +122,7 @@ export function evaluateAdmissibility(bundle, policy, opts = {}) {
     };
   });
 
-  const out = (verdict) => {
+  const out = (verdict: string): any => {
     const decision = {
       verdict,
       policy_id: policy?.policy_id ?? null,
@@ -188,7 +188,7 @@ export function evaluateAdmissibility(bundle, policy, opts = {}) {
         return out('conflicted');
       }
     }
-    const digests = new Set(facts.filter((f) => f.action_digest).map((f) => comparableAction(f.action_digest)));
+    const digests = new Set<string>(facts.filter((f) => f.action_digest).map((f) => comparableAction(f.action_digest)));
     if (digests.size > 1) {
       reasons.push(`components bind different actions: {${[...digests].join(', ')}}`);
       return out('conflicted');
@@ -204,8 +204,8 @@ export function evaluateAdmissibility(bundle, policy, opts = {}) {
   //    over ALL verified types (ignoring freshness/revocation) and over FRESH+
   //    non-revoked types. If the former satisfies but the latter does not, the
   //    evidence exists but is stale/revoked -> 'stale'; if neither -> missing.
-  const verifiedTypes = new Set(facts.filter((f) => f.verified).map((f) => f.type));
-  const liveTypes = new Set(
+  const verifiedTypes = new Set<string>(facts.filter((f) => f.verified).map((f) => f.type));
+  const liveTypes = new Set<string>(
     facts.filter((f) => f.verified && !f.stale && !(f.rev_checked_required && f.revoked)).map((f) => f.type),
   );
   const satisfiedIgnoringFreshness = evalRequirement(policy.requirement, verifiedTypes, reasons, false);
@@ -236,7 +236,7 @@ export function evaluateAdmissibility(bundle, policy, opts = {}) {
  * @param {object} [opts]  { verifiers?, keysByType?, policiesByType?, expectedActionDigest?, verificationTime?, as_of? }
  * @returns evaluateAdmissibility result + { chain: {allow, reasons, requirement_source} }
  */
-export function evaluateChainAdmissibility(aec, policy, opts = {}) {
+export function evaluateChainAdmissibility(aec: any, policy: any, opts: any = {}) {
   const chain = verifyAuthorizationChain(aec, {
     verifiers: opts.verifiers,
     keysByType: opts.keysByType,
@@ -277,15 +277,15 @@ export function evaluateChainAdmissibility(aec, policy, opts = {}) {
 
 // Tiny boolean expression evaluator over a SET of present component types.
 // Grammar: TYPE | ( expr ) | expr AND expr | expr OR expr. Fail-closed on parse error.
-export function evalRequirement(expr, presentTypes, reasons = [], record = false) {
+export function evalRequirement(expr: any, presentTypes: Set<string>, reasons: string[] = [], record: boolean = false): boolean {
   const source = String(expr);
   const tokens = source.match(/\(|\)|AND|OR|[a-zA-Z0-9_]+/g) || [];
   let i = 0;
   const peek = () => tokens[i];
   const next = () => tokens[i++];
-  function parseOr() { let l = parseAnd(); while (peek() === 'OR') { next(); const r = parseAnd(); l = l || r; } return l; }
-  function parseAnd() { let l = parseAtom(); while (peek() === 'AND') { next(); const r = parseAtom(); l = l && r; } return l; }
-  function parseAtom() {
+  function parseOr(): boolean { let l = parseAnd(); while (peek() === 'OR') { next(); const r = parseAnd(); l = l || r; } return l; }
+  function parseAnd(): boolean { let l = parseAtom(); while (peek() === 'AND') { next(); const r = parseAtom(); l = l && r; } return l; }
+  function parseAtom(): boolean {
     const t = next();
     if (t === '(') { const v = parseOr(); if (next() !== ')') throw new Error('unbalanced'); return v; }
     if (t === 'AND' || t === 'OR' || t === ')' || t === undefined) throw new Error(`unexpected "${t}"`);
@@ -299,7 +299,7 @@ export function evalRequirement(expr, presentTypes, reasons = [], record = false
     if (i !== tokens.length) throw new Error('trailing tokens');
     return !!v;
   } catch (e) {
-    if (record) reasons.push(`malformed requirement expression: ${e.message}`);
+    if (record) reasons.push(`malformed requirement expression: ${(e as Error).message}`);
     return false; // fail closed
   }
 }

@@ -13,8 +13,7 @@
 import crypto from 'node:crypto';
 import { sha256 } from '../crypto.js';
 
-/** @returns {string} `eng_` + 24 hex chars (96 bits). */
-export function newEngagementId() {
+export function newEngagementId(): string {
   return `eng_${crypto.randomBytes(12).toString('hex')}`;
 }
 
@@ -25,12 +24,8 @@ export function newEngagementId() {
  * retried pipeline run targets the same trust page instead of orphaning a new
  * one. The 6-char hash suffix prevents collisions between two customers with
  * the same company name.
- *
- * @param {string} company
- * @param {string} engagementId
- * @returns {string} slug matching ^[a-z0-9][a-z0-9-]{0,63}$
  */
-export function deriveSlug(company, engagementId) {
+export function deriveSlug(company: string, engagementId: string): string {
   const base = String(company || 'customer')
     .normalize('NFKD')
     .toLowerCase()
@@ -50,8 +45,7 @@ export function deriveSlug(company, engagementId) {
 /**
  * Build a deterministic claim id from a payload hash.
  * Mirrors lib/trust-desk/hash.js:claimId so verify endpoints agree.
- * @param {string} hashHex 64-char sha256 hex
  */
-export function shortClaimId(hashHex) {
+export function shortClaimId(hashHex: string): string {
   return `clm_${String(hashHex).slice(0, 12)}`;
 }

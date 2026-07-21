@@ -1,13 +1,13 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-21T01:21:12.018Z",
+  "evidence_snapshot_at": "2026-07-21T03:48:35.305Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "3117a835c8401ed3de121f8451f774b9e9095f9f066e69b9ec1cadfcee92ca45",
+    "input_digest_sha256": "fdfebd6567c39479dc80d72aa46573af776628d726f9e333367d56a24a1c183d",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "c49c0ec00de070629cb1710d813310763dff60a68b9463d69d164a7a63601bab",
+        "sha256": "32ce05090a6cefdd11022db62b5bf5259ec4ab6a9a312e41a9a22a96829ab87f",
         "bytes": 38686
       },
       {
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "9566e5337b71a48c81fa2a48c90b7e5419de3a49185ed13341c86fe14758d861",
+        "sha256": "52938ae56a2b07372fabf81af10e188397765120346b85d25b9dc94b18024066",
         "bytes": 1068
       },
       {
@@ -32,12 +32,12 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "c7db310935ac7057ffd57df2fddb2dedb310b113b1b3607b75fd363e75b0696f",
+        "sha256": "f0bd5569057c8ed4d483853dbd73ae0dc6615a807dfb3646f89081bdef1e4a57",
         "bytes": 155974
       },
       {
         "path": "security/security-case.json",
-        "sha256": "7fd37a76935b6d0ea87621801f526a6a2213aa37bc3a352d8f15bca127905ba4",
+        "sha256": "5f03a451c93743b2480c9fe392fde6ce458e6a43536bd4635e34a25b93082741",
         "bytes": 249912
       },
       {
@@ -256,7 +256,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 7320,
+      "total": 7288,
       "files": 385,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -288,7 +288,7 @@
       "status": "passed",
       "claims": 30,
       "evidence_files": 159,
-      "evidence_bundle_sha256": "db204317f98e24575e9d6c6016465bbc7d143eb9970667aaa5e9aceff8273494"
+      "evidence_bundle_sha256": "1ad257f818ac6881186f1bc69c16e00cd76bf505cae60d3ec849e17313095e16"
     },
     "caid": {
       "core_vectors": 48,
@@ -798,7 +798,7 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/authority/resolver.js",
+          "file": "lib/authority/resolver.ts",
           "symbol": "evaluateAuthorityVerdict",
           "exported": true
         },
@@ -2019,31 +2019,31 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "createModelToMatterProfile",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "modelToMatterCaid",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "verifyModelToMatterEvidence",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "createModelToMatterExecutor",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/frontier/model-to-matter.js",
+          "file": "lib/frontier/model-to-matter.ts",
           "symbol": "evaluateRegisteredModelToMatterPresentation",
           "exported": true
         },
@@ -2340,13 +2340,13 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "symbol": "deriveMobileActionContinuity",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/mobile/action-continuity.js",
+          "file": "lib/mobile/action-continuity.ts",
           "symbol": "verifyMobileProviderOutcome",
           "exported": true
         },
@@ -2555,19 +2555,19 @@
       "enforcement_path": [
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "verifyGraceMobileAuthorization",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "executeGraceCurtailment",
           "exported": true
         },
         {
           "language": "javascript",
-          "file": "lib/grace/mobile-grid.js",
+          "file": "lib/grace/mobile-grid.ts",
           "symbol": "buildActionStateCapsule",
           "exported": true
         }
@@ -3482,7 +3482,7 @@
       "purpose": "offline regulator-style oversight demo: monthly clinician-approval receipts verify from signed bytes, bind a named approver, keep patient references out of the receipt, and refuse tampering or unpinned keys"
     },
     {
-      "path": "lib/frontier/model-to-matter.js",
+      "path": "lib/frontier/model-to-matter.ts",
       "purpose": "executor-side Model-to-Matter clearance profile"
     },
     {
@@ -3498,7 +3498,7 @@
       "purpose": "buildable iOS and Android government approval reference applications using system-of-record actions and server-pinned profiles"
     },
     {
-      "path": "lib/grace/mobile-grid.js",
+      "path": "lib/grace/mobile-grid.ts",
       "purpose": "canonical grid.curtailment composition across distinct Class-A mobile approvals, bounded one-time dispatch, independent meter evidence, Action State, and settlement"
     },
     {

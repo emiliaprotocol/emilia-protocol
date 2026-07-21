@@ -47,20 +47,20 @@ const DEFAULT_HUMAN_KEY_CLASSES = ['A'];
 
 // ── small helpers ─────────────────────────────────────────────────────────
 
-function hexOf(h) {
+function hexOf(h: any): string {
   return String(h || '').replace(/^sha256:/, '').toLowerCase();
 }
 
 /** A receipt carries a human signoff if any signoff has a human key_class. */
-function hasHumanSignoff(receipt, humanClasses) {
+function hasHumanSignoff(receipt: any, humanClasses: string[]): boolean {
   const set = new Set(humanClasses);
   const signoffs = Array.isArray(receipt?.signoffs) ? receipt.signoffs : [];
-  return signoffs.some((s) => set.has(s?.key_class));
+  return signoffs.some((s: any) => set.has(s?.key_class));
 }
 
 /** Approvers named by a receipt's contexts (the entities that signed). */
-function receiptApprovers(receipt) {
-  const ids = new Set();
+function receiptApprovers(receipt: any): Set<string> {
+  const ids = new Set<string>();
   for (const ctx of receipt?.contexts || []) {
     if (ctx?.approver) ids.add(ctx.approver);
   }
@@ -71,13 +71,13 @@ function receiptApprovers(receipt) {
 }
 
 /** action_type the execution actually ran, read from the per-action approval. */
-function executedActionType(doc) {
+function executedActionType(doc: any): string | null {
   return doc?.action_approval?.receipt?.action?.action_type ?? null;
 }
 
 /** Latest expires_at across a receipt's contexts (the root's temporal bound). */
-function latestContextExpiry(receipt) {
-  let max = null;
+function latestContextExpiry(receipt: any): number | null {
+  let max: number | null = null;
   for (const ctx of receipt?.contexts || []) {
     const t = Date.parse(ctx?.expires_at);
     if (!Number.isNaN(t) && (max === null || t > max)) max = t;
@@ -86,7 +86,7 @@ function latestContextExpiry(receipt) {
 }
 
 /** committed_at of a receipt's consumption record (ms epoch, or null). */
-function committedAtMs(receipt) {
+function committedAtMs(receipt: any): number | null {
   const t = Date.parse(receipt?.consumption?.committed_at);
   return Number.isNaN(t) ? null : t;
 }
@@ -95,7 +95,7 @@ function committedAtMs(receipt) {
  * One action-type token is permitted by a scope array. Supports exact match,
  * '*' (any), and 'prefix.*' globs (e.g. 'payment.*' permits 'payment.release').
  */
-function scopePermits(scope, actionType) {
+function scopePermits(scope: any, actionType: any): boolean {
   if (!Array.isArray(scope) || !actionType) return false;
   for (const grant of scope) {
     if (grant === '*' || grant === actionType) return true;
@@ -114,8 +114,8 @@ function scopePermits(scope, actionType) {
  *   - child expiry <= parent expiry.
  * Returns a list of human-readable violations (empty == contained).
  */
-function scopeContainmentViolations(parent, child) {
-  const violations = [];
+function scopeContainmentViolations(parent: any, child: any): string[] {
+  const violations: string[] = [];
 
   // 1. action-type containment
   for (const token of child.scope || []) {
@@ -152,7 +152,7 @@ function scopeContainmentViolations(parent, child) {
  * primitive added here, and it grants NO trust by itself — callers treat its
  * result as evidence and gate accordingly.
  */
-function verifyDetachedSignature(att) {
+function verifyDetachedSignature(att: any): boolean {
   try {
     if (!att?.signed_payload_b64u || !att?.signature_b64u || !att?.public_key) return false;
     if (att.algorithm && att.algorithm !== 'Ed25519') return false;
@@ -181,8 +181,8 @@ const DELEGATION_PROOF_FIELDS = [
 ];
 
 /** Canonical bytes the delegation proof signature is bound to (the link's own fields). */
-function delegationProofBytes(link) {
-  const subset = {};
+function delegationProofBytes(link: any): Buffer {
+  const subset: Record<string, any> = {};
   for (const f of DELEGATION_PROOF_FIELDS) subset[f] = link[f] ?? null;
   return Buffer.from(canonicalize(subset), 'utf8');
 }
@@ -192,7 +192,7 @@ function delegationProofBytes(link) {
  * authorized. A root that signed off on action_type "payment.release" authorizes
  * exactly "payment.release" (NOT '*'). The root scope is DERIVED, never assumed.
  */
-function rootAuthorizedScope(rootReceipt) {
+function rootAuthorizedScope(rootReceipt: any): string[] {
   const at = rootReceipt?.action?.action_type;
   return typeof at === 'string' && at.length > 0 ? [at] : [];
 }
@@ -203,7 +203,7 @@ function rootAuthorizedScope(rootReceipt) {
  * ceilings may only decrease, array allow-lists may only shrink (subset), other
  * types must be unchanged, and a parent's constraint key may not be dropped.
  */
-function constraintsMonotonic(parentC, childC) {
+function constraintsMonotonic(parentC: any, childC: any): boolean {
   const p = parentC || {};
   const c = childC || {};
   for (const k of Object.keys(p)) {
@@ -213,8 +213,8 @@ function constraintsMonotonic(parentC, childC) {
     if (typeof pv === 'number' && typeof cv === 'number') {
       if (cv > pv) return false;
     } else if (Array.isArray(pv) && Array.isArray(cv)) {
-      const pset = new Set(pv.map((x) => canonicalize(x)));
-      if (!cv.every((x) => pset.has(canonicalize(x)))) return false;
+      const pset = new Set(pv.map((x: any) => canonicalize(x)));
+      if (!cv.every((x: any) => pset.has(canonicalize(x)))) return false;
     } else if (canonicalize(pv) !== canonicalize(cv)) {
       return false;
     }
@@ -229,18 +229,6 @@ function constraintsMonotonic(parentC, childC) {
  * DRP delegation references. This is pure data composition — it mints no keys,
  * signs no receipts, and adds no trust. The receipts must have been issued
  * elsewhere (e.g. packages/issue assembleAuthorizationReceipt).
- *
- * @param {object} args
- * @param {{ receipt: object, verification: object, human_key_classes?: string[] }} args.rootSignoff
- *   - the root human-signoff EP-RECEIPT-v1 + its pinned verification material
- * @param {Array<object>} [args.delegationChain] - ordered DRP delegation links
- * @param {{ receipt: object, verification: object }} [args.actionApproval]
- *   - the per-action approval EP-RECEIPT-v1 + its verification material
- * @param {object} args.execution - { action_hash, irreversible, executed_at, ... }
- * @param {object} [args.agentIdentity] - scoped agent-identity CLAIM
- * @param {object} [args.liability] - named-owner liability attestation (evidence)
- * @param {object} [args.metadata] - untrusted metadata
- * @returns {object} an EP-PROVENANCE-CHAIN-v1 document
  */
 export function assembleProvenance({
   rootSignoff,
@@ -250,7 +238,7 @@ export function assembleProvenance({
   agentIdentity = undefined,
   liability = undefined,
   metadata = undefined,
-}) {
+}: any): any {
   if (!rootSignoff?.receipt || !rootSignoff?.verification) {
     throw new Error('assembleProvenance requires rootSignoff.{receipt,verification}');
   }
@@ -262,12 +250,12 @@ export function assembleProvenance({
   }
 
   // Stamp/normalize sequence numbers in chain order so the chain is ordered.
-  const chain = delegationChain.map((link, i) => ({
+  const chain = delegationChain.map((link: any, i: number) => ({
     sequence: link.sequence ?? i,
     ...link,
   }));
 
-  const doc = {
+  const doc: any = {
     '@version': PROVENANCE_VERSION,
     root_signoff: {
       receipt: rootSignoff.receipt,
@@ -317,64 +305,36 @@ export function assembleProvenance({
  *
  * Optional agent_identity / liability blocks are ADVISORY: verified-if-signed
  * and reported, never able to make an otherwise-invalid bundle valid.
- *
- * @param {object} doc - an EP-PROVENANCE-CHAIN-v1 document
- * @param {object} [opts]
- * @param {string[]} [opts.humanKeyClasses=['A']] - key_class values counted as human.
- *   This is the ONLY source of human-class truth; the per-document
- *   root_signoff.human_key_classes field is NOT trusted to widen it.
- * @param {Record<string,{public_key:string}>} [opts.delegationKeys={}] - pinned
- *   proof keys per delegator id (mirrors root approver_keys). A delegation whose
- *   delegator has no pinned key, or whose proof key differs, is rejected.
- * @param {object} [opts.rootVerification] - relying-party-pinned
- *   {approver_keys, log_public_key, rp_id, allowed_origins} for
- *   root_signoff.receipt. Verification
- *   material carried inside `doc` is never a trust root.
- * @param {object} [opts.root_verification] - snake_case alias accepted for rootVerification
- * @param {object} [opts.actionVerification] - relying-party-pinned
- *   {approver_keys, log_public_key, rp_id, allowed_origins} for
- *   action_approval.receipt.
- * @param {object} [opts.action_verification] - snake_case alias accepted for actionVerification
- * @param {(exec:object)=>boolean} [opts.reversibilityAsserted] - verifier-supplied
- *   predicate that INDEPENDENTLY asserts the execution is reversible. Only this
- *   (never the producer's execution.irreversible flag) can drop the per-action
- *   approval requirement. Absent it, approval is required by default (fail-closed).
- * @param {boolean} [opts.allowUnsignedDelegations=false] - relax delegation proof requirement
- * @param {number}  [opts.now=Date.now()] - reference time for expiry checks (ms)
- * @param {boolean} [opts.requireActionApprovalAlways=false] - re-mandate per-action
- *   approval even when reversibility is independently asserted
- * @returns {{ valid:boolean, checks:object, errors:string[], links:object[],
- *             agent_identity:object|null, liability:object|null }}
  */
-export function verifyProvenanceOffline(doc, opts = {}) {
+export function verifyProvenanceOffline(doc: any, opts: any = {}): any {
   opts = opts && typeof opts === 'object' ? opts : {};
   const humanKeyClasses = opts.humanKeyClasses || DEFAULT_HUMAN_KEY_CLASSES;
   const allowUnsignedDelegations = opts.allowUnsignedDelegations === true;
   const now = typeof opts.now === 'number' ? opts.now : Date.now();
   const requireActionApprovalAlways = opts.requireActionApprovalAlways === true;
 
-  const checks = {
+  const checks: any = {
     version: false,
     root_receipt_valid: false,
     root_human_signoff: false,
-    per_action_required: true,    // satisfied unless an irreversible action lacks approval
-    action_receipt_valid: true,   // vacuously true when no approval is needed
-    action_human_signoff: true,   // "
-    execution_binding: true,      // "
-    chain_anchored: true,         // head binds to a root approver (vacuous if empty)
-    chain_links_bound: true,      // each hop binds to the prior delegatee
-    delegations_signed: true,     // proof over the link's OWN canonical fields
-    proof_key_bound: true,        // proof key bound to the named delegator
+    per_action_required: true,
+    action_receipt_valid: true,
+    action_human_signoff: true,
+    execution_binding: true,
+    chain_anchored: true,
+    chain_links_bound: true,
+    delegations_signed: true,
+    proof_key_bound: true,
     delegations_not_expired: true,
     scope_containment: true,
     constraints_monotonic: true,
     leaf_permits_action: true,
     temporal_containment: true,
   };
-  const errors = [];
-  const links = [];
-  const fail = (key, msg) => { checks[key] = false; errors.push(msg); };
-  const validVerificationProfile = (profile) => (
+  const errors: string[] = [];
+  const links: any[] = [];
+  const fail = (key: string, msg: string) => { checks[key] = false; errors.push(msg); };
+  const validVerificationProfile = (profile: any): boolean => (
     profile
     && typeof profile === 'object'
     && profile.approver_keys
@@ -385,7 +345,7 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     && profile.rp_id.length > 0
     && Array.isArray(profile.allowed_origins)
     && profile.allowed_origins.length > 0
-    && profile.allowed_origins.every((origin) => typeof origin === 'string' && origin.length > 0)
+    && profile.allowed_origins.every((origin: any) => typeof origin === 'string' && origin.length > 0)
   );
 
   // ── 0. version ───────────────────────────────────────────────────────────
@@ -412,11 +372,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     checks.root_receipt_valid = r0.valid;
     if (!r0.valid) errors.push(`root receipt failed v1 verification: ${(r0.errors || []).join('; ')}`);
 
-    // Human classes are a VERIFIER-side policy only. The per-document
-    // root_signoff.human_key_classes field is NOT trusted to widen 'human' — a
-    // producer must not be able to mark a Class-B software key as a human
-    // signoff. (Mirrors the action_approval human check, which already uses the
-    // verifier's humanKeyClasses.)
     checks.root_human_signoff = hasHumanSignoff(root.receipt, humanKeyClasses);
     if (!checks.root_human_signoff) {
       errors.push(`root receipt carries no human signoff (need key_class in [${humanKeyClasses.join(', ')}])`);
@@ -424,20 +379,11 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   }
 
   // ── 2. per-action approval (required by default; fail-closed) ────────────
-  // A producer's `execution.irreversible` flag is UNTRUSTED: it can never DROP
-  // the per-action approval requirement. Reversibility must be asserted
-  // INDEPENDENTLY of the producer's self-label, via a verifier-supplied
-  // predicate opts.reversibilityAsserted(exec) -> boolean. Absent such an
-  // independent assertion, approval is REQUIRED regardless of the flag. (The
-  // flag may still RAISE the bar — an explicit irreversible:true additionally
-  // forces a human signoff on the approval below — but it may never lower it.)
   const exec = doc.execution || {};
   const reversibilityAsserted =
     typeof opts.reversibilityAsserted === 'function'
       ? opts.reversibilityAsserted(exec) === true
       : false;
-  // Required unless reversibility is independently asserted. requireActionApprovalAlways
-  // is retained as a hard override that re-mandates approval even if asserted reversible.
   const needApproval = requireActionApprovalAlways || !reversibilityAsserted;
   const approval = doc.action_approval;
   const actionVerification = opts.actionVerification || opts.action_verification;
@@ -468,7 +414,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
       }
     }
 
-    // execution must be hash-bound to the approved action.
     checks.execution_binding = hexOf(exec.action_hash) === hexOf(approval.receipt.action_hash);
     if (!checks.execution_binding) {
       errors.push('execution.action_hash does not match action_approval.receipt.action_hash');
@@ -477,22 +422,15 @@ export function verifyProvenanceOffline(doc, opts = {}) {
 
   // ── 3. ordered delegation chain + scope containment ──────────────────────
   const chain = Array.isArray(doc.delegation_chain) ? [...doc.delegation_chain] : [];
-  chain.sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+  chain.sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0));
 
-  // The proof-key map binds each delegation's proof public key to the named
-  // delegator (mirrors root_signoff approver_keys). Without an entry for a
-  // delegator, that delegation's proof cannot be key-bound and is rejected.
   const delegationKeys = opts.delegationKeys || {};
 
-  // Root authority is DERIVED from what the root receipt actually authorized —
-  // never hardcoded to '*'. The head delegation must name a root approver, and
-  // the whole chain (and a chain-less execution) is bounded by this scope, the
-  // root value cap, and the root's context expiry.
   const rootApprovers = doc.root_signoff?.receipt ? receiptApprovers(doc.root_signoff.receipt) : new Set();
   const rootExpiry = latestContextExpiry(doc.root_signoff?.receipt);
   const rootScope = doc.root_signoff?.receipt ? rootAuthorizedScope(doc.root_signoff.receipt) : [];
-  const rootAuthority = {
-    scope: rootScope,                   // DERIVED from root_signoff.receipt.action
+  const rootAuthority: any = {
+    scope: rootScope,
     max_value_usd: null,
     expires_at: rootExpiry !== null ? new Date(rootExpiry).toISOString() : undefined,
     id: '(root human signoff)',
@@ -501,26 +439,21 @@ export function verifyProvenanceOffline(doc, opts = {}) {
 
   if (chain.length > 0) {
     const head = chain[0];
-    // Anchor ONLY on the SIGNED delegator. parent_ref is not in
-    // DELEGATION_PROOF_FIELDS (unsigned, attacker-controlled).
     checks.chain_anchored = rootApprovers.has(head.delegator);
     if (!checks.chain_anchored) {
       errors.push(`delegation chain head delegator "${head.delegator}" does not name a root-receipt approver`);
     }
   }
 
-  let prevDelegatee = null; // delegatee of the previous hop, for inter-hop binding
+  let prevDelegatee: string | null = null;
   for (const link of chain) {
-    const linkReport = {
+    const linkReport: any = {
       sequence: link.sequence,
       delegation_id: link.delegation_id,
       ok: true,
-      issues: /** @type {string[]} */ ([]),
+      issues: [] as string[],
     };
 
-    // (a) inter-hop binding: every hop after the head MUST bind to the prior
-    // delegatee via BOTH parent_ref and delegator. The head is anchored to a
-    // root approver above; here we enforce the i>=1 links.
     if (prevDelegatee !== null) {
       const boundByParentRef = link.parent_ref === prevDelegatee;
       const boundByDelegator = link.delegator === prevDelegatee;
@@ -535,7 +468,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
       }
     }
 
-    // not expired at reference time
     const exp = Date.parse(link.expires_at);
     if (Number.isNaN(exp) || exp < now) {
       checks.delegations_not_expired = false;
@@ -544,10 +476,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
       errors.push(`delegation ${link.delegation_id} is expired`);
     }
 
-    // (b)+(c) proof of the delegation record itself. The signature MUST be over
-    // the CANONICAL bytes of THIS link's own fields (so scope/cap/expiry cannot
-    // be tampered after signing), AND the proof key MUST be the key bound to the
-    // named delegator (so an attacker key cannot be substituted).
     if (link.proof) {
       const sigOk = verifyDetachedSignature(link.proof);
       const boundBytes = delegationProofBytes(link);
@@ -566,7 +494,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
         );
       }
 
-      // (c) proof key must be the key pinned for the named delegator.
       const boundKey = delegationKeys[link.delegator]?.public_key;
       if (!boundKey) {
         checks.proof_key_bound = false;
@@ -586,7 +513,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
       errors.push(`delegation ${link.delegation_id} has no verifiable proof (fail-closed)`);
     }
 
-    // scope containment vs parent
     const violations = scopeContainmentViolations(parent, link);
     if (violations.length > 0) {
       checks.scope_containment = false;
@@ -594,7 +520,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
       linkReport.issues.push(...violations);
       for (const v of violations) errors.push(`delegation ${link.delegation_id}: ${v}`);
     }
-    // monotonic constraint narrowing vs parent (AgentROA tighten-only algebra)
     if (!constraintsMonotonic(parent.constraints, link.constraints)) {
       checks.constraints_monotonic = false;
       linkReport.ok = false;
@@ -603,25 +528,18 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     }
 
     links.push(linkReport);
-    // Persist the EFFECTIVE (inherited) value cap forward — never the raw link
-    // cap. A null/omitted child cap must inherit the parent's effective cap, or
-    // a null mid-chain hop would re-open an unbounded cap for every descendant
-    // (DelegateCannotExceedPrincipal / spec §4.2).
     let effectiveCap;
     if (link.max_value_usd === null || link.max_value_usd === undefined) {
-      effectiveCap = parent.max_value_usd;            // inherit parent's effective cap
+      effectiveCap = parent.max_value_usd;
     } else if (parent.max_value_usd === null || parent.max_value_usd === undefined) {
-      effectiveCap = link.max_value_usd;              // parent uncapped → child sets the cap
+      effectiveCap = link.max_value_usd;
     } else {
       effectiveCap = Math.min(Number(link.max_value_usd), Number(parent.max_value_usd));
     }
-    parent = { ...link, max_value_usd: effectiveCap };  // narrow down the chain
+    parent = { ...link, max_value_usd: effectiveCap };
     prevDelegatee = link.delegatee;
   }
 
-  // The executed action MUST be permitted by the leaf authority — and when the
-  // chain is empty, the leaf authority IS the derived root authority. This
-  // constrains a chain-less (direct) execution to the root's actual scope.
   const actionType = executedActionType(doc);
   if (!actionType) {
     checks.leaf_permits_action = false;
@@ -632,13 +550,8 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     errors.push(`${where} scope [${(parent.scope || []).join(', ')}] does not permit executed action "${actionType}"`);
   }
 
-  // per-action approval commit time must fall within the leaf's (or root's) window
   {
     const commit = approval?.receipt ? committedAtMs(approval.receipt) : null;
-    // parent.expires_at can genuinely be undefined here (root authority with no
-    // context expiry). Date.parse(undefined) and Date.parse('') both yield NaN,
-    // so the fallback is behaviorally identical — Number.isNaN(leafExp) below
-    // short-circuits the comparison in either case.
     const leafExp = Date.parse(parent.expires_at ?? '');
     if (commit !== null && !Number.isNaN(leafExp) && commit > leafExp) {
       checks.temporal_containment = false;
@@ -647,12 +560,11 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   }
 
   // ── 4. optional advisory claims (reported, NOT trusted) ──────────────────
-  let agentIdentity = null;
+  let agentIdentity: any = null;
   if (doc.agent_identity) {
     agentIdentity = {
       agent_id: doc.agent_identity.agent_id ?? null,
       claimed_by: doc.agent_identity.claimed_by ?? null,
-      // a CLAIM, never proof of strong agent identity
       claim_only: true,
       attestation_signature_valid: doc.agent_identity.attestation
         ? verifyDetachedSignature(doc.agent_identity.attestation)
@@ -663,12 +575,11 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     }
   }
 
-  let liability = null;
+  let liability: any = null;
   if (doc.liability) {
     liability = {
       owner: doc.liability.owner ?? null,
       owner_name: doc.liability.owner_name ?? null,
-      // EVIDENCE of a named accountable owner, never a legal determination
       evidence_only: true,
       attestation_signature_valid: doc.liability.attestation
         ? verifyDetachedSignature(doc.liability.attestation)
@@ -680,8 +591,6 @@ export function verifyProvenanceOffline(doc, opts = {}) {
   }
 
   // ── verdict ──────────────────────────────────────────────────────────────
-  // valid == conjunction of the gating checks ONLY. The advisory blocks above
-  // are deliberately excluded: they can never make an invalid bundle valid.
   const valid = Object.values(checks).every(Boolean);
   return { valid, checks, errors, links, agent_identity: agentIdentity, liability };
 }

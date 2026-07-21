@@ -649,7 +649,7 @@ export function createEscrowComAdapter(opts?: EscrowComAdapterOptions) {
     if (!validation.ok) {
       return closedResult(environment, 'refused', {
         operation: 'create_transaction',
-        reason_code: validation.reason_code,
+        reason_code: (validation as { ok: false; reason_code: string }).reason_code,
       });
     }
     const request = validation.value;

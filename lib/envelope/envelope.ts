@@ -52,10 +52,10 @@ const VENDOR_URN = /^urn:ep:profile:x-[a-z0-9][a-z0-9-]*:[a-z0-9][a-z0-9._-]*$/i
 const CORE_URN = /^urn:ep:profile:[a-z0-9][a-z0-9-]*:v\d+$/i;
 
 /** A profile is valid IFF it matches the core or the reserved vendor namespace. */
-export function isWellFormedProfileUrn(urn) {
+export function isWellFormedProfileUrn(urn: any) {
   return typeof urn === 'string' && (CORE_URN.test(urn) || VENDOR_URN.test(urn));
 }
-export function isVendorProfileUrn(urn) {
+export function isVendorProfileUrn(urn: any) {
   return typeof urn === 'string' && VENDOR_URN.test(urn);
 }
 
@@ -70,11 +70,8 @@ const REGISTRY = new Map();
  * Register a profile plugin. Idempotent re-registration with the same URN
  * replaces the prior entry (last-writer-wins is fine: registration is local
  * trust configuration, not a wire input).
- *
- * @param {string} urn
- * @param {{ validateBody?: Function, descriptor?: * }} [options]
  */
-export function registerProfile(urn, { validateBody, descriptor = null } = {}) {
+export function registerProfile(urn: any, { validateBody, descriptor = null }: any = {}) {
   if (!isWellFormedProfileUrn(urn)) {
     throw new Error(`registerProfile: malformed profile URN "${urn}" (expected urn:ep:profile:<name>:v<n> or the x-<vendor> private space)`);
   }
@@ -85,7 +82,7 @@ export function registerProfile(urn, { validateBody, descriptor = null } = {}) {
   return urn;
 }
 
-export function getProfile(urn) {
+export function getProfile(urn: any) {
   return REGISTRY.get(urn) || null;
 }
 export function listProfiles() {
@@ -93,14 +90,14 @@ export function listProfiles() {
 }
 
 // ── Shared pipeline (profile-agnostic; NO plugin can skip it) ─────────────────
-function runSharedPipeline(env) {
+function runSharedPipeline(env: any) {
   const checks = {
     envelope_version: false,   // ep == EP-ENVELOPE-v1
     profile_known: false,      // profile URN is well-formed AND registered
     payload_present: false,    // payload is a non-null object
     proof_alg_allowed: true,   // envelope-level proofs use an allowed alg (vacuous if none)
   };
-  const errors = [];
+  const errors: any[] = [];
   const fail = (k, m) => { checks[k] = false; errors.push(m); };
 
   if (!env || typeof env !== 'object' || Array.isArray(env)) {
@@ -151,10 +148,8 @@ function runSharedPipeline(env) {
  * validateBody. The final verdict is `sharedOk && body.valid` — the plugin can
  * only ADD rejections (PluginCannotWeaken). Fails closed on unknown profiles,
  * malformed envelopes, disallowed algorithms, and any thrown plugin error.
- *
- * @returns {{ valid:boolean, profile:string|null, checks:object, errors:string[] }}
  */
-export function verifyEnvelope(env, opts = {}) {
+export function verifyEnvelope(env: any, opts: any = {}) {
   const shared = runSharedPipeline(env);
   const profile = env && typeof env === 'object' ? env.profile ?? null : null;
 
@@ -194,14 +189,15 @@ export function verifyEnvelope(env, opts = {}) {
  * canonicalize(env.payload) === canonicalize(profileObject) byte-for-byte — no
  * re-signing, previously-issued objects and the live I-D stay valid.
  */
-export function migrate(profileObject, profileUrn, extra = {}) {
+export function migrate(profileObject: any, profileUrn: any, extra: any = {}) {
   if (!isWellFormedProfileUrn(profileUrn)) {
     throw new Error(`migrate: malformed profile URN "${profileUrn}"`);
   }
   if (!profileObject || typeof profileObject !== 'object') {
     throw new Error('migrate: profileObject must be an object');
   }
-  const env = { ep: EP_ENVELOPE_VERSION, profile: profileUrn, payload: profileObject };
+  const env: { ep: any, profile: any, payload: any, binding?: any, typ?: any, meta?: any } =
+    { ep: EP_ENVELOPE_VERSION, profile: profileUrn, payload: profileObject };
   if (extra.binding) env.binding = extra.binding;
   if (extra.typ) env.typ = extra.typ;
   if (extra.meta) env.meta = extra.meta;
@@ -209,7 +205,7 @@ export function migrate(profileObject, profileUrn, extra = {}) {
 }
 
 /** True iff wrapping `profileObject` preserves its canonical bytes (lossless). */
-export function isLosslessMigration(profileObject, env) {
+export function isLosslessMigration(profileObject: any, env: any) {
   try {
     return canonicalize(env.payload) === canonicalize(profileObject);
   } catch {

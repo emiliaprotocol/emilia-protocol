@@ -18,9 +18,6 @@
  */
 
 import crypto from 'node:crypto';
-// Relative import (not '@/lib/crypto') so the entire trust-desk pipeline
-// subtree resolves under plain `node` (CLI/cron), not only under Next's
-// jsconfig path-alias resolver.
 import { sha256 } from '../crypto.js';
 
 // ── Canonicalization ───────────────────────────────────────────────────────
@@ -29,7 +26,7 @@ import { sha256 } from '../crypto.js';
  * Canonicalize a value for deterministic hashing.
  * Mirrors lib/handshake/binding.js:deepSortKeys exactly.
  */
-function canonicalize(value) {
+function canonicalize(value: any): any {
   if (value === null) return null;
   if (value === undefined) {
     throw new Error('CANONICALIZATION_ERROR: undefined cannot be canonicalized');
@@ -51,7 +48,7 @@ function canonicalize(value) {
   }
   if (typeof value === 'object') {
     const sortedKeys = Object.keys(value).sort();
-    const out = {};
+    const out: Record<string, any> = {};
     for (const k of sortedKeys) out[k.normalize('NFC')] = canonicalize(value[k]);
     return out;
   }
@@ -63,7 +60,7 @@ function canonicalize(value) {
 /**
  * Hash a JSON-serializable claim object. Returns hex.
  */
-export function hashClaim(claim) {
+export function hashClaim(claim: any): string {
   return sha256(JSON.stringify(canonicalize(claim)));
 }
 
@@ -71,7 +68,7 @@ export function hashClaim(claim) {
  * Hash a plain-text policy document. Normalizes line endings and trailing
  * whitespace before hashing so CRLF vs LF doesn't produce different hashes.
  */
-export function hashText(text) {
+export function hashText(text: any): string {
   const normalized = String(text)
     .replace(/\r\n/g, '\n')
     .replace(/\s+$/gm, '')
@@ -83,7 +80,7 @@ export function hashText(text) {
  * Generate a short, human-readable claim ID from a claim hash.
  * Format: `clm_<first-12-chars-hex>`. Deterministic, safe for URLs.
  */
-export function claimId(hashHex) {
+export function claimId(hashHex: string): string {
   if (!/^[0-9a-f]{64}$/.test(hashHex)) {
     throw new Error('claimId expects a 64-char hex sha256');
   }
@@ -94,18 +91,8 @@ export function claimId(hashHex) {
  * Build a signed claim envelope. Today the signature is an HMAC-SHA256
  * keyed by ATD_SIGNING_KEY. In month 1 this is replaced by an EP
  * Commit receipt — envelope shape is stable across the migration.
- *
- * @param {object} claim - The claim payload to sign.
- * @param {string} [signingKey] - Override key (defaults to env).
- * @returns {{
- *   claim_id: string,
- *   payload_hash: string,
- *   signed_at: string,
- *   signer: string,
- *   signature: string,
- * }}
  */
-export function signClaim(claim, signingKey = process.env.ATD_SIGNING_KEY) {
+export function signClaim(claim: any, signingKey: string = process.env.ATD_SIGNING_KEY as string): any {
   if (!signingKey) {
     throw new Error('ATD_SIGNING_KEY not set — cannot sign claims');
   }

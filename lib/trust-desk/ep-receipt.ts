@@ -20,15 +20,14 @@ import { logger } from '../logger.js';
 
 const SUBMITTER = 'emilia-trust-desk';
 
-function enabled() {
+function enabled(): boolean {
   return process.env.TRUST_DESK_EP_RECEIPTS === '1';
 }
 
 /**
  * Idempotently ensure the desk + subject entities exist. Best-effort.
- * @returns {Promise<boolean>} true if both present/created
  */
-async function resolveDeskEntities(subjectId, company) {
+async function resolveDeskEntities(subjectId: string, company?: string | null): Promise<boolean> {
   try {
     const { getServiceClient } = await import('../supabase.js');
     const sb = getServiceClient();
@@ -48,18 +47,22 @@ async function resolveDeskEntities(subjectId, company) {
     ];
     await sb.from('entities').upsert(rows, { onConflict: 'entity_id', ignoreDuplicates: true });
     return true;
-  } catch (err) {
-    logger.warn('trust-desk dogfood: entity resolve failed', { error: err.message });
+  } catch (err: any) {
+    logger.warn('trust-desk dogfood: entity resolve failed', { error: err?.message });
     return false;
   }
 }
 
 /**
  * Emit a provenance_check receipt for a freshly published trust page.
- * @param {object} opts { engagement, slug, trustUrl, verification, minted }
- * @returns {Promise<{receipt_id:string, receipt_hash:string}|null>}
  */
-export async function emitTrustPageReceipt({ engagement, slug, trustUrl, verification, minted }) {
+export async function emitTrustPageReceipt({
+  engagement,
+  slug,
+  trustUrl,
+  verification,
+  minted,
+}: any = {}): Promise<{ receipt_id: string | null; receipt_hash: string | null } | null> {
   if (!enabled()) return null;
   try {
     const subjectId = `td-${slug}`;
@@ -100,13 +103,13 @@ export async function emitTrustPageReceipt({ engagement, slug, trustUrl, verific
     const r = result?.receipt || {};
     logger.info('trust-desk dogfood: EP receipt emitted', { slug, receipt_id: r.receipt_id });
     return { receipt_id: r.receipt_id || null, receipt_hash: r.receipt_hash || r.canonical_hash || null };
-  } catch (err) {
-    logger.warn('trust-desk dogfood: emit threw (swallowed)', { error: err.message });
+  } catch (err: any) {
+    logger.warn('trust-desk dogfood: emit threw (swallowed)', { error: err?.message });
     return null;
   }
 }
 
-function safeFingerprint(fn) {
+function safeFingerprint(fn: () => any): any {
   try {
     return fn();
   } catch {

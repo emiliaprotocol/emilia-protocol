@@ -391,7 +391,7 @@
       "purpose": "offline regulator-style oversight demo: monthly clinician-approval receipts verify from signed bytes, bind a named approver, keep patient references out of the receipt, and refuse tampering or unpinned keys"
     },
     {
-      "path": "lib/frontier/model-to-matter.js",
+      "path": "lib/frontier/model-to-matter.ts",
       "purpose": "executor-side Model-to-Matter clearance profile"
     },
     {
@@ -407,7 +407,7 @@
       "purpose": "buildable iOS and Android government approval reference applications using system-of-record actions and server-pinned profiles"
     },
     {
-      "path": "lib/grace/mobile-grid.js",
+      "path": "lib/grace/mobile-grid.ts",
       "purpose": "canonical grid.curtailment composition across distinct Class-A mobile approvals, bounded one-time dispatch, independent meter evidence, Action State, and settlement"
     },
     {

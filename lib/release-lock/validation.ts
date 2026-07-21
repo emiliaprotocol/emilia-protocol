@@ -399,7 +399,7 @@ function normalizedPayees(value, amount, currency) {
     throw releaseLockRefusal(400, 'invalid_payees', 'draw.payees must contain 1-20 exact payees.');
   }
   const ids = new Set();
-  let total = 0n;
+  let total = BigInt(0);
   const payees = value.map((payee, index) => {
     const keys = new Set(['party_id', 'destination_id', 'amount']);
     if (!exactKeys(payee, keys)) {
@@ -769,7 +769,7 @@ export function validateDrawReleaseInput(input, {
   const nowMs = typeof now === 'function' ? now() : now;
   boundedExpiry(input.draw.expires_at, 'draw.expires_at', nowMs, maxExpiresAt);
   const amount = text(input.draw.amount, 'draw.amount', { max: 32, pattern: MONEY });
-  if (BigInt(amount.replace('.', '')) <= 0n) {
+  if (BigInt(amount.replace('.', '')) <= BigInt(0)) {
     throw releaseLockRefusal(400, 'invalid_amount', 'draw.amount must be greater than zero.');
   }
   const currency = text(input.draw.currency, 'draw.currency', {

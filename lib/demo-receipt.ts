@@ -37,21 +37,20 @@ import { privateKeyFromSeedB64 } from './key-custody.js';
 const DEMO_FIXTURE_PUBLIC_KEY_SPKI_B64U = 'MCowBQYDK2VwAyEAeEhbhyXqpDaWwF8DZ4nLswNZCa7u2yh-2N42ruZZVHg';
 const DEMO_FIXTURE_SIGNATURE_B64U = 'DKFBYPBSoCeoj7rpUmpNbQiO4dKhce4vUsgrgi6h9VXt_fYrFJbKnFj5hDuJrshbv0v8zj9yLBZxpJPLJJsPCQ';
 
-let _runtimeKeypair = null;
+let _runtimeKeypair: any = null;
 
-function getRuntimeKeypair() {
+function getRuntimeKeypair(): any {
   if (_runtimeKeypair) return _runtimeKeypair;
 
   const configuredSeed = getDemoSigningKey();
   if (configuredSeed) {
     const privateKey = privateKeyFromSeedB64(configuredSeed);
-    _runtimeKeypair = { privateKey, publicKey: crypto.createPublicKey(/** @type {any} */ (privateKey)) };
+    _runtimeKeypair = { privateKey, publicKey: crypto.createPublicKey(privateKey as any) };
     return _runtimeKeypair;
   }
 
   if (isProduction()) {
-    /** @type {Error & { code?: string }} */
-    const error = new Error(
+    const error: Error & { code?: string } = new Error(
       'EP_DEMO_SIGNING_KEY is required in production for dynamic demo receipts; refusing to sign with source or an implicit fallback.',
     );
     error.code = 'demo_signing_key_required';
@@ -63,19 +62,19 @@ function getRuntimeKeypair() {
 }
 
 /** Public key for the stable, public-only /r/example fixture. */
-export function getDemoPublicKeyBase64url() {
+export function getDemoPublicKeyBase64url(): string {
   return DEMO_FIXTURE_PUBLIC_KEY_SPKI_B64U;
 }
 
 /** Public key matching dynamic crash-test signatures. */
-export function getDemoRuntimePublicKeyBase64url() {
+export function getDemoRuntimePublicKeyBase64url(): string {
   return getRuntimeKeypair().publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
 }
 
 // Sign an arbitrary synthetic payload with deployment-held demo material.
 // This is never a production authorization signer; it exists only for the
 // public crash-test surface and fails closed when production is misconfigured.
-export function signDemoPayload(payload) {
+export function signDemoPayload(payload: any): string {
   const canonical = canonicalize(payload);
   return crypto.sign(null, Buffer.from(canonical, 'utf8'), getRuntimeKeypair().privateKey).toString('base64url');
 }
@@ -86,15 +85,15 @@ export function signDemoPayload(payload) {
 // `replacer` array form (as the v1.0.0 verifier did) only sorts the top
 // level — nested objects keep insertion order, breaking determinism.
 
-export function canonicalize(value) {
+export function canonicalize(value: any): string {
   if (value === null || value === undefined) return JSON.stringify(value);
   if (Array.isArray(value)) {
-    return `[${value.map(canonicalize).join(',')}]`;
+    return `[${value.map((v: any) => canonicalize(v)).join(',')}]`;
   }
   if (typeof value === 'object') {
     return `{${Object.keys(value)
       .sort()
-      .map((k) => JSON.stringify(k) + ':' + canonicalize(value[k]))
+      .map((k: string) => JSON.stringify(k) + ':' + canonicalize(value[k]))
       .join(',')}}`;
   }
   return JSON.stringify(value);
@@ -102,7 +101,7 @@ export function canonicalize(value) {
 
 // ─── Build the demo receipt (cached at module load) ───────────────────────
 
-function buildDemoReceiptInner() {
+function buildDemoReceiptInner(): Record<string, any> {
   const issuedAt = new Date('2026-04-15T22:14:08Z').toISOString();
   const expiresAt = new Date('2026-04-16T22:14:08Z').toISOString();
 
@@ -229,12 +228,12 @@ function buildDemoReceiptInner() {
 
 const DEMO_RECEIPT = buildDemoReceiptInner();
 
-export function getDemoReceipt() {
+export function getDemoReceipt(): Record<string, any> {
   return DEMO_RECEIPT;
 }
 
 // Slug → demo decision: accept both the marketing slug ('example') and
 // the canonical receipt_id ('tr_example'). Both render the same demo.
-export function isDemoReceiptId(receiptId) {
+export function isDemoReceiptId(receiptId: string): boolean {
   return receiptId === 'example' || receiptId === 'tr_example';
 }

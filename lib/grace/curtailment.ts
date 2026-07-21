@@ -59,7 +59,7 @@ export const CURTAILMENT_SETTLEMENT_POLICY = Object.freeze({
   trust_anchor_slots: ['curtailment_order', 'authorization_receipt', 'meter_statement'],
 });
 
-const round3 = (n) => Math.round(n * 1000) / 1000;
+const round3 = (n: number): number => Math.round(n * 1000) / 1000;
 
 /**
  * Order ⊆ Envelope — the fail-closed pre-execution check a facility runs
@@ -85,20 +85,20 @@ const round3 = (n) => Math.round(n * 1000) / 1000;
  *   order, is the ceiling: a compromised dispatcher key can never spend
  *   more than the human authorized across the whole period.
  */
-export function checkOrderWithinEnvelope(order, envelope, opts = {}) {
-  const violations = [];
+export function checkOrderWithinEnvelope(order: any, envelope: any, opts: any = {}): { within: boolean, violations: string[] } {
+  const violations: string[] = [];
   if (envelope?.['@version'] !== FLEX_ENVELOPE_VERSION) violations.push('envelope: unknown version');
   const bounds = envelope?.bounds;
 
   // A dimension bound the check needs must be present and parseable —
   // a missing budget is a refusal, never an unlimited default (fail closed).
-  const requiredBound = (name) => {
+  const requiredBound = (name: string): number | null => {
     const v = Number(bounds?.[name]);
     if (!Number.isFinite(v) || v <= 0) { violations.push(`envelope: ${name} missing or unparseable (fail closed)`); return null; }
     return v;
   };
   // Spent accounting: omitted means "nothing settled under this envelope yet".
-  const spentOf = (name) => {
+  const spentOf = (name: string): number | null => {
     const raw = opts?.[name];
     if (raw === undefined || raw === null) return 0;
     const v = Number(raw);
@@ -128,7 +128,7 @@ export function checkOrderWithinEnvelope(order, envelope, opts = {}) {
 
   const start = Date.parse(order?.window?.start), end = Date.parse(order?.window?.end);
   const eStart = Date.parse(bounds?.window?.start), eEnd = Date.parse(bounds?.window?.end);
-  let durationHours = null; // an invalid window is already a refusal; no budget math without it
+  let durationHours: number | null = null; // an invalid window is already a refusal; no budget math without it
   if (!(start < end)) violations.push('order: invalid window');
   else {
     durationHours = (end - start) / 3600000;
@@ -175,7 +175,7 @@ export function checkOrderWithinEnvelope(order, envelope, opts = {}) {
  * against the order, so changing a program's method never requires
  * re-provisioning meters.
  */
-export function computeCompliance(order, meterStatement) {
+export function computeCompliance(order: any, meterStatement: any): Record<string, any> {
   if (meterStatement && typeof meterStatement === 'object' && 'baseline_method_hash' in meterStatement) {
     return {
       computable: false,
@@ -187,7 +187,7 @@ export function computeCompliance(order, meterStatement) {
   if (!Number.isFinite(baseline) || !Array.isArray(intervals) || intervals.length === 0) {
     return { computable: false, reason: 'meter statement lacks baseline or interval data' };
   }
-  const avgLoad = intervals.reduce((a, b) => a + Number(b), 0) / intervals.length;
+  const avgLoad = intervals.reduce((a: number, b: any) => a + Number(b), 0) / intervals.length;
   const delivered = baseline - avgLoad;
   const ordered = Number(order?.mw);
   if (!Number.isFinite(ordered) || ordered <= 0) return { computable: false, reason: 'order lacks mw' };
@@ -209,7 +209,7 @@ export function computeCompliance(order, meterStatement) {
  * same parties that verify an authorization. Signing is delegated to the
  * caller's key material (kept out of this pure builder).
  */
-export function buildRefusalStatement(orderDigest, violations, atISO) {
+export function buildRefusalStatement(orderDigest: string, violations: string | string[], atISO: string): Record<string, any> {
   return {
     typ: 'ep-curtailment-refusal',
     action_type: 'grid.curtailment',
@@ -241,10 +241,8 @@ const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/i;
  *
  * Fail-closed: any missing or malformed part yields no key, with a typed
  * reason — an incomplete claim can never settle.
- *
- * @returns {{key: (string|null), reason: (string|null)}}
  */
-export function settlementEntitlementKey(claim) {
+export function settlementEntitlementKey(claim: any): { key: string | null, reason: string | null } {
   const entitlement = claim?.entitlement_id, event = claim?.event_id, windowDigest = claim?.meter_window_digest;
   if (typeof entitlement !== 'string' || entitlement.length === 0) return { key: null, reason: 'entitlement_id_missing' };
   if (typeof event !== 'string' || event.length === 0) return { key: null, reason: 'event_id_missing' };
@@ -266,13 +264,8 @@ export function settlementEntitlementKey(claim) {
  * EP-SMT-CONSUME-v1 consumption proof over the same key (see
  * settlementEntitlementKey above); this function is the authority-side
  * gate that consumes the entitlement in the first place.
- *
- * @param {object} claim {entitlement_id, event_id, meter_window_digest}
- * @param {Set<string>} consumedKeys process-local demo registry. Production
- *   fleets MUST use runSettlementOnce() with a shared durable store.
- * @returns {{settled: boolean, key: (string|null), reason: (string|null)}}
  */
-export function checkSettlementConsumption(claim, consumedKeys) {
+export function checkSettlementConsumption(claim: any, consumedKeys: Set<string>): { settled: boolean, key: string | null, reason: string | null } {
   if (!claim || typeof claim !== 'object') return { settled: false, key: null, reason: 'claim_missing' };
   if (!(consumedKeys instanceof Set)) return { settled: false, key: null, reason: 'consumption_registry_missing' };
   const { key, reason } = settlementEntitlementKey(claim);
@@ -288,7 +281,7 @@ export function checkSettlementConsumption(claim, consumedKeys) {
  * after any invocation attempt. An exception is an indeterminate effect and
  * therefore burns the entitlement instead of permitting a duplicate payout.
  */
-export async function runSettlementOnce(claim, store, settle) {
+export async function runSettlementOnce(claim: any, store: any, settle: any): Promise<Record<string, any>> {
   if (!claim || typeof claim !== 'object') return { settled: false, key: null, reason: 'claim_missing' };
   const { key, reason } = settlementEntitlementKey(claim);
   if (key === null) return { settled: false, key: null, reason };
@@ -297,7 +290,7 @@ export async function runSettlementOnce(claim, store, settle) {
   }
   if (typeof settle !== 'function') return { settled: false, key, reason: 'settlement_effect_missing' };
 
-  let reserved;
+  let reserved: any;
   try {
     reserved = await store.reserve(key);
   } catch {
@@ -311,7 +304,7 @@ export async function runSettlementOnce(claim, store, settle) {
     if ((await store.commit(key)) !== true) throw new Error('settlement_consumption_commit_failed');
     committed = true;
     return { settled: true, key, reason: null, result };
-  } catch (error) {
+  } catch (error: any) {
     if (!committed) {
       try {
         if ((await store.commit(key)) !== true) throw new Error('settlement_consumption_commit_failed');

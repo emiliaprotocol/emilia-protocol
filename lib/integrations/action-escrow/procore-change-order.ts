@@ -617,7 +617,7 @@ export function createProcoreChangeOrderAdapter({
         + `?page=${page}&per_page=${PAGE_SIZE}&view=extended`;
       const fetched = await fetchJson(path, deadline, 'fetch_change_order_line_items');
       if (!fetched.ok) {
-        return { ok: false, result: fetched.result as ReturnType<typeof providerFailure> };
+        return { ok: false, result: (fetched as { ok: false; result: ReturnType<typeof providerFailure> }).result };
       }
       if (!Array.isArray(fetched.value.data)) {
         return {
@@ -720,7 +720,7 @@ export function createProcoreChangeOrderAdapter({
       + `/${resource}/${encodeURIComponent(changeOrderId)}`;
     const order = await fetchJson(orderPath, deadline, 'fetch_change_order');
     if (!order.ok) {
-      return { ok: false, result: order.result as ReturnType<typeof providerFailure> };
+      return { ok: false, result: (order as { ok: false; result: ReturnType<typeof providerFailure> }).result };
     }
     const normalizedOrder = normalizeChangeOrder(order.value, changeOrderId);
     if (!normalizedOrder) {
@@ -738,7 +738,9 @@ export function createProcoreChangeOrderAdapter({
       changeOrderId,
       deadline,
     );
-    if (!lineItems.ok) return lineItems;
+    if (!lineItems.ok) {
+      return { ok: false, result: (lineItems as { ok: false; result: ReturnType<typeof providerFailure> | ReturnType<typeof closedResult<'refused'>> }).result };
+    }
     return {
       ok: true,
       value: {
@@ -784,7 +786,7 @@ export function createProcoreChangeOrderAdapter({
       normalizedChangeOrderId,
       deadline,
     );
-    if (!initial.ok) return initial.result;
+    if (!initial.ok) return (initial as { ok: false; result: any }).result;
     if (!expectationsMatch(initial.value.change_order, normalizedExpected)) {
       return closedResult(
         initial.value.change_order.status === normalizedExpected.status
@@ -806,7 +808,7 @@ export function createProcoreChangeOrderAdapter({
       normalizedChangeOrderId,
       deadline,
     );
-    if (!final.ok) return final.result;
+    if (!final.ok) return (final as { ok: false; result: any }).result;
     if (!snapshotsMatch(initial.value, final.value)) {
       return closedResult('mismatch', {
         operation: 'fetch_change_order_evidence',
