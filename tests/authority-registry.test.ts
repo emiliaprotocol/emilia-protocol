@@ -13,6 +13,7 @@ import { dirname, resolve } from 'node:path';
 
 import { snapshotStore, resolveAuthority } from '../lib/authority/store.js';
 import { evaluateAuthorityVerdict, AUTHORITY_VERDICTS, authorityResultHash, authorityBinding, normalizeAuthorityRecord } from '../lib/authority/resolver.js';
+import resolverApi, { __authoritySecurityInternals } from '../lib/authority/resolver.js';
 import { computeRegistryHead } from '../lib/authority/registry-head.js';
 import { signAuthorityProof, verifyAuthorityProof } from '../lib/authority/proof.js';
 import { applyAuthorityEnforcement, authorityAdmissibilityCode } from '../lib/authority/enforcement.js';
@@ -429,5 +430,226 @@ describe('EP-AUTHORITY-REGISTRY-v1 unit invariants', () => {
     }
     expect(evaluateAuthorityVerdict(ctx, { ...base, issued_at: '2026-01-01T00:00:00Z', expected_min_epoch: 8 }).verdict).toBe('registry_unavailable');
     expect(evaluateAuthorityVerdict(ctx, { ...base, issued_at: '2026-01-01T00:00:00Z', amount: -1 }).verdict).toBe('amount_exceeded');
+  });
+});
+
+describe('EP-AUTHORITY-REGISTRY-v1 resolver internals', () => {
+  const { meetsAssurance, checkDelegation } = __authoritySecurityInternals;
+  const SNAPSHOT = { epoch: 1, head: 'sha256:' + '0'.repeat(64) };
+
+  // A grant that is authorized on every dimension, so each test below moves
+  // exactly one thing and the verdict change is attributable to that move.
+  const GRANT = {
+    authority_id: 'a1', subject_ref: 'alice', organization_id: 'org-a', role: 'cfo',
+    status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+    max_amount_usd: 50000, currency: 'USD',
+  };
+  const REQUEST = {
+    organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release',
+    amount: 100, currency: 'USD', issued_at: '2026-07-07T00:00:00.000Z', requiredAssurance: 'A',
+  };
+
+  it('ranks assurance strictly by the C < B < A table and never satisfies a requirement from an inherited key', () => {
+    // The ordering itself is load-bearing: a higher class satisfies a lower
+    // requirement, never the reverse.
+    expect(meetsAssurance('A', 'C')).toBe(true);
+    expect(meetsAssurance('A', 'B')).toBe(true);
+    expect(meetsAssurance('B', 'C')).toBe(true);
+    expect(meetsAssurance('A', 'A')).toBe(true);
+    expect(meetsAssurance('C', 'B')).toBe(false);
+    expect(meetsAssurance('C', 'A')).toBe(false);
+    expect(meetsAssurance('B', 'A')).toBe(false);
+
+    // Labels that are NOT own properties of the rank table must never satisfy
+    // a requirement, even when both sides carry the same inherited name --
+    // Object.prototype members compare equal to themselves, so a membership
+    // test weaker than hasOwn would hand out an "A-equivalent" assurance to any
+    // request that names a prototype key.
+    for (const label of ['constructor', 'toString', 'valueOf', '__proto__', 'hasOwnProperty']) {
+      expect(meetsAssurance(label, label)).toBe(false);
+      expect(meetsAssurance('A', label)).toBe(false);
+      expect(meetsAssurance(label, 'A')).toBe(false);
+    }
+    expect(meetsAssurance('UNKNOWN', 'A')).toBe(false);
+    expect(meetsAssurance('A', 'UNKNOWN')).toBe(false);
+
+    // Same rule end to end: an inherited-key assurance class is insufficient.
+    const inherited = evaluateAuthorityVerdict(
+      { record: { ...GRANT, assurance_class: 'constructor' }, snapshot: SNAPSHOT },
+      { ...REQUEST, requiredAssurance: 'constructor' },
+    );
+    expect(inherited.verdict).toBe('insufficient_assurance');
+    expect(inherited.detail).toBe('assurance_below_required');
+  });
+
+  it('exposes the resolver API on the default export', () => {
+    expect(typeof resolverApi.evaluateAuthorityVerdict).toBe('function');
+    expect(typeof resolverApi.authorityResultCore).toBe('function');
+    expect(typeof resolverApi.authorityResultHash).toBe('function');
+    expect(typeof resolverApi.authorityBinding).toBe('function');
+    expect(typeof resolverApi.normalizeAuthorityRecord).toBe('function');
+    expect(resolverApi.AUTHORITY_REGISTRY_VERSION).toBe('EP-AUTHORITY-REGISTRY-v1');
+    expect(resolverApi.AUTHORITY_VERDICTS).toContain('authorized');
+    expect(resolverApi.evaluateAuthorityVerdict).toBe(evaluateAuthorityVerdict);
+    expect(resolverApi.normalizeAuthorityRecord).toBe(normalizeAuthorityRecord);
+  });
+
+  it('treats an open-ended delegation window as unbounded, at any action instant', () => {
+    const child = {
+      authority_id: 'child', subject_ref: 'alice', organization_id: 'org-a', status: 'active',
+      assurance_class: 'A', action_scopes: ['wire.release'], max_amount_usd: 100,
+      currency: 'USD', policy_hash: null, valid_from: null, valid_to: null,
+      revoked_at: null, delegation_parent: 'parent',
+    };
+    const parent = {
+      authority_id: 'parent', subject_ref: 'director', organization_id: 'org-a', status: 'active',
+      assurance_class: 'A', action_scopes: ['wire.release'], max_amount_usd: 1000, currency: 'USD',
+    };
+    const resolveParent = (overrides = {}) => () => ({ ...parent, ...overrides });
+
+    // A parent with no valid_from has no lower bound. That must hold for an
+    // action instant on either side of the Unix epoch: a negative instant must
+    // not be read as "before the parent's start".
+    expect(checkDelegation(child, resolveParent(), '2026-07-07T00:00:00.000Z')).toEqual({ ok: true });
+    expect(checkDelegation(child, resolveParent(), '1969-06-15T12:00:00Z')).toEqual({ ok: true });
+    expect(checkDelegation(child, resolveParent(), '1970-01-01T00:00:00Z')).toEqual({ ok: true });
+
+    // A parent that DOES declare a window is still enforced in both directions.
+    expect(checkDelegation(child, resolveParent({ valid_from: '2026-08-01T00:00:00Z' }), '2026-07-07T00:00:00.000Z'))
+      .toEqual({ ok: false, detail: 'delegation_parent_not_yet_valid' });
+    expect(checkDelegation(child, resolveParent({ valid_to: '2026-06-01T00:00:00Z' }), '2026-07-07T00:00:00.000Z'))
+      .toEqual({ ok: false, detail: 'delegation_parent_expired' });
+    expect(checkDelegation(child, resolveParent({ valid_from: '1969-01-01T00:00:00Z' }), '1969-06-15T12:00:00Z'))
+      .toEqual({ ok: true });
+    expect(checkDelegation(child, resolveParent({ valid_from: '1969-12-01T00:00:00Z' }), '1969-06-15T12:00:00Z'))
+      .toEqual({ ok: false, detail: 'delegation_parent_not_yet_valid' });
+  });
+
+  it('a grant with no valid_from is unbounded below, including for a pre-epoch action instant', () => {
+    const ctx = { record: GRANT, snapshot: SNAPSHOT };
+    const preEpoch = evaluateAuthorityVerdict(ctx, { ...REQUEST, issued_at: '1969-06-15T12:00:00Z' });
+    expect(preEpoch.verdict).toBe('authorized');
+    expect(preEpoch.detail).toBe('ok');
+    expect(preEpoch.authorized).toBe(true);
+
+    // And a declared valid_from is still enforced against that same instant.
+    const bounded = evaluateAuthorityVerdict(
+      { record: { ...GRANT, valid_from: '1970-01-01T00:00:00Z' }, snapshot: SNAPSHOT },
+      { ...REQUEST, issued_at: '1969-06-15T12:00:00Z' },
+    );
+    expect(bounded.verdict).toBe('not_yet_valid');
+    expect(bounded.detail).toBe('valid_from_future');
+  });
+
+  it('a parent with no ceiling does not break a capped child, and a negative ceiling never authorizes', () => {
+    const child = {
+      authority_id: 'child', subject_ref: 'alice', organization_id: 'org-a', status: 'active',
+      assurance_class: 'A', action_scopes: ['wire.release'], max_amount_usd: 100,
+      currency: 'USD', policy_hash: null, valid_from: null, valid_to: null,
+      revoked_at: null, delegation_parent: 'parent',
+    };
+    const parent = {
+      authority_id: 'parent', subject_ref: 'director', organization_id: 'org-a', status: 'active',
+      assurance_class: 'A', action_scopes: ['wire.release'], currency: 'USD',
+    };
+    const at = '2026-07-07T00:00:00.000Z';
+
+    // Parent has no max_amount_usd at all: it constrains nothing on the amount
+    // dimension, so a capped child stays intact (narrowing is always allowed).
+    expect(checkDelegation(child, () => ({ ...parent }), at)).toEqual({ ok: true });
+    expect(checkDelegation(child, () => ({ ...parent, max_amount_usd: null }), at)).toEqual({ ok: true });
+
+    // Same result through the resolver: delegation must not be the thing that
+    // refuses an otherwise-authorized action.
+    const authorized = evaluateAuthorityVerdict(
+      { record: child, snapshot: SNAPSHOT, resolveParent: () => ({ ...parent }) },
+      REQUEST,
+    );
+    expect(authorized.verdict).toBe('authorized');
+    expect(authorized.detail).toBe('ok');
+
+    // A parent ceiling that is present but unusable (negative, or not a finite
+    // number) can never be shown to contain the child's ceiling: fail closed.
+    for (const bad of [-1, -0.01, Number.NEGATIVE_INFINITY, Number.NaN, 'not-a-number']) {
+      expect(checkDelegation(child, () => ({ ...parent, max_amount_usd: bad }), at))
+        .toEqual({ ok: false, detail: 'delegation_amount_widened' });
+    }
+    // A real ceiling still binds: equal is contained, one cent over is widening.
+    expect(checkDelegation(child, () => ({ ...parent, max_amount_usd: 100 }), at)).toEqual({ ok: true });
+    expect(checkDelegation(child, () => ({ ...parent, max_amount_usd: 99.99 }), at))
+      .toEqual({ ok: false, detail: 'delegation_amount_widened' });
+    // A ceiling denominated in another currency is not comparable.
+    expect(checkDelegation(child, () => ({ ...parent, max_amount_usd: 1000, currency: 'EUR' }), at))
+      .toEqual({ ok: false, detail: 'delegation_amount_widened' });
+  });
+
+  it('refuses a malformed valid_from window exactly as it refuses a malformed valid_to', () => {
+    const cases = [
+      { valid_from: '2026-02-30T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+      { valid_from: 'not-a-time', valid_to: '2027-01-01T00:00:00Z' },
+      { valid_from: '2026-01-01T00:00:00+24:00', valid_to: '2027-01-01T00:00:00Z' },
+      { valid_from: '2026-01-01T00:00:00Z', valid_to: '2026-02-30T00:00:00Z' },
+    ];
+    for (const window of cases) {
+      const r = evaluateAuthorityVerdict({ record: { ...GRANT, ...window }, snapshot: SNAPSHOT }, REQUEST);
+      expect(r.verdict).toBe('expired_authority');
+      expect(r.detail).toBe('invalid_authority_window');
+      expect(r.authorized).toBe(false);
+    }
+    // A well-formed window around the action instant still authorizes, so the
+    // refusals above come from the malformation and not from the window itself.
+    const ok = evaluateAuthorityVerdict(
+      { record: { ...GRANT, valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' }, snapshot: SNAPSHOT },
+      REQUEST,
+    );
+    expect(ok.verdict).toBe('authorized');
+  });
+
+  it('does not read authority facts off a non-plain-object request', () => {
+    // A callable (or any exotic non-object) carrying the request fields is not
+    // a request. The resolver replaces it with an empty input, so the subject
+    // never joins the grant and the answer is a refusal, not an authorization.
+    const callable = Object.assign(() => {}, REQUEST);
+    const r = evaluateAuthorityVerdict({ record: GRANT, snapshot: SNAPSHOT }, callable);
+    expect(r.verdict).toBe('unknown_authority');
+    expect(r.detail).toBe('authority_subject_or_organization_mismatch');
+    expect(r.authorized).toBe(false);
+    expect(r.subject_ref).toBe(null);
+    expect(r.action_type).toBe(null);
+    expect(r.amount).toBe(null);
+
+    for (const bogus of [null, undefined, 'wire.release', 42, true, [REQUEST]]) {
+      const bad = evaluateAuthorityVerdict({ record: GRANT, snapshot: SNAPSHOT }, bogus);
+      expect(bad.verdict).toBe('unknown_authority');
+      expect(bad.authorized).toBe(false);
+    }
+    // The same fields on a plain object are read normally.
+    expect(evaluateAuthorityVerdict({ record: GRANT, snapshot: SNAPSHOT }, { ...REQUEST }).verdict).toBe('authorized');
+  });
+
+  it('an authorized result reports the currency of the grant, not a fixed USD', () => {
+    const eur = evaluateAuthorityVerdict(
+      { record: { ...GRANT, currency: 'EUR' }, snapshot: SNAPSHOT },
+      { ...REQUEST, currency: 'EUR' },
+    );
+    expect(eur.verdict).toBe('authorized');
+    expect(eur.currency).toBe('EUR');
+
+    // A grant with no declared currency is a USD ceiling by definition.
+    const implied = evaluateAuthorityVerdict(
+      { record: { ...GRANT, currency: null }, snapshot: SNAPSHOT },
+      { ...REQUEST, currency: 'USD' },
+    );
+    expect(implied.verdict).toBe('authorized');
+    expect(implied.currency).toBe('USD');
+
+    // The amount is measured against the grant's own currency: a request in
+    // another denomination is not comparable to the ceiling.
+    const mismatched = evaluateAuthorityVerdict(
+      { record: { ...GRANT, currency: 'EUR' }, snapshot: SNAPSHOT },
+      { ...REQUEST, currency: 'USD' },
+    );
+    expect(mismatched.verdict).toBe('amount_exceeded');
+    expect(mismatched.detail).toBe('currency_mismatch');
   });
 });
