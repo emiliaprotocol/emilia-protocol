@@ -79,6 +79,12 @@ tags:
       not a certification program, and is not an interoperability claim. Its
       server-computed CAID identifies exact `payment.release.1` typed action
       content; CAID does not establish authorization.
+  - name: Approval Acquisition
+    description: |
+      EP-APPROVAL-v1 receipt acquisition for the closed `payment.release`
+      reference profile. The authorization endpoint is discovery, not a trust
+      root; relying clients still verify an approved receipt under their own
+      pins before execution.
   - name: Internal
     description: |
       Cron jobs, operator-only actions, and internal infrastructure endpoints.
@@ -4361,6 +4367,97 @@ paths:
         '500':
           description: Test delivery failed
 
+  /api/v1/approvals:
+    post:
+      tags: [Approval Acquisition]
+      summary: Begin a payment-release approval acquisition
+      description: |
+        Begins the EP-APPROVAL-v1 reference flow for the single supported
+        `payment.release` action profile. The server validates the closed
+        challenge and action, recomputes their exact action hash and
+        `payment.release.1` CAID, and creates a Class-A human review ceremony.
+        The caller supplies a tenant-bound Cloud bearer key with the
+        `approval_request` capability or `admin`; credentials discovered in a
+        challenge or manifest are never accepted.
+
+        A successful response is always HTTP 201 and never carries a receipt.
+        Its status is `pending` for a usable request. An exact idempotent retry
+        after the fixed approval window may return the same request and poll
+        capabilities with status `expired`.
+      operationId: beginReceiptApproval
+      security:
+        - CloudBearerAuth: []
+      x-emilia-flow: EP-APPROVAL-v1
+      x-emilia-fixed-action-type: payment.release
+      x-emilia-caid-action-type: payment.release.1
+      x-emilia-required-assurance: A
+      x-emilia-permissions: [approval_request, admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalAcquisitionCreateRequest'
+      responses:
+        '201':
+          description: Approval acquisition created or exact idempotent request recovered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalAcquisitionCreateResponse'
+        '400':
+          $ref: '#/components/responses/ApprovalProblem'
+        '401':
+          $ref: '#/components/responses/ApprovalProblem'
+        '403':
+          $ref: '#/components/responses/ApprovalProblem'
+        '409':
+          $ref: '#/components/responses/ApprovalProblem'
+        '413':
+          $ref: '#/components/responses/ApprovalProblem'
+        '415':
+          $ref: '#/components/responses/ApprovalProblem'
+        '429':
+          $ref: '#/components/responses/ApprovalProblem'
+        '503':
+          $ref: '#/components/responses/ApprovalProblem'
+
+  /api/v1/approvals/{requestId}:
+    get:
+      tags: [Approval Acquisition]
+      summary: Poll a payment-release approval acquisition
+      description: |
+        Polls one EP-APPROVAL-v1 request using its separate private capability.
+        Supply the exact `Authorization: EP-Approval <poll_token>` header; a
+        Cloud bearer key does not authorize this operation. Malformed request
+        IDs, missing or malformed poll tokens, unknown requests, and token
+        mismatches are all reported as the same not-found problem.
+
+        The response is exactly one of `pending`, `approved`, `denied`, or
+        `expired`. Only `approved` carries a signed EP-RECEIPT-v1 object;
+        every non-approved response is closed and cannot contain `receipt`.
+      operationId: pollReceiptApproval
+      security:
+        - ApprovalPollTokenAuth: []
+      x-emilia-flow: EP-APPROVAL-v1
+      x-emilia-fixed-action-type: payment.release
+      x-emilia-caid-action-type: payment.release.1
+      parameters:
+        - $ref: '#/components/parameters/ApprovalRequestId'
+      responses:
+        '200':
+          description: Closed approval status response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalAcquisitionPollResponse'
+        '404':
+          $ref: '#/components/responses/ApprovalProblem'
+        '429':
+          $ref: '#/components/responses/ApprovalProblem'
+        '503':
+          $ref: '#/components/responses/ApprovalProblem'
+
   /api/cloud/approvals:
     get:
       tags: [Cloud Approval Prototype]
@@ -5887,6 +5984,14 @@ components:
         Active tenant-bound Cloud API key supplied as
         `Authorization: Bearer <key>`. Connected approval operations require
         the named `approval_request` capability or `admin`.
+    ApprovalPollTokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Separate EP-APPROVAL-v1 polling capability supplied as the exact header
+        `Authorization: EP-Approval <poll_token>`, where `<poll_token>` matches
+        `^apt_[a-f0-9]{48}$`. This capability is not a Cloud bearer key.
     MobileSessionAuth:
       type: http
       scheme: bearer
@@ -5911,6 +6016,14 @@ components:
         the session token is never returned in a JSON body.
 
   parameters:
+    ApprovalRequestId:
+      name: requestId
+      in: path
+      required: true
+      description: Opaque EP-APPROVAL-v1 request identifier
+      schema:
+        type: string
+        pattern: '^apr_[a-f0-9]{32}$'
     MobileActionReference:
       name: actionReference
       in: path
@@ -5950,6 +6063,360 @@ components:
         format: uri
 
   schemas:
+    ApprovalAcquisitionCreateRequest:
+      type: object
+      additionalProperties: false
+      description: |
+        Closed EP-APPROVAL-v1 input for the reference server's only supported
+        acquisition profile, `payment.release`.
+      required: [flow, challenge, action, approver_id, idempotency_key]
+      properties:
+        flow:
+          type: string
+          enum: [EP-APPROVAL-v1]
+        challenge:
+          $ref: '#/components/schemas/ApprovalAcquisitionChallenge'
+        action:
+          $ref: '#/components/schemas/ApprovalAcquisitionAction'
+        approver_id:
+          type: string
+          minLength: 3
+          maxLength: 128
+          pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+        idempotency_key:
+          type: string
+          minLength: 16
+          maxLength: 128
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$'
+
+    ApprovalAcquisitionChallenge:
+      type: object
+      additionalProperties: false
+      required: [action, action_hash, required_fields]
+      properties:
+        action:
+          type: string
+          enum: [payment.release]
+        action_hash:
+          type: string
+          pattern: '^sha256:[a-f0-9]{64}$'
+          description: SHA-256 digest of the exact closed action object
+        required_fields:
+          type: array
+          minItems: 5
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              [action_type, amount_usd, currency, payment_instruction_id,
+               beneficiary_account_hash]
+          description: |
+            Must contain each enum value exactly once. The order is not
+            significant.
+        caid_selector:
+          type: object
+          additionalProperties: false
+          required: [field]
+          properties:
+            field:
+              type: string
+              enum: [action_caid]
+
+    ApprovalAcquisitionAction:
+      type: object
+      additionalProperties: false
+      required:
+        [action_caid, action_type, amount_usd, beneficiary_account_hash,
+         counterparty_name, currency, payment_instruction_id]
+      properties:
+        action_caid:
+          type: string
+          pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+          description: |
+            Server-recomputed CAID for the exact payment material. CAID
+            identifies content and does not establish authorization.
+        action_type:
+          type: string
+          enum: [payment.release]
+        amount_usd:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          maximum: 1000000000000
+          multipleOf: 0.01
+        beneficiary_account_hash:
+          type: string
+          pattern: '^sha256:[a-f0-9]{64}$'
+        counterparty_name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        payment_instruction_id:
+          type: string
+          minLength: 3
+          maxLength: 200
+          pattern: '^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9:._/-]{2,199}$'
+
+    ApprovalAcquisitionCreateResponse:
+      type: object
+      additionalProperties: false
+      required: [request_id, poll_token, approval_url, status, expires_at]
+      properties:
+        request_id:
+          type: string
+          pattern: '^apr_[a-f0-9]{32}$'
+        poll_token:
+          type: string
+          pattern: '^apt_[a-f0-9]{48}$'
+          description: Private capability used only with the EP-Approval scheme
+        approval_url:
+          type: string
+          format: uri
+          pattern: '^https://'
+          description: Same-origin human review URL
+        status:
+          type: string
+          enum: [pending, expired]
+          description: |
+            New and live requests are pending. Expired is possible only when
+            recovering an exact idempotent request after its fixed window.
+        expires_at:
+          type: string
+          format: date-time
+
+    ApprovalAcquisitionPollResponse:
+      oneOf:
+        - $ref: '#/components/schemas/ApprovalAcquisitionPendingResponse'
+        - $ref: '#/components/schemas/ApprovalAcquisitionApprovedResponse'
+        - $ref: '#/components/schemas/ApprovalAcquisitionDeniedResponse'
+        - $ref: '#/components/schemas/ApprovalAcquisitionExpiredResponse'
+      discriminator:
+        propertyName: status
+        mapping:
+          pending: '#/components/schemas/ApprovalAcquisitionPendingResponse'
+          approved: '#/components/schemas/ApprovalAcquisitionApprovedResponse'
+          denied: '#/components/schemas/ApprovalAcquisitionDeniedResponse'
+          expired: '#/components/schemas/ApprovalAcquisitionExpiredResponse'
+
+    ApprovalAcquisitionPendingResponse:
+      type: object
+      additionalProperties: false
+      required: [request_id, status]
+      properties:
+        request_id:
+          type: string
+          pattern: '^apr_[a-f0-9]{32}$'
+        status:
+          type: string
+          enum: [pending]
+
+    ApprovalAcquisitionApprovedResponse:
+      type: object
+      additionalProperties: false
+      required: [request_id, status, receipt]
+      properties:
+        request_id:
+          type: string
+          pattern: '^apr_[a-f0-9]{32}$'
+        status:
+          type: string
+          enum: [approved]
+        receipt:
+          $ref: '#/components/schemas/ApprovalAcquisitionReceipt'
+
+    ApprovalAcquisitionDeniedResponse:
+      type: object
+      additionalProperties: false
+      required: [request_id, status]
+      properties:
+        request_id:
+          type: string
+          pattern: '^apr_[a-f0-9]{32}$'
+        status:
+          type: string
+          enum: [denied]
+
+    ApprovalAcquisitionExpiredResponse:
+      type: object
+      additionalProperties: false
+      required: [request_id, status]
+      properties:
+        request_id:
+          type: string
+          pattern: '^apr_[a-f0-9]{32}$'
+        status:
+          type: string
+          enum: [expired]
+
+    ApprovalAcquisitionReceipt:
+      type: object
+      additionalProperties: false
+      description: |
+        Operator-signed EP-RECEIPT-v1 projection containing the exact
+        payment.release action binding and the portable Class-A decision
+        evidence. The relying service must still verify it under independently
+        pinned issuer and approver keys.
+      required: ['@version', payload, signature, metadata]
+      properties:
+        '@version':
+          type: string
+          enum: [EP-RECEIPT-v1]
+        payload:
+          type: object
+          additionalProperties: false
+          required:
+            [receipt_id, issuer, protocol_version, profile, request_id, claim,
+             authorization, created_at, expires_at]
+          properties:
+            receipt_id:
+              type: string
+              pattern: '^tr_[a-f0-9]{32}$'
+            issuer:
+              type: string
+              enum: [ep_operator_emilia_primary]
+            protocol_version:
+              type: string
+              enum: [EP-CORE-v1.0]
+            profile:
+              type: string
+              enum: [EP-APPROVAL-v1]
+            request_id:
+              type: string
+              pattern: '^apr_[a-f0-9]{32}$'
+            claim:
+              type: object
+              additionalProperties: false
+              required:
+                [action_type, canonical_action, action_hash, action_caid,
+                 challenge_hash, source_receipt_action_hash]
+              properties:
+                action_type:
+                  type: string
+                  enum: [payment.release]
+                canonical_action:
+                  $ref: '#/components/schemas/ApprovalAcquisitionAction'
+                action_hash:
+                  type: string
+                  pattern: '^sha256:[a-f0-9]{64}$'
+                action_caid:
+                  type: string
+                  pattern: '^caid:1:payment\.release\.1:jcs-sha256:[A-Za-z0-9_-]{43}$'
+                challenge_hash:
+                  type: string
+                  pattern: '^sha256:[a-f0-9]{64}$'
+                source_receipt_action_hash:
+                  type: string
+                  pattern: '^sha256:[a-f0-9]{64}$'
+            authorization:
+              type: object
+              additionalProperties: false
+              required:
+                [status, signoff_required, approver_id, approved_at,
+                 approver_key_class, class_a_decision_evidence_digest,
+                 class_a_decision_evidence]
+              properties:
+                status:
+                  type: string
+                  enum: [approved]
+                signoff_required:
+                  type: boolean
+                  enum: [true]
+                approver_id:
+                  type: string
+                  pattern: '^[A-Za-z0-9:_.@-]{3,128}$'
+                approved_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                approver_key_class:
+                  type: string
+                  enum: [A]
+                class_a_decision_evidence_digest:
+                  type: string
+                  pattern: '^sha256:[a-f0-9]{64}$'
+                class_a_decision_evidence:
+                  type: object
+                  description: Portable EP-SIGNOFF-v1 Class-A decision evidence
+            created_at:
+              type: string
+              format: date-time
+            expires_at:
+              type: string
+              format: date-time
+        signature:
+          type: object
+          additionalProperties: false
+          required: [algorithm, signer, key_class, key_id, key_source, value]
+          properties:
+            algorithm:
+              type: string
+              enum: [Ed25519]
+            signer:
+              type: string
+              enum: [ep_operator_emilia_primary]
+            key_class:
+              type: string
+              enum: [C]
+            key_id:
+              type: string
+              enum: [ep-signing-key-1]
+            key_source:
+              type: string
+              enum: [operator-commit-signing-key]
+            value:
+              type: string
+              minLength: 1
+        metadata:
+          type: object
+          additionalProperties: false
+          required: [operator, issued_at, profile]
+          properties:
+            operator:
+              type: string
+              enum: [ep_operator_emilia_primary]
+            issued_at:
+              type: string
+              format: date-time
+            profile:
+              type: string
+              enum: [EP-APPROVAL-v1]
+
+    ApprovalProblem:
+      type: object
+      additionalProperties: false
+      description: RFC 9457 Problem Details with a stable EMILIA error code
+      required: [type, title, status, detail, code]
+      properties:
+        type:
+          type: string
+          format: uri
+          pattern: '^https://emiliaprotocol\.ai/errors/'
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        code:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*$'
+        supported_action_types:
+          type: array
+          minItems: 1
+          maxItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum: [payment.release]
+
+
     CloudApprovalCreateRequest:
       type: object
       description: |
@@ -7822,3 +8289,11 @@ components:
         created_at:
           type: string
           format: date-time
+
+  responses:
+    ApprovalProblem:
+      description: EP-APPROVAL-v1 request or polling problem
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ApprovalProblem'

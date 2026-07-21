@@ -1,0 +1,243 @@
+{
+  "@version": "EP-RECEIPT-REQUIRED-BINDING-VECTORS-v1",
+  "suite": "receipt-required-bindings-v1",
+  "notice": "These are deterministic carrier-binding fixtures. A2A, AP2, and WIMSE objects are synthetic foreign artifacts and are not conformance, adoption, endorsement, or live-integration claims. The suite checks field projection and CAID/action-hash equality only; it does not perform foreign native verification or grant authorization.",
+  "definitions": [
+    {
+      "action_type": "payment.release.1",
+      "required_fields": [
+        { "name": "amount", "type": "amount-string" },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3"
+        },
+        { "name": "beneficiary_account", "type": "digest" },
+        { "name": "payment_instruction_id", "type": "string" }
+      ],
+      "optional_fields": []
+    }
+  ],
+  "canonical_action": {
+    "action_type": "payment.release.1",
+    "amount": "184.00",
+    "currency": "USD",
+    "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+    "payment_instruction_id": "pi-bindings-001"
+  },
+  "expected_caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+  "expected_action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec",
+  "fixtures": {
+    "http": {
+      "fixture_class": "implemented_reference_fixture",
+      "artifact": {
+        "status": 428,
+        "request": {
+          "body": {
+            "action_type": "payment.release.1",
+            "amount": "184.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+            "payment_instruction_id": "pi-bindings-001"
+          },
+          "headers": {
+            "X-EMILIA-Receipt": {
+              "binding": {
+                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
+              }
+            }
+          }
+        }
+      }
+    },
+    "mcp": {
+      "fixture_class": "implemented_reference_fixture",
+      "artifact": {
+        "structured_error": { "code": "emilia_receipt_required" },
+        "call": {
+          "params": {
+            "action_type": "payment.release.1",
+            "amount": "184.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+            "payment_instruction_id": "pi-bindings-001"
+          },
+          "meta": {
+            "emilia_receipt": {
+              "binding": {
+                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
+              }
+            }
+          }
+        }
+      }
+    },
+    "a2a": {
+      "fixture_class": "synthetic_foreign_artifact",
+      "artifact": {
+        "state": "input-required",
+        "task": {
+          "input": {
+            "action_type": "payment.release.1",
+            "amount": "184.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+            "payment_instruction_id": "pi-bindings-001"
+          },
+          "metadata": {
+            "emilia_receipt": {
+              "binding": {
+                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
+              }
+            }
+          }
+        }
+      }
+    },
+    "x402": {
+      "fixture_class": "experimental_reference_fixture",
+      "artifact": {
+        "status": 402,
+        "request": {
+          "body": {
+            "action_type": "payment.release.1",
+            "amount": "184.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+            "payment_instruction_id": "pi-bindings-001"
+          },
+          "headers": {
+            "X-PAYMENT": {
+              "proof": {
+                "binding": {
+                  "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                  "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ap2": {
+      "fixture_class": "synthetic_foreign_artifact",
+      "artifact": {
+        "payment_intent": {
+          "details": {
+            "action_type": "payment.release.1",
+            "amount": "184.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+            "payment_instruction_id": "pi-bindings-001"
+          },
+          "evidence": {
+            "type": "ep.authorization_receipt",
+            "ep_authorization_receipt": {
+              "binding": {
+                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
+              }
+            }
+          }
+        }
+      }
+    },
+    "wimse": {
+      "fixture_class": "synthetic_foreign_artifact",
+      "artifact": {
+        "workload_context": {
+          "request": {
+            "action_type": "payment.release.1",
+            "amount": "184.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:74ebd63b55d825ab575d801a4c902f9d2304e83b805bb3dd740b6716c3ae8ea6",
+            "payment_instruction_id": "pi-bindings-001"
+          }
+        },
+        "authorization_context": {
+          "evidence": {
+            "type": "ep.authorization_receipt",
+            "ep_authorization_receipt": {
+              "binding": {
+                "caid": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYuw",
+                "action_hash": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ec"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "vectors": [
+    {
+      "id": "accept_same_action",
+      "description": "All six carrier fixtures project the same required fields and bind the same recomputed CAID and action hash.",
+      "fixture_refs": {
+        "http": "http",
+        "mcp": "mcp",
+        "a2a": "a2a",
+        "x402": "x402",
+        "ap2": "ap2",
+        "wimse": "wimse"
+      },
+      "mutations": [],
+      "expect": { "valid": true, "reason": null }
+    },
+    {
+      "id": "reject_caid_mismatch",
+      "description": "A syntactically valid AP2-slot CAID for another material action cannot join the other carriers.",
+      "fixture_refs": {
+        "http": "http",
+        "mcp": "mcp",
+        "a2a": "a2a",
+        "x402": "x402",
+        "ap2": "ap2",
+        "wimse": "wimse"
+      },
+      "mutations": [
+        {
+          "protocol_id": "ap2",
+          "path": "/payment_intent/evidence/ep_authorization_receipt/binding/caid",
+          "value": "caid:1:payment.release.1:jcs-sha256:nOa-Aijv3apQja9bcRiASEtVOJkheGykD9gz2whCYux"
+        }
+      ],
+      "expect": { "valid": false, "reason": "caid_mismatch" }
+    },
+    {
+      "id": "reject_action_hash_mismatch",
+      "description": "A WIMSE verification-context fixture that names the correct CAID but a different action hash is refused.",
+      "fixture_refs": {
+        "http": "http",
+        "mcp": "mcp",
+        "a2a": "a2a",
+        "x402": "x402",
+        "ap2": "ap2",
+        "wimse": "wimse"
+      },
+      "mutations": [
+        {
+          "protocol_id": "wimse",
+          "path": "/authorization_context/evidence/ep_authorization_receipt/binding/action_hash",
+          "value": "sha256:9ce6be0228efddaa508daf5b711880484b55389921786ca40fd833db084262ed"
+        }
+      ],
+      "expect": { "valid": false, "reason": "action_hash_mismatch" }
+    },
+    {
+      "id": "reject_missing_protocol_binding",
+      "description": "The relying-party registry requires every named carrier binding; omitting A2A is a missing binding, not an abstained success.",
+      "fixture_refs": {
+        "http": "http",
+        "mcp": "mcp",
+        "x402": "x402",
+        "ap2": "ap2",
+        "wimse": "wimse"
+      },
+      "mutations": [],
+      "expect": { "valid": false, "reason": "missing_binding" }
+    }
+  ]
+}

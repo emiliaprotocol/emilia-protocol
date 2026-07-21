@@ -77,7 +77,13 @@ app.post('/release-payment', requireEmiliaReceipt({
   trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],
   action:      'payment.release',
   statusCode:  428,
-  manifestUrl: '/.well-known/agent-actions.json',
+  manifestUrl: '/.well-known/agent-action-control.json',
+  authorization: {
+    authorization_endpoint: 'https://approve.example.com/api/v1/approvals',
+    flow: 'EP-APPROVAL-v1',
+  },
+  requiredFields: ['action_type', 'amount', 'currency', 'beneficiary_account_hash', 'action_caid'],
+  caidSelector: { field: 'action_caid' },
   maxAgeSec:   900,
 }), handler);
 
@@ -205,7 +211,8 @@ export default function AgentGuardPage() {
                 The flip side of the gate: make your own endpoint <strong style={{ color: color.t1 }}>require</strong> proof.
                 An irreversible call with no valid receipt gets a <strong style={{ color: color.t1 }}>428</strong> describing
                 exactly what to bring &mdash; a well-behaved agent obtains one and retries, and you verify it offline.
-                The agent self-serves authorization, no human in the support loop.
+                The agent follows a pinned acquisition endpoint, a named human reviews the exact action,
+                and the agent retries without a human operating the integration or support loop.
               </p>
               <Link href="/guides/require-receipt" style={{ fontFamily: font.mono, fontSize: 13, color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>
                 Add Receipt Required to an MCP server &rarr;

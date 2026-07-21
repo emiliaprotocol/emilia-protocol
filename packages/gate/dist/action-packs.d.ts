@@ -19,6 +19,9 @@ type ActionPack = {
     why?: string;
     execution_binding?: {
         required_fields: string[];
+        caid_selector?: {
+            field: string;
+        };
     };
     business_authorization?: Record<string, any>;
 };

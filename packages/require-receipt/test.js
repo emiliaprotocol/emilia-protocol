@@ -19,15 +19,22 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
 // Mint a validly SIGNED EP-RECEIPT-v1. `createdAt` may be a valid ISO string or
 // an unparseable string; pass `omitCreatedAt: true` to leave the field off the
 // payload entirely. The value is signed over so the signature stays valid.
-function mint({ actionType = 'db.records.delete', createdAt = new Date().toISOString(), omitCreatedAt = false } = {}) {
+function mint(/** @type {{actionType?: string, createdAt?: string, omitCreatedAt?: boolean, expiresAt?: string}} */ {
+  actionType = 'db.records.delete',
+  createdAt = new Date().toISOString(),
+  omitCreatedAt = false,
+  expiresAt = undefined,
+} = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  /** @type {any} */
   const payload = {
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     claim: { action_type: actionType, outcome: 'allow_with_signoff', approver: 'jane@yourco.example' },
   };
   if (!omitCreatedAt) payload.created_at = createdAt;
+  if (expiresAt !== undefined) payload.expires_at = expiresAt;
   const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
   return { doc: { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub }, pub };
 }
@@ -42,6 +49,25 @@ test('receipt older than maxAgeSec is rejected as expired', () => {
   const stale = new Date(Date.now() - 3600 * 1000).toISOString(); // 1h ago
   const { doc, pub } = mint({ createdAt: stale });
   const v = verifyEmiliaReceipt(doc, { trustedKeys: [pub], maxAgeSec: 900 });
+  assert.equal(v.ok, false);
+  assert.equal(v.reason, 'receipt_expired');
+});
+
+test('receipt beyond the allowed future clock skew is rejected', () => {
+  const nowMs = Date.parse('2026-07-21T19:00:00.000Z');
+  const { doc, pub } = mint({ createdAt: new Date(nowMs + 61_000).toISOString() });
+  const v = verifyEmiliaReceipt(doc, { trustedKeys: [pub], maxAgeSec: 900, now: () => nowMs });
+  assert.equal(v.ok, false);
+  assert.equal(v.reason, 'receipt_not_yet_valid');
+});
+
+test('signed expires_at is enforced independently of max age', () => {
+  const nowMs = Date.parse('2026-07-21T19:00:00.000Z');
+  const { doc, pub } = mint({
+    createdAt: new Date(nowMs - 1_000).toISOString(),
+    expiresAt: new Date(nowMs).toISOString(),
+  });
+  const v = verifyEmiliaReceipt(doc, { trustedKeys: [pub], maxAgeSec: 0, now: () => nowMs });
   assert.equal(v.ok, false);
   assert.equal(v.reason, 'receipt_expired');
 });

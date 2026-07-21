@@ -259,6 +259,11 @@ const ROUTE_POLICIES = {
   'POST /api/waitlist':               { rateCategory: 'waitlist', useAuth: false },
   'POST /api/checkout':               { rateCategory: 'submit', useAuth: false },
   'POST /api/v1/guarded':             { rateCategory: 'submit', useAuth: false },
+  // EP-APPROVAL-v1 acquisition: creation uses the tenant-bound Cloud key;
+  // polling uses a separate high-entropy capability and is IP-throttled again
+  // in-route without placing that private capability in rate-limit telemetry.
+  'POST /api/v1/approvals':           { rateCategory: 'cloud_write', useAuth: true },
+  'GET /api/v1/approvals/*':          { rateCategory: 'mobile_runtime_ip', useAuth: false },
 
   // Cloud — scoring calibration
   'GET /api/cloud/scoring/recommendations': { rateCategory: 'cloud_read', useAuth: true },

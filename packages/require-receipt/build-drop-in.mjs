@@ -32,11 +32,13 @@ const runtimeDir = join(here, 'dist');
 let index = readFileSync(join(runtimeDir, 'index.js'), 'utf8');
 let gate = readFileSync(join(runtimeDir, 'gate.js'), 'utf8');
 let strictJson = readFileSync(join(runtimeDir, 'strict-json.js'), 'utf8');
+let acquisition = readFileSync(join(runtimeDir, 'acquisition.js'), 'utf8');
 // Source maps belong to the package build, not to a copy-in artifact. Remove
 // compiler trailers so adopters do not get broken relative-map warnings.
 index = index.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 gate = gate.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 strictJson = strictJson.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
+acquisition = acquisition.replace(/\n?\/\/# sourceMappingURL=.*\s*$/m, '\n');
 
 // Inline the nested-JSON ambiguity guard so the copy-in artifact stays zero-dep.
 index = index.replace("import { strictJsonGate } from './strict-json.js';\n", '');
@@ -45,6 +47,14 @@ strictJson = strictJson
   .replace(/export const /g, 'const ')
   .replace(/export function /g, 'function ')
   .replace(/\nexport default \{ strictJsonGate, MAX_JSON_DEPTH \};\n?/, '\n');
+
+// Inline the acquisition contract too. It uses only node:crypto plus the
+// platform fetch supplied by the caller, so the copy-in remains zero-dep while
+// preserving the package's challenge and self-service behavior byte-for-byte.
+index = index.replace(/export \{[\s\S]*?\} from '\.\/acquisition\.js';\n/, '');
+index = index.replace(/import \{[\s\S]*?\} from '\.\/acquisition\.js';\n/, '');
+acquisition = acquisition.replace("import crypto from 'node:crypto';\n", '');
+acquisition = acquisition.replace("import { strictJsonGate } from './strict-json.js';\n", '');
 
 // 1. Drop the JWS profile re-export (the only path that pulls in `jose`).
 const jwsMarker = '// EP-RECEIPT-JWS-PROFILE-v1:';
@@ -64,7 +74,7 @@ if (!gateImport.test(gate)) throw new Error('build-drop-in: gate.js import block
 gate = gate.replace(gateImport, '').trimStart();
 gate = gate.replace(/\nexport \{ receiptAssuranceTier \};\n/, '\n');
 
-const body = `${strictJson.trimEnd()}\n\n// ── inlined from index.js ──────────────────────────────────────────────────\n\n${index.trimEnd()}\n\n// ── inlined from gate.js ───────────────────────────────────────────────────\n\n${gate.trimEnd()}\n`;
+const body = `${strictJson.trimEnd()}\n\n// ── inlined from acquisition.js ────────────────────────────────────────────\n\n${acquisition.trimEnd()}\n\n// ── inlined from index.js ──────────────────────────────────────────────────\n\n${index.trimEnd()}\n\n// ── inlined from gate.js ───────────────────────────────────────────────────\n\n${gate.trimEnd()}\n`;
 
 // Guard: the drop-in must import nothing but node: builtins.
 const moduleSpecifiers = [...body.matchAll(

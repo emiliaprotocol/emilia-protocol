@@ -228,6 +228,7 @@ function challengeHeaders(demo: any): Record<string, string> {
       proofHeader: RECEIPT_PROOF_HEADER,
     }),
     'Cache-Control': 'no-store',
+    'Content-Type': 'application/problem+json',
   };
 }
 
@@ -248,6 +249,10 @@ function refusedResponse(demo: any, body: any, status: number = RR): NextRespons
   return NextResponse.json(
     {
       ...body,
+      status,
+      ...(body?.required && typeof body.required === 'object'
+        ? { required: { ...body.required, status } }
+        : {}),
       demo: bodySummary(demo),
       loop: {
         invariant: 'No receipt, no irreversible action.',

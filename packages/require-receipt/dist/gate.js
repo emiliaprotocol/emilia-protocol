@@ -19,7 +19,7 @@
  * attempt → commit so a caller cannot get the ordering wrong. Use the lower-level
  * `check` / `commit` / `release` only when you can prove the effect has not begun.
  */
-import { verifyEmiliaReceipt, receiptChallenge, RECEIPT_REQUIRED_STATUS, evaluateReceiptAssurance, receiptAssuranceTier, } from './index.js';
+import { verifyEmiliaReceipt, receiptChallenge, RECEIPT_REQUIRED_STATUS, evaluateReceiptAssurance, receiptAssuranceTier, approvalActionHash, } from './index.js';
 /** Default process-local atomic store. Fleets must pass an ownership-fenced
  * shared store implementing the same reserve/commit/release contract. */
 function inMemoryStore() {
@@ -75,6 +75,12 @@ export { receiptAssuranceTier };
  * @param {string} [opts.manifestUrl]
  * @param {string} [opts.assuranceClass]
  * @param {object} [opts.quorum]
+ * @param {{authorization_endpoint:string,flow:'EP-APPROVAL-v1'}} [opts.authorization]
+ *   relying-party-pinned acquisition descriptor exposed in challenges.
+ * @param {string[]} [opts.requiredFields] exact material action fields an
+ *   acquisition request and later execution observation must bind.
+ * @param {{field:string}} [opts.caidSelector] CAID field required by the
+ *   acquisition contract. CAID identifies content; it never grants authority.
  * @param {object} [opts.quorumPolicy] relying-party-pinned organizational quorum rule
  * @param {Record<string, any>} [opts.approverKeys] pinned approver keys (assurance eval).
  * @param {Record<string, any>} [opts.approver_keys] snake_case alias of approverKeys.
@@ -90,7 +96,7 @@ export { receiptAssuranceTier };
  *   uncertain reservation closed until operator reconciliation.
  */
 export function makeReceiptGate(opts = {}) {
-    const { action, trustedKeys = [], allowInlineKey = false, maxAgeSec = 900, allowedOutcomes, statusCode = RECEIPT_REQUIRED_STATUS, manifestUrl, assuranceClass, quorum, quorumPolicy, approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, store = inMemoryStore(), } = opts;
+    const { action, trustedKeys = [], allowInlineKey = false, maxAgeSec = 900, allowedOutcomes, statusCode = RECEIPT_REQUIRED_STATUS, manifestUrl, assuranceClass, quorum, authorization, requiredFields, required_fields, caidSelector, caid_selector, quorumPolicy, approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, store = inMemoryStore(), } = opts;
     if (!action)
         throw new Error('makeReceiptGate: `action` is required');
     for (const method of ['reserve', 'commit', 'release']) {
@@ -106,13 +112,28 @@ export function makeReceiptGate(opts = {}) {
         return t === null ? base : `${base}:${t}`;
     };
     const requiredTier = normalizeGateAssuranceClass(assuranceClass);
-    const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass: requiredTier, quorum, maxAgeSec });
+    const pinnedRequiredFields = requiredFields ?? required_fields;
+    const pinnedCaidSelector = caidSelector ?? caid_selector;
+    const needsObservedAction = Boolean(authorization || pinnedRequiredFields || pinnedCaidSelector);
+    const challengeOpts = (actionHash) => ({
+        statusCode,
+        manifestUrl,
+        assuranceClass: requiredTier,
+        quorum,
+        maxAgeSec,
+        // Do not advertise a machine-completable acquisition endpoint unless the
+        // relying party has projected and hashed the exact system-of-record action.
+        authorization: actionHash ? authorization : undefined,
+        requiredFields: pinnedRequiredFields,
+        caidSelector: pinnedCaidSelector,
+        actionHash,
+    });
     /** @returns {{ok:false, status:number, body:any}} */
-    function refuse(boundAction, reason) {
+    function refuse(boundAction, reason, actionHash) {
         return {
             ok: false,
             status: statusCode,
-            body: { ...receiptChallenge(boundAction, `Receipt rejected: ${reason}.`, challengeOpts()), rejected: { reason } },
+            body: { ...receiptChallenge(boundAction, `Receipt rejected: ${reason}.`, challengeOpts(actionHash)), rejected: { reason } },
         };
     }
     /**
@@ -122,41 +143,62 @@ export function makeReceiptGate(opts = {}) {
      * @returns {Promise<{ok:true, receiptId, outcome, signer, subject, boundAction}
      *          | {ok:false, status, body}>}
      */
-    async function check(receipt, { target } = {}) {
+    async function check(receipt, { target, observedAction, } = {}) {
         const boundAction = boundActionFor(target);
+        let observedHash;
+        if (observedAction !== undefined) {
+            try {
+                observedHash = approvalActionHash(observedAction);
+            }
+            catch {
+                return refuse(boundAction, 'observed_action_invalid');
+            }
+        }
+        if (needsObservedAction && !observedHash) {
+            return refuse(boundAction, 'observed_action_required');
+        }
         if (!receipt) {
             return {
                 ok: false,
                 status: statusCode,
-                body: receiptChallenge(boundAction, 'This action requires an accountable, verifiable authorization receipt.', challengeOpts()),
+                body: receiptChallenge(boundAction, 'This action requires an accountable, verifiable authorization receipt.', challengeOpts(observedHash)),
             };
         }
-        const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
+        const v = verifyEmiliaReceipt(receipt, {
+            trustedKeys,
+            allowInlineKey,
+            action: boundAction,
+            maxAgeSec,
+            allowedOutcomes,
+            actionHash: observedHash,
+            requiredFields: pinnedRequiredFields,
+            caidSelector: pinnedCaidSelector,
+        });
         if (!v.ok)
-            return refuse(boundAction, v.reason || 'receipt_invalid'); // sanitized: reason code only
+            return refuse(boundAction, v.reason || 'receipt_invalid', observedHash); // sanitized: reason code only
         // No receipt_id means no consumption identity: every no-id receipt collapses
         // to the same empty consume key, so the reservation below would neither
         // identify nor protect this receipt. Refuse before touching the store, as
         // app/api/v1/guarded and packages/gate already do (redteam HI-5).
         const receiptId = v.receipt_id;
         if (typeof receiptId !== 'string' || receiptId === '') {
-            return refuse(boundAction, 'missing_receipt_id');
+            return refuse(boundAction, 'missing_receipt_id', observedHash);
         }
         const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
             approverKeys, approver_keys, verifyAssurance, rpId, allowedOrigins, quorumPolicy,
         });
         if (!assurance.ok || (TIER_RANK[assurance.have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
-            return refuse(boundAction, assurance.reason || 'assurance_too_low');
+            return refuse(boundAction, assurance.reason || 'assurance_too_low', observedHash);
         }
         let reserved;
         try {
             reserved = await store.reserve(receiptId);
         }
         catch {
-            return refuse(boundAction, 'consumption_store_unavailable');
+            return refuse(boundAction, 'consumption_store_unavailable', observedHash);
         }
         if (reserved !== true)
-            return refuse(boundAction, 'replay_refused');
+            return refuse(boundAction, 'replay_refused', observedHash);
         return { ok: true, receiptId, outcome: v.outcome, signer: v.signer, subject: v.subject, boundAction };
     }
     /** Finalize one-time consumption after an execution attempt begins. */

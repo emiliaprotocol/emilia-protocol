@@ -1,0 +1,23 @@
+name = "ep-receipt-required-reference"
+main = "worker.ts"
+compatibility_date = "2026-07-21"
+
+# Reference / experimental. Not production audited.
+[vars]
+UPSTREAM_ORIGIN = "https://api.merchant.example"
+EP_ACTION = "payment.release"
+EP_ACTION_HASH = ""
+EP_AUTHORIZATION_ENDPOINT = "https://authorize.example.test/v1/approvals"
+EP_REQUIRED_FIELDS = "[\"action_type\",\"amount\",\"currency\",\"beneficiary_account_hash\"]"
+EP_CAID_SELECTOR_FIELD = "action_caid"
+EP_MAX_AGE_SEC = "900"
+EP_MAX_BODY_BYTES = "1048576"
+
+[[durable_objects.bindings]]
+name = "RECEIPT_CONSUMPTION"
+class_name = "ReceiptConsumption"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ReceiptConsumption"]
+

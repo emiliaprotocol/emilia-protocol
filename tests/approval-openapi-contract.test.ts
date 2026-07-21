@@ -10,10 +10,19 @@ const SPEC_PATHS = ['openapi.yaml', 'docs/api/govguard-v1.yaml'];
 const APPROVAL_PATH = '/api/cloud/approvals';
 const CONSUME_PATH = '/api/cloud/approvals/{receiptId}/consume';
 const EVIDENCE_PATH = '/api/cloud/approvals/{receiptId}/evidence';
+const ACQUISITION_PATH = '/api/v1/approvals';
+const ACQUISITION_POLL_PATH = '/api/v1/approvals/{requestId}';
 const EXPECTED_PERMISSIONS = ['approval_request', 'admin'];
 const EXPECTED_MATURITY = 'experimental-pre-standard-prototype';
 const EXPECTED_CAID_PATTERN =
   '^caid:1:payment\\.release\\.1:jcs-sha256:[A-Za-z0-9_-]{43}$';
+const ACQUISITION_REQUIRED_FIELDS = [
+  'action_type',
+  'amount_usd',
+  'currency',
+  'payment_instruction_id',
+  'beneficiary_account_hash',
+];
 
 function loadSpec(relativePath) {
   const source = readFileSync(resolve(ROOT, relativePath), 'utf8');
@@ -218,6 +227,146 @@ describe('connected approval OpenAPI source contract', () => {
     expect(PROTOTYPE_DOC).toContain('service-recorded Class-C decisions');
     expect(PROTOTYPE_DOC).toContain('emilia_cloud_approval_endpoint');
     expect(singleLine(PROTOTYPE_DOC)).toContain('does not itself move money');
+  });
+});
+
+describe('EP-APPROVAL-v1 acquisition OpenAPI contract', () => {
+  it('separates Cloud creation auth from the private EP-Approval polling capability', () => {
+    for (const { spec } of SPECS) {
+      expect(Object.keys(spec.paths[ACQUISITION_PATH])).toEqual(['post']);
+      expect(Object.keys(spec.paths[ACQUISITION_POLL_PATH])).toEqual(['get']);
+
+      const create = spec.paths[ACQUISITION_PATH].post;
+      const poll = spec.paths[ACQUISITION_POLL_PATH].get;
+      expect(create.security).toEqual([{ CloudBearerAuth: [] }]);
+      expect(create['x-emilia-permissions']).toEqual(EXPECTED_PERMISSIONS);
+      expect(poll.security).toEqual([{ ApprovalPollTokenAuth: [] }]);
+      expect(create['x-emilia-flow']).toBe('EP-APPROVAL-v1');
+      expect(poll['x-emilia-flow']).toBe('EP-APPROVAL-v1');
+      expect(create['x-emilia-fixed-action-type']).toBe('payment.release');
+      expect(poll['x-emilia-fixed-action-type']).toBe('payment.release');
+
+      expect(spec.components.securitySchemes.CloudBearerAuth)
+        .toMatchObject({ type: 'http', scheme: 'bearer' });
+      expect(spec.components.securitySchemes.ApprovalPollTokenAuth)
+        .toMatchObject({ type: 'apiKey', in: 'header', name: 'Authorization' });
+      expect(singleLine(spec.components.securitySchemes.ApprovalPollTokenAuth.description))
+        .toContain('Authorization: EP-Approval <poll_token>');
+    }
+  });
+
+  it('documents only the closed payment.release reference request profile', () => {
+    for (const { spec } of SPECS) {
+      const input = requestSchema(spec, ACQUISITION_PATH, 'post');
+      const challenge = resolveLocalRef(spec, input.properties.challenge.$ref);
+      const action = resolveLocalRef(spec, input.properties.action.$ref);
+
+      expect(input.additionalProperties).toBe(false);
+      expect(input.required).toEqual([
+        'flow', 'challenge', 'action', 'approver_id', 'idempotency_key',
+      ]);
+      expect(input.properties.flow.enum).toEqual(['EP-APPROVAL-v1']);
+      expect(challenge.additionalProperties).toBe(false);
+      expect(challenge.properties.action.enum).toEqual(['payment.release']);
+      expect(challenge.properties.required_fields).toMatchObject({
+        minItems: 5,
+        maxItems: 5,
+        uniqueItems: true,
+      });
+      expect(challenge.properties.required_fields.items.enum)
+        .toEqual(ACQUISITION_REQUIRED_FIELDS);
+      expect(challenge.properties.caid_selector.properties.field.enum)
+        .toEqual(['action_caid']);
+
+      expect(action.additionalProperties).toBe(false);
+      expect(action.required).toEqual([
+        'action_caid',
+        'action_type',
+        'amount_usd',
+        'beneficiary_account_hash',
+        'counterparty_name',
+        'currency',
+        'payment_instruction_id',
+      ]);
+      expect(action.properties.action_type.enum).toEqual(['payment.release']);
+      expect(action.properties.action_caid.pattern).toBe(EXPECTED_CAID_PATTERN);
+      expect(action.properties.beneficiary_account_hash.pattern)
+        .toBe('^sha256:[a-f0-9]{64}$');
+    }
+  });
+
+  it('keeps the 201 response closed and receipt-free', () => {
+    for (const { spec } of SPECS) {
+      const operation = spec.paths[ACQUISITION_PATH].post;
+      const output = responseSchema(spec, ACQUISITION_PATH, 'post', '201');
+
+      expect(Object.keys(operation.responses).sort()).toEqual([
+        '201', '400', '401', '403', '409', '413', '415', '429', '503',
+      ]);
+      expect(output.additionalProperties).toBe(false);
+      expect(output.required).toEqual([
+        'request_id', 'poll_token', 'approval_url', 'status', 'expires_at',
+      ]);
+      expect(output.properties.request_id.pattern).toBe('^apr_[a-f0-9]{32}$');
+      expect(output.properties.poll_token.pattern).toBe('^apt_[a-f0-9]{48}$');
+      expect(output.properties.status.enum).toEqual(['pending', 'expired']);
+      expect(output.properties.receipt).toBeUndefined();
+    }
+  });
+
+  it('models approved, pending, denied, and expired as closed poll variants', () => {
+    for (const { spec } of SPECS) {
+      const operation = spec.paths[ACQUISITION_POLL_PATH].get;
+      const output = responseSchema(spec, ACQUISITION_POLL_PATH, 'get', '200');
+      const variants = output.oneOf.map(({ $ref }) => resolveLocalRef(spec, $ref));
+      const byStatus = Object.fromEntries(variants.map((variant) => [
+        variant.properties.status.enum[0],
+        variant,
+      ]));
+
+      expect(Object.keys(operation.responses).sort()).toEqual(['200', '404', '429', '503']);
+      expect(Object.keys(byStatus).sort()).toEqual(['approved', 'denied', 'expired', 'pending']);
+      for (const status of ['pending', 'denied', 'expired']) {
+        expect(byStatus[status].additionalProperties).toBe(false);
+        expect(byStatus[status].required).toEqual(['request_id', 'status']);
+        expect(byStatus[status].properties.receipt).toBeUndefined();
+      }
+      expect(byStatus.approved.additionalProperties).toBe(false);
+      expect(byStatus.approved.required).toEqual(['request_id', 'status', 'receipt']);
+      const receipt = resolveLocalRef(spec, byStatus.approved.properties.receipt.$ref);
+      expect(receipt.additionalProperties).toBe(false);
+      expect(receipt.properties['@version'].enum).toEqual(['EP-RECEIPT-v1']);
+      expect(receipt.properties.payload.properties.profile.enum)
+        .toEqual(['EP-APPROVAL-v1']);
+      expect(receipt.properties.payload.properties.claim.properties.action_type.enum)
+        .toEqual(['payment.release']);
+    }
+  });
+
+  it('uses one strict RFC 9457 problem response for every non-success status', () => {
+    for (const { spec } of SPECS) {
+      for (const [path, method, success] of [
+        [ACQUISITION_PATH, 'post', '201'],
+        [ACQUISITION_POLL_PATH, 'get', '200'],
+      ]) {
+        const responses = spec.paths[path][method].responses;
+        for (const [status, response] of Object.entries(responses)) {
+          if (status === success) continue;
+          expect(response.$ref).toBe('#/components/responses/ApprovalProblem');
+        }
+      }
+
+      const response = spec.components.responses.ApprovalProblem;
+      expect(Object.keys(response.content)).toEqual(['application/problem+json']);
+      const problem = resolveLocalRef(
+        spec,
+        response.content['application/problem+json'].schema.$ref,
+      );
+      expect(problem.additionalProperties).toBe(false);
+      expect(problem.required).toEqual(['type', 'title', 'status', 'detail', 'code']);
+      expect(problem.properties.supported_action_types.items.enum)
+        .toEqual(['payment.release']);
+    }
   });
 });
 

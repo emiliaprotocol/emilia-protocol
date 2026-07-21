@@ -245,6 +245,9 @@
         "proof_header": {
           "const": "X-EMILIA-Receipt"
         },
+        "authorization": {
+          "$ref": "#/$defs/authorization"
+        },
         "authorization_receipt": {
           "type": "object",
           "additionalProperties": true,
@@ -298,6 +301,18 @@
                 "type": "string",
                 "minLength": 1
               }
+            },
+            "caid_selector": {
+              "type": "object",
+              "required": ["field"],
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$"
+                }
+              },
+              "description": "Optional field containing the CAID that identifies the exact action content."
             }
           }
         },
@@ -318,6 +333,25 @@
               "type": "boolean"
             }
           }
+        }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "required": [
+        "authorization_endpoint",
+        "flow"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "authorization_endpoint": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://(?![^/?#]*@)[^?#]+$",
+          "description": "Absolute HTTPS acquisition endpoint without embedded credentials, query, or fragment."
+        },
+        "flow": {
+          "const": "EP-APPROVAL-v1"
         }
       }
     }

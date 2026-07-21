@@ -53,6 +53,7 @@ const AUTHZ_SIGNALS = [
   'revokeChallenge',         // signoff/revoke.js: actor-bound
   'revokeAttestation',       // signoff/revoke.js: actor-bound
   'authenticateMobileToken', // mobile/store.js: active session plus entity, approver, app, and device scope
+  'authenticateApprovalPollCapability', // EP-APPROVAL private bearer capability, hashed before exact request lookup
   'authenticateReleaseLockOrg', // Release Lock org + authenticated entity binding
   'releaseLockSessionCookie',   // host-only strict cookie; SQL binds lock + role + contact + optional round
 ];
