@@ -97,6 +97,31 @@ async function renderRuntime({ sourcePath, banner }) {
     : `${banner}${result.outputText}`;
 }
 
+// .gitattributes carries a linguist-generated entry per companion (between the
+// BEGIN/END markers below) so GitHub's language stats count only real source.
+// The block is owned by this script: --write rewrites it, --check gates it.
+const GITATTRIBUTES_PATH = resolve(repositoryRoot, '.gitattributes');
+const ATTR_BEGIN = '# BEGIN standalone-runtime companions (generated; do not edit by hand)';
+const ATTR_END = '# END standalone-runtime companions';
+
+async function syncGitattributes({ check }) {
+  const current = await readFile(GITATTRIBUTES_PATH, 'utf8');
+  const beginAt = current.indexOf(ATTR_BEGIN);
+  const endAt = current.indexOf(ATTR_END);
+  if (beginAt === -1 || endAt === -1 || endAt < beginAt) {
+    throw new Error(`.gitattributes is missing the "${ATTR_BEGIN}" ... "${ATTR_END}" block`);
+  }
+  const block = TARGETS
+    .map((target) => `${target.runtimePath.slice(repositoryRoot.length + 1)} linguist-generated=true\n`)
+    .join('');
+  const expected = `${current.slice(0, beginAt + ATTR_BEGIN.length)}\n${block}${current.slice(endAt)}`;
+  if (current === expected) return;
+  if (check) {
+    throw new Error('.gitattributes companion block is stale; run npm run build:standalone-runtimes');
+  }
+  await writeFile(GITATTRIBUTES_PATH, expected, 'utf8');
+}
+
 export async function buildStandaloneRuntimes({ check = false } = {}) {
   for (const target of TARGETS) {
     const expected = await renderRuntime(target);
@@ -116,6 +141,7 @@ export async function buildStandaloneRuntimes({ check = false } = {}) {
     }
     await writeFile(target.runtimePath, expected, 'utf8');
   }
+  await syncGitattributes({ check });
   process.stdout.write(
     `STANDALONE RUNTIMES: ${check ? 'synchronized' : 'generated'} (${TARGETS.length})\n`,
   );
